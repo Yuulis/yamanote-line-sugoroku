@@ -1,8 +1,12 @@
-import type { Map as MapLibreMap } from "maplibre-gl";
-import type { SegmentFeatureCollection } from "../../types/data";
+import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import type { Position, SegmentFeatureCollection } from "../../types/data";
 import type { ServicePattern, Station } from "../../types/network";
 import { buildLineColorExpression } from "./lineColor";
 import {
+  CURRENT_POSITION_COLOR,
+  CURRENT_POSITION_RADIUS,
+  CURRENT_POSITION_STROKE_COLOR,
+  CURRENT_POSITION_STROKE_WIDTH,
   LABEL_FONT,
   LABEL_HALO_COLOR,
   LABEL_HALO_WIDTH,
@@ -10,6 +14,9 @@ import {
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
+  PENDING_SEGMENT_COLOR,
+  PENDING_SEGMENT_DASH,
+  PENDING_SEGMENT_WIDTH,
   SEGMENT_LINE_WIDTH,
   SOURCE_IDS,
   STATION_FILL_COLOR,
@@ -17,7 +24,18 @@ import {
   STATION_STROKE_COLOR,
   STATION_STROKE_WIDTH,
 } from "./mapConfig";
+import {
+  completedSegmentFilter,
+  currentPositionCollection,
+  pendingSegmentFilter,
+} from "./progressStyle";
 import { buildStationCollection } from "./stationCollection";
+
+/** Game progress drawn on the map. */
+export interface MapProgress {
+  completedSegmentIds: readonly string[];
+  currentPosition: Position | null;
+}
 
 export interface RailwayLayerInput {
   stations?: readonly Station[];
@@ -32,10 +50,24 @@ export function addRailwayLayers(
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
+    // Two layers so progress is told by line style as well as colour (spec 6.3).
     map.addLayer({
-      id: LAYER_IDS.segments,
+      id: LAYER_IDS.segmentsPending,
       type: "line",
       source: SOURCE_IDS.segments,
+      filter: pendingSegmentFilter([]),
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: {
+        "line-color": PENDING_SEGMENT_COLOR,
+        "line-width": PENDING_SEGMENT_WIDTH,
+        "line-dasharray": PENDING_SEGMENT_DASH,
+      },
+    });
+    map.addLayer({
+      id: LAYER_IDS.segmentsCompleted,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: completedSegmentFilter([]),
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": buildLineColorExpression(services),
@@ -78,4 +110,35 @@ export function addRailwayLayers(
       },
     });
   }
+  map.addSource(SOURCE_IDS.currentPosition, {
+    type: "geojson",
+    data: currentPositionCollection(null),
+  });
+  map.addLayer({
+    id: LAYER_IDS.currentPosition,
+    type: "circle",
+    source: SOURCE_IDS.currentPosition,
+    paint: {
+      "circle-radius": CURRENT_POSITION_RADIUS,
+      "circle-color": CURRENT_POSITION_COLOR,
+      "circle-stroke-color": CURRENT_POSITION_STROKE_COLOR,
+      "circle-stroke-width": CURRENT_POSITION_STROKE_WIDTH,
+    },
+  });
+}
+
+/** Restyle segments and move the player marker; skips layers that failed to load. */
+export function updateGameProgress(map: MapLibreMap, progress: MapProgress): void {
+  if (map.getLayer(LAYER_IDS.segmentsCompleted)) {
+    map.setFilter(
+      LAYER_IDS.segmentsCompleted,
+      completedSegmentFilter(progress.completedSegmentIds),
+    );
+    map.setFilter(
+      LAYER_IDS.segmentsPending,
+      pendingSegmentFilter(progress.completedSegmentIds),
+    );
+  }
+  const source = map.getSource<GeoJSONSource>(SOURCE_IDS.currentPosition);
+  source?.setData(currentPositionCollection(progress.currentPosition));
 }
