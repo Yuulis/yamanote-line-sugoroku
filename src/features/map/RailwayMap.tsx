@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import { buildDataAttribution } from "./attribution";
+import { exposeMapForE2E } from "./e2eHook";
 import { isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
 import {
   FOLLOW_EASE_MS,
@@ -138,9 +139,11 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
         });
       }
       setLoadedMap(map);
+      exposeMapForE2E(map);
     });
 
     return () => {
+      exposeMapForE2E(null);
       setLoadedMap(null);
       map.remove();
     };
