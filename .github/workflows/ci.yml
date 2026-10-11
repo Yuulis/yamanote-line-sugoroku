@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [master, develop, "feature/**"]
+  pull_request:
+    branches: [master, develop]
+  workflow_dispatch:
+
+# Deployment stays with the Vercel Git integration; CI only runs quality gates.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The preview server binds IPv4 loopback on runners (the ::1 default in
+  # playwright.config.ts is a WSL2 workaround).
+  E2E_HOST: 127.0.0.1
+
+jobs:
+  frontend:
+    name: Frontend (typecheck, unit tests, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Production bundle must not contain the E2E hook
+        run: |
+          if grep -q __sugorokuE2E dist/assets/*.js; then
+            echo "::error::__sugorokuE2E found in the production bundle"
+            exit 1
+          fi
+
+  pipeline:
+    name: Data pipeline (ruff, ty, pytest, validate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          python-version: "3.13"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      # The dev dependency-group (pytest, ruff, ty) is synced by default.
+      - run: uv sync --locked
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run ty check scripts/
+      # N02 raw data is gitignored, so tests/data_pipeline/test_build.py skips.
+      - run: uv run pytest -q
+      # Reads only the committed public/data/ and the override tables.
+      - run: uv run python -m scripts.data_pipeline.validate
+
+  # Runs in parallel with `frontend`: it builds its own e2e bundle, so it does
+  # not need that job's output, and parallel runs shorten the critical path.
+  # Require all three jobs together in branch protection.
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      # OS dependencies are not cached, so they are always installed; a cache
+      # hit only skips the browser downloads.
+      - name: Install browsers and OS dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
+      # Headless Firefox on Linux only gets a GL backend (and so WebGL2, which
+      # MapLibre requires) through an X display; runners have none, so Firefox
+      # reports "AllowWebgl2:false" and the app never renders. Xvfb comes from
+      # `playwright install --with-deps`; Chromium/WebKit stay headless.
+      - name: Run E2E tests
+        run: xvfb-run --auto-servernum npm run test:e2e
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
