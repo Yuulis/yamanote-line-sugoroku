@@ -1,0 +1,9 @@
+{
+  "id": "jr-yamanote",
+  "name": "山手線",
+  "operator": "東日本旅客鉄道",
+  "circular": true,
+  "color": "#9ACD32",
+  "n02Operator": "東日本旅客鉄道",
+  "updatedAt": "2026-10-11"
+}

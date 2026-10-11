@@ -1,0 +1,51 @@
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+
+.map-container {
+  position: fixed;
+  inset: 0;
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  height: 100%;
+}
+
+.data-error-banner {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 16px);
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: #fff3cd;
+  color: #664d03;
+  font-size: 13px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+}
+
+.map-error {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
+  background: rgb(255 255 255 / 90%);
+}
+
+.map-error button {
+  min-width: 96px;
+  min-height: 44px;
+  font-size: 16px;
+}
