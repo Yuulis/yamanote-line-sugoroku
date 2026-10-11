@@ -1,0 +1,64 @@
+# Claude Code Orchestra local state
+.claude/settings.local.json
+.claude/settings.orchestra.json
+.codex/config.orchestra.toml
+CLAUDE.local.md
+.claude/logs/
+.claude/checkpoints/
+.orchestra-backup-*/
+
+# --- Raw source data (MLIT N02, ~80MB; re-download per data/README.md) ---
+# Metadata (KS-META-*.xml, *.xsd) stays tracked as provenance.
+N02-25_GML/UTF-8/
+N02-25_GML/Shift-JIS/
+data/raw/
+data/interim/
+
+# --- Node / Vite ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Tests (Vitest / Playwright) ---
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# --- Vercel ---
+.vercel/
+
+# --- Environment variables ---
+.env
+.env.*
+!.env.example
+
+# --- Python (data pipeline) ---
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+__marimo__/
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*~
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json

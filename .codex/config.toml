@@ -1,0 +1,51 @@
+# Codex CLI Project Configuration
+# This file enables project-specific Codex settings
+
+# Default model configuration. Effort stays "high"; xhigh/max/ultra and the
+# gpt-6-astra model are used only when the user explicitly asks for them
+# (see .claude/rules/model-routing.md).
+model = "gpt-6.1-sol"
+model_reasoning_effort = "high"
+model_reasoning_summary = "detailed"
+
+# Response style (top-level key: placed after a [[table]] it would be parsed
+# as a field of that table and rejected by --strict-config)
+model_verbosity = "medium"
+
+# Web search
+web_search = "live"
+
+# Approval policy
+approval_policy = "never"
+
+# Sandbox mode: default to danger-full-access so Codex can read/write anywhere
+# on the filesystem and reach the network without a caller needing to pass
+# --sandbox on every invocation (2026-07-21 decision, supersedes the
+# 2026-07-18 workspace-write default -- see TEMPLATE_DESIGN_LOG.md). Combined
+# with approval_policy = "never" below, this means Codex runs fully
+# unattended with no sandbox and no confirmation prompts. Planning/review
+# consultations should still pass an explicit `--sandbox read-only` flag to
+# avoid accidental writes during read-only tasks. Completion verification
+# (Sol Guardrails, root AGENTS.md section "Guardrails (Completion
+# Verification)") remains mandatory regardless of sandbox mode.
+sandbox_mode = "danger-full-access"
+
+# Project skills are not configured here: Codex discovers them from
+# .agents/skills/<name>/SKILL.md, where each entry is a relative symlink to the
+# canonical .claude/skills/<name>. Only runtime-neutral skills are linked --
+# the Claude-lead workflows (feature, plan, tdd, team-execute, ...) call Claude
+# Code's Task tool and would stall partway through under Codex. A
+# [[skills.config]] entry cannot add a skill (it only toggles one that was
+# already discovered), which is why the old path= entries listed nothing.
+
+# Codex-started sessions log cross-CLI wrapper calls to
+# .claude/logs/cli-tools.jsonl through the same hook Claude Code uses. Codex
+# runs a project hook only after the user trusts it (the TUI asks once per
+# hook version); untrusted, it is skipped and nothing else changes.
+[[hooks.PostToolUse]]
+matcher = "^Bash$"
+
+[[hooks.PostToolUse.hooks]]
+type = "command"
+command = 'python3 "$(git rev-parse --show-toplevel)/.claude/hooks/log-cli-tools.py"'
+timeout = 10

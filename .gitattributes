@@ -1,0 +1,7 @@
+# Claude Code Orchestra: keep LF endings for shipped scripts and runtime files
+scripts/check.sh text eol=lf
+scripts/install.sh text eol=lf
+scripts/update.sh text eol=lf
+.claude/** text=auto eol=lf
+.agents/** text=auto eol=lf
+.codex/** text=auto eol=lf
