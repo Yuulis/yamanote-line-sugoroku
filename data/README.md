@@ -58,7 +58,7 @@ diff /tmp/a /tmp/b   # no output
 |------|---------|
 | `yamanote_stations.csv` | The fixed outer-loop (外回り) order `S[0..29]` starting at 新橋, the stable app id (kebab-case romaji) and the JR East station number (`JY29` ... `JY30`). The loader rejects the table unless the JY numbers descend cyclically, which is the official outer-loop direction. |
 | `yamanote_line_mapping.csv` | Which N02 line (`N02_003`) carries each run of segments. N02 names the *physical* line, not the service: 山手線 only covers 品川–新宿–田端. |
-| `service.json` | Service metadata (`jr-yamanote`, name, operator, color) and the N02 operator name to filter on. |
+| `service.json` | Service metadata (`jr-yamanote`, name, operator, color), the N02 operator name to filter on, and `updatedAt` (`YYYY-MM-DD`, copied to `manifest.updatedAt`). Bump `updatedAt` whenever you regenerate the data; it is not part of the `dataVersion` hash, so the build stays byte-reproducible. |
 
 Station order is never inferred from geometry; geometry is only used to choose
 the platform feature and to trace the track between two adjacent stations.

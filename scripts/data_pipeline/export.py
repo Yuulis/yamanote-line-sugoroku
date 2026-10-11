@@ -139,13 +139,21 @@ def manifest_inputs(files: Mapping[str, str]) -> list[str]:
     return [files[name] for name in sorted(GAME_DATA_FILES)]
 
 
-def build_manifest(payloads: Sequence[str]) -> dict[str, Any]:
+def data_version(payloads: Sequence[str]) -> str:
     """Data version = content hash of the game data, so it never needs a clock."""
     digest = hashlib.sha256()
     for payload in payloads:
         digest.update(payload.encode("utf-8"))
+    return f"{config.DATA_VERSION_PREFIX}-{digest.hexdigest()[:12]}"
+
+
+def build_manifest(payloads: Sequence[str], updated_at: str) -> dict[str, Any]:
+    """``updated_at`` comes from the committed override and is deliberately not
+    hashed: ``dataVersion`` identifies content, the date only records when the
+    data was last refreshed."""
     return {
-        "dataVersion": f"{config.DATA_VERSION_PREFIX}-{digest.hexdigest()[:12]}",
+        "dataVersion": data_version(payloads),
+        "updatedAt": updated_at,
         "source": dict(config.MANIFEST_SOURCE),
     }
 

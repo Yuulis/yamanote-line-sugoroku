@@ -101,7 +101,9 @@ def build(raw_dir: Path, overrides_dir: Path) -> BuildResult:
         config.SEGMENTS_FILE: export.dumps_pretty(segments_doc),
         config.SEGMENTS_GEOJSON_FILE: export.dumps_feature_collection(features_doc),
     }
-    manifest = export.build_manifest(export.manifest_inputs(files))
+    manifest = export.build_manifest(
+        export.manifest_inputs(files), overrides.service.updated_at
+    )
     files[config.MANIFEST_FILE] = export.dumps_pretty(manifest)
     return BuildResult(files=files, loop=loop, segment_lines=segment_lines)
 

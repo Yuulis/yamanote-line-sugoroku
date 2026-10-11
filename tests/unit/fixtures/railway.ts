@@ -46,6 +46,7 @@ export const validFeatureCollection = {
 
 export const validManifest = {
   dataVersion: "2026-10-11",
+  updatedAt: "2026-10-11",
   source: {
     name: "国土数値情報",
     dataset: "N02",

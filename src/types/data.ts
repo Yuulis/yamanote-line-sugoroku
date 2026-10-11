@@ -13,6 +13,8 @@ export interface DataSource {
 
 export interface Manifest {
   dataVersion: string;
+  /** Data update date, `YYYY-MM-DD`. */
+  updatedAt: string;
   source: DataSource;
 }
 

@@ -14,8 +14,9 @@ def _official_order() -> list[tuple[str, str]]:
     return [(station.id, station.name) for station in stations]
 
 
-def _errors(dataset: Dataset) -> str:
-    return "\n".join(validate_dataset(dataset, _official_order()).errors)
+def _errors(dataset: Dataset, updated_at: str | None = None) -> str:
+    report = validate_dataset(dataset, _official_order(), updated_at)
+    return "\n".join(report.errors)
 
 
 def test_validate_published_data_passes(published_dataset: Dataset) -> None:
@@ -102,6 +103,38 @@ def test_validate_with_wrong_manifest_source_fails(
     dataset.manifest["source"][key] = value
 
     assert "manifest.source" in _errors(dataset)
+
+
+def test_validate_published_manifest_has_override_updated_at(
+    published_dataset: Dataset,
+) -> None:
+    updated_at = load_overrides(config.DEFAULT_OVERRIDES_DIR).service.updated_at
+
+    report = validate_dataset(published_dataset, _official_order(), updated_at)
+
+    assert report.errors == []
+    assert published_dataset.manifest["updatedAt"] == updated_at
+
+
+@pytest.mark.parametrize("value", ["2026-13-01", "2026/10/11", "", None, 20261011])
+def test_validate_with_malformed_updated_at_fails(
+    dataset: Dataset, value: object
+) -> None:
+    dataset.manifest["updatedAt"] = value
+
+    assert "manifest.updatedAt must be" in _errors(dataset)
+
+
+def test_validate_with_missing_updated_at_fails(dataset: Dataset) -> None:
+    del dataset.manifest["updatedAt"]
+
+    assert "updatedAt" in _errors(dataset)
+
+
+def test_validate_with_updated_at_differing_from_override_fails(
+    dataset: Dataset,
+) -> None:
+    assert "differs from the override" in _errors(dataset, "2099-01-01")
 
 
 def test_validate_with_oversized_geojson_fails(dataset: Dataset) -> None:

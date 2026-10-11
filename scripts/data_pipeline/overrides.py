@@ -6,12 +6,14 @@ import csv
 import json
 import re
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 
 from scripts.data_pipeline import config
 
 STATION_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 JY_NUMBER_PATTERN = re.compile(r"^JY(\d{2})$")
+ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
 class OverrideError(ValueError):
@@ -41,6 +43,7 @@ class ServiceOverride:
     circular: bool
     color: str
     n02_operator: str
+    updated_at: str  # data update date, YYYY-MM-DD (bump on every regeneration)
 
 
 @dataclass(frozen=True)
@@ -163,10 +166,26 @@ def expand_line_ranges(
     return tuple(line for line in assigned if line is not None)
 
 
+def is_iso_date(value: object) -> bool:
+    """True for a strict ``YYYY-MM-DD`` string that is a real calendar date."""
+    if not isinstance(value, str) or not ISO_DATE_PATTERN.match(value):
+        return False
+    try:
+        date.fromisoformat(value)
+    except ValueError:
+        return False
+    return True
+
+
 def load_service(path: Path) -> ServiceOverride:
     if not path.is_file():
         raise OverrideError(f"override file not found: {path}")
     raw = json.loads(path.read_text(encoding="utf-8"))
+    updated_at = raw.get("updatedAt")
+    if not is_iso_date(updated_at):
+        raise OverrideError(
+            f"service 'updatedAt' must be a YYYY-MM-DD date, got {updated_at!r}"
+        )
     return ServiceOverride(
         id=str(raw["id"]),
         name=str(raw["name"]),
@@ -174,6 +193,7 @@ def load_service(path: Path) -> ServiceOverride:
         circular=bool(raw["circular"]),
         color=str(raw["color"]),
         n02_operator=str(raw["n02Operator"]),
+        updated_at=updated_at,
     )
 
 

@@ -9,6 +9,7 @@ from scripts.data_pipeline.overrides import (
     LineRange,
     OverrideError,
     expand_line_ranges,
+    is_iso_date,
     load_overrides,
 )
 
@@ -31,6 +32,7 @@ def test_load_overrides_with_committed_tables_returns_outer_loop() -> None:
     assert [station.name for station in overrides.stations] == EXPECTED_OUTER_LOOP
     assert overrides.station_ids[0] == "shimbashi"
     assert overrides.service.id == "jr-yamanote"
+    assert overrides.service.updated_at == "2026-10-11"
 
 
 def test_segment_lines_with_committed_mapping_covers_each_segment_once() -> None:
@@ -107,3 +109,50 @@ def test_load_overrides_with_missing_station_raises(overrides_copy: Path) -> Non
 def test_load_overrides_with_missing_file_raises(tmp_path: Path) -> None:
     with pytest.raises(OverrideError, match="not found"):
         load_overrides(tmp_path)
+
+
+@pytest.mark.parametrize("value", ["2026-10-11", "2024-02-29", "2000-01-01"])
+def test_is_iso_date_with_valid_date_returns_true(value: str) -> None:
+    assert is_iso_date(value) is True
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "2026-13-01",
+        "2026-02-30",
+        "2026/10/11",
+        "20261011",
+        "2026-1-1",
+        "",
+        None,
+        20261011,
+    ],
+)
+def test_is_iso_date_with_malformed_value_returns_false(value: object) -> None:
+    assert is_iso_date(value) is False
+
+
+@pytest.mark.parametrize("value", ["2026-13-01", "2026/10/11", ""])
+def test_load_overrides_with_malformed_updated_at_raises(
+    overrides_copy: Path, value: str
+) -> None:
+    _rewrite(
+        overrides_copy / config.SERVICE_OVERRIDE_FILE,
+        '"updatedAt": "2026-10-11"',
+        f'"updatedAt": "{value}"',
+    )
+
+    with pytest.raises(OverrideError, match="updatedAt"):
+        load_overrides(overrides_copy)
+
+
+def test_load_overrides_without_updated_at_raises(overrides_copy: Path) -> None:
+    _rewrite(
+        overrides_copy / config.SERVICE_OVERRIDE_FILE,
+        ',\n  "updatedAt": "2026-10-11"',
+        "",
+    )
+
+    with pytest.raises(OverrideError, match="updatedAt"):
+        load_overrides(overrides_copy)

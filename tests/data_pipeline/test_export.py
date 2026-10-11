@@ -53,14 +53,28 @@ def test_dumps_feature_collection_is_valid_json_without_crs() -> None:
 
 
 def test_build_manifest_is_content_addressed() -> None:
-    first = export.build_manifest(["x"])
-    second = export.build_manifest(["x"])
-    changed = export.build_manifest(["y"])
+    first = export.build_manifest(["x"], "2026-10-11")
+    second = export.build_manifest(["x"], "2026-10-11")
+    changed = export.build_manifest(["y"], "2026-10-11")
 
     assert first == second
     assert first["dataVersion"] != changed["dataVersion"]
     assert first["dataVersion"].startswith(config.DATA_VERSION_PREFIX)
     assert first["source"] == config.MANIFEST_SOURCE
+
+
+def test_build_manifest_includes_updated_at_after_data_version() -> None:
+    manifest = export.build_manifest(["x"], "2026-10-11")
+
+    assert manifest["updatedAt"] == "2026-10-11"
+    assert list(manifest)[:2] == ["dataVersion", "updatedAt"]
+
+
+def test_build_manifest_data_version_ignores_updated_at() -> None:
+    older = export.build_manifest(["x"], "2026-01-01")
+    newer = export.build_manifest(["x"], "2026-10-11")
+
+    assert older["dataVersion"] == newer["dataVersion"]
 
 
 def test_write_outputs_writes_manifest_last(

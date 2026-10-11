@@ -86,6 +86,22 @@ describe("isManifest", () => {
     expect(isManifest({ ...validManifest, source })).toBe(false);
   });
 
+  it("rejects a manifest without updatedAt", () => {
+    const { updatedAt: _omitted, ...rest } = validManifest;
+    expect(isManifest(rest)).toBe(false);
+  });
+
+  it("rejects a manifest whose updatedAt is not a string", () => {
+    expect(isManifest({ ...validManifest, updatedAt: 20261011 })).toBe(false);
+  });
+
+  it.each(["2026-13-01", "2026-02-30", "2026/10/11", "20261011", "2026-1-1", ""])(
+    "rejects a manifest with malformed updatedAt %j",
+    (updatedAt) => {
+      expect(isManifest({ ...validManifest, updatedAt })).toBe(false);
+    },
+  );
+
   it("rejects a manifest with empty dataVersion", () => {
     expect(isManifest({ ...validManifest, dataVersion: "" })).toBe(false);
   });

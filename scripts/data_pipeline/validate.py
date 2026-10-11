@@ -24,10 +24,10 @@ from shapely.geometry import LineString, MultiLineString, Point
 from scripts.data_pipeline import config
 from scripts.data_pipeline.export import (
     GAME_DATA_FILES,
-    build_manifest,
+    data_version,
     manifest_inputs,
 )
-from scripts.data_pipeline.overrides import OverrideError, load_overrides
+from scripts.data_pipeline.overrides import OverrideError, is_iso_date, load_overrides
 
 _TO_METRIC = Transformer.from_crs(config.OUTPUT_CRS, config.METRIC_CRS, always_xy=True)
 _DECIMALS_PATTERN = re.compile(r"\.(\d+)")
@@ -370,15 +370,28 @@ def check_geometry(
     )
 
 
-def check_manifest(manifest: Any, payloads: dict[str, str], report: Report) -> None:
+def check_manifest(
+    manifest: Any,
+    payloads: dict[str, str],
+    report: Report,
+    updated_at: str | None = None,
+) -> None:
     if not isinstance(manifest, dict):
         report.errors.append("manifest.json must be an object")
         return
-    if set(manifest) != {"dataVersion", "source"}:
-        report.errors.append("manifest.json must have exactly dataVersion and source")
+    if set(manifest) != {"dataVersion", "updatedAt", "source"}:
+        report.errors.append(
+            "manifest.json must have exactly dataVersion, updatedAt and source"
+        )
+    if not is_iso_date(manifest.get("updatedAt")):
+        report.errors.append("manifest.updatedAt must be a YYYY-MM-DD date")
+    elif updated_at is not None and manifest["updatedAt"] != updated_at:
+        report.errors.append(
+            f"manifest.updatedAt differs from the override ({updated_at}); rebuild"
+        )
     if manifest.get("source") != config.MANIFEST_SOURCE:
         report.errors.append("manifest.source differs from the N02 2025 contract")
-    expected = build_manifest(manifest_inputs(payloads))["dataVersion"]
+    expected = data_version(manifest_inputs(payloads))
     if manifest.get("dataVersion") != expected:
         report.errors.append(
             f"manifest.dataVersion is stale (expected {expected}); rebuild"
@@ -386,9 +399,15 @@ def check_manifest(manifest: Any, payloads: dict[str, str], report: Report) -> N
 
 
 def validate_dataset(
-    dataset: Dataset, official: Sequence[tuple[str, str]] | None = None
+    dataset: Dataset,
+    official: Sequence[tuple[str, str]] | None = None,
+    updated_at: str | None = None,
 ) -> Report:
-    """Run every check; ``official`` is the override (id, name) outer-loop order."""
+    """Run every check.
+
+    ``official`` is the override (id, name) outer-loop order and ``updated_at``
+    the override's update date; each is compared only when given.
+    """
     report = Report()
     positions = check_stations(dataset.stations, official, report)
     stations = dataset.stations if _is_object_list(dataset.stations) else []
@@ -397,7 +416,7 @@ def validate_dataset(
     segments = check_segments(dataset.segments, service_id, station_ids, report)
     check_walk(segments, report)
     check_geometry(dataset.geojson, segments, positions, report)
-    check_manifest(dataset.manifest, dataset.payloads, report)
+    check_manifest(dataset.manifest, dataset.payloads, report, updated_at)
     report.metrics["segments_geojson_bytes"] = dataset.geojson_bytes
     if dataset.geojson_bytes > config.MAX_GEOJSON_BYTES:
         report.errors.append(f"segments.geojson is {dataset.geojson_bytes} bytes")
@@ -421,7 +440,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"FAIL overrides: {error}")
         return 1
     official = [(station.id, station.name) for station in overrides.stations]
-    report = validate_dataset(load_dataset(args.data_dir), official)
+    report = validate_dataset(
+        load_dataset(args.data_dir), official, overrides.service.updated_at
+    )
     for name, value in sorted(report.metrics.items()):
         print(f"{name}: {value}")
     print(
