@@ -84,9 +84,33 @@ function attachStationPopup(map: MapLibreMap): void {
   });
 }
 
+/**
+ * MapLibre throws from its constructor when no WebGL2 context can be created.
+ * Returning null lets the game carry on without a map instead of unmounting
+ * the whole React tree.
+ */
+function createMap(container: HTMLElement): MapLibreMap | null {
+  try {
+    return new MapLibreMap({
+      container,
+      style: MAP_STYLE_URL,
+      center: MAP_CENTER,
+      zoom: MAP_ZOOM,
+      minZoom: MAP_MIN_ZOOM,
+      maxZoom: MAP_MAX_ZOOM,
+      attributionControl: false,
+    });
+  } catch (error) {
+    console.warn("Map unavailable: could not create the map.", error);
+    return null;
+  }
+}
+
 export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
+  // The browser cannot create a WebGL2 context: no map can ever be shown here.
+  const [unsupported, setUnsupported] = useState(false);
   const [attempt, setAttempt] = useState(0);
   // The map instance once its layers exist, so progress can be applied to it.
   const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
@@ -105,15 +129,12 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
     const customAttribution = data.manifest.ok
       ? buildDataAttribution(data.manifest.value)
       : undefined;
-    const map = new MapLibreMap({
-      container,
-      style: MAP_STYLE_URL,
-      center: MAP_CENTER,
-      zoom: MAP_ZOOM,
-      minZoom: MAP_MIN_ZOOM,
-      maxZoom: MAP_MAX_ZOOM,
-      attributionControl: false,
-    });
+    const map = createMap(container);
+    if (!map) {
+      setUnsupported(true);
+      return;
+    }
+    setUnsupported(false);
     // On phones the control panel spans the bottom edge, so the attribution
     // goes to the top where it stays readable (spec 6.2). The corner follows
     // the media query so a resize or rotation never leaves it under the panel.
@@ -196,7 +217,15 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
   return (
     <>
       <div ref={containerRef} className="map-container" />
-      {styleFailed && (
+      {unsupported && (
+        <div className="map-error" role="status">
+          <p>
+            この端末・ブラウザでは地図を表示できません（WebGL2 が必要です）。
+            地図なしでゲームを続けられます。
+          </p>
+        </div>
+      )}
+      {styleFailed && !unsupported && (
         <div className="map-error" role="alert">
           <p>地図の読み込みに失敗しました。</p>
           <button type="button" onClick={retry}>
