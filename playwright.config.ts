@@ -1,0 +1,90 @@
+import { defineConfig, devices } from "@playwright/test";
+
+// E2E suite for spec section 8.3 (tests/e2e). Runs against `vite preview` of
+// a production build, so the bundled MapLibre worker path is exercised. All
+// background-map traffic is stubbed in tests/e2e/fixtures.ts (no internet).
+
+const PORT = 4319;
+/**
+ * IPv6 loopback by default: under WSL2 mirrored networking, 127.0.0.1 is
+ * shared with Windows, which silently drops connections to closed ports, so
+ * Playwright's "is the port free?" probe stalls ~2 minutes before the server
+ * starts. ::1 stays local and refuses at once. Without IPv6: E2E_HOST=127.0.0.1
+ */
+const HOST = process.env.E2E_HOST ?? "::1";
+const URL_HOST = HOST.includes(":") ? `[${HOST}]` : HOST;
+const BASE_URL = `http://${URL_HOST}:${PORT}/`;
+const isCI = Boolean(process.env.CI);
+/**
+ * `--mode e2e` keeps NODE_ENV=production (minified, bundled worker) but turns
+ * on the map observation hook (src/features/map/e2eHook.ts). It is written
+ * outside dist/ so `npm run build` output is never the hook-enabled bundle.
+ */
+const E2E_OUT_DIR = "node_modules/.cache/sugoroku-e2e-dist";
+/** Each test renders WebGL in software; more workers mostly add memory pressure. */
+const LOCAL_WORKERS = 4;
+
+/** Port 9 (discard) has no listener: a request sent through it just fails. */
+const DEAD_PROXY = "http://[::1]:9";
+/** Chromium matches "[::1]", Firefox (Juggler) the bare "::1". */
+const LOOPBACK_HOSTS = "127.0.0.1,localhost,[::1],::1";
+
+const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
+
+export default defineConfig({
+  testDir: "./tests/e2e",
+  timeout: 30_000,
+  expect: { timeout: 7_000 },
+  fullyParallel: true,
+  forbidOnly: isCI,
+  retries: isCI ? 1 : 0,
+  workers: isCI ? 2 : LOCAL_WORKERS,
+  reporter: isCI ? [["list"], ["html", { open: "never" }]] : "list",
+  use: {
+    baseURL: BASE_URL,
+    locale: "ja-JP",
+    timezoneId: "Asia/Tokyo",
+    // Moves finish instantly (spec 6.3); tests that need the animation opt out.
+    reducedMotion: "reduce",
+    serviceWorkers: "block",
+    trace: "retain-on-failure",
+    // Defence in depth for hermeticity: requests are stubbed or aborted by
+    // the routes in tests/e2e/support/mapStub.ts, and anything that slipped
+    // past them would hit this unreachable proxy instead of the internet.
+    proxy: { server: DEAD_PROXY, bypass: LOOPBACK_HOSTS },
+  },
+  // WebKit is not listed: on this host it needs `sudo npx playwright
+  // install-deps` (libgtk-4, gstreamer, libavif...), which the project does
+  // not assume. See README (E2E section).
+  projects: [
+    {
+      name: "desktop-chromium",
+      use: { ...devices["Desktop Chrome"], viewport: DESKTOP_VIEWPORT },
+    },
+    {
+      // Phone-sized Chromium with touch (Pixel 7: 412x839 CSS px).
+      name: "phone-chromium",
+      use: { ...devices["Pixel 7"] },
+    },
+    {
+      name: "desktop-firefox",
+      use: {
+        ...devices["Desktop Firefox"],
+        viewport: DESKTOP_VIEWPORT,
+        // Belt and braces: never let Firefox retry a failed proxy directly.
+        launchOptions: { firefoxUserPrefs: { "network.proxy.failover_direct": false } },
+      },
+    },
+  ],
+  webServer: {
+    command:
+      `npx vite build --mode e2e --outDir ${E2E_OUT_DIR} --emptyOutDir && ` +
+      `npx vite preview --mode e2e --outDir ${E2E_OUT_DIR} --host ${HOST} --port ${PORT} --strictPort`,
+    url: BASE_URL,
+    // Always build fresh: a reused server could be serving a stale bundle.
+    reuseExistingServer: false,
+    timeout: 120_000,
+    stdout: "ignore",
+    stderr: "pipe",
+  },
+});
