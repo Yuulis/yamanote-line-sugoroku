@@ -16,6 +16,12 @@ const URL_HOST = HOST.includes(":") ? `[${HOST}]` : HOST;
 const BASE_URL = `http://${URL_HOST}:${PORT}/`;
 const isCI = Boolean(process.env.CI);
 /**
+ * WebKit needs system libraries that only `playwright install --with-deps`
+ * (sudo) provides, so it is on for GitHub Actions or an explicit E2E_WEBKIT=1,
+ * and off for a plain local run (including `CI=1` on a dev machine).
+ */
+const withWebkit = Boolean(process.env.GITHUB_ACTIONS || process.env.E2E_WEBKIT);
+/**
  * `--mode e2e` keeps NODE_ENV=production (minified, bundled worker) but turns
  * on the map observation hook (src/features/map/e2eHook.ts). It is written
  * outside dist/ so `npm run build` output is never the hook-enabled bundle.
@@ -53,9 +59,9 @@ export default defineConfig({
     // past them would hit this unreachable proxy instead of the internet.
     proxy: { server: DEAD_PROXY, bypass: LOOPBACK_HOSTS },
   },
-  // WebKit is not listed: on this host it needs `sudo npx playwright
-  // install-deps` (libgtk-4, gstreamer, libavif...), which the project does
-  // not assume. See README (E2E section).
+  // WebKit is opt-in (see withWebkit): it needs system libraries (libgtk-4,
+  // gstreamer, libavif...) installed with `sudo npx playwright install-deps`,
+  // which the CI runner gets from `playwright install --with-deps`. See README.
   projects: [
     {
       name: "desktop-chromium",
@@ -75,6 +81,14 @@ export default defineConfig({
         launchOptions: { firefoxUserPrefs: { "network.proxy.failover_direct": false } },
       },
     },
+    ...(withWebkit
+      ? [
+          {
+            name: "desktop-webkit",
+            use: { ...devices["Desktop Safari"], viewport: DESKTOP_VIEWPORT },
+          },
+        ]
+      : []),
   ],
   webServer: {
     command:
