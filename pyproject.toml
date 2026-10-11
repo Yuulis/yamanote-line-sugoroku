@@ -1,0 +1,45 @@
+[project]
+name = "yamanote-line-sugoroku-data"
+version = "0.1.0"
+description = "Data pipeline that extracts JR Yamanote Line game data from MLIT N02 railway data"
+requires-python = ">=3.11"
+dependencies = [
+    "geopandas==1.2.0",
+    "pyproj==3.7.2",
+    "shapely==2.2.0",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest==9.1.1",
+    "ruff==0.17.0",
+    "ty==0.0.86",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+# Orchestration template files (incl. Python code blocks in Markdown) are
+# maintained upstream and are not part of the data pipeline.
+extend-exclude = [".claude", ".codex", ".agents", "N02-25_GML"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "UP",     # pyupgrade
+]
+ignore = ["E501"]  # line too long (formatter handles)
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests/data_pipeline"]
