@@ -73,6 +73,8 @@ export default defineConfig({
       use: { ...devices["Pixel 7"] },
     },
     {
+      // Needs an X display for WebGL2 even when headless (no DISPLAY ->
+      // "AllowWebgl2:false"); CI wraps the run in xvfb-run.
       name: "desktop-firefox",
       use: {
         ...devices["Desktop Firefox"],
