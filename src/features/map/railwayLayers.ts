@@ -127,18 +127,18 @@ export function addRailwayLayers(
   });
 }
 
-/** Restyle segments and move the player marker; skips layers that failed to load. */
-export function updateGameProgress(map: MapLibreMap, progress: MapProgress): void {
-  if (map.getLayer(LAYER_IDS.segmentsCompleted)) {
-    map.setFilter(
-      LAYER_IDS.segmentsCompleted,
-      completedSegmentFilter(progress.completedSegmentIds),
-    );
-    map.setFilter(
-      LAYER_IDS.segmentsPending,
-      pendingSegmentFilter(progress.completedSegmentIds),
-    );
-  }
+/** Restyle segments as completed / pending; skips layers that failed to load. */
+export function updateCompletedSegments(
+  map: MapLibreMap,
+  completedSegmentIds: readonly string[],
+): void {
+  if (!map.getLayer(LAYER_IDS.segmentsCompleted)) return;
+  map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedSegmentIds));
+  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedSegmentIds));
+}
+
+/** Move the player marker (called on every animation frame). */
+export function updateCurrentPosition(map: MapLibreMap, position: Position | null): void {
   const source = map.getSource<GeoJSONSource>(SOURCE_IDS.currentPosition);
-  source?.setData(currentPositionCollection(progress.currentPosition));
+  source?.setData(currentPositionCollection(position));
 }

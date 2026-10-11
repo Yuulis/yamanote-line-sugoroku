@@ -14,7 +14,7 @@ export {
   type RailwayNetworkOptions,
 } from "./network";
 export { type DieFace, type DieRoll, faceFromDraw, isValidRngState, rollDie, seedRng } from "./rng";
-export { restoreGame, serializeGame } from "./save";
+export { type RestoreOptions, restoreGame, serializeGame, verifySeededHistory } from "./save";
 export type {
   GoalReachedEvent,
   MoveEvent,

@@ -8,7 +8,9 @@ export type GameEngineErrorCode =
   | "INVALID_SAVE"
   | "UNSUPPORTED_SAVE_VERSION"
   | "DATA_VERSION_MISMATCH"
-  | "INVALID_RNG_STATE";
+  | "CONFIG_MISMATCH"
+  | "INVALID_RNG_STATE"
+  | "RNG_MISMATCH";
 
 /** The single error type thrown by the game engine; branch on `code`. */
 export class GameEngineError extends Error {

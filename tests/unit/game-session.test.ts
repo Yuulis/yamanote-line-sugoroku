@@ -20,7 +20,21 @@ function reduce(session: GameSession, action: Parameters<typeof reduceGameSessio
 }
 
 function rollAction(session: GameSession) {
-  return { type: "roll", rngSeed: session.game.rngSeed, turn: session.game.turn } as const;
+  return {
+    type: "roll",
+    sessionId: session.sessionId,
+    rngSeed: session.game.rngSeed,
+    turn: session.game.turn,
+  } as const;
+}
+
+/** M2: the animation end replaces M1's settle timer and names the move it showed. */
+function finishAction(session: GameSession) {
+  return {
+    type: "animation-finished",
+    sessionId: session.sessionId,
+    turn: session.game.turn,
+  } as const;
 }
 
 describe("reduceGameSession", () => {
@@ -28,11 +42,11 @@ describe("reduceGameSession", () => {
     const start = startSession(DEFAULT_CONFIG, "ui-seed", network);
     const rolled = reduce(start, rollAction(start));
     expect(rolled.game.turn).toBe(1);
-    expect(rolled.phase).toBe("applying");
+    expect(rolled.phase).toBe("animating");
     expect(rolled.lastMove?.roll).toBeGreaterThanOrEqual(1);
 
     expect(reduce(rolled, rollAction(rolled))).toBe(rolled);
-    const settled = reduce(rolled, { type: "move-settled" });
+    const settled = reduce(rolled, finishAction(rolled));
     expect(settled.phase).toBe("idle");
     expect(reduce(settled, rollAction(settled)).game.turn).toBe(2);
   });
@@ -40,7 +54,8 @@ describe("reduceGameSession", () => {
   it("ignores a repeated click carrying an already-played turn", () => {
     const start = startSession(DEFAULT_CONFIG, "ui-seed", network);
     const staleClick = rollAction(start);
-    const settled = reduce(reduce(start, staleClick), { type: "move-settled" });
+    const rolled = reduce(start, staleClick);
+    const settled = reduce(rolled, finishAction(rolled));
     expect(reduce(settled, staleClick)).toBe(settled);
   });
 
@@ -66,7 +81,8 @@ describe("reduceGameSession", () => {
 
   it("starts a fresh game at 新橋 on restart", () => {
     const start = startSession(DEFAULT_CONFIG, "x", network);
-    const played = reduce(reduce(start, rollAction(start)), { type: "move-settled" });
+    const rolled = reduce(start, rollAction(start));
+    const played = reduce(rolled, finishAction(rolled));
     const restarted = reduce(played, { type: "new-game", seed: "y" });
     expect(restarted.game).toMatchObject({ currentStationId: START, turn: 0, rngSeed: "y" });
     expect(restarted.lastMove).toBeNull();
