@@ -9,7 +9,7 @@ import type {
 } from "../../../types/network";
 import { GOAL_ARRIVAL_POLICIES } from "./config";
 import { GameEngineError } from "./errors";
-import { createGame, moveByRoll, SAVE_VERSION } from "./game";
+import { createGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";
 import type { RailwayNetwork } from "./network";
 import { isValidRngState } from "./rng";
 
@@ -168,11 +168,15 @@ function replayMove(
  * its history from a new game. This covers the route, segment completion
  * order, goal policy (including truncation) and status in one pass.
  *
- * The RNG state can only be tied to the seed before the first move: later
- * rolls may come from moveByRoll (no randomness consumed) or playTurn, and
- * the history does not record which, so a mid-game rngState is trusted as-is.
+ * Rolls may come from moveByRoll (no randomness consumed) or playTurn and
+ * the history does not record which, so only a turn-0 rngState is tied to
+ * the seed here; the production path adds {@link verifySeededHistory}.
  */
-function assertReplayMatches(saved: GameState, network: RailwayNetwork): void {
+function assertReplayMatches(
+  saved: GameState,
+  network: RailwayNetwork,
+  checkInitialRng: boolean,
+): void {
   let replayed: GameState;
   try {
     replayed = createGame(saved.config, saved.rngSeed, network);
@@ -195,18 +199,78 @@ function assertReplayMatches(saved: GameState, network: RailwayNetwork): void {
     replayed.direction === saved.direction &&
     sameList(replayed.completedSegmentIds, saved.completedSegmentIds);
   if (!matches) invalid("Saved position or progress does not match its history");
-  if (saved.turn === 0 && saved.rngState !== replayed.rngState) {
+  if (checkInitialRng && saved.turn === 0 && saved.rngState !== replayed.rngState) {
     invalid("rngState does not belong to rngSeed");
   }
 }
 
+function sameConfig(left: GameConfig, right: GameConfig): boolean {
+  return (
+    left.rulesetVersion === right.rulesetVersion &&
+    left.targetServiceId === right.targetServiceId &&
+    left.startStationId === right.startStationId &&
+    left.targetDirection === right.targetDirection &&
+    left.goalArrivalPolicy === right.goalArrivalPolicy
+  );
+}
+
+function rngMismatch(message: string): never {
+  throw new GameEngineError("RNG_MISMATCH", message);
+}
+
 /**
- * Parse and fully validate a save for `network`.
+ * Production check that every recorded roll came from the seeded die: replay
+ * the game from `rngSeed` with `playTurn` (one draw sequence per turn, the
+ * same calls the app makes) and require each roll and the final `rngState`
+ * to match. Expects a state that already passed `restoreGame`'s replay.
+ *
+ * This proves reproducibility from the seed, not authenticity: a save forged
+ * from another seed together with its own consistent history still passes.
+ *
+ * @throws GameEngineError `RNG_MISMATCH`
+ */
+export function verifySeededHistory(state: GameState, network: RailwayNetwork): void {
+  let replayed = createGame(state.config, state.rngSeed, network);
+  state.movementHistory.forEach((record, index) => {
+    if (replayed.status !== "playing") {
+      rngMismatch(`movementHistory[${index}] follows a finished game`);
+    }
+    const result = playTurn(replayed, network);
+    if (result.roll !== record.roll) {
+      rngMismatch(`movementHistory[${index}].roll was not produced by rngSeed`);
+    }
+    replayed = result.state;
+  });
+  if (replayed.rngState !== state.rngState) {
+    rngMismatch("rngState does not follow from rngSeed and the recorded rolls");
+  }
+}
+
+export interface RestoreOptions {
+  /** Reject a save made under different rules (checked before the replay). */
+  expectedConfig?: GameConfig;
+  /**
+   * Require every move to come from the seeded die ({@link verifySeededHistory}).
+   * The app always sets this; tests that build games with arbitrary
+   * `moveByRoll` rolls leave it off.
+   */
+  requireSeededRolls?: boolean;
+}
+
+/**
+ * Parse and fully validate a save for `network`. Checks run in this order,
+ * so the error names the most fundamental problem: version, shape, data
+ * version, rules, history replay, then (optionally) the RNG.
  *
  * @throws GameEngineError `INVALID_SAVE` (malformed or inconsistent),
- *   `UNSUPPORTED_SAVE_VERSION`, `DATA_VERSION_MISMATCH`
+ *   `UNSUPPORTED_SAVE_VERSION`, `DATA_VERSION_MISMATCH`, `CONFIG_MISMATCH`,
+ *   `RNG_MISMATCH`
  */
-export function restoreGame(json: string, network: RailwayNetwork): GameState {
+export function restoreGame(
+  json: string,
+  network: RailwayNetwork,
+  options: RestoreOptions = {},
+): GameState {
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -222,6 +286,13 @@ export function restoreGame(json: string, network: RailwayNetwork): GameState {
       "Save was made with different railway data",
     );
   }
-  assertReplayMatches(state, network);
+  const { expectedConfig, requireSeededRolls = false } = options;
+  if (expectedConfig && !sameConfig(state.config, expectedConfig)) {
+    throw new GameEngineError("CONFIG_MISMATCH", "Save was made under different rules");
+  }
+  // With seeded rolls required, verifySeededHistory covers turn 0 as well and
+  // reports it as RNG_MISMATCH like any other RNG inconsistency.
+  assertReplayMatches(state, network, !requireSeededRolls);
+  if (requireSeededRolls) verifySeededHistory(state, network);
   return state;
 }

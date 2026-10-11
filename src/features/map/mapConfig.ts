@@ -5,6 +5,21 @@ export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 /** Roughly the centre of the Yamanote loop: [longitude, latitude]. */
 export const MAP_CENTER: [number, number] = [139.733, 35.69];
 export const MAP_ZOOM = 11.5;
+/** Zoom bounds: keep the loop findable and avoid zooming past useful detail. */
+export const MAP_MIN_ZOOM = 9;
+export const MAP_MAX_ZOOM = 17;
+/** Must match the phone breakpoint in styles.css. */
+export const PHONE_MEDIA_QUERY = "(max-width: 600px)";
+
+/** Camera glide when following the marker outside an animation. */
+export const FOLLOW_EASE_MS = 500;
+
+/** Background map credits for the title screen (the map also shows its own). */
+export const MAP_CREDITS = [
+  { label: "OpenFreeMap", url: "https://openfreemap.org/" },
+  { label: "© OpenMapTiles", url: "https://www.openmaptiles.org/" },
+  { label: "© OpenStreetMap contributors", url: "https://www.openstreetmap.org/copyright" },
+] as const;
 
 export const SOURCE_IDS = {
   segments: "railway-segments",

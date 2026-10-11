@@ -12,5 +12,13 @@ export const MVP_GAME_CONFIG: GameConfig = {
   goalArrivalPolicy: "truncate-on-target-service",
 };
 
-/** UI-only pause after a move before the dice re-enable (M2 replaces it with animation). */
-export const MOVE_SETTLE_MS = 400;
+/** Animation speeds per station hop (spec 11: 0.3-0.6 s, configurable). */
+export const ANIMATION_SPEEDS = [
+  { id: "slow", label: "ゆっくり", stepMs: 600 },
+  { id: "normal", label: "ふつう", stepMs: 450 },
+  { id: "fast", label: "はやい", stepMs: 300 },
+] as const;
+
+export type AnimationSpeedId = (typeof ANIMATION_SPEEDS)[number]["id"];
+
+export const DEFAULT_ANIMATION_SPEED: AnimationSpeedId = "normal";
