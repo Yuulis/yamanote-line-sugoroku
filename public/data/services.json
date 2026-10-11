@@ -1,0 +1,41 @@
+[
+  {
+    "id": "jr-yamanote",
+    "name": "山手線",
+    "operator": "東日本旅客鉄道",
+    "stationIds": [
+      "shimbashi",
+      "hamamatsucho",
+      "tamachi",
+      "takanawa-gateway",
+      "shinagawa",
+      "osaki",
+      "gotanda",
+      "meguro",
+      "ebisu",
+      "shibuya",
+      "harajuku",
+      "yoyogi",
+      "shinjuku",
+      "shin-okubo",
+      "takadanobaba",
+      "mejiro",
+      "ikebukuro",
+      "otsuka",
+      "sugamo",
+      "komagome",
+      "tabata",
+      "nishi-nippori",
+      "nippori",
+      "uguisudani",
+      "ueno",
+      "okachimachi",
+      "akihabara",
+      "kanda",
+      "tokyo",
+      "yurakucho"
+    ],
+    "circular": true,
+    "color": "#9ACD32"
+  }
+]
