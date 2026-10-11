@@ -71,6 +71,15 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
     "href",
     source.url,
   );
+  await expect(credits.getByRole("link", { name: source.license })).toHaveAttribute(
+    "href",
+    "https://creativecommons.org/licenses/by/4.0/deed.ja",
+  );
+  await expect(credits.getByRole("link", { name: "使用ライブラリのライセンス" })).toHaveAttribute(
+    "href",
+    /third-party-licenses\.txt$/,
+  );
+  await expect(credits).toContainText("非公式のファンメイド作品");
   await expect(credits.getByRole("link", { name: "OpenFreeMap" })).toHaveAttribute(
     "href",
     "https://openfreemap.org/",
@@ -90,6 +99,10 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   const inner = attribution.locator(".maplibregl-ctrl-attrib-inner");
   await expect(inner).toContainText(source.attribution);
   await expect(inner).toContainText(source.license);
+  await expect(inner.getByRole("link", { name: source.license })).toHaveAttribute(
+    "href",
+    "https://creativecommons.org/licenses/by/4.0/deed.ja",
+  );
   await expect(inner.getByRole("link", { name: "OpenFreeMap" })).toBeVisible();
   await expect(inner.getByRole("link", { name: "OpenStreetMap" })).toBeVisible();
   await expect(inner).toBeInViewport();

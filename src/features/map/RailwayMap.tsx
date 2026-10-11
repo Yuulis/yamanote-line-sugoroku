@@ -49,6 +49,10 @@ function isPhoneWidth(): boolean {
   return typeof window.matchMedia === "function" && window.matchMedia(PHONE_MEDIA_QUERY).matches;
 }
 
+function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
+  return onPhone ? "top-left" : "bottom-right";
+}
+
 /** Centre the camera on `position` without touching the zoom. */
 function recentre(map: MapLibreMap, position: Position, immediate: boolean): void {
   const { lng, lat } = map.getCenter();
@@ -111,11 +115,21 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
       attributionControl: false,
     });
     // On phones the control panel spans the bottom edge, so the attribution
-    // goes to the top where it stays readable (spec 6.2).
-    map.addControl(
-      new AttributionControl({ compact: true, customAttribution }),
-      isPhoneWidth() ? "top-left" : "bottom-right",
-    );
+    // goes to the top where it stays readable (spec 6.2). The corner follows
+    // the media query so a resize or rotation never leaves it under the panel.
+    const attributionControl = new AttributionControl({ compact: true, customAttribution });
+    let attributionOnPhone = isPhoneWidth();
+    map.addControl(attributionControl, attributionPosition(attributionOnPhone));
+    const phoneQuery =
+      typeof window.matchMedia === "function" ? window.matchMedia(PHONE_MEDIA_QUERY) : null;
+    const onPhoneQueryChange = () => {
+      const onPhone = isPhoneWidth();
+      if (onPhone === attributionOnPhone) return;
+      attributionOnPhone = onPhone;
+      map.removeControl(attributionControl);
+      map.addControl(attributionControl, attributionPosition(onPhone));
+    };
+    phoneQuery?.addEventListener("change", onPhoneQueryChange);
     map.addControl(new NavigationControl({ showCompass: false }));
 
     let loaded = false;
@@ -143,6 +157,7 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
     });
 
     return () => {
+      phoneQuery?.removeEventListener("change", onPhoneQueryChange);
       exposeMapForE2E(null);
       setLoadedMap(null);
       map.remove();

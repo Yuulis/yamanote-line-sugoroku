@@ -1,6 +1,6 @@
 import type { Manifest } from "../../../types/data";
 import type { GameState } from "../../../types/network";
-import { safeExternalUrl } from "../../map/attribution";
+import { CC_BY_LICENSE_NAME, CC_BY_URL, safeExternalUrl } from "../../map/attribution";
 import { MAP_CREDITS } from "../../map/mapConfig";
 import type { RailwayNetwork } from "../engine";
 import { type SaveLookup, saveProblemMessage } from "../store/persistence";
@@ -19,6 +19,9 @@ interface TitleScreenProps {
   onResume: (game: GameState) => void;
   onDeleteSave: () => void;
 }
+
+/** Emitted by `build.license` in vite.config.ts; keep the file names in sync. */
+const THIRD_PARTY_LICENSES_URL = `${import.meta.env.BASE_URL}third-party-licenses.txt`;
 
 function resumeLabel(game: GameState, network: RailwayNetwork): string {
   if (game.status === "completed") return `クリア結果を見る（${game.turn}ターンでクリア）`;
@@ -80,7 +83,15 @@ function Credits({ manifest }: { manifest: Manifest | null }) {
             ) : (
               manifest.source.attribution
             )}
-            （{manifest.source.license}、基準日 {manifest.source.baseDate}）
+            （
+            {manifest.source.license === CC_BY_LICENSE_NAME ? (
+              <a href={CC_BY_URL} target="_blank" rel="noopener noreferrer">
+                {manifest.source.license}
+              </a>
+            ) : (
+              manifest.source.license
+            )}
+            、基準日 {manifest.source.baseDate}）
           </li>
         )}
         <li>
@@ -94,8 +105,14 @@ function Credits({ manifest }: { manifest: Manifest | null }) {
             </span>
           ))}
         </li>
+        <li>
+          <a href={THIRD_PARTY_LICENSES_URL} target="_blank" rel="noopener noreferrer">
+            使用ライブラリのライセンス
+          </a>
+        </li>
       </ul>
       <p>本作品は既存作品から着想を得た独立したオリジナルゲームです。</p>
+      <p>本作は東日本旅客鉄道株式会社および国土交通省とは関係のない、非公式のファンメイド作品です。</p>
     </section>
   );
 }

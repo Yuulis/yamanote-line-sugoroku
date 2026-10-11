@@ -37,3 +37,13 @@ npx playwright test --project=desktop-chromium  # 1 プロジェクトだけ
   IPv6 が使えない環境では `E2E_HOST=127.0.0.1 npm run test:e2e` で切り替えます。
 - WebKit はシステムライブラリの追加（`sudo npx playwright install-deps`）が必要なため、対象外です。
 - Vercel へのデプロイ確認（8.3 の該当項目）は手動で行います。
+
+## ライセンス
+
+- ソースコード: MIT License（[`LICENSE`](LICENSE) を参照）。
+- 鉄道データ（`public/data/`）: 国土交通省「国土数値情報（鉄道データ）」を加工して作成した派生データです。
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/deed.ja) で提供され、
+  出典表記は「国土数値情報（鉄道データ）」（国土交通省）を加工して作成、です。生成手順は `data/README.md` を参照してください。
+- 背景地図: OpenFreeMap / OpenMapTiles / OpenStreetMap contributors（ODbL）のタイルを使用し、アプリ内に出典を表示しています。
+- 使用ライブラリのライセンス: `npm run build` が `dist/third-party-licenses.txt` を出力し、タイトル画面から参照できます。
+- 本作は東日本旅客鉄道株式会社および国土交通省とは関係のない、非公式のファンメイド作品です。
