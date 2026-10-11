@@ -9,16 +9,29 @@ export const MAP_ZOOM = 11.5;
 export const SOURCE_IDS = {
   segments: "railway-segments",
   stations: "railway-stations",
+  currentPosition: "game-current-position",
 } as const;
 
 export const LAYER_IDS = {
-  segments: "railway-segments-line",
+  /** Not yet traversed: grey dashed line. */
+  segmentsPending: "railway-segments-pending",
+  /** Traversed: solid line in the service colour. */
+  segmentsCompleted: "railway-segments-completed",
   stationCircles: "railway-stations-circle",
   stationLabels: "railway-stations-label",
+  currentPosition: "game-current-position-circle",
 } as const;
 
 export const FALLBACK_LINE_COLOR = "#80c241";
 export const SEGMENT_LINE_WIDTH = 5;
+export const PENDING_SEGMENT_COLOR = "#8a8a8a";
+export const PENDING_SEGMENT_WIDTH = 3;
+/** Dash and gap lengths, in line widths. */
+export const PENDING_SEGMENT_DASH: [number, number] = [2, 1.5];
+export const CURRENT_POSITION_RADIUS = 10;
+export const CURRENT_POSITION_COLOR = "#e53935";
+export const CURRENT_POSITION_STROKE_COLOR = "#ffffff";
+export const CURRENT_POSITION_STROKE_WIDTH = 3;
 export const STATION_RADIUS = 5;
 export const STATION_STROKE_WIDTH = 2;
 export const STATION_STROKE_COLOR = "#333333";

@@ -10,11 +10,13 @@ import { useEffect, useRef, useState } from "react";
 import type { RailwayData } from "../../data/loaders";
 import { buildDataAttribution } from "./attribution";
 import { LAYER_IDS, MAP_CENTER, MAP_STYLE_URL, MAP_ZOOM } from "./mapConfig";
-import { addRailwayLayers } from "./railwayLayers";
+import { addRailwayLayers, type MapProgress, updateGameProgress } from "./railwayLayers";
 import { createStationPopupContent } from "./stationPopup";
 
 interface RailwayMapProps {
   data: RailwayData;
+  /** Game progress to draw; omitted when no game is running. */
+  progress?: MapProgress;
 }
 
 function attachStationPopup(map: MapLibreMap): void {
@@ -40,10 +42,12 @@ function attachStationPopup(map: MapLibreMap): void {
   });
 }
 
-export function RailwayMap({ data }: RailwayMapProps) {
+export function RailwayMap({ data, progress }: RailwayMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // The map instance once its layers exist, so progress can be applied to it.
+  const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -77,10 +81,18 @@ export function RailwayMap({ data }: RailwayMapProps) {
         geometry: data.geometry.ok ? data.geometry.value : undefined,
       });
       attachStationPopup(map);
+      setLoadedMap(map);
     });
 
-    return () => map.remove();
+    return () => {
+      setLoadedMap(null);
+      map.remove();
+    };
   }, [data, attempt]);
+
+  useEffect(() => {
+    if (loadedMap && progress) updateGameProgress(loadedMap, progress);
+  }, [loadedMap, progress]);
 
   const retry = () => {
     setStyleFailed(false);
