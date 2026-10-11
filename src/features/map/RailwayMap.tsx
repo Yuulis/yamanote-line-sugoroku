@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import { buildDataAttribution } from "./attribution";
+import { exposeMapForE2E } from "./e2eHook";
 import { isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
 import {
   FOLLOW_EASE_MS,
@@ -46,6 +47,10 @@ interface RailwayMapProps {
 
 function isPhoneWidth(): boolean {
   return typeof window.matchMedia === "function" && window.matchMedia(PHONE_MEDIA_QUERY).matches;
+}
+
+function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
+  return onPhone ? "top-left" : "bottom-right";
 }
 
 /** Centre the camera on `position` without touching the zoom. */
@@ -110,11 +115,21 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
       attributionControl: false,
     });
     // On phones the control panel spans the bottom edge, so the attribution
-    // goes to the top where it stays readable (spec 6.2).
-    map.addControl(
-      new AttributionControl({ compact: true, customAttribution }),
-      isPhoneWidth() ? "top-left" : "bottom-right",
-    );
+    // goes to the top where it stays readable (spec 6.2). The corner follows
+    // the media query so a resize or rotation never leaves it under the panel.
+    const attributionControl = new AttributionControl({ compact: true, customAttribution });
+    let attributionOnPhone = isPhoneWidth();
+    map.addControl(attributionControl, attributionPosition(attributionOnPhone));
+    const phoneQuery =
+      typeof window.matchMedia === "function" ? window.matchMedia(PHONE_MEDIA_QUERY) : null;
+    const onPhoneQueryChange = () => {
+      const onPhone = isPhoneWidth();
+      if (onPhone === attributionOnPhone) return;
+      attributionOnPhone = onPhone;
+      map.removeControl(attributionControl);
+      map.addControl(attributionControl, attributionPosition(onPhone));
+    };
+    phoneQuery?.addEventListener("change", onPhoneQueryChange);
     map.addControl(new NavigationControl({ showCompass: false }));
 
     let loaded = false;
@@ -138,9 +153,12 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
         });
       }
       setLoadedMap(map);
+      exposeMapForE2E(map);
     });
 
     return () => {
+      phoneQuery?.removeEventListener("change", onPhoneQueryChange);
+      exposeMapForE2E(null);
       setLoadedMap(null);
       map.remove();
     };

@@ -33,12 +33,11 @@ describe("needsRecentre", () => {
 });
 
 describe("safeExternalUrl", () => {
-  it("accepts http(s) URLs", () => {
+  it("accepts https URLs", () => {
     expect(safeExternalUrl("https://nlftp.mlit.go.jp/ksj/")).toBe("https://nlftp.mlit.go.jp/ksj/");
-    expect(safeExternalUrl("http://example.com")).toBe("http://example.com/");
   });
 
-  it.each(["javascript:alert(1)", "data:text/html,x", "/relative", "", "not a url"])(
+  it.each(["http://example.com", "javascript:alert(1)", "data:text/html,x", "/relative", "", "not a url"])(
     "rejects %j",
     (url) => {
       expect(safeExternalUrl(url)).toBeNull();
