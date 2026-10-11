@@ -35,8 +35,27 @@ npx playwright test --project=desktop-chromium  # 1 プロジェクトだけ
 - プレビューサーバーは既定で IPv6 ループバック `[::1]:4319` で起動します
   （WSL2 の mirrored ネットワークでは 127.0.0.1 の空きポート確認が約 2 分止まるため）。
   IPv6 が使えない環境では `E2E_HOST=127.0.0.1 npm run test:e2e` で切り替えます。
-- WebKit はシステムライブラリの追加（`sudo npx playwright install-deps`）が必要なため、対象外です。
+- WebKit はシステムライブラリの追加（`sudo npx playwright install-deps`）が必要なため、ローカルでは既定で対象外です。
+  GitHub Actions では自動で有効になります。手元で試すときは `E2E_WEBKIT=1` を付けます。
 - Vercel へのデプロイ確認（8.3 の該当項目）は手動で行います。
+
+## CI（GitHub Actions）
+
+`.github/workflows/ci.yml` が、`master` / `develop` / `feature/**` への push、
+`master` / `develop` 向けの Pull Request、手動実行（workflow_dispatch）で動きます。
+同じ ref の古い実行は新しい push で自動的にキャンセルされます。デプロイは Vercel の Git 連携が担当し、CI は品質チェックだけを行います。
+
+| ジョブ | 内容 |
+| --- | --- |
+| `frontend` | `npm ci` → 型チェック → Vitest → 本番ビルド → 本番バンドルに E2E 用フック（`__sugorokuE2E`）が無いことの確認 |
+| `pipeline` | `uv sync --locked` → ruff（lint・format）→ ty → pytest → `validate`（`public/data/` の検証） |
+| `e2e` | Playwright（Chromium・Firefox・WebKit）。`frontend` と並列で実行 |
+
+- N02 の生データは git 管理外のため、CI では `tests/data_pipeline/test_build.py` がスキップされます（想定どおり）。
+- 失敗したジョブは Actions の実行画面で、赤くなったステップのログを確認します。
+  `e2e` が失敗した場合は、実行画面下部の Artifacts から `playwright-artifacts`（HTML レポートとトレース）を 7 日以内にダウンロードし、
+  `npx playwright show-report playwright-report` で開きます。
+- E2E は CI でのみ 1 回リトライします。リトライで通ったテストはレポート上で flaky と表示されるので、見逃さず原因を調べてください。
 
 ## ライセンス
 
