@@ -13,7 +13,9 @@ from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config
-from scripts.data_pipeline.overrides import ServiceOverride, StationOverride
+from scripts.data_pipeline.overrides import Overrides, ServiceDefinition
+from scripts.data_pipeline.registry import RegistryStation
+from scripts.data_pipeline.topology import station_order
 
 Coordinate = list[float]
 
@@ -47,29 +49,31 @@ def segment_id(service_id: str, from_id: str, to_id: str) -> str:
 
 
 def build_stations(
-    stations: Sequence[StationOverride], points: Sequence[Point]
+    stations: Sequence[RegistryStation], points: Mapping[str, Point]
 ) -> list[dict[str, Any]]:
+    """Station documents in the given order; ``points`` = representative points."""
     return [
         {
             "id": station.id,
             "name": station.name,
-            "coordinates": to_lon_lat(point.x, point.y),
+            "coordinates": to_lon_lat(points[station.id].x, points[station.id].y),
         }
-        for station, point in zip(stations, points, strict=True)
+        for station in stations
     ]
 
 
 def build_services(
-    service: ServiceOverride, station_ids: Sequence[str]
+    definition: ServiceDefinition, operator: str, station_ids: Sequence[str]
 ) -> list[dict[str, Any]]:
+    """v1 service document: the target service only."""
     return [
         {
-            "id": service.id,
-            "name": service.name,
-            "operator": service.operator,
+            "id": definition.id,
+            "name": definition.name,
+            "operator": operator,
             "stationIds": list(station_ids),
-            "circular": service.circular,
-            "color": service.color,
+            "circular": definition.circular,
+            "color": definition.color,
         }
     ]
 
@@ -156,6 +160,45 @@ def build_manifest(payloads: Sequence[str], updated_at: str) -> dict[str, Any]:
         "updatedAt": updated_at,
         "source": dict(config.MANIFEST_SOURCE),
     }
+
+
+class ExportError(ValueError):
+    """Raised when routed data cannot be expressed in the output contract."""
+
+
+def build_v1_files(
+    overrides: Overrides,
+    station_points: Mapping[str, Point],
+    target_lines: Sequence[LineString],
+) -> dict[str, str]:
+    """The five v1 files: the target loop only, one feature per segment.
+
+    The v1 contract has no per-service platforms, direction labels or endpoint
+    kinds, so it cannot carry linear services; that is the v2 contract.
+    """
+    target = overrides.target
+    if tuple(service.id for service in overrides.services) != (target.id,):
+        raise ExportError(
+            "the v1 data contract carries only the target service; multi-service "
+            "output needs the v2 contract"
+        )
+    station_ids = target.station_ids
+    registry = overrides.registry.by_id()
+    stations = [registry[station_id] for station_id in station_order([station_ids])]
+    segments_doc = build_segments(target.id, station_ids)
+    files = {
+        config.STATIONS_FILE: dumps_pretty(build_stations(stations, station_points)),
+        config.SERVICES_FILE: dumps_pretty(
+            build_services(target.definition, overrides.dataset.operator, station_ids)
+        ),
+        config.SEGMENTS_FILE: dumps_pretty(segments_doc),
+        config.SEGMENTS_GEOJSON_FILE: dumps_feature_collection(
+            build_segment_features(segments_doc, target_lines)
+        ),
+    }
+    manifest = build_manifest(manifest_inputs(files), overrides.dataset.updated_at)
+    files[config.MANIFEST_FILE] = dumps_pretty(manifest)
+    return files
 
 
 def write_text(path: Path, text: str) -> None:

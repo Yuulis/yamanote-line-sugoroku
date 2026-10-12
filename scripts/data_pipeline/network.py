@@ -57,7 +57,7 @@ def _node(coord: Sequence[float], decimals: int) -> Node:
     return (round(float(coord[0]), decimals), round(float(coord[1]), decimals))
 
 
-def _concat(parts: Sequence[LineString]) -> LineString:
+def concat_lines(parts: Sequence[LineString]) -> LineString:
     coords: list[tuple[float, float]] = []
     for part in parts:
         for xy in part.coords:
@@ -198,7 +198,7 @@ class TrackNetwork:
         if not best_parts:
             raise NoPathError("origin and destination are not connected")
         return TrackPath(
-            geometry=_concat(best_parts),
+            geometry=concat_lines(best_parts),
             length=best_length,
             start_offset=source.offset,
             end_offset=target.offset,

@@ -10,8 +10,8 @@ Start Codex as the main agent (interactive `codex` in the repo root). It loads r
 
 | Step | Branch | Status | PR | Notes |
 |---|---|---|---|---|
-| 1 Engine seam (landing lottery, terminus stop, save v2; Yamanote-only data) | `feature/jrx-1-engine` | in progress | — | |
-| 2 Pipeline preparation (multi-service internals, v1 output byte-identical) | `feature/jrx-2-pipeline` | in progress | — | runs in a separate git worktree |
+| 1 Engine seam (landing lottery, terminus stop, save v2; Yamanote-only data) | `feature/jr-east-tokyo-expansion` | verified locally | — | `d3825c3`; 364 Vitest tests, 51 E2E checks passed |
+| 2 Pipeline preparation (multi-service internals, v1 output byte-identical) | `feature/jr-east-tokyo-expansion` | verified locally | — | Integrated the preserved `feature/jrx-2-pipeline` worktree; 122 pytest tests passed; v1 rebuild byte-identical |
 | 3 Atomic v2 data-contract cutover (still Yamanote-only data) | — | pending | — | needs 1 and 2 merged |
 | 4 Multi-service UI + fixture-network E2E | — | pending | — | needs 3 |
 | 5 Expanded data (4 more services) + real-data tests | — | pending | — | needs 3, 4 |

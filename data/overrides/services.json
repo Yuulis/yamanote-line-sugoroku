@@ -1,0 +1,15 @@
+[
+  {
+    "id": "jr-yamanote",
+    "name": "山手線",
+    "color": "#9ACD32",
+    "circular": true,
+    "directionLabels": { "forward": "外回り", "backward": "内回り" },
+    "expectedStopCount": 30,
+    "lengthRef": {
+      "km": 34.5,
+      "toleranceKm": 1.5,
+      "source": "営業キロ 34.5 km (山手線 loop; M0 data spike, .claude/docs/research/m0-data-spike.md)"
+    }
+  }
+]

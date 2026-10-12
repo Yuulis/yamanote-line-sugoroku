@@ -1,54 +1,95 @@
 """Build ``public/data/*`` from raw N02 data plus ``data/overrides``.
 
 Usage: ``uv run python -m scripts.data_pipeline.build [--raw-dir ...] [--out-dir ...]``
+
+The build routes every service in ``services.json`` (loops with
+:func:`route_loop`, open chains with :func:`route_path`) and then exports the
+v1 contract, which carries only the target service.
 """
 
 from __future__ import annotations
 
 import argparse
 import sys
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from pyproj import Transformer
+from shapely.geometry import Point
+
 from scripts.data_pipeline import config, export
-from scripts.data_pipeline.n02 import (
-    PlatformCandidate,
-    load_platform_candidates,
-    load_sections,
-)
+from scripts.data_pipeline.constraints import SectionFilter
+from scripts.data_pipeline.n02 import N02Source, PlatformCandidate, TrackSection
 from scripts.data_pipeline.network import TrackNetwork
-from scripts.data_pipeline.overrides import Overrides, load_overrides
-from scripts.data_pipeline.routing import RoutedLoop, RoutingError, route_loop
+from scripts.data_pipeline.overrides import Overrides, ServiceOverrides, load_overrides
+from scripts.data_pipeline.registry import Registry
+from scripts.data_pipeline.routing import (
+    PairRoute,
+    RoutedService,
+    RoutingError,
+    route_loop,
+    route_path,
+)
+
+_SOURCE_TO_METRIC = Transformer.from_crs(
+    config.SOURCE_CRS, config.METRIC_CRS, always_xy=True
+)
+
+
+@dataclass(frozen=True)
+class ServiceBuild:
+    service: ServiceOverrides
+    segment_lines: tuple[str, ...]  # N02 line of each +1 stop pair
+    routed: RoutedService
 
 
 @dataclass(frozen=True)
 class BuildResult:
     files: dict[str, str]  # file name -> text payload
-    loop: RoutedLoop
-    segment_lines: tuple[str, ...]
+    services: dict[str, ServiceBuild]  # services.json order
 
 
-def station_lines(segment_lines: Sequence[str]) -> list[set[str]]:
-    """Lines whose platforms may represent S[i]: lines of E[i-1] and E[i]."""
-    count = len(segment_lines)
-    return [{segment_lines[i - 1], segment_lines[i]} for i in range(count)]
+def stop_lines(segment_lines: Sequence[str], circular: bool) -> list[set[str]]:
+    """N02 lines whose platforms may represent each stop: its adjacent pairs.
+
+    A loop stop touches pairs i-1 and i (wrapping); an open chain's ends touch
+    only their one pair.
+    """
+    count = len(segment_lines) if circular else len(segment_lines) + 1
+    lines: list[set[str]] = []
+    for index in range(count):
+        adjacent: set[str] = set()
+        if circular or index > 0:
+            adjacent.add(segment_lines[index - 1])
+        if circular or index < count - 1:
+            adjacent.add(segment_lines[index])
+        lines.append(adjacent)
+    return lines
 
 
 def group_candidates(
-    overrides: Overrides,
+    service: ServiceOverrides,
+    registry: Registry,
     candidates: Sequence[PlatformCandidate],
-    lines_per_station: Sequence[set[str]],
+    lines_per_stop: Sequence[set[str]],
 ) -> list[list[PlatformCandidate]]:
-    """Candidates per station, deduplicating identical platform midpoints."""
+    """Candidates per stop: name, line and selector match, deduplicated.
+
+    Homonym guard: the platforms of one stop must share one N02 group code
+    unless the stop's platform selector pins a group or station code.
+    """
+    stations = registry.by_id()
     grouped: list[list[PlatformCandidate]] = []
-    for station, lines in zip(overrides.stations, lines_per_station, strict=True):
+    for stop, lines in zip(service.stops, lines_per_stop, strict=True):
+        station = stations[stop.station_id]
         seen: set[tuple[float, float]] = set()
         options: list[PlatformCandidate] = []
         for candidate in candidates:
             if (
-                candidate.station_name != station.name
+                candidate.match_name != station.match_name
                 or candidate.n02_line not in lines
+                or not stop.platform_selector.matches(candidate)
             ):
                 continue
             key = (round(candidate.midpoint.x, 3), round(candidate.midpoint.y, 3))
@@ -57,73 +98,137 @@ def group_candidates(
             seen.add(key)
             options.append(candidate)
         if not options:
-            raise RoutingError(f"no N02 platform for {station.name} on {sorted(lines)}")
+            raise RoutingError(
+                f"no N02 platform for {station.name} ({service.id}) on {sorted(lines)}"
+            )
+        groups = sorted({option.group_code for option in options})
+        if len(groups) > 1 and not stop.platform_selector.pins_group:
+            raise RoutingError(
+                f"ambiguous N02 platforms for {station.name} ({service.id}): groups "
+                f"{groups}; add a platform_selector to stops.csv"
+            )
         grouped.append(options)
     return grouped
 
 
+def filtered_network(
+    sections: Sequence[TrackSection], section_filter: SectionFilter, label: str
+) -> TrackNetwork:
+    """Track graph of one N02 line after applying a reviewed section filter."""
+    keys = {section.key for section in sections}
+    stale = sorted((section_filter.allow | section_filter.deny) - keys)
+    if stale:
+        raise RoutingError(f"{label}: section keys not found near the service {stale}")
+    kept = [
+        section.geometry for section in sections if section_filter.admits(section.key)
+    ]
+    if not kept:
+        raise RoutingError(f"{label}: the section filter removes every section")
+    return TrackNetwork(kept)
+
+
+def to_metric_point(lon_lat: tuple[float, float]) -> Point:
+    x, y = _SOURCE_TO_METRIC.transform(lon_lat[0], lon_lat[1])
+    return Point(float(x), float(y))
+
+
+def route_service(
+    source: N02Source, service: ServiceOverrides, registry: Registry
+) -> ServiceBuild:
+    """Choose platforms and trace every +1 stop pair of one service."""
+    ranges = service.segment_ranges()
+    segment_lines = tuple(item.n02_line for item in ranges)
+    stations = registry.by_id()
+    candidates = source.platform_candidates(
+        [stations[station_id].match_name for station_id in service.station_ids],
+        set(segment_lines),
+    )
+    grouped = group_candidates(
+        service, registry, candidates, stop_lines(segment_lines, service.circular)
+    )
+    sections = source.track_sections(
+        segment_lines, [candidate.midpoint for candidate in candidates]
+    )
+    # Graph cache keyed by the constraints, not just the line.
+    networks: dict[tuple[str, SectionFilter], TrackNetwork] = {}
+    routes: list[PairRoute] = []
+    for item in ranges:
+        section_filter = service.section_filter(item.n02_line)
+        key = (item.n02_line, section_filter)
+        if key not in networks:
+            networks[key] = filtered_network(
+                sections[item.n02_line], section_filter, f"{service.id}/{item.n02_line}"
+            )
+        via = tuple(to_metric_point(point) for point in item.via)
+        routes.append(PairRoute(network=networks[key], via=via))
+    route = route_loop if service.circular else route_path
+    return ServiceBuild(
+        service=service, segment_lines=segment_lines, routed=route(grouped, routes)
+    )
+
+
+def route_network(source: N02Source, overrides: Overrides) -> dict[str, ServiceBuild]:
+    return {
+        service.id: route_service(source, service, overrides.registry)
+        for service in overrides.services
+    }
+
+
+def platform_points(builds: Mapping[str, ServiceBuild]) -> dict[tuple[str, str], Point]:
+    """(service id, station id) -> chosen platform midpoint."""
+    points: dict[tuple[str, str], Point] = {}
+    for service_id, item in builds.items():
+        for station_id, candidate in zip(
+            item.service.station_ids, item.routed.chosen, strict=True
+        ):
+            points[(service_id, station_id)] = candidate.midpoint
+    return points
+
+
+def representative_points(
+    overrides: Overrides, builds: Mapping[str, ServiceBuild]
+) -> dict[str, Point]:
+    """Station point = platform point of its registry-selected service."""
+    platforms = platform_points(builds)
+    return {
+        station.id: platforms[(station.representative_service_id, station.id)]
+        for station in overrides.registry.stations
+    }
+
+
 def build(raw_dir: Path, overrides_dir: Path) -> BuildResult:
     overrides = load_overrides(overrides_dir)
-    operator = overrides.service.n02_operator
-    segment_lines = overrides.segment_lines()
-    lines_per_station = station_lines(segment_lines)
-
-    candidates = load_platform_candidates(
-        raw_dir,
-        operator=operator,
-        names=[station.name for station in overrides.stations],
-        lines=set(segment_lines),
+    source = N02Source(raw_dir, operator=overrides.dataset.n02_operator)
+    builds = route_network(source, overrides)
+    target = builds[overrides.dataset.target_service_id]
+    files = export.build_v1_files(
+        overrides,
+        representative_points(overrides, builds),
+        [path.geometry for path in target.routed.paths],
     )
-    grouped = group_candidates(overrides, candidates, lines_per_station)
-    sections = load_sections(
-        raw_dir,
-        operator=operator,
-        lines=segment_lines,
-        around=[candidate.midpoint for candidate in candidates],
-    )
-    networks = {line: TrackNetwork(lines) for line, lines in sections.items()}
-    loop = route_loop(grouped, segment_lines, networks)
-
-    station_ids = overrides.station_ids
-    service_id = overrides.service.id
-    stations_doc = export.build_stations(
-        overrides.stations, [candidate.midpoint for candidate in loop.chosen]
-    )
-    services_doc = export.build_services(overrides.service, station_ids)
-    segments_doc = export.build_segments(service_id, station_ids)
-    features_doc = export.build_segment_features(
-        segments_doc, [path.geometry for path in loop.paths]
-    )
-
-    files = {
-        config.STATIONS_FILE: export.dumps_pretty(stations_doc),
-        config.SERVICES_FILE: export.dumps_pretty(services_doc),
-        config.SEGMENTS_FILE: export.dumps_pretty(segments_doc),
-        config.SEGMENTS_GEOJSON_FILE: export.dumps_feature_collection(features_doc),
-    }
-    manifest = export.build_manifest(
-        export.manifest_inputs(files), overrides.service.updated_at
-    )
-    files[config.MANIFEST_FILE] = export.dumps_pretty(manifest)
-    return BuildResult(files=files, loop=loop, segment_lines=segment_lines)
+    return BuildResult(files=files, services=builds)
 
 
-def describe(result: BuildResult, station_ids: Sequence[str]) -> str:
-    """Human-readable per-segment diagnostics for the build log."""
-    count = len(station_ids)
-    rows = [
-        "i  from -> to  | n02 line | track m | snap m (from/to) | platform (line/code)"
-    ]
-    for i, path in enumerate(result.loop.paths):
-        chosen = result.loop.chosen[i]
+def describe(result: BuildResult) -> str:
+    """Human-readable per-service, per-pair diagnostics for the build log."""
+    rows: list[str] = []
+    for service_id, item in result.services.items():
+        ids = item.service.station_ids
+        count = len(ids)
+        rows.append(f"[{service_id}] {'loop' if item.service.circular else 'chain'}")
         rows.append(
-            f"{i:2d} {station_ids[i]} -> {station_ids[(i + 1) % count]} | "
-            f"{result.segment_lines[i]} | {path.length:7.1f} | "
-            f"{path.start_offset:.2f}/{path.end_offset:.2f} | "
-            f"{chosen.n02_line}/{chosen.station_code}"
+            "i  from -> to  | n02 line | track m | snap m (from/to) | platform (line/code)"
         )
-    total_km = sum(path.length for path in result.loop.paths) / 1000
-    rows.append(f"loop track length: {total_km:.3f} km")
+        for i, path in enumerate(item.routed.paths):
+            chosen = item.routed.chosen[i]
+            rows.append(
+                f"{i:2d} {ids[i]} -> {ids[(i + 1) % count]} | "
+                f"{item.segment_lines[i]} | {path.length:7.1f} | "
+                f"{path.start_offset:.2f}/{path.end_offset:.2f} | "
+                f"{chosen.n02_line}/{chosen.station_code}"
+            )
+        total_km = sum(path.length for path in item.routed.paths) / 1000
+        rows.append(f"{service_id} track length: {total_km:.3f} km")
     return "\n".join(rows)
 
 
@@ -143,8 +248,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     result = build(args.raw_dir, args.overrides_dir)
     export.write_outputs(args.out_dir, result.files)
     if not args.quiet:
-        overrides = load_overrides(args.overrides_dir)
-        print(describe(result, overrides.station_ids))
+        print(describe(result))
         for name in sorted(result.files):
             size = (args.out_dir / name).stat().st_size
             print(f"wrote {args.out_dir / name} ({size} bytes)")

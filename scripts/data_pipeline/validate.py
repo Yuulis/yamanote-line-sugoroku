@@ -1,9 +1,12 @@
-"""Validate ``public/data/*`` against the spec §5.2 data-quality conditions.
+"""Validate ``public/data/*`` (v1 contract) against ``data/overrides``.
 
 Usage: ``uv run python -m scripts.data_pipeline.validate [--data-dir ...]``
 
 Exit code 0 when every check passes, 1 otherwise. Only the generated JSON and
 the override tables are read, so this runs without the raw N02 download.
+
+This module parses the v1 file shapes; the contract-independent rules of the
+design §5.4 live in ``rules.py`` and are applied to the parsed v1 data here.
 """
 
 from __future__ import annotations
@@ -14,20 +17,27 @@ import math
 import re
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from pyproj import Transformer
 from shapely.geometry import LineString, MultiLineString, Point
 
-from scripts.data_pipeline import config
+from scripts.data_pipeline import config, rules
 from scripts.data_pipeline.export import (
     GAME_DATA_FILES,
     data_version,
     manifest_inputs,
 )
-from scripts.data_pipeline.overrides import OverrideError, is_iso_date, load_overrides
+from scripts.data_pipeline.overrides import (
+    OverrideError,
+    Overrides,
+    is_iso_date,
+    load_overrides,
+)
+from scripts.data_pipeline.rules import Report, ServiceStops
+from scripts.data_pipeline.topology import station_order
 
 _TO_METRIC = Transformer.from_crs(config.OUTPUT_CRS, config.METRIC_CRS, always_xy=True)
 _DECIMALS_PATTERN = re.compile(r"\.(\d+)")
@@ -47,16 +57,6 @@ class Dataset:
         return len(self.payloads.get(config.SEGMENTS_GEOJSON_FILE, "").encode())
 
 
-@dataclass
-class Report:
-    errors: list[str] = field(default_factory=list)
-    metrics: dict[str, float] = field(default_factory=dict)
-
-    @property
-    def ok(self) -> bool:
-        return not self.errors
-
-
 def load_dataset(data_dir: Path) -> Dataset:
     payloads = {
         name: (data_dir / name).read_text(encoding="utf-8") for name in GAME_DATA_FILES
@@ -70,6 +70,13 @@ def load_dataset(data_dir: Path) -> Dataset:
         manifest=json.loads(manifest_text),
         payloads=payloads,
     )
+
+
+def official_station_order(overrides: Overrides) -> list[tuple[str, str]]:
+    """(id, registry name) of every published station, in contract order."""
+    registry = overrides.registry.by_id()
+    order = station_order(service.station_ids for service in overrides.services)
+    return [(station_id, registry[station_id].name) for station_id in order]
 
 
 def to_metric(coordinate: Sequence[float]) -> tuple[float, float]:
@@ -101,17 +108,15 @@ def _is_object_list(value: Any) -> bool:
 
 def check_stations(
     stations: Any,
-    official: Sequence[tuple[str, str]] | None,
+    official: Sequence[tuple[str, str]],
     report: Report,
 ) -> dict[str, list[float]]:
     """Count, unique ids/names, coordinates, and (id, name) vs. the override."""
     if not _is_object_list(stations):
         report.errors.append("stations.json must be a JSON array of objects")
         return {}
-    if len(stations) != config.EXPECTED_STATION_COUNT:
-        report.errors.append(
-            f"expected {config.EXPECTED_STATION_COUNT} stations, got {len(stations)}"
-        )
+    if len(stations) != len(official):
+        report.errors.append(f"expected {len(official)} stations, got {len(stations)}")
     positions: dict[str, list[float]] = {}
     names: list[str] = []
     for index, station in enumerate(stations):
@@ -133,18 +138,18 @@ def check_stations(
         positions[station_id] = coordinates
     if len(set(names)) != len(names):
         report.errors.append("station names must be unique")
-    if official is not None:
-        published = [(station.get("id"), station.get("name")) for station in stations]
-        if published != [tuple(pair) for pair in official]:
-            report.errors.append(
-                "stations.json (id, name) order differs from data/overrides"
-            )
+    published = [(station.get("id"), station.get("name")) for station in stations]
+    if published != [tuple(pair) for pair in official]:
+        report.errors.append(
+            "stations.json (id, name) order differs from data/overrides"
+        )
     return positions
 
 
 def check_service(
-    services: Any, station_order: Sequence[Any], report: Report
+    services: Any, station_order: Sequence[Any], overrides: Overrides, report: Report
 ) -> tuple[str, list[str]]:
+    """v1 shape: exactly one service, the circular target, starting at S[0]."""
     if not _is_object_list(services) or len(services) != 1:
         report.errors.append("services.json must be an array with one service object")
         return ("", [])
@@ -155,10 +160,11 @@ def check_service(
     ):
         report.errors.append("service stationIds must be an array of strings")
         return (str(service.get("id", "")), [])
+    start = overrides.dataset.start_station_id
     if service.get("circular") is not True:
         report.errors.append("service must be circular")
-    if not station_ids or station_ids[0] != config.START_STATION_ID:
-        report.errors.append(f"stationIds must start at {config.START_STATION_ID}")
+    if not station_ids or station_ids[0] != start:
+        report.errors.append(f"stationIds must start at {start}")
     if len(station_ids) != len(set(station_ids)):
         report.errors.append("stationIds must not repeat (start is not re-listed)")
     if station_ids != list(station_order):
@@ -166,21 +172,28 @@ def check_service(
     for key in ("id", "name", "operator", "color"):
         if not isinstance(service.get(key), str) or not service[key]:
             report.errors.append(f"service is missing {key}")
+    rules.check_service_metadata(
+        service, overrides.target.definition, overrides.dataset.operator, report
+    )
     return (str(service.get("id", "")), station_ids)
 
 
 def check_segments(
-    segments: Any, service_id: str, station_ids: Sequence[str], report: Report
+    segments: Any,
+    service_id: str,
+    station_ids: Sequence[str],
+    overrides: Overrides,
+    report: Report,
 ) -> list[dict[str, Any]]:
     """Directed outer-loop chain E[i] = S[i] -> S[i+1], closing to the start."""
     if not _is_object_list(segments):
         report.errors.append("segments.json must be a JSON array of objects")
         return []
     count = len(station_ids)
-    if len(segments) != config.EXPECTED_STATION_COUNT:
-        report.errors.append(
-            f"expected {config.EXPECTED_STATION_COUNT} segments, got {len(segments)}"
-        )
+    expected_count = overrides.target.definition.expected_stop_count
+    start = overrides.dataset.start_station_id
+    if len(segments) != expected_count:
+        report.errors.append(f"expected {expected_count} segments, got {len(segments)}")
     ids = [str(segment.get("id")) for segment in segments]
     if len(set(ids)) != len(ids):
         report.errors.append("segment ids must be unique")
@@ -202,8 +215,8 @@ def check_segments(
         following = segments[(index + 1) % len(segments)]
         if segment.get("to") != following.get("from"):
             report.errors.append(f"segments[{index}].to != next segment's from")
-    if segments and segments[-1].get("to") != config.START_STATION_ID:
-        report.errors.append(f"last segment must close to {config.START_STATION_ID}")
+    if segments and segments[-1].get("to") != start:
+        report.errors.append(f"last segment must close to {start}")
     referenced = {segment.get("from") for segment in segments} | {
         segment.get("to") for segment in segments
     }
@@ -213,22 +226,26 @@ def check_segments(
     return segments
 
 
-def check_walk(segments: Sequence[dict[str, Any]], report: Report) -> None:
+def check_walk(
+    segments: Sequence[dict[str, Any]], start: str, steps: int, report: Report
+) -> None:
     """Walking one full lap from the start must visit every segment once."""
     outgoing = {segment.get("from"): segment for segment in segments}
-    current = config.START_STATION_ID
+    current = start
     visited: list[str] = []
-    for _ in range(config.EXPECTED_STATION_COUNT):
+    for _ in range(steps):
         segment = outgoing.get(current)
         if segment is None:
             report.errors.append(f"walk stuck at {current}: no outgoing segment")
             return
         visited.append(str(segment.get("id")))
         current = str(segment.get("to"))
-    if current != config.START_STATION_ID:
-        report.errors.append(f"30-step walk ends at {current}, not the start")
-    if len(set(visited)) != config.EXPECTED_STATION_COUNT:
-        report.errors.append("30-step walk does not cover every segment exactly once")
+    if current != start:
+        report.errors.append(f"{steps}-step walk ends at {current}, not the start")
+    if len(set(visited)) != steps:
+        report.errors.append(
+            f"{steps}-step walk does not cover every segment exactly once"
+        )
 
 
 def _feature_parts(feature: dict[str, Any]) -> list[Any]:
@@ -289,9 +306,10 @@ def check_geometry(
     geojson: Any,
     segments: Sequence[dict[str, Any]],
     positions: dict[str, list[float]],
+    overrides: Overrides,
     report: Report,
 ) -> None:
-    """Track geometry: presence, endpoints, detours, stations passed, length."""
+    """Track geometry: presence, endpoints, detours, skipped stops, length."""
     if not isinstance(geojson, dict) or geojson.get("type") != "FeatureCollection":
         report.errors.append("segments.geojson must be a FeatureCollection")
         return
@@ -309,13 +327,25 @@ def check_geometry(
         report.errors.append("geojson feature ids must match segments order")
     by_id = dict(zip(feature_ids, features, strict=True))
 
+    target = overrides.target
     station_points = {
         station_id: Point(to_metric(coordinate))
         for station_id, coordinate in positions.items()
     }
+    service_points = {
+        station_id: point
+        for station_id, point in station_points.items()
+        if station_id in target.station_ids
+    }
+    other_points = {
+        station_id: point
+        for station_id, point in station_points.items()
+        if station_id not in service_points
+    }
     max_endpoint = 0.0
-    min_foreign = math.inf
+    min_skipped = math.inf
     max_detour = 0.0
+    other_passes = 0
     total_length = 0.0
     for segment in segments:
         label = str(segment.get("id"))
@@ -343,29 +373,22 @@ def check_geometry(
         if detour > config.MAX_DETOUR_RATIO:
             report.errors.append(f"{label} detour ratio {detour:.2f}")
         total_length += geometry.length
-        for station_id, point in station_points.items():
-            if station_id in (segment.get("from"), segment.get("to")):
-                continue
-            distance = geometry.distance(point)
-            min_foreign = min(min_foreign, distance)
-            if distance < config.FOREIGN_STATION_MIN_DISTANCE_M:
-                report.errors.append(
-                    f"{label} passes {distance:.0f} m from {station_id} "
-                    "(station order or routing is wrong)"
-                )
-
-    total_km = total_length / 1000
-    if abs(total_km - config.OFFICIAL_LOOP_LENGTH_KM) > config.LOOP_LENGTH_TOLERANCE_KM:
-        report.errors.append(
-            f"loop length {total_km:.2f} km is far from the official "
-            f"{config.OFFICIAL_LOOP_LENGTH_KM} km"
+        ends = (str(segment.get("from")), str(segment.get("to")))
+        min_skipped = min(
+            min_skipped,
+            rules.check_skipped_stops(label, geometry, ends, service_points, report),
         )
+        other_passes += rules.count_other_passes(geometry, other_points)
+
+    rules.check_service_length(
+        target.id, total_length, target.definition.length_ref, report
+    )
     report.metrics.update(
         {
             "max_endpoint_distance_m": round(max_endpoint, 3),
-            "min_foreign_station_distance_m": round(min_foreign, 1),
+            "min_skipped_stop_distance_m": round(min_skipped, 1),
             "max_detour_ratio": round(max_detour, 3),
-            "loop_length_km": round(total_km, 3),
+            "other_station_passes": other_passes,
         }
     )
 
@@ -398,25 +421,109 @@ def check_manifest(
         )
 
 
-def validate_dataset(
-    dataset: Dataset,
-    official: Sequence[tuple[str, str]] | None = None,
-    updated_at: str | None = None,
-) -> Report:
-    """Run every check.
+def published_services(services: Any) -> list[ServiceStops]:
+    """Topology of every well-formed published service (malformed ones skipped;
+    their shape errors are reported by :func:`check_service`)."""
+    parsed: list[ServiceStops] = []
+    for service in services if _is_object_list(services) else []:
+        station_ids = service.get("stationIds")
+        if not isinstance(station_ids, list) or not all(
+            isinstance(item, str) for item in station_ids
+        ):
+            continue
+        parsed.append(
+            ServiceStops(
+                id=str(service.get("id")),
+                station_ids=tuple(station_ids),
+                circular=service.get("circular") is True,
+            )
+        )
+    return parsed
 
-    ``official`` is the override (id, name) outer-loop order and ``updated_at``
-    the override's update date; each is compared only when given.
-    """
-    report = Report()
-    positions = check_stations(dataset.stations, official, report)
+
+def check_network_rules(
+    dataset: Dataset,
+    overrides: Overrides,
+    positions: dict[str, list[float]],
+    report: Report,
+) -> None:
+    """Contract-independent rules (registry, catalogue, topology, reachability)."""
     stations = dataset.stations if _is_object_list(dataset.stations) else []
-    station_order = [station.get("id") for station in stations]
-    service_id, station_ids = check_service(dataset.services, station_order, report)
-    segments = check_segments(dataset.segments, service_id, station_ids, report)
-    check_walk(segments, report)
-    check_geometry(dataset.geojson, segments, positions, report)
-    check_manifest(dataset.manifest, dataset.payloads, report, updated_at)
+    rules.check_registry_membership(
+        [(str(station.get("id")), str(station.get("name"))) for station in stations],
+        overrides.registry,
+        report,
+    )
+    services = published_services(dataset.services)
+    rules.check_catalogue(
+        [service.id for service in services],
+        overrides.dataset.service_ids,
+        excluded=(),
+        report=report,
+    )
+    segments = dataset.segments if _is_object_list(dataset.segments) else []
+    for service in services:
+        try:
+            expected = overrides.service(service.id).station_ids
+        except KeyError:
+            continue  # reported by check_catalogue
+        pairs = [
+            (str(segment.get("from")), str(segment.get("to")))
+            for segment in segments
+            if segment.get("serviceId") == service.id
+        ]
+        rules.check_stop_list(service, expected, positions, report)
+        rules.check_contiguity(service, pairs, report)
+        rules.check_directed_pairs(service, pairs, report)
+        rules.check_walks(service, pairs, report)
+    start = overrides.dataset.start_station_id
+    rules.check_connectivity(
+        services,
+        start,
+        overrides.dataset.target_service_id,
+        overrides.dataset.reviewed_disconnected_service_ids,
+        report,
+    )
+    rules.check_start_not_endpoint(services, start, report)
+    # v1 has one service, so its platform point is the station point.
+    points = {
+        station_id: Point(to_metric(coordinate))
+        for station_id, coordinate in positions.items()
+    }
+    platforms = {
+        (service.id, station_id): points[station_id]
+        for service in services
+        for station_id in service.station_ids
+        if station_id in points
+    }
+    rules.check_platform_offsets(platforms, points, overrides.offset_exceptions, report)
+
+
+def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
+    """Run every check of the published v1 files against ``overrides``."""
+    report = Report()
+    positions = check_stations(
+        dataset.stations, official_station_order(overrides), report
+    )
+    stations = dataset.stations if _is_object_list(dataset.stations) else []
+    station_ids_order = [station.get("id") for station in stations]
+    service_id, station_ids = check_service(
+        dataset.services, station_ids_order, overrides, report
+    )
+    segments = check_segments(
+        dataset.segments, service_id, station_ids, overrides, report
+    )
+    check_walk(
+        segments,
+        overrides.dataset.start_station_id,
+        overrides.target.definition.expected_stop_count,
+        report,
+    )
+    check_geometry(dataset.geojson, segments, positions, overrides, report)
+    check_network_rules(dataset, overrides, positions, report)
+    check_manifest(
+        dataset.manifest, dataset.payloads, report, overrides.dataset.updated_at
+    )
     report.metrics["segments_geojson_bytes"] = dataset.geojson_bytes
     if dataset.geojson_bytes > config.MAX_GEOJSON_BYTES:
         report.errors.append(f"segments.geojson is {dataset.geojson_bytes} bytes")
@@ -439,17 +546,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     except OverrideError as error:
         print(f"FAIL overrides: {error}")
         return 1
-    official = [(station.id, station.name) for station in overrides.stations]
-    report = validate_dataset(
-        load_dataset(args.data_dir), official, overrides.service.updated_at
-    )
+    report = validate_dataset(load_dataset(args.data_dir), overrides)
     for name, value in sorted(report.metrics.items()):
         print(f"{name}: {value}")
     print(
         f"thresholds: endpoint<={config.ENDPOINT_MAX_DISTANCE_M} m, "
-        f"foreign station>={config.FOREIGN_STATION_MIN_DISTANCE_M} m, "
+        f"skipped stop>={config.FOREIGN_STATION_MIN_DISTANCE_M} m, "
         f"detour<={config.MAX_DETOUR_RATIO}, "
-        f"loop={config.OFFICIAL_LOOP_LENGTH_KM}±{config.LOOP_LENGTH_TOLERANCE_KM} km, "
+        f"platform offset<={config.DEFAULT_MAX_PLATFORM_OFFSET_M} m, "
+        f"length=services.json lengthRef, "
         f"geojson<={config.MAX_GEOJSON_BYTES} bytes"
     )
     for error in report.errors:
