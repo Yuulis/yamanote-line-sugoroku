@@ -175,7 +175,7 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
             [Math.max(...longitudes), Math.max(...latitudes)],
           ];
           const padding = isPhoneWidth()
-            ? { top: 70, right: 60, bottom: map.getContainer().clientHeight * 0.45 + 16, left: 20 }
+            ? { top: 100, right: 60, bottom: map.getContainer().clientHeight * 0.45 + 16, left: 20 }
             : { top: 60, right: 70, bottom: 50, left: 340 };
           map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
           // Padding helps fit the network on the title screen, but must not

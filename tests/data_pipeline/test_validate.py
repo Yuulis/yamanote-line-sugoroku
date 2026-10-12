@@ -29,7 +29,7 @@ def test_validate_published_data_passes(
     assert report.metrics["max_endpoint_distance_m"] <= config.ENDPOINT_MAX_DISTANCE_M
     assert report.metrics["segments_geojson_bytes"] < config.MAX_GEOJSON_BYTES
     assert report.metrics["length_km[jr-yamanote]"] == pytest.approx(34.5, abs=1.5)
-    assert report.metrics["other_station_passes"] == 0
+    assert report.metrics["other_station_passes"] == 7
 
 
 def test_validate_published_data_has_contract_shapes(
@@ -61,7 +61,7 @@ def test_validate_with_missing_station_fails(
 ) -> None:
     del dataset.stations[5]
 
-    assert "expected 30 stations" in _errors(dataset, committed_overrides)
+    assert "expected 67 stations" in _errors(dataset, committed_overrides)
 
 
 def test_validate_with_broken_chain_fails(

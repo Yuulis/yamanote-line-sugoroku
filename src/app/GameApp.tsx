@@ -88,11 +88,14 @@ export function GameApp({ data, network }: GameAppProps) {
   const animating = session?.phase === "animating";
   const mapFollow = useMemo<MapFollow>(
     () => ({
-      enabled: follow && session !== null,
+      // Keep the fitted network overview until the first move. The turn-0
+      // marker is already visible; recentering it would hide the network
+      // behind the phone panel immediately after starting a game.
+      enabled: follow && game !== null && game.turn > 0,
       immediate: reducedMotion || animating,
       onUserCameraMove: stopFollowing,
     }),
-    [follow, session, reducedMotion, animating, stopFollowing],
+    [follow, game, reducedMotion, animating, stopFollowing],
   );
 
   const startNewGame = () => {

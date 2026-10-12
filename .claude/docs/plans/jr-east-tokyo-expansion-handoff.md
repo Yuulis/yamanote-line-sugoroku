@@ -14,8 +14,8 @@ Start Codex as the main agent (interactive `codex` in the repo root). It loads r
 | 2 Pipeline preparation (multi-service internals, v1 output byte-identical) | `feature/jr-east-tokyo-expansion` | verified locally | — | Integrated the preserved `feature/jrx-2-pipeline` worktree; 122 pytest tests passed; v1 rebuild byte-identical |
 | 3 Atomic v2 data-contract cutover (still Yamanote-only data) | `feature/jr-east-tokyo-expansion` | verified locally | — | 379 Vitest / 135 pytest / 51 E2E checks passed; generated v2 data validates |
 | 4 Multi-service UI + fixture-network E2E | `feature/jr-east-tokyo-expansion` | verified locally | — | 392 Vitest / 135 pytest / 57 E2E checks passed; pinned 15-turn fixture covers transfers, direction draw, both endpoints |
-| 5 Expanded data (4 more services) + real-data tests | `feature/jr-east-tokyo-expansion` | in progress | — | Candidate build validates: 67 stations, 146 directed segments, 88 features; real-data integration tests added |
-| 6 Docs, release PR develop → master, production smoke check | — | pending | — | release needs user approval |
+| 5 Expanded data (4 more services) + real-data tests | `feature/jr-east-tokyo-expansion` | verified locally | — | 402 Vitest / 136 pytest / 60 E2E checks passed; 67 stations, 146 directed segments, 88 features; initial-overview fix independently passes all 3 browsers; raw checksums pinned |
+| 6 Docs, release PR develop → master, production smoke check | `feature/jr-east-tokyo-expansion` | in progress | — | Docs and release preparation; production merge still requires user approval |
 
 Plan details per step: `.claude/docs/research/jr-east-tokyo-expansion-design.md` §8 (scope, dependencies,
 file-level change list, risks).

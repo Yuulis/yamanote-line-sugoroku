@@ -54,8 +54,14 @@ def test_load_overrides_with_committed_tables_returns_outer_loop(
     assert target.station_ids[0] == "shimbashi"
     assert target.id == "jr-yamanote"
     assert target.definition.direction_labels.forward == "外回り"
-    assert committed_overrides.dataset.updated_at == "2026-10-11"
-    assert committed_overrides.dataset.service_ids == ("jr-yamanote",)
+    assert committed_overrides.dataset.updated_at == "2026-10-12"
+    assert committed_overrides.dataset.service_ids == (
+        "jr-yamanote",
+        "jr-keihin-tohoku",
+        "jr-chuo-sobu-local",
+        "jr-saikyo",
+        "jr-keiyo",
+    )
 
 
 def test_segment_lines_with_committed_mapping_covers_each_segment_once(
@@ -260,7 +266,7 @@ def test_load_overrides_with_unserved_registry_station_raises(
 ) -> None:
     append_line(
         overrides_copy / config.REGISTRY_OVERRIDE_FILE,
-        "oimachi,大井町,,品川区,jr-yamanote",
+        "unserved,未収録駅,,品川区,jr-yamanote",
     )
 
     with pytest.raises(OverrideError, match="served by no service"):
@@ -421,7 +427,7 @@ def test_load_overrides_with_malformed_updated_at_raises(
 ) -> None:
     rewrite(
         overrides_copy / config.DATASET_OVERRIDE_FILE,
-        '"updatedAt": "2026-10-11"',
+        '"updatedAt": "2026-10-12"',
         f'"updatedAt": "{value}"',
     )
 
@@ -432,7 +438,7 @@ def test_load_overrides_with_malformed_updated_at_raises(
 def test_load_overrides_without_updated_at_raises(overrides_copy: Path) -> None:
     rewrite(
         overrides_copy / config.DATASET_OVERRIDE_FILE,
-        '  "updatedAt": "2026-10-11",\n',
+        '  "updatedAt": "2026-10-12",\n',
         "",
     )
 

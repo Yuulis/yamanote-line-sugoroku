@@ -163,5 +163,391 @@
         35.67504
       ]
     }
+  },
+  {
+    "id": "jr-keihin-tohoku",
+    "name": "京浜東北線",
+    "operator": "東日本旅客鉄道",
+    "stationIds": [
+      "akabane",
+      "higashi-jujo",
+      "oji",
+      "kami-nakazato",
+      "tabata",
+      "nishi-nippori",
+      "nippori",
+      "uguisudani",
+      "ueno",
+      "okachimachi",
+      "akihabara",
+      "kanda",
+      "tokyo",
+      "yurakucho",
+      "shimbashi",
+      "hamamatsucho",
+      "tamachi",
+      "takanawa-gateway",
+      "shinagawa",
+      "oimachi",
+      "omori",
+      "kamata"
+    ],
+    "circular": false,
+    "color": "#00B2E5",
+    "directionLabels": {
+      "forward": "蒲田方面",
+      "backward": "赤羽方面"
+    },
+    "platformCoordinates": {
+      "akabane": [
+        139.721252,
+        35.777622
+      ],
+      "higashi-jujo": [
+        139.726713,
+        35.763835
+      ],
+      "oji": [
+        139.73821,
+        35.752325
+      ],
+      "kami-nakazato": [
+        139.745922,
+        35.747081
+      ],
+      "tabata": [
+        139.761575,
+        35.737475
+      ],
+      "nishi-nippori": [
+        139.76678,
+        35.732082
+      ],
+      "nippori": [
+        139.770958,
+        35.727279
+      ],
+      "uguisudani": [
+        139.77803,
+        35.721455
+      ],
+      "ueno": [
+        139.775855,
+        35.71322
+      ],
+      "okachimachi": [
+        139.774715,
+        35.707195
+      ],
+      "akihabara": [
+        139.773045,
+        35.698535
+      ],
+      "kanda": [
+        139.770875,
+        35.69177
+      ],
+      "tokyo": [
+        139.766685,
+        35.680965
+      ],
+      "yurakucho": [
+        139.76326,
+        35.67504
+      ],
+      "shimbashi": [
+        139.7582,
+        35.66639
+      ],
+      "hamamatsucho": [
+        139.757125,
+        35.65541
+      ],
+      "tamachi": [
+        139.747605,
+        35.64574
+      ],
+      "takanawa-gateway": [
+        139.740644,
+        35.635379
+      ],
+      "shinagawa": [
+        139.738535,
+        35.628135
+      ],
+      "oimachi": [
+        139.734991,
+        35.60681
+      ],
+      "omori": [
+        139.728149,
+        35.588916
+      ],
+      "kamata": [
+        139.71603,
+        35.562485
+      ]
+    },
+    "endpoints": {
+      "first": "area-boundary",
+      "last": "area-boundary"
+    }
+  },
+  {
+    "id": "jr-chuo-sobu-local",
+    "name": "中央・総武線各駅停車",
+    "operator": "東日本旅客鉄道",
+    "stationIds": [
+      "nishi-ogikubo",
+      "ogikubo",
+      "asagaya",
+      "koenji",
+      "nakano",
+      "higashi-nakano",
+      "okubo",
+      "shinjuku",
+      "yoyogi",
+      "sendagaya",
+      "shinanomachi",
+      "yotsuya",
+      "ichigaya",
+      "iidabashi",
+      "suidobashi",
+      "ochanomizu",
+      "akihabara",
+      "asakusabashi",
+      "ryogoku",
+      "kinshicho",
+      "kameido",
+      "hirai",
+      "shin-koiwa",
+      "koiwa"
+    ],
+    "circular": false,
+    "color": "#FFD400",
+    "directionLabels": {
+      "forward": "小岩方面",
+      "backward": "西荻窪方面"
+    },
+    "platformCoordinates": {
+      "nishi-ogikubo": [
+        139.59945,
+        35.703782
+      ],
+      "ogikubo": [
+        139.620245,
+        35.70443
+      ],
+      "asagaya": [
+        139.635855,
+        35.704878
+      ],
+      "koenji": [
+        139.6497,
+        35.705324
+      ],
+      "nakano": [
+        139.665585,
+        35.705955
+      ],
+      "higashi-nakano": [
+        139.68508,
+        35.70625
+      ],
+      "okubo": [
+        139.697445,
+        35.700635
+      ],
+      "shinjuku": [
+        139.700617,
+        35.69019
+      ],
+      "yoyogi": [
+        139.70221,
+        35.683795
+      ],
+      "sendagaya": [
+        139.71153,
+        35.681196
+      ],
+      "shinanomachi": [
+        139.721098,
+        35.679942
+      ],
+      "yotsuya": [
+        139.73053,
+        35.685652
+      ],
+      "ichigaya": [
+        139.73532,
+        35.691155
+      ],
+      "iidabashi": [
+        139.743655,
+        35.700137
+      ],
+      "suidobashi": [
+        139.753745,
+        35.702
+      ],
+      "ochanomizu": [
+        139.76503,
+        35.699605
+      ],
+      "akihabara": [
+        139.773215,
+        35.69832
+      ],
+      "asakusabashi": [
+        139.78449,
+        35.69739
+      ],
+      "ryogoku": [
+        139.79335,
+        35.695755
+      ],
+      "kinshicho": [
+        139.81432,
+        35.696719
+      ],
+      "kameido": [
+        139.82661,
+        35.697342
+      ],
+      "hirai": [
+        139.842387,
+        35.706448
+      ],
+      "shin-koiwa": [
+        139.857645,
+        35.71679
+      ],
+      "koiwa": [
+        139.88185,
+        35.73333
+      ]
+    },
+    "endpoints": {
+      "first": "area-boundary",
+      "last": "area-boundary"
+    }
+  },
+  {
+    "id": "jr-saikyo",
+    "name": "埼京線",
+    "operator": "東日本旅客鉄道",
+    "stationIds": [
+      "osaki",
+      "ebisu",
+      "shibuya",
+      "shinjuku",
+      "ikebukuro",
+      "itabashi",
+      "jujo",
+      "akabane",
+      "kita-akabane",
+      "ukima-funado"
+    ],
+    "circular": false,
+    "color": "#00AC9A",
+    "directionLabels": {
+      "forward": "浮間舟渡方面",
+      "backward": "大崎方面"
+    },
+    "platformCoordinates": {
+      "osaki": [
+        139.728245,
+        35.619945
+      ],
+      "ebisu": [
+        139.710125,
+        35.64668
+      ],
+      "shibuya": [
+        139.701639,
+        35.65811
+      ],
+      "shinjuku": [
+        139.700916,
+        35.688923
+      ],
+      "ikebukuro": [
+        139.71134,
+        35.7302
+      ],
+      "itabashi": [
+        139.719171,
+        35.744992
+      ],
+      "jujo": [
+        139.72225,
+        35.76039
+      ],
+      "akabane": [
+        139.720845,
+        35.777721
+      ],
+      "kita-akabane": [
+        139.705762,
+        35.786995
+      ],
+      "ukima-funado": [
+        139.691377,
+        35.791262
+      ]
+    },
+    "endpoints": {
+      "first": "terminus",
+      "last": "area-boundary"
+    }
+  },
+  {
+    "id": "jr-keiyo",
+    "name": "京葉線",
+    "operator": "東日本旅客鉄道",
+    "stationIds": [
+      "tokyo",
+      "hatchobori",
+      "etchujima",
+      "shiomi",
+      "shin-kiba",
+      "kasai-rinkai-koen"
+    ],
+    "circular": false,
+    "color": "#C9242F",
+    "directionLabels": {
+      "forward": "葛西臨海公園方面",
+      "backward": "東京方面"
+    },
+    "platformCoordinates": {
+      "tokyo": [
+        139.765237,
+        35.677692
+      ],
+      "hatchobori": [
+        139.77799,
+        35.67462
+      ],
+      "etchujima": [
+        139.792495,
+        35.668
+      ],
+      "shiomi": [
+        139.81717,
+        35.658865
+      ],
+      "shin-kiba": [
+        139.826845,
+        35.645995
+      ],
+      "kasai-rinkai-koen": [
+        139.861485,
+        35.64417
+      ]
+    },
+    "endpoints": {
+      "first": "terminus",
+      "last": "area-boundary"
+    }
   }
 ]

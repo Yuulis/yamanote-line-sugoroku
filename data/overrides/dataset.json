@@ -1,10 +1,16 @@
 {
   "operator": "東日本旅客鉄道",
   "n02Operator": "東日本旅客鉄道",
-  "updatedAt": "2026-10-11",
+  "updatedAt": "2026-10-12",
   "areaName": "東京23区",
   "startStationId": "shimbashi",
   "targetServiceId": "jr-yamanote",
-  "serviceIds": ["jr-yamanote"],
+  "serviceIds": [
+    "jr-yamanote",
+    "jr-keihin-tohoku",
+    "jr-chuo-sobu-local",
+    "jr-saikyo",
+    "jr-keiyo"
+  ],
   "reviewedDisconnectedServiceIds": []
 }

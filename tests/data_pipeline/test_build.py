@@ -121,3 +121,15 @@ def test_route_network_on_core_fixture_resolves_n02_pitfalls(
     assert chosen("jr-chuo-sobu-local", "okubo") == ("大久保", "中央線", "003604")
     # 阿佐ケ谷 (registry) matches the N02 spelling 阿佐ヶ谷.
     assert chosen("jr-chuo-sobu-local", "asagaya")[0] == "阿佐ヶ谷"
+
+
+def test_raw_n02_source_matches_pinned_checksums() -> None:
+    import hashlib
+
+    records = (config.REPO_ROOT / "data" / "n02-2025.sha256").read_text().splitlines()
+    assert len(records) == 2
+    for record in records:
+        expected, name = record.split(maxsplit=1)
+        with (config.REPO_ROOT / name).open("rb") as source:
+            actual = hashlib.file_digest(source, "sha256").hexdigest()
+        assert actual == expected, f"N02 source changed: {name}"
