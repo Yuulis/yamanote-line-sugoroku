@@ -74,8 +74,22 @@ describe("restoreGame rejects invalid saves", () => {
   });
 
   it("rejects an unknown save version", () => {
+    // Version 2 is now current; 3 stands for any future, unknown format.
     const json = tampered(playTurns(1), (raw) => {
-      raw.saveVersion = 2;
+      raw.saveVersion = 3;
+    });
+    expect(() => restoreGame(json, network)).toThrowError(
+      expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }),
+    );
+  });
+
+  it("rejects a v1 save (no migration) before looking at its shape", () => {
+    const json = tampered(playTurns(2), (raw) => {
+      raw.saveVersion = 1;
+      for (const record of raw.movementHistory as Record<string, unknown>[]) {
+        delete record.stopReason;
+        delete record.landing;
+      }
     });
     expect(() => restoreGame(json, network)).toThrowError(
       expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }),

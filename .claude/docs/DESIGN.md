@@ -18,6 +18,8 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 
 一次資料: `railway_sugoroku_mvp_spec.md`（v0.1.0, 2026-10-10）。
 
+An original browser railway board game on a real MapLibre map. The current edition is “山手線すごろく — JR東日本 東京23区版”: five reviewed JR East all-stop service patterns inside Tokyo's 23 wards, 67 shared station identities and 22 transfer stations. A solo player starts at Shimbashi on Yamanote outer and must traverse all 30 Yamanote outer directed segments, then arrive at Shimbashi. Arrival lotteries may change the next service and direction. The original Yamanote-only MVP remains the historical baseline in `railway_sugoroku_mvp_spec.md`; its dated JR expansion addendum and the Key Decisions below define the current edition. No original-work characters, art or text are used.
+
 ## スコープ (Scope)
 
 ### In Scope
@@ -37,6 +39,17 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 - 国土数値情報 N02（2025年度）から山手線データを切り出すPythonデータ加工パイプライン
 - 地図・鉄道データの出典とライセンスの画面表示
 
+Current edition (2026-10-12): the following statements supersede the historical MVP / pending items above.
+
+- Five services: Yamanote (30), Keihin-Tohoku Akabane–Kamata (22), Chuo-Sobu local Nishi-Ogikubo–Koiwa (24), Saikyo Osaki–Ukima-Funado (10), Keiyo Tokyo–Kasai-Rinkai-Koen (6).
+- 67 shared stations, 146 directed gameplay segments and 88 shared LineString geometry features, generated deterministically from N02 2025 and curated overrides.
+- Uniform arrival-only service and direction lotteries with a seeded PRNG; forced outcomes consume no draws; non-Yamanote direction is re-drawn at every landing.
+- Terminus and area-boundary truncation; unchanged Yamanote outer-segment goal, with exact-stop arrival on other services.
+- Atomic save v2 with whole-record structural and seeded replay; unsupported old saves can be discarded.
+- Platform-aware movement, service/direction/lottery text, target-only map progress and multi-service legend, responsive title/play/clear screens.
+- Runtime guards, 17-rule pipeline validator, hermetic fixture E2E and real-data playthrough/smoke tests.
+- Existing source attribution and licences remain visible; raw N02 is never shipped.
+
 ### Out of Scope
 
 <!-- What is explicitly NOT covered, to prevent scope creep. -->
@@ -48,6 +61,14 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 - 駅イベント、スコアランキング、アカウント、サーバー保存
 - 列車時刻・運賃・列車位置などのリアルタイム鉄道情報、路線・駅の動的更新
 - 有料地図API、独自ドメイン、独自サーバー、DB
+
+Current edition (2026-10-12): the following statements supersede the historical MVP / pending items above.
+
+- Rapid/medium-distance services, Joban local (disconnected in-area island), Shinkansen, private railways, subways and through-running outside the reviewed service list.
+- Migrating old saves, a separate Yamanote-only mode, inner-loop mode, multiplayer, CPU, station events and rankings.
+- Dynamic timetables, fares or train positions; accounts, servers, databases and remote saves.
+- Lottery animation beyond accessible text, game-length weighting and pass-through goals on all services.
+- Publishing to production before explicit user approval.
 
 ## 機能要件 (Functional Requirements)
 
@@ -65,6 +86,9 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 | FR-8 | 地図の拡大縮小・移動、自動追尾ON/OFF、アニメーションスキップ | Must | 経路アニメはGeoJSON形状に沿う |
 | FR-9 | 駅タップで駅名・路線情報の簡易ポップアップを表示する | Should | ゲーム状態は変更しない |
 | FR-10 | 地図・鉄道データの出典とライセンスを常に確認可能にする | Must | N02 は CC BY 4.0 |
+| FR-11 | Play the reviewed five-service JR East 23-ward network with shared station identity and arrival lotteries | Must | Supersedes the Yamanote-only scope of the historical MVP FR-1/FR-2; goal remains 30 Yamanote outer segments plus Shimbashi arrival. |
+| FR-12 | Persist atomic save v2 records and validate structural and seeded replay of all lotteries | Must | Old saves are rejected with an unsupported-version message and discard action. |
+| FR-13 | Render service-specific platform positions, directions and endpoint reasons; reveal the next ride only after animation finishes | Must | Target-only directed progress; canonical shared geometry; responsive network overview. |
 
 ## 非機能要件 (Non-Functional Requirements)
 
@@ -94,6 +118,12 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 |-------|------|------------------|
 | | | |
 
+### Current runtime architecture (2026-10-12)
+
+Static React/TypeScript application with three independent layers: generated railway data (`public/data`, schema v2), a pure game engine (`engine`), and presentation/animation around atomic committed turns. Curated shared station ids define transfers; per-service platform coordinates define marker positions. Directed gameplay segments reference one canonical +1 geometry feature per adjacent service pair. Both map progress layers are limited to Yamanote and receive feature ids, while goal progress uses directed segment ids.
+
+`playTurn` draws a die, advances, and resolves the landing in one transaction. The app saves that committed result before animation; presentation reveals the next ride and lottery only after the accepted finish. Save v2 replays complete records structurally and with the seed. Python routes each service using open-chain or cycle dynamic programming with selector/filter/via constraints, then validates the published artifacts without raw N02. E2E reads a selected bundle and pinned 128-bit seed; actual data has separate smoke and playthrough checks.
+
 ## 技術選定 (Tech Stack & Rationale)
 
 <!-- Chosen technologies and why. Record alternatives considered. -->
@@ -111,6 +141,7 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 | Hosting | Vercel Hobby | 非商用個人用途、GitHub 連携でプレビュー／本番デプロイ |  |
 | Railway Data | 国土数値情報 N02 2025年度版 | 公的データ、CC BY 4.0、基準日 2025-12-31 |  |
 | Runtime | Node.js 24 LTS（.nvmrc で固定） | 開発開始時点の Active LTS | Node.js 22（Maintenance LTS） |
+| Area Boundary | キュレーションした区内駅リスト（駅レジストリの ward 列）＋国土数値情報 N03 行政区域による一度きりの監査 | 決定的で CI で検証可能。N03 は配信データに含めない | N03 ポリゴンをパイプライン入力にする |
 
 ## 制約 (Constraints)
 
@@ -141,6 +172,18 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 | ブランチ戦略: master=本番（Vercel Production）、develop=開発統合、機能ブランチは develop から派生して develop へマージ。本番デプロイ時に develop を master へマージ | ユーザー決定。仕様書 §8.3 の「mainへのマージで本番」は master に読み替える | main 単一ブランチ運用 | 2026-10-11 |
 | ソースコードは MIT License。public/data/ の鉄道データは N02 由来で CC BY 4.0 とし、ライセンスを分けて明記する | ユーザー決定（2026-10-11）。公開リポジトリでコード再利用を許可しつつ、データの出典条件を維持する | ライセンスなし（全権利留保） | 2026-10-11 |
 | 開始画面に「JR東日本・国土交通省とは関係のない非公式作品」である旨を表示する | ユーザー決定（2026-10-11）。公式との誤認を避ける | 表示しない | 2026-10-11 |
+| JR東日本・東京23区版: 駅は路線間で共有する1つのID（キュレーションした駅レジストリ data/overrides/stations.csv で同一性を定義、駅名一致では決めない）。路線別ホーム座標を ServicePattern.platformCoordinates に持ち、groupId は出力しない | 移動・ゴール・セーブ・UIにグループ比較を持ち込まずに済む。東京の京葉線ホーム（約450m離れる）も同一駅として扱い、形状端点は路線別ホーム座標で30m検証できる。乗換は全て同一駅構内（研究結果） | 路線ごとの駅 + groupId（92駅/67グループ）、代表点1つ＋端点許容500m | 2026-10-12 |
+| ゲーム判定は有向区間（山手線は外回り+1のみ、他路線は両方向）、地図形状は路線内の隣接駅ペアごとに1つの無向featureを共有し、向きは feature の from/to で判定。地図フィルタは featureId を使い、山手線の進捗レイヤーは対象路線に限定する | 形状の重複を避け、内回りモード追加時も形状を再利用できる。距離による向き推定は離れたホームで不正確 | 有向区間ごとに1 feature（座標重複、完了/未完了の重なり） | 2026-10-12 |
+| 乗換抽選の乱数契約: 1ターンは rollDie → 移動 → （クリアしなければ）候補2路線以上なら路線抽選 → 山手線以外で可動方向が2つなら方向抽選。強制選択は乱数を消費しない。drawIndex は棄却サンプリング（2^32 − 2^32 mod k 未満のみ採用）。候補順は services.json の順、方向は [1, -1] | 均等性と再現性を保ち、乗換が起きないゲームでは既存のサイコロ列（スナップショット）がそのまま有効 | 強制選択でも乱数を消費する、駅名・ID順で候補を並べる | 2026-10-12 |
+| ターンは原子的に確定する（未決の乗換状態を GameState に持たない）。moveByRoll(state, roll, network, landing?) は注入した選択で、playTurn はシード乱数で同じ内部処理（advance/finalize）を使う。乗換規則は engine/landing.ts に分離 | 1回のコミット→セーブ→アニメーションという既存のUIフローを維持し、テストでは任意の出目と選択を注入できる | 保存可能な pending 状態を持つ2段階API、playTurn での事前ドライラン | 2026-10-12 |
+| MoveRecord に stopReason（roll/goal/endpoint）と landing（次ターンの路線・方向、クリア時は null）を追加し saveVersion 2 とする。復元は構造リプレイ（記録した選択で moveByRoll）とシード付きリプレイ（playTurn）の両方で記録全体と最終状態を比較。旧セーブは移行しない | 1ターン内の複数抽選を再現・検証でき、不正な選択は INVALID_SAVE、シード由来でない選択は RNG_MISMATCH と区別できる | 出目のみ比較する従来方式、シード付きリプレイ1本化 | 2026-10-12 |
+| 対象エリアはキュレーションした駅リスト（駅レジストリの ward 列、各路線の停車駅リストは最後の区内駅で終わる）で定義し、N03行政区域は一度きりの監査に使う（パイプライン入力にしない）。端点で余りの出目を破棄した停止は exact-stop とみなさず、新橋はどの非環状路線の端点にもしない（バリデータで保証） | 区内駅は全て区界から293m以上内側で境界判定の曖昧さがない。CI では生データなしで検証できる | N03ポリゴンをパイプライン入力にする | 2026-10-12 |
+| 山手線の踏破数は completedSegmentIds と山手線外回り区間の積集合で数える（completedSegmentIds は全路線の通過区間を保持）。抽選結果の表示はテキストを先に実装し、移動アニメーション終了時に表示する（サイコロ風演出は将来の任意） | 他路線の区間で踏破数が水増しされるのを防ぐ。演出は既に確定した結果を見せるだけで抽選には関与しない | completedSegmentIds を山手線のみに限定、抽選専用のUIフェーズ | 2026-10-12 |
+| E2E は route interception で小さなフィクスチャ路線網（実際の山手線30駅＋短い非環状2路線）と固定ゲームシードを使い、終点・エリア端・乗換・方向抽選を Vitest で事前に証明する。実データは Vitest の通しプレイ＋E2E スモークで検証する | 実データのゲームは中央値52ターンと長く、データ更新で E2E が壊れないようにする。CI を高速かつ外部ネットワーク非依存に保つ | 実データで短く終わるシードを探して固定する | 2026-10-12 |
+| JR東日本・東京23区版の対象は各駅停車相当の5系統のみ: 山手線（環状30駅）、京浜東北線（赤羽〜蒲田22駅）、中央・総武線各駅停車（西荻窪〜小岩24駅）、埼京線（大崎〜浮間舟渡10駅）、京葉線（東京〜葛西臨海公園6駅）。計67駅・乗換駅22。常磐線各駅停車・横須賀・総武快速線・常磐線快速は除外、快速の停車パターンは無視、武蔵野線は別系統にしない、埼京線の南端は大崎、除外路線のみが停まる区内10駅は対象外 | ユーザー決定（2026-10-12）。研究者が JR東日本公式時刻表（2610版）で停車駅を照合。常磐線各駅停車は区内で他路線と接続しない孤立区間。このリストをデータ検証の完全性基準にする | 常磐線各駅停車を地図表示のみで残す、横須賀・総武快速線／常磐線快速を含める | 2026-10-12 |
+| JR東日本23区版: 山手線以外では、乗換先のない駅でも着駅ごとに方向を抽選し直す（R1-a） | ユーザー決定（2026-10-12）。仕様書§4.1/§2の文言どおり。中央値52ターン | 方向を維持し終点で折り返す（R1-b、中央値55ターン） | 2026-10-12 |
+| タイトルは「山手線すごろく」のまま、副題「JR東日本 東京23区版」を付ける（R5） | ユーザー決定（2026-10-12）。既存の名称を保ちつつ対象範囲を示す | 副題なし | 2026-10-12 |
+| ゲーム長の調整（山手線の重み付け、通過クリア）は入れない（R6） | ユーザー決定（2026-10-12）。確定ルールで中央値52・p99 189ターン、500ターン超なし | 山手線重み×2（中央値27）、全系統で新橋通過クリア（中央値49） | 2026-10-12 |
 
 ## TODO / Open Questions
 
@@ -155,3 +198,20 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 - 状態管理: Zustand か React 組込みかを初期段階で決定。
 - OpenFreeMap の利用条件・提供状況を公開前に確認。
 - 将来拡張（強制乗換）: 非環状線端点の方向抽選省略、分岐系統の扱い、乗換・歩行連絡の定義、直通運転・範囲境界・終着折返し。
+
+- JR東日本・東京23区版（2026-10-12、設計: `.claude/docs/research/jr-east-tokyo-expansion-design.md` §9）ユーザー確認待ち:
+  - R1: 山手線以外で1路線のみの駅に着いたときの方向。基準は毎回再抽選（確定ルールの文言どおり）、代案は方向維持・端点のみ折返し。ゲーム長の差は小さい（中央値52 vs 55ターン）。
+  - R2: 対象路線 = 山手線・京浜東北線・中央・総武線各駅停車・埼京線・京葉線（普通の停車パターン、埼京線は大崎まで、武蔵野線は別系統にしない）。
+  - R3: 常磐線各駅停車（綾瀬〜金町、他路線と接続しない孤立区間）を除外するか、地図だけに表示するか。
+  - R4: 横須賀・総武快速線／常磐線快速を含めるか（推奨: 除外）。
+  - R5: タイトル（推奨: 「山手線すごろく」＋副題「JR東日本 東京23区版」）。
+  - R6: ゲーム長の調整（モンテカルロ: 中央値52・p90 114・p99 189ターン、500超0%）。推奨は調整なし。候補: 山手線の抽選重み×2（中央値27）、全路線 pass-through（中央値49）。
+  - R7: 除外路線のみが停まる区内10駅は到達不能のまま受け入れるか。
+
+- 上記 R2・R3・R4・R7 はユーザー決定（2026-10-12）で解決済み（Key Decisions 参照）。残る確認事項は R1（単一路線駅での方向）、R5（タイトル）、R6（ゲーム長の調整、推奨なし）。確定5系統での再シミュレーション: R1 基準（毎回再抽選）で中央値52・p90 114・p99 186ターン、500超0%。
+
+Current edition (2026-10-12): the following statements supersede the historical MVP / pending items above.
+
+- No JR expansion rule choices remain open: R1-a, R2–R4/R7, R5 and R6 are all confirmed in Key Decisions.
+- Review the integration PR, then prepare the develop → master release PR. Production merge and smoke verification require explicit user approval.
+- Optional later work: lottery visual effects, other operators, branching/through services and a new inner-loop ruleset. None changes the current seeded ruleset implicitly.

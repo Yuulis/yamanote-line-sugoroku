@@ -87,6 +87,8 @@ for (const { name, message, tamper } of CASES) {
   });
 }
 
+test.use({ dataset: "fixture" });
+
 test("[8.3-4] cancelling the discard keeps the invalid save untouched", async ({ page }) => {
   const tampered = await storeTamperedSave(page, (valid) => withField(valid, "saveVersion", 999));
 

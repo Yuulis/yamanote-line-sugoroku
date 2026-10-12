@@ -1,5 +1,11 @@
 # 山手線すごろく
 
+Current edition: **JR東日本 東京23区版** — five services, 67 shared stations, arrival-only service/direction lotteries, and the unchanged 30-segment Yamanote outer goal.
+
+[遊び方（日本語）](docs/manual/jr-east-tokyo/rules.md) · [Data pipeline and schema v2](data/README.md)
+
+Save format is v2; old saves are rejected with an unsupported-version message and can be discarded. E2E uses a pinned 15-turn three-service fixture for rule coverage and a separate real-data smoke test. Vitest additionally plays eight fixed seeds on the shipped network to completion.
+
 ## 開発環境のセットアップ（フロントエンド）
 
 Node.js 24 LTS と npm を使います（`.nvmrc` 参照）。

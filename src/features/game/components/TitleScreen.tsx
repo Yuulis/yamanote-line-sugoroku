@@ -126,11 +126,15 @@ export function TitleScreen(props: TitleScreenProps) {
         <h1 id="game-title" className="title-screen__title">
           山手線すごろく
         </h1>
+        <p className="title-screen__subtitle">JR東日本 東京23区版</p>
         <p>
-          新橋駅から山手線を<strong>外回り</strong>に進むすごろくです。サイコロを振り、出た目の数だけ駅を進みます。
+          新橋から出発し、東京23区内のJR東日本5路線をめぐるすごろくです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を均等に抽選します。
         </p>
         <p>
-          通った駅間は踏破済みになります。全30区間を踏破して新橋に戻ればクリアです（新橋に着いた時点で余った目は使いません）。
+          山手線は<strong>外回り</strong>に固定。他路線では毎回方向を抽選し、終点・エリア端で余った目は使いません。
+        </p>
+        <p>
+          山手線の外回り全30区間を踏破して新橋に戻ればクリアです。山手線では新橋に着いた時点で停止し、他路線では新橋にちょうど止まる必要があります。
         </p>
         {unavailableReason && (
           <p className="title-screen__notice title-screen__notice--error" role="alert">

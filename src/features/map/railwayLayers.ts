@@ -14,6 +14,9 @@ import {
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
+  OTHER_SERVICE_LINE_OFFSET,
+  OTHER_SERVICE_LINE_OPACITY,
+  OTHER_SERVICE_LINE_WIDTH,
   PENDING_SEGMENT_COLOR,
   PENDING_SEGMENT_DASH,
   PENDING_SEGMENT_WIDTH,
@@ -33,7 +36,7 @@ import { buildStationCollection } from "./stationCollection";
 
 /** Game progress drawn on the map. */
 export interface MapProgress {
-  completedSegmentIds: readonly string[];
+  completedFeatureIds: readonly string[];
   currentPosition: Position | null;
 }
 
@@ -50,6 +53,19 @@ export function addRailwayLayers(
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
+    map.addLayer({
+      id: LAYER_IDS.services,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: ["!=", ["get", "serviceId"], "jr-yamanote"],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": buildLineColorExpression(services),
+        "line-width": OTHER_SERVICE_LINE_WIDTH,
+        "line-opacity": OTHER_SERVICE_LINE_OPACITY,
+        "line-offset": OTHER_SERVICE_LINE_OFFSET,
+      },
+    });
     // Two layers so progress is told by line style as well as colour (spec 6.3).
     map.addLayer({
       id: LAYER_IDS.segmentsPending,
@@ -130,11 +146,11 @@ export function addRailwayLayers(
 /** Restyle segments as completed / pending; skips layers that failed to load. */
 export function updateCompletedSegments(
   map: MapLibreMap,
-  completedSegmentIds: readonly string[],
+  completedFeatureIds: readonly string[],
 ): void {
   if (!map.getLayer(LAYER_IDS.segmentsCompleted)) return;
-  map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedSegmentIds));
-  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedSegmentIds));
+  map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedFeatureIds));
+  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedFeatureIds));
 }
 
 /** Move the player marker (called on every animation frame). */

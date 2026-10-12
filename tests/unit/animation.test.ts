@@ -46,7 +46,7 @@ function lineFeature(index: number, coordinates: Position[]) {
   return {
     type: "Feature" as const,
     id,
-    properties: { segmentId: id, serviceId: "jr-yamanote", from, to },
+    properties: { featureId: id, serviceId: "jr-yamanote", from, to },
     geometry: { type: "LineString" as const, coordinates },
   };
 }
@@ -81,20 +81,12 @@ function unitPath(segment: string, newlyCompleted = true): StepPath {
 }
 
 describe("geometry index", () => {
-  it("indexes LineStrings by stringified feature id and skips MultiLineStrings", () => {
-    const multi = {
-      ...lineFeature(1, []),
-      id: 7,
-      geometry: {
-        type: "MultiLineString" as const,
-        coordinates: [[stationAt(1)], [stationAt(2)]],
-      },
-    };
-    const index = buildGeometryIndex(
-      geometryFor([lineFeature(0, [stationAt(0), stationAt(1)]), multi]),
-    );
-    expect(index.get(segmentId(0))).toEqual([stationAt(0), stationAt(1)]);
-    expect(index.has("7")).toBe(false);
+  it("indexes LineStrings with their canonical station orientation", () => {
+    const index = buildGeometryIndex(geometryFor([lineFeature(0, [stationAt(0), stationAt(1)])]));
+    expect(index.get(segmentId(0))).toEqual({
+      fromStationId: STATION_IDS[0], toStationId: STATION_IDS[1],
+      points: [stationAt(0), stationAt(1)],
+    });
   });
 
   it("returns an empty index when geometry failed to load", () => {
@@ -105,16 +97,16 @@ describe("geometry index", () => {
 describe("path orientation and distance", () => {
   it("keeps a path that starts at the departure station", () => {
     const points: Position[] = [stationAt(0), DETOUR, stationAt(1)];
-    expect(orientPath(points, stationAt(0))).toEqual(points);
+    expect(orientPath({ points, fromStationId: "a", toStationId: "b" }, "a", "b")).toEqual(points);
   });
 
   it("reverses a path stored in the opposite direction", () => {
     const points: Position[] = [stationAt(1), DETOUR, stationAt(0)];
-    expect(orientPath(points, stationAt(0))).toEqual([stationAt(0), DETOUR, stationAt(1)]);
+    expect(orientPath({ points, fromStationId: "b", toStationId: "a" }, "a", "b")).toEqual([stationAt(0), DETOUR, stationAt(1)]);
   });
 
   it("returns no points for an empty line", () => {
-    expect(orientPath([], stationAt(0))).toEqual([]);
+    expect(orientPath({ points: [], fromStationId: "a", toStationId: "b" }, "a", "b")).toEqual([]);
   });
 
   it("scales longitude by cos(latitude)", () => {
@@ -128,7 +120,7 @@ describe("path orientation and distance", () => {
 describe("stepPath / buildMovePlan", () => {
   it("follows the segment geometry, oriented from the departure station", () => {
     const geometry = buildGeometryIndex(
-      geometryFor([lineFeature(0, [stationAt(1), DETOUR, stationAt(0)])]),
+      geometryFor([{ ...lineFeature(0, [stationAt(1), DETOUR, stationAt(0)]), properties: { featureId: segmentId(0), serviceId: "jr-yamanote", from: STATION_IDS[1], to: STATION_IDS[0] } }]),
     );
     const path = stepPath(traversed(0), network, geometry);
     expect(path.points).toEqual([stationAt(0), DETOUR, stationAt(1)]);

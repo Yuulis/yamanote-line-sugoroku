@@ -12,14 +12,22 @@ export interface Station {
   groupId?: string;
 }
 
-export interface ServicePattern {
+export type EndpointKind = "terminus" | "area-boundary";
+
+interface ServicePatternBase {
   id: ServiceId;
   name: string;
   operator: string;
   stationIds: StationId[]; // order for direction +1
-  circular: boolean;
   color: string;
+  directionLabels: { forward: string; backward: string };
+  platformCoordinates: Record<StationId, [longitude: number, latitude: number]>;
 }
+
+export type ServicePattern = ServicePatternBase & (
+  | { circular: true; endpoints?: never }
+  | { circular: false; endpoints: { first: EndpointKind; last: EndpointKind } }
+);
 
 export interface Segment {
   id: SegmentId;
@@ -30,14 +38,27 @@ export interface Segment {
   geometryFeatureId: string;
 }
 
+/** Why a move ended: all pips used, goal truncation, or no next station (pips discarded). */
+export type StopReason = "roll" | "goal" | "endpoint";
+
+/** The service and direction the next move rides, decided on landing. */
+export interface LandingChoice {
+  serviceId: ServiceId;
+  direction: Direction;
+}
+
 export interface MoveRecord {
   turn: number;
   roll: number;
+  /** Service and direction ridden during this move (not the landing result). */
   serviceId: ServiceId;
   direction: Direction;
   fromStationId: StationId;
   toStationId: StationId;
   traversedSegmentIds: SegmentId[];
+  stopReason: StopReason;
+  /** The landing resolution at `toStationId` (forced ones included); null iff the move cleared. */
+  landing: LandingChoice | null;
 }
 
 export interface GameConfig {
