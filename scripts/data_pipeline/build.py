@@ -4,7 +4,7 @@ Usage: ``uv run python -m scripts.data_pipeline.build [--raw-dir ...] [--out-dir
 
 The build routes every service in ``services.json`` (loops with
 :func:`route_loop`, open chains with :func:`route_path`) and then exports the
-v1 contract, which carries only the target service.
+v2 contract with shared station ids and one geometry per adjacent stop pair.
 """
 
 from __future__ import annotations
@@ -200,11 +200,14 @@ def build(raw_dir: Path, overrides_dir: Path) -> BuildResult:
     overrides = load_overrides(overrides_dir)
     source = N02Source(raw_dir, operator=overrides.dataset.n02_operator)
     builds = route_network(source, overrides)
-    target = builds[overrides.dataset.target_service_id]
-    files = export.build_v1_files(
+    files = export.build_files(
         overrides,
         representative_points(overrides, builds),
-        [path.geometry for path in target.routed.paths],
+        platform_points(builds),
+        {
+            service_id: [path.geometry for path in item.routed.paths]
+            for service_id, item in builds.items()
+        },
     )
     return BuildResult(files=files, services=builds)
 

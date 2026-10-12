@@ -27,7 +27,7 @@ interface GameAppProps {
 
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
 
-const NO_PROGRESS: MapProgress = { completedSegmentIds: [], currentPosition: null };
+const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 
 function speedById(id: AnimationSpeedId) {
   return ANIMATION_SPEEDS.find((speed) => speed.id === id) ?? ANIMATION_SPEEDS[1];
@@ -52,8 +52,8 @@ export function GameApp({ data, network }: GameAppProps) {
     () => buildGeometryIndex(data.geometry.ok ? data.geometry.value : undefined),
     [data],
   );
-  const requiredCount = useMemo(
-    () => targetSegmentIds(MVP_GAME_CONFIG, network).length,
+  const requiredIds = useMemo(
+    () => new Set(targetSegmentIds(MVP_GAME_CONFIG, network)),
     [network],
   );
   const session = app.state.screen === "game" ? app.state.session : null;
@@ -74,9 +74,14 @@ export function GameApp({ data, network }: GameAppProps) {
   const progress = useMemo<MapProgress>(
     () =>
       shown
-        ? { completedSegmentIds: shown.completedSegmentIds, currentPosition: shown.position }
+        ? {
+            completedFeatureIds: shown.completedSegmentIds.filter((id) => requiredIds.has(id)).map(
+              (id) => network.segmentsById.get(id)!.geometryFeatureId,
+            ),
+            currentPosition: shown.position,
+          }
         : NO_PROGRESS,
-    [shown],
+    [shown, requiredIds, network],
   );
 
   const stopFollowing = useCallback(() => setFollow(false), []);
@@ -145,8 +150,8 @@ export function GameApp({ data, network }: GameAppProps) {
           session={session}
           network={network}
           displayedStationId={shown.stationId}
-          displayedCompletedCount={shown.completedSegmentIds.length}
-          requiredCount={requiredCount}
+          displayedCompletedCount={shown.completedSegmentIds.filter((id) => requiredIds.has(id)).length}
+          requiredCount={requiredIds.size}
           saveStatus={app.saveStatus}
           follow={follow}
           speedLabel={speed?.label ?? ""}

@@ -71,8 +71,8 @@ def test_validate_with_broken_chain_fails(
 
     errors = _errors(dataset, committed_overrides)
 
-    assert "segments[3].to != next segment's from" in errors
-    assert "30-step walk" in errors or "walk stuck" in errors
+    assert "segments[3] differs from the directed pair contract" in errors
+    assert "30-step walk" in errors
 
 
 def test_validate_with_missing_geometry_fails(
@@ -202,10 +202,10 @@ def test_validate_with_multilinestring_gap_fails(
         "coordinates": [coordinates[:2], coordinates[-2:]],
     }
 
-    assert "gap between parts" in _errors(dataset, committed_overrides)
+    assert "geometry must be a LineString" in _errors(dataset, committed_overrides)
 
 
-def test_validate_with_contiguous_multilinestring_passes(
+def test_validate_with_contiguous_multilinestring_is_rejected_in_v2(
     dataset: Dataset, committed_overrides: Overrides
 ) -> None:
     coordinates = dataset.geojson["features"][0]["geometry"]["coordinates"]
@@ -214,7 +214,7 @@ def test_validate_with_contiguous_multilinestring_passes(
         "coordinates": [coordinates[:3], coordinates[2:]],
     }
 
-    assert _errors(dataset, committed_overrides) == ""
+    assert "geometry must be a LineString" in _errors(dataset, committed_overrides)
 
 
 def test_validate_with_stale_data_version_fails(
@@ -248,3 +248,68 @@ def test_validate_with_null_station_ids_reports_instead_of_crashing(
 
     assert "stationIds must be an array of strings" in errors
     assert "has no name" in errors
+
+
+@pytest.mark.parametrize(
+    "edit, expected",
+    [
+        (lambda d: d.manifest.update(schemaVersion=1), "schemaVersion must be 2"),
+        (lambda d: d.services[0].update(circular=1), "circular must be a boolean"),
+        (lambda d: d.services[0].update(directionLabels={}), "directionLabels differ"),
+        (
+            lambda d: d.services[0].update(
+                endpoints={"first": "terminus", "last": "terminus"}
+            ),
+            "invalid v2 fields",
+        ),
+        (
+            lambda d: d.services[0]["platformCoordinates"].pop("tokyo"),
+            "cover exactly its stops",
+        ),
+        (
+            lambda d: d.services[0]["platformCoordinates"].update(tokyo=[139.8, 35.8]),
+            "representative platform",
+        ),
+        (
+            lambda d: d.services[0].update(
+                stationIds=["shimbashi", "tokyo", "yurakucho"]
+            ),
+            "stop order differs",
+        ),
+        (
+            lambda d: d.segments[0].update(geometryFeatureId="orphan"),
+            "directed pair contract",
+        ),
+        (
+            lambda d: d.geojson["features"].append(d.geojson["features"][0]),
+            "duplicate geometry feature",
+        ),
+        (
+            lambda d: d.geojson["features"][0]["properties"].update(from_="other"),
+            "properties mismatch",
+        ),
+        (
+            lambda d: d.geojson["features"][0]["geometry"]["coordinates"].reverse(),
+            "endpoint",
+        ),
+    ],
+)
+def test_v2_contract_rejects_invalid_metadata_and_geometry(
+    dataset: Dataset, committed_overrides: Overrides, edit: object, expected: str
+) -> None:
+    # Callables are parametrized independently so each corruption has its own report.
+    from collections.abc import Callable
+
+    assert isinstance(edit, Callable)
+    edit(dataset)
+    assert expected in _errors(dataset, committed_overrides)
+
+
+def test_noncanonical_bytes_fail_even_with_recomputed_hash(
+    dataset: Dataset, committed_overrides: Overrides
+) -> None:
+    from scripts.data_pipeline.export import data_version, manifest_inputs
+
+    dataset.payloads[config.STATIONS_FILE] += " "
+    dataset.manifest["dataVersion"] = data_version(manifest_inputs(dataset.payloads))
+    assert "bytes are not the canonical" in _errors(dataset, committed_overrides)

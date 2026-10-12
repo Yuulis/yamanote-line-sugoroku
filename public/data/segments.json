@@ -4,209 +4,209 @@
     "serviceId": "jr-yamanote",
     "from": "shimbashi",
     "to": "hamamatsucho",
-    "geometryFeatureId": "jr-yamanote:shimbashi:hamamatsucho"
+    "geometryFeatureId": "jr-yamanote:shimbashi~hamamatsucho"
   },
   {
     "id": "jr-yamanote:hamamatsucho:tamachi",
     "serviceId": "jr-yamanote",
     "from": "hamamatsucho",
     "to": "tamachi",
-    "geometryFeatureId": "jr-yamanote:hamamatsucho:tamachi"
+    "geometryFeatureId": "jr-yamanote:hamamatsucho~tamachi"
   },
   {
     "id": "jr-yamanote:tamachi:takanawa-gateway",
     "serviceId": "jr-yamanote",
     "from": "tamachi",
     "to": "takanawa-gateway",
-    "geometryFeatureId": "jr-yamanote:tamachi:takanawa-gateway"
+    "geometryFeatureId": "jr-yamanote:tamachi~takanawa-gateway"
   },
   {
     "id": "jr-yamanote:takanawa-gateway:shinagawa",
     "serviceId": "jr-yamanote",
     "from": "takanawa-gateway",
     "to": "shinagawa",
-    "geometryFeatureId": "jr-yamanote:takanawa-gateway:shinagawa"
+    "geometryFeatureId": "jr-yamanote:takanawa-gateway~shinagawa"
   },
   {
     "id": "jr-yamanote:shinagawa:osaki",
     "serviceId": "jr-yamanote",
     "from": "shinagawa",
     "to": "osaki",
-    "geometryFeatureId": "jr-yamanote:shinagawa:osaki"
+    "geometryFeatureId": "jr-yamanote:shinagawa~osaki"
   },
   {
     "id": "jr-yamanote:osaki:gotanda",
     "serviceId": "jr-yamanote",
     "from": "osaki",
     "to": "gotanda",
-    "geometryFeatureId": "jr-yamanote:osaki:gotanda"
+    "geometryFeatureId": "jr-yamanote:osaki~gotanda"
   },
   {
     "id": "jr-yamanote:gotanda:meguro",
     "serviceId": "jr-yamanote",
     "from": "gotanda",
     "to": "meguro",
-    "geometryFeatureId": "jr-yamanote:gotanda:meguro"
+    "geometryFeatureId": "jr-yamanote:gotanda~meguro"
   },
   {
     "id": "jr-yamanote:meguro:ebisu",
     "serviceId": "jr-yamanote",
     "from": "meguro",
     "to": "ebisu",
-    "geometryFeatureId": "jr-yamanote:meguro:ebisu"
+    "geometryFeatureId": "jr-yamanote:meguro~ebisu"
   },
   {
     "id": "jr-yamanote:ebisu:shibuya",
     "serviceId": "jr-yamanote",
     "from": "ebisu",
     "to": "shibuya",
-    "geometryFeatureId": "jr-yamanote:ebisu:shibuya"
+    "geometryFeatureId": "jr-yamanote:ebisu~shibuya"
   },
   {
     "id": "jr-yamanote:shibuya:harajuku",
     "serviceId": "jr-yamanote",
     "from": "shibuya",
     "to": "harajuku",
-    "geometryFeatureId": "jr-yamanote:shibuya:harajuku"
+    "geometryFeatureId": "jr-yamanote:shibuya~harajuku"
   },
   {
     "id": "jr-yamanote:harajuku:yoyogi",
     "serviceId": "jr-yamanote",
     "from": "harajuku",
     "to": "yoyogi",
-    "geometryFeatureId": "jr-yamanote:harajuku:yoyogi"
+    "geometryFeatureId": "jr-yamanote:harajuku~yoyogi"
   },
   {
     "id": "jr-yamanote:yoyogi:shinjuku",
     "serviceId": "jr-yamanote",
     "from": "yoyogi",
     "to": "shinjuku",
-    "geometryFeatureId": "jr-yamanote:yoyogi:shinjuku"
+    "geometryFeatureId": "jr-yamanote:yoyogi~shinjuku"
   },
   {
     "id": "jr-yamanote:shinjuku:shin-okubo",
     "serviceId": "jr-yamanote",
     "from": "shinjuku",
     "to": "shin-okubo",
-    "geometryFeatureId": "jr-yamanote:shinjuku:shin-okubo"
+    "geometryFeatureId": "jr-yamanote:shinjuku~shin-okubo"
   },
   {
     "id": "jr-yamanote:shin-okubo:takadanobaba",
     "serviceId": "jr-yamanote",
     "from": "shin-okubo",
     "to": "takadanobaba",
-    "geometryFeatureId": "jr-yamanote:shin-okubo:takadanobaba"
+    "geometryFeatureId": "jr-yamanote:shin-okubo~takadanobaba"
   },
   {
     "id": "jr-yamanote:takadanobaba:mejiro",
     "serviceId": "jr-yamanote",
     "from": "takadanobaba",
     "to": "mejiro",
-    "geometryFeatureId": "jr-yamanote:takadanobaba:mejiro"
+    "geometryFeatureId": "jr-yamanote:takadanobaba~mejiro"
   },
   {
     "id": "jr-yamanote:mejiro:ikebukuro",
     "serviceId": "jr-yamanote",
     "from": "mejiro",
     "to": "ikebukuro",
-    "geometryFeatureId": "jr-yamanote:mejiro:ikebukuro"
+    "geometryFeatureId": "jr-yamanote:mejiro~ikebukuro"
   },
   {
     "id": "jr-yamanote:ikebukuro:otsuka",
     "serviceId": "jr-yamanote",
     "from": "ikebukuro",
     "to": "otsuka",
-    "geometryFeatureId": "jr-yamanote:ikebukuro:otsuka"
+    "geometryFeatureId": "jr-yamanote:ikebukuro~otsuka"
   },
   {
     "id": "jr-yamanote:otsuka:sugamo",
     "serviceId": "jr-yamanote",
     "from": "otsuka",
     "to": "sugamo",
-    "geometryFeatureId": "jr-yamanote:otsuka:sugamo"
+    "geometryFeatureId": "jr-yamanote:otsuka~sugamo"
   },
   {
     "id": "jr-yamanote:sugamo:komagome",
     "serviceId": "jr-yamanote",
     "from": "sugamo",
     "to": "komagome",
-    "geometryFeatureId": "jr-yamanote:sugamo:komagome"
+    "geometryFeatureId": "jr-yamanote:sugamo~komagome"
   },
   {
     "id": "jr-yamanote:komagome:tabata",
     "serviceId": "jr-yamanote",
     "from": "komagome",
     "to": "tabata",
-    "geometryFeatureId": "jr-yamanote:komagome:tabata"
+    "geometryFeatureId": "jr-yamanote:komagome~tabata"
   },
   {
     "id": "jr-yamanote:tabata:nishi-nippori",
     "serviceId": "jr-yamanote",
     "from": "tabata",
     "to": "nishi-nippori",
-    "geometryFeatureId": "jr-yamanote:tabata:nishi-nippori"
+    "geometryFeatureId": "jr-yamanote:tabata~nishi-nippori"
   },
   {
     "id": "jr-yamanote:nishi-nippori:nippori",
     "serviceId": "jr-yamanote",
     "from": "nishi-nippori",
     "to": "nippori",
-    "geometryFeatureId": "jr-yamanote:nishi-nippori:nippori"
+    "geometryFeatureId": "jr-yamanote:nishi-nippori~nippori"
   },
   {
     "id": "jr-yamanote:nippori:uguisudani",
     "serviceId": "jr-yamanote",
     "from": "nippori",
     "to": "uguisudani",
-    "geometryFeatureId": "jr-yamanote:nippori:uguisudani"
+    "geometryFeatureId": "jr-yamanote:nippori~uguisudani"
   },
   {
     "id": "jr-yamanote:uguisudani:ueno",
     "serviceId": "jr-yamanote",
     "from": "uguisudani",
     "to": "ueno",
-    "geometryFeatureId": "jr-yamanote:uguisudani:ueno"
+    "geometryFeatureId": "jr-yamanote:uguisudani~ueno"
   },
   {
     "id": "jr-yamanote:ueno:okachimachi",
     "serviceId": "jr-yamanote",
     "from": "ueno",
     "to": "okachimachi",
-    "geometryFeatureId": "jr-yamanote:ueno:okachimachi"
+    "geometryFeatureId": "jr-yamanote:ueno~okachimachi"
   },
   {
     "id": "jr-yamanote:okachimachi:akihabara",
     "serviceId": "jr-yamanote",
     "from": "okachimachi",
     "to": "akihabara",
-    "geometryFeatureId": "jr-yamanote:okachimachi:akihabara"
+    "geometryFeatureId": "jr-yamanote:okachimachi~akihabara"
   },
   {
     "id": "jr-yamanote:akihabara:kanda",
     "serviceId": "jr-yamanote",
     "from": "akihabara",
     "to": "kanda",
-    "geometryFeatureId": "jr-yamanote:akihabara:kanda"
+    "geometryFeatureId": "jr-yamanote:akihabara~kanda"
   },
   {
     "id": "jr-yamanote:kanda:tokyo",
     "serviceId": "jr-yamanote",
     "from": "kanda",
     "to": "tokyo",
-    "geometryFeatureId": "jr-yamanote:kanda:tokyo"
+    "geometryFeatureId": "jr-yamanote:kanda~tokyo"
   },
   {
     "id": "jr-yamanote:tokyo:yurakucho",
     "serviceId": "jr-yamanote",
     "from": "tokyo",
     "to": "yurakucho",
-    "geometryFeatureId": "jr-yamanote:tokyo:yurakucho"
+    "geometryFeatureId": "jr-yamanote:tokyo~yurakucho"
   },
   {
     "id": "jr-yamanote:yurakucho:shimbashi",
     "serviceId": "jr-yamanote",
     "from": "yurakucho",
     "to": "shimbashi",
-    "geometryFeatureId": "jr-yamanote:yurakucho:shimbashi"
+    "geometryFeatureId": "jr-yamanote:yurakucho~shimbashi"
   }
 ]

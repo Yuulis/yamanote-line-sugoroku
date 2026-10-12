@@ -166,6 +166,20 @@ function indexServicesByStation(
   return byStation;
 }
 
+function copyService(service: ServicePattern): ServicePattern {
+  const base = {
+    ...service,
+    stationIds: [...service.stationIds],
+    directionLabels: { ...service.directionLabels },
+    platformCoordinates: Object.fromEntries(Object.entries(service.platformCoordinates).map(
+      ([id, point]) => [id, [...point] as Station["coordinates"]],
+    )),
+  };
+  return service.circular
+    ? { ...base, circular: true, endpoints: undefined }
+    : { ...base, circular: false, endpoints: { ...service.endpoints } };
+}
+
 /**
  * Build and validate the network structurally: unique ids, known references,
  * segments joining adjacent stops of their service, every station served.
@@ -190,10 +204,7 @@ export function buildRailwayNetwork(
     "station",
   );
   const servicesById = indexUnique(
-    input.services.map((service) => ({
-      ...service,
-      stationIds: [...service.stationIds],
-    })),
+    input.services.map(copyService),
     "service",
   );
   const segmentsById = indexUnique(
@@ -236,6 +247,16 @@ export function findSegment(
   to: StationId,
 ): Segment | undefined {
   return network.segmentsByEndpoints.get(segmentKey(serviceId, from, to));
+}
+
+/** The platform point of a service at a station (never the shared representative point). */
+export function platformPosition(
+  network: RailwayNetwork,
+  serviceId: ServiceId,
+  stationId: StationId,
+): Station["coordinates"] | null {
+  const point = network.servicesById.get(serviceId)?.platformCoordinates[stationId];
+  return point ? [point[0], point[1]] : null;
 }
 
 /**

@@ -36,7 +36,11 @@ def test_build_segments_closes_loop_with_directed_ids() -> None:
         "svc:b:c",
         "svc:c:a",
     ]
-    assert all(s["geometryFeatureId"] == s["id"] for s in segments)
+    assert [s["geometryFeatureId"] for s in segments] == [
+        "svc:a~b",
+        "svc:b~c",
+        "svc:c~a",
+    ]
 
 
 def test_dumps_feature_collection_is_valid_json_without_crs() -> None:
@@ -49,7 +53,7 @@ def test_dumps_feature_collection_is_valid_json_without_crs() -> None:
 
     assert parsed == collection
     assert "crs" not in parsed
-    assert parsed["features"][0]["id"] == "svc:a:b"
+    assert parsed["features"][0]["id"] == "svc:a~b"
 
 
 def test_build_manifest_is_content_addressed() -> None:
@@ -67,7 +71,7 @@ def test_build_manifest_includes_updated_at_after_data_version() -> None:
     manifest = export.build_manifest(["x"], "2026-10-11")
 
     assert manifest["updatedAt"] == "2026-10-11"
-    assert list(manifest)[:2] == ["dataVersion", "updatedAt"]
+    assert list(manifest)[:3] == ["schemaVersion", "dataVersion", "updatedAt"]
 
 
 def test_build_manifest_data_version_ignores_updated_at() -> None:
@@ -94,3 +98,30 @@ def test_write_outputs_writes_manifest_last(
 
     assert written[-1] == config.MANIFEST_FILE
     assert sorted(path.name for path in tmp_path.iterdir()) == sorted(files)
+
+
+def test_linear_segments_share_one_feature_per_pair() -> None:
+    segments = export.build_segments("svc", ["a", "b", "c"], circular=False)
+    assert [(s["from"], s["to"]) for s in segments] == [
+        ("a", "b"),
+        ("b", "a"),
+        ("b", "c"),
+        ("c", "b"),
+    ]
+    assert [s["geometryFeatureId"] for s in segments] == [
+        "svc:a~b",
+        "svc:a~b",
+        "svc:b~c",
+        "svc:b~c",
+    ]
+    collection = export.build_segment_features(
+        segments,
+        [LineString([(0, 0), (10, 0)]), LineString([(10, 0), (20, 0)])],
+    )
+    assert [f["id"] for f in collection["features"]] == ["svc:a~b", "svc:b~c"]
+    assert collection["features"][0]["properties"] == {
+        "featureId": "svc:a~b",
+        "serviceId": "svc",
+        "from": "a",
+        "to": "b",
+    }

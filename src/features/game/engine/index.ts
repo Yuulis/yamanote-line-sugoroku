@@ -19,6 +19,7 @@ export {
   findSegment,
   movableDirections,
   nextStationId,
+  platformPosition,
   type RailwayNetwork,
   type RailwayNetworkInput,
   type RailwayNetworkOptions,

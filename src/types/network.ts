@@ -12,14 +12,22 @@ export interface Station {
   groupId?: string;
 }
 
-export interface ServicePattern {
+export type EndpointKind = "terminus" | "area-boundary";
+
+interface ServicePatternBase {
   id: ServiceId;
   name: string;
   operator: string;
   stationIds: StationId[]; // order for direction +1
-  circular: boolean;
   color: string;
+  directionLabels: { forward: string; backward: string };
+  platformCoordinates: Record<StationId, [longitude: number, latitude: number]>;
 }
+
+export type ServicePattern = ServicePatternBase & (
+  | { circular: true; endpoints?: never }
+  | { circular: false; endpoints: { first: EndpointKind; last: EndpointKind } }
+);
 
 export interface Segment {
   id: SegmentId;

@@ -185,13 +185,13 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
     };
   }, [data, attempt]);
 
-  const completedSegmentIds = progress?.completedSegmentIds;
+  const completedFeatureIds = progress?.completedFeatureIds;
   const position = progress?.currentPosition ?? null;
   // Keyed by content: the list is rebuilt on animation frames but only
   // changes when a segment is finished, so the filters are set that often.
-  const completedKey = completedSegmentIds?.join("\n");
+  const completedKey = completedFeatureIds?.join("\n");
   useEffect(() => {
-    if (loadedMap && completedSegmentIds) updateCompletedSegments(loadedMap, completedSegmentIds);
+    if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds);
   }, [loadedMap, completedKey]);
   useEffect(() => {
     if (loadedMap) updateCurrentPosition(loadedMap, position);

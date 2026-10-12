@@ -33,7 +33,7 @@ import { buildStationCollection } from "./stationCollection";
 
 /** Game progress drawn on the map. */
 export interface MapProgress {
-  completedSegmentIds: readonly string[];
+  completedFeatureIds: readonly string[];
   currentPosition: Position | null;
 }
 
@@ -130,11 +130,11 @@ export function addRailwayLayers(
 /** Restyle segments as completed / pending; skips layers that failed to load. */
 export function updateCompletedSegments(
   map: MapLibreMap,
-  completedSegmentIds: readonly string[],
+  completedFeatureIds: readonly string[],
 ): void {
   if (!map.getLayer(LAYER_IDS.segmentsCompleted)) return;
-  map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedSegmentIds));
-  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedSegmentIds));
+  map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedFeatureIds));
+  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedFeatureIds));
 }
 
 /** Move the player marker (called on every animation frame). */

@@ -8,6 +8,7 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  targetFeatureIds,
   titleScreen,
 } from "./support/app";
 
@@ -55,7 +56,7 @@ test("[8.3-6] a failed map style keeps the game playable and retry recovers the 
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(station?.coordinates);
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
-    .toEqual([...secondTurn.completedSegmentIds].sort());
+    .toEqual(targetFeatureIds(secondTurn).sort());
   await expect(gamePanel(page)).toBeVisible();
   await expect(panelStat(page, "ターン数")).toHaveText("2");
   expect(await readSave(page)).toEqual(secondTurn);
@@ -90,7 +91,7 @@ test("[8.3-6] tiles failing before the map loads: retry message, game kept, retr
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(station?.coordinates);
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
-    .toEqual([...save.completedSegmentIds].sort());
+    .toEqual(targetFeatureIds(save).sort());
   expect(await readSave(page)).toEqual(save);
 });
 

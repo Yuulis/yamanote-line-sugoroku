@@ -164,7 +164,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       const renderedIds = (layerId: string): string[] => {
         if (!map.getLayer(layerId)) return [];
         const features = map.queryRenderedFeatures({ layers: [layerId] });
-        return [...new Set(features.map((feature) => String(feature.properties.segmentId)))];
+        return [...new Set(features.map((feature) => String(feature.properties.featureId)))];
       };
       // Hit-testing ignores opacity and a zero radius still hits via the
       // stroke, so a hidden marker is also caught from its paint.
@@ -173,8 +173,8 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         color: map.getPaintProperty(layerId, "line-color") ?? null,
         dash: map.getPaintProperty(layerId, "line-dasharray") ?? null,
       });
-      // completedSegmentFilter(): ["in", ["get", "segmentId"], ["literal", ids]]
-      const filter = map.getFilter(layers.completed) as [string, unknown, [string, string[]]];
+      // Target-scoped v2 filter: ["all", target, ["in", ["get", "featureId"], ["literal", ids]]]
+      const filter = map.getFilter(layers.completed) as [string, unknown, [string, unknown, [string, string[]]]];
       return {
         styleLoaded: Boolean(map.isStyleLoaded()),
         marker,
@@ -183,7 +183,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
           map.queryRenderedFeatures(map.project(marker), { layers: [layers.marker] }).length > 0 &&
           isPositive(map.getPaintProperty(layers.marker, "circle-radius")) &&
           isPositive(map.getPaintProperty(layers.marker, "circle-opacity") ?? 1),
-        completedFilterIds: filter?.[2]?.[1] ?? [],
+        completedFilterIds: filter?.[2]?.[2]?.[1] ?? [],
         completedRenderedIds: renderedIds(layers.completed),
         pendingRenderedIds: renderedIds(layers.pending),
         completedPaint: paint(layers.completed),
@@ -215,4 +215,14 @@ export async function loadManifestSource(request: APIRequestContext): Promise<Ma
   expect(response.ok()).toBe(true);
   const manifest = (await response.json()) as { source: ManifestSource };
   return manifest.source;
+}
+
+/** Goal progress excludes every non-Yamanote directed segment. */
+export function targetCompletedIds(game: Pick<SavedGame, "completedSegmentIds">): string[] {
+  return game.completedSegmentIds.filter((id) => id.startsWith("jr-yamanote:"));
+}
+
+/** Canonical feature ids for the Yamanote +1 directed pair contract. */
+export function targetFeatureIds(game: Pick<SavedGame, "completedSegmentIds">): string[] {
+  return targetCompletedIds(game).map((id) => id.replace(/:([^:]+):([^:]+)$/, ":$1~$2"));
 }

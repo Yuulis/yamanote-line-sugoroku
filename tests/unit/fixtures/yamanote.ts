@@ -70,6 +70,8 @@ function yamanoteService(): ServicePattern {
     stationIds: [...STATION_IDS],
     circular: true,
     color: "#9ACD32",
+    directionLabels: { forward: "外回り", backward: "内回り" },
+    platformCoordinates: Object.fromEntries(STATION_IDS.map((id, index) => [id, station(id, index).coordinates])),
   };
 }
 
@@ -111,6 +113,8 @@ export function inputWithShuttle(): RailwayNetworkInput {
         stationIds: [...SHUTTLE_STATION_IDS],
         circular: true,
         color: "#000000",
+        directionLabels: { forward: "正方向", backward: "逆方向" },
+        platformCoordinates: Object.fromEntries([station(START, 0), station("test-a", 100), station("test-b", 101)].map((s) => [s.id, s.coordinates])),
       },
     ],
     segments: [

@@ -12,6 +12,7 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  targetFeatureIds,
 } from "./support/app";
 
 // Spec 8.3 items covered here:
@@ -90,10 +91,10 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
   // The solid "completed" layer is filtered to exactly the traversed segments.
   await expect
     .poll(async () => sorted((await readMap(page))?.completedFilterIds ?? []))
-    .toEqual(sorted(save.completedSegmentIds));
+    .toEqual(sorted(targetFeatureIds(save)));
   // What is drawn agrees: traversed segments only in the completed layer,
   // never in the pending one (both layers have visible features).
-  const completed = new Set(save.completedSegmentIds);
+  const completed = new Set(targetFeatureIds(save));
   await expect
     .poll(async () => {
       const map = await readMap(page);

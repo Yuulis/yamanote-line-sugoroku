@@ -11,6 +11,7 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  targetFeatureIds,
   titleScreen,
 } from "./support/app";
 
@@ -57,7 +58,7 @@ test("[8.3-4] reload mid-game resumes the same game and the same next roll", asy
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(station?.coordinates);
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
-    .toEqual([...beforeReload.completedSegmentIds].sort());
+    .toEqual(targetFeatureIds(beforeReload).sort());
 
   // The next roll continues the seeded sequence exactly like the control run.
   await rollOnce(page);

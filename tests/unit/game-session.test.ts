@@ -12,7 +12,7 @@ import {
   pendingSegmentFilter,
 } from "../../src/features/map/progressStyle";
 import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
-import { DEFAULT_CONFIG, segmentId, START, yamanoteInput } from "./fixtures/yamanote";
+import { DEFAULT_CONFIG, START, yamanoteInput } from "./fixtures/yamanote";
 
 const network = buildRailwayNetwork(yamanoteInput());
 
@@ -118,9 +118,11 @@ describe("generateSeed", () => {
 
 describe("map progress styling", () => {
   it("builds complementary completed / pending filters", () => {
-    const ids = [segmentId(0)];
-    expect(completedSegmentFilter(ids)).toEqual(["in", ["get", "segmentId"], ["literal", ids]]);
-    expect(pendingSegmentFilter(ids)).toEqual(["!", completedSegmentFilter(ids)]);
+    const ids = ["jr-yamanote:shimbashi~hamamatsucho"];
+    const target = ["==", ["get", "serviceId"], "jr-yamanote"];
+    const completed = ["in", ["get", "featureId"], ["literal", ids]];
+    expect(completedSegmentFilter(ids)).toEqual(["all", target, completed]);
+    expect(pendingSegmentFilter(ids)).toEqual(["all", target, ["!", completed]]);
   });
 
   it("builds an empty or single-point marker collection", () => {

@@ -1,22 +1,24 @@
 import type { ExpressionSpecification, FilterSpecification } from "maplibre-gl";
 import type { Position } from "../../types/data";
 
-function isCompleted(segmentIds: readonly string[]): ExpressionSpecification {
-  return ["in", ["get", "segmentId"], ["literal", [...segmentIds]]];
+function isCompleted(featureIds: readonly string[]): ExpressionSpecification {
+  return ["in", ["get", "featureId"], ["literal", [...featureIds]]];
 }
 
 /** Filter matching segment features whose `segmentId` is in `segmentIds`. */
 export function completedSegmentFilter(
-  segmentIds: readonly string[],
+  featureIds: readonly string[],
+  targetServiceId = "jr-yamanote",
 ): FilterSpecification {
-  return isCompleted(segmentIds);
+  return ["all", ["==", ["get", "serviceId"], targetServiceId], isCompleted(featureIds)];
 }
 
 /** Filter matching segment features not yet completed. */
 export function pendingSegmentFilter(
-  segmentIds: readonly string[],
+  featureIds: readonly string[],
+  targetServiceId = "jr-yamanote",
 ): FilterSpecification {
-  return ["!", isCompleted(segmentIds)];
+  return ["all", ["==", ["get", "serviceId"], targetServiceId], ["!", isCompleted(featureIds)]];
 }
 
 export interface CurrentPositionCollection {

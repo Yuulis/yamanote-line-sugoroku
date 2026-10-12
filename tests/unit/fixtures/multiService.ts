@@ -2,8 +2,7 @@
 //
 //   target loop  M_LOOP   start -> a -> b -> c -> d -> e -> start   (+1 only)
 //   linear       M_LINE   x - b - y - d - z    (both directions; x = terminus,
-//                                              z = area boundary: the v1 data
-//                                              contract cannot tell them apart)
+//                                              z = area boundary)
 //   linear spur  M_SPUR   b - s1 - s2          (both directions; b is its end)
 //
 // Transfer stations: b (loop, line, spur: k = 3) and d (loop, line: k = 2).
@@ -49,7 +48,14 @@ function service(
   stationIds: readonly string[],
   circular: boolean,
 ): ServicePattern {
-  return { id, name: id, operator: "test", stationIds: [...stationIds], circular, color: "#123456" };
+  const base = {
+    id, name: id, operator: "test", stationIds: [...stationIds], color: "#123456",
+    directionLabels: { forward: "正方向", backward: "逆方向" },
+    platformCoordinates: Object.fromEntries(stationIds.map((id, i) => [id, station(id, i).coordinates])),
+  };
+  return circular ? { ...base, circular: true } : {
+    ...base, circular: false, endpoints: { first: "terminus", last: "area-boundary" },
+  };
 }
 
 function uniqueStations(services: readonly ServicePattern[]): Station[] {

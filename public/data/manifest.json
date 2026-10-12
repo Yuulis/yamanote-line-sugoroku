@@ -1,5 +1,6 @@
 {
-  "dataVersion": "n02-2025-83215bcd195d",
+  "schemaVersion": 2,
+  "dataVersion": "n02-2025-91a97674419a",
   "updatedAt": "2026-10-11",
   "source": {
     "name": "国土数値情報（鉄道データ）",

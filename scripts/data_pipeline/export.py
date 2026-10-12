@@ -13,9 +13,9 @@ from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config
-from scripts.data_pipeline.overrides import Overrides, ServiceDefinition
+from scripts.data_pipeline.overrides import Overrides, ServiceOverrides
 from scripts.data_pipeline.registry import RegistryStation
-from scripts.data_pipeline.topology import station_order
+from scripts.data_pipeline.topology import station_order, station_pairs
 
 Coordinate = list[float]
 
@@ -63,55 +63,89 @@ def build_stations(
 
 
 def build_services(
-    definition: ServiceDefinition, operator: str, station_ids: Sequence[str]
+    services: Sequence[ServiceOverrides],
+    operator: str,
+    platforms: Mapping[tuple[str, str], Point],
 ) -> list[dict[str, Any]]:
-    """v1 service document: the target service only."""
-    return [
-        {
-            "id": definition.id,
+    """v2 service metadata and the platform point of every stop."""
+    documents: list[dict[str, Any]] = []
+    for service in services:
+        definition = service.definition
+        document = {
+            "id": service.id,
             "name": definition.name,
             "operator": operator,
-            "stationIds": list(station_ids),
+            "stationIds": list(service.station_ids),
             "circular": definition.circular,
             "color": definition.color,
+            "directionLabels": {
+                "forward": definition.direction_labels.forward,
+                "backward": definition.direction_labels.backward,
+            },
+            "platformCoordinates": {
+                station_id: to_lon_lat(
+                    platforms[(service.id, station_id)].x,
+                    platforms[(service.id, station_id)].y,
+                )
+                for station_id in service.station_ids
+            },
         }
-    ]
-
-
-def build_segments(service_id: str, station_ids: Sequence[str]) -> list[dict[str, Any]]:
-    count = len(station_ids)
-    segments = []
-    for index, from_id in enumerate(station_ids):
-        to_id = station_ids[(index + 1) % count]
-        identifier = segment_id(service_id, from_id, to_id)
-        segments.append(
-            {
-                "id": identifier,
-                "serviceId": service_id,
-                "from": from_id,
-                "to": to_id,
-                "geometryFeatureId": identifier,
+        if definition.endpoints is not None:
+            document["endpoints"] = {
+                "first": definition.endpoints.first,
+                "last": definition.endpoints.last,
             }
-        )
+        documents.append(document)
+    return documents
+
+
+def feature_id(service_id: str, from_id: str, to_id: str) -> str:
+    """Canonical +1 pair identity shared by both directed segments."""
+    return f"{service_id}:{from_id}~{to_id}"
+
+
+def build_segments(
+    service_id: str, station_ids: Sequence[str], circular: bool = True
+) -> list[dict[str, Any]]:
+    segments: list[dict[str, Any]] = []
+    for a, b in station_pairs(station_ids, circular):
+        directions = [(a, b)] if circular else [(a, b), (b, a)]
+        for from_id, to_id in directions:
+            segments.append(
+                {
+                    "id": segment_id(service_id, from_id, to_id),
+                    "serviceId": service_id,
+                    "from": from_id,
+                    "to": to_id,
+                    "geometryFeatureId": feature_id(service_id, a, b),
+                }
+            )
     return segments
 
 
 def build_segment_features(
     segments: Sequence[Mapping[str, Any]], lines: Sequence[LineString]
 ) -> dict[str, Any]:
+    canonical: list[Mapping[str, Any]] = []
+    seen: set[str] = set()
+    for segment in segments:
+        identifier = segment["geometryFeatureId"]
+        if identifier not in seen:
+            seen.add(identifier)
+            canonical.append(segment)
     features = [
         {
             "type": "Feature",
-            "id": segment["id"],
+            "id": segment["geometryFeatureId"],
             "properties": {
-                "segmentId": segment["id"],
+                "featureId": segment["geometryFeatureId"],
                 "serviceId": segment["serviceId"],
                 "from": segment["from"],
                 "to": segment["to"],
             },
             "geometry": {"type": "LineString", "coordinates": line_to_lon_lat(line)},
         }
-        for segment, line in zip(segments, lines, strict=True)
+        for segment, line in zip(canonical, lines, strict=True)
     ]
     return {"type": "FeatureCollection", "features": features}
 
@@ -156,44 +190,39 @@ def build_manifest(payloads: Sequence[str], updated_at: str) -> dict[str, Any]:
     hashed: ``dataVersion`` identifies content, the date only records when the
     data was last refreshed."""
     return {
+        "schemaVersion": 2,
         "dataVersion": data_version(payloads),
         "updatedAt": updated_at,
         "source": dict(config.MANIFEST_SOURCE),
     }
 
 
-class ExportError(ValueError):
-    """Raised when routed data cannot be expressed in the output contract."""
-
-
-def build_v1_files(
+def build_files(
     overrides: Overrides,
     station_points: Mapping[str, Point],
-    target_lines: Sequence[LineString],
+    platforms: Mapping[tuple[str, str], Point],
+    service_lines: Mapping[str, Sequence[LineString]],
 ) -> dict[str, str]:
-    """The five v1 files: the target loop only, one feature per segment.
-
-    The v1 contract has no per-service platforms, direction labels or endpoint
-    kinds, so it cannot carry linear services; that is the v2 contract.
-    """
-    target = overrides.target
-    if tuple(service.id for service in overrides.services) != (target.id,):
-        raise ExportError(
-            "the v1 data contract carries only the target service; multi-service "
-            "output needs the v2 contract"
-        )
-    station_ids = target.station_ids
+    """The five v2 files, in canonical service / station / pair order."""
     registry = overrides.registry.by_id()
-    stations = [registry[station_id] for station_id in station_order([station_ids])]
-    segments_doc = build_segments(target.id, station_ids)
+    order = station_order(service.station_ids for service in overrides.services)
+    stations = [registry[station_id] for station_id in order]
+    segments_doc: list[dict[str, Any]] = []
+    features: list[dict[str, Any]] = []
+    for service in overrides.services:
+        segments = build_segments(service.id, service.station_ids, service.circular)
+        segments_doc.extend(segments)
+        features.extend(
+            build_segment_features(segments, service_lines[service.id])["features"]
+        )
     files = {
         config.STATIONS_FILE: dumps_pretty(build_stations(stations, station_points)),
         config.SERVICES_FILE: dumps_pretty(
-            build_services(target.definition, overrides.dataset.operator, station_ids)
+            build_services(overrides.services, overrides.dataset.operator, platforms)
         ),
         config.SEGMENTS_FILE: dumps_pretty(segments_doc),
         config.SEGMENTS_GEOJSON_FILE: dumps_feature_collection(
-            build_segment_features(segments_doc, target_lines)
+            {"type": "FeatureCollection", "features": features}
         ),
     }
     manifest = build_manifest(manifest_inputs(files), overrides.dataset.updated_at)
