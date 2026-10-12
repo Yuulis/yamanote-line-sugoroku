@@ -60,6 +60,8 @@ test("the shipped five-service network starts, moves and restores without consol
   await page.reload();
   await page.getByRole("button", { name: /^つづきから（3ターン目・/ }).click();
   expect(await readSave(page)).toEqual(saved);
+  // Resuming the saved game can finish before the asynchronously rebuilt map.
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   // A new game must re-fit the network even after moving/zooming elsewhere.
   await page.evaluate(() => {
     const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
