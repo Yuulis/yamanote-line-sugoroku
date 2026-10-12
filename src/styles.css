@@ -234,6 +234,10 @@ button:disabled {
   border-top: 3px dashed #8a8a8a;
 }
 
+.legend-swatch--service {
+  border-top: 3px solid;
+}
+
 .legend-swatch--current {
   width: 12px;
   height: 12px;

@@ -15,7 +15,7 @@ Start Codex as the main agent (interactive `codex` in the repo root). It loads r
 | 3 Atomic v2 data-contract cutover (still Yamanote-only data) | `feature/jr-east-tokyo-expansion` | verified locally | — | 379 Vitest / 135 pytest / 51 E2E checks passed; generated v2 data validates |
 | 4 Multi-service UI + fixture-network E2E | `feature/jr-east-tokyo-expansion` | verified locally | — | 392 Vitest / 135 pytest / 57 E2E checks passed; pinned 15-turn fixture covers transfers, direction draw, both endpoints |
 | 5 Expanded data (4 more services) + real-data tests | `feature/jr-east-tokyo-expansion` | verified locally | — | 402 Vitest / 136 pytest / 60 E2E checks passed; 67 stations, 146 directed segments, 88 features; initial-overview fix independently passes all 3 browsers; raw checksums pinned |
-| 6 Docs, release PR develop → master, production smoke check | `feature/jr-east-tokyo-expansion` | in progress | — | Docs and release preparation; production merge still requires user approval |
+| 6 Docs, release PR develop → master, production smoke check | `feature/jr-east-tokyo-expansion` | docs verified; PR preparation | — | All local app gates pass; read-only review has no blockers. Production merge and smoke still require user approval |
 
 Plan details per step: `.claude/docs/research/jr-east-tokyo-expansion-design.md` §8 (scope, dependencies,
 file-level change list, risks).
@@ -65,3 +65,13 @@ uv run python -m scripts.data_pipeline.build   # needs raw N02 in N02-25_GML/UTF
 - Stop dev servers by port (`kill $(lsof -t -iTCP:<port> -sTCP:LISTEN)`), never `pkill -f` (kills the invoking shell).
 - WebKit E2E runs only on CI (`GITHUB_ACTIONS`), not locally.
 - Raw N02 data is gitignored; a fresh worktree needs `N02-25_GML/UTF-8` linked from the main checkout.
+
+## Codex continuation verification (2026-10-12)
+
+- Combined feature branch preserves both original Claude implementations and lands the six steps incrementally. The original pipeline worktree remains intact and is excluded locally from accidental git staging.
+- Final local gates: Node 24 locked install/typecheck, 402 Vitest tests, production build without the E2E hook, 60 Playwright checks (desktop/phone Chromium + Firefox), uv locked sync, ruff lint/format, ty, 136 pytest tests with raw N02, v2 artifact validator, pinned input SHA-256 and two byte-identical rebuilds.
+- Read-only fresh-context review: `.claude/logs/codex/20261012T041121Z-jrx-final-review.md`; no blocking findings and no file edits. The main agent separately ran the acceptance gates and reviewed the diff. Collection flags for assertion changes were reviewed as the required v2 contract/feature updates; no placeholders or out-of-scope files remain.
+- Actual artifacts: 5 services, 67 stations, 22 transfer stations, 146 directed segments, 88 geometry features. GeoJSON 41,176 B; maximum endpoint offset 24.507 m; Tokyo/Keiyo representative offset 386.0 m within its reviewed 500 m exception.
+- Visual evidence (local): `.claude/logs/jrx-visuals/`. The real-data E2E proves all turn-0 platforms fit outside the panel on all three local browser profiles. Initial following begins after the first move.
+- Additional repository-contract gate `scripts/check.sh`: 9 passed / 1 existing false positive. It scans `.claude/worktrees/` recursively and interprets `${CODEX_MODEL:-...}` in the nested check-script comments as a model. Actual model settings agree; no orchestration-template code was changed. This gate is not one of the app's three required CI jobs.
+- Current rules: `docs/manual/jr-east-tokyo/rules.md`; implementation status: `docs/manual/jr-east-tokyo/implementation-status.md`; schema/generation: `data/README.md`; spec v0.3.0 addendum: `railway_sugoroku_mvp_spec.md`.

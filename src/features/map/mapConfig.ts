@@ -40,6 +40,14 @@ export const LAYER_IDS = {
 
 export const FALLBACK_LINE_COLOR = "#80c241";
 export const SEGMENT_LINE_WIDTH = 5;
+/** Other services remain visible beside the target's shared N02 track shape. */
+export const OTHER_SERVICE_LINE_WIDTH = 3;
+export const OTHER_SERVICE_LINE_OPACITY = 0.65;
+export const OTHER_SERVICE_LINE_OFFSET = 4;
+export const NETWORK_FIT_PADDING_DESKTOP = { top: 60, right: 70, bottom: 50, left: 340 };
+export const NETWORK_FIT_PADDING_PHONE = { top: 100, right: 60, left: 20 };
+export const PHONE_PANEL_MAX_HEIGHT_SHARE = 0.45;
+export const NETWORK_FIT_PANEL_GAP = 16;
 export const PENDING_SEGMENT_COLOR = "#8a8a8a";
 export const PENDING_SEGMENT_WIDTH = 3;
 /** Dash and gap lengths, in line widths. */

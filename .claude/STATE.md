@@ -45,5 +45,13 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Area 23 wards, all-stop only, terminus/boundary truncation, Yamanote-only mode replaced: user 2026-10-12.
 - Service list (5) and exclusions (常磐各停, 横須賀・総武快速, 常磐快速; 10 unreachable stations accepted): user 2026-10-12.
 - Monte Carlo (confirmed rules): median 52, p90 114, p99 189 turns; no length lever needed by default.
-- Pending user: R1 direction re-draw at single-service stations, R5 title/subtitle, R6 length levers.
+- All rule choices resolved: R1-a re-draw at every non-Yamanote landing; R5 title plus JR East Tokyo 23-ward subtitle; R6 no length levers.
 - Design: .claude/docs/research/jr-east-tokyo-expansion-design.md
+
+### Continuation (Codex, 2026-10-12)
+
+- Integration branch: `feature/jr-east-tokyo-expansion`; preserved Claude engine and pipeline work, then completed steps 1–5 locally. Original pipeline worktree remains intact.
+- Commits: `d3825c3` engine/save v2; `74cf868` pipeline preparation; `aafad9c` atomic schema v2; `0f38c7e` multi-service UI/fixture E2E; `6ffc82d` five-service data and real-data tests.
+- Local evidence: 402 Vitest tests, 136 pytest tests (raw N02 present), 60 browser E2E checks; an additional 3-browser check proves every turn-0 platform fits outside the panel after the initial-camera fix. GeoJSON 41,176 bytes; max endpoint offset 24.507 m.
+- Runtime rules/data contract and pinned fixture seeds are implemented; old saves are rejected, never silently migrated or deleted. Input checksums and byte-identical rebuild are verified.
+- Step 6 documentation is verified; final local gates passed and the read-only review has no blocking findings. Integration/release PR preparation is in progress. `master` merge and production smoke remain behind explicit user approval. See `.claude/docs/plans/jr-east-tokyo-expansion-handoff.md` for final status.

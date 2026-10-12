@@ -14,6 +14,9 @@ import {
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
+  OTHER_SERVICE_LINE_OFFSET,
+  OTHER_SERVICE_LINE_OPACITY,
+  OTHER_SERVICE_LINE_WIDTH,
   PENDING_SEGMENT_COLOR,
   PENDING_SEGMENT_DASH,
   PENDING_SEGMENT_WIDTH,
@@ -58,9 +61,9 @@ export function addRailwayLayers(
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": buildLineColorExpression(services),
-        "line-width": 3,
-        "line-opacity": 0.65,
-        "line-offset": 4,
+        "line-width": OTHER_SERVICE_LINE_WIDTH,
+        "line-opacity": OTHER_SERVICE_LINE_OPACITY,
+        "line-offset": OTHER_SERVICE_LINE_OFFSET,
       },
     });
     // Two layers so progress is told by line style as well as colour (spec 6.3).

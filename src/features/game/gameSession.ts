@@ -6,8 +6,18 @@
 // follows is presentation only, so a reload mid-animation resumes from the
 // committed (and already saved) state.
 
-import type { Direction, EndpointKind, GameConfig, GameState, StationId, StopReason } from "../../types/network";
-import { createGame, landingOptions, type LandingResolvedEvent, type MoveEvent, playTurn, type RailwayNetwork, resolveLandingEvent } from "./engine";
+import type {
+  Direction, EndpointKind, GameConfig, GameState, StationId, StopReason,
+} from "../../types/network";
+import {
+  createGame,
+  landingOptions,
+  type LandingResolvedEvent,
+  type MoveEvent,
+  playTurn,
+  type RailwayNetwork,
+  resolveLandingEvent,
+} from "./engine";
 import { endpointKindAt, unusedPipsOf } from "./gameSummary";
 
 export type SessionPhase = "idle" | "animating";
@@ -70,6 +80,16 @@ export function startSession(
 export function lastMoveOf(game: GameState, network: RailwayNetwork): LastMove | null {
   const record = game.movementHistory.at(-1);
   if (!record) return null;
+  const landing = record.landing === null ? null : resolveLandingEvent(
+    landingOptions({
+      config: game.config,
+      currentStationId: record.toStationId,
+      currentServiceId: record.serviceId,
+      direction: record.direction,
+    }, network),
+    record.serviceId,
+    record.landing,
+  ).event;
   return {
     roll: record.roll,
     unusedPips: unusedPipsOf(record),
@@ -78,10 +98,7 @@ export function lastMoveOf(game: GameState, network: RailwayNetwork): LastMove |
     serviceId: record.serviceId,
     direction: record.direction,
     endpointKind: endpointKindAt(network, record.serviceId, record.toStationId),
-    landing: record.landing === null ? null : resolveLandingEvent(landingOptions({
-      config: game.config, currentStationId: record.toStationId,
-      currentServiceId: record.serviceId, direction: record.direction,
-    }, network), record.serviceId, record.landing).event,
+    landing,
   };
 }
 

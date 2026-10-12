@@ -18,6 +18,8 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 
 一次資料: `railway_sugoroku_mvp_spec.md`（v0.1.0, 2026-10-10）。
 
+An original browser railway board game on a real MapLibre map. The current edition is “山手線すごろく — JR東日本 東京23区版”: five reviewed JR East all-stop service patterns inside Tokyo's 23 wards, 67 shared station identities and 22 transfer stations. A solo player starts at Shimbashi on Yamanote outer and must traverse all 30 Yamanote outer directed segments, then arrive at Shimbashi. Arrival lotteries may change the next service and direction. The original Yamanote-only MVP remains the historical baseline in `railway_sugoroku_mvp_spec.md`; its dated JR expansion addendum and the Key Decisions below define the current edition. No original-work characters, art or text are used.
+
 ## スコープ (Scope)
 
 ### In Scope
@@ -37,6 +39,17 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 - 国土数値情報 N02（2025年度）から山手線データを切り出すPythonデータ加工パイプライン
 - 地図・鉄道データの出典とライセンスの画面表示
 
+Current edition (2026-10-12): the following statements supersede the historical MVP / pending items above.
+
+- Five services: Yamanote (30), Keihin-Tohoku Akabane–Kamata (22), Chuo-Sobu local Nishi-Ogikubo–Koiwa (24), Saikyo Osaki–Ukima-Funado (10), Keiyo Tokyo–Kasai-Rinkai-Koen (6).
+- 67 shared stations, 146 directed gameplay segments and 88 shared LineString geometry features, generated deterministically from N02 2025 and curated overrides.
+- Uniform arrival-only service and direction lotteries with a seeded PRNG; forced outcomes consume no draws; non-Yamanote direction is re-drawn at every landing.
+- Terminus and area-boundary truncation; unchanged Yamanote outer-segment goal, with exact-stop arrival on other services.
+- Atomic save v2 with whole-record structural and seeded replay; unsupported old saves can be discarded.
+- Platform-aware movement, service/direction/lottery text, target-only map progress and multi-service legend, responsive title/play/clear screens.
+- Runtime guards, 17-rule pipeline validator, hermetic fixture E2E and real-data playthrough/smoke tests.
+- Existing source attribution and licences remain visible; raw N02 is never shipped.
+
 ### Out of Scope
 
 <!-- What is explicitly NOT covered, to prevent scope creep. -->
@@ -48,6 +61,14 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 - 駅イベント、スコアランキング、アカウント、サーバー保存
 - 列車時刻・運賃・列車位置などのリアルタイム鉄道情報、路線・駅の動的更新
 - 有料地図API、独自ドメイン、独自サーバー、DB
+
+Current edition (2026-10-12): the following statements supersede the historical MVP / pending items above.
+
+- Rapid/medium-distance services, Joban local (disconnected in-area island), Shinkansen, private railways, subways and through-running outside the reviewed service list.
+- Migrating old saves, a separate Yamanote-only mode, inner-loop mode, multiplayer, CPU, station events and rankings.
+- Dynamic timetables, fares or train positions; accounts, servers, databases and remote saves.
+- Lottery animation beyond accessible text, game-length weighting and pass-through goals on all services.
+- Publishing to production before explicit user approval.
 
 ## 機能要件 (Functional Requirements)
 
@@ -65,6 +86,9 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 | FR-8 | 地図の拡大縮小・移動、自動追尾ON/OFF、アニメーションスキップ | Must | 経路アニメはGeoJSON形状に沿う |
 | FR-9 | 駅タップで駅名・路線情報の簡易ポップアップを表示する | Should | ゲーム状態は変更しない |
 | FR-10 | 地図・鉄道データの出典とライセンスを常に確認可能にする | Must | N02 は CC BY 4.0 |
+| FR-11 | Play the reviewed five-service JR East 23-ward network with shared station identity and arrival lotteries | Must | Supersedes the Yamanote-only scope of the historical MVP FR-1/FR-2; goal remains 30 Yamanote outer segments plus Shimbashi arrival. |
+| FR-12 | Persist atomic save v2 records and validate structural and seeded replay of all lotteries | Must | Old saves are rejected with an unsupported-version message and discard action. |
+| FR-13 | Render service-specific platform positions, directions and endpoint reasons; reveal the next ride only after animation finishes | Must | Target-only directed progress; canonical shared geometry; responsive network overview. |
 
 ## 非機能要件 (Non-Functional Requirements)
 
@@ -93,6 +117,12 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 | Agent | Role | Responsibilities |
 |-------|------|------------------|
 | | | |
+
+### Current runtime architecture (2026-10-12)
+
+Static React/TypeScript application with three independent layers: generated railway data (`public/data`, schema v2), a pure game engine (`engine`), and presentation/animation around atomic committed turns. Curated shared station ids define transfers; per-service platform coordinates define marker positions. Directed gameplay segments reference one canonical +1 geometry feature per adjacent service pair. Both map progress layers are limited to Yamanote and receive feature ids, while goal progress uses directed segment ids.
+
+`playTurn` draws a die, advances, and resolves the landing in one transaction. The app saves that committed result before animation; presentation reveals the next ride and lottery only after the accepted finish. Save v2 replays complete records structurally and with the seed. Python routes each service using open-chain or cycle dynamic programming with selector/filter/via constraints, then validates the published artifacts without raw N02. E2E reads a selected bundle and pinned 128-bit seed; actual data has separate smoke and playthrough checks.
 
 ## 技術選定 (Tech Stack & Rationale)
 
@@ -179,3 +209,9 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
   - R7: 除外路線のみが停まる区内10駅は到達不能のまま受け入れるか。
 
 - 上記 R2・R3・R4・R7 はユーザー決定（2026-10-12）で解決済み（Key Decisions 参照）。残る確認事項は R1（単一路線駅での方向）、R5（タイトル）、R6（ゲーム長の調整、推奨なし）。確定5系統での再シミュレーション: R1 基準（毎回再抽選）で中央値52・p90 114・p99 186ターン、500超0%。
+
+Current edition (2026-10-12): the following statements supersede the historical MVP / pending items above.
+
+- No JR expansion rule choices remain open: R1-a, R2–R4/R7, R5 and R6 are all confirmed in Key Decisions.
+- Review the integration PR, then prepare the develop → master release PR. Production merge and smoke verification require explicit user approval.
+- Optional later work: lottery visual effects, other operators, branching/through services and a new inner-loop ruleset. None changes the current seeded ruleset implicitly.

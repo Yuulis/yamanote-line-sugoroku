@@ -1,7 +1,14 @@
 import type { CSSProperties } from "react";
 import type { RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
-import { directionLabel, displayedRide, landingText, lastRollText, serviceName, stationName } from "../presentation";
+import {
+  directionLabel,
+  displayedRide,
+  landingText,
+  lastRollText,
+  serviceName,
+  stationName,
+} from "../presentation";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
 
 export interface GamePanelProps {
@@ -44,7 +51,10 @@ export function GamePanel(props: GamePanelProps) {
         <dt>現在駅</dt>
         <dd>{stationName(network, props.displayedStationId)}</dd>
         <dt>乗車中</dt>
-        <dd><span className="service-swatch" style={{ backgroundColor: currentService?.color }} aria-hidden="true" />{serviceName(network, ride.serviceId)}</dd>
+        <dd>
+          <span className="service-swatch" style={{ backgroundColor: currentService?.color }} aria-hidden="true" />
+          {serviceName(network, ride.serviceId)}
+        </dd>
         <dt>進行方向</dt>
         <dd>{directionLabel(network, ride.serviceId, ride.direction)}</dd>
         <dt>ターン数</dt>
@@ -102,9 +112,14 @@ export function GamePanel(props: GamePanelProps) {
           <span className="legend-swatch legend-swatch--pending" aria-hidden="true" />
           山手線 未踏破（点線）
         </li>
-        {[...network.servicesById.values()].filter((service) => service.id !== game.config.targetServiceId).map((service) => (
-          <li key={service.id}><span className="legend-swatch" style={{ borderTop: `3px solid ${service.color}` }} aria-hidden="true" />{service.name}</li>
-        ))}
+        {[...network.servicesById.values()]
+          .filter((service) => service.id !== game.config.targetServiceId)
+          .map((service) => (
+            <li key={service.id}>
+              <span className="legend-swatch legend-swatch--service" style={{ borderTopColor: service.color }} aria-hidden="true" />
+              {service.name}
+            </li>
+          ))}
         <li>
           <span className="legend-swatch legend-swatch--current" aria-hidden="true" />
           現在地

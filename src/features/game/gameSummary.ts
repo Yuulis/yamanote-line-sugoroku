@@ -13,12 +13,18 @@ export function summarizeGame(game: GameState): GameSummary {
     (total, record) => total + record.traversedSegmentIds.length,
     0,
   );
-  const transfers = game.movementHistory.filter((record) => record.landing && record.landing.serviceId !== record.serviceId).length;
+  const transfers = game.movementHistory.filter(
+    (record) => record.landing && record.landing.serviceId !== record.serviceId,
+  ).length;
   return { turns: game.turn, moves, transfers };
 }
 
 /** Endpoint kind belongs to the ridden service, even if the landing transfers away. */
-export function endpointKindAt(network: RailwayNetwork, serviceId: string, stationId: string): EndpointKind | null {
+export function endpointKindAt(
+  network: RailwayNetwork,
+  serviceId: string,
+  stationId: string,
+): EndpointKind | null {
   const service = network.servicesById.get(serviceId);
   if (!service || service.circular) return null;
   if (stationId === service.stationIds[0]) return service.endpoints.first;
@@ -42,6 +48,8 @@ export function earlyStopNote(
 ): string | null {
   const unused = unusedPipsOf(record);
   if (unused === 0 || record.stopReason === "roll") return null;
-  const kind = record.stopReason === "endpoint" && endpointKind ? `〔${endpointKind === "terminus" ? "終点" : "エリア端"}〕` : "";
+  const kind = record.stopReason === "endpoint" && endpointKind
+    ? `〔${endpointKind === "terminus" ? "終点" : "エリア端"}〕`
+    : "";
   return `${stationName(record.toStationId)}で停止${kind}、残り${unused}`;
 }

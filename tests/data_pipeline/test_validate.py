@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+from collections.abc import Callable
 
 import pytest
 
@@ -295,12 +296,11 @@ def test_validate_with_null_station_ids_reports_instead_of_crashing(
     ],
 )
 def test_v2_contract_rejects_invalid_metadata_and_geometry(
-    dataset: Dataset, committed_overrides: Overrides, edit: object, expected: str
+    dataset: Dataset,
+    committed_overrides: Overrides,
+    edit: Callable[[Dataset], None],
+    expected: str,
 ) -> None:
-    # Callables are parametrized independently so each corruption has its own report.
-    from collections.abc import Callable
-
-    assert isinstance(edit, Callable)
     edit(dataset)
     assert expected in _errors(dataset, committed_overrides)
 

@@ -59,9 +59,21 @@ export function isServicePattern(value: unknown): value is ServicePattern {
   if (!isNonEmptyArray(stationIds) || !stationIds.every(isNonEmptyString)) return false;
   if (new Set(stationIds).size !== stationIds.length) return false;
   if (typeof value.circular !== "boolean" || stationIds.length < (value.circular ? 3 : 2)) return false;
-  if (!isRecord(directionLabels) || !isNonEmptyString(directionLabels.forward) || !isNonEmptyString(directionLabels.backward)) return false;
-  if (!isRecord(platformCoordinates) || Object.keys(platformCoordinates).length !== stationIds.length || !stationIds.every((id) => Object.hasOwn(platformCoordinates, id) && isPosition(platformCoordinates[id]))) return false;
-  if (value.circular ? endpoints !== undefined : !isRecord(endpoints) || !isEndpointKind(endpoints.first) || !isEndpointKind(endpoints.last)) return false;
+  if (
+    !isRecord(directionLabels) ||
+    !isNonEmptyString(directionLabels.forward) ||
+    !isNonEmptyString(directionLabels.backward)
+  ) return false;
+  if (
+    !isRecord(platformCoordinates) ||
+    Object.keys(platformCoordinates).length !== stationIds.length ||
+    !stationIds.every((id) => Object.hasOwn(platformCoordinates, id) && isPosition(platformCoordinates[id]))
+  ) return false;
+  if (value.circular) {
+    if (endpoints !== undefined) return false;
+  } else if (
+    !isRecord(endpoints) || !isEndpointKind(endpoints.first) || !isEndpointKind(endpoints.last)
+  ) return false;
   return (
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.name) &&

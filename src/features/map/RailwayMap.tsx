@@ -20,6 +20,10 @@ import {
   MAP_MIN_ZOOM,
   MAP_STYLE_URL,
   MAP_ZOOM,
+  NETWORK_FIT_PADDING_DESKTOP,
+  NETWORK_FIT_PADDING_PHONE,
+  NETWORK_FIT_PANEL_GAP,
+  PHONE_PANEL_MAX_HEIGHT_SHARE,
   PHONE_MEDIA_QUERY,
 } from "./mapConfig";
 import {
@@ -175,8 +179,11 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
             [Math.max(...longitudes), Math.max(...latitudes)],
           ];
           const padding = isPhoneWidth()
-            ? { top: 100, right: 60, bottom: map.getContainer().clientHeight * 0.45 + 16, left: 20 }
-            : { top: 60, right: 70, bottom: 50, left: 340 };
+            ? {
+                ...NETWORK_FIT_PADDING_PHONE,
+                bottom: map.getContainer().clientHeight * PHONE_PANEL_MAX_HEIGHT_SHARE + NETWORK_FIT_PANEL_GAP,
+              }
+            : NETWORK_FIT_PADDING_DESKTOP;
           map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
           // Padding helps fit the network on the title screen, but must not
           // displace the centre when the player enables following.
