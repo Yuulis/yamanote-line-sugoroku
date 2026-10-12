@@ -1,4 +1,6 @@
 import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
+import type { GameState, MoveRecord } from "../../../src/types/network";
+import type { RailwayBundle } from "../fixtures/bundle";
 import { LAYER_IDS, SOURCE_IDS } from "../../../src/features/map/mapConfig";
 
 // Page helpers shared by the specs. Selectors are role / accessible-name
@@ -14,25 +16,8 @@ export const REQUIRED_SEGMENTS = 30;
  */
 const FREEZE_AHEAD_MS = 60_000;
 
-export interface SavedMove {
-  turn: number;
-  roll: number;
-  fromStationId: string;
-  toStationId: string;
-  traversedSegmentIds: string[];
-}
-
-/** The fields of the saved GameState the specs look at. */
-export interface SavedGame {
-  saveVersion: number;
-  status: string;
-  turn: number;
-  currentStationId: string;
-  completedSegmentIds: string[];
-  movementHistory: SavedMove[];
-  rngSeed: string;
-  rngState: string;
-}
+export type SavedMove = MoveRecord;
+export type SavedGame = GameState;
 
 export interface MapSnapshot {
   styleLoaded: boolean;
@@ -202,7 +187,8 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
 }
 
 /** Stations from the app's own data (served by `vite preview`). */
-export async function loadStations(request: APIRequestContext): Promise<Map<string, Station>> {
+export async function loadStations(request: APIRequestContext | RailwayBundle): Promise<Map<string, Station>> {
+  if ("network" in request) return new Map(request.network.stationsById);
   const response = await request.get("data/stations.json");
   expect(response.ok()).toBe(true);
   const stations = (await response.json()) as Station[];
@@ -210,7 +196,11 @@ export async function loadStations(request: APIRequestContext): Promise<Map<stri
 }
 
 /** Data credit from the app's own manifest (served by `vite preview`). */
-export async function loadManifestSource(request: APIRequestContext): Promise<ManifestSource> {
+export async function loadManifestSource(request: APIRequestContext | RailwayBundle): Promise<ManifestSource> {
+  if ("data" in request) {
+    if (!request.data.manifest.ok) throw new Error("Bundle manifest failed to load");
+    return request.data.manifest.value.source;
+  }
   const response = await request.get("data/manifest.json");
   expect(response.ok()).toBe(true);
   const manifest = (await response.json()) as { source: ManifestSource };
@@ -225,4 +215,11 @@ export function targetCompletedIds(game: Pick<SavedGame, "completedSegmentIds">)
 /** Canonical feature ids for the Yamanote +1 directed pair contract. */
 export function targetFeatureIds(game: Pick<SavedGame, "completedSegmentIds">): string[] {
   return targetCompletedIds(game).map((id) => id.replace(/:([^:]+):([^:]+)$/, ":$1~$2"));
+}
+
+/** The platform the committed (next) ride uses after the landing. */
+export function markerPosition(bundle: RailwayBundle, save: SavedGame): [number, number] {
+  const point = bundle.network.servicesById.get(save.currentServiceId)?.platformCoordinates[save.currentStationId];
+  if (!point) throw new Error("Missing platform point");
+  return point;
 }

@@ -28,6 +28,7 @@ export const SOURCE_IDS = {
 } as const;
 
 export const LAYER_IDS = {
+  services: "railway-services",
   /** Not yet traversed: grey dashed line. */
   segmentsPending: "railway-segments-pending",
   /** Traversed: solid line in the service colour. */

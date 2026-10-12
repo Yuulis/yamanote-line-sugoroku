@@ -21,6 +21,8 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test.use({ dataset: "fixture" });
+
 test("without WebGL2 the title shows a notice and the game stays playable", async ({ page }) => {
   const pageErrors: Error[] = [];
   page.on("pageerror", (error) => pageErrors.push(error));

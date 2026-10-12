@@ -165,6 +165,24 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
         services: data.services.ok ? data.services.value : undefined,
         geometry: data.geometry.ok ? data.geometry.value : undefined,
       });
+      if (data.services.ok) {
+        const points = data.services.value.flatMap((service) => Object.values(service.platformCoordinates));
+        if (points.length > 0) {
+          const longitudes = points.map((point) => point[0]);
+          const latitudes = points.map((point) => point[1]);
+          const bounds: [Position, Position] = [
+            [Math.min(...longitudes), Math.min(...latitudes)],
+            [Math.max(...longitudes), Math.max(...latitudes)],
+          ];
+          const padding = isPhoneWidth()
+            ? { top: 70, right: 60, bottom: map.getContainer().clientHeight * 0.45 + 16, left: 20 }
+            : { top: 60, right: 70, bottom: 50, left: 340 };
+          map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
+          // Padding helps fit the network on the title screen, but must not
+          // displace the centre when the player enables following.
+          map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+        }
+      }
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {

@@ -85,7 +85,7 @@ describe("move animation lifecycle", () => {
 
   it("ignores a click from before resuming the very same save", () => {
     const saved = moveByRoll(createGame(DEFAULT_CONFIG, "same", network), 2, network).state;
-    const first = resumeSession(saved, 1);
+    const first = resumeSession(saved, network, 1);
     const staleClick = rollAction(first);
     const resumedAgain = reduce(first, { type: "resume", game: saved });
     expect(resumedAgain.game).toBe(saved);
@@ -106,7 +106,7 @@ describe("move animation lifecycle", () => {
   it("locks the dice during each move and for good after the clearing move", () => {
     let state = createGame(DEFAULT_CONFIG, "clear", network);
     for (const roll of [6, 6, 6, 6, 5]) state = moveByRoll(state, roll, network).state;
-    let session = resumeSession(state, 1);
+    let session = resumeSession(state, network, 1);
     while (session.game.status === "playing") {
       const rolled = reduce(session, rollAction(session));
       expect(reduce(rolled, rollAction(rolled))).toBe(rolled);
@@ -121,12 +121,16 @@ describe("resume", () => {
   it("resumes idle with the last roll restored and no animation", () => {
     let game = createGame(DEFAULT_CONFIG, "resume", network);
     game = moveByRoll(game, 4, network).state;
-    const session = resumeSession(game, 3);
+    const session = resumeSession(game, network, 3);
     expect(session).toEqual({
       sessionId: 3,
       game,
       phase: "idle",
-      lastMove: { roll: 4, unusedPips: 0, stopReason: "roll", stopStationId: "shinagawa" },
+      lastMove: {
+        roll: 4, unusedPips: 0, stopReason: "roll", stopStationId: "shinagawa",
+        serviceId: "jr-yamanote", direction: 1, endpointKind: null,
+        landing: { type: "landing-resolved", stationId: "shinagawa", serviceCandidates: ["jr-yamanote"], serviceId: "jr-yamanote", serviceDrawRequired: false, directionCandidates: [1], direction: 1, directionDrawRequired: false, changedService: false },
+      },
       animation: null,
     });
   });
@@ -134,13 +138,14 @@ describe("resume", () => {
   it("restores unused pips of a truncated final move", () => {
     let game = createGame(DEFAULT_CONFIG, "resume", network);
     for (const roll of [6, 6, 6, 6, 3, 6]) game = moveByRoll(game, roll, network).state;
-    expect(lastMoveOf(game)).toEqual({
+    expect(lastMoveOf(game, network)).toEqual({
       roll: 6,
       unusedPips: 3,
       stopReason: "goal",
       stopStationId: START,
+      serviceId: "jr-yamanote", direction: 1, endpointKind: null, landing: null,
     });
-    expect(lastMoveOf(createGame(DEFAULT_CONFIG, "x", network))).toBeNull();
+    expect(lastMoveOf(createGame(DEFAULT_CONFIG, "x", network), network)).toBeNull();
   });
 });
 
@@ -194,7 +199,7 @@ describe("summarizeGame", () => {
     let game = createGame(DEFAULT_CONFIG, "sum", network);
     for (const roll of [6, 6, 6, 6, 3, 6]) game = moveByRoll(game, roll, network).state;
     expect(game.status).toBe("completed");
-    expect(summarizeGame(game)).toEqual({ turns: 6, moves: 30 });
+    expect(summarizeGame(game)).toEqual({ turns: 6, moves: 30, transfers: 0 });
     expect(game.movementHistory.map(unusedPipsOf)).toEqual([0, 0, 0, 0, 0, 3]);
   });
 });
@@ -227,17 +232,19 @@ describe("stop-reason texts", () => {
     const record = truncated.movementHistory.at(-1)!;
     expect(record.stopReason).toBe("endpoint");
     expect(earlyStopNote(record, name)).toBe("<x>で停止、残り3");
-    expect(lastMoveOf(truncated)).toEqual({
+    expect(lastMoveOf(truncated, multi)).toEqual({
       roll: 5,
       unusedPips: 3,
       stopReason: "endpoint",
       stopStationId: "x",
+      serviceId: M_LINE, direction: -1, endpointKind: "terminus",
+      landing: { type: "landing-resolved", stationId: "x", serviceCandidates: [M_LINE], serviceId: M_LINE, serviceDrawRequired: false, directionCandidates: [1], direction: 1, directionDrawRequired: false, changedService: false },
     });
   });
 
   it("a live roll records stop reason and stop station like a resumed one", () => {
     const start = startSession(DEFAULT_CONFIG, "live", network, 1);
     const rolled = reduce(start, rollAction(start));
-    expect(rolled.lastMove).toEqual(lastMoveOf(rolled.game));
+    expect(rolled.lastMove).toEqual(lastMoveOf(rolled.game, network));
   });
 });

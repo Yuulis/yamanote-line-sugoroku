@@ -50,6 +50,19 @@ export function addRailwayLayers(
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
+    map.addLayer({
+      id: LAYER_IDS.services,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: ["!=", ["get", "serviceId"], "jr-yamanote"],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": buildLineColorExpression(services),
+        "line-width": 3,
+        "line-opacity": 0.65,
+        "line-offset": 4,
+      },
+    });
     // Two layers so progress is told by line style as well as colour (spec 6.3).
     map.addLayer({
       id: LAYER_IDS.segmentsPending,

@@ -4,6 +4,8 @@ import {
   freezeClock,
   gamePanel,
   loadStations,
+  markerPosition,
+  targetCompletedIds,
   openTitle,
   panelStat,
   REQUIRED_SEGMENTS,
@@ -20,11 +22,13 @@ import {
 
 const ROLLS_BEFORE_RELOAD = 2;
 
+test.use({ dataset: "fixture" });
+
 test("[8.3-4] reload mid-game resumes the same game and the same next roll", async ({
   page,
-  request,
+  railwayBundle,
 }) => {
-  const stations = await loadStations(request);
+  const stations = await loadStations(railwayBundle);
 
   // Control run: never reloaded.
   await openTitle(page);
@@ -53,9 +57,9 @@ test("[8.3-4] reload mid-game resumes the same game and the same next roll", asy
   await expect(panelStat(page, "ターン数")).toHaveText(String(ROLLS_BEFORE_RELOAD));
   await expect(panelStat(page, "現在駅")).toHaveText(station?.name ?? "?");
   await expect(panelStat(page, "踏破区間")).toHaveText(
-    `${beforeReload.completedSegmentIds.length}/${REQUIRED_SEGMENTS}`,
+    `${targetCompletedIds(beforeReload).length}/${REQUIRED_SEGMENTS}`,
   );
-  await expect.poll(async () => (await readMap(page))?.marker).toEqual(station?.coordinates);
+  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, beforeReload));
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
     .toEqual(targetFeatureIds(beforeReload).sort());

@@ -104,7 +104,15 @@ describe("reduceGameSession on a multi-service network", () => {
       "segment-traversed",
       "landing-resolved",
     ]);
-    expect(rolled.lastMove).toEqual({ roll: 4, unusedPips: 0, stopReason: "roll", stopStationId: "d" });
+    expect(rolled.lastMove).toEqual({
+      roll: 4, unusedPips: 0, stopReason: "roll", stopStationId: "d",
+      serviceId: "m-loop", direction: 1, endpointKind: null,
+      landing: {
+        type: "landing-resolved", stationId: "d", serviceCandidates: ["m-loop", "m-line"],
+        serviceId: "m-line", serviceDrawRequired: true, directionCandidates: [1, -1],
+        direction: 1, directionDrawRequired: true, changedService: true,
+      },
+    });
   });
 });
 

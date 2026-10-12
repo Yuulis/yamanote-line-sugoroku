@@ -1,3 +1,4 @@
+import { FIXTURE_GAME_SEED, FIXTURE_SCENARIO_TURNS } from "./fixtures/seeds";
 import { expect, test } from "./fixtures";
 import {
   gamePanel,
@@ -8,6 +9,7 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  targetCompletedIds,
 } from "./support/app";
 
 // Spec 8.3 items covered here (MVP completion condition, spec 9):
@@ -15,15 +17,17 @@ import {
 //   [8.3-3] All 30 segments end up completed.
 //   [8.3-4] A cleared game reopens its result after a reload.
 
-/** A loop of 30 segments needs at most 30 rolls even if every roll is a 1. */
-const MAX_TURNS = REQUIRED_SEGMENTS;
+/** This fixture trajectory is proved by Vitest, including lotteries and endpoints. */
+const MAX_TURNS = FIXTURE_SCENARIO_TURNS.completed;
 const GOAL_STATION_ID = "shimbashi";
+
+test.use({ dataset: "fixture" });
 
 test("[8.3-2/3] play a full game to the clear screen, then play again", async ({
   page,
-  request,
+  railwayBundle,
 }) => {
-  const stations = await loadStations(request);
+  const stations = await loadStations(railwayBundle);
   await openTitle(page);
   await startNewGame(page);
   const clear = page.getByRole("region", { name: "クリア！" });
@@ -37,22 +41,35 @@ test("[8.3-2/3] play a full game to the clear screen, then play again", async ({
   if (!save) throw new Error("the clearing turn was not saved");
   expect(save.status).toBe("completed");
   expect(save.currentStationId).toBe(GOAL_STATION_ID);
-  expect(new Set(save.completedSegmentIds).size).toBe(REQUIRED_SEGMENTS);
+  expect(new Set(targetCompletedIds(save)).size).toBe(REQUIRED_SEGMENTS);
+  expect(save.rngSeed).toBe(FIXTURE_GAME_SEED);
+  expect(save.turn).toBe(MAX_TURNS);
+  expect(save.completedSegmentIds.length).toBeGreaterThan(REQUIRED_SEGMENTS);
 
   await expect(clear).toContainText("新橋に戻りました");
   const stats = clear.locator("dl");
   await expect(stats.locator("dt + dd").first()).toHaveText(`${save.turn}ターン`);
-  await expect(stats.locator("dt + dd").nth(1)).toHaveText(`${REQUIRED_SEGMENTS}回`);
+  await expect(stats.locator("dt + dd").nth(1)).toHaveText(`${save.movementHistory.reduce((total, record) => total + record.traversedSegmentIds.length, 0)}回`);
   const items = clear.getByRole("listitem");
   await expect(items).toHaveCount(save.turn);
   for (const [index, record] of save.movementHistory.entries()) {
     const from = stations.get(record.fromStationId)?.name;
     const to = stations.get(record.toStationId)?.name;
     const unused = record.roll - record.traversedSegmentIds.length;
-    const note = unused > 0 ? `（新橋で停止、残り${unused}）` : "";
-    await expect(items.nth(index)).toHaveText(
-      `${record.turn}ターン目 出目${record.roll}：${from} → ${to}${note}`,
-    );
+    const service = railwayBundle.network.servicesById.get(record.serviceId)!;
+    const direction = record.direction === 1 ? service.directionLabels.forward : service.directionLabels.backward;
+    await expect(items.nth(index)).toContainText(`${record.turn}ターン目 出目${record.roll}：${from} → ${to}`);
+    await expect(items.nth(index)).toContainText(`（${service.name}・${direction}）`);
+    if (unused > 0) {
+      const kind = record.stopReason === "endpoint" && !service.circular
+        ? `〔${(record.toStationId === service.stationIds[0] ? service.endpoints.first : service.endpoints.last) === "terminus" ? "終点" : "エリア端"}〕` : "";
+      await expect(items.nth(index)).toContainText(`（${to}で停止${kind}、残り${unused}）`);
+    }
+    if (record.landing && record.landing.serviceId !== record.serviceId) {
+      const next = railwayBundle.network.servicesById.get(record.landing.serviceId)!;
+      await expect(items.nth(index)).toContainText(`乗換: ${next.name}`);
+    }
+
   }
 
   // The result survives a reload and is offered on the title screen.

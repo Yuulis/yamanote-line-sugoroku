@@ -1,8 +1,8 @@
 import type { GameState } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
-import { earlyStopNote, summarizeGame } from "../gameSummary";
+import { earlyStopNote, endpointKindAt, summarizeGame } from "../gameSummary";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
-import { stationName } from "./GamePanel";
+import { directionLabel, serviceName, stationName } from "../presentation";
 
 interface ClearScreenProps {
   game: GameState;
@@ -15,14 +15,14 @@ interface ClearScreenProps {
 
 /** Shown once the clearing move has finished animating (spec 6.1). */
 export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitle }: ClearScreenProps) {
-  const { turns, moves } = summarizeGame(game);
+  const { turns, moves, transfers } = summarizeGame(game);
   const goalName = stationName(network, game.config.startStationId);
   return (
     <section className="clear-screen" aria-labelledby="clear-title">
       <h1 id="clear-title" className="clear-screen__title">
         クリア！
       </h1>
-      <p>山手線を外回りで一周し、{goalName}に戻りました。</p>
+      <p>山手線の外回り全30区間を踏破し、{goalName}に戻りました。</p>
       {saveStatus !== "saved" && (
         <p className="clear-screen__save-warning" role="alert">
           セーブ: {saveStatusMessage(saveStatus)}。再読み込みするとこのクリアは残りません。
@@ -33,15 +33,19 @@ export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitl
         <dd>{turns}ターン</dd>
         <dt>移動回数（駅間）</dt>
         <dd>{moves}回</dd>
+        <dt>乗換回数</dt>
+        <dd>{transfers}回</dd>
       </dl>
       <h2 className="clear-screen__subtitle">移動履歴</h2>
       <ol className="clear-screen__history">
         {game.movementHistory.map((record) => {
-          const note = earlyStopNote(record, (id) => stationName(network, id));
+          const note = earlyStopNote(record, (id) => stationName(network, id), endpointKindAt(network, record.serviceId, record.toStationId));
           return (
             <li key={record.turn}>
               <span className="clear-screen__turn">{record.turn}ターン目</span> 出目{record.roll}：
               {stationName(network, record.fromStationId)} → {stationName(network, record.toStationId)}
+              （{serviceName(network, record.serviceId)}・{directionLabel(network, record.serviceId, record.direction)}）
+              {record.landing && record.landing.serviceId !== record.serviceId && ` → 乗換: ${serviceName(network, record.landing.serviceId)}（${directionLabel(network, record.landing.serviceId, record.landing.direction)}）`}
               {note !== null && `（${note}）`}
             </li>
           );

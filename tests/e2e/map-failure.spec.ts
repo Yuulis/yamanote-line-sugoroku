@@ -2,6 +2,7 @@ import { expect, test } from "./fixtures";
 import {
   gamePanel,
   loadStations,
+  markerPosition,
   openTitle,
   panelStat,
   readMap,
@@ -17,12 +18,14 @@ import {
 
 const MAP_ERROR_TEXT = "地図の読み込みに失敗しました。";
 
+test.use({ dataset: "fixture" });
+
 test("[8.3-6] a failed map style keeps the game playable and retry recovers the map", async ({
   page,
-  request,
+  railwayBundle,
   mapStub,
 }) => {
-  const stations = await loadStations(request);
+  const stations = await loadStations(railwayBundle);
   await openTitle(page);
   await startNewGame(page);
   await rollOnce(page);
@@ -53,7 +56,7 @@ test("[8.3-6] a failed map style keeps the game playable and retry recovers the 
   await banner.getByRole("button", { name: "再試行" }).click();
   await expect(banner).toBeHidden();
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
-  await expect.poll(async () => (await readMap(page))?.marker).toEqual(station?.coordinates);
+  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, secondTurn));
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
     .toEqual(targetFeatureIds(secondTurn).sort());
@@ -64,12 +67,11 @@ test("[8.3-6] a failed map style keeps the game playable and retry recovers the 
 
 test("[8.3-6] tiles failing before the map loads: retry message, game kept, retry recovers", async ({
   page,
-  request,
+  railwayBundle,
   mapStub,
 }) => {
   // MapLibre does not repaint after a network tile error, so with every tile
   // failing the map never fires "load"; the app reports it like a style failure.
-  const stations = await loadStations(request);
   mapStub.failTiles = true;
   await openTitle(page);
   const banner = page.getByRole("alert").filter({ hasText: MAP_ERROR_TEXT });
@@ -87,8 +89,7 @@ test("[8.3-6] tiles failing before the map loads: retry message, game kept, retr
   mapStub.failTiles = false;
   await banner.getByRole("button", { name: "再試行" }).click();
   await expect(banner).toBeHidden();
-  const station = stations.get(save.currentStationId);
-  await expect.poll(async () => (await readMap(page))?.marker).toEqual(station?.coordinates);
+  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, save));
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
     .toEqual(targetFeatureIds(save).sort());
