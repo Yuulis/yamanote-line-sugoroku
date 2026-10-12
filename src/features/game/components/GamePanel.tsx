@@ -28,10 +28,11 @@ export function stationName(network: RailwayNetwork, stationId: string): string 
   return network.stationsById.get(stationId)?.name ?? stationId;
 }
 
-function lastRollText(lastMove: LastMove | null, goalName: string): string {
+function lastRollText(lastMove: LastMove | null, network: RailwayNetwork): string {
   if (!lastMove) return "—";
-  if (lastMove.unusedPips === 0) return String(lastMove.roll);
-  return `${lastMove.roll}（${goalName}で停止、残り${lastMove.unusedPips}は使わず）`;
+  if (lastMove.stopReason === "roll" || lastMove.unusedPips === 0) return String(lastMove.roll);
+  const stopName = stationName(network, lastMove.stopStationId);
+  return `${lastMove.roll}（${stopName}で停止、残り${lastMove.unusedPips}は使わず）`;
 }
 
 export function GamePanel(props: GamePanelProps) {
@@ -41,7 +42,6 @@ export function GamePanel(props: GamePanelProps) {
   const canRoll = game.status === "playing" && phase === "idle";
   const lineColor = network.servicesById.get(game.config.targetServiceId)?.color;
   const legendStyle = { "--completed-line-color": lineColor } as CSSProperties;
-  const goalName = stationName(network, game.config.startStationId);
   const saveFailed = saveStatus === "failed" || saveStatus === "unavailable";
 
   return (
@@ -59,7 +59,7 @@ export function GamePanel(props: GamePanelProps) {
           {props.displayedCompletedCount}/{props.requiredCount}
         </dd>
         <dt>出目</dt>
-        <dd aria-live="polite">{lastRollText(session.lastMove, goalName)}</dd>
+        <dd aria-live="polite">{lastRollText(session.lastMove, network)}</dd>
       </dl>
       <div className="game-panel__actions">
         <button type="button" className="game-panel__roll" onClick={props.onRoll} disabled={!canRoll}>

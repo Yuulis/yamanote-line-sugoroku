@@ -11,6 +11,7 @@ import {
   currentPositionCollection,
   pendingSegmentFilter,
 } from "../../src/features/map/progressStyle";
+import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { DEFAULT_CONFIG, segmentId, START, yamanoteInput } from "./fixtures/yamanote";
 
 const network = buildRailwayNetwork(yamanoteInput());
@@ -86,6 +87,24 @@ describe("reduceGameSession", () => {
     const restarted = reduce(played, { type: "new-game", seed: "y" });
     expect(restarted.game).toMatchObject({ currentStationId: START, turn: 0, rngSeed: "y" });
     expect(restarted.lastMove).toBeNull();
+  });
+});
+
+describe("reduceGameSession on a multi-service network", () => {
+  it("commits the landing with the roll and animates hops then the landing event", () => {
+    const multi = buildRailwayNetwork(multiServiceInput());
+    const start = startSession(multiConfig(), "mixed-30", multi);
+    const rolled = reduceGameSession(start, rollAction(start), multiConfig(), multi);
+    // mixed-30, turn 1: 4 to d, then the lottery picks the line towards z.
+    expect(rolled.game).toMatchObject({ currentStationId: "d", currentServiceId: M_LINE, direction: 1 });
+    expect(rolled.animation?.events.map((event) => event.type)).toEqual([
+      "segment-traversed",
+      "segment-traversed",
+      "segment-traversed",
+      "segment-traversed",
+      "landing-resolved",
+    ]);
+    expect(rolled.lastMove).toEqual({ roll: 4, unusedPips: 0, stopReason: "roll", stopStationId: "d" });
   });
 });
 

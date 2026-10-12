@@ -1,6 +1,6 @@
 import type { GameState } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
-import { summarizeGame, unusedPipsOf } from "../gameSummary";
+import { earlyStopNote, summarizeGame } from "../gameSummary";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
 import { stationName } from "./GamePanel";
 
@@ -37,12 +37,12 @@ export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitl
       <h2 className="clear-screen__subtitle">移動履歴</h2>
       <ol className="clear-screen__history">
         {game.movementHistory.map((record) => {
-          const unused = unusedPipsOf(record);
+          const note = earlyStopNote(record, (id) => stationName(network, id));
           return (
             <li key={record.turn}>
               <span className="clear-screen__turn">{record.turn}ターン目</span> 出目{record.roll}：
               {stationName(network, record.fromStationId)} → {stationName(network, record.toStationId)}
-              {unused > 0 && `（${goalName}で停止、残り${unused}）`}
+              {note !== null && `（${note}）`}
             </li>
           );
         })}

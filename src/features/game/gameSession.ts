@@ -6,7 +6,7 @@
 // follows is presentation only, so a reload mid-animation resumes from the
 // committed (and already saved) state.
 
-import type { GameConfig, GameState, StationId } from "../../types/network";
+import type { GameConfig, GameState, StationId, StopReason } from "../../types/network";
 import { createGame, type MoveEvent, playTurn, type RailwayNetwork } from "./engine";
 import { unusedPipsOf } from "./gameSummary";
 
@@ -22,8 +22,11 @@ export interface MoveAnimation {
 
 export interface LastMove {
   roll: number;
-  /** Pips discarded because the goal was reached mid-move. */
+  /** Pips discarded because the move stopped early (goal or endpoint). */
   unusedPips: number;
+  stopReason: StopReason;
+  /** Station where the move ended. */
+  stopStationId: StationId;
 }
 
 export interface GameSession {
@@ -63,7 +66,12 @@ export function startSession(
 export function lastMoveOf(game: GameState): LastMove | null {
   const record = game.movementHistory.at(-1);
   if (!record) return null;
-  return { roll: record.roll, unusedPips: unusedPipsOf(record) };
+  return {
+    roll: record.roll,
+    unusedPips: unusedPipsOf(record),
+    stopReason: record.stopReason,
+    stopStationId: record.toStationId,
+  };
 }
 
 /** A restored, already-validated game; resumes idle with no animation. */
@@ -105,12 +113,12 @@ export function reduceGameSession(
     case "roll": {
       // A stale or repeated click must never apply a second move.
       if (!canRoll(session, action)) return session;
-      const { state, roll, unusedPips, events } = playTurn(session.game, network);
+      const { state, roll, unusedPips, stopReason, events } = playTurn(session.game, network);
       return {
         ...session,
         game: state,
         phase: "animating",
-        lastMove: { roll, unusedPips },
+        lastMove: { roll, unusedPips, stopReason, stopStationId: state.currentStationId },
         animation: {
           sessionId: session.sessionId,
           turn: state.turn,

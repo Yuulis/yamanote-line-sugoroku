@@ -91,7 +91,10 @@ export function yamanoteInput(): RailwayNetworkInput {
   };
 }
 
-/** A 3-stop loop through 新橋 on a non-target service (future multi-line rules). */
+/**
+ * A 3-stop loop through 新橋 on a non-target service, with segments in both
+ * directions (every non-target service must be ridable both ways).
+ */
 export const SHUTTLE_STATION_IDS = [START, "test-a", "test-b"] as const;
 
 export function inputWithShuttle(): RailwayNetworkInput {
@@ -110,7 +113,11 @@ export function inputWithShuttle(): RailwayNetworkInput {
         color: "#000000",
       },
     ],
-    segments: [...base.segments, ...loopSegments(OTHER_SERVICE_ID, SHUTTLE_STATION_IDS)],
+    segments: [
+      ...base.segments,
+      ...loopSegments(OTHER_SERVICE_ID, SHUTTLE_STATION_IDS),
+      ...loopSegments(OTHER_SERVICE_ID, [...SHUTTLE_STATION_IDS].reverse()),
+    ],
   };
 }
 

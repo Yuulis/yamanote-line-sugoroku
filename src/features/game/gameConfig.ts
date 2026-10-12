@@ -1,11 +1,18 @@
-import type { GameConfig } from "../../types/network";
+import type { GameConfig, ServiceId } from "../../types/network";
 
 /** The Yamanote line has exactly 30 stations and 30 outer-loop segments. */
-export const EXPECTED_STATION_COUNT = 30;
+export const EXPECTED_STATION_COUNTS: Readonly<Partial<Record<ServiceId, number>>> = {
+  "jr-yamanote": 30,
+};
 
-/** MVP rules (spec 3.3): outer loop from 新橋, truncate on arrival when complete. */
+/**
+ * Game rules (spec 3.3, 4.1): outer loop from 新橋, truncate on arrival when
+ * complete; landing lotteries per the JR East 23-ward ruleset (R1-a). The
+ * ruleset version names the seeded semantics, so saves made under other
+ * rules are rejected (`CONFIG_MISMATCH`).
+ */
 export const MVP_GAME_CONFIG: GameConfig = {
-  rulesetVersion: "mvp-1",
+  rulesetVersion: "jr-east-23ku-1",
   targetServiceId: "jr-yamanote",
   startStationId: "shimbashi",
   targetDirection: 1,

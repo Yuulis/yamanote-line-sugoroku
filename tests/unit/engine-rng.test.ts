@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  drawIndex,
   faceFromDraw,
+  indexFromDraw,
   isValidRngState,
   rollDie,
   seedRng,
@@ -122,5 +124,108 @@ describe("faceFromDraw (no modulo bias by construction)", () => {
     for (const draw of [4_294_967_292, 4_294_967_293, 4_294_967_294, 4_294_967_295]) {
       expect(faceFromDraw(draw)).toBeUndefined();
     }
+  });
+});
+
+const UINT32_MAX = 0xffffffff;
+const TWO_POW_32 = 2 ** 32;
+const INVALID_STATE = expect.objectContaining({ code: "INVALID_STATE" });
+
+function indexSequence(rngState: string, k: number, count: number): number[] {
+  const values: number[] = [];
+  let state = rngState;
+  for (let index = 0; index < count; index += 1) {
+    const draw = drawIndex(state, k);
+    values.push(draw.index);
+    state = draw.nextRngState;
+  }
+  return values;
+}
+
+describe("indexFromDraw (rejection boundary)", () => {
+  it.each([
+    // [k, draw, expected]: last accepted draw and first rejected draw per k.
+    [2, 0, 0],
+    [2, 1, 1],
+    [2, UINT32_MAX, 1], // 2^32 mod 2 = 0: nothing rejected
+    [3, UINT32_MAX - 1, 2], // limit = 2^32 - 1
+    [3, UINT32_MAX, undefined],
+    [6, 4_294_967_291, 5],
+    [6, 4_294_967_292, undefined],
+    [3_000_000_000, 2_999_999_999, 2_999_999_999], // limit = 3e9 (2^32 mod 3e9 = 1294967296)
+    [3_000_000_000, 3_000_000_000, undefined],
+    [TWO_POW_32 - 1, UINT32_MAX - 1, UINT32_MAX - 1],
+    [TWO_POW_32 - 1, UINT32_MAX, undefined],
+    [TWO_POW_32, UINT32_MAX, UINT32_MAX], // k = 2^32: every draw accepted
+  ])("k = %d, draw %d -> %s", (k, draw, expected) => {
+    expect(indexFromDraw(draw, k)).toBe(expected);
+  });
+
+  it("agrees with the die mapping for k = 6", () => {
+    for (const draw of [0, 5, 6, 123_456_789, 4_294_967_291, 4_294_967_292, UINT32_MAX]) {
+      const face = faceFromDraw(draw);
+      expect(indexFromDraw(draw, 6)).toBe(face === undefined ? undefined : face - 1);
+    }
+  });
+
+  it.each([1, 0, -1, 2.5, Number.NaN, Number.POSITIVE_INFINITY, TWO_POW_32 + 1])(
+    "rejects the choice count %s",
+    (k) => {
+      expect(() => indexFromDraw(0, k)).toThrowError(INVALID_STATE);
+      expect(() => drawIndex(seedRng("k"), k)).toThrowError(INVALID_STATE);
+    },
+  );
+
+  it.each([-1, 1.5, TWO_POW_32])("rejects the non-uint32 draw %s", (draw) => {
+    expect(() => indexFromDraw(draw, 2)).toThrowError(INVALID_STATE);
+  });
+});
+
+describe("drawIndex", () => {
+  it("redraws on rejection and every rejected draw advances the state", () => {
+    // First output 0xffffffff, second output 1 (see the rollDie case above).
+    const state = "sfc32-v1:ffffffff:00000000:00000000:00000000";
+    const rejectedFirst = drawIndex(state, 3);
+    expect(rejectedFirst.index).toBe(1);
+    expect(rejectedFirst.nextRngState.endsWith(":00000002")).toBe(true);
+    const acceptedFirst = drawIndex(state, 2);
+    expect(acceptedFirst.index).toBe(1);
+    expect(acceptedFirst.nextRngState.endsWith(":00000001")).toBe(true);
+  });
+
+  it("equals the die minus one for k = 6, state for state", () => {
+    let state = seedRng("same-stream");
+    for (let index = 0; index < 200; index += 1) {
+      const roll = rollDie(state);
+      const draw = drawIndex(state, 6);
+      expect(draw.index).toBe(roll.value - 1);
+      expect(draw.nextRngState).toBe(roll.nextRngState);
+      state = roll.nextRngState;
+    }
+  });
+
+  it("is deterministic and rejects a malformed state", () => {
+    expect(indexSequence(seedRng("idx"), 3, 20)).toEqual(indexSequence(seedRng("idx"), 3, 20));
+    expect(() => drawIndex("bad", 2)).toThrowError(
+      expect.objectContaining({ code: "INVALID_RNG_STATE" }),
+    );
+  });
+
+  // Chi-square critical values at p = 0.001 for k - 1 degrees of freedom.
+  it.each([
+    [2, 10.83],
+    [3, 13.82],
+    [5, 18.47],
+    [7, 22.46],
+  ])("is close to uniform for k = %d", (k, limit) => {
+    const samples = 30_000;
+    const counts = new Array<number>(k).fill(0);
+    for (const index of indexSequence(seedRng(`uniform-${k}`), k, samples)) {
+      counts[index] = (counts[index] ?? 0) + 1;
+    }
+    const expected = samples / k;
+    const chiSquare = counts.reduce((sum, count) => sum + (count - expected) ** 2 / expected, 0);
+    expect(counts.every((count) => count > 0)).toBe(true);
+    expect(chiSquare).toBeLessThan(limit);
   });
 });

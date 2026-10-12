@@ -11,7 +11,8 @@ import {
   resumeSession,
   startSession,
 } from "../../src/features/game/gameSession";
-import { summarizeGame, unusedPipsOf } from "../../src/features/game/gameSummary";
+import { earlyStopNote, summarizeGame, unusedPipsOf } from "../../src/features/game/gameSummary";
+import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { DEFAULT_CONFIG, START, yamanoteInput } from "./fixtures/yamanote";
 
 const network = buildRailwayNetwork(yamanoteInput());
@@ -125,7 +126,7 @@ describe("resume", () => {
       sessionId: 3,
       game,
       phase: "idle",
-      lastMove: { roll: 4, unusedPips: 0 },
+      lastMove: { roll: 4, unusedPips: 0, stopReason: "roll", stopStationId: "shinagawa" },
       animation: null,
     });
   });
@@ -133,7 +134,12 @@ describe("resume", () => {
   it("restores unused pips of a truncated final move", () => {
     let game = createGame(DEFAULT_CONFIG, "resume", network);
     for (const roll of [6, 6, 6, 6, 3, 6]) game = moveByRoll(game, roll, network).state;
-    expect(lastMoveOf(game)).toEqual({ roll: 6, unusedPips: 3 });
+    expect(lastMoveOf(game)).toEqual({
+      roll: 6,
+      unusedPips: 3,
+      stopReason: "goal",
+      stopStationId: START,
+    });
     expect(lastMoveOf(createGame(DEFAULT_CONFIG, "x", network))).toBeNull();
   });
 });
@@ -190,5 +196,48 @@ describe("summarizeGame", () => {
     expect(game.status).toBe("completed");
     expect(summarizeGame(game)).toEqual({ turns: 6, moves: 30 });
     expect(game.movementHistory.map(unusedPipsOf)).toEqual([0, 0, 0, 0, 0, 3]);
+  });
+});
+
+describe("stop-reason texts", () => {
+  const name = (id: string) => `<${id}>`;
+
+  it("names the goal station for a goal truncation (unchanged text) and nothing for a full roll", () => {
+    let game = createGame(DEFAULT_CONFIG, "sum", network);
+    for (const roll of [6, 6, 6, 6, 3, 6]) game = moveByRoll(game, roll, network).state;
+    expect(game.movementHistory.map((record) => earlyStopNote(record, name))).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+      `<${START}>で停止、残り3`,
+    ]);
+  });
+
+  it("names the terminus for an endpoint truncation, and the live roll reports it too", () => {
+    const multi = buildRailwayNetwork(multiServiceInput());
+    const onLine = {
+      ...createGame(multiConfig(), "end", multi),
+      currentStationId: "y",
+      currentServiceId: M_LINE,
+      direction: -1 as const,
+    };
+    const truncated = moveByRoll(onLine, 5, multi).state;
+    const record = truncated.movementHistory.at(-1)!;
+    expect(record.stopReason).toBe("endpoint");
+    expect(earlyStopNote(record, name)).toBe("<x>で停止、残り3");
+    expect(lastMoveOf(truncated)).toEqual({
+      roll: 5,
+      unusedPips: 3,
+      stopReason: "endpoint",
+      stopStationId: "x",
+    });
+  });
+
+  it("a live roll records stop reason and stop station like a resumed one", () => {
+    const start = startSession(DEFAULT_CONFIG, "live", network, 1);
+    const rolled = reduce(start, rollAction(start));
+    expect(rolled.lastMove).toEqual(lastMoveOf(rolled.game));
   });
 });

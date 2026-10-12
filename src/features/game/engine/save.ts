@@ -5,13 +5,18 @@ import type {
   Direction,
   GameConfig,
   GameState,
+  LandingChoice,
   MoveRecord,
+  StopReason,
 } from "../../../types/network";
 import { GOAL_ARRIVAL_POLICIES } from "./config";
 import { GameEngineError } from "./errors";
-import { createGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";
+import { type ComputedTurn, computeTurn, createGame, SAVE_VERSION, seededTurn } from "./game";
+import type { GamePosition } from "./movement";
 import type { RailwayNetwork } from "./network";
 import { isValidRngState } from "./rng";
+
+const STOP_REASONS: readonly StopReason[] = ["roll", "goal", "endpoint"];
 
 type UnknownRecord = Record<string, unknown>;
 type SavedStatus = Extract<GameState["status"], "playing" | "completed">;
@@ -79,6 +84,22 @@ function parseConfig(value: unknown): GameConfig {
   };
 }
 
+function asStopReason(value: unknown, path: string): StopReason {
+  const reason = STOP_REASONS.find((known) => known === value);
+  if (reason === undefined) invalid(`${path} must be one of ${STOP_REASONS.join(", ")}`);
+  return reason;
+}
+
+/** `null` (the move cleared) or a choice; a missing key is not accepted. */
+function asLanding(value: unknown, path: string): LandingChoice | null {
+  if (value === null) return null;
+  const raw = asRecord(value, path);
+  return {
+    serviceId: asString(raw.serviceId, `${path}.serviceId`),
+    direction: asDirection(raw.direction, `${path}.direction`),
+  };
+}
+
 function parseMoveRecord(value: unknown, path: string): MoveRecord {
   const raw = asRecord(value, path);
   return {
@@ -92,6 +113,8 @@ function parseMoveRecord(value: unknown, path: string): MoveRecord {
       raw.traversedSegmentIds,
       `${path}.traversedSegmentIds`,
     ),
+    stopReason: asStopReason(raw.stopReason, `${path}.stopReason`),
+    landing: asLanding(raw.landing, `${path}.landing`),
   };
 }
 
@@ -134,6 +157,11 @@ function sameList(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((item, index) => item === right[index]);
 }
 
+function sameLanding(left: LandingChoice | null, right: LandingChoice | null): boolean {
+  if (left === null || right === null) return left === right;
+  return left.serviceId === right.serviceId && left.direction === right.direction;
+}
+
 function sameRecord(left: MoveRecord, right: MoveRecord): boolean {
   return (
     left.turn === right.turn &&
@@ -142,19 +170,51 @@ function sameRecord(left: MoveRecord, right: MoveRecord): boolean {
     left.direction === right.direction &&
     left.fromStationId === right.fromStationId &&
     left.toStationId === right.toStationId &&
-    sameList(left.traversedSegmentIds, right.traversedSegmentIds)
+    sameList(left.traversedSegmentIds, right.traversedSegmentIds) &&
+    left.stopReason === right.stopReason &&
+    sameLanding(left.landing, right.landing)
   );
 }
 
-/** Replay a single move, turning any engine error into INVALID_SAVE. */
-function replayMove(
-  state: GameState,
+/**
+ * Replay `history` from a new game, one {@link ComputedTurn} per record,
+ * requiring each produced record to equal the saved one (`onMismatch`
+ * decides the error). Linear in the history length for a fixed network:
+ * the accumulator is a history-free position, so the growing history array
+ * is never rebuilt; each saved record is read once.
+ */
+function replayHistory(
+  initial: GamePosition,
+  history: readonly MoveRecord[],
+  playRecord: (position: GamePosition, record: MoveRecord, index: number) => ComputedTurn,
+  onMismatch: (message: string) => never,
+): GamePosition {
+  let replayed = initial;
+  history.forEach((record, index) => {
+    if (replayed.status !== "playing") {
+      onMismatch(`movementHistory[${index}] follows a finished game`);
+    }
+    const turn = playRecord(replayed, record, index);
+    if (!sameRecord(turn.record, record)) {
+      onMismatch(`movementHistory[${index}] differs from its replay`);
+    }
+    replayed = turn.position;
+  });
+  return replayed;
+}
+
+/** Replay one recorded move with its recorded landing, any engine error -> INVALID_SAVE. */
+function replayRecordedMove(
+  state: GamePosition,
   record: MoveRecord,
-  network: RailwayNetwork,
   index: number,
-): GameState {
+  network: RailwayNetwork,
+): ComputedTurn {
   try {
-    return moveByRoll(state, record.roll, network).state;
+    return computeTurn(state, record.roll, state.rngState, network, {
+      kind: "supplied",
+      choice: record.landing,
+    });
   } catch (error) {
     if (error instanceof GameEngineError) {
       invalid(`movementHistory[${index}] cannot be replayed: ${error.code}`);
@@ -165,32 +225,32 @@ function replayMove(
 
 /**
  * Check the saved state is exactly what the engine produces when replaying
- * its history from a new game. This covers the route, segment completion
- * order, goal policy (including truncation) and status in one pass.
+ * its history (rolls and recorded landings) from a new game. This covers
+ * the route, endpoint and goal truncation, landing legality, segment
+ * completion order and status in one pass.
  *
- * Rolls may come from moveByRoll (no randomness consumed) or playTurn and
- * the history does not record which, so only a turn-0 rngState is tied to
- * the seed here; the production path adds {@link verifySeededHistory}.
+ * Rolls and landings may come from moveByRoll (no randomness consumed) or
+ * playTurn, so only a turn-0 rngState is tied to the seed here; the
+ * production path adds {@link verifySeededHistory}.
  */
 function assertReplayMatches(
   saved: GameState,
   network: RailwayNetwork,
   checkInitialRng: boolean,
 ): void {
-  let replayed: GameState;
+  let initial: GameState;
   try {
-    replayed = createGame(saved.config, saved.rngSeed, network);
+    initial = createGame(saved.config, saved.rngSeed, network);
   } catch (error) {
     if (error instanceof GameEngineError) invalid(`config is not playable: ${error.code}`);
     throw error;
   }
-  saved.movementHistory.forEach((record, index) => {
-    replayed = replayMove(replayed, record, network, index);
-    const produced = replayed.movementHistory[index];
-    if (!produced || !sameRecord(produced, record)) {
-      invalid(`movementHistory[${index}] does not match the rules`);
-    }
-  });
+  const replayed = replayHistory(
+    initial,
+    saved.movementHistory,
+    (state, record, index) => replayRecordedMove(state, record, index, network),
+    invalid,
+  );
   const matches =
     replayed.status === saved.status &&
     replayed.turn === saved.turn &&
@@ -219,10 +279,13 @@ function rngMismatch(message: string): never {
 }
 
 /**
- * Production check that every recorded roll came from the seeded die: replay
- * the game from `rngSeed` with `playTurn` (one draw sequence per turn, the
- * same calls the app makes) and require each roll and the final `rngState`
- * to match. Expects a state that already passed `restoreGame`'s replay.
+ * Production check that every recorded move came from the seeded RNG:
+ * replay the game from `rngSeed` with the same draws playTurn makes (die,
+ * then service and direction lotteries when required) and require every
+ * whole record (roll, route, stop reason, landing) and the final `rngState`
+ * to match. Expects a state that already passed `restoreGame`'s replay, so a
+ * legal history that the seed did not produce (e.g. another direction with
+ * the same roll) is reported as `RNG_MISMATCH`.
  *
  * This proves reproducibility from the seed, not authenticity: a save forged
  * from another seed together with its own consistent history still passes.
@@ -230,19 +293,14 @@ function rngMismatch(message: string): never {
  * @throws GameEngineError `RNG_MISMATCH`
  */
 export function verifySeededHistory(state: GameState, network: RailwayNetwork): void {
-  let replayed = createGame(state.config, state.rngSeed, network);
-  state.movementHistory.forEach((record, index) => {
-    if (replayed.status !== "playing") {
-      rngMismatch(`movementHistory[${index}] follows a finished game`);
-    }
-    const result = playTurn(replayed, network);
-    if (result.roll !== record.roll) {
-      rngMismatch(`movementHistory[${index}].roll was not produced by rngSeed`);
-    }
-    replayed = result.state;
-  });
+  const replayed = replayHistory(
+    createGame(state.config, state.rngSeed, network),
+    state.movementHistory,
+    (current) => seededTurn(current, network),
+    rngMismatch,
+  );
   if (replayed.rngState !== state.rngState) {
-    rngMismatch("rngState does not follow from rngSeed and the recorded rolls");
+    rngMismatch("rngState does not follow from rngSeed and the recorded moves");
   }
 }
 

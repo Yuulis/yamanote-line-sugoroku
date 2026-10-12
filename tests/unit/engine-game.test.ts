@@ -22,7 +22,9 @@ import {
   yamanoteInput,
 } from "./fixtures/yamanote";
 
-const network = buildRailwayNetwork(yamanoteInput(), { expectedStationCount: 30 });
+const network = buildRailwayNetwork(yamanoteInput(), {
+  expectedStationCounts: { [SERVICE_ID]: 30 },
+});
 const SEED = "test-seed";
 
 function newGame(config: GameConfig = DEFAULT_CONFIG): GameState {
@@ -49,7 +51,7 @@ describe("createGame", () => {
       movementHistory: [],
       rngSeed: SEED,
       dataVersion: network.dataVersion,
-      saveVersion: 1,
+      saveVersion: 2,
     });
   });
 
@@ -78,11 +80,12 @@ describe("createGame", () => {
 
 describe("moveByRoll: movement", () => {
   it("a roll of 1 moves to the next station and completes one segment", () => {
-    const { state, events, unusedPips } = moveByRoll(newGame(), 1, network);
+    const { state, events, unusedPips, stopReason } = moveByRoll(newGame(), 1, network);
     expect(state.currentStationId).toBe("hamamatsucho");
     expect(state.turn).toBe(1);
     expect(state.completedSegmentIds).toEqual([segmentId(0)]);
     expect(unusedPips).toBe(0);
+    expect(stopReason).toBe("roll");
     expect(events).toEqual([
       {
         type: "segment-traversed",
@@ -94,6 +97,18 @@ describe("moveByRoll: movement", () => {
         toStationId: "hamamatsucho",
         newlyCompleted: true,
       },
+      // Single-service station on the target service: forced, outer loop, no draw.
+      {
+        type: "landing-resolved",
+        stationId: "hamamatsucho",
+        serviceCandidates: [SERVICE_ID],
+        serviceId: SERVICE_ID,
+        serviceDrawRequired: false,
+        directionCandidates: [1],
+        direction: 1,
+        directionDrawRequired: false,
+        changedService: false,
+      },
     ]);
   });
 
@@ -101,7 +116,9 @@ describe("moveByRoll: movement", () => {
     const { state, events } = moveByRoll(newGame(), 6, network);
     expect(state.currentStationId).toBe(STATION_IDS[6]);
     expect(state.completedSegmentIds).toEqual(SEGMENT_IDS.slice(0, 6));
-    expect(events.map((event) => event.step)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(
+      events.flatMap((event) => (event.type === "segment-traversed" ? [event.step] : [])),
+    ).toEqual([1, 2, 3, 4, 5, 6]);
     expect(state.movementHistory).toEqual([
       {
         turn: 1,
@@ -111,6 +128,8 @@ describe("moveByRoll: movement", () => {
         fromStationId: START,
         toStationId: STATION_IDS[6],
         traversedSegmentIds: SEGMENT_IDS.slice(0, 6),
+        stopReason: "roll",
+        landing: { serviceId: SERVICE_ID, direction: 1 },
       },
     ]);
   });
@@ -130,9 +149,9 @@ describe("moveByRoll: movement", () => {
     };
     const { state, events } = moveByRoll(partlyDone, 3, network);
     expect(state.completedSegmentIds).toEqual(SEGMENT_IDS.slice(0, 3));
-    expect(events.map((event) => event.type === "segment-traversed" && event.newlyCompleted)).toEqual(
-      [false, false, true],
-    );
+    expect(
+      events.flatMap((event) => (event.type === "segment-traversed" ? [event.newlyCompleted] : [])),
+    ).toEqual([false, false, true]);
   });
 
   it("never mutates its input and leaves the RNG state alone", () => {
@@ -179,11 +198,12 @@ describe("goal: truncate-on-target-service (MVP default)", () => {
 
   it("stops at 新橋 when all 30 are done mid-move and discards the remaining pips", () => {
     const atLast = applyRolls(newGame(), TO_LAST_STATION);
-    const { state, events, unusedPips } = moveByRoll(atLast, 4, network);
+    const { state, events, unusedPips, stopReason } = moveByRoll(atLast, 4, network);
     expect(state.status).toBe("completed");
     expect(state.currentStationId).toBe(START);
     expect(state.completedSegmentIds).toHaveLength(30);
     expect(unusedPips).toBe(3);
+    expect(stopReason).toBe("goal");
     expect(events).toEqual([
       expect.objectContaining({ type: "segment-traversed", step: 1, toStationId: START }),
       { type: "goal-reached", step: 1, stationId: START },
@@ -192,15 +212,21 @@ describe("goal: truncate-on-target-service (MVP default)", () => {
       roll: 4,
       toStationId: START,
       traversedSegmentIds: [segmentId(29)],
+      stopReason: "goal",
+      landing: null,
     });
     expect(checkGoal(state, network)).toBe(true);
   });
 
   it("clears with no unused pips when the roll lands exactly on 新橋", () => {
     const atLast = applyRolls(newGame(), TO_LAST_STATION);
-    const { state, unusedPips } = moveByRoll(atLast, 1, network);
+    const { state, unusedPips, stopReason, events } = moveByRoll(atLast, 1, network);
     expect(state.status).toBe("completed");
     expect(unusedPips).toBe(0);
+    // A clearing move is a goal stop even without unused pips, and has no landing.
+    expect(stopReason).toBe("goal");
+    expect(state.movementHistory.at(-1)?.landing).toBeNull();
+    expect(events.some((event) => event.type === "landing-resolved")).toBe(false);
   });
 
   it("keeps moving past 新橋 when not every segment is completed", () => {
@@ -297,7 +323,13 @@ describe("goal: riding a non-target service (future multi-line rules)", () => {
   }
 
   it("truncate policy does not truncate when passing 新橋 off the target service", () => {
-    const { state, events } = moveByRoll(onShuttle("truncate-on-target-service"), 3, shuttleNetwork);
+    // test-b is served by the shuttle only: a direction lottery (R1-a), injected here.
+    const { state, events } = moveByRoll(
+      onShuttle("truncate-on-target-service"),
+      3,
+      shuttleNetwork,
+      { serviceId: OTHER_SERVICE_ID, direction: 1 },
+    );
     expect(state.status).toBe("playing");
     expect(state.currentStationId).toBe("test-b");
     expect(events.some((event) => event.type === "goal-reached")).toBe(false);
@@ -321,7 +353,11 @@ describe("goal: riding a non-target service (future multi-line rules)", () => {
       ...createGame(DEFAULT_CONFIG, SEED, shuttleNetwork),
       currentServiceId: OTHER_SERVICE_ID,
     };
-    const { state } = moveByRoll(fresh, 3, shuttleNetwork);
+    // Back on 新橋 (Yamanote + shuttle): a service lottery, injected here.
+    const { state } = moveByRoll(fresh, 3, shuttleNetwork, {
+      serviceId: OTHER_SERVICE_ID,
+      direction: 1,
+    });
     expect(state.completedSegmentIds).toHaveLength(3);
     expect(state.status).toBe("playing");
     expect(checkGoal(state, shuttleNetwork)).toBe(false);

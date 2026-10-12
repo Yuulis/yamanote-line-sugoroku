@@ -1,21 +1,26 @@
-// Core game transitions (spec 3.2-3.4, 8.1). Pure: no I/O, no clock, no
+// Core game transitions (spec 3.2-3.4, 4.1, 8.1). Pure: no I/O, no clock, no
 // global randomness; every function returns new objects.
+//
+// Turns are atomic: every exported GameState is settled (the service and
+// direction of the next move are already decided), so there is no pending
+// landing state to save or restore.
 
 import type {
   GameConfig,
   GameState,
+  LandingChoice,
   MoveRecord,
-  SegmentId,
-  StationId,
+  StopReason,
 } from "../../../types/network";
 import { validateConfig } from "./config";
 import { GameEngineError } from "./errors";
-import { stopsAtGoal, targetSegmentIds } from "./goal";
-import { findSegment, nextStationId, type RailwayNetwork } from "./network";
+import { drawLanding, landingOptions, resolveLandingEvent } from "./landing";
+import { advance, assertSettledPosition, type GamePosition } from "./movement";
+import type { RailwayNetwork } from "./network";
 import { type DieFace, rollDie, seedRng } from "./rng";
 import type { MoveEvent, MoveResult } from "./types";
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 const MIN_ROLL = 1;
 const MAX_ROLL = 6;
 
@@ -49,115 +54,165 @@ function assertValidRoll(roll: number): asserts roll is DieFace {
   }
 }
 
-function assertPlaying(state: GameState): void {
+function assertPlaying(state: GamePosition): void {
   if (state.status !== "playing") {
     throw new GameEngineError("GAME_NOT_PLAYING", `Game is ${state.status}`);
   }
 }
 
-function assertOnCurrentService(state: GameState, network: RailwayNetwork): void {
-  const service = network.servicesById.get(state.currentServiceId);
-  if (!service?.stationIds.includes(state.currentStationId)) {
-    throw new GameEngineError(
-      "INVALID_STATE",
-      `Station ${state.currentStationId} is not on service ${state.currentServiceId}`,
-    );
-  }
+/** How the landing of a turn is decided. */
+export type LandingSource =
+  /** Injected (moveByRoll, structural replay); `undefined` = forced outcome only. */
+  | { kind: "supplied"; choice: LandingChoice | null | undefined }
+  /** Drawn from the RNG (playTurn, seeded replay). */
+  | { kind: "seeded" };
+
+/**
+ * One computed turn. The kernel neither reads nor returns a history: callers
+ * append `record` themselves, so replaying a long history never rebuilds the
+ * growing array on every turn.
+ */
+export interface ComputedTurn {
+  position: GamePosition;
+  record: MoveRecord;
+  events: MoveEvent[];
+  roll: DieFace;
+  stopReason: StopReason;
+  unusedPips: number;
+}
+
+function invalidState(message: string): never {
+  throw new GameEngineError("INVALID_STATE", message);
 }
 
 /**
- * Move `roll` stations along the current service and direction, completing
- * every traversed segment and applying the goal policy after each step.
- * Does not touch `rngState`: the roll is supplied by the caller (see playTurn).
+ * Shared turn core for moveByRoll, playTurn and save replay: advance, then
+ * (unless the move cleared) resolve the landing, then settle the state.
+ * `rngState` is the generator state after the roll; only a seeded landing
+ * advances it further.
  *
- * @throws GameEngineError `INVALID_ROLL`, `GAME_NOT_PLAYING`, `INVALID_STATE`
+ * @internal Not part of the public engine surface (see index.ts).
  */
-export function moveByRoll(
-  state: GameState,
+export function computeTurn(
+  state: GamePosition,
   roll: number,
+  rngState: string,
   network: RailwayNetwork,
-): MoveResult {
+  source: LandingSource,
+): ComputedTurn {
   assertValidRoll(roll);
   assertPlaying(state);
-  assertOnCurrentService(state, network);
+  assertSettledPosition(state, network);
 
-  const { config, currentServiceId: serviceId, direction } = state;
-  const required = targetSegmentIds(config, network);
-  const completed = new Set<SegmentId>(state.completedSegmentIds);
-  const completedSegmentIds = [...state.completedSegmentIds];
-  const traversedSegmentIds: SegmentId[] = [];
-  const events: MoveEvent[] = [];
-  let stationId: StationId = state.currentStationId;
-  let reachedGoal = false;
+  const moved = advance(state, roll, network);
+  const events = [...moved.events];
+  let nextRngState = rngState;
+  let landing: LandingChoice | null = null;
 
-  for (let step = 1; step <= roll && !reachedGoal; step += 1) {
-    const toStationId = nextStationId(network, serviceId, stationId, direction);
-    if (toStationId === undefined) {
-      throw new GameEngineError("INVALID_STATE", "Reached the end of a non-circular service");
+  if (moved.cleared) {
+    if (source.kind === "supplied" && source.choice != null) {
+      invalidState("A move that clears the game has no landing");
     }
-    const segment = findSegment(network, serviceId, stationId, toStationId);
-    if (!segment) {
-      throw new GameEngineError("INVALID_STATE", `No segment ${stationId} -> ${toStationId}`);
+  } else {
+    const options = landingOptions({ ...state, currentStationId: moved.stationId }, network);
+    let choice: LandingChoice | undefined;
+    if (source.kind === "seeded") {
+      const drawn = drawLanding(options, nextRngState);
+      choice = drawn.choice;
+      nextRngState = drawn.nextRngState;
+    } else {
+      if (source.choice === null) invalidState("A move that does not clear needs a landing");
+      choice = source.choice;
     }
-    const newlyCompleted = !completed.has(segment.id);
-    if (newlyCompleted) {
-      completed.add(segment.id);
-      completedSegmentIds.push(segment.id);
-    }
-    traversedSegmentIds.push(segment.id);
-    events.push({
-      type: "segment-traversed",
-      step,
-      serviceId,
-      direction,
-      segmentId: segment.id,
-      fromStationId: stationId,
-      toStationId,
-      newlyCompleted,
-    });
-    stationId = toStationId;
-
-    const atGoal =
-      stationId === config.startStationId && required.every((id) => completed.has(id));
-    if (atGoal && stopsAtGoal(config, serviceId, step === roll)) {
-      reachedGoal = true;
-      events.push({ type: "goal-reached", step, stationId });
-    }
+    const resolved = resolveLandingEvent(options, state.currentServiceId, choice);
+    landing = resolved.choice;
+    events.push(resolved.event);
   }
 
   const turn = state.turn + 1;
   const record: MoveRecord = {
     turn,
     roll,
-    serviceId,
-    direction,
+    serviceId: state.currentServiceId,
+    direction: state.direction,
     fromStationId: state.currentStationId,
-    toStationId: stationId,
-    traversedSegmentIds,
+    toStationId: moved.stationId,
+    traversedSegmentIds: moved.traversedSegmentIds,
+    stopReason: moved.stopReason,
+    landing,
   };
   return {
-    state: {
-      ...state,
-      status: reachedGoal ? "completed" : "playing",
-      currentStationId: stationId,
+    // Field by field (no spread), so a caller's history can never ride along.
+    position: {
+      saveVersion: state.saveVersion,
+      dataVersion: state.dataVersion,
+      status: moved.cleared ? "completed" : "playing",
+      config: state.config,
+      currentStationId: moved.stationId,
+      currentServiceId: landing?.serviceId ?? state.currentServiceId,
+      direction: landing?.direction ?? state.direction,
       turn,
-      completedSegmentIds,
-      movementHistory: [...state.movementHistory, record],
+      completedSegmentIds: moved.completedSegmentIds,
+      rngSeed: state.rngSeed,
+      rngState: nextRngState,
     },
+    record,
     events,
     roll,
-    unusedPips: roll - traversedSegmentIds.length,
+    stopReason: moved.stopReason,
+    unusedPips: moved.unusedPips,
+  };
+}
+
+function toMoveResult(turn: ComputedTurn, history: readonly MoveRecord[]): MoveResult {
+  return {
+    state: { ...turn.position, movementHistory: [...history, turn.record] },
+    events: turn.events,
+    roll: turn.roll,
+    stopReason: turn.stopReason,
+    unusedPips: turn.unusedPips,
   };
 }
 
 /**
- * Roll the seeded die and apply the move. The RNG advances only when a turn
- * is actually played, so a rejected call leaves the dice sequence intact.
+ * Move `roll` stations along the current service and direction (stopping
+ * early at the goal or an endpoint), then settle the landing with the
+ * supplied choice. Does not touch `rngState`.
+ *
+ * `landing`: omit it (or pass `undefined`) when the outcome is forced or the
+ * move clears the game; pass a choice for a real lottery; pass `null` only
+ * for a clearing move (as recorded in history).
+ *
+ * @throws GameEngineError `INVALID_ROLL`, `GAME_NOT_PLAYING`, `INVALID_STATE`
+ *   (unsettled position, missing segment, missing/illegal landing choice)
+ */
+export function moveByRoll(
+  state: GameState,
+  roll: number,
+  network: RailwayNetwork,
+  landing?: LandingChoice | null,
+): MoveResult {
+  const turn = computeTurn(state, roll, state.rngState, network, {
+    kind: "supplied",
+    choice: landing,
+  });
+  return toMoveResult(turn, state.movementHistory);
+}
+
+/**
+ * Seeded turn: roll the die, advance, draw the landing (service draw iff
+ * k >= 2, then direction draw iff two movable directions), settle. The RNG
+ * advances only when a turn is actually played.
  *
  * @throws GameEngineError `GAME_NOT_PLAYING`, `INVALID_RNG_STATE`, `INVALID_STATE`
  */
 export function playTurn(state: GameState, network: RailwayNetwork): MoveResult {
+  return toMoveResult(seededTurn(state, network), state.movementHistory);
+}
+
+/** @internal playTurn without appending history (seeded replay). */
+export function seededTurn(state: GamePosition, network: RailwayNetwork): ComputedTurn {
   assertPlaying(state);
   const { value, nextRngState } = rollDie(state.rngState);
-  return moveByRoll({ ...state, rngState: nextRngState }, value, network);
+  return computeTurn(state, value, nextRngState, network, { kind: "seeded" });
 }

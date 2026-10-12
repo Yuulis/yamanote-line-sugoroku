@@ -5,7 +5,7 @@ import {
   type RailwayNetwork,
   validateConfig,
 } from "./engine";
-import { EXPECTED_STATION_COUNT, MVP_GAME_CONFIG } from "./gameConfig";
+import { EXPECTED_STATION_COUNTS, MVP_GAME_CONFIG } from "./gameConfig";
 
 export type NetworkResult =
   | { ok: true; network: RailwayNetwork }
@@ -25,7 +25,7 @@ export function networkFromData(data: RailwayData): NetworkResult {
         services: services.value,
         segments: segments.value,
       },
-      { expectedStationCount: EXPECTED_STATION_COUNT },
+      { expectedStationCounts: EXPECTED_STATION_COUNTS },
     );
     validateConfig(MVP_GAME_CONFIG, network);
     return { ok: true, network };
