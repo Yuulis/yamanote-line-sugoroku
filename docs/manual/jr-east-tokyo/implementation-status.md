@@ -38,4 +38,4 @@
 
 旧セーブは移行しません。対応外の案内と削除操作が表示され、自動削除はしません。鉄道データの出典・ライセンスはN02 2025 / CC BY 4.0のままです。N03は配信データに含めません。N02では一部の並行路線が同じ線形を共有するため、すべての実際の線路を分離した地図ではありません。
 
-開発統合PRのCI確認・マージと、`develop` → `master` のリリースPR準備を進めます。本番へのマージと本番スモークテストは承認後です。最新のPRと進捗は [.claude/docs/plans/jr-east-tokyo-expansion-handoff.md](../../../.claude/docs/plans/jr-east-tokyo-expansion-handoff.md) を参照してください。
+[開発統合PR #3](https://github.com/Yuulis/yamanote-line-sugoroku/pull/3) で全変更を統合します。最初のCIは3必須チェックすべて成功し、その後、新規ゲームで以前のズーム位置が残るケースも回帰テストで再現・修正しました。最終コミットのCI成功後に統合し、`develop` → `master` のリリースPRを開きます。本番へのマージと本番スモークテストは承認後です。最新のPRと進捗は [.claude/docs/plans/jr-east-tokyo-expansion-handoff.md](../../../.claude/docs/plans/jr-east-tokyo-expansion-handoff.md) を参照してください。

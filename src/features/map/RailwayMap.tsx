@@ -9,6 +9,7 @@ import "./maplibreWorker";
 import { useEffect, useRef, useState } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
+import type { ServicePattern } from "../../types/network";
 import { buildDataAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
 import { isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
@@ -47,6 +48,8 @@ interface RailwayMapProps {
   /** Game progress to draw; omitted when no game is running. */
   progress?: MapProgress;
   follow?: MapFollow;
+  /** New/resumed turn-0 session: fit the entire network even on a reused map. */
+  overviewKey?: number;
 }
 
 function isPhoneWidth(): boolean {
@@ -55,6 +58,26 @@ function isPhoneWidth(): boolean {
 
 function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
   return onPhone ? "top-left" : "bottom-right";
+}
+
+/** Fit all service platforms above/beside the panel without retaining camera padding. */
+function fitNetworkOverview(map: MapLibreMap, services: readonly ServicePattern[]): void {
+  const points = services.flatMap((service) => Object.values(service.platformCoordinates));
+  if (points.length === 0) return;
+  const longitudes = points.map((point) => point[0]);
+  const latitudes = points.map((point) => point[1]);
+  const bounds: [Position, Position] = [
+    [Math.min(...longitudes), Math.min(...latitudes)],
+    [Math.max(...longitudes), Math.max(...latitudes)],
+  ];
+  const padding = isPhoneWidth()
+    ? {
+        ...NETWORK_FIT_PADDING_PHONE,
+        bottom: map.getContainer().clientHeight * PHONE_PANEL_MAX_HEIGHT_SHARE + NETWORK_FIT_PANEL_GAP,
+      }
+    : NETWORK_FIT_PADDING_DESKTOP;
+  map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
+  map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
 }
 
 /** Centre the camera on `position` without touching the zoom. */
@@ -110,7 +133,7 @@ function createMap(container: HTMLElement): MapLibreMap | null {
   }
 }
 
-export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
+export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
   // The browser cannot create a WebGL2 context: no map can ever be shown here.
@@ -169,27 +192,7 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
         services: data.services.ok ? data.services.value : undefined,
         geometry: data.geometry.ok ? data.geometry.value : undefined,
       });
-      if (data.services.ok) {
-        const points = data.services.value.flatMap((service) => Object.values(service.platformCoordinates));
-        if (points.length > 0) {
-          const longitudes = points.map((point) => point[0]);
-          const latitudes = points.map((point) => point[1]);
-          const bounds: [Position, Position] = [
-            [Math.min(...longitudes), Math.min(...latitudes)],
-            [Math.max(...longitudes), Math.max(...latitudes)],
-          ];
-          const padding = isPhoneWidth()
-            ? {
-                ...NETWORK_FIT_PADDING_PHONE,
-                bottom: map.getContainer().clientHeight * PHONE_PANEL_MAX_HEIGHT_SHARE + NETWORK_FIT_PANEL_GAP,
-              }
-            : NETWORK_FIT_PADDING_DESKTOP;
-          map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
-          // Padding helps fit the network on the title screen, but must not
-          // displace the centre when the player enables following.
-          map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
-        }
-      }
+      if (data.services.ok) fitNetworkOverview(map, data.services.value);
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
@@ -221,6 +224,12 @@ export function RailwayMap({ data, progress, follow }: RailwayMapProps) {
   useEffect(() => {
     if (loadedMap) updateCurrentPosition(loadedMap, position);
   }, [loadedMap, position]);
+
+  useEffect(() => {
+    if (loadedMap && overviewKey !== undefined && data.services.ok) {
+      fitNetworkOverview(loadedMap, data.services.value);
+    }
+  }, [loadedMap, overviewKey, data.services]);
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;

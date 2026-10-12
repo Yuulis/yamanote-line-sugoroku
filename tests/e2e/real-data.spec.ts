@@ -1,8 +1,32 @@
+import type { Page } from "@playwright/test";
+import type { RailwayBundle } from "./fixtures/bundle";
 import { expect, test } from "./fixtures";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { diceButton, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame } from "./support/app";
 
 test.use({ dataset: "real" });
+
+async function expectNetworkOverview(page: Page, railwayBundle: RailwayBundle): Promise<void> {
+  // At turn 0, every platform fits outside the panel. This also catches an
+  // immediate follow-camera jump that undoes the initial network fit.
+  const points = [...railwayBundle.network.servicesById.values()].flatMap((service) => Object.values(service.platformCoordinates));
+  const projected = await page.evaluate((coordinates) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
+    return coordinates.map((point) => {
+      const { x, y } = hook.map.project(point);
+      return { x, y };
+    });
+  }, points);
+  const viewport = page.viewportSize()!;
+  const panel = (await gamePanel(page).boundingBox())!;
+  for (const { x, y } of projected) {
+    expect(x).toBeGreaterThanOrEqual(0);
+    expect(x).toBeLessThanOrEqual(viewport.width);
+    expect(y).toBeGreaterThanOrEqual(0);
+    expect(y).toBeLessThanOrEqual(viewport.height);
+    expect(x < panel.x || x > panel.x + panel.width || y < panel.y || y > panel.y + panel.height).toBe(true);
+  }
+}
 
 test("the shipped five-service network starts, moves and restores without console errors", async ({ page, railwayBundle }, testInfo) => {
   const errors: string[] = [];
@@ -23,25 +47,7 @@ test("the shipped five-service network starts, moves and restores without consol
     return [...new Set(hook.map.queryRenderedFeatures({ layers: [layer] }).map((feature) => feature.properties.serviceId))].sort();
   }, LAYER_IDS.services);
   expect(renderedServices).toEqual(["jr-chuo-sobu-local", "jr-keihin-tohoku", "jr-keiyo", "jr-saikyo"]);
-  // At turn 0, every platform fits outside the panel. This also catches an
-  // immediate follow-camera jump that undoes the initial network fit.
-  const points = [...railwayBundle.network.servicesById.values()].flatMap((service) => Object.values(service.platformCoordinates));
-  const projected = await page.evaluate((coordinates) => {
-    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
-    return coordinates.map((point) => {
-      const { x, y } = hook.map.project(point);
-      return { x, y };
-    });
-  }, points);
-  const viewport = page.viewportSize()!;
-  const panel = (await gamePanel(page).boundingBox())!;
-  for (const { x, y } of projected) {
-    expect(x).toBeGreaterThanOrEqual(0);
-    expect(x).toBeLessThanOrEqual(viewport.width);
-    expect(y).toBeGreaterThanOrEqual(0);
-    expect(y).toBeLessThanOrEqual(viewport.height);
-    expect(x < panel.x || x > panel.x + panel.width || y < panel.y || y > panel.y + panel.height).toBe(true);
-  }
+  await expectNetworkOverview(page, railwayBundle);
   await page.screenshot({ path: testInfo.outputPath("network-overview.png") });
   for (let turn = 0; turn < 3; turn += 1) await rollOnce(page);
   const saved = (await readSave(page))!;
@@ -54,5 +60,15 @@ test("the shipped five-service network starts, moves and restores without consol
   await page.reload();
   await page.getByRole("button", { name: /^つづきから（3ターン目・/ }).click();
   expect(await readSave(page)).toEqual(saved);
+  // A new game must re-fit the network even after moving/zooming elsewhere.
+  await page.evaluate(() => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+    hook.map.jumpTo({ center: [139.61, 35.72], zoom: 16 });
+  });
+  await gamePanel(page).getByRole("button", { name: "新規", exact: true }).click();
+  await page.getByRole("button", { name: "新しく始める", exact: true }).click();
+  await expect(panelStat(page, "ターン数")).toHaveText("0");
+  await expectNetworkOverview(page, railwayBundle);
+  await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
   expect(errors).toEqual([]);
 });

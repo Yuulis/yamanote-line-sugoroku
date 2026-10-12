@@ -135,7 +135,12 @@ export function GameApp({ data, network }: GameAppProps) {
 
   return (
     <>
-      <RailwayMap data={data} progress={progress} follow={mapFollow} />
+      <RailwayMap
+        data={data}
+        progress={progress}
+        follow={mapFollow}
+        overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
+      />
       {app.state.screen === "title" && (
         <TitleScreen
           manifest={data.manifest.ok ? data.manifest.value : null}
