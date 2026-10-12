@@ -238,5 +238,301 @@
       139.76326,
       35.67504
     ]
+  },
+  {
+    "id": "akabane",
+    "name": "赤羽",
+    "coordinates": [
+      139.721252,
+      35.777622
+    ]
+  },
+  {
+    "id": "higashi-jujo",
+    "name": "東十条",
+    "coordinates": [
+      139.726713,
+      35.763835
+    ]
+  },
+  {
+    "id": "oji",
+    "name": "王子",
+    "coordinates": [
+      139.73821,
+      35.752325
+    ]
+  },
+  {
+    "id": "kami-nakazato",
+    "name": "上中里",
+    "coordinates": [
+      139.745922,
+      35.747081
+    ]
+  },
+  {
+    "id": "oimachi",
+    "name": "大井町",
+    "coordinates": [
+      139.734991,
+      35.60681
+    ]
+  },
+  {
+    "id": "omori",
+    "name": "大森",
+    "coordinates": [
+      139.728149,
+      35.588916
+    ]
+  },
+  {
+    "id": "kamata",
+    "name": "蒲田",
+    "coordinates": [
+      139.71603,
+      35.562485
+    ]
+  },
+  {
+    "id": "nishi-ogikubo",
+    "name": "西荻窪",
+    "coordinates": [
+      139.59945,
+      35.703782
+    ]
+  },
+  {
+    "id": "ogikubo",
+    "name": "荻窪",
+    "coordinates": [
+      139.620245,
+      35.70443
+    ]
+  },
+  {
+    "id": "asagaya",
+    "name": "阿佐ケ谷",
+    "coordinates": [
+      139.635855,
+      35.704878
+    ]
+  },
+  {
+    "id": "koenji",
+    "name": "高円寺",
+    "coordinates": [
+      139.6497,
+      35.705324
+    ]
+  },
+  {
+    "id": "nakano",
+    "name": "中野",
+    "coordinates": [
+      139.665585,
+      35.705955
+    ]
+  },
+  {
+    "id": "higashi-nakano",
+    "name": "東中野",
+    "coordinates": [
+      139.68508,
+      35.70625
+    ]
+  },
+  {
+    "id": "okubo",
+    "name": "大久保",
+    "coordinates": [
+      139.697445,
+      35.700635
+    ]
+  },
+  {
+    "id": "sendagaya",
+    "name": "千駄ケ谷",
+    "coordinates": [
+      139.71153,
+      35.681196
+    ]
+  },
+  {
+    "id": "shinanomachi",
+    "name": "信濃町",
+    "coordinates": [
+      139.721098,
+      35.679942
+    ]
+  },
+  {
+    "id": "yotsuya",
+    "name": "四ツ谷",
+    "coordinates": [
+      139.73053,
+      35.685652
+    ]
+  },
+  {
+    "id": "ichigaya",
+    "name": "市ケ谷",
+    "coordinates": [
+      139.73532,
+      35.691155
+    ]
+  },
+  {
+    "id": "iidabashi",
+    "name": "飯田橋",
+    "coordinates": [
+      139.743655,
+      35.700137
+    ]
+  },
+  {
+    "id": "suidobashi",
+    "name": "水道橋",
+    "coordinates": [
+      139.753745,
+      35.702
+    ]
+  },
+  {
+    "id": "ochanomizu",
+    "name": "御茶ノ水",
+    "coordinates": [
+      139.76503,
+      35.699605
+    ]
+  },
+  {
+    "id": "asakusabashi",
+    "name": "浅草橋",
+    "coordinates": [
+      139.78449,
+      35.69739
+    ]
+  },
+  {
+    "id": "ryogoku",
+    "name": "両国",
+    "coordinates": [
+      139.79335,
+      35.695755
+    ]
+  },
+  {
+    "id": "kinshicho",
+    "name": "錦糸町",
+    "coordinates": [
+      139.81432,
+      35.696719
+    ]
+  },
+  {
+    "id": "kameido",
+    "name": "亀戸",
+    "coordinates": [
+      139.82661,
+      35.697342
+    ]
+  },
+  {
+    "id": "hirai",
+    "name": "平井",
+    "coordinates": [
+      139.842387,
+      35.706448
+    ]
+  },
+  {
+    "id": "shin-koiwa",
+    "name": "新小岩",
+    "coordinates": [
+      139.857645,
+      35.71679
+    ]
+  },
+  {
+    "id": "koiwa",
+    "name": "小岩",
+    "coordinates": [
+      139.88185,
+      35.73333
+    ]
+  },
+  {
+    "id": "itabashi",
+    "name": "板橋",
+    "coordinates": [
+      139.719171,
+      35.744992
+    ]
+  },
+  {
+    "id": "jujo",
+    "name": "十条",
+    "coordinates": [
+      139.72225,
+      35.76039
+    ]
+  },
+  {
+    "id": "kita-akabane",
+    "name": "北赤羽",
+    "coordinates": [
+      139.705762,
+      35.786995
+    ]
+  },
+  {
+    "id": "ukima-funado",
+    "name": "浮間舟渡",
+    "coordinates": [
+      139.691377,
+      35.791262
+    ]
+  },
+  {
+    "id": "hatchobori",
+    "name": "八丁堀",
+    "coordinates": [
+      139.77799,
+      35.67462
+    ]
+  },
+  {
+    "id": "etchujima",
+    "name": "越中島",
+    "coordinates": [
+      139.792495,
+      35.668
+    ]
+  },
+  {
+    "id": "shiomi",
+    "name": "潮見",
+    "coordinates": [
+      139.81717,
+      35.658865
+    ]
+  },
+  {
+    "id": "shin-kiba",
+    "name": "新木場",
+    "coordinates": [
+      139.826845,
+      35.645995
+    ]
+  },
+  {
+    "id": "kasai-rinkai-koen",
+    "name": "葛西臨海公園",
+    "coordinates": [
+      139.861485,
+      35.64417
+    ]
   }
 ]

@@ -22,6 +22,7 @@ import {
   writeSave,
 } from "../../src/features/game/store/persistence";
 import type { GameState } from "../../src/types/network";
+import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { configWith, DEFAULT_CONFIG, yamanoteInput } from "./fixtures/yamanote";
 
 const network = buildRailwayNetwork(yamanoteInput());
@@ -176,6 +177,16 @@ describe("readSave / writeSave / deleteSave", () => {
     expect(playTurn(lookup.game, network).roll).toBe(playTurn(state, network).roll);
   });
 
+  it("round-trips a multi-service seeded game with landings under production checks", () => {
+    const multi = buildRailwayNetwork(multiServiceInput());
+    let state = createGame(multiConfig(), "mixed-30", multi);
+    for (let turn = 0; turn < 5; turn += 1) state = playTurn(state, multi).state;
+    expect(state.movementHistory.some((record) => record.landing?.serviceId === M_LINE)).toBe(true);
+    const storage = memoryStorage();
+    expect(writeSave(storage, state)).toBe("saved");
+    expect(readSave(storage, multi, multiConfig())).toEqual({ kind: "valid", game: state });
+  });
+
   it("stores under the schema-versioned key", () => {
     const storage = memoryStorage();
     writeSave(storage, seededGame(1));
@@ -194,7 +205,15 @@ describe("readSave / writeSave / deleteSave", () => {
       "an unknown save version",
       (state) =>
         tampered(state, (raw) => {
-          raw.saveVersion = 2;
+          raw.saveVersion = 99;
+        }),
+      "unsupported-version",
+    ],
+    [
+      "a v1 save from before the multi-service rules",
+      (state) =>
+        tampered(state, (raw) => {
+          raw.saveVersion = 1;
         }),
       "unsupported-version",
     ],

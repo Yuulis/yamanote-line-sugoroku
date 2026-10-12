@@ -26,7 +26,7 @@ function isNonEmptyArray(value: unknown): value is unknown[] {
 }
 
 export function isPosition(value: unknown): value is Position {
-  if (!Array.isArray(value) || value.length < 2) return false;
+  if (!Array.isArray(value) || value.length !== 2) return false;
   const [lon, lat] = value as unknown[];
   return (
     typeof lon === "number" &&
@@ -55,15 +55,35 @@ export function isStation(value: unknown): value is Station {
 
 export function isServicePattern(value: unknown): value is ServicePattern {
   if (!isRecord(value)) return false;
+  const { directionLabels, platformCoordinates, stationIds, endpoints } = value;
+  if (!isNonEmptyArray(stationIds) || !stationIds.every(isNonEmptyString)) return false;
+  if (new Set(stationIds).size !== stationIds.length) return false;
+  if (typeof value.circular !== "boolean" || stationIds.length < (value.circular ? 3 : 2)) return false;
+  if (
+    !isRecord(directionLabels) ||
+    !isNonEmptyString(directionLabels.forward) ||
+    !isNonEmptyString(directionLabels.backward)
+  ) return false;
+  if (
+    !isRecord(platformCoordinates) ||
+    Object.keys(platformCoordinates).length !== stationIds.length ||
+    !stationIds.every((id) => Object.hasOwn(platformCoordinates, id) && isPosition(platformCoordinates[id]))
+  ) return false;
+  if (value.circular) {
+    if (endpoints !== undefined) return false;
+  } else if (
+    !isRecord(endpoints) || !isEndpointKind(endpoints.first) || !isEndpointKind(endpoints.last)
+  ) return false;
   return (
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.name) &&
     isNonEmptyString(value.operator) &&
-    isNonEmptyArray(value.stationIds) &&
-    value.stationIds.every(isNonEmptyString) &&
-    typeof value.circular === "boolean" &&
     isNonEmptyString(value.color)
   );
+}
+
+function isEndpointKind(value: unknown): boolean {
+  return value === "terminus" || value === "area-boundary";
 }
 
 export function isSegment(value: unknown): value is Segment {
@@ -112,6 +132,7 @@ function isIsoDate(value: unknown): value is string {
 export function isManifest(value: unknown): value is Manifest {
   if (!isRecord(value)) return false;
   return (
+    value.schemaVersion === 2 &&
     isNonEmptyString(value.dataVersion) &&
     isIsoDate(value.updatedAt) &&
     isDataSource(value.source)
@@ -121,19 +142,16 @@ export function isManifest(value: unknown): value is Manifest {
 function isSegmentGeometry(value: unknown): boolean {
   if (!isRecord(value)) return false;
   if (value.type === "LineString") return isPositionList(value.coordinates);
-  if (value.type === "MultiLineString") {
-    return isNonEmptyArray(value.coordinates) && value.coordinates.every(isPositionList);
-  }
   return false;
 }
 
 export function isSegmentFeature(value: unknown): value is SegmentFeature {
   if (!isRecord(value) || value.type !== "Feature") return false;
-  const hasId = isNonEmptyString(value.id) || typeof value.id === "number";
-  if (!hasId || !isRecord(value.properties)) return false;
-  const { segmentId, serviceId, from, to } = value.properties;
+  if (!isNonEmptyString(value.id) || !isRecord(value.properties)) return false;
+  const { featureId, serviceId, from, to } = value.properties;
   return (
-    isNonEmptyString(segmentId) &&
+    isNonEmptyString(featureId) &&
+    value.id === featureId &&
     isNonEmptyString(serviceId) &&
     isNonEmptyString(from) &&
     isNonEmptyString(to) &&
@@ -144,7 +162,7 @@ export function isSegmentFeature(value: unknown): value is SegmentFeature {
 export function isSegmentFeatureCollection(
   value: unknown,
 ): value is SegmentFeatureCollection {
-  if (!isRecord(value) || value.type !== "FeatureCollection") return false;
+  if (!isRecord(value) || value.type !== "FeatureCollection" || "crs" in value) return false;
   return isNonEmptyArray(value.features) && value.features.every(isSegmentFeature);
 }
 

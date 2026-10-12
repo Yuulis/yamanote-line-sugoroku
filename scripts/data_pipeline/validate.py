@@ -1,9 +1,12 @@
-"""Validate ``public/data/*`` against the spec §5.2 data-quality conditions.
+"""Validate ``public/data/*`` (v2 contract) against ``data/overrides``.
 
 Usage: ``uv run python -m scripts.data_pipeline.validate [--data-dir ...]``
 
 Exit code 0 when every check passes, 1 otherwise. Only the generated JSON and
 the override tables are read, so this runs without the raw N02 download.
+
+Strict schemas and geometry checks are combined with the contract-independent
+rules in ``rules.py`` (design section 5.4).
 """
 
 from __future__ import annotations
@@ -14,20 +17,31 @@ import math
 import re
 import sys
 from collections.abc import Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from pyproj import Transformer
-from shapely.geometry import LineString, MultiLineString, Point
+from shapely.geometry import LineString, Point
 
-from scripts.data_pipeline import config
+from scripts.data_pipeline import config, rules
 from scripts.data_pipeline.export import (
     GAME_DATA_FILES,
+    build_segments,
     data_version,
+    dumps_feature_collection,
+    dumps_pretty,
+    feature_id,
     manifest_inputs,
 )
-from scripts.data_pipeline.overrides import OverrideError, is_iso_date, load_overrides
+from scripts.data_pipeline.overrides import (
+    OverrideError,
+    Overrides,
+    is_iso_date,
+    load_overrides,
+)
+from scripts.data_pipeline.rules import Report, ServiceStops
+from scripts.data_pipeline.topology import station_order, station_pairs
 
 _TO_METRIC = Transformer.from_crs(config.OUTPUT_CRS, config.METRIC_CRS, always_xy=True)
 _DECIMALS_PATTERN = re.compile(r"\.(\d+)")
@@ -41,20 +55,11 @@ class Dataset:
     geojson: Any
     manifest: Any
     payloads: dict[str, str]  # raw text of the game data files, for the hash
+    manifest_payload: str | None = None
 
     @property
     def geojson_bytes(self) -> int:
         return len(self.payloads.get(config.SEGMENTS_GEOJSON_FILE, "").encode())
-
-
-@dataclass
-class Report:
-    errors: list[str] = field(default_factory=list)
-    metrics: dict[str, float] = field(default_factory=dict)
-
-    @property
-    def ok(self) -> bool:
-        return not self.errors
 
 
 def load_dataset(data_dir: Path) -> Dataset:
@@ -69,7 +74,15 @@ def load_dataset(data_dir: Path) -> Dataset:
         geojson=json.loads(payloads[config.SEGMENTS_GEOJSON_FILE]),
         manifest=json.loads(manifest_text),
         payloads=payloads,
+        manifest_payload=manifest_text,
     )
+
+
+def official_station_order(overrides: Overrides) -> list[tuple[str, str]]:
+    """(id, registry name) of every published station, in contract order."""
+    registry = overrides.registry.by_id()
+    order = station_order(service.station_ids for service in overrides.services)
+    return [(station_id, registry[station_id].name) for station_id in order]
 
 
 def to_metric(coordinate: Sequence[float]) -> tuple[float, float]:
@@ -101,22 +114,22 @@ def _is_object_list(value: Any) -> bool:
 
 def check_stations(
     stations: Any,
-    official: Sequence[tuple[str, str]] | None,
+    official: Sequence[tuple[str, str]],
     report: Report,
 ) -> dict[str, list[float]]:
     """Count, unique ids/names, coordinates, and (id, name) vs. the override."""
     if not _is_object_list(stations):
         report.errors.append("stations.json must be a JSON array of objects")
         return {}
-    if len(stations) != config.EXPECTED_STATION_COUNT:
-        report.errors.append(
-            f"expected {config.EXPECTED_STATION_COUNT} stations, got {len(stations)}"
-        )
+    if len(stations) != len(official):
+        report.errors.append(f"expected {len(official)} stations, got {len(stations)}")
     positions: dict[str, list[float]] = {}
     names: list[str] = []
     for index, station in enumerate(stations):
         station_id = station.get("id")
         name = station.get("name")
+        if set(station) != {"id", "name", "coordinates"}:
+            report.errors.append(f"station {index} has invalid v2 fields")
         if not isinstance(station_id, str) or not station_id:
             report.errors.append(f"stations[{index}] has no id")
             continue
@@ -130,242 +143,306 @@ def check_stations(
         if not _is_coordinate(coordinates):
             report.errors.append(f"station {station_id} has invalid coordinates")
             continue
+        if any(_too_many_decimals(value) for value in coordinates):
+            report.errors.append(f"station {station_id} coordinates not rounded")
         positions[station_id] = coordinates
-    if len(set(names)) != len(names):
-        report.errors.append("station names must be unique")
-    if official is not None:
-        published = [(station.get("id"), station.get("name")) for station in stations]
-        if published != [tuple(pair) for pair in official]:
-            report.errors.append(
-                "stations.json (id, name) order differs from data/overrides"
-            )
+    published = [(station.get("id"), station.get("name")) for station in stations]
+    if published != [tuple(pair) for pair in official]:
+        report.errors.append(
+            "stations.json (id, name) order differs from data/overrides"
+        )
     return positions
 
 
-def check_service(
-    services: Any, station_order: Sequence[Any], report: Report
-) -> tuple[str, list[str]]:
-    if not _is_object_list(services) or len(services) != 1:
-        report.errors.append("services.json must be an array with one service object")
-        return ("", [])
-    service = services[0]
-    station_ids = service.get("stationIds")
-    if not isinstance(station_ids, list) or not all(
-        isinstance(item, str) for item in station_ids
-    ):
-        report.errors.append("service stationIds must be an array of strings")
-        return (str(service.get("id", "")), [])
-    if service.get("circular") is not True:
-        report.errors.append("service must be circular")
-    if not station_ids or station_ids[0] != config.START_STATION_ID:
-        report.errors.append(f"stationIds must start at {config.START_STATION_ID}")
-    if len(station_ids) != len(set(station_ids)):
-        report.errors.append("stationIds must not repeat (start is not re-listed)")
-    if station_ids != list(station_order):
-        report.errors.append("service stationIds differ from stations.json order")
-    for key in ("id", "name", "operator", "color"):
-        if not isinstance(service.get(key), str) or not service[key]:
-            report.errors.append(f"service is missing {key}")
-    return (str(service.get("id", "")), station_ids)
+def check_services(
+    services: Any,
+    positions: dict[str, list[float]],
+    overrides: Overrides,
+    report: Report,
+) -> tuple[list[ServiceStops], dict[tuple[str, str], Point]]:
+    """Strict v2 metadata, topology and platform coordinates against overrides."""
+    if not _is_object_list(services):
+        report.errors.append("services.json must be an array of objects")
+        return [], {}
+    parsed: list[ServiceStops] = []
+    platforms: dict[tuple[str, str], Point] = {}
+    ids = [
+        service.get("id") for service in services if isinstance(service.get("id"), str)
+    ]
+    rules.check_catalogue(ids, overrides.dataset.service_ids, (), report)
+    for raw in services:
+        service_id = raw.get("id")
+        if (
+            not isinstance(service_id, str)
+            or service_id not in overrides.dataset.service_ids
+        ):
+            report.errors.append("service has an unknown id")
+            continue
+        expected = overrides.service(service_id)
+        definition = expected.definition
+        keys = {
+            "id",
+            "name",
+            "operator",
+            "color",
+            "circular",
+            "stationIds",
+            "directionLabels",
+            "platformCoordinates",
+        }
+        if not definition.circular:
+            keys.add("endpoints")
+        if set(raw) != keys:
+            report.errors.append(f"service {service_id} has invalid v2 fields")
+        if type(raw.get("circular")) is not bool:
+            report.errors.append(f"service {service_id} circular must be a boolean")
+        rules.check_service_metadata(
+            raw, definition, overrides.dataset.operator, report
+        )
+        if raw.get("directionLabels") != {
+            "forward": definition.direction_labels.forward,
+            "backward": definition.direction_labels.backward,
+        }:
+            report.errors.append(
+                f"service {service_id} directionLabels differ from data/overrides"
+            )
+        expected_ends = (
+            None
+            if definition.endpoints is None
+            else {
+                "first": definition.endpoints.first,
+                "last": definition.endpoints.last,
+            }
+        )
+        if raw.get("endpoints") != expected_ends:
+            report.errors.append(
+                f"service {service_id} endpoints differ from data/overrides"
+            )
+        stop_ids = raw.get("stationIds")
+        if not isinstance(stop_ids, list) or not all(
+            isinstance(item, str) for item in stop_ids
+        ):
+            report.errors.append(
+                f"service {service_id} stationIds must be an array of strings"
+            )
+            continue
+        service = ServiceStops(service_id, tuple(stop_ids), definition.circular)
+        parsed.append(service)
+        rules.check_stop_list(service, expected.station_ids, positions, report)
+        coords = raw.get("platformCoordinates")
+        if not isinstance(coords, dict):
+            report.errors.append(f"{service_id} platformCoordinates must be an object")
+            continue
+        rules.check_platform_keys(service, coords, report)
+        for station_id, coordinate in coords.items():
+            if not _is_coordinate(coordinate):
+                report.errors.append(
+                    f"{service_id}/{station_id} has invalid platform coordinates"
+                )
+                continue
+            if any(_too_many_decimals(value) for value in coordinate):
+                report.errors.append(
+                    f"{service_id}/{station_id} coordinates not rounded"
+                )
+            platforms[(service_id, station_id)] = Point(to_metric(coordinate))
+    for station in overrides.registry.stations:
+        coordinate = positions.get(station.id)
+        platform = platforms.get((station.representative_service_id, station.id))
+        if (
+            coordinate is not None
+            and platform is not None
+            and Point(to_metric(coordinate)) != platform
+        ):
+            report.errors.append(
+                f"station {station.id} coordinates differ from its representative platform"
+            )
+    return parsed, platforms
 
 
 def check_segments(
-    segments: Any, service_id: str, station_ids: Sequence[str], report: Report
-) -> list[dict[str, Any]]:
-    """Directed outer-loop chain E[i] = S[i] -> S[i+1], closing to the start."""
+    segments: Any, services: Sequence[ServiceStops], report: Report
+) -> None:
+    """Exact directed pair set, ids, shared geometry reference and deterministic order."""
     if not _is_object_list(segments):
         report.errors.append("segments.json must be a JSON array of objects")
-        return []
-    count = len(station_ids)
-    if len(segments) != config.EXPECTED_STATION_COUNT:
-        report.errors.append(
-            f"expected {config.EXPECTED_STATION_COUNT} segments, got {len(segments)}"
+        return
+    expected: list[dict[str, Any]] = []
+    for service in services:
+        expected.extend(
+            build_segments(service.id, service.station_ids, service.circular)
         )
-    ids = [str(segment.get("id")) for segment in segments]
-    if len(set(ids)) != len(ids):
-        report.errors.append("segment ids must be unique")
-    for index, segment in enumerate(segments):
-        expected_from = station_ids[index] if index < count else None
-        expected_to = station_ids[(index + 1) % count] if count else None
-        expected_id = f"{service_id}:{segment.get('from')}:{segment.get('to')}"
-        if segment.get("id") != expected_id:
-            report.errors.append(f"segments[{index}] id must be {expected_id}")
-        if segment.get("geometryFeatureId") != segment.get("id"):
-            report.errors.append(f"segments[{index}] geometryFeatureId != id")
-        if segment.get("serviceId") != service_id:
-            report.errors.append(f"segments[{index}] serviceId mismatch")
-        if segment.get("from") != expected_from or segment.get("to") != expected_to:
+        pairs = [
+            (raw.get("from"), raw.get("to"))
+            for raw in segments
+            if raw.get("serviceId") == service.id
+            and isinstance(raw.get("from"), str)
+            and isinstance(raw.get("to"), str)
+        ]
+        rules.check_contiguity(service, pairs, report)
+        rules.check_directed_pairs(service, pairs, report)
+        rules.check_walks(service, pairs, report)
+    if len(segments) != len(expected):
+        report.errors.append(f"expected {len(expected)} segments, got {len(segments)}")
+    seen: set[str] = set()
+    for index, raw in enumerate(segments):
+        identifier = raw.get("id")
+        if not isinstance(identifier, str) or identifier in seen:
+            report.errors.append(f"duplicate or invalid segment id at {index}")
+        else:
+            seen.add(identifier)
+        if index >= len(expected) or raw != expected[index]:
             report.errors.append(
-                f"segments[{index}] must run {expected_from} -> {expected_to}"
+                f"segments[{index}] differs from the directed pair contract"
             )
-    for index, segment in enumerate(segments):
-        following = segments[(index + 1) % len(segments)]
-        if segment.get("to") != following.get("from"):
-            report.errors.append(f"segments[{index}].to != next segment's from")
-    if segments and segments[-1].get("to") != config.START_STATION_ID:
-        report.errors.append(f"last segment must close to {config.START_STATION_ID}")
-    referenced = {segment.get("from") for segment in segments} | {
-        segment.get("to") for segment in segments
-    }
-    unreferenced = sorted(set(station_ids) - referenced)
-    if unreferenced:
-        report.errors.append(f"stations not referenced by segments: {unreferenced}")
-    return segments
-
-
-def check_walk(segments: Sequence[dict[str, Any]], report: Report) -> None:
-    """Walking one full lap from the start must visit every segment once."""
-    outgoing = {segment.get("from"): segment for segment in segments}
-    current = config.START_STATION_ID
-    visited: list[str] = []
-    for _ in range(config.EXPECTED_STATION_COUNT):
-        segment = outgoing.get(current)
-        if segment is None:
-            report.errors.append(f"walk stuck at {current}: no outgoing segment")
-            return
-        visited.append(str(segment.get("id")))
-        current = str(segment.get("to"))
-    if current != config.START_STATION_ID:
-        report.errors.append(f"30-step walk ends at {current}, not the start")
-    if len(set(visited)) != config.EXPECTED_STATION_COUNT:
-        report.errors.append("30-step walk does not cover every segment exactly once")
-
-
-def _feature_parts(feature: dict[str, Any]) -> list[Any]:
-    """Coordinate arrays of a LineString / MultiLineString feature, else []."""
-    geometry = feature.get("geometry")
-    if not isinstance(geometry, dict):
-        return []
-    kind = geometry.get("type")
-    coordinates = geometry.get("coordinates")
-    if not isinstance(coordinates, list):
-        return []
-    if kind == "LineString":
-        return [coordinates]
-    if kind == "MultiLineString":
-        return list(coordinates)
-    return []
 
 
 def _feature_geometry(
     feature: dict[str, Any], label: str, report: Report
-) -> MultiLineString | None:
-    """Validated metric geometry of one feature (parts kept separate)."""
-    parts = _feature_parts(feature)
-    if not parts or any(not isinstance(part, list) or len(part) < 2 for part in parts):
+) -> LineString | None:
+    geometry = feature.get("geometry")
+    if (
+        not isinstance(geometry, dict)
+        or set(geometry) != {"type", "coordinates"}
+        or geometry.get("type") != "LineString"
+    ):
+        report.errors.append(f"{label} geometry must be a LineString")
+        return None
+    coordinates = geometry.get("coordinates")
+    if not isinstance(coordinates, list) or len(coordinates) < 2:
         report.errors.append(f"empty or degenerate geometry: {label}")
         return None
-    coordinates = [point for part in parts for point in part]
     if not all(_is_coordinate(point) for point in coordinates):
         report.errors.append(f"bad coordinate in {label}")
         return None
     if any(_too_many_decimals(value) for point in coordinates for value in point):
         report.errors.append(f"coordinates not rounded in {label}")
-    lines = [LineString([to_metric(point) for point in part]) for part in parts]
-    for previous, following in zip(lines, lines[1:], strict=False):
-        gap = Point(previous.coords[-1]).distance(Point(following.coords[0]))
-        if gap > config.ENDPOINT_MAX_DISTANCE_M:
-            report.errors.append(f"{label} has a {gap:.0f} m gap between parts")
-    return MultiLineString(lines)
-
-
-def _check_feature_shape(feature: Any, segment: dict[str, Any], report: Report) -> bool:
-    label = str(segment.get("id"))
-    if not isinstance(feature, dict) or feature.get("type") != "Feature":
-        report.errors.append(f"{label} is not a GeoJSON Feature")
-        return False
-    expected = {
-        "segmentId": segment.get("id"),
-        "serviceId": segment.get("serviceId"),
-        "from": segment.get("from"),
-        "to": segment.get("to"),
-    }
-    if feature.get("properties") != expected:
-        report.errors.append(f"properties mismatch on {label}")
-    return True
+    if any(a == b for a, b in zip(coordinates, coordinates[1:], strict=False)):
+        report.errors.append(f"repeated coordinate in {label}")
+    line = LineString([to_metric(point) for point in coordinates])
+    if line.length == 0:
+        report.errors.append(f"degenerate geometry: {label}")
+        return None
+    return line
 
 
 def check_geometry(
     geojson: Any,
-    segments: Sequence[dict[str, Any]],
+    services: Sequence[ServiceStops],
+    platforms: dict[tuple[str, str], Point],
     positions: dict[str, list[float]],
+    overrides: Overrides,
     report: Report,
 ) -> None:
-    """Track geometry: presence, endpoints, detours, stations passed, length."""
+    """One canonical feature per pair; platforms, same-service skipped stops and via hints."""
     if not isinstance(geojson, dict) or geojson.get("type") != "FeatureCollection":
         report.errors.append("segments.geojson must be a FeatureCollection")
         return
-    if "crs" in geojson:
-        report.errors.append("segments.geojson must not carry a crs member")
+    if set(geojson) != {"type", "features"}:
+        report.errors.append(
+            "segments.geojson must contain only type and features (no crs)"
+        )
     features = geojson.get("features")
     if not isinstance(features, list):
         report.errors.append("segments.geojson features must be an array")
         return
-    feature_ids = [
-        f.get("id") if isinstance(f, dict) and isinstance(f.get("id"), str) else None
-        for f in features
+    expected = [
+        (service.id, a, b)
+        for service in services
+        for a, b in station_pairs(service.station_ids, service.circular)
     ]
-    if feature_ids != [segment.get("id") for segment in segments]:
-        report.errors.append("geojson feature ids must match segments order")
-    by_id = dict(zip(feature_ids, features, strict=True))
-
-    station_points = {
+    identifiers = [feature_id(service_id, a, b) for service_id, a, b in expected]
+    actual = [raw.get("id") if isinstance(raw, dict) else None for raw in features]
+    if actual != identifiers:
+        report.errors.append(
+            "geojson feature ids must match canonical pair order (missing geometry or orphan feature)"
+        )
+    by_id: dict[str, Any] = {}
+    for raw in features:
+        if isinstance(raw, dict) and isinstance(raw.get("id"), str):
+            if raw["id"] in by_id:
+                report.errors.append(f"duplicate geometry feature {raw['id']}")
+            by_id[raw["id"]] = raw
+    representatives = {
         station_id: Point(to_metric(coordinate))
         for station_id, coordinate in positions.items()
     }
-    max_endpoint = 0.0
-    min_foreign = math.inf
-    max_detour = 0.0
-    total_length = 0.0
-    for segment in segments:
-        label = str(segment.get("id"))
-        feature = by_id.get(segment.get("id"))
-        if feature is None:
+    lengths = {service.id: 0.0 for service in services}
+    max_endpoint = max_detour = 0.0
+    min_skipped = math.inf
+    other_passes = 0
+    for service_id, a, b in expected:
+        label = feature_id(service_id, a, b)
+        raw = by_id.get(label)
+        if raw is None:
             report.errors.append(f"missing geometry for {label}")
             continue
-        if not _check_feature_shape(feature, segment, report):
+        if (
+            set(raw) != {"type", "id", "properties", "geometry"}
+            or raw.get("type") != "Feature"
+        ):
+            report.errors.append(f"{label} is not a GeoJSON Feature with v2 fields")
             continue
-        geometry = _feature_geometry(feature, label, report)
-        start = station_points.get(str(segment.get("from")))
-        end = station_points.get(str(segment.get("to")))
-        if geometry is None or start is None or end is None:
+        if raw.get("properties") != {
+            "featureId": label,
+            "serviceId": service_id,
+            "from": a,
+            "to": b,
+        }:
+            report.errors.append(f"properties mismatch on {label}")
+        line = _feature_geometry(raw, label, report)
+        start, end = platforms.get((service_id, a)), platforms.get((service_id, b))
+        if line is None or start is None or end is None:
             continue
-        first, last = geometry.geoms[0], geometry.geoms[-1]
-        endpoint_gap = max(
-            Point(first.coords[0]).distance(start), Point(last.coords[-1]).distance(end)
+        gap = max(
+            Point(line.coords[0]).distance(start), Point(line.coords[-1]).distance(end)
         )
-        max_endpoint = max(max_endpoint, endpoint_gap)
-        if endpoint_gap > config.ENDPOINT_MAX_DISTANCE_M:
-            report.errors.append(f"{label} endpoint {endpoint_gap:.1f} m from station")
-        straight = start.distance(end)
-        detour = geometry.length / straight if straight > 0 else math.inf
+        max_endpoint = max(max_endpoint, gap)
+        if gap > config.ENDPOINT_MAX_DISTANCE_M:
+            report.errors.append(f"{label} endpoint {gap:.1f} m from service platform")
+        direct = start.distance(end)
+        detour = line.length / direct if direct > 0 else math.inf
         max_detour = max(max_detour, detour)
         if detour > config.MAX_DETOUR_RATIO:
             report.errors.append(f"{label} detour ratio {detour:.2f}")
-        total_length += geometry.length
-        for station_id, point in station_points.items():
-            if station_id in (segment.get("from"), segment.get("to")):
-                continue
-            distance = geometry.distance(point)
-            min_foreign = min(min_foreign, distance)
-            if distance < config.FOREIGN_STATION_MIN_DISTANCE_M:
-                report.errors.append(
-                    f"{label} passes {distance:.0f} m from {station_id} "
-                    "(station order or routing is wrong)"
-                )
-
-    total_km = total_length / 1000
-    if abs(total_km - config.OFFICIAL_LOOP_LENGTH_KM) > config.LOOP_LENGTH_TOLERANCE_KM:
-        report.errors.append(
-            f"loop length {total_km:.2f} km is far from the official "
-            f"{config.OFFICIAL_LOOP_LENGTH_KM} km"
+        lengths[service_id] += line.length
+        service_points = {
+            sid: point for (svc, sid), point in platforms.items() if svc == service_id
+        }
+        min_skipped = min(
+            min_skipped,
+            rules.check_skipped_stops(label, line, (a, b), service_points, report),
+        )
+        other_passes += rules.count_other_passes(
+            line,
+            {
+                sid: point
+                for sid, point in representatives.items()
+                if sid not in service_points
+            },
+        )
+        service_override = overrides.service(service_id)
+        pairs = station_pairs(service_override.station_ids, service_override.circular)
+        if (a, b) not in pairs:
+            report.errors.append(f"{label} is not an override pair")
+            continue
+        pair_index = pairs.index((a, b))
+        hint = service_override.segment_ranges()[pair_index]
+        for via in hint.via:
+            if line.distance(Point(to_metric(via))) > config.ENDPOINT_MAX_DISTANCE_M:
+                report.errors.append(f"{label} misses a committed via point")
+    for service in services:
+        rules.check_service_length(
+            service.id,
+            lengths[service.id],
+            overrides.service(service.id).definition.length_ref,
+            report,
         )
     report.metrics.update(
         {
             "max_endpoint_distance_m": round(max_endpoint, 3),
-            "min_foreign_station_distance_m": round(min_foreign, 1),
             "max_detour_ratio": round(max_detour, 3),
-            "loop_length_km": round(total_km, 3),
+            "min_skipped_stop_distance_m": round(min_skipped, 1),
+            "other_station_passes": other_passes,
         }
     )
 
@@ -379,10 +456,12 @@ def check_manifest(
     if not isinstance(manifest, dict):
         report.errors.append("manifest.json must be an object")
         return
-    if set(manifest) != {"dataVersion", "updatedAt", "source"}:
+    if set(manifest) != {"schemaVersion", "dataVersion", "updatedAt", "source"}:
         report.errors.append(
-            "manifest.json must have exactly dataVersion, updatedAt and source"
+            "manifest.json must have exactly schemaVersion, dataVersion, updatedAt and source"
         )
+    if type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 2:
+        report.errors.append("manifest.schemaVersion must be 2")
     if not is_iso_date(manifest.get("updatedAt")):
         report.errors.append("manifest.updatedAt must be a YYYY-MM-DD date")
     elif updated_at is not None and manifest["updatedAt"] != updated_at:
@@ -398,25 +477,62 @@ def check_manifest(
         )
 
 
-def validate_dataset(
-    dataset: Dataset,
-    official: Sequence[tuple[str, str]] | None = None,
-    updated_at: str | None = None,
-) -> Report:
-    """Run every check.
-
-    ``official`` is the override (id, name) outer-loop order and ``updated_at``
-    the override's update date; each is compared only when given.
-    """
+def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
+    """Run all seventeen v2 rules without the raw N02 download."""
     report = Report()
-    positions = check_stations(dataset.stations, official, report)
+    positions = check_stations(
+        dataset.stations, official_station_order(overrides), report
+    )
     stations = dataset.stations if _is_object_list(dataset.stations) else []
-    station_order = [station.get("id") for station in stations]
-    service_id, station_ids = check_service(dataset.services, station_order, report)
-    segments = check_segments(dataset.segments, service_id, station_ids, report)
-    check_walk(segments, report)
-    check_geometry(dataset.geojson, segments, positions, report)
-    check_manifest(dataset.manifest, dataset.payloads, report, updated_at)
+    rules.check_registry_membership(
+        [(str(raw.get("id")), str(raw.get("name"))) for raw in stations],
+        overrides.registry,
+        report,
+    )
+    services, platforms = check_services(dataset.services, positions, overrides, report)
+    check_segments(dataset.segments, services, report)
+    check_geometry(dataset.geojson, services, platforms, positions, overrides, report)
+    start = overrides.dataset.start_station_id
+    rules.check_connectivity(
+        services,
+        start,
+        overrides.dataset.target_service_id,
+        overrides.dataset.reviewed_disconnected_service_ids,
+        report,
+    )
+    rules.check_start_not_endpoint(services, start, report)
+    representatives = {
+        station_id: Point(to_metric(coordinate))
+        for station_id, coordinate in positions.items()
+    }
+    rules.check_platform_offsets(
+        platforms, representatives, overrides.offset_exceptions, report
+    )
+    check_manifest(
+        dataset.manifest, dataset.payloads, report, overrides.dataset.updated_at
+    )
+    documents = {
+        config.STATIONS_FILE: dataset.stations,
+        config.SERVICES_FILE: dataset.services,
+        config.SEGMENTS_FILE: dataset.segments,
+        config.SEGMENTS_GEOJSON_FILE: dataset.geojson,
+    }
+    for name, document in documents.items():
+        payload = dataset.payloads.get(name, "")
+        expected = (
+            dumps_feature_collection(document)
+            if name == config.SEGMENTS_GEOJSON_FILE
+            and isinstance(document, dict)
+            and isinstance(document.get("features"), list)
+            else dumps_pretty(document)
+        )
+        if payload != expected:
+            report.errors.append(f"{name} bytes are not the canonical v2 serialization")
+        report.metrics[f"bytes[{name}]"] = len(payload.encode())
+    if dataset.manifest_payload is not None:
+        if dataset.manifest_payload != dumps_pretty(dataset.manifest):
+            report.errors.append("manifest.json bytes are not canonical")
+        report.metrics["bytes[manifest.json]"] = len(dataset.manifest_payload.encode())
     report.metrics["segments_geojson_bytes"] = dataset.geojson_bytes
     if dataset.geojson_bytes > config.MAX_GEOJSON_BYTES:
         report.errors.append(f"segments.geojson is {dataset.geojson_bytes} bytes")
@@ -439,17 +555,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     except OverrideError as error:
         print(f"FAIL overrides: {error}")
         return 1
-    official = [(station.id, station.name) for station in overrides.stations]
-    report = validate_dataset(
-        load_dataset(args.data_dir), official, overrides.service.updated_at
-    )
+    report = validate_dataset(load_dataset(args.data_dir), overrides)
     for name, value in sorted(report.metrics.items()):
         print(f"{name}: {value}")
     print(
         f"thresholds: endpoint<={config.ENDPOINT_MAX_DISTANCE_M} m, "
-        f"foreign station>={config.FOREIGN_STATION_MIN_DISTANCE_M} m, "
+        f"skipped stop>={config.FOREIGN_STATION_MIN_DISTANCE_M} m, "
         f"detour<={config.MAX_DETOUR_RATIO}, "
-        f"loop={config.OFFICIAL_LOOP_LENGTH_KM}±{config.LOOP_LENGTH_TOLERANCE_KM} km, "
+        f"platform offset<={config.DEFAULT_MAX_PLATFORM_OFFSET_M} m, "
+        f"length=services.json lengthRef, "
         f"geojson<={config.MAX_GEOJSON_BYTES} bytes"
     )
     for error in report.errors:

@@ -3,10 +3,16 @@
 // Pure: no DOM, no clock.
 
 import type { Position, SegmentFeatureCollection } from "../../../types/data";
-import type { RailwayNetwork, SegmentTraversedEvent } from "../engine";
+import { GameEngineError, platformPosition, type RailwayNetwork, type SegmentTraversedEvent } from "../engine";
 
-/** Polyline coordinates keyed by GeoJSON feature id (stringified). */
-export type GeometryIndex = ReadonlyMap<string, readonly Position[]>;
+export interface GeometryPath {
+  fromStationId: string;
+  toStationId: string;
+  points: readonly Position[];
+}
+
+/** Canonical +1 orientation and coordinates keyed by geometry feature id. */
+export type GeometryIndex = ReadonlyMap<string, GeometryPath>;
 
 /** One traversed segment, ready to be sampled by distance. */
 export interface StepPath {
@@ -24,18 +30,21 @@ export interface StepPath {
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
 /**
- * Index every LineString segment feature's coordinates. MultiLineString
- * features are left out: joining disjoint parts would draw a made-up straight
- * link between them (the current data has none; see stepPath's fallback).
+ * Index the canonical orientation as well as coordinates: a distant platform
+ * must never change the direction in which a shared feature is ridden.
  */
 export function buildGeometryIndex(
   collection: SegmentFeatureCollection | undefined,
 ): GeometryIndex {
-  const index = new Map<string, Position[]>();
+  const index = new Map<string, GeometryPath>();
   for (const feature of collection?.features ?? []) {
     const { geometry } = feature;
     if (geometry.type !== "LineString" || geometry.coordinates.length === 0) continue;
-    index.set(String(feature.id), geometry.coordinates.map(clonePosition));
+    index.set(feature.id, {
+      fromStationId: feature.properties.from,
+      toStationId: feature.properties.to,
+      points: geometry.coordinates.map(clonePosition),
+    });
   }
   return index;
 }
@@ -56,18 +65,16 @@ export function planarDistance(a: Position, b: Position): number {
 }
 
 /**
- * Orient `points` so the line starts at `from`: the stored geometry may run
- * the other way (e.g. a shared line ridden in the opposite direction).
+ * Orient a shared feature by station identity, independently of distance.
  */
 export function orientPath(
-  points: readonly Position[],
-  from: Position,
+  path: GeometryPath,
+  from: string,
+  to: string,
 ): Position[] {
-  const first = points[0];
-  const last = points.at(-1);
-  if (!first || !last) return [];
-  const startsAtFrom = planarDistance(first, from) <= planarDistance(last, from);
-  return startsAtFrom ? [...points] : [...points].reverse();
+  if (path.fromStationId === from && path.toStationId === to) return path.points.map(clonePosition);
+  if (path.fromStationId === to && path.toStationId === from) return [...path.points].reverse().map(clonePosition);
+  throw new GameEngineError("INVALID_NETWORK", `Geometry does not join ${from} and ${to}`);
 }
 
 function cumulativeLengths(points: readonly Position[]): number[] {
@@ -90,12 +97,12 @@ export function stepPath(
   network: RailwayNetwork,
   geometry: GeometryIndex,
 ): StepPath {
-  const from = network.stationsById.get(event.fromStationId)?.coordinates;
-  const to = network.stationsById.get(event.toStationId)?.coordinates;
+  const from = platformPosition(network, event.serviceId, event.fromStationId);
+  const to = platformPosition(network, event.serviceId, event.toStationId);
   const featureId = network.segmentsById.get(event.segmentId)?.geometryFeatureId;
   const line = featureId === undefined ? undefined : geometry.get(featureId);
   let points: Position[] = [];
-  if (line && from) points = orientPath(line, from);
+  if (line) points = orientPath(line, event.fromStationId, event.toStationId);
   else if (from && to) points = [clonePosition(from), clonePosition(to)];
   const cumulative = cumulativeLengths(points);
   return {

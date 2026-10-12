@@ -9,6 +9,13 @@
 //
 // Changing the hash, the seeding, or the step order changes every game's
 // dice; bump RNG_STATE_PREFIX (and the save version) if that ever happens.
+//
+// Per-turn draw order (part of the ruleset, see landing.ts): rollDie, then,
+// unless the move cleared the game, a service draw iff the arrival station
+// has k >= 2 services, then a direction draw iff the chosen service is not
+// the target service and both directions are movable. Forced choices draw
+// nothing, so a game that never meets a real choice consumes exactly the
+// plain dice sequence.
 
 import { GameEngineError } from "./errors";
 
@@ -33,6 +40,8 @@ const DIE_FACES = 6;
 const UINT32_RANGE = 2 ** 32;
 /** Largest multiple of 6 that fits in 2^32; draws at or above it are rejected. */
 const UNBIASED_LIMIT = UINT32_RANGE - (UINT32_RANGE % DIE_FACES);
+/** A lottery needs at least two candidates; one candidate is forced and draws nothing. */
+const MIN_CHOICES = 2;
 
 /** cyrb128 string hash: four 32-bit words. */
 function hashSeed(seed: string): Sfc32State {
@@ -128,5 +137,55 @@ export function rollDie(rngState: string): DieRoll {
     state = draw.next;
     const value = faceFromDraw(draw.value);
     if (value !== undefined) return { value, nextRngState: encodeState(state) };
+  }
+}
+
+export interface IndexDraw {
+  index: number;
+  nextRngState: string;
+}
+
+function assertChoiceCount(k: number): void {
+  if (!Number.isInteger(k) || k < MIN_CHOICES || k > UINT32_RANGE) {
+    throw new GameEngineError("INVALID_STATE", `Choice count must be an integer 2-2^32: ${k}`);
+  }
+}
+
+/**
+ * Map a uniform uint32 draw to an index in [0, k), or `undefined` when the
+ * draw falls in the incomplete top bucket [2^32 - (2^32 mod k), 2^32) and
+ * must be rejected. The limit is computed in ordinary number arithmetic
+ * (a bitwise expression would turn 2^32 into 0), so every index keeps
+ * exactly floor(2^32 / k) accepted draws.
+ *
+ * @throws GameEngineError `INVALID_STATE` for a non-integer k outside 2..2^32
+ *   or a draw that is not a uint32.
+ */
+export function indexFromDraw(draw: number, k: number): number | undefined {
+  assertChoiceCount(k);
+  if (!Number.isInteger(draw) || draw < 0 || draw >= UINT32_RANGE) {
+    throw new GameEngineError("INVALID_STATE", `Draw must be a uint32: ${draw}`);
+  }
+  const limit = UINT32_RANGE - (UINT32_RANGE % k);
+  if (draw >= limit) return undefined;
+  return draw % k;
+}
+
+/**
+ * Draw a uniform index in [0, k) for a lottery over k >= 2 candidates,
+ * redrawing on rejection (rejected draws still advance the state). Callers
+ * never draw for a forced choice (k = 1): see the per-turn draw order in
+ * landing.ts.
+ *
+ * @throws GameEngineError `INVALID_STATE` (bad k), `INVALID_RNG_STATE`
+ */
+export function drawIndex(rngState: string, k: number): IndexDraw {
+  assertChoiceCount(k);
+  let state = decodeState(rngState);
+  for (;;) {
+    const draw = nextUint32(state);
+    state = draw.next;
+    const index = indexFromDraw(draw.value, k);
+    if (index !== undefined) return { index, nextRngState: encodeState(state) };
   }
 }

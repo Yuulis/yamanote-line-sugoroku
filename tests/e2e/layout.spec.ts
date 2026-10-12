@@ -15,6 +15,8 @@ import {
 /** Most of the map must stay uncovered by the panel at every width (spec 6.2). */
 const MAX_PANEL_SHARE_OF_MAP = 0.5;
 
+test.use({ dataset: "fixture" });
+
 test("[8.3-1] title, then map and controls are visible without hiding the map", async ({
   page,
 }) => {
@@ -59,10 +61,10 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
 
 test("[8.3-8] data and map attribution are reachable on the title and play screens", async ({
   page,
-  request,
+  railwayBundle,
 }) => {
   // The data credit comes from the shipped manifest, so the test follows the data.
-  const source = await loadManifestSource(request);
+  const source = await loadManifestSource(railwayBundle);
   await openTitle(page);
   const credits = page.getByRole("region", { name: "出典・ライセンス" });
   await expect(credits).toContainText(source.attribution);

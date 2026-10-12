@@ -1,9 +1,74 @@
 # 鉄道すごろく — MVP仕様書
 
-- 文書バージョン: 0.2.0（2026-10-11: ゴール判定・タイトル・ブランチ戦略を確定）
+- Document version: 0.3.0 (2026-10-12: JR East Tokyo 23-ward expansion addendum; original MVP retained)
 - 作成日: 2026-10-10
 - 状態: MVP開発開始用（未確定事項は「暫定」「要確認」を付記）
 - 対象: Webブラウザで動作する、実際の鉄道地図を利用したオリジナルすごろく
+
+## Current edition addendum — JR East Tokyo 23 wards (2026-10-12, v0.3.0)
+
+This dated contract supersedes the Yamanote-only scope and pending transfer/endpoint
+choices in the original MVP sections 1–4 and 11 below. Those sections remain as
+historical baseline requirements; the goal in section 3.3 is unchanged.
+The title is “山手線すごろく” with subtitle “JR東日本 東京23区版”.
+
+### Scope and rules (updates to sections 2 and 4)
+
+- Reviewed all-stop service catalogue: Yamanote (30 stops), Keihin-Tohoku
+  Akabane–Kamata (22), Chuo-Sobu local Nishi-Ogikubo–Koiwa (24), Saikyo
+  Osaki–Ukima-Funado (10), Keiyo Tokyo–Kasai-Rinkai-Koen (6).
+  Shared identity gives 67 stations and 22 transfer stations. Joban local,
+  Joban rapid, Yokosuka/Sobu rapid, separate Musashino service patterns and
+  out-of-area/non-JR through-running are excluded.
+- Start at Shimbashi on Yamanote outer; turn 0 has no lottery. Each turn rolls
+  1–6, follows the current service/direction, and completes each traversed
+  directed segment. Only Yamanote outer segments count toward the 30/30 goal.
+- If pips remain at a terminus or last in-area station, stop and discard them.
+  Exact landing on an endpoint with no remaining pips is an ordinary roll stop.
+- Unless the move clears, select uniformly from distinct services at the
+  arrival station, including the ridden service. Passed stations never draw.
+  Candidate order is `services.json` order.
+- Yamanote direction is always outer. Every other service re-draws from movable
+  directions `[1, -1]`, including when the service is unchanged or is the only
+  service at the station. One available outcome is forced and consumes no RNG.
+- Draw order: die, service (if at least two candidates), direction (if two
+  movable directions on the chosen non-target service). Uniform-k draws use
+  uint32 rejection sampling. No weighting or game-length rule adjustment is added.
+- With all 30 target segments completed, Yamanote arrival at Shimbashi truncates
+  and clears; other-service arrival clears only on the final rolled step.
+  Endpoint truncation does not turn an incomplete roll into an exact stop.
+- Moves commit atomically before animation and saving. While animating, show
+  the ridden service/direction; reveal the next ride and lottery on accepted
+  completion, skip or reduced-motion completion. Reload resumes the committed
+  result without another draw. Lottery presentation is accessible text.
+
+### Data and persistence (updates to sections 5, 8 and 11)
+
+- Five public files remain: stations, services, directed segments, shared
+  LineString geometry, manifest (`schemaVersion: 2`). One stable station id per
+  curated JR facility; `ServicePattern.platformCoordinates` retains platform
+  positions. Linear patterns have explicit terminus/area-boundary endpoints and
+  all patterns have forward/backward direction labels.
+- Directed ids `<service>:<from>:<to>` reference canonical undirected features
+  `<service>:<forward-from>~<forward-to>`. Linear services emit both directions;
+  Yamanote emits outer only. Geometry properties use `featureId`, and animation
+  determines orientation by station identity rather than coordinate distance.
+- `MoveRecord` adds `stopReason` (`roll`, `goal`, `endpoint`) and `landing`
+  (`{serviceId, direction}` or `null` only on clearing moves). `saveVersion: 2`,
+  ruleset `jr-east-23ku-1`; old saves are not migrated. Structural replay and
+  seeded replay compare whole records and final state/RNG, including lotteries.
+- Area membership is a reviewed registry ward and contiguous in-area stop list;
+  N03 is a one-time audit only. N02 2025 remains the shipped railway source with
+  unchanged CC BY 4.0 attribution. Raw inputs have pinned SHA-256 checksums.
+- Hermetic E2E uses a fixed 128-bit seed on a 30-stop Yamanote plus two short
+  linear services, proved to cover transfers, direction draws, both endpoint
+  kinds and completion in 15 turns. Actual data has separate browser smoke and
+  eight seeded Vitest playthrough/restore checks.
+
+Current user-facing rules: [docs/manual/jr-east-tokyo/rules.md](docs/manual/jr-east-tokyo/rules.md).
+Generation/validation contract: [data/README.md](data/README.md).
+
+---
 
 ## 0. 開発前に用意するもの
 

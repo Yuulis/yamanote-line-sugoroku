@@ -1,4 +1,4 @@
-import type { SegmentId, ServiceId, StationId } from "./network";
+import type { ServiceId, StationId } from "./network";
 
 /** public/data/manifest.json */
 export interface DataSource {
@@ -12,6 +12,7 @@ export interface DataSource {
 }
 
 export interface Manifest {
+  schemaVersion: 2;
   dataVersion: string;
   /** Data update date, `YYYY-MM-DD`. */
   updatedAt: string;
@@ -25,13 +26,8 @@ export interface SegmentLineString {
   coordinates: Position[];
 }
 
-export interface SegmentMultiLineString {
-  type: "MultiLineString";
-  coordinates: Position[][];
-}
-
 export interface SegmentFeatureProperties {
-  segmentId: SegmentId;
+  featureId: string;
   serviceId: ServiceId;
   from: StationId;
   to: StationId;
@@ -39,9 +35,9 @@ export interface SegmentFeatureProperties {
 
 export interface SegmentFeature {
   type: "Feature";
-  id: string | number;
+  id: string;
   properties: SegmentFeatureProperties;
-  geometry: SegmentLineString | SegmentMultiLineString;
+  geometry: SegmentLineString;
 }
 
 /** public/data/segments.geojson */

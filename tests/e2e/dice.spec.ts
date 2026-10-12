@@ -5,6 +5,8 @@ import {
   freezeClock,
   gamePanel,
   loadStations,
+  markerPosition,
+  targetCompletedIds,
   openTitle,
   panelStat,
   REQUIRED_SEGMENTS,
@@ -12,6 +14,7 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  targetFeatureIds,
 } from "./support/app";
 
 // Spec 8.3 items covered here:
@@ -31,11 +34,13 @@ function sorted(ids: readonly string[]): string[] {
 
 const START_STATION_ID = "shimbashi";
 
+test.use({ dataset: "fixture" });
+
 test("[8.3-2] a roll updates station, turn, progress and the map marker", async ({
   page,
-  request,
+  railwayBundle,
 }) => {
-  const stations = await loadStations(request);
+  const stations = await loadStations(railwayBundle);
   await openTitle(page);
   await startNewGame(page);
 
@@ -61,7 +66,7 @@ test("[8.3-2] a roll updates station, turn, progress and the map marker", async 
   await expect(panelStat(page, "現在駅")).toHaveText(arrived?.name ?? "?");
   await expect(panelStat(page, "踏破区間")).toHaveText(`${move.roll}/${REQUIRED_SEGMENTS}`);
   // The marker on the map sits on the station the panel names, and is drawn there.
-  await expect.poll(async () => (await readMap(page))?.marker).toEqual(arrived?.coordinates);
+  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, save));
   await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
 });
 
@@ -72,8 +77,10 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
   await startNewGame(page);
   const legend = gamePanel(page).getByRole("list", { name: "凡例" });
   await expect(legend.getByRole("listitem")).toHaveText([
-    "踏破済み（実線）",
-    "未踏破（点線）",
+    "山手線 踏破済み（実線）",
+    "山手線 未踏破（点線）",
+    "テスト南線",
+    "テスト西線",
     "現在地",
   ]);
   await expect.poll(async () => (await readMap(page))?.completedFilterIds).toEqual([]);
@@ -85,15 +92,15 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
   if (!save) throw new Error("no save after two rolls");
   expect(save.completedSegmentIds.length).toBeGreaterThan(0);
   await expect(panelStat(page, "踏破区間")).toHaveText(
-    `${save.completedSegmentIds.length}/${REQUIRED_SEGMENTS}`,
+    `${targetCompletedIds(save).length}/${REQUIRED_SEGMENTS}`,
   );
   // The solid "completed" layer is filtered to exactly the traversed segments.
   await expect
     .poll(async () => sorted((await readMap(page))?.completedFilterIds ?? []))
-    .toEqual(sorted(save.completedSegmentIds));
+    .toEqual(sorted(targetFeatureIds(save)));
   // What is drawn agrees: traversed segments only in the completed layer,
   // never in the pending one (both layers have visible features).
-  const completed = new Set(save.completedSegmentIds);
+  const completed = new Set(targetFeatureIds(save));
   await expect
     .poll(async () => {
       const map = await readMap(page);
@@ -156,9 +163,9 @@ test.describe("with move animation", () => {
 
   test("[8.3-2] at normal speed the marker moves along the line and the move ends by itself", async ({
     page,
-    request,
+    railwayBundle,
   }) => {
-    const stations = await loadStations(request);
+    const stations = await loadStations(railwayBundle);
     await page.clock.install();
     await openTitle(page);
     await startNewGame(page);
@@ -194,7 +201,7 @@ test.describe("with move animation", () => {
     await expect(diceButton(page)).toBeEnabled();
     await expect(panelStat(page, "現在駅")).toHaveText(end?.name ?? "?");
     await expect(panelStat(page, "踏破区間")).toHaveText(`${move.roll}/${REQUIRED_SEGMENTS}`);
-    await expect.poll(async () => (await readMap(page))?.marker).toEqual(end?.coordinates);
+    await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, (await readSave(page))!));
     await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
   });
 });

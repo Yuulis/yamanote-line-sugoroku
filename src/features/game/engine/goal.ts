@@ -22,17 +22,19 @@ export function checkGoal(state: GameState, network: RailwayNetwork): boolean {
 }
 
 /**
- * Whether reaching the goal on this step ends the move. A move that ends on
- * the goal always clears; mid-move arrival clears only under `pass-through`,
- * or under `truncate-on-target-service` while riding the target service
- * (the service that ran this step, not one chosen after arrival).
+ * Whether reaching the goal on this step ends the move. Arrival on the
+ * final rolled step always clears; mid-move arrival clears only under
+ * `pass-through`, or under `truncate-on-target-service` while riding the
+ * target service (the service that ran this step, not one chosen after
+ * arrival). `isFinalRolledStep` means `step === roll`, never "the move
+ * ended here": an endpoint truncation is not an exact stop.
  */
 export function stopsAtGoal(
   config: GameConfig,
   ridingServiceId: ServiceId,
-  isLastStep: boolean,
+  isFinalRolledStep: boolean,
 ): boolean {
-  if (isLastStep) return true;
+  if (isFinalRolledStep) return true;
   switch (config.goalArrivalPolicy) {
     case "pass-through":
       return true;

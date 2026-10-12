@@ -11,7 +11,8 @@ import {
   currentPositionCollection,
   pendingSegmentFilter,
 } from "../../src/features/map/progressStyle";
-import { DEFAULT_CONFIG, segmentId, START, yamanoteInput } from "./fixtures/yamanote";
+import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
+import { DEFAULT_CONFIG, START, yamanoteInput } from "./fixtures/yamanote";
 
 const network = buildRailwayNetwork(yamanoteInput());
 
@@ -89,6 +90,32 @@ describe("reduceGameSession", () => {
   });
 });
 
+describe("reduceGameSession on a multi-service network", () => {
+  it("commits the landing with the roll and animates hops then the landing event", () => {
+    const multi = buildRailwayNetwork(multiServiceInput());
+    const start = startSession(multiConfig(), "mixed-30", multi);
+    const rolled = reduceGameSession(start, rollAction(start), multiConfig(), multi);
+    // mixed-30, turn 1: 4 to d, then the lottery picks the line towards z.
+    expect(rolled.game).toMatchObject({ currentStationId: "d", currentServiceId: M_LINE, direction: 1 });
+    expect(rolled.animation?.events.map((event) => event.type)).toEqual([
+      "segment-traversed",
+      "segment-traversed",
+      "segment-traversed",
+      "segment-traversed",
+      "landing-resolved",
+    ]);
+    expect(rolled.lastMove).toEqual({
+      roll: 4, unusedPips: 0, stopReason: "roll", stopStationId: "d",
+      serviceId: "m-loop", direction: 1, endpointKind: null,
+      landing: {
+        type: "landing-resolved", stationId: "d", serviceCandidates: ["m-loop", "m-line"],
+        serviceId: "m-line", serviceDrawRequired: true, directionCandidates: [1, -1],
+        direction: 1, directionDrawRequired: true, changedService: true,
+      },
+    });
+  });
+});
+
 describe("generateSeed", () => {
   it("returns 32 hex characters and differs between calls", () => {
     const seed = generateSeed();
@@ -99,9 +126,11 @@ describe("generateSeed", () => {
 
 describe("map progress styling", () => {
   it("builds complementary completed / pending filters", () => {
-    const ids = [segmentId(0)];
-    expect(completedSegmentFilter(ids)).toEqual(["in", ["get", "segmentId"], ["literal", ids]]);
-    expect(pendingSegmentFilter(ids)).toEqual(["!", completedSegmentFilter(ids)]);
+    const ids = ["jr-yamanote:shimbashi~hamamatsucho"];
+    const target = ["==", ["get", "serviceId"], "jr-yamanote"];
+    const completed = ["in", ["get", "featureId"], ["literal", ids]];
+    expect(completedSegmentFilter(ids)).toEqual(["all", target, completed]);
+    expect(pendingSegmentFilter(ids)).toEqual(["all", target, ["!", completed]]);
   });
 
   it("builds an empty or single-point marker collection", () => {

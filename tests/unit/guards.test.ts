@@ -118,7 +118,7 @@ describe("isSegmentFeatureCollection", () => {
     expect(isSegmentFeatureCollection(validFeatureCollection)).toBe(true);
   });
 
-  it("accepts a MultiLineString feature", () => {
+  it("rejects a MultiLineString feature in the v2 contract", () => {
     const feature = {
       ...validFeature,
       geometry: {
@@ -127,7 +127,7 @@ describe("isSegmentFeatureCollection", () => {
       },
     };
     const collection = { type: "FeatureCollection", features: [feature] };
-    expect(isSegmentFeatureCollection(collection)).toBe(true);
+    expect(isSegmentFeatureCollection(collection)).toBe(false);
   });
 
   it("rejects an empty feature list", () => {
@@ -142,10 +142,10 @@ describe("isSegmentFeatureCollection", () => {
     expect(isSegmentFeatureCollection(collection)).toBe(false);
   });
 
-  it("rejects a feature with missing segmentId property", () => {
+  it("rejects a feature with missing featureId property", () => {
     const feature = {
       ...validFeature,
-      properties: { ...validFeature.properties, segmentId: undefined },
+      properties: { ...validFeature.properties, featureId: undefined },
     };
     const collection = { type: "FeatureCollection", features: [feature] };
     expect(isSegmentFeatureCollection(collection)).toBe(false);

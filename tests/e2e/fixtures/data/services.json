@@ -1,0 +1,235 @@
+[
+  {
+    "id": "jr-yamanote",
+    "name": "山手線",
+    "operator": "東日本旅客鉄道",
+    "stationIds": [
+      "shimbashi",
+      "hamamatsucho",
+      "tamachi",
+      "takanawa-gateway",
+      "shinagawa",
+      "osaki",
+      "gotanda",
+      "meguro",
+      "ebisu",
+      "shibuya",
+      "harajuku",
+      "yoyogi",
+      "shinjuku",
+      "shin-okubo",
+      "takadanobaba",
+      "mejiro",
+      "ikebukuro",
+      "otsuka",
+      "sugamo",
+      "komagome",
+      "tabata",
+      "nishi-nippori",
+      "nippori",
+      "uguisudani",
+      "ueno",
+      "okachimachi",
+      "akihabara",
+      "kanda",
+      "tokyo",
+      "yurakucho"
+    ],
+    "circular": true,
+    "color": "#9ACD32",
+    "directionLabels": {
+      "forward": "外回り",
+      "backward": "内回り"
+    },
+    "platformCoordinates": {
+      "shimbashi": [
+        139.7582,
+        35.66639
+      ],
+      "hamamatsucho": [
+        139.757125,
+        35.65541
+      ],
+      "tamachi": [
+        139.747605,
+        35.64574
+      ],
+      "takanawa-gateway": [
+        139.740644,
+        35.635379
+      ],
+      "shinagawa": [
+        139.738535,
+        35.628135
+      ],
+      "osaki": [
+        139.728245,
+        35.619945
+      ],
+      "gotanda": [
+        139.723541,
+        35.626297
+      ],
+      "meguro": [
+        139.715828,
+        35.632926
+      ],
+      "ebisu": [
+        139.710125,
+        35.64668
+      ],
+      "shibuya": [
+        139.701639,
+        35.65811
+      ],
+      "harajuku": [
+        139.702692,
+        35.671316
+      ],
+      "yoyogi": [
+        139.70221,
+        35.683795
+      ],
+      "shinjuku": [
+        139.70014,
+        35.690465
+      ],
+      "shin-okubo": [
+        139.700255,
+        35.70093
+      ],
+      "takadanobaba": [
+        139.703829,
+        35.712904
+      ],
+      "mejiro": [
+        139.70628,
+        35.72039
+      ],
+      "ikebukuro": [
+        139.711085,
+        35.730275
+      ],
+      "otsuka": [
+        139.72794,
+        35.731785
+      ],
+      "sugamo": [
+        139.74035,
+        35.73372
+      ],
+      "komagome": [
+        139.748054,
+        35.736862
+      ],
+      "tabata": [
+        139.761575,
+        35.737475
+      ],
+      "nishi-nippori": [
+        139.76678,
+        35.732082
+      ],
+      "nippori": [
+        139.770958,
+        35.727279
+      ],
+      "uguisudani": [
+        139.77803,
+        35.721455
+      ],
+      "ueno": [
+        139.775855,
+        35.71322
+      ],
+      "okachimachi": [
+        139.774715,
+        35.707195
+      ],
+      "akihabara": [
+        139.773045,
+        35.698535
+      ],
+      "kanda": [
+        139.770875,
+        35.69177
+      ],
+      "tokyo": [
+        139.766685,
+        35.680965
+      ],
+      "yurakucho": [
+        139.76326,
+        35.67504
+      ]
+    }
+  },
+  {
+    "id": "fixture-south",
+    "name": "テスト南線",
+    "operator": "fixture",
+    "stationIds": [
+      "shinagawa",
+      "fixture-oimachi",
+      "fixture-omori"
+    ],
+    "circular": false,
+    "color": "#00B2E5",
+    "directionLabels": {
+      "forward": "大森方面",
+      "backward": "品川方面"
+    },
+    "platformCoordinates": {
+      "shinagawa": [
+        139.741535,
+        35.628135
+      ],
+      "fixture-oimachi": [
+        139.7348,
+        35.6069
+      ],
+      "fixture-omori": [
+        139.728,
+        35.5885
+      ]
+    },
+    "endpoints": {
+      "first": "terminus",
+      "last": "area-boundary"
+    }
+  },
+  {
+    "id": "fixture-west",
+    "name": "テスト西線",
+    "operator": "fixture",
+    "stationIds": [
+      "shinjuku",
+      "fixture-okubo",
+      "fixture-higashi-nakano"
+    ],
+    "circular": false,
+    "color": "#FFD400",
+    "directionLabels": {
+      "forward": "東中野方面",
+      "backward": "新宿方面"
+    },
+    "platformCoordinates": {
+      "shinjuku": [
+        139.70314,
+        35.690465
+      ],
+      "fixture-okubo": [
+        139.6975,
+        35.7008
+      ],
+      "fixture-higashi-nakano": [
+        139.6846,
+        35.7063
+      ]
+    },
+    "endpoints": {
+      "first": "terminus",
+      "last": "area-boundary"
+    }
+  }
+]

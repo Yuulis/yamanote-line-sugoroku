@@ -6,9 +6,19 @@
 // follows is presentation only, so a reload mid-animation resumes from the
 // committed (and already saved) state.
 
-import type { GameConfig, GameState, StationId } from "../../types/network";
-import { createGame, type MoveEvent, playTurn, type RailwayNetwork } from "./engine";
-import { unusedPipsOf } from "./gameSummary";
+import type {
+  Direction, EndpointKind, GameConfig, GameState, StationId, StopReason,
+} from "../../types/network";
+import {
+  createGame,
+  landingOptions,
+  type LandingResolvedEvent,
+  type MoveEvent,
+  playTurn,
+  type RailwayNetwork,
+  resolveLandingEvent,
+} from "./engine";
+import { endpointKindAt, unusedPipsOf } from "./gameSummary";
 
 export type SessionPhase = "idle" | "animating";
 
@@ -22,8 +32,15 @@ export interface MoveAnimation {
 
 export interface LastMove {
   roll: number;
-  /** Pips discarded because the goal was reached mid-move. */
+  /** Pips discarded because the move stopped early (goal or endpoint). */
   unusedPips: number;
+  stopReason: StopReason;
+  /** Station where the move ended. */
+  stopStationId: StationId;
+  serviceId: string;
+  direction: Direction;
+  endpointKind: EndpointKind | null;
+  landing: LandingResolvedEvent | null;
 }
 
 export interface GameSession {
@@ -60,15 +77,34 @@ export function startSession(
 }
 
 /** The last recorded roll, so a resumed game shows what was rolled before. */
-export function lastMoveOf(game: GameState): LastMove | null {
+export function lastMoveOf(game: GameState, network: RailwayNetwork): LastMove | null {
   const record = game.movementHistory.at(-1);
   if (!record) return null;
-  return { roll: record.roll, unusedPips: unusedPipsOf(record) };
+  const landing = record.landing === null ? null : resolveLandingEvent(
+    landingOptions({
+      config: game.config,
+      currentStationId: record.toStationId,
+      currentServiceId: record.serviceId,
+      direction: record.direction,
+    }, network),
+    record.serviceId,
+    record.landing,
+  ).event;
+  return {
+    roll: record.roll,
+    unusedPips: unusedPipsOf(record),
+    stopReason: record.stopReason,
+    stopStationId: record.toStationId,
+    serviceId: record.serviceId,
+    direction: record.direction,
+    endpointKind: endpointKindAt(network, record.serviceId, record.toStationId),
+    landing,
+  };
 }
 
 /** A restored, already-validated game; resumes idle with no animation. */
-export function resumeSession(game: GameState, sessionId = 0): GameSession {
-  return { sessionId, game, phase: "idle", lastMove: lastMoveOf(game), animation: null };
+export function resumeSession(game: GameState, network: RailwayNetwork, sessionId = 0): GameSession {
+  return { sessionId, game, phase: "idle", lastMove: lastMoveOf(game, network), animation: null };
 }
 
 function canRoll(
@@ -105,12 +141,12 @@ export function reduceGameSession(
     case "roll": {
       // A stale or repeated click must never apply a second move.
       if (!canRoll(session, action)) return session;
-      const { state, roll, unusedPips, events } = playTurn(session.game, network);
+      const { state, events } = playTurn(session.game, network);
       return {
         ...session,
         game: state,
         phase: "animating",
-        lastMove: { roll, unusedPips },
+        lastMove: lastMoveOf(state, network),
         animation: {
           sessionId: session.sessionId,
           turn: state.turn,
@@ -126,7 +162,7 @@ export function reduceGameSession(
     case "new-game":
       return startSession(config, action.seed, network, session.sessionId + 1);
     case "resume":
-      return resumeSession(action.game, session.sessionId + 1);
+      return resumeSession(action.game, network, session.sessionId + 1);
   }
 }
 
@@ -151,7 +187,7 @@ export function reduceAppState(
       return { screen: "game", session: startSession(config, action.seed, network, sessionId) };
     }
     if (action.type === "resume") {
-      return { screen: "game", session: resumeSession(action.game, sessionId) };
+      return { screen: "game", session: resumeSession(action.game, network, sessionId) };
     }
     return state;
   }
