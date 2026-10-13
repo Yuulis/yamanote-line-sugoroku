@@ -1,14 +1,14 @@
 # JR East 1都3県 (capital-region) edition — Architecture design and implementation plan
 
-Date: 2026-10-12 · Updated: 2026-10-13 (catalog v2 selection fix and remeasurement; approval pending) · Architect (Agent Teams `feature-jr-east-capital-region-expansion`) · Design only, no product code
+Date: 2026-10-12 · Updated: 2026-10-13 (S0 complete; catalog v2 approved; LF hashes and product IDs frozen) · Architect (Agent Teams `feature-jr-east-capital-region-expansion`) · Design only, no product code
 changed. Extends (does not rewrite) the shipped 23-ward design `jr-east-tokyo-expansion-design.md`.
 
 Inputs: brief `feature-jr-east-capital-region-expansion-brief.md`, codebase scan
-`feature-jr-east-capital-region-expansion-codebase.md`, revised research **catalog v2** (approval pending)
+`feature-jr-east-capital-region-expansion-codebase.md`, revised research **catalog v2** (user-approved 2026-10-13)
 `jr-east-capital-region-catalog-v2.csv` (666 rows, 40 services, 472 stations) +
 `jr-east-capital-region-services-v2.csv` + `jr-east-capital-region-expansion.md`, `.claude/docs/DESIGN.md` Key Decisions
 (user decisions recorded on 2026-10-13; decision-table dates are 2026-10-12).
-Catalog v1 FINAL (965 rows, 60 services, 475 stations; sha256 prefix `08299c58dd791e24`) and its Monte Carlo
+Catalog v1 FINAL (965 rows, 60 services, 475 stations; sha256 prefix `244bd49d40a957fa`) and its Monte Carlo
 results in §8.1–§8.3 remain historical evidence. Codex consultations: `.claude/logs/codex/*-jrcr-*.md` (§13).
 
 Status legend: **DECIDED** (architecture) · **RESOLVED** (user decision on 2026-10-13, §12) ·
@@ -18,7 +18,7 @@ Status legend: **DECIDED** (architecture) · **RESOLVED** (user decision on 2026
 
 ## 1. Summary
 
-- **Revised network (catalog v2; approval pending):** 472 JR East stations in 東京/千葉/神奈川/埼玉, 40 services =
+- **Revised network (catalog v2; user-approved 2026-10-13):** 472 JR East stations in 東京/千葉/神奈川/埼玉, 40 services =
   36 local patterns + 3 rapid-track bases + the 高崎線・東海道線 route of 湘南新宿ライン (快速 is its base type). Upper train types are excluded. 久留里線
   ends at 久留里. All stations are reachable from 新橋 and can return; no dropped service was a station's only
   service. There are 666 service-stop rows, 121 transfer stations, at most 10 candidates (東京), 627 undirected
@@ -230,7 +230,7 @@ optimises only if it fails.
 **Historical v1 method (§8.1–§8.3).** A graph-level **distributional replica** of the engine rules
 (`.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/montecarlo.mjs`; float-interval sampling from
 an sfc32-style PRNG, seed **20261012**, cap 20,000 turns, capped games would count as cap+1 — none occurred) on the
-**researcher catalog v1 FINAL** (965 rows, 60 services; sha256 prefix `08299c58dd791e24`; converted by
+**researcher catalog v1 FINAL** (965 rows, 60 services; sha256 prefix `244bd49d40a957fa`; converted by
 `catalog_to_network.py`; option B by `option_b.py`). It compares outcome distributions; it does **not** reproduce
 the engine's RNG consumption or seed sequences (integer modulo with rejection sampling). Lever rules use one weighted
 service draw with exactly the §2 weights. An earlier DRAFT of the same catalog (965 rows, same topology; 9 stations
@@ -306,14 +306,14 @@ Cells: median / p90 / p99, games over 500 in brackets.
 - No game hit the 20,000-turn cap; the tail is not a bound (no history cap; real-data tests use fixed seeds with a
   safety cap reported as failure).
 
-### 8.4 Revised catalog v2 confirmation (2026-10-13; approval pending)
+### 8.4 Revised catalog v2 confirmation (user-approved 2026-10-13)
 
 The read-only v2 validation `.claude/logs/codex/20261013T002322Z-jrcr-v2-validation.md` returned
 **NEEDS_REVISION** for the former 39-service / 630-row selection: it wrongly removed the base
 高崎線・東海道線 湘南新宿 route. The lead's correction restores `shonan_shinjuku_rapid_takasaki`
 (36 v1 evidence rows, 神保原–小田原). No other selection changes; the two upper 湘南新宿 types remain
-excluded. Both named 湘南新宿 base routes now stay whole. The revised research input is **not approved**
-until independent review and plan/catalog approval; the v1 round-2 APPROVE does not approve v2.
+excluded. Both named 湘南新宿 base routes now stay whole. The revised research catalog was **user-approved on 2026-10-13**. The earlier v1 round-2
+APPROVE is historical evidence, not a new independent v2 review.
 
 The catalog is derived solely from v1 evidence, with v1 service/stop order preserved and no timetable
 re-scrape. Relative to `net-final1-local39.json`, it adds the restored route in v1 order and removes the
@@ -322,7 +322,7 @@ only in its label). The local-only output (36 services, 459 stations) remains a 
 
 | Catalog version | Service-stop rows | Services | Stations | Catalog SHA-256 | Samples per rule | Seed | Turn cap |
 |---|---:|---:|---:|---|---:|---:|---:|
-| v2 revised | 666 | 40 (36 local + 3 rapid-track bases + 1 rapid through-route base) | 472 | `09e4bd80976b35457939515ed164b9a56b8ee0693effaa48f12aba1ca1b2acba` | 50,000 (200,000 total) | 20261012 | 20,000 |
+| v2 revised | 666 | 40 (36 local + 3 rapid-track bases + 1 rapid through-route base) | 472 | `ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4` | 50,000 (200,000 total) | 20261012 | 20,000 |
 
 Same graph-level distributional replica and quantile convention as v1; each rule starts its own PRNG at
 the listed seed. This is not an engine seed-exact run. Cap hits are zero under all four rules. The adopted
@@ -373,7 +373,7 @@ segments, 527 distinct station pairs and 121 transfer stations; maximum k remain
 
 The verifier reports these hubs' complete candidate lists in catalog order. S4/S5 must check the full
 candidate lists of the final catalog at every transfer station, including restored through-route
-candidates; maximum k alone is insufficient. No new Q1–Q11 decision item arose; approval remains pending.
+candidates; maximum k alone is insufficient. No new Q1–Q11 decision item arose; research-input approval was granted on 2026-10-13.
 
 **Reproduction from repository root:**
 
@@ -393,7 +393,7 @@ Saved outputs: `sim/run-v2-{baseline,yhalf,yhalfInbound2,yhalfInbound2Pass}-50k.
 39-service outputs. `sim/run-v2-manifest.json` records updated hashes, exact commands, sample settings,
 results and catalog verification. The generator, verifier and rebuilt networks remain in the sim directory.
 S1M must still confirm the adopted policies with the real engine after S1; these replica results do not
-complete that gate or S0b approval.
+complete that gate or the S0b product-catalog output.
 
 ---
 
@@ -406,23 +406,57 @@ Every step keeps all three CI jobs green (frontend, pipeline, Playwright); data-
 
 | Step | Scope | Depends on | Files (owner) | Tests / done when | Complexity → route |
 |---|---|---|---|---|---|
-| **S0** Integration base + id mapping | branch; CI trigger for `feature/**` PRs; research→product id map (D7: `jr-*` service ids, frozen station ids, 67 shipped ids kept); data-date record (timetable 2610, N02 2025-12-31) | — | `.github/workflows/ci.yml`, id-map file under `.claude/docs/research/` (lead) | three jobs run on a PR into the branch; id map covers revised v2 (subject to approval): 40 services / 472 stations, unique; preserve the 67 shipped station ids | Low → lead |
+| **S0 — DONE (2026-10-13)** Integration base + id mapping | branch; CI trigger for `feature/**` PRs; research→product id map (D7: `jr-*` service ids, frozen station ids, 67 shipped ids kept); data-date record (timetable 2610, N02 2025-12-31) | — | `.github/workflows/ci.yml`, id-map file under `.claude/docs/research/` (lead) | three jobs run on a PR into the branch; id map covers approved revised v2: 40 services / 472 stations, unique; preserve the 67 shipped station ids | Low → lead |
 | **S1** Engine rule seams (23-ward data, MVP stays all-equal) | §4: weighted draw, policies, proximity, save v3, config validation | S0 | `src/types/network.ts`, `engine/{rng,landing,config,network,game,save,types,index}.ts`, new `engine/proximity.ts`, `gameConfig.ts`, unit fixtures/tests (engine owner) | all-equal weights: identical rolls/choices/RNG states (existing snapshots untouched); forced = no draw; equal weights of any value delegate to `drawIndex`; weighted boundaries and rejection; share and weight formulas incl. kind bases; integer limits; distance ties, branch and rapid cases; save v3 round trips, v2 rejected, nested-config mutation | **High** → Opus + Codex review |
 | **S1M** Real-engine MC harness | input = existing research catalog (revised v2, research ids); build a simulation network and run candidate configs with the real engine; same entry point later on shipped data | S1, research catalog (not S0b output) | new `tests/simulation/**`, new `vitest.simulation.config.ts` (excluded from `npm test`), npm script | a small fixed-seed agreement test in the unit suite; large runs record catalog hash, seed set, config, cap count, median/p90/p99 | Medium-High → Opus |
 | **S2** Atomic v3 cutover on 23-ward data | §3 shape with one-element chains; minimal display follow-up | S1 | `scripts/data_pipeline/{overrides,export,validate,rules}.py`, `data/overrides/**`, `public/data/*`, `src/types/{network,data}.ts`, `src/data/{guards,loaders}.ts`, `networkFromData.ts`, `engine/network.ts` (copy), `animation/movePath.ts`, `GameApp.tsx`, map contract readers, all TS/E2E/Python fixtures, `tests/e2e/support/app.ts` (single owner) | owner vs chain checks; empty/missing/misordered references rejected; service/station order, routes and uniform trajectories unchanged; fixture v3 + `readMap`; local rebuild identical | **High** → Opus + Codex review |
 | **S3a** Registry, area, routing preparation | prefecture/municipality, homonym selectors, configured bboxes, multi-line `route`, station-number rules, boundary truncation evidence, detour exceptions; v3 output byte-identical | S2 | `scripts/data_pipeline/{config,registry,overrides,build,n02,routing,network,constraints,rules,validate}.py`, overrides, `tests/data_pipeline/**` (pipeline owner) | failing fixtures: homonym mis-match, out-of-area gap bridged, skipped served stop, reversed/prefix-switched numbers, multi-line mis-route | **High** → Opus + Codex review |
 | **S3b** Composition, validation, budgets | `compose` DAG, multi-owner legs, anchors, flattening, chain lengths, two-way reachability, **per-dataset expected catalog** (23-ward dataset gets its own), raw/gzip/reference reports, simplification knob; estimate effort from remaining route/compose recipes, including through-service shared legs and multi-N02 routing | S3a | pipeline recipe/build/export/validate (+ optional `composition.py`), `data/overrides/dataset.json` + 23-ward expected catalog, synthetic fixtures (same owner) | reject: forward/reverse multi-owner errors, cycles, wrong-track sharing, platform gap joints, back-and-forth, wrong last station, disconnection, catalog mismatch; build order ≠ output order asserted; 23-ward output unchanged | **High** → Opus + Codex review |
 | **S4** Map/UI scaling (fixture-driven) | §6 layers, highlight timing, legend, cameras, labels, lottery text, clear-screen paging; dedicated fixture bundle with a multi-owner composed rapid (both directions) and a branch | S2 (S3b if the fixture is generated) | `src/features/map/**`, `animation/{movePath,timeline,displayedProgress}.ts`, `presentation.ts`, `GamePanel.tsx`, `ClearScreen.tsx`, `GameApp.tsx`, CSS, `tests/e2e/{fixtures,specs,support}` | highlight = ridden then landing; composed hop = one step; skip/reduced motion/reload; desktop/phone overview vs panel; all three browsers; candidate display/expansion uses full final-catalog lists at every transfer station (refresh fixtures after catalog freeze); fixture seeds proven | **Medium-High** → Sonnet (UI) + Opus (animation/fixtures), Codex review |
-| **S0b** Catalog approval + product-id mapping | input = revised research **v2**, `jr-east-capital-region-catalog-v2.csv` + `jr-east-capital-region-services-v2.csv` (666 rows / 40 services / 472 stations; hash in §8.4); output = approved product-id-mapped catalog via S0, preserving order, stops and endpoint kinds; v1 stays historical | S0, resolved Q3–Q9; S1M (real-engine MC re-run) | `.claude/docs/research/` product-id-mapped approved-catalog CSV (lead + researcher) | research input confirmation **NOT complete until approval**: previous v2 validation NEEDS_REVISION, selection fixed and counts/hash/reachability/replica MC rechecked (§8.4); independent review, catalog/plan approval, product-id mapping and S1M real-engine re-run remain required | Low-Medium → lead / researcher |
+| **S0b** Catalog approval + product-id mapping | input = revised research **v2**, `jr-east-capital-region-catalog-v2.csv` + `jr-east-capital-region-services-v2.csv` (666 rows / 40 services / 472 stations; hash in §8.4); output = approved product-id-mapped catalog via S0, preserving order, stops and endpoint kinds; v1 stays historical | S0, resolved Q3–Q9; S1M (real-engine MC re-run) | `.claude/docs/research/` product-id-mapped approved-catalog CSV (lead + researcher) | research input **user-approved 2026-10-13**; S0 freezes the ID map, but generating the product-id-mapped catalog and S1M real-engine confirmation remain required | Low-Medium → lead / researcher |
 | **S6P** Regional staging | Tokyo/Kanagawa/Saitama/Chiba overrides prepared and routed in staging (a cross-prefecture service has one owner); per-segment visual review; early hub/branch/chain, §6 raw/gzip budget and map zoom/overview measurements; estimate work from the remaining recipe inventory | S3a (compose rows: S3b), S0b | staging inputs with stage catalogs only — **never live overrides or `public/data`** | validator green per staging bundle against its stage catalog; evidence for every stop, boundary and shared track | **High** → Sonnet tables, Opus routing review |
 | **S6** Final data (one commit) | approved-catalog overrides + regenerated `public/data`; rules still all-equal; `dataset.json` names the approved catalog | S3b, S4, S6P | `data/overrides/**`, `public/data/*`, `tests/data_pipeline/{test_overrides,test_validate,test_build}.py`, `tests/unit/real-data.test.ts`, `tests/e2e/real-data.spec.ts`; `gameConfig.ts` only if D7's `jr-yamanote`/count map changes (not expected) | coverage = approved catalog; two-way reachability; byte-identical rebuild; exact counts/order; fixed-seed playthrough + restore (cap reported as failure); phone parse/build/render; 300/1,000-turn save/restore timing; §6 raw/gzip budgets and desktop/phone zoom/overview gates on the full dataset | **High** → Opus integration, Sonnet mechanical |
 | **S5** Rules flip and texts | re-run S1M on final data; apply resolved Q1(c)/Q2(a)/Q5(a) to `MVP_GAME_CONFIG` (`jr-east-capital-1`), title/subtitle, rules texts, fixture seed proofs | S1M, S6, Q1, Q2, Q5, Q10 | `gameConfig.ts`, `TitleScreen.tsx`, `GamePanel.tsx`, `ClearScreen.tsx`, `index.html`, seeds/proofs/specs, real-data tests | final-config seed proofs use complete final-catalog candidate lists at every transfer station, not only max k; real-data completion + restore; config-mismatch discard; final real-engine MC numbers recorded | **Medium** (decided config flip; goal unchanged) → Sonnet |
 | **S7** Docs and release | `docs/manual/<theme>/` (Japanese), `data/README.md`, README, spec addendum, DESIGN.md, attribution; release PR; production smoke after explicit approval | all, Q11 | docs (lead) | final gates, rebuild/coverage/budget/MC evidence, preview smoke | Low (docs) / Medium (release) → lead |
 
+### S0 completion and data freeze (2026-10-13)
+
+S0 is complete on `feature/jrcr-s0`, based on `feature/jr-east-capital-region`.
+The PR trigger now includes `feature/**`; the frontend, pipeline and E2E job definitions are unchanged.
+Hosted execution of those jobs is verified when the step PR is opened, not by the local YAML check.
+The data basis is timetable edition **2610** (JR Timetable, October 2026 issue / 「JR時刻表」2026年10月号)
+and **N02 2025**, base date **2025-12-31**. The user approved research catalog v2 on 2026-10-13.
+Its 666 service-stop rows, 40 services and 472 physical stations remain unchanged.
+
+`jr-east-capital-region-id-map.csv` is the frozen D7 crosswalk (40 service rows + 472 station rows).
+CSV keeps the crosswalk reviewable alongside the catalog, with explicit entity type and identity evidence.
+All 5 shipped service IDs and 67 shipped station IDs are preserved. New service IDs apply `jr-` and
+underscore-to-hyphen to the research labels; `keihin_tohoku_negishi` → `jr-keihin-tohoku` and
+`saikyo_kawagoe` → `jr-saikyo` preserve the shipped exceptions. These service IDs are namespace labels,
+not official railway identifiers: their `id_source` is empty (5 shipped service rows use `shipped`).
+Station `id_source` counts are **67 shipped / 405 jr-official / 0 hepburn-review-needed**.
+Each new station spelling was fetched from the JR East English station timetable on 2026-10-13;
+the CSV retains its official English spelling and station-code source URL. Lowercase ASCII IDs preserve
+JR's word boundaries and remove macrons; for example `hamakawasaki` → `hama-kawasaki`,
+`airport-terminal-2` → `narita-airport-terminal-2-3`. Future steps consume this map rather than regenerate IDs.
+Registry matching uses N02 aliases, prefecture and representative service, verified against shipped stop
+order and N02 corridor selectors, rather than names alone. Tokyo (including Keiyo), Musashi-Kosugi and
+Hama-Kawasaki each retain one physical station identity across all services.
+
+All four research catalog/service CSVs use LF; **SHA-256 is over LF-normalized UTF-8 bytes**, including
+newlines inside quoted CSV fields. No cell values or stop order changed. §8.4 and the run manifest record
+the canonical v2 hash `ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4`;
+the manifest records all four hashes. `build_catalog_v2.py` now writes LF explicitly and
+`verify_catalog_v2.py` rejects CR bytes or hash drift. Re-running `catalog_to_network.py` in a temporary
+directory produced byte-identical `net-v2-{all,core,local}.json` (hashes unchanged), so the existing four
+50,000-game replica runs are retained without rerunning Monte Carlo. Their output hashes are unchanged.
+`verify_id_map.py` passes coverage, uniqueness, ID format, all shipped IDs/order/corridors and the three
+shared identities. S0 does not produce the S0b product catalog or complete S1M.
+
 Parallelism: S1 → S2 are serial (shared `types/network.ts`, `engine/network.ts`); after S2, S3a/S3b (one pipeline
 owner), S4 and S1M run in parallel; S1M consumes the existing research catalog independently of S0b. S0b
 completes research-input approval, product-id mapping and real-engine confirmation before S6P starts
-after S3a and S0b. Q1–Q11 are resolved; catalog/plan approval and implementation gates remain.
+after S3a and S0b. Q1–Q11 are resolved and the research catalog is approved; product-catalog output and implementation gates remain.
 
 S3b/S6P effort must be estimated from an inventory of the remaining recipes: classify the 627 service
 pairs into direct routes, multi-N02 routes and shared-leg compositions, with owner/shared-track evidence.
@@ -449,7 +483,7 @@ units; v3 guard/validator failing fixtures; composed-path animation units; real-
 | S3a | **High** | homonyms, multi-line routing on parallel tracks, boundary truncation |
 | S3b | **High** | composition invariants, anchors, DAG, two-way reachability, per-dataset oracle |
 | S4 | Medium-High | presentation timing contract, composed animation, phone layout |
-| S0b | Low-Medium | revised v2 approval pending, product-id mapping, recorded hash and real-engine confirmation |
+| S0b | Low-Medium | revised v2 input approved; product-catalog output, recorded hash and real-engine confirmation |
 | S6P | **High** | remaining route/compose inventory (627 service pairs, unique owners unmeasured), through shared legs and multi-N02 routing |
 | S6 | **High** | one-commit integration of 472 stations / 40 services with budgets and device checks |
 | S5 | Medium | decided config flip + seed proofs + texts; goal unchanged |
@@ -480,13 +514,13 @@ units; v3 guard/validator failing fixtures; composed-path animation units; real-
 ## 12. Resolved user decisions and remaining decision items
 
 All Q1–Q11 are **RESOLVED** under the user decisions of 2026-10-13. The former v1 alternatives remain
-measured in §8.1–§8.3; they are not the approved rules. Revised catalog v2 measurements and pending approval are in §8.4.
+measured in §8.1–§8.3; they are not the approved rules. Revised catalog v2 measurements and research-input approval are in §8.4.
 
 | Question | Decided option | Implementation consequence |
 |---|---|---|
 | Q1 — lottery tuning | **(c)** 山手線 probability 1/2 + toward-山手線 direction 2:1 | Equal base weights; `target: {kind: "share", numerator: 1, denominator: 2}`, `towardTargetWeight = 2`; new `rulesetVersion`. revised v2: 61 / 148 / 258, 4/50,000 over 500. |
 | Q2 — goal | **(a)** unchanged: 30 山手線 outer segments + 新橋 | Truncate while on 山手線; exact arrival otherwise. Pass-through is a comparison only. |
-| Q3 — service set | **Redefined track-system rule**, superseding the former core-51 recommendation | 36 v1 locals + `chuo_rapid`, `sobu_rapid`, `joban_rapid` + `shonan_shinjuku_rapid_takasaki` (快速 is the base of its 高崎線・東海道線 route, which has no 普通). Both 湘南新宿 base routes stay whole; 宇都宮線快速 and 特別快速 remain excluded as upper types. 40 services; revised catalog approval pending. |
+| Q3 — service set | **Redefined track-system rule**, superseding the former core-51 recommendation | 36 v1 locals + `chuo_rapid`, `sobu_rapid`, `joban_rapid` + `shonan_shinjuku_rapid_takasaki` (快速 is the base of its 高崎線・東海道線 route, which has no 普通). Both 湘南新宿 base routes stay whole; 宇都宮線快速 and 特別快速 remain excluded as upper types. 40 services; revised catalog user-approved 2026-10-13. |
 | Q4 — through-running | **(a)** catalog-default line-junction splits | JR-named through services stay whole; split endpoints use `service-boundary`, shown as 「系統の端」. |
 | Q5 — service base weights | **(a)** equal per service | 緩行線 and 快速線 services have equal bases; Q1 target share is applied afterwards. |
 | Q6 — 久留里線 | **(b)** truncate at 久留里 | 11 stops; 久留里 playable terminus; exclude 平山, 上総松丘, 上総亀山; 472 stations. |
@@ -496,7 +530,8 @@ measured in §8.1–§8.3; they are not the approved rules. Revised catalog v2 m
 | Q10 — title/subtitle | **(a)** 「山手線すごろく」 + 「JR東日本 1都3県版」 | Update UI, page metadata and manual in S5/S7. |
 | Q11 — PR #4 / branch sequence | **Already released to production; no PR #4 action** | Branch from `develop`; feature → develop → master. Production deployment still requires explicit approval. |
 
-**Remaining approval:** revised catalog/plan approval is pending; S0b research-input confirmation is not complete.
+**Research-input approval:** revised catalog v2 was user-approved on 2026-10-13. S0b still requires
+the product-id-mapped catalog output and S1M real-engine confirmation; production approval stays separate.
 **New Q1–Q11 choices:** none from the corrected v1 → v2 service classification. The rule is unambiguous for all 60
 v1 services, no excluded service uniquely served any station, and the only removed stations are the three
 explicitly excluded by Q6. Technical acceptance items (N02 routing, payload/device measurements and S1M
@@ -538,5 +573,5 @@ real-engine confirmation) remain implementation work, not unresolved Q1–Q11 ch
   remain. The verifier now uses a 60-id independent classification table. Networks and four 50k MC runs
   rebuilt: 40 services / 666 rows / 472 stations; adopted 61/148/258 (>500: 4). Plan wording incorporates
   research-catalog input vs product-id-mapped output, recipe-based effort, retained budget/zoom gates, and
-  full final-catalog candidate lists. Revised artifacts await caller verification and approval; this fix
+  full final-catalog candidate lists. At that revision, artifacts awaited caller verification and approval; this fix
   does not rewrite the read-only validation's verdict as APPROVE.
