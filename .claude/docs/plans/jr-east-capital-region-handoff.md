@@ -368,9 +368,9 @@ S2 is merged; next = **S3a**; **S4** can run in parallel; **S0b** awaits lead ve
   preserved. Product hashes and real-engine confirmation are recorded; product kinds are `local | rapid`.
   No live data expansion before the regional staging/final gates.
 
-## S0b: product-id catalog — implemented, pending lead verification (2026-10-13)
+## S0b: product-id catalog — lead-verified, PR #10 (2026-10-13)
 
-Branch: `feature/jrcr-s0b`; no commit, push or branch change. Approved research v2 and the frozen S0
+Branch: `feature/jrcr-s0b`; PR https://github.com/Yuulis/yamanote-line-sugoroku/pull/10 (merge after green CI). Lead re-ran the three verifiers (exit 0) and matched both product hashes. Approved research v2 and the frozen S0
 crosswalk are unchanged. Outputs under `.claude/docs/research/`:
 
 - `jr-east-capital-region-product-catalog.csv`: **666 stop rows / 472 stations / 40 services**.
