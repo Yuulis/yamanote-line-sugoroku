@@ -11,6 +11,7 @@ import type {
   StationId,
 } from "../../../types/network";
 import { GameEngineError } from "./errors";
+import { SERVICE_KINDS } from "../../../types/network";
 
 export interface RailwayNetworkInput {
   dataVersion: string;
@@ -28,6 +29,11 @@ export interface RailwayNetworkOptions {
   expectedStationCounts?: Readonly<Partial<Record<ServiceId, number>>>;
 }
 
+/**
+ * A built network and every record reachable from it are immutable by contract.
+ * Identity-keyed caches (e.g. proximity distances) are never invalidated; to
+ * change railway data, build a new network.
+ */
 export interface RailwayNetwork {
   readonly dataVersion: string;
   readonly stationsById: ReadonlyMap<StationId, Station>;
@@ -103,6 +109,9 @@ function validateService(
   service: ServicePattern,
   stationsById: ReadonlyMap<StationId, Station>,
 ): void {
+  if (service.kind !== undefined && !SERVICE_KINDS.includes(service.kind)) {
+    invalid(`Service ${service.id} has unknown kind ${service.kind}`);
+  }
   const minStops = service.circular ? MIN_LOOP_STOPS : MIN_LINEAR_STOPS;
   if (service.stationIds.length < minStops) invalid(`Service ${service.id} is too short`);
   if (new Set(service.stationIds).size !== service.stationIds.length) {

@@ -17,6 +17,11 @@ export const MVP_GAME_CONFIG: GameConfig = {
   startStationId: "shimbashi",
   targetDirection: 1,
   goalArrivalPolicy: "truncate-on-target-service",
+  serviceLottery: {
+    kindWeights: { local: 1, rapid: 1, "special-rapid": 1, "medium-distance": 1 },
+    target: { kind: "weight", weight: 1 },
+  },
+  directionLottery: { towardTargetWeight: 1 },
 };
 
 /** Animation speeds per station hop (spec 11: 0.3-0.6 s, configurable). */

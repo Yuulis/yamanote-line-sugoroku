@@ -1,5 +1,11 @@
 // Types copied from railway_sugoroku_mvp_spec.md section 5.
 
+/**
+ * Records stored in a built RailwayNetwork are immutable by contract, including
+ * nested arrays and objects. To edit railway data, build a new network; mutating
+ * records in place would leave network indexes and identity-keyed caches stale.
+ */
+
 export type StationId = string;
 export type ServiceId = string;
 export type SegmentId = string;
@@ -14,10 +20,15 @@ export interface Station {
 
 export type EndpointKind = "terminus" | "area-boundary";
 
+export const SERVICE_KINDS = ["local", "rapid", "special-rapid", "medium-distance"] as const;
+export type ServiceKind = (typeof SERVICE_KINDS)[number];
+
 interface ServicePatternBase {
   id: ServiceId;
   name: string;
   operator: string;
+  /** Shipped data v2 has no kind; the engine treats it as local until the S2 cutover. */
+  kind?: ServiceKind;
   stationIds: StationId[]; // order for direction +1
   color: string;
   directionLabels: { forward: string; backward: string };
@@ -61,12 +72,25 @@ export interface MoveRecord {
   landing: LandingChoice | null;
 }
 
+export interface ServiceLotteryPolicy {
+  kindWeights: Readonly<Record<ServiceKind, number>>;
+  target:
+    | { kind: "weight"; weight: number }
+    | { kind: "share"; numerator: number; denominator: number };
+}
+
+export interface DirectionLotteryPolicy {
+  towardTargetWeight: number;
+}
+
 export interface GameConfig {
   rulesetVersion: string;
   targetServiceId: ServiceId;
   startStationId: StationId;
   targetDirection: Direction;
   goalArrivalPolicy: "truncate-on-target-service" | "exact-stop" | "pass-through";
+  serviceLottery: ServiceLotteryPolicy;
+  directionLottery: DirectionLotteryPolicy;
 }
 
 export interface GameState {

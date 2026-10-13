@@ -90,6 +90,11 @@ export function multiConfig(
     startStationId: M_START,
     targetDirection: 1,
     goalArrivalPolicy: policy,
+    serviceLottery: {
+      kindWeights: { local: 1, rapid: 1, "special-rapid": 1, "medium-distance": 1 },
+      target: { kind: "weight", weight: 1 },
+    },
+    directionLottery: { towardTargetWeight: 1 },
   };
 }
 

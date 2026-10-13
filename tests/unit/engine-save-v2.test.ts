@@ -67,11 +67,11 @@ function historyOf(raw: Record<string, unknown>): Record<string, unknown>[] {
 }
 
 describe("save v2 round trips", () => {
-  it("writes saveVersion 2 with stopReason and landing on every record", () => {
-    expect(SAVE_VERSION).toBe(2);
+  it("writes the current saveVersion (3) with stopReason and landing on every record", () => {
+    expect(SAVE_VERSION).toBe(3);
     const truncated = injectedStates()[3]!;
     const raw = JSON.parse(serializeGame(truncated)) as Record<string, unknown>;
-    expect(raw.saveVersion).toBe(2);
+    expect(raw.saveVersion).toBe(3);
     expect(historyOf(raw).map((record) => [record.stopReason, record.landing])).toEqual([
       ["roll", choice(M_LINE, 1)],
       ["roll", choice(M_LINE, -1)],
