@@ -25,6 +25,8 @@ from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config, rules
+from scripts.data_pipeline.budgets import BUDGET_PROFILES, budget_errors, size_report
+from scripts.data_pipeline.composition_validate import check_composed_artifacts
 from scripts.data_pipeline.constraints import BBox
 from scripts.data_pipeline.export import (
     GAME_DATA_FILES,
@@ -472,7 +474,7 @@ def check_geometry(
         if hint.route:
             joints = [Point(to_metric(joint)) for joint in hint.route.joints]
             if any(
-                line.distance(joint) > config.SIMPLIFY_TOLERANCE_M + 1.0
+                line.distance(joint) > overrides.dataset.simplify_tolerance_m + 1.0
                 for joint in joints
             ):
                 report.errors.append(
@@ -550,6 +552,9 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         lengths = rules.check_geometry_chains(
             dataset.segments, dataset.geojson["features"], services, report
         )
+        check_composed_artifacts(
+            dataset.segments, dataset.geojson["features"], overrides, platforms, report
+        )
         for service in services:
             rules.check_service_length(
                 service.id,
@@ -565,6 +570,16 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         overrides.dataset.reviewed_disconnected_service_ids,
         report,
     )
+    if _is_object_list(dataset.segments):
+        rules.check_two_way_reachability(
+            positions,
+            [
+                (str(segment.get("from")), str(segment.get("to")))
+                for segment in dataset.segments
+            ],
+            start,
+            report,
+        )
     rules.check_start_not_endpoint(services, start, report)
     representatives = {
         station_id: Point(to_metric(coordinate))
@@ -601,8 +616,25 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
             report.errors.append("manifest.json bytes are not canonical")
         report.metrics["bytes[manifest.json]"] = len(dataset.manifest_payload.encode())
     report.metrics["segments_geojson_bytes"] = dataset.geojson_bytes
-    if dataset.geojson_bytes > config.MAX_GEOJSON_BYTES:
+    files = {
+        **dataset.payloads,
+        config.MANIFEST_FILE: dataset.manifest_payload
+        or dumps_pretty(dataset.manifest),
+    }
+    sizes = size_report(
+        files,
+        int(report.metrics.get("geometry_reference_count", 0)),
+        int(report.metrics.get("max_geometry_chain_length", 0)),
+    )
+    # Dataset.geojson_bytes reflects even malformed or padded payloads.
+    sizes[f"bytes[{config.SEGMENTS_GEOJSON_FILE}]"] = dataset.geojson_bytes
+    report.metrics.update(sizes)
+    limits = (
+        overrides.dataset.budgets or BUDGET_PROFILES[overrides.dataset.budget_profile]
+    )
+    if dataset.geojson_bytes > limits["geojsonRaw"]:
         report.errors.append(f"segments.geojson is {dataset.geojson_bytes} bytes")
+    report.errors.extend(budget_errors(sizes, limits))
     return report
 
 
@@ -631,7 +663,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"detour<={config.MAX_DETOUR_RATIO}, "
         f"platform offset<={config.DEFAULT_MAX_PLATFORM_OFFSET_M} m, "
         f"length=services.json lengthRef, "
-        f"geojson<={config.MAX_GEOJSON_BYTES} bytes"
+        f"budgetProfile={overrides.dataset.budget_profile}, "
+        f"geojson<={overrides.dataset.budgets['geojsonRaw']} raw / "
+        f"{overrides.dataset.budgets['geojsonGzip']} gzip bytes"
     )
     for error in report.errors:
         print(f"FAIL {error}")

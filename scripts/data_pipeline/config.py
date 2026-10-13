@@ -47,6 +47,7 @@ OUTPUT_CRS = "EPSG:4326"  # WGS84 lon/lat
 SECTION_SEARCH_MARGIN_M = 2_000.0  # bbox margin around station candidates
 NODE_SNAP_DECIMALS = 2  # node identity tolerance: 1 cm in metric CRS
 SIMPLIFY_TOLERANCE_M = 1.0  # Douglas-Peucker tolerance for segment geometry
+MAX_COMPOSE_PRIMITIVES = 4_096  # expansion safety cap, before recipe anchor checks
 COORDINATE_DECIMALS = 6  # ~0.1 m at Tokyo latitude
 SECTION_KEY_DECIMALS = 5  # N02 source coordinates carry 5 decimals
 # A platform or via point farther than this from the track it is routed on is

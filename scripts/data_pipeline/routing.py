@@ -44,6 +44,7 @@ class PairRoute:
     networks: tuple[TrackNetwork, ...] = ()  # explicit multi-line order
     joints: tuple[Point, ...] = ()
     line_order: tuple[str, ...] = ()
+    fixed_path: TrackPath | None = None
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,14 @@ def routed_path(
     max_snap_offset_m: float = config.MAX_SNAP_OFFSET_M,
 ) -> TrackPath:
     """Shortest track path ``origin`` -> via points -> ``destination``."""
+    if route.fixed_path is not None:
+        path = route.fixed_path
+        if (
+            origin.coords[0] != path.geometry.coords[0]
+            or destination.coords[0] != path.geometry.coords[-1]
+        ):
+            raise NoPathError("compose platforms differ from exact primitive anchors")
+        return path
     if route.networks:
         if (
             route.via

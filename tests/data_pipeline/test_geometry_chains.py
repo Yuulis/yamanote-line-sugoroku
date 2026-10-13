@@ -30,6 +30,7 @@ from scripts.data_pipeline.overrides import (
 from scripts.data_pipeline.registry import Registry, RegistryStation
 from scripts.data_pipeline.rules import Report, ServiceStops, check_geometry_chains
 from scripts.data_pipeline.validate import Dataset, to_metric, validate_dataset
+from tests.data_pipeline.composition_support import recipe
 
 
 def chain_fixture() -> tuple[
@@ -137,7 +138,20 @@ def test_multi_owner_rapid_chain_passes_whole_dataset_validation(
                 for index, station in enumerate(service.station_ids, 1)
             ),
             line_ranges=(
-                LineRange(service.station_ids[0], service.station_ids[-1], "track"),
+                # Shared primitives require explicit reviewed composition metadata.
+                LineRange(
+                    "a",
+                    "c",
+                    "",
+                    compose=recipe(
+                        ("owner-a", "a", "b", ("track",)),
+                        ("owner-b", "b", "c", ("track",)),
+                    ),
+                )
+                if service.id == "rapid"
+                else LineRange(
+                    service.station_ids[0], service.station_ids[-1], "track"
+                ),
             ),
             section_filters={},
         )

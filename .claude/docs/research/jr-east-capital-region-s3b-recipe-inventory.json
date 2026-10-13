@@ -1,0 +1,292 @@
+{
+  "basis": "Approved product stop order only; route/compose classification and unique primitive owner counts require S6P N02 review. No physical shared-track claim is inferred from stop names.",
+  "services": [
+    {
+      "service_id": "jr-yamanote",
+      "kind": "local",
+      "canonical_pairs": 30,
+      "retained_shipped_pairs": 30,
+      "remaining_pairs": 0
+    },
+    {
+      "service_id": "jr-keihin-tohoku",
+      "kind": "local",
+      "canonical_pairs": 46,
+      "retained_shipped_pairs": 21,
+      "remaining_pairs": 25
+    },
+    {
+      "service_id": "jr-chuo-sobu-local",
+      "kind": "local",
+      "canonical_pairs": 38,
+      "retained_shipped_pairs": 23,
+      "remaining_pairs": 15
+    },
+    {
+      "service_id": "jr-chuo-rapid",
+      "kind": "rapid",
+      "canonical_pairs": 23,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 23
+    },
+    {
+      "service_id": "jr-chuo-takao-fujino",
+      "kind": "local",
+      "canonical_pairs": 2,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 2
+    },
+    {
+      "service_id": "jr-ome",
+      "kind": "local",
+      "canonical_pairs": 24,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 24
+    },
+    {
+      "service_id": "jr-itsukaichi",
+      "kind": "local",
+      "canonical_pairs": 6,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 6
+    },
+    {
+      "service_id": "jr-hachiko",
+      "kind": "local",
+      "canonical_pairs": 19,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 19
+    },
+    {
+      "service_id": "jr-kawagoe-west",
+      "kind": "local",
+      "canonical_pairs": 5,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 5
+    },
+    {
+      "service_id": "jr-saikyo",
+      "kind": "local",
+      "canonical_pairs": 23,
+      "retained_shipped_pairs": 9,
+      "remaining_pairs": 14
+    },
+    {
+      "service_id": "jr-sotetsu-direct",
+      "kind": "local",
+      "canonical_pairs": 6,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 6
+    },
+    {
+      "service_id": "jr-keiyo",
+      "kind": "local",
+      "canonical_pairs": 17,
+      "retained_shipped_pairs": 5,
+      "remaining_pairs": 12
+    },
+    {
+      "service_id": "jr-musashino",
+      "kind": "local",
+      "canonical_pairs": 25,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 25
+    },
+    {
+      "service_id": "jr-musashino-takaya",
+      "kind": "local",
+      "canonical_pairs": 1,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 1
+    },
+    {
+      "service_id": "jr-musashino-futamata",
+      "kind": "local",
+      "canonical_pairs": 1,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 1
+    },
+    {
+      "service_id": "jr-nambu",
+      "kind": "local",
+      "canonical_pairs": 25,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 25
+    },
+    {
+      "service_id": "jr-nambu-branch",
+      "kind": "local",
+      "canonical_pairs": 4,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 4
+    },
+    {
+      "service_id": "jr-tsurumi",
+      "kind": "local",
+      "canonical_pairs": 9,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 9
+    },
+    {
+      "service_id": "jr-tsurumi-umishibaura",
+      "kind": "local",
+      "canonical_pairs": 2,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 2
+    },
+    {
+      "service_id": "jr-tsurumi-okawa",
+      "kind": "local",
+      "canonical_pairs": 1,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 1
+    },
+    {
+      "service_id": "jr-yokohama",
+      "kind": "local",
+      "canonical_pairs": 19,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 19
+    },
+    {
+      "service_id": "jr-sagami",
+      "kind": "local",
+      "canonical_pairs": 17,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 17
+    },
+    {
+      "service_id": "jr-tokaido",
+      "kind": "local",
+      "canonical_pairs": 19,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 19
+    },
+    {
+      "service_id": "jr-yokosuka",
+      "kind": "local",
+      "canonical_pairs": 18,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 18
+    },
+    {
+      "service_id": "jr-sobu-rapid",
+      "kind": "rapid",
+      "canonical_pairs": 9,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 9
+    },
+    {
+      "service_id": "jr-utsunomiya",
+      "kind": "local",
+      "canonical_pairs": 14,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 14
+    },
+    {
+      "service_id": "jr-takasaki",
+      "kind": "local",
+      "canonical_pairs": 21,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 21
+    },
+    {
+      "service_id": "jr-shonan-shinjuku-local",
+      "kind": "local",
+      "canonical_pairs": 26,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 26
+    },
+    {
+      "service_id": "jr-shonan-shinjuku-rapid-takasaki",
+      "kind": "rapid",
+      "canonical_pairs": 35,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 35
+    },
+    {
+      "service_id": "jr-joban-rapid",
+      "kind": "rapid",
+      "canonical_pairs": 11,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 11
+    },
+    {
+      "service_id": "jr-joban-local",
+      "kind": "local",
+      "canonical_pairs": 12,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 12
+    },
+    {
+      "service_id": "jr-narita-abiko",
+      "kind": "local",
+      "canonical_pairs": 9,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 9
+    },
+    {
+      "service_id": "jr-narita",
+      "kind": "local",
+      "canonical_pairs": 15,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 15
+    },
+    {
+      "service_id": "jr-narita-airport-branch",
+      "kind": "local",
+      "canonical_pairs": 2,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 2
+    },
+    {
+      "service_id": "jr-kashima",
+      "kind": "local",
+      "canonical_pairs": 1,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 1
+    },
+    {
+      "service_id": "jr-sobu-main",
+      "kind": "local",
+      "canonical_pairs": 21,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 21
+    },
+    {
+      "service_id": "jr-sotobo",
+      "kind": "local",
+      "canonical_pairs": 26,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 26
+    },
+    {
+      "service_id": "jr-uchibo",
+      "kind": "local",
+      "canonical_pairs": 31,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 31
+    },
+    {
+      "service_id": "jr-kururi",
+      "kind": "local",
+      "canonical_pairs": 10,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 10
+    },
+    {
+      "service_id": "jr-togane",
+      "kind": "local",
+      "canonical_pairs": 4,
+      "retained_shipped_pairs": 0,
+      "remaining_pairs": 4
+    }
+  ],
+  "total_canonical_pairs": 627,
+  "retained_shipped_pairs": 88,
+  "remaining_pairs": 539,
+  "remaining_by_kind": {
+    "local": 461,
+    "rapid": 78
+  }
+}
