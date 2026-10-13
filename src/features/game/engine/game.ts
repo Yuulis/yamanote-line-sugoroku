@@ -12,7 +12,7 @@ import type {
   MoveRecord,
   StopReason,
 } from "../../../types/network";
-import { validateConfig } from "./config";
+import { copyGameConfig, validateConfig } from "./config";
 import { GameEngineError } from "./errors";
 import { drawLanding, landingOptions, resolveLandingEvent } from "./landing";
 import { advance, assertSettledPosition, type GamePosition } from "./movement";
@@ -20,7 +20,7 @@ import type { RailwayNetwork } from "./network";
 import { type DieFace, rollDie, seedRng } from "./rng";
 import type { MoveEvent, MoveResult } from "./types";
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 const MIN_ROLL = 1;
 const MAX_ROLL = 6;
 
@@ -36,7 +36,7 @@ export function createGame(
     saveVersion: SAVE_VERSION,
     dataVersion: network.dataVersion,
     status: "playing",
-    config: { ...config },
+    config: copyGameConfig(config),
     currentStationId: config.startStationId,
     currentServiceId: config.targetServiceId,
     direction: config.targetDirection,
@@ -147,7 +147,7 @@ export function computeTurn(
       saveVersion: state.saveVersion,
       dataVersion: state.dataVersion,
       status: moved.cleared ? "completed" : "playing",
-      config: state.config,
+      config: copyGameConfig(state.config),
       currentStationId: moved.stationId,
       currentServiceId: landing?.serviceId ?? state.currentServiceId,
       direction: landing?.direction ?? state.direction,
