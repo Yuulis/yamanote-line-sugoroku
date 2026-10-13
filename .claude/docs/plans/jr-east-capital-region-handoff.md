@@ -112,7 +112,8 @@ Verification history (2026-10-13):
 - Final lead verification: `npm run typecheck` passed; `npx vitest run` **22 files / 504 passed**
   (new S1 suites **4 files / 102 passed**); `npm run build` passed; `verify_delegation.py` no
   out-of-scope files or placeholders in code (its `weakened_tests` hit on `engine-save-v2.test.ts`
-  is the 2 -> 3 version-pin replacement, not a removed assertion). Committed on `feature/jrcr-s1`.
+  is the 2 -> 3 version-pin replacement, not a removed assertion). Commit `1eb32fe` on `feature/jrcr-s1`;
+  PR https://github.com/Yuulis/yamanote-line-sugoroku/pull/7 (→ integration branch, merge after green CI).
 
 No data/pipeline/schema/geometry/map/UI edits were made in S1.
 
