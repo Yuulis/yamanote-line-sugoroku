@@ -2,8 +2,8 @@
 
 ## Current status (2026-10-13) — resume here
 
-**S0, S1, S1M, S2, S0b, S3a and S4 are merged** into the integration branch
-`feature/jr-east-capital-region` (head `6e2e7e9`, based on `develop`). Nothing is uncommitted.
+**S0, S1, S1M, S2, S0b, S3a, S4 and S3b are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; S3b merge `cc87509`; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
 and production needs explicit user approval. Shipped data is still the 23-ward edition (v3 contract),
 rules still all-equal.
@@ -17,11 +17,13 @@ rules still all-equal.
 | S0b product-id catalog | merged | #10 | three verifiers exit 0, product hashes match; 20k decided run = S1M exactly |
 | S4 map/UI scaling (fixture-driven) | merged | #11 | Vitest 551, build, E2E 78/78 (75/75 twice before polish); Codex review APPROVE, polish applied |
 | S3a registry/area/routing prep | merged | #12 | `verify.sh` (pytest 198), validate, rebuild byte-identical; Codex review NEEDS_REVISION → fixed, 41/41 guard-removal checks; CI green after merging S4 |
-| S3b composition/validation/budgets | implemented on `feature/jrcr-s3b`; review NEEDS_REVISION → fixed, pending lead verification | — | executor: pytest 259, Vitest 551, validate, rebuild byte-identical, 33/33 isolated guard removals |
+| S3b composition/validation/budgets | merged | #13 | `verify.sh` (pytest 259), validate, raw-N02 rebuild byte-identical, Vitest 551; Codex review NEEDS_REVISION (routed-chain bypass, generator reachability) → fixed, 33/33 guard removals; CI green |
 
-**Next:** lead verification of the review fixes and independent re-review of uncommitted **S3b** on
-`feature/jrcr-s3b` (section below). **S6P** may start after accepting the split; compose rows need
-acceptance of S3b composition. Then S6 → S5 → S7. No S3b commit/PR has been made.
+**Next:** **S6P** (regional staging: prefecture-by-prefecture overrides from the product catalog in a
+staging area, never live data; route-only rows first, then compose rows). Then S6 → S5 → S7.
+Codex was near its rate limit at the end of this session: if Codex is unavailable, Claude subagents
+(`general-purpose-opus` for pipeline/routing judgment, `general-purpose-sonnet` for mechanical tables)
+can take a step with the same contract, gates and review (use a read-only Codex or Opus review).
 Briefs: section "Next step briefs"; scope/tests per design §9.
 Parallel steps use git worktrees under `.claude/worktrees/` (ignored); run Playwright in only one tree at a time
 (ports). Expect handoff merge conflicts when parallel steps each append a section — keep both sections.
@@ -455,7 +457,7 @@ pair's ratio limit and cannot bypass area/skipped-stop/joint checks.
 
 ## Next step briefs
 
-S0b, S3a and S4 are merged (sections above/below). S3b is implemented below, pending lead verification/review; next = accept **S3b**, then **S6P**:
+S0b, S3a, S4 and S3b are merged (sections above/below). Next = **S6P**; the S3b bullet is kept for reference:
 
 - **S3b (pipeline owner, after S3a):** first split the 799-line
   `scripts/data_pipeline/overrides.py` into focused parsing/loading/consistency modules
@@ -472,7 +474,7 @@ S0b, S3a and S4 are merged (sections above/below). S3b is implemented below, pen
   catalogue mismatch. Preserve the 23-ward bytes. Estimate work from the remaining
   route/compose inventory, including through-service shared legs and multi-N02 routes;
   recipe/unique-owner counts remain unmeasured. Regional data stays in staging until S6.
-- **S6P (regional staging, after accepting S3b's split; compose rows after accepting S3b):**
+- **S6P (regional staging; S3b accepted and merged):**
   inputs are the frozen `jr-east-capital-region-product-{catalog,services}.csv`, S0 id map,
   pinned raw N02, S3a registry/scope/selectors, S3b recipe schema and stage-specific oracle.
   Use `data/staging/jr-east-capital-region/<stage>/overrides/` for reviewed inputs and
@@ -516,7 +518,7 @@ S0b, S3a and S4 are merged (sections above/below). S3b is implemented below, pen
 - **Later:** S6 final data in one commit (rules still all-equal) → S5 rules flip (Q1(c), subtitle,
   seed proofs, real-engine MC on final data) → S7 docs and release PR (production needs approval).
 
-## S3b: composition, validation and budgets — review NEEDS_REVISION → fixed; pending lead verification (2026-10-13)
+## S3b: composition, validation and budgets — DONE, lead-verified, merged via PR #13 (`cc87509`, 2026-10-13)
 
 Uncommitted on `feature/jrcr-s3b`. No commit/push/branch change; live 23-ward public bytes,
 TS/UI, dependencies, DESIGN.md and STATE.md are unchanged. No Playwright run.
