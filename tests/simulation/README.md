@@ -55,8 +55,8 @@ The approved catalog is already in outer-loop order from Shimbashi. The CSV load
 preserves service order, sorts stops by their contiguous zero-based order and
 cross-checks them against the services CSV. It synthesizes coordinates/platforms
 and geometry ids, adds only +1 segments for the target loop and both directions
-for other services. Research `through-split` endpoints use synthetic `terminus`
-metadata because S1 does not yet support `service-boundary`; both stop/discard-pips
+for other services. Research `through-split` endpoints map to v3 `service-boundary`
+metadata; both stop/discard-pips
 semantics are identical. These synthetic fields never enter shipped data.
 
 History is discarded after each real `playTurn` to avoid quadratic history-array

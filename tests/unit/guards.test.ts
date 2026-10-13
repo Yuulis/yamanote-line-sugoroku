@@ -64,7 +64,7 @@ describe("isSegment", () => {
   });
 
   it.each([
-    ["missing geometryFeatureId", { ...validSegment, geometryFeatureId: undefined }],
+    ["missing geometryFeatureIds", { ...validSegment, geometryFeatureIds: undefined }],
     ["numeric from", { ...validSegment, from: 1 }],
     ["missing serviceId", { ...validSegment, serviceId: undefined }],
   ])("rejects a segment with %s", (_label, value) => {
@@ -118,7 +118,7 @@ describe("isSegmentFeatureCollection", () => {
     expect(isSegmentFeatureCollection(validFeatureCollection)).toBe(true);
   });
 
-  it("rejects a MultiLineString feature in the v2 contract", () => {
+  it("rejects a MultiLineString feature in the v3 contract", () => {
     const feature = {
       ...validFeature,
       geometry: {

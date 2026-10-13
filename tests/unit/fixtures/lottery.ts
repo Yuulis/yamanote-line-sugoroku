@@ -1,25 +1,27 @@
 import type { RailwayNetworkInput } from "../../../src/features/game/engine";
 import type { GameConfig, ServicePattern } from "../../../src/types/network";
-import { bothWays, M_LINE, M_LOOP, M_SPUR, multiConfig, multiServiceInput } from "./multiService";
+import { bothWays, M_LINE, M_SPUR, multiConfig, multiServiceInput } from "./multiService";
 
 export const SPECIAL = "special";
+export const EXTRA_LOCAL = "extra-local";
 
 export function kindInput(): RailwayNetworkInput {
   const base = multiServiceInput();
   const line = base.services.find((service) => service.id === M_LINE)!;
   const services: ServicePattern[] = base.services.map((service) => ({
     ...service,
-    kind: service.id === M_LOOP ? "medium-distance" : service.id === M_LINE ? "rapid" : "local",
+    kind: service.id === M_LINE ? "rapid" : "local",
   }));
-  services.push({ ...line, id: SPECIAL, kind: "special-rapid" });
-  return { ...base, services, segments: [...base.segments, ...bothWays(SPECIAL, line.stationIds)] };
+  // Two non-target services of each kind prove bases multiply per service.
+  services.push({ ...line, id: SPECIAL, kind: "rapid" }, { ...line, id: EXTRA_LOCAL, kind: "local" });
+  return { ...base, services, segments: [...base.segments, ...bothWays(SPECIAL, line.stationIds), ...bothWays(EXTRA_LOCAL, line.stationIds)] };
 }
 
 export function lotteryConfig(): GameConfig {
   return {
     ...multiConfig(),
     serviceLottery: {
-      kindWeights: { local: 2, rapid: 3, "special-rapid": 5, "medium-distance": 7 },
+      kindWeights: { local: 2, rapid: 3 },
       target: { kind: "share", numerator: 2, denominator: 5 },
     },
     directionLottery: { towardTargetWeight: 2 },

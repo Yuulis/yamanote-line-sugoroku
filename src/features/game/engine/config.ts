@@ -66,8 +66,6 @@ export function parseLotteryPolicies(
       kindWeights: {
         local: policyInteger(bases.local, "kindWeights.local"),
         rapid: policyInteger(bases.rapid, "kindWeights.rapid"),
-        "special-rapid": policyInteger(bases["special-rapid"], "kindWeights.special-rapid"),
-        "medium-distance": policyInteger(bases["medium-distance"], "kindWeights.medium-distance"),
       },
       target,
     },

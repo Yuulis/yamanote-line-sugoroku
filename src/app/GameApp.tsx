@@ -75,8 +75,8 @@ export function GameApp({ data, network }: GameAppProps) {
     () =>
       shown
         ? {
-            completedFeatureIds: shown.completedSegmentIds.filter((id) => requiredIds.has(id)).map(
-              (id) => network.segmentsById.get(id)!.geometryFeatureId,
+            completedFeatureIds: shown.completedSegmentIds.filter((id) => requiredIds.has(id)).flatMap(
+              (id) => network.segmentsById.get(id)!.geometryFeatureIds,
             ),
             currentPosition: shown.position,
           }

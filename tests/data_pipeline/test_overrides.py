@@ -311,7 +311,7 @@ def test_load_overrides_with_linear_service_without_endpoints_raises(
 ) -> None:
     rewrite(
         core_copy / config.SERVICES_OVERRIDE_FILE,
-        '"endpoints": {\n      "first": "terminus",\n      "last": "area-boundary"\n    },',
+        '"endpoints": {\n        "first": "terminus",\n        "last": "area-boundary"\n      },',
         "",
     )
 

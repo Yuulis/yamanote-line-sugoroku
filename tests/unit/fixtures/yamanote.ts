@@ -57,7 +57,7 @@ function loopSegments(serviceId: string, ids: readonly string[]): Segment[] {
   return ids.map((from, index) => {
     const to = ids[(index + 1) % ids.length] as string;
     const id = `${serviceId}:${from}:${to}`;
-    return { id, serviceId, from, to, geometryFeatureId: id };
+    return { id, serviceId, from, to, geometryFeatureIds: [id] };
   });
 }
 
@@ -67,6 +67,7 @@ function yamanoteService(): ServicePattern {
     id: SERVICE_ID,
     name: "山手線",
     operator: "東日本旅客鉄道",
+    kind: "local", lineIds: [SERVICE_ID],
     stationIds: [...STATION_IDS],
     circular: true,
     color: "#9ACD32",
@@ -110,6 +111,7 @@ export function inputWithShuttle(): RailwayNetworkInput {
         id: OTHER_SERVICE_ID,
         name: "テスト環状線",
         operator: "test",
+        kind: "local", lineIds: [OTHER_SERVICE_ID],
         stationIds: [...SHUTTLE_STATION_IDS],
         circular: true,
         color: "#000000",
@@ -133,7 +135,7 @@ export function configWith(policy: GameConfig["goalArrivalPolicy"]): GameConfig 
     targetDirection: 1,
     goalArrivalPolicy: policy,
     serviceLottery: {
-      kindWeights: { local: 1, rapid: 1, "special-rapid": 1, "medium-distance": 1 },
+      kindWeights: { local: 1, rapid: 1 },
       target: { kind: "weight", weight: 1 },
     },
     directionLottery: { towardTargetWeight: 1 },

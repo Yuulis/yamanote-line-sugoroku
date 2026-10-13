@@ -59,7 +59,7 @@ test("[8.3-6] a failed map style keeps the game playable and retry recovers the 
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, secondTurn));
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
-    .toEqual(targetFeatureIds(secondTurn).sort());
+    .toEqual(targetFeatureIds(secondTurn, railwayBundle).sort());
   await expect(gamePanel(page)).toBeVisible();
   await expect(panelStat(page, "ターン数")).toHaveText("2");
   expect(await readSave(page)).toEqual(secondTurn);
@@ -92,7 +92,7 @@ test("[8.3-6] tiles failing before the map loads: retry message, game kept, retr
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, save));
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
-    .toEqual(targetFeatureIds(save).sort());
+    .toEqual(targetFeatureIds(save, railwayBundle).sort());
   expect(await readSave(page)).toEqual(save);
 });
 

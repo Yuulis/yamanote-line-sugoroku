@@ -18,7 +18,7 @@ const BASE = "/data/";
 
 const allFiles: Record<string, unknown> = {
   "/data/stations.json": [validStation],
-  "/data/services.json": [validService],
+  "/data/services.json": { lines: [{ id: validService.id, name: validService.name, color: validService.color }], services: [validService] },
   "/data/segments.json": [validSegment],
   "/data/segments.geojson": validFeatureCollection,
   "/data/manifest.json": validManifest,
@@ -30,6 +30,18 @@ function fetcherFor(files: Record<string, unknown>): JsonFetcher {
     return files[url];
   };
 }
+
+describe("legacy v2 bundle errors", () => {
+  it("explains both the old manifest version and the services array", async () => {
+    const data = await loadRailwayData(BASE, async (url) => {
+      if (url.endsWith("manifest.json")) return { ...validManifest, schemaVersion: 2 };
+      if (url.endsWith("services.json")) return [validService];
+      return allFiles[url];
+    });
+    expect(data.manifest).toEqual({ ok: false, file: "manifest.json", reason: "unsupported data schemaVersion; expected 3" });
+    expect(data.services).toEqual({ ok: false, file: "services.json", reason: "unsupported v2 services array; expected v3 {lines, services}" });
+  });
+});
 
 describe("validateData", () => {
   it("returns ok for valid input", () => {

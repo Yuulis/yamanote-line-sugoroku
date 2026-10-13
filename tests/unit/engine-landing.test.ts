@@ -333,7 +333,7 @@ describe("goal precedence with endpoints", () => {
     stations: [...base.stations, { id: "stub-x", name: "stub-x", coordinates: [139, 35] }],
     services: [
       ...base.services,
-      { id: STUB, name: "stub", operator: "test", stationIds: ["stub-x", START], circular: false, color: "#000", directionLabels: { forward: "正方向", backward: "逆方向" }, platformCoordinates: { "stub-x": [139, 35], [START]: [139.7, 35.6] }, endpoints: { first: "terminus", last: "terminus" } },
+      { id: STUB, name: "stub", operator: "test", kind: "local", lineIds: [STUB], stationIds: ["stub-x", START], circular: false, color: "#000", directionLabels: { forward: "正方向", backward: "逆方向" }, platformCoordinates: { "stub-x": [139, 35], [START]: [139.7, 35.6] }, endpoints: { first: "terminus", last: "terminus" } },
     ],
     segments: [...base.segments, ...bothWays(STUB, ["stub-x", START])],
   });

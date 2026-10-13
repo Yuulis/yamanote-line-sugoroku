@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { isManifest, isSegmentList, isServicePatternList, isStationList } from "../../src/data/guards";
+import { isManifest, isSegmentList, isServicesData, isStationList } from "../../src/data/guards";
 import { buildRailwayNetwork, SERVICE_KINDS, type RailwayNetwork } from "../../src/features/game/engine";
 import type { EndpointKind, Segment, ServiceKind, ServicePattern, Station } from "../../src/types/network";
 import { parseCsv, required } from "./csv";
@@ -46,9 +46,8 @@ function serviceKind(value: string): ServiceKind {
 }
 
 function endpoint(value: string): EndpointKind {
-  // S1 lacks service-boundary metadata. All three kinds stop and discard pips;
-  // synthetic terminus metadata preserves that gameplay behavior until S2.
-  if (value === "through-split") return "terminus";
+  // Catalog splits retain their identity; every endpoint stops and discards pips.
+  if (value === "through-split") return "service-boundary";
   if (value === "terminus" || value === "area-boundary") return value;
   throw new Error(`Unknown research endpoint: ${value}`);
 }
@@ -114,7 +113,7 @@ export function loadResearchCatalog(
     const stationIds = stops.map((stop) => required(stop, "station_id_proposed"));
     if (stationIds.join("|") !== required(meta, "stop_ids")) throw new Error(`Stop order differs: ${id}`);
     const base = {
-      id, name: required(meta, "line_name"), kind, stationIds,
+      id, name: required(meta, "line_name"), kind, stationIds, lineIds: [id] as [string],
       operator: "JR East", color: "#000000",
       directionLabels: { forward: "+1", backward: "-1" },
       platformCoordinates: Object.fromEntries(stationIds.map((id) => [id, [0, 0] as Station["coordinates"]])),
@@ -131,7 +130,7 @@ export function loadResearchCatalog(
       const directions: [string, string][] = id === targetServiceId ? [[from, to]] : [[from, to], [to, from]];
       for (const [a, b] of directions) {
         const segmentId = `${id}:${a}:${b}`;
-        segments.push({ id: segmentId, serviceId: id, from: a, to: b, geometryFeatureId: segmentId });
+        segments.push({ id: segmentId, serviceId: id, from: a, to: b, geometryFeatureIds: [segmentId] });
       }
     }
   }
@@ -144,7 +143,7 @@ export function loadResearchCatalog(
     network, targetServiceId, startStationId,
     provenance: {
       ...provenance(network, "research-csv", hashes), catalogRows: rows.length,
-      endpointNote: "Synthetic through-split -> terminus; same stop/discard-pips semantics. No geometry loaded.",
+      endpointNote: "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded.",
     },
   };
 }
@@ -168,7 +167,7 @@ export function loadShippedBundle(
   const network = buildRailwayNetwork({
     dataVersion: manifest.dataVersion,
     stations: read("stations.json", isStationList),
-    services: read("services.json", isServicePatternList),
+    services: read("services.json", isServicesData).services,
     segments: read("segments.json", isSegmentList),
   });
   return { network, targetServiceId, startStationId, provenance: provenance(network, "shipped-bundle", hashes) };

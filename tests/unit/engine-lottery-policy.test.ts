@@ -6,7 +6,7 @@ import {
 } from "../../src/features/game/engine";
 import type { Direction, GameConfig } from "../../src/types/network";
 import { M_LINE, M_LOOP, M_SPUR, multiConfig, multiServiceInput } from "./fixtures/multiService";
-import { kindInput, lotteryConfig, proximityInput, SPECIAL } from "./fixtures/lottery";
+import { kindInput, lotteryConfig, proximityInput, SPECIAL, EXTRA_LOCAL } from "./fixtures/lottery";
 import { deepFreeze } from "./fixtures/yamanote";
 
 const network = buildRailwayNetwork(kindInput());
@@ -18,21 +18,27 @@ function optionsAt(stationId: string, serviceId: string, config: GameConfig = lo
 describe("service lottery policies", () => {
   it("share uses p times other kind bases and (q-p) times each other base", () => {
     const options = optionsAt("b", M_LOOP);
-    expect(options.services).toEqual([M_LOOP, M_LINE, M_SPUR, SPECIAL]);
-    expect(options.serviceWeights).toEqual([20, 9, 6, 15]);
+    expect(options.services).toEqual([M_LOOP, M_LINE, M_SPUR, SPECIAL, EXTRA_LOCAL]);
+    // p=2, q=5: target=2*(3+2+3+2)=20; others=3*[3,2,3,2].
+    expect(options.serviceWeights).toEqual([20, 9, 6, 9, 6]);
   });
 
   it("weight multiplies the target kind base and preserves other kind bases", () => {
     const config = lotteryConfig();
     config.serviceLottery.target = { kind: "weight", weight: 4 };
-    expect(optionsAt("b", M_LOOP, config).serviceWeights).toEqual([28, 3, 2, 5]);
+    // weight=4: target=4*local(2)=8; others retain [3,2,3,2].
+    expect(optionsAt("b", M_LOOP, config).serviceWeights).toEqual([8, 3, 2, 3, 2]);
   });
 
   it.each([
-    { kind: "share", position: "middle", services: [M_LINE, M_SPUR, M_LOOP, SPECIAL], weights: [9, 6, 20, 15] },
-    { kind: "share", position: "end", services: [M_LINE, M_SPUR, SPECIAL, M_LOOP], weights: [9, 6, 15, 20] },
-    { kind: "weight", position: "middle", services: [M_LINE, M_SPUR, M_LOOP, SPECIAL], weights: [3, 2, 28, 5] },
-    { kind: "weight", position: "end", services: [M_LINE, M_SPUR, SPECIAL, M_LOOP], weights: [3, 2, 5, 28] },
+    // target=2*(3+2+3+2)=20; others=3*[3,2,3,2], in candidate order.
+    { kind: "share", position: "middle", services: [M_LINE, M_SPUR, M_LOOP, SPECIAL, EXTRA_LOCAL], weights: [9, 6, 20, 9, 6] },
+    // target=2*(3+2+3+2)=20; others=3*[3,2,3,2], target last.
+    { kind: "share", position: "end", services: [M_LINE, M_SPUR, SPECIAL, EXTRA_LOCAL, M_LOOP], weights: [9, 6, 9, 6, 20] },
+    // target=4*2=8; others retain [3,2,3,2], in candidate order.
+    { kind: "weight", position: "middle", services: [M_LINE, M_SPUR, M_LOOP, SPECIAL, EXTRA_LOCAL], weights: [3, 2, 8, 3, 2] },
+    // target=4*2=8; others retain [3,2,3,2], target last.
+    { kind: "weight", position: "end", services: [M_LINE, M_SPUR, SPECIAL, EXTRA_LOCAL, M_LOOP], weights: [3, 2, 3, 2, 8] },
   ])("$kind policy preserves cumulative intervals with the target at the $position", ({ kind, services, weights }) => {
     const input = kindInput();
     input.services = services.map((id) => input.services.find((service) => service.id === id)!);
@@ -53,12 +59,15 @@ describe("service lottery policies", () => {
   it("half share with equal kind bases assigns k-1 to the target", () => {
     const config = multiConfig();
     config.serviceLottery.target = { kind: "share", numerator: 1, denominator: 2 };
-    expect(optionsAt("b", M_LOOP, config).serviceWeights).toEqual([3, 1, 1, 1]);
+    // p=1, q=2 with five candidates: target=1*(1+1+1+1)=4; others=1*1.
+    expect(optionsAt("b", M_LOOP, config).serviceWeights).toEqual([4, 1, 1, 1, 1]);
   });
 
   it("absent target leaves the base weights unchanged and singleton target stays positive", () => {
-    expect(optionsAt("y", M_LINE).serviceWeights).toEqual([3, 5]);
-    expect(optionsAt("a", M_LOOP).serviceWeights).toEqual([7]);
+    // No target: each service retains its base, rapid(3), rapid(3), local(2).
+    expect(optionsAt("y", M_LINE).serviceWeights).toEqual([3, 3, 2]);
+    // Singleton: the target retains local(2), with no target multiplier/share.
+    expect(optionsAt("a", M_LOOP).serviceWeights).toEqual([2]);
   });
 
   it("draws the non-equal service first, then the equal direction lottery", () => {
@@ -195,7 +204,7 @@ describe("uniform compatibility and forced choices", () => {
     const net = buildRailwayNetwork(multiServiceInput());
     const uniform = multiConfig();
     const scaled = multiConfig();
-    scaled.serviceLottery.kindWeights = { local: 37, rapid: 37, "special-rapid": 37, "medium-distance": 37 };
+    scaled.serviceLottery.kindWeights = { local: 37, rapid: 37 };
     let first = createGame(uniform, "mixed-30", net);
     let second = createGame(scaled, "mixed-30", net);
     while (first.status === "playing") {
@@ -231,7 +240,7 @@ describe("uniform compatibility and forced choices", () => {
     // Raw zero chooses the target, whose direction is always forced.
     const state = "sfc32-v1:00000000:00000000:00000000:00000000";
     expect(drawLanding(options, state)).toEqual({
-      choice: { serviceId: M_LOOP, direction: 1 }, nextRngState: drawIndex(state, 4).nextRngState,
+      choice: { serviceId: M_LOOP, direction: 1 }, nextRngState: drawIndex(state, options.services.length).nextRngState,
     });
   });
 });

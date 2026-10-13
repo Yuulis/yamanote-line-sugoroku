@@ -27,7 +27,7 @@ function station(id: string, index: number): Station {
 
 function segment(serviceId: string, from: string, to: string): Segment {
   const id = `${serviceId}:${from}:${to}`;
-  return { id, serviceId, from, to, geometryFeatureId: id };
+  return { id, serviceId, from, to, geometryFeatureIds: [id] };
 }
 
 /** Directed segments along `ids` (+1 order); `closed` adds the wrap pair. */
@@ -49,7 +49,7 @@ function service(
   circular: boolean,
 ): ServicePattern {
   const base = {
-    id, name: id, operator: "test", stationIds: [...stationIds], color: "#123456",
+    id, name: id, operator: "test", kind: "local" as const, lineIds: [id] as [string], stationIds: [...stationIds], color: "#123456",
     directionLabels: { forward: "正方向", backward: "逆方向" },
     platformCoordinates: Object.fromEntries(stationIds.map((id, i) => [id, station(id, i).coordinates])),
   };
@@ -91,7 +91,7 @@ export function multiConfig(
     targetDirection: 1,
     goalArrivalPolicy: policy,
     serviceLottery: {
-      kindWeights: { local: 1, rapid: 1, "special-rapid": 1, "medium-distance": 1 },
+      kindWeights: { local: 1, rapid: 1 },
       target: { kind: "weight", weight: 1 },
     },
     directionLottery: { towardTargetWeight: 1 },

@@ -1,98 +1,147 @@
-[
-  {
-    "id": "jr-yamanote",
-    "name": "山手線",
-    "color": "#9ACD32",
-    "circular": true,
-    "directionLabels": {
-      "forward": "外回り",
-      "backward": "内回り"
+{
+  "lines": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "color": "#9ACD32"
     },
-    "expectedStopCount": 30,
-    "lengthRef": {
-      "km": 34.5,
-      "toleranceKm": 1.5,
-      "source": "営業キロ 34.5 km (山手線 loop; M0 data spike, .claude/docs/research/m0-data-spike.md)"
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "color": "#C9242F"
     }
-  },
-  {
-    "id": "jr-keihin-tohoku",
-    "name": "京浜東北線",
-    "color": "#00B2E5",
-    "circular": false,
-    "directionLabels": {
-      "forward": "蒲田方面",
-      "backward": "赤羽方面"
+  ],
+  "services": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "color": "#9ACD32",
+      "circular": true,
+      "directionLabels": {
+        "forward": "外回り",
+        "backward": "内回り"
+      },
+      "expectedStopCount": 30,
+      "lengthRef": {
+        "km": 34.5,
+        "toleranceKm": 1.5,
+        "source": "営業キロ 34.5 km (山手線 loop; M0 data spike, .claude/docs/research/m0-data-spike.md)"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-yamanote"
+      ]
     },
-    "endpoints": {
-      "first": "area-boundary",
-      "last": "area-boundary"
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線",
+      "color": "#00B2E5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "蒲田方面",
+        "backward": "赤羽方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 22,
+      "lengthRef": {
+        "km": 27.6,
+        "toleranceKm": 1.5,
+        "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-keihin-tohoku"
+      ]
     },
-    "expectedStopCount": 22,
-    "lengthRef": {
-      "km": 27.6,
-      "toleranceKm": 1.5,
-      "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小岩方面",
+        "backward": "西荻窪方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 24,
+      "lengthRef": {
+        "km": 30.3,
+        "toleranceKm": 1.5,
+        "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-chuo-sobu-local"
+      ]
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線",
+      "color": "#00AC9A",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浮間舟渡方面",
+        "backward": "大崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 22.0,
+        "toleranceKm": 1.5,
+        "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-saikyo"
+      ]
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "color": "#C9242F",
+      "circular": false,
+      "directionLabels": {
+        "forward": "葛西臨海公園方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 10.6,
+        "toleranceKm": 1.5,
+        "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-keiyo"
+      ]
     }
-  },
-  {
-    "id": "jr-chuo-sobu-local",
-    "name": "中央・総武線各駅停車",
-    "color": "#FFD400",
-    "circular": false,
-    "directionLabels": {
-      "forward": "小岩方面",
-      "backward": "西荻窪方面"
-    },
-    "endpoints": {
-      "first": "area-boundary",
-      "last": "area-boundary"
-    },
-    "expectedStopCount": 24,
-    "lengthRef": {
-      "km": 30.3,
-      "toleranceKm": 1.5,
-      "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
-    }
-  },
-  {
-    "id": "jr-saikyo",
-    "name": "埼京線",
-    "color": "#00AC9A",
-    "circular": false,
-    "directionLabels": {
-      "forward": "浮間舟渡方面",
-      "backward": "大崎方面"
-    },
-    "endpoints": {
-      "first": "terminus",
-      "last": "area-boundary"
-    },
-    "expectedStopCount": 10,
-    "lengthRef": {
-      "km": 22.0,
-      "toleranceKm": 1.5,
-      "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
-    }
-  },
-  {
-    "id": "jr-keiyo",
-    "name": "京葉線",
-    "color": "#C9242F",
-    "circular": false,
-    "directionLabels": {
-      "forward": "葛西臨海公園方面",
-      "backward": "東京方面"
-    },
-    "endpoints": {
-      "first": "terminus",
-      "last": "area-boundary"
-    },
-    "expectedStopCount": 6,
-    "lengthRef": {
-      "km": 10.6,
-      "toleranceKm": 1.5,
-      "source": "営業キロ, Wikipedia cross-check (research: jr-east-tokyo-service-graph.md)"
-    }
-  }
-]
+  ]
+}

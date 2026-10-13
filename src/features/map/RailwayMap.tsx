@@ -189,10 +189,10 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
       loaded = true;
       addRailwayLayers(map, {
         stations: data.stations.ok ? data.stations.value : undefined,
-        services: data.services.ok ? data.services.value : undefined,
+        services: data.services.ok ? data.services.value.services : undefined,
         geometry: data.geometry.ok ? data.geometry.value : undefined,
       });
-      if (data.services.ok) fitNetworkOverview(map, data.services.value);
+      if (data.services.ok) fitNetworkOverview(map, data.services.value.services);
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
@@ -227,7 +227,7 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
 
   useEffect(() => {
     if (loadedMap && overviewKey !== undefined && data.services.ok) {
-      fitNetworkOverview(loadedMap, data.services.value);
+      fitNetworkOverview(loadedMap, data.services.value.services);
     }
   }, [loadedMap, overviewKey, data.services]);
 

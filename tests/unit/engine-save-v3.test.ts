@@ -30,7 +30,9 @@ function seededStates(config: GameConfig, seed: string): GameState[] {
 describe("save v3 lottery policies", () => {
   it.each([
     ["share", "weighted-save-30"],
-    ["weight", "weighted-save-438"],
+    // First weighted-save-v3-N (N ascending from 0) completing within 500 turns
+    // with >0 non-equal service draws AND >0 non-equal direction draws: N=32.
+    ["weight", "weighted-save-v3-32"],
   ] as const)("v3 %s policy round trips every seeded turn and resumes identically", (kind, seed) => {
     const config = lotteryConfig();
     if (kind === "weight") config.serviceLottery.target = { kind: "weight", weight: 3 };
@@ -83,7 +85,7 @@ describe("save v3 lottery policies", () => {
       raw.directionLottery = { towardTargetWeight: 2 };
       raw.serviceLottery = {
         target: { denominator: 5, kind: "share", numerator: 2 },
-        kindWeights: { "medium-distance": 7, "special-rapid": 5, rapid: 3, local: 2 },
+        kindWeights: { rapid: 3, local: 2 },
       };
     });
     expect(restoreGame(json, network, { expectedConfig: config })).toEqual(state);

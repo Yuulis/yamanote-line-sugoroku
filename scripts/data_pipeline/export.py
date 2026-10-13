@@ -67,7 +67,7 @@ def build_services(
     operator: str,
     platforms: Mapping[tuple[str, str], Point],
 ) -> list[dict[str, Any]]:
-    """v2 service metadata and the platform point of every stop."""
+    """v3 service metadata and the platform point of every stop."""
     documents: list[dict[str, Any]] = []
     for service in services:
         definition = service.definition
@@ -75,6 +75,8 @@ def build_services(
             "id": service.id,
             "name": definition.name,
             "operator": operator,
+            "kind": definition.kind,
+            "lineIds": list(definition.line_ids),
             "stationIds": list(service.station_ids),
             "circular": definition.circular,
             "color": definition.color,
@@ -117,29 +119,30 @@ def build_segments(
                     "serviceId": service_id,
                     "from": from_id,
                     "to": to_id,
-                    "geometryFeatureId": feature_id(service_id, a, b),
+                    "geometryFeatureIds": [feature_id(service_id, a, b)],
                 }
             )
     return segments
 
 
 def build_segment_features(
-    segments: Sequence[Mapping[str, Any]], lines: Sequence[LineString]
+    segments: Sequence[Mapping[str, Any]], lines: Sequence[LineString], line_id: str
 ) -> dict[str, Any]:
     canonical: list[Mapping[str, Any]] = []
     seen: set[str] = set()
     for segment in segments:
-        identifier = segment["geometryFeatureId"]
+        identifier = segment["geometryFeatureIds"][0]
         if identifier not in seen:
             seen.add(identifier)
             canonical.append(segment)
     features = [
         {
             "type": "Feature",
-            "id": segment["geometryFeatureId"],
+            "id": segment["geometryFeatureIds"][0],
             "properties": {
-                "featureId": segment["geometryFeatureId"],
+                "featureId": segment["geometryFeatureIds"][0],
                 "serviceId": segment["serviceId"],
+                "lineId": line_id,
                 "from": segment["from"],
                 "to": segment["to"],
             },
@@ -152,6 +155,18 @@ def build_segment_features(
 
 def dumps_pretty(document: Any) -> str:
     return json.dumps(document, ensure_ascii=False, indent=2) + "\n"
+
+
+def dumps_segments(segments: Sequence[Mapping[str, Any]]) -> str:
+    """One compact directed segment per line, preserving travel/lottery order."""
+    return (
+        "[\n"
+        + ",\n".join(
+            json.dumps(segment, ensure_ascii=False, separators=(",", ":"))
+            for segment in segments
+        )
+        + "\n]\n"
+    )
 
 
 def dumps_feature_collection(collection: Mapping[str, Any]) -> str:
@@ -190,7 +205,7 @@ def build_manifest(payloads: Sequence[str], updated_at: str) -> dict[str, Any]:
     hashed: ``dataVersion`` identifies content, the date only records when the
     data was last refreshed."""
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "dataVersion": data_version(payloads),
         "updatedAt": updated_at,
         "source": dict(config.MANIFEST_SOURCE),
@@ -203,7 +218,7 @@ def build_files(
     platforms: Mapping[tuple[str, str], Point],
     service_lines: Mapping[str, Sequence[LineString]],
 ) -> dict[str, str]:
-    """The five v2 files, in canonical service / station / pair order."""
+    """The five v3 files, in canonical service / station / pair order."""
     registry = overrides.registry.by_id()
     order = station_order(service.station_ids for service in overrides.services)
     stations = [registry[station_id] for station_id in order]
@@ -213,14 +228,24 @@ def build_files(
         segments = build_segments(service.id, service.station_ids, service.circular)
         segments_doc.extend(segments)
         features.extend(
-            build_segment_features(segments, service_lines[service.id])["features"]
+            build_segment_features(
+                segments, service_lines[service.id], service.definition.line_ids[0]
+            )["features"]
         )
     files = {
         config.STATIONS_FILE: dumps_pretty(build_stations(stations, station_points)),
         config.SERVICES_FILE: dumps_pretty(
-            build_services(overrides.services, overrides.dataset.operator, platforms)
+            {
+                "lines": [
+                    {"id": line.id, "name": line.name, "color": line.color}
+                    for line in overrides.lines
+                ],
+                "services": build_services(
+                    overrides.services, overrides.dataset.operator, platforms
+                ),
+            }
         ),
-        config.SEGMENTS_FILE: dumps_pretty(segments_doc),
+        config.SEGMENTS_FILE: dumps_segments(segments_doc),
         config.SEGMENTS_GEOJSON_FILE: dumps_feature_collection(
             {"type": "FeatureCollection", "features": features}
         ),

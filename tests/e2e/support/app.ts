@@ -25,9 +25,9 @@ export interface MapSnapshot {
   marker: [number, number] | null;
   /** The marker layer draws a visible feature at `marker` (not just stored). */
   markerRendered: boolean;
-  /** Segment ids in the completed layer's `in` filter literal. */
+  /** Geometry feature ids in the completed layer's `in` filter literal. */
   completedFilterIds: string[];
-  /** Segment ids the completed / pending line layers actually render. */
+  /** Geometry feature ids the completed / pending line layers actually render. */
   completedRenderedIds: string[];
   pendingRenderedIds: string[];
   /** Paint that tells the two layers apart (spec 6.2: colour and line style). */
@@ -158,7 +158,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         color: map.getPaintProperty(layerId, "line-color") ?? null,
         dash: map.getPaintProperty(layerId, "line-dasharray") ?? null,
       });
-      // Target-scoped v2 filter: ["all", target, ["in", ["get", "featureId"], ["literal", ids]]]
+      // Target-scoped v3 filter: ["all", target, ["in", ["get", "featureId"], ["literal", ids]]]
       const filter = map.getFilter(layers.completed) as [string, unknown, [string, unknown, [string, string[]]]];
       return {
         styleLoaded: Boolean(map.isStyleLoaded()),
@@ -213,8 +213,12 @@ export function targetCompletedIds(game: Pick<SavedGame, "completedSegmentIds">)
 }
 
 /** Canonical feature ids for the Yamanote +1 directed pair contract. */
-export function targetFeatureIds(game: Pick<SavedGame, "completedSegmentIds">): string[] {
-  return targetCompletedIds(game).map((id) => id.replace(/:([^:]+):([^:]+)$/, ":$1~$2"));
+export function targetFeatureIds(game: Pick<SavedGame, "completedSegmentIds">, bundle: RailwayBundle): string[] {
+  return [...new Set(targetCompletedIds(game).flatMap((id) => {
+    const segment = bundle.network.segmentsById.get(id);
+    if (!segment) throw new Error(`Missing completed segment ${id}`);
+    return segment.geometryFeatureIds;
+  }))];
 }
 
 /** The platform the committed (next) ride uses after the landing. */

@@ -1,6 +1,9 @@
 # Handoff: JR East capital-region (1都3県) edition
 
-Status (2026-10-13): **S0 DONE** on `feature/jrcr-s0`, cut from integration branch
+Current status (2026-10-13): **S2 review findings fixed on `feature/jrcr-s2`, pending lead verification**.
+No commit/push/branch change. After acceptance, next = S3a; S4 and S0b may proceed in parallel.
+
+Historical S0/S1/S1M status (2026-10-13): **S0 DONE** on `feature/jrcr-s0`, cut from integration branch
 `feature/jr-east-capital-region` (based on `develop`). The revised research catalog v2 was
 user-approved on 2026-10-13: **666 rows / 40 services / 472 physical stations**.
 **S1 merged via PR #7** (integration commit `c0a9866`). **S1M DONE** on
@@ -181,7 +184,7 @@ measurements; both 200-game smokes and both large runs passed (one simulation fi
 History is discarded in measurements; save/restore, history growth and device/map performance remain
 separate gates. S5 alone flips shipped policies and reruns on final product data.
 
-## Next step — S2: atomic v3 data-contract cutover on 23-ward data
+## S2: atomic v3 data-contract cutover on 23-ward data — review findings fixed, pending lead verification
 
 Apply design §3/§9 atomically to the existing **5-service / 67-station** dataset: non-empty
 `geometryFeatureIds` in travel order (one-element chains initially; reverse lists for reverse
@@ -210,3 +213,144 @@ user approval. S1M confirms the approved research input; S0b product-catalog gen
 payload/device/zoom budgets and full-catalog UI/seed checks remain. N02 lacks the Ikebukuro–Akabane freight
 link and has a Joban junction gap; regional data preparation must address those. Release flow remains
 feature → develop → master; production deployment requires explicit approval.
+
+
+## S2 completion handoff (2026-10-13)
+
+Status: **implemented, review findings fixed, pending lead verification** on `feature/jrcr-s2`.
+No commit, push or branch change. `.claude/docs/DESIGN.md` and `.claude/STATE.md` untouched.
+The earlier executor stopped on the weighted synthetic fixture conflict. The lead authorized a
+rewrite under the recorded two-kind product contract; that conflict is resolved below.
+Do not begin dependent delivery until the lead has independently verified this uncommitted tree.
+
+Implemented by area:
+
+- Pipeline: `scripts/data_pipeline/{build,overrides,export,rules,validate}.py`,
+  `data/overrides/services.json`, regenerated `public/data/{services,segments,manifest}.json`
+  and `segments.geojson`. Contract v3: `{lines, services}`, required `local | rapid` kind and
+  non-empty `lineIds`, non-empty travel-order `geometryFeatureIds`, owned geometry `lineId`,
+  schemaVersion 3 and compact segments. Live data retains 5 services / 67 stations /
+  146 directed segments / 88 owned features, all chains length 1.
+- Runtime: types/guards/loaders, engine config/network/landing and `gameConfig`,
+  `networkFromData`, animation `movePath`, `GameApp` and `RailwayMap` readers.
+  The engine copies line/chain arrays; owned pair validation is separate from consumer chains.
+  Reject missing/empty/unknown/misordered chains, invalid owners, wrong reverse lists,
+  wrong final stations, backtracking, non-exact joints and orphan primitives.
+  Old manifests/services arrays fail with explicit v2/v3 contract errors.
+  MVP policies remain all-equal and `jr-east-23ku-1` remains unchanged.
+- Minimal presentation: `gameSummary` / `presentation` display `service-boundary` as
+  「系統の端」 for early-stop/history/reversal text, with the same stop/discard semantics.
+- Fixtures/tests: Python export/override/validation fixtures and a new
+  `test_geometry_chains.py` multi-owner bidirectional rapid fixture; TS unit fixtures;
+  `data-contract-v2.test.ts` renamed/expanded to `data-contract-v3.test.ts` (all old assertions
+  retained under the new shape); animation, policy, save, presentation and loader tests.
+  E2E bundle/support `readMap` documents feature IDs; `targetFeatureIds` resolves and flattens
+  actual network chains, and affected specs pass the bundle instead of deriving IDs from strings.
+  Research/bundle simulation inputs and README now follow the envelope and service-boundary metadata.
+  `data/README.md` documents v3 and two isolated rebuilds versus the reviewed public candidate.
+
+Authorized fixture rewrite (no production policy or uniform trajectory change):
+
+- Old target base 7 (`medium-distance`) and non-target bases 3/2/5 across three services became
+  local=2 / rapid=3, with a fifth service `extra-local`. At b the candidate order is
+  target(local), line(rapid), spur(local), special(rapid), extra-local(local). Thus each kind
+  occurs twice among non-target candidates; bases still multiply **per service**, not per kind.
+- Share p=2/q=5: target = 2*(3+2+3+2)=20; others = (5-2)*[3,2,3,2].
+  Start `[20,9,6,15]` -> `[20,9,6,9,6]`; middle `[9,6,20,15]` -> `[9,6,20,9,6]`;
+  end `[9,6,15,20]` -> `[9,6,9,6,20]`.
+- Weight=4: target = 4*local(2)=8; others keep their bases.
+  Start `[28,3,2,5]` -> `[8,3,2,3,2]`; middle `[3,2,28,5]` -> `[3,2,8,3,2]`;
+  end `[3,2,5,28]` -> `[3,2,3,2,8]`. Middle/end exhaustive cumulative interval assertions remain.
+- Half share with all bases=1: target = 1*(1+1+1+1)=4; others=(2-1)*1,
+  `[3,1,1,1]` -> `[4,1,1,1,1]`. Absent target: `[3,5]` -> `[3,3,2]` (unscaled service bases).
+  Singleton target: `[7]` -> `[2]` (base retained without any target share/multiplier).
+  Short formula comments sit next to every rewritten vector; no expectation was copied from output.
+- Weight save seed `weighted-save-438` -> `weighted-save-v3-32`. Deterministic search:
+  first `weighted-save-v3-N`, N ascending from 0, that completes within 500 turns and has
+  >0 non-equal service draws AND >0 non-equal direction draws. This seed completes in 11 turns,
+  with 6 non-equal service draws / 1 non-equal direction draw. Both existing
+  `toBeGreaterThan(0)` assertions remain unchanged. Share seed `weighted-save-30` and the
+  first-roll-clear seed remain. All uniform seeded trajectories, snapshots and other behavior
+  assertions remain; only required schema shapes and the authorized weighted fixtures changed.
+
+Review resolution (2026-10-13):
+
+- Review `20261013T021130Z-jrcr-s2-review.md` returned **NEEDS_REVISION**; all findings
+  are now **fixed**, subject to independent lead verification. The review artifact is unchanged.
+- `check_geometry_chains()` checks the owner's string type before set membership, records
+  malformed properties/non-string owners and continues validation of the remaining segments.
+  An audit of chain ids, segment endpoints and visited-station lookups found their string
+  guards already precede dictionary/set access. Valid-data processing is unchanged.
+  Integration regressions pass `[]` and `{}` owners through `validate_dataset()` and assert
+  returned errors instead of exceptions.
+- The forced-direction lottery expectation uses `options.services.length` instead of `4`.
+- Animation tests cover mixed primitive orientations in both travel directions, preserving
+  point order, a single joint, distance and interpolated start/middle/end positions.
+- TS and Python now reject individually contiguous forward/reverse routes that use different
+  primitive ids. Each route also passes with its own matching reversal; only the strict
+  reversal equality rejects the mixed pair. No assertion was removed or weakened.
+- The Python multi-owner rapid success fixture now passes the whole `validate_dataset()`
+  path with canonical payloads/manifest and real registry, overrides, platform and owned-feature
+  checks. Its synthetic lead-in supplies an interior start without changing the composed hop.
+- Review-fix gates below were rerun: Python **156 passed** (+4), Vitest **23 files / 536 passed**
+  (+3), lint/format/type checks, pipeline validation, raw checksums and one isolated raw rebuild.
+  Build/E2E/simulation rows retain the earlier S2 evidence and were not rerun for this fix.
+
+Acceptance evidence (final review-fix counts; earlier extended gates identified above):
+
+| Command/check | Result |
+|---|---|
+| `uv run ruff check .` | All checks passed |
+| `uv run ruff format --check .` | 30 files already formatted |
+| `uv run ty check scripts/` | All checks passed |
+| `uv run pytest` | 156 passed, zero skips/failures (before review fix 152; baseline 136) |
+| `uv run python -m scripts.data_pipeline.validate` | OK; 146 references, max chain 1, geometry 43,433 bytes <=300,000; unchanged service lengths/platform metrics |
+| `sha256sum --check data/n02-2025.sha256` | Both raw input files OK |
+| Raw rebuilds | Earlier two builds matched each other and `public/data`. Review fix: `uv run python -m scripts.data_pipeline.build --quiet --out-dir /tmp/jrcr-s2-review-fix.qHIxKl`; `diff -r /tmp/jrcr-s2-review-fix.qHIxKl public/data`: no differences, exit 0 |
+| Review-fix public-data preservation | SHA-256 hashes of all 5 `public/data` files match the pre-fix snapshot byte-for-byte |
+| Independent HEAD-data comparison | Stations, pre-existing service fields/order, segment fields/order and all geometry coordinates/IDs unchanged; only v3 metadata/serialization added |
+| `npm run typecheck` | Passed |
+| `npx vitest run` | 23 files / 536 passed, zero failures (before review fix 23 / 533; baseline 23 / 513) |
+| `npm run build` | Passed, 66 modules; existing >500 kB chunk advisory remains |
+| `npm run test:e2e` | 60 passed / 0 failed in 2.5m; desktop-chromium 20, phone-chromium 20, desktop-firefox 20 |
+| `SIM_GAMES=200 npm run sim` | Research CSV, decided: 200 completed / 0 caps; median/p90/p99 58/130/252 |
+| `SIM_BUNDLE=public/data SIM_PRESET=all-equal SIM_GAMES=200 npm run sim` | v3 shipped bundle: 200 completed / 0 caps; median/p90/p99 53/115/253 |
+| `git diff --check` | Passed |
+| `git diff --stat` | 54 tracked paths changed; serialization and test rename account for large deletions; two new files are untracked |
+| `git status --short` | 53 modified / 1 deleted (v2 test renamed to new v3 test) / 2 untracked; no changes to DESIGN.md/STATE.md |
+
+Local E2E used the configured IPv6 loopback `::1` and WSLg display, with all three default
+projects enabled and no server reuse. WebKit is opt-in/CI-only and was not configured in this
+local run. Full browser log: `/tmp/jrcr-s2-e2e.log` (local, ephemeral).
+An intermediate ty check exposed three type-narrowing errors in the new chain rule; explicit
+string checks/index construction fixed them, and the final gate passes. New chain tests initially
+caught a fixture using the start station as an endpoint and a shared-coordinate mutation that
+moved both sides of a joint; the synthetic fixture was corrected, preserving the negative assertions.
+No additional conflicting pre-existing test was encountered; no test was skipped, removed or weakened.
+
+Deviations: no functional deviation from the lead-approved S2 scope. The older design D3/sketch
+shows four kinds, but the recorded later product decision and this task require `local | rapid`.
+Raw rebuilds use isolated output directories to compare against the reviewed candidate without
+replacing it. Large-catalog routing/composition generation, budgets and UI scaling remain S3/S4;
+S2 only cuts over existing data and validates/animates synthetic chains.
+
+Remaining risks: independent lead diff/acceptance verification of the review fixes remains; the existing
+large frontend chunk advisory remains. New dataVersion and the two-key policy schema invalidate
+older saves through the existing discard path. This is the intentional atomic contract cutover,
+not an ID, route or all-equal trajectory migration. Regional data has not been shipped.
+
+After S2 passes lead verification/review, next = **S3a**; **S4** and **S0b** can run in parallel:
+
+- **S3a (pipeline owner):** registry prefecture/municipality, homonym selectors, configured bboxes,
+  multi-line route recipes, number/prefix rules, boundary truncation and reviewed detour evidence.
+  Keep 23-ward v3 output byte-identical; reject wrong homonyms, bridged out-of-area gaps,
+  skipped served stops, reversed/prefix-switched numbers and multi-line mis-routes. S3b follows
+  with compose DAG/anchors, per-dataset catalog, two-way reachability and raw/gzip/reference budgets.
+- **S4 (UI/animation owner):** dedicated bidirectional multi-owner composed-rapid + branch fixture;
+  ridden/landing highlight timing, one step per composed hop, grouped legend, cameras/labels,
+  lottery expansion and clear-history paging. Verify skip/reduced motion/reload, desktop/phone
+  overview versus panel, all three browsers, full catalog candidate display and proven seeds.
+- **S0b (catalog owner):** map approved research v2 (666 rows / 40 services / 472 stations)
+  through frozen S0 product IDs, preserving service/stop order and endpoint kinds; record the
+  product-catalog hash and S1M real-engine confirmation. Keep research classifications separate
+  from the two-kind product contract; no live data expansion before the regional staging/final gates.

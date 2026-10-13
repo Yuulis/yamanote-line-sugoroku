@@ -1,4 +1,4 @@
-"""Contract-independent validation rules (design §5.4), shared by v1 and v2.
+"""Contract-independent validation rules (design §5.4), shared by contract versions.
 
 Every rule works on plain values (stop lists, directed pairs, metric points)
 rather than on a particular JSON shape, appends human-readable errors to a
@@ -12,8 +12,10 @@ import math
 from collections import deque
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
+from typing import Any
 
-from shapely.geometry import Point
+from pyproj import Transformer
+from shapely.geometry import LineString, Point
 from shapely.geometry.base import BaseGeometry
 
 from scripts.data_pipeline import config
@@ -23,7 +25,13 @@ from scripts.data_pipeline.overrides import (
     ServiceDefinition,
 )
 from scripts.data_pipeline.registry import Registry
-from scripts.data_pipeline.topology import Pair, directed_pairs, endpoints, walk
+from scripts.data_pipeline.topology import (
+    Pair,
+    directed_pairs,
+    endpoints,
+    station_pairs,
+    walk,
+)
 
 
 @dataclass
@@ -99,6 +107,8 @@ def check_service_metadata(
         "operator": operator,
         "circular": definition.circular,
         "color": definition.color,
+        "kind": definition.kind,
+        "lineIds": list(definition.line_ids),
     }
     for key, value in expected.items():
         if published.get(key) != value:
@@ -383,3 +393,159 @@ def check_start_not_endpoint(
             report.errors.append(
                 f"start station {start} is an endpoint of {service.id}"
             )
+
+
+def check_geometry_chains(
+    segments: Sequence[Mapping[str, Any]],
+    features: Sequence[Mapping[str, Any]],
+    services: Sequence[ServiceStops],
+    report: Report,
+) -> dict[str, float]:
+    """Validate consumer travel chains independently from the owned primitive set.
+
+    Station identity orients each leg; adjacent coordinates must match exactly.
+    Reverse hops reference the reversed id list. Repeated stations/features are
+    rejected, so a chain cannot double back and inflate service lengths.
+    """
+    known_owners = {service.id for service in services}
+    by_id: dict[str, Mapping[str, Any]] = {}
+    for raw in features:
+        identifier = raw.get("id")
+        if isinstance(identifier, str):
+            by_id[identifier] = raw
+    used: set[str] = set()
+    lengths: dict[tuple[str, str, str], float] = {}
+    chains: dict[tuple[str, str, str], list[str]] = {}
+    transformer = Transformer.from_crs(
+        config.OUTPUT_CRS, config.METRIC_CRS, always_xy=True
+    )
+    for segment in segments:
+        label = str(segment.get("id"))
+        chain = segment.get("geometryFeatureIds")
+        if (
+            not isinstance(chain, list)
+            or not chain
+            or not all(isinstance(item, str) and item for item in chain)
+        ):
+            report.errors.append(f"{label}: missing or empty geometryFeatureIds chain")
+            continue
+        service_id, start, end = (
+            segment.get(key) for key in ("serviceId", "from", "to")
+        )
+        if (
+            not isinstance(service_id, str)
+            or not isinstance(start, str)
+            or not isinstance(end, str)
+        ):
+            continue
+        chains[(service_id, start, end)] = chain
+        current = start
+        visited = {start}
+        previous_end: Any = None
+        length = 0.0
+        valid = True
+        for identifier in chain:
+            raw = by_id.get(identifier)
+            if raw is None:
+                report.errors.append(
+                    f"{label}: missing geometry / unknown reference {identifier}"
+                )
+                valid = False
+                break
+            used.add(identifier)
+            properties = raw.get("properties")
+            geometry = raw.get("geometry")
+            if not isinstance(properties, dict):
+                report.errors.append(
+                    f"{label}: invalid geometry properties on {identifier}"
+                )
+                valid = False
+                break
+            owner_id = properties.get("serviceId")
+            if not isinstance(owner_id, str):
+                report.errors.append(
+                    f"{label}: geometry owner on {identifier} must be a string"
+                )
+                valid = False
+                break
+            if owner_id not in known_owners:
+                report.errors.append(f"{label}: unknown geometry owner on {identifier}")
+                valid = False
+                break
+            if not isinstance(geometry, dict) or geometry.get("type") != "LineString":
+                valid = False
+                break
+            coordinates = geometry.get("coordinates")
+            if (
+                not isinstance(coordinates, list)
+                or len(coordinates) < 2
+                or not all(
+                    isinstance(point, list)
+                    and len(point) == 2
+                    and all(
+                        isinstance(value, int | float)
+                        and not isinstance(value, bool)
+                        and math.isfinite(value)
+                        for value in point
+                    )
+                    for point in coordinates
+                )
+            ):
+                valid = False
+                break
+            if properties.get("from") == current:
+                next_station = properties.get("to")
+            elif properties.get("to") == current:
+                next_station = properties.get("from")
+                coordinates = list(reversed(coordinates))
+            else:
+                report.errors.append(
+                    f"{label}: misordered chain at {identifier}; does not join {current}"
+                )
+                valid = False
+                break
+            if not isinstance(next_station, str) or next_station in visited:
+                report.errors.append(f"{label}: back-and-forth geometry chain")
+                valid = False
+                break
+            if previous_end is not None and coordinates[0] != previous_end:
+                report.errors.append(
+                    f"{label}: geometry chain joint is not exact at {current}"
+                )
+                valid = False
+                break
+            visited.add(next_station)
+            current = next_station
+            previous_end = coordinates[-1]
+            length += LineString(
+                [transformer.transform(*point) for point in coordinates]
+            ).length
+        if valid and current != end:
+            report.errors.append(
+                f"{label}: geometry chain ends at {current}, expected {end}"
+            )
+            valid = False
+        if valid:
+            lengths[(service_id, start, end)] = length
+    for (service_id, start, end), chain in chains.items():
+        reverse = chains.get((service_id, end, start))
+        if reverse is not None and reverse != list(reversed(chain)):
+            report.errors.append(
+                f"{service_id}:{start}:{end}: reverse segment chain is wrongly reversed"
+            )
+    orphans = sorted(set(by_id) - used)
+    if orphans:
+        report.errors.append(f"orphan owned geometry: {orphans}")
+    report.metrics["geometry_reference_count"] = sum(
+        len(chain) for chain in chains.values()
+    )
+    report.metrics["max_geometry_chain_length"] = max(
+        (len(chain) for chain in chains.values()), default=0
+    )
+    return {
+        service.id: sum(
+            lengths.get((service.id, a, b), 0.0)
+            for a, b in station_pairs(service.station_ids, service.circular)
+        )
+        for service in services
+    }
