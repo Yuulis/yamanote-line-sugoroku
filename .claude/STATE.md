@@ -57,3 +57,30 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Step 6 documentation is verified; final local gates passed and the read-only review has no blocking findings. Integration/release PR preparation is in progress. `master` merge and production smoke remain behind explicit user approval. See `.claude/docs/plans/jr-east-tokyo-expansion-handoff.md` for final status.
 - Integration PR: https://github.com/Yuulis/yamanote-line-sugoroku/pull/3. Pre-release regression coverage additionally resets the network overview on new/resumed turn-0 sessions after a previous zoom; a failing browser case was reproduced before the fix. Release is through develop → master after integration CI, with explicit user approval for production.
 - PR #3 merged (`d2953ae`); release PR #4 opened, unmerged. A release-CI Firefox test manipulated the map before its post-reload hook existed; `feature/jrx-e2e-map-ready` adds an observed map-readiness wait without weakening assertions, then will integrate through a PR. Production remains unapproved.
+
+---
+
+## Current Feature: JR East capital-region (1都3県) expansion
+<!-- orchestra:block-id: jr-east-capital-region-1-3-expansion -->
+
+### Context
+
+- Goal: replace the 23-ward edition with a 1都3県 edition covering every JR East conventional line (Tokyo excl. islands, Chiba, Saitama, Kanagawa), with 緩行線/快速線 track systems as separate services.
+- Status: design done, user decisions recorded 2026-10-13, implementation not started. Paused for rate limit.
+- Handoff: .claude/docs/plans/jr-east-capital-region-handoff.md (next steps in order).
+- Design: .claude/docs/research/jr-east-capital-region-expansion-design.md; research + catalog v1: .claude/docs/research/jr-east-capital-region-*.{md,csv}
+- Dependencies: none new
+- Complexity: COMPLEX (12 steps S0-S7)
+
+### Architecture
+
+- Data contract v3: a gameplay segment references an ordered list of geometry features (composition), so track-sharing services reuse coordinates.
+- Engine movement/goal unchanged; lottery weights in GameConfig (equal weights == current drawIndex(k)); SAVE_VERSION 3, old saves rejected.
+- Pipeline: registry with prefecture column, per-pair route/compose recipes, validator extended.
+
+### Decisions
+
+- Services = track systems (緩行/快速線 separate); upper train types (特快, 通勤快速, ラビット, 京浜東北快速 等) are not services: user 2026-10-13. Catalog v1 (60 services) must be revised to v2.
+- Lottery: Yamanote 1/2 at its stations + toward-Yamanote direction 2:1 (v1 MC: 63/154/271 turns): user 2026-10-13.
+- Goal unchanged; split through-running at junctions; equal weights; 久留里線 to 久留里; weekday; 東京(京葉)/武蔵小杉/浜川崎 one station; subtitle JR東日本 1都3県版: user 2026-10-13.
+- 23-ward edition already in production; new work branches from develop.
