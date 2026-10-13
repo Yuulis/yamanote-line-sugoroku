@@ -4,8 +4,10 @@ Status (2026-10-13): **S0 DONE** on `feature/jrcr-s0`, cut from integration bran
 `feature/jr-east-capital-region` (based on `develop`). The revised research catalog v2 was
 user-approved on 2026-10-13: **666 rows / 40 services / 472 physical stations**.
 **S1 merged via PR #7** (integration commit `c0a9866`). **S1M DONE** on
-`feature/jrcr-s1m`: real-engine measurements and local acceptance checks passed;
-caller verification remains. Next step: **S2**.
+`feature/jrcr-s1m`: real-engine measurements and local acceptance checks passed; lead verified
+(typecheck, default Vitest 23 files / 513 passed, `npm run sim` 300-game smoke, `verify_delegation.py`
+clean). PR https://github.com/Yuulis/yamanote-line-sugoroku/pull/8 (→ integration branch, merge after
+green CI). Next step: **S2** — branch `feature/jrcr-s2` off the integration branch after PR #8 merges.
 S1 changes engine code only; live data remains unchanged. Historical S0 commits:
 `a4cf781` (plan docs, = integration branch base on origin),
 `dd3af3a` (S0). S0 PR: https://github.com/Yuulis/yamanote-line-sugoroku/pull/6 (→ integration branch;
