@@ -8,6 +8,7 @@ export const validService = {
   id: "jr-yamanote",
   name: "JR山手線",
   operator: "東日本旅客鉄道",
+  kind: "local" as const, lineIds: ["jr-yamanote"] as [string],
   stationIds: ["st-tokyo", "st-kanda", "st-ueno"],
   circular: true as const,
   color: "#80c241",
@@ -20,7 +21,7 @@ export const validSegment = {
   serviceId: "jr-yamanote",
   from: "st-tokyo",
   to: "st-kanda",
-  geometryFeatureId: "seg-tokyo-kanda",
+  geometryFeatureIds: ["seg-tokyo-kanda"],
 };
 
 export const validFeature = {
@@ -28,6 +29,7 @@ export const validFeature = {
   id: "seg-tokyo-kanda",
   properties: {
     featureId: "seg-tokyo-kanda",
+    lineId: "jr-yamanote",
     serviceId: "jr-yamanote",
     from: "st-tokyo",
     to: "st-kanda",
@@ -47,7 +49,7 @@ export const validFeatureCollection = {
 };
 
 export const validManifest = {
-  schemaVersion: 2 as const,
+  schemaVersion: 3 as const,
   dataVersion: "2026-10-11",
   updatedAt: "2026-10-11",
   source: {

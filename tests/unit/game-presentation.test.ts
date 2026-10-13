@@ -3,7 +3,7 @@ import { buildRailwayNetwork, createGame, moveByRoll, playTurn } from "../../src
 import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import { displayedRide, landingText, lastRollText } from "../../src/features/game/presentation";
-import { summarizeGame } from "../../src/features/game/gameSummary";
+import { earlyStopNote, summarizeGame } from "../../src/features/game/gameSummary";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { FIXTURE_GAME_SEED, FIXTURE_SCENARIO_TURNS } from "../e2e/fixtures/seeds";
 import { M_LOOP, M_SPUR, multiConfig, multiServiceInput } from "./fixtures/multiService";
@@ -48,6 +48,23 @@ describe("lottery and stop text", () => {
     expect(lastRollText(lastMoveOf(states[FIXTURE_SCENARIO_TURNS.boundary]!, network), network)).toBe("3（大森で停止〔エリア端〕、残り1は使わず）");
     expect(lastRollText(lastMoveOf(states[FIXTURE_SCENARIO_TURNS.terminus]!, network), network)).toBe("6（品川で停止〔終点〕、残り4は使わず）");
     expect(landingText(lastMoveOf(states[2]!, network), network)).toBe("テスト南線のみ ／ エリア端のため折り返し（品川方面）");
+  });
+
+  it("labels a service boundary and retains stop/discard/reversal behavior", () => {
+    const input = multiServiceInput();
+    const spur = input.services.find((service) => service.id === M_SPUR)!;
+    if (spur.circular) throw new Error("Expected linear fixture");
+    spur.endpoints.last = "service-boundary";
+    const multi = buildRailwayNetwork(input);
+    const before = { ...createGame(multiConfig(), "service-boundary", multi), currentStationId: "s1", currentServiceId: M_SPUR, direction: 1 as const };
+    const after = moveByRoll(before, 4, multi).state;
+    const last = lastMoveOf(after, multi)!;
+    expect(last.endpointKind).toBe("service-boundary");
+    expect(last.unusedPips).toBe(3);
+    expect(after.direction).toBe(-1);
+    expect(lastRollText(last, multi)).toBe("4（駅s2で停止〔系統の端〕、残り3は使わず）");
+    expect(landingText(last, multi)).toBe("m-spurのみ ／ 系統の端のため折り返し（逆方向）");
+    expect(earlyStopNote(after.movementHistory.at(-1)!, (id) => id, "service-boundary")).toBe("s2で停止〔系統の端〕、残り3");
   });
 
   it("shows an actual direction-only lottery at a single-service station", () => {

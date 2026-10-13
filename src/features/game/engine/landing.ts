@@ -61,7 +61,7 @@ function serviceWeights(
   const bases = services.map((id) => {
     const service = network.servicesById.get(id);
     if (!service) invalidState(`Unknown service ${id}`);
-    return policy.kindWeights[service.kind ?? "local"];
+    return policy.kindWeights[service.kind];
   });
   const targetIndex = services.indexOf(config.targetServiceId);
   if (targetIndex < 0 || services.length === 1) return bases;

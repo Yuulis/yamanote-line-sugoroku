@@ -109,7 +109,7 @@ function validateService(
   service: ServicePattern,
   stationsById: ReadonlyMap<StationId, Station>,
 ): void {
-  if (service.kind !== undefined && !SERVICE_KINDS.includes(service.kind)) {
+  if (!SERVICE_KINDS.includes(service.kind)) {
     invalid(`Service ${service.id} has unknown kind ${service.kind}`);
   }
   const minStops = service.circular ? MIN_LOOP_STOPS : MIN_LINEAR_STOPS;
@@ -176,9 +176,11 @@ function indexServicesByStation(
 }
 
 function copyService(service: ServicePattern): ServicePattern {
+  if (!Array.isArray(service.lineIds) || service.lineIds.length === 0 || !service.lineIds.every((id) => typeof id === "string" && id.length > 0) || new Set(service.lineIds).size !== service.lineIds.length) invalid(`Service ${service.id} needs non-empty unique lineIds`);
   const base = {
     ...service,
     stationIds: [...service.stationIds],
+    lineIds: [...service.lineIds] as ServicePattern["lineIds"],
     directionLabels: { ...service.directionLabels },
     platformCoordinates: Object.fromEntries(Object.entries(service.platformCoordinates).map(
       ([id, point]) => [id, [...point] as Station["coordinates"]],
@@ -217,7 +219,10 @@ export function buildRailwayNetwork(
     "service",
   );
   const segmentsById = indexUnique(
-    input.segments.map((segment) => ({ ...segment })),
+    input.segments.map((segment) => {
+      if (!Array.isArray(segment.geometryFeatureIds) || segment.geometryFeatureIds.length === 0 || !segment.geometryFeatureIds.every((id) => typeof id === "string" && id.length > 0)) invalid(`Segment ${segment.id} needs a non-empty geometryFeatureIds chain`);
+      return { ...segment, geometryFeatureIds: [...segment.geometryFeatureIds] as Segment["geometryFeatureIds"] };
+    }),
     "segment",
   );
   if (servicesById.size === 0) invalid("No services");

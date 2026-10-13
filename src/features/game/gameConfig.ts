@@ -18,7 +18,7 @@ export const MVP_GAME_CONFIG: GameConfig = {
   targetDirection: 1,
   goalArrivalPolicy: "truncate-on-target-service",
   serviceLottery: {
-    kindWeights: { local: 1, rapid: 1, "special-rapid": 1, "medium-distance": 1 },
+    kindWeights: { local: 1, rapid: 1 },
     target: { kind: "weight", weight: 1 },
   },
   directionLottery: { towardTargetWeight: 1 },

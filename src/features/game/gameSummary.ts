@@ -1,6 +1,13 @@
 import type { EndpointKind, GameState, MoveRecord } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
 
+/** Labels preserve the distinction between physical and catalogue endpoints. */
+export function endpointKindLabel(kind: EndpointKind | null): string {
+  if (kind === "terminus") return "終点";
+  if (kind === "service-boundary") return "系統の端";
+  return "エリア端";
+}
+
 export interface GameSummary {
   turns: number;
   /** Station-to-station hops actually travelled (unused pips excluded). */
@@ -49,7 +56,7 @@ export function earlyStopNote(
   const unused = unusedPipsOf(record);
   if (unused === 0 || record.stopReason === "roll") return null;
   const kind = record.stopReason === "endpoint" && endpointKind
-    ? `〔${endpointKind === "terminus" ? "終点" : "エリア端"}〕`
+    ? `〔${endpointKindLabel(endpointKind)}〕`
     : "";
   return `${stationName(record.toStationId)}で停止${kind}、残り${unused}`;
 }

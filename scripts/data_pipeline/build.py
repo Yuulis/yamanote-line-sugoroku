@@ -4,7 +4,7 @@ Usage: ``uv run python -m scripts.data_pipeline.build [--raw-dir ...] [--out-dir
 
 The build routes every service in ``services.json`` (loops with
 :func:`route_loop`, open chains with :func:`route_path`) and then exports the
-v2 contract with shared station ids and one geometry per adjacent stop pair.
+v3 contract with shared station ids and one-element owned geometry chains.
 """
 
 from __future__ import annotations

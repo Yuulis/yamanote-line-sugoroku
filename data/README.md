@@ -49,11 +49,12 @@ skipped only when the raw download is absent; locally it checks pinned inputs an
 byte-for-byte equality with the committed output.
 
 ```bash
-uv run python -m scripts.data_pipeline.build --quiet
-sha256sum public/data/* > /tmp/jrx-first.sha256
-uv run python -m scripts.data_pipeline.build --quiet
-sha256sum public/data/* > /tmp/jrx-second.sha256
-diff /tmp/jrx-first.sha256 /tmp/jrx-second.sha256
+# Keep the reviewed public/data candidate unchanged while checking both rebuilds.
+uv run python -m scripts.data_pipeline.build --quiet --out-dir /tmp/jrcr-s2-first
+uv run python -m scripts.data_pipeline.build --quiet --out-dir /tmp/jrcr-s2-second
+diff -r public/data /tmp/jrcr-s2-first
+diff -r public/data /tmp/jrcr-s2-second
+diff -r /tmp/jrcr-s2-first /tmp/jrcr-s2-second
 ```
 
 ## Reviewed overrides
@@ -74,7 +75,7 @@ The five services are Yamanote, Keihin-Tohoku (Akabane–Kamata), Chuo-Sobu loca
 real termini are distinguished from area boundaries. The reviewed catalogue
 excludes Joban local, Joban rapid, Yokosuka/Sobu rapid, and other rapid/through services.
 
-## Routing and schema v2
+## Routing and schema v3
 
 1. Match each curated station to JR East N02 platform features on its adjacent
    physical lines, inside the Tokyo bounding box; selectors resolve ambiguities.
@@ -87,25 +88,35 @@ excludes Joban local, Joban rapid, Yokosuka/Sobu rapid, and other rapid/through 
    each service retains its own chosen platform coordinates. N02 sometimes shares
    geometry between parallel services and does not distinguish every physical track.
 4. Emit `stations.json`, `services.json`, `segments.json`, `segments.geojson`, then
-   `manifest.json` (`schemaVersion: 2`). Coordinates are rounded to six decimals;
+   `manifest.json` (`schemaVersion: 3`). Coordinates are rounded to six decimals;
    paths are simplified by 1 m. `dataVersion` hashes the four game files in filename
    order. `updatedAt` records the refresh date without changing the content hash.
 
 A directed segment id is `<service>:<from>:<to>`. Linear services have both directions;
-Yamanote has outer only. Both directions reference one canonical geometry id
-`<service>:<forward-from>~<forward-to>` with `{featureId, serviceId, from, to}`.
-Animation orients by those station identities rather than by coordinate distance.
-Services include `directionLabels`, `platformCoordinates`, and (if linear)
-`endpoints.first/last` (`terminus` or `area-boundary`).
+Yamanote has outer only. Segments carry a non-empty `geometryFeatureIds` chain in travel order. Reverse
+segments carry the reversed list. The current five services use one-element chains:
+`<service>:<forward-from>~<forward-to>`. Features are service-owned primitives with
+`{featureId, serviceId, lineId, from, to}`; future rapid/through consumers may compose
+primitives from multiple owners without changing ownership or gameplay progress.
+Animation orients each primitive by station identity, concatenates exact joints once,
+and follows the complete chain rather than jumping between the consumer's stops.
+`services.json` is the `{ lines, services }` envelope. Lines have `id/name/color`;
+services require `kind` (`local | rapid`) and non-empty `lineIds`, plus
+`directionLabels`, `platformCoordinates`, and (if linear) `endpoints.first/last`
+(`terminus`, `area-boundary`, or `service-boundary`, displayed as 「系統の端」).
+Legacy v2 bundles are rejected by the runtime guards. `segments.json` is compact,
+with one object per line. IDs, stop order and all-equal gameplay remain unchanged.
 
 The validator checks the strict five-file schema, registry/wards/catalogue,
 metadata/stop order, pair coverage and walks, platforms/representatives and reviewed
-offsets, unique shared features, endpoint orientation, same-service skipped stops,
+offsets, unique owned features and valid owner pairs, non-empty/known/ordered travel chains,
+reversed reverse-hop chains, exact joints, no backtracking/orphans, endpoint orientation,
+same-service skipped stops,
 detours/via hints, service lengths, connectivity, start-not-endpoint, deterministic
 bytes/content hash and the 300,000-byte GeoJSON limit. Other services' stations
 near a path are diagnostic only: Saikyo legitimately passes Yamanote-only stops.
 
-At the 2026-10-12 refresh: geometry 41,176 B; maximum endpoint offset 24.507 m
+At the 2026-10-12 refresh: v3 geometry 43,433 B; maximum endpoint offset 24.507 m
 (Saikyo at Ikebukuro); Tokyo/Keiyo platform offset 386.0 m, within its reviewed
 500 m exception. Service lengths: Yamanote 34.453 km, Keihin-Tohoku 27.495 km,
 Chuo-Sobu local 30.697 km, Saikyo 21.979 km, Keiyo 10.532 km.

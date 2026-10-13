@@ -42,7 +42,8 @@ from scripts.data_pipeline.registry import (
 
 STATION_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})(\d{2})$")
 ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-ENDPOINT_KINDS = ("terminus", "area-boundary")
+ENDPOINT_KINDS = ("terminus", "area-boundary", "service-boundary")
+SERVICE_KINDS = ("local", "rapid")
 MIN_LOOP_STOPS = 3
 MIN_LINEAR_STOPS = 2
 
@@ -84,8 +85,17 @@ class LengthRef:
 
 
 @dataclass(frozen=True)
+class LineMetadata:
+    id: str
+    name: str
+    color: str
+
+
+@dataclass(frozen=True)
 class ServiceDefinition:
     id: str
+    kind: str
+    line_ids: tuple[str, ...]
     name: str
     color: str
     circular: bool
@@ -155,6 +165,7 @@ class Overrides:
     registry: Registry
     services: tuple[ServiceOverrides, ...]  # services.json order
     offset_exceptions: tuple[OffsetException, ...]
+    lines: tuple[LineMetadata, ...]
 
     def service(self, service_id: str) -> ServiceOverrides:
         for service in self.services:
@@ -275,6 +286,17 @@ def _parse_length_ref(raw: Any, where: str) -> LengthRef:
     )
 
 
+def parse_line_metadata(raw: Any) -> LineMetadata:
+    if not isinstance(raw, dict) or set(raw) != {"id", "name", "color"}:
+        raise OverrideError("line metadata must contain id, name and color")
+    identifier = _text(raw, "id", "line metadata")
+    if not STATION_ID_PATTERN.match(identifier):
+        raise OverrideError("line id is not kebab-case")
+    return LineMetadata(
+        identifier, _text(raw, "name", identifier), _text(raw, "color", identifier)
+    )
+
+
 def parse_service_definition(raw: Any) -> ServiceDefinition:
     if not isinstance(raw, dict):
         raise OverrideError("services.json entries must be objects")
@@ -291,8 +313,16 @@ def parse_service_definition(raw: Any) -> ServiceDefinition:
     minimum = MIN_LOOP_STOPS if circular else MIN_LINEAR_STOPS
     if count < minimum:
         raise OverrideError(f"{where}: needs at least {minimum} stops")
+    kind = _text(raw, "kind", where)
+    if kind not in SERVICE_KINDS:
+        raise OverrideError(f"{where}: kind must be one of {SERVICE_KINDS}")
+    line_ids = _id_list(raw, "lineIds", where)
+    if not line_ids:
+        raise OverrideError(f"{where}: lineIds must not be empty")
     return ServiceDefinition(
         id=service_id,
+        kind=kind,
+        line_ids=line_ids,
         name=_text(raw, "name", where),
         color=_text(raw, "color", where),
         circular=circular,
@@ -551,7 +581,10 @@ def check_consistency(overrides: Overrides) -> None:
 
     registry = overrides.registry.by_id()
     served: dict[str, list[str]] = {station_id: [] for station_id in registry}
+    known_lines = {line.id for line in overrides.lines}
     for service in services:
+        if not set(service.definition.line_ids) <= known_lines:
+            raise OverrideError(f"{service.id}: unknown lineIds")
         for station_id in service.station_ids:
             if station_id not in registry:
                 raise OverrideError(
@@ -612,7 +645,16 @@ def check_offset_exception_references(overrides: Overrides) -> None:
 def load_overrides(overrides_dir: Path) -> Overrides:
     dataset = parse_dataset(_read_json(overrides_dir / config.DATASET_OVERRIDE_FILE))
     registry = load_registry(overrides_dir / config.REGISTRY_OVERRIDE_FILE)
-    raw_services = _read_json(overrides_dir / config.SERVICES_OVERRIDE_FILE)
+    envelope = _read_json(overrides_dir / config.SERVICES_OVERRIDE_FILE)
+    if not isinstance(envelope, dict) or set(envelope) != {"lines", "services"}:
+        raise OverrideError("services.json must be a v3 {lines, services} object")
+    raw_lines = envelope["lines"]
+    if not isinstance(raw_lines, list) or not raw_lines:
+        raise OverrideError("services.json lines must be a non-empty array")
+    lines = tuple(parse_line_metadata(raw) for raw in raw_lines)
+    if len({line.id for line in lines}) != len(lines):
+        raise OverrideError("services.json has duplicate line ids")
+    raw_services = envelope["services"]
     if not isinstance(raw_services, list) or not raw_services:
         raise OverrideError("services.json must be a non-empty JSON array")
     definitions = [parse_service_definition(raw) for raw in raw_services]
@@ -620,6 +662,7 @@ def load_overrides(overrides_dir: Path) -> Overrides:
     overrides = Overrides(
         dataset=dataset,
         registry=registry,
+        lines=lines,
         services=tuple(load_service(services_dir, item) for item in definitions),
         offset_exceptions=parse_offset_exceptions(
             read_csv(

@@ -88,9 +88,10 @@ function cumulativeLengths(points: readonly Position[]): number[] {
 
 /**
  * The path for one traversed segment. Falls back to the straight line
- * between the two stations only when the segment has no usable geometry
+ * between the two stations only when the geometry index is empty
  * (segments.geojson failed to load, which the data error banner already
- * reports), so the move is still shown hop by hop.
+ * reports), so the move is still shown hop by hop. Missing or broken chains
+ * in a loaded geometry bundle are rejected.
  */
 export function stepPath(
   event: SegmentTraversedEvent,
@@ -99,11 +100,24 @@ export function stepPath(
 ): StepPath {
   const from = platformPosition(network, event.serviceId, event.fromStationId);
   const to = platformPosition(network, event.serviceId, event.toStationId);
-  const featureId = network.segmentsById.get(event.segmentId)?.geometryFeatureId;
-  const line = featureId === undefined ? undefined : geometry.get(featureId);
+  const featureIds = network.segmentsById.get(event.segmentId)?.geometryFeatureIds;
   let points: Position[] = [];
-  if (line) points = orientPath(line, event.fromStationId, event.toStationId);
-  else if (from && to) points = [clonePosition(from), clonePosition(to)];
+  if (geometry.size > 0 && featureIds) {
+    let current = event.fromStationId;
+    for (const id of featureIds) {
+      const line = geometry.get(id);
+      if (!line) throw new GameEngineError("INVALID_NETWORK", `Missing geometry ${id}`);
+      const next = line.fromStationId === current ? line.toStationId : line.fromStationId;
+      const leg = orientPath(line, current, next);
+      const previous = points.at(-1);
+      if (previous && (previous[0] !== leg[0]?.[0] || previous[1] !== leg[0]?.[1])) {
+        throw new GameEngineError("INVALID_NETWORK", `Geometry joint gap at ${current}`);
+      }
+      points.push(...(points.length === 0 ? leg : leg.slice(1)));
+      current = next;
+    }
+    if (current !== event.toStationId) throw new GameEngineError("INVALID_NETWORK", `Wrong chain endpoint for ${event.segmentId}`);
+  } else if (from && to) points = [clonePosition(from), clonePosition(to)];
   const cumulative = cumulativeLengths(points);
   return {
     segmentId: event.segmentId,

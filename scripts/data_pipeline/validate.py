@@ -1,4 +1,4 @@
-"""Validate ``public/data/*`` (v2 contract) against ``data/overrides``.
+"""Validate ``public/data/*`` (v3 contract) against ``data/overrides``.
 
 Usage: ``uv run python -m scripts.data_pipeline.validate [--data-dir ...]``
 
@@ -31,6 +31,7 @@ from scripts.data_pipeline.export import (
     data_version,
     dumps_feature_collection,
     dumps_pretty,
+    dumps_segments,
     feature_id,
     manifest_inputs,
 )
@@ -56,6 +57,10 @@ class Dataset:
     manifest: Any
     payloads: dict[str, str]  # raw text of the game data files, for the hash
     manifest_payload: str | None = None
+
+    @property
+    def service_patterns(self) -> Any:
+        return self.services["services"]
 
     @property
     def geojson_bytes(self) -> int:
@@ -129,7 +134,7 @@ def check_stations(
         station_id = station.get("id")
         name = station.get("name")
         if set(station) != {"id", "name", "coordinates"}:
-            report.errors.append(f"station {index} has invalid v2 fields")
+            report.errors.append(f"station {index} has invalid v3 fields")
         if not isinstance(station_id, str) or not station_id:
             report.errors.append(f"stations[{index}] has no id")
             continue
@@ -160,9 +165,19 @@ def check_services(
     overrides: Overrides,
     report: Report,
 ) -> tuple[list[ServiceStops], dict[tuple[str, str], Point]]:
-    """Strict v2 metadata, topology and platform coordinates against overrides."""
+    """Strict v3 metadata, topology and platform coordinates against overrides."""
+    if not isinstance(services, dict) or set(services) != {"lines", "services"}:
+        report.errors.append("services.json must be a v3 {lines, services} object")
+        return [], {}
+    expected_lines = [
+        {"id": line.id, "name": line.name, "color": line.color}
+        for line in overrides.lines
+    ]
+    if services["lines"] != expected_lines:
+        report.errors.append("services.json lines differ from data/overrides")
+    services = services["services"]
     if not _is_object_list(services):
-        report.errors.append("services.json must be an array of objects")
+        report.errors.append("services.json services must be an array of objects")
         return [], {}
     parsed: list[ServiceStops] = []
     platforms: dict[tuple[str, str], Point] = {}
@@ -184,6 +199,8 @@ def check_services(
             "id",
             "name",
             "operator",
+            "kind",
+            "lineIds",
             "color",
             "circular",
             "stationIds",
@@ -193,7 +210,7 @@ def check_services(
         if not definition.circular:
             keys.add("endpoints")
         if set(raw) != keys:
-            report.errors.append(f"service {service_id} has invalid v2 fields")
+            report.errors.append(f"service {service_id} has invalid v3 fields")
         if type(raw.get("circular")) is not bool:
             report.errors.append(f"service {service_id} circular must be a boolean")
         rules.check_service_metadata(
@@ -290,7 +307,24 @@ def check_segments(
             report.errors.append(f"duplicate or invalid segment id at {index}")
         else:
             seen.add(identifier)
-        if index >= len(expected) or raw != expected[index]:
+        chain = raw.get("geometryFeatureIds")
+        if (
+            not isinstance(chain, list)
+            or not chain
+            or not all(isinstance(item, str) and item for item in chain)
+        ):
+            report.errors.append(
+                f"segment {identifier} needs a non-empty geometryFeatureIds chain"
+            )
+        keys = {"id", "serviceId", "from", "to", "geometryFeatureIds"}
+        if (
+            set(raw) != keys
+            or index >= len(expected)
+            or any(
+                raw.get(key) != expected[index][key]
+                for key in keys - {"geometryFeatureIds"}
+            )
+        ):
             report.errors.append(
                 f"segments[{index}] differs from the directed pair contract"
             )
@@ -352,9 +386,10 @@ def check_geometry(
     ]
     identifiers = [feature_id(service_id, a, b) for service_id, a, b in expected]
     actual = [raw.get("id") if isinstance(raw, dict) else None for raw in features]
-    if actual != identifiers:
+    actual_ids = {identifier for identifier in actual if isinstance(identifier, str)}
+    if actual != [identifier for identifier in identifiers if identifier in actual_ids]:
         report.errors.append(
-            "geojson feature ids must match canonical pair order (missing geometry or orphan feature)"
+            "geojson feature ids must match canonical owner pair order (missing geometry or orphan feature)"
         )
     by_id: dict[str, Any] = {}
     for raw in features:
@@ -374,17 +409,17 @@ def check_geometry(
         label = feature_id(service_id, a, b)
         raw = by_id.get(label)
         if raw is None:
-            report.errors.append(f"missing geometry for {label}")
             continue
         if (
             set(raw) != {"type", "id", "properties", "geometry"}
             or raw.get("type") != "Feature"
         ):
-            report.errors.append(f"{label} is not a GeoJSON Feature with v2 fields")
+            report.errors.append(f"{label} is not a GeoJSON Feature with v3 fields")
             continue
         if raw.get("properties") != {
             "featureId": label,
             "serviceId": service_id,
+            "lineId": overrides.service(service_id).definition.line_ids[0],
             "from": a,
             "to": b,
         }:
@@ -430,13 +465,6 @@ def check_geometry(
         for via in hint.via:
             if line.distance(Point(to_metric(via))) > config.ENDPOINT_MAX_DISTANCE_M:
                 report.errors.append(f"{label} misses a committed via point")
-    for service in services:
-        rules.check_service_length(
-            service.id,
-            lengths[service.id],
-            overrides.service(service.id).definition.length_ref,
-            report,
-        )
     report.metrics.update(
         {
             "max_endpoint_distance_m": round(max_endpoint, 3),
@@ -460,8 +488,8 @@ def check_manifest(
         report.errors.append(
             "manifest.json must have exactly schemaVersion, dataVersion, updatedAt and source"
         )
-    if type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 2:
-        report.errors.append("manifest.schemaVersion must be 2")
+    if type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 3:
+        report.errors.append("manifest.schemaVersion must be 3")
     if not is_iso_date(manifest.get("updatedAt")):
         report.errors.append("manifest.updatedAt must be a YYYY-MM-DD date")
     elif updated_at is not None and manifest["updatedAt"] != updated_at:
@@ -478,7 +506,7 @@ def check_manifest(
 
 
 def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
-    """Run all seventeen v2 rules without the raw N02 download."""
+    """Run all seventeen v3 rules without the raw N02 download."""
     report = Report()
     positions = check_stations(
         dataset.stations, official_station_order(overrides), report
@@ -492,6 +520,21 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
     services, platforms = check_services(dataset.services, positions, overrides, report)
     check_segments(dataset.segments, services, report)
     check_geometry(dataset.geojson, services, platforms, positions, overrides, report)
+    if (
+        _is_object_list(dataset.segments)
+        and isinstance(dataset.geojson, dict)
+        and _is_object_list(dataset.geojson.get("features"))
+    ):
+        lengths = rules.check_geometry_chains(
+            dataset.segments, dataset.geojson["features"], services, report
+        )
+        for service in services:
+            rules.check_service_length(
+                service.id,
+                lengths.get(service.id, 0.0),
+                overrides.service(service.id).definition.length_ref,
+                report,
+            )
     start = overrides.dataset.start_station_id
     rules.check_connectivity(
         services,
@@ -524,10 +567,12 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
             if name == config.SEGMENTS_GEOJSON_FILE
             and isinstance(document, dict)
             and isinstance(document.get("features"), list)
+            else dumps_segments(document)
+            if name == config.SEGMENTS_FILE and _is_object_list(document)
             else dumps_pretty(document)
         )
         if payload != expected:
-            report.errors.append(f"{name} bytes are not the canonical v2 serialization")
+            report.errors.append(f"{name} bytes are not the canonical v3 serialization")
         report.metrics[f"bytes[{name}]"] = len(payload.encode())
     if dataset.manifest_payload is not None:
         if dataset.manifest_payload != dumps_pretty(dataset.manifest):
