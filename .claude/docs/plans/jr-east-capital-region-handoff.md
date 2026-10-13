@@ -17,9 +17,11 @@ rules still all-equal.
 | S0b product-id catalog | merged | #10 | three verifiers exit 0, product hashes match; 20k decided run = S1M exactly |
 | S4 map/UI scaling (fixture-driven) | merged | #11 | Vitest 551, build, E2E 78/78 (75/75 twice before polish); Codex review APPROVE, polish applied |
 | S3a registry/area/routing prep | merged | #12 | `verify.sh` (pytest 198), validate, rebuild byte-identical; Codex review NEEDS_REVISION → fixed, 41/41 guard-removal checks; CI green after merging S4 |
+| S3b composition/validation/budgets | implemented on `feature/jrcr-s3b`; review NEEDS_REVISION → fixed, pending lead verification | — | executor: pytest 259, Vitest 551, validate, rebuild byte-identical, 33/33 isolated guard removals |
 
-**Next:** **S3b** (split `overrides.py` first, then compose DAG/validation/budgets). **S6P** (regional
-staging) may start route-only work after S3b's split lands; compose rows need S3b. Then S6 → S5 → S7.
+**Next:** lead verification of the review fixes and independent re-review of uncommitted **S3b** on
+`feature/jrcr-s3b` (section below). **S6P** may start after accepting the split; compose rows need
+acceptance of S3b composition. Then S6 → S5 → S7. No S3b commit/PR has been made.
 Briefs: section "Next step briefs"; scope/tests per design §9.
 Parallel steps use git worktrees under `.claude/worktrees/` (ignored); run Playwright in only one tree at a time
 (ports). Expect handoff merge conflicts when parallel steps each append a section — keep both sections.
@@ -453,7 +455,7 @@ pair's ratio limit and cannot bypass area/skipped-stop/joint checks.
 
 ## Next step briefs
 
-S0b, S3a and S4 are merged (sections above/below). Next = **S3b**, then **S6P**:
+S0b, S3a and S4 are merged (sections above/below). S3b is implemented below, pending lead verification/review; next = accept **S3b**, then **S6P**:
 
 - **S3b (pipeline owner, after S3a):** first split the 799-line
   `scripts/data_pipeline/overrides.py` into focused parsing/loading/consistency modules
@@ -470,13 +472,183 @@ S0b, S3a and S4 are merged (sections above/below). Next = **S3b**, then **S6P**:
   catalogue mismatch. Preserve the 23-ward bytes. Estimate work from the remaining
   route/compose inventory, including through-service shared legs and multi-N02 routes;
   recipe/unique-owner counts remain unmeasured. Regional data stays in staging until S6.
-- **S6P (regional staging, after S3b's split; compose rows after S3b):** prepare Tokyo/Kanagawa/
-  Saitama/Chiba overrides from the product catalog (`jr-east-capital-region-product-*.csv`) in staging
-  only (never live `data/overrides` or `public/data`); one owner per cross-prefecture service; per-segment
-  visual review; early hub/branch/chain checks, raw/gzip budget and desktop/phone zoom/overview measurement.
+- **S6P (regional staging, after accepting S3b's split; compose rows after accepting S3b):**
+  inputs are the frozen `jr-east-capital-region-product-{catalog,services}.csv`, S0 id map,
+  pinned raw N02, S3a registry/scope/selectors, S3b recipe schema and stage-specific oracle.
+  Use `data/staging/jr-east-capital-region/<stage>/overrides/` for reviewed inputs and
+  `/tmp/jrcr-s6p-<stage>/` for generated outputs, never live `data/overrides` or `public/data`.
+  A cross-prefecture service has one owner/recipe set; prefecture work packages must not clone it.
+  To stage Tokyo first, curate the selected services' in-area stops from the product catalog,
+  including excluded immediate neighbours in `scope.csv`; include all composition owners
+  in the stage's dependency closure. Set `areaPrefectures`, stage service output order,
+  `budgetProfile: "capital-region"`, and `simplifyToleranceM: 1`. Author/review a separate
+  `expected-catalog.json` (`services` + exact stop lists + first-appearance `stationIds`) and
+  pin its file SHA-256 with `expectedCatalogFile` / `expectedCatalogSha256`. Do not derive
+  this oracle from newly built output. Preserve the start/target circle and an interior start.
+  Build and validate one completed Tokyo stage with:
+
+  ```bash
+  uv run python -m scripts.data_pipeline.build \
+    --overrides-dir data/staging/jr-east-capital-region/tokyo/overrides \
+    --out-dir /tmp/jrcr-s6p-tokyo
+  uv run python -m scripts.data_pipeline.validate \
+    --overrides-dir data/staging/jr-east-capital-region/tokyo/overrides \
+    --data-dir /tmp/jrcr-s6p-tokyo
+  uv run python -m scripts.data_pipeline.simplification \
+    --overrides-dir data/staging/jr-east-capital-region/tokyo/overrides \
+    --out-file /tmp/jrcr-s6p-tokyo-simplification.json
+  ```
+
+  Measure end-to-end wall-clock **build time** with `/usr/bin/time -p` around the build command
+  (record raw-input size, machine and warm/cold cache state), and measure the maximum compose
+  **dependency depth** for each stage. Use both measurements to decide whether a shared per-build
+  flattening cache is needed; the S3b cache is currently scoped to a flattening invocation.
+  Record route-only / multi-N02 / compose pair counts, flattened unique primitive owners,
+  total references/max chain, per-file and five-file raw/gzip totals,
+  1/3/5 m coordinates/Hausdorff errors, build duration, two-way reachability and oracle hash.
+  Save per-segment visual evidence, shared-track line/section-filter reasons and exact-anchor
+  checks; review hub/branch/through-service chains early. Measure desktop/phone parse/build/render,
+  map overview/zoom and eventual save/restore separately: payload caps do not prove device performance.
+  Current inventory: 627 canonical product pairs, 88 retained shipped pairs, **539 remaining**
+  (461 local / 78 rapid); actual route/compose split and unique-owner counts remain unmeasured.
+  Inventory: `../research/jr-east-capital-region-s3b-recipe-inventory.json`.
   N02 gaps to handle: 池袋–赤羽 freight link, 日暮里 常磐線 junction, 品鶴線 under N02 東海道線.
 - **Later:** S6 final data in one commit (rules still all-equal) → S5 rules flip (Q1(c), subtitle,
   seed proofs, real-engine MC on final data) → S7 docs and release PR (production needs approval).
+
+## S3b: composition, validation and budgets — review NEEDS_REVISION → fixed; pending lead verification (2026-10-13)
+
+Uncommitted on `feature/jrcr-s3b`. No commit/push/branch change; live 23-ward public bytes,
+TS/UI, dependencies, DESIGN.md and STATE.md are unchanged. No Playwright run.
+
+Review `20261013T135744Z-jrcr-s3b-review.md` returned **NEEDS_REVISION**. Both blocking
+findings and the requested non-blocking coverage/performance fixes are implemented:
+
+- P1: compare every directed recipe chain before the non-compose early return and require
+  the exact routed primitive ID set. Full-validator fixtures switch both rapid directions
+  from their own bowed L2 route to an L1 owner and remove the owned primitive; both fail.
+- P2: materialize required stations once; generator and tuple station inputs now produce
+  identical forward/return reachability errors, including the previously missed no-return case.
+- Comparison reports use topology-checked `generate_build()` before publication budget checks;
+  normal `build()` still enforces budgets. A wavy-track fixture exceeds the cap at 1 m,
+  while reporting all three tolerances and passing the cap at 3 m and 5 m.
+- Flattening checks the DAG, indexes service/pair/range lookups and caches nested expansions
+  within each invocation. `config.MAX_COMPOSE_PRIMITIVES` defaults to 4,096 (the explicit
+  `max_primitives` argument can override it). Each append is bounded before allocation and
+  backtracking checks; this is separate from the dataset's publication chain cap.
+- Added distinct L0/L1 section filters in one genuinely multi-line source leg, in both
+  directions, and a compose hop adjacent to an explicit L1 → L2 route with inherited
+  endpoints. A 40-service / 627-pair synthetic DAG with depth 39 flattened in **2.004446 s**
+  during concurrent checks (test bound 30 s); timing is recorded in the local JUnit artifact.
+
+The first full revision run exposed one pre-S3b fixture declaring a shared rapid hop as
+routed (`test_multi_owner_rapid_chain_passes_whole_dataset_validation`). Only its recipe
+metadata was upgraded to an explicit two-owner composition with evidence; its geometry,
+chain and success assertion are preserved. No test was deleted, skipped or weakened.
+
+The first logical change split the 799-line `overrides.py`, preserving its imported public API.
+Before S3b additions, all **198 existing Python tests passed unchanged**, `ty` passed, and a
+raw-N02 rebuild into `/tmp/jrcr-s3b-split` matched `public/data` (`diff -r`, exit 0).
+Module map (final line counts):
+
+| Module | Responsibility | Lines |
+|---|---|---:|
+| `overrides.py` | compatibility re-exports (including existing constants/types/helpers) | 182 |
+| `override_models.py` | immutable override records; lazy range expansion avoids a cycle | 174 |
+| `override_parsing.py` | JSON/CSV cells, service/dataset fields, selectors and recipe parsing | 354 |
+| `override_loading.py` | file IO, service loading, oracle validation | 140 |
+| `override_checks.py` | stop/number/range and cross-table consistency | 228 |
+
+Composition uses the existing S3a `route` column plus optional `compose` JSON column in
+`line_mapping.csv`, rather than renaming the S3a columns. Compose is exclusive with `route`,
+`n02_line` and `via`, and covers one forward adjacent stop pair. Schema:
+
+```json
+{
+  "legs": [
+    {"source_service": "owner-a", "from": "a", "to": "b"},
+    {"source_service": "owner-b", "from": "b", "to": "c"}
+  ],
+  "shared_track_evidence": [
+    {"lines": ["L0"], "allow": [], "deny": [], "reason": "Reviewed common track"},
+    {"lines": ["L1"], "allow": [], "deny": [], "reason": "Reviewed common track"}
+  ]
+}
+```
+
+Evidence is per source leg and checked against every flattened owner's actual N02 lines/section
+filters. Optional `line_filters: { "L0": { "allow": [], "deny": [] } }` must cover all declared
+lines when distinct line constraints are needed. Source spans may traverse several source stops
+in either direction, or nested compositions; circular source spans follow forward stop order.
+`composition.py` validates the DAG and anchor identities, rejects cycles/backtracking/wrong last
+stations and flattens all chains. `composition_build.py` inherits primitive endpoints, checks exact
+metric joints and prevents mixed routed neighbours snapping away from an inherited anchor.
+`composition_validate.py` compares every directed routed/composed chain to recipes, requires the
+exact routed primitive ID set, and verifies composed output joints,
+platform anchors, skipped stops and detours. Export keeps only routed owned primitives; reverse
+segments reverse the entire flat list. DAG roots were deliberately reordered in a synthetic mixed,
+nested, forward/reverse multi-owner build; all five serialized outputs remained identical.
+
+Each on-disk dataset must name/hash an independent `expected-catalog.json` oracle. The shipped
+23ku dataset and frozen core fixture each have their own oracle; exact service order/stop lists/
+station union must match before building. Artifact service/station validation uses those checked
+overrides. Actual directed segments must reach every station from the start **and back**, regardless
+of the historical disconnected list. Both build and artifact validator enforce this condition.
+
+`budgets.py` reports UTF-8 raw bytes, level-9 gzip (`mtime=0`) for each of all five files, summed
+raw/gzip totals, flattened directed reference count and maximum chain length; build rejects overruns
+before writing. `budgetProfile` plus optional positive integer `budgets` overrides selects:
+
+| Cap | 23ku | capital-region (provisional; S6P must measure) |
+|---|---:|---:|
+| GeoJSON raw / gzip | 300,000 / 100,000 B | 1,572,864 / 460,800 B |
+| Five-file raw / gzip | 1,048,576 / 307,200 B | 3,145,728 / 921,600 B |
+| References / max chain | 1,000 / 64 | 20,000 / 128 |
+
+The regional byte caps implement the brief's 1.5 MiB / 450 KiB GeoJSON and 3 MiB / 900 KiB total.
+The original 23ku 300,000-byte GeoJSON cap remains; other 23ku and reference/chain caps are conservative
+configurable defaults, pending measurement/review. `simplifyToleranceM` is finite/positive, default 1 m.
+`python -m scripts.data_pipeline.simplification --out-file PATH` compares 1/3/5 m without writing
+public data, including when the default output exceeds a publication budget. Measured current data:
+
+| Tolerance | GeoJSON raw / gzip | Five-file raw / gzip | Coordinates | Max Hausdorff deviation |
+|---|---:|---:|---:|---:|
+| 1 m | 43,433 / 7,126 B | 87,647 / 13,710 B | 973 | 0.995212 m |
+| 3 m | 36,850 / 5,582 B | 81,064 / 12,167 B | 657 | 2.984168 m |
+| 5 m | 34,327 / 4,992 B | 78,541 / 11,576 B | 536 | 4.973172 m |
+
+All have 146 references / max chain 1 and pass 23ku budgets. Only 1 m equals the shipped output.
+Report: `../research/jr-east-capital-region-s3b-simplification.json`. Recipe inventory is recorded
+alongside it; no regional playable rows have been added.
+
+Executor acceptance evidence:
+
+| Gate | Result |
+|---|---|
+| `uv run ruff check .` | Passed |
+| `uv run ruff format --check .` | 46 files already formatted |
+| `uv run ty check scripts/` | Passed |
+| `uv run pytest` | **259 passed** (198 existing + 61 new); no skipped tests or weakened assertions; one existing fixture recipe upgraded as described above |
+| `uv run python -m scripts.data_pipeline.validate` | OK; 87,647 raw / 13,710 gzip B, 146 references, max chain 1 |
+| Raw rebuild | `uv run python -m scripts.data_pipeline.build --raw-dir N02-25_GML/UTF-8 --quiet --out-dir /tmp/jrcr-s3b-revision-XafT0u`, exit 0 |
+| Byte equality | `diff -r public/data /tmp/jrcr-s3b-revision-XafT0u`, exit 0, no output |
+| `npx vitest run` | **24 files / 551 passed** (Node 24.21.0 PATH prefix); no TS edits |
+| Guard-removal audit | **33/33 isolated in-memory removals detected**; acceptance fixtures become accepted or lose their specific validation error, not an unrelated rejection |
+| `wc -l scripts/data_pipeline/*.py` | 5,345 total; max 677 (`validate.py`), all below 800 |
+| `git diff --check` | Passed |
+
+Guard fixtures cover forward/reverse multi-owner recipe and artifact errors, cycles, wrong N02 line
+and section sharing, metric/output/mixed-hop platform gaps, backtracking, wrong final station,
+forward/return disconnection, independent catalogue and hash mismatch, all six budget caps and
+validator enforcement, routed chain/primitive-set enforcement, generator no-return inputs,
+bounded expansion, distinct per-line filters and normal-build budget enforcement while comparing.
+The generator mutation restores double consumption directly; the other mutations isolate their
+corresponding guards. Reproducible audit runner and detailed results:
+`.claude/logs/codex/jrcr-s3b-guard-removal.{py,json,log}` (ignored local artifacts; preserved for lead).
+These are executor results, not lead acceptance. Lead still must inspect all tracked/untracked diffs,
+run acceptance/delegation gates and obtain an independent High-step re-review before landing S3b.
+Final revision gate logs are `.claude/logs/codex/jrcr-s3b-revision-{pytest,validate,rebuild,vitest}.log`;
+regional DAG timing/properties are in `.claude/logs/codex/jrcr-s3b-flattening.xml`.
 
 ## S4: map/UI scaling — lead-verified (Vitest 551, E2E 78/78), review APPROVE, PR #11 (2026-10-13)
 

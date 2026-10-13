@@ -52,5 +52,8 @@
     34.65,
     141.2,
     37.0
-  ]
+  ],
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "d2012ce16cfe2789f438ca9de233081957868d39f157e334833b0b08e8fc9e38",
+  "budgetProfile": "23ku"
 }

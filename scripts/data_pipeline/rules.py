@@ -573,3 +573,28 @@ def check_geometry_chains(
         )
         for service in services
     }
+
+
+def check_two_way_reachability(
+    station_ids: Iterable[str], pairs: Iterable[Pair], start: str, report: Report
+) -> None:
+    """Every station is reachable from the start and can return to it."""
+    required_stations = set(station_ids)
+    edges = list(pairs)
+    for label, reverse in (("from start", False), ("back to start", True)):
+        successors: dict[str, set[str]] = {}
+        for a, b in edges:
+            origin, destination = (b, a) if reverse else (a, b)
+            successors.setdefault(origin, set()).add(destination)
+        reached = {start}
+        queue = deque([start])
+        while queue:
+            for following in successors.get(queue.popleft(), ()):
+                if following not in reached:
+                    reached.add(following)
+                    queue.append(following)
+        missing = sorted(required_stations - reached)
+        if missing:
+            report.errors.append(
+                f"two-way reachability {label}: unreachable stations {missing}"
+            )

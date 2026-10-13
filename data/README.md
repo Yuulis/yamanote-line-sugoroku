@@ -194,3 +194,84 @@ At the 2026-10-12 refresh: v3 geometry 43,433 B; maximum endpoint offset 24.507 
 (Saikyo at Ikebukuro); Tokyo/Keiyo platform offset 386.0 m, within its reviewed
 500 m exception. Service lengths: Yamanote 34.453 km, Keihin-Tohoku 27.495 km,
 Chuo-Sobu local 30.697 km, Saikyo 21.979 km, Keiyo 10.532 km.
+
+### Composition and dataset gates (S3b)
+
+`line_mapping.csv` may add a `compose` column containing a quoted JSON cell;
+`n02_line`, `via` and `route` must be empty for that row. A compose row covers
+exactly one forward stop pair. For example (synthetic station/line names):
+
+```json
+{
+  "legs": [
+    {"source_service": "owner-a", "from": "a", "to": "b"},
+    {"source_service": "owner-b", "from": "b", "to": "c"}
+  ],
+  "shared_track_evidence": [
+    {"lines": ["L0"], "allow": [], "deny": [], "reason": "Reviewed common track"},
+    {"lines": ["L1"], "allow": [], "deny": [], "reason": "Reviewed common track"}
+  ]
+}
+```
+
+Each evidence item corresponds to one leg. Its line set and section filter must
+match the flattened owners' actual routing configuration. A leg spanning lines
+with different filters can add `line_filters`, keyed by every line in `lines`,
+with `{ "allow": [...], "deny": [...] }` values; these replace the common filter
+for that leg. Review the raw N02 track and section evidence before authoring a
+recipe. Matching station ids alone is insufficient evidence of shared track.
+
+A source leg may span multiple adjacent source stops in either direction, or
+consume an earlier composition. Circular sources follow their forward order.
+Cycles, unknown sources, repeated stations, incorrect anchors and last stations
+are rejected. Owners emit primitives only for their routed pairs; consumers
+flatten dependencies into `geometryFeatureIds`, preserving travel order and
+reversing the complete list for reverse hops. Primitive endpoints join exactly
+in metric coordinates and again after simplification/rounding. Consumer platform
+points inherit those endpoints. A mixed route/compose neighbour must also meet
+its inherited anchor exactly; the usual 30 m routing snap cannot bridge it.
+Build order follows the dependency DAG; station/service/feature/segment output
+retains the reviewed catalogue order.
+
+Every on-disk override dataset must name `expectedCatalogFile` (a file in the
+same directory) and pin its bytes with `expectedCatalogSha256`. The oracle is a
+reviewed JSON object with `services: [{ id, stationIds }]` in output order and
+`stationIds` in first-appearance order. Both override services and their exact
+stop lists must match it; built artifacts are checked against those overrides.
+The shipped and core-fixture oracles are separate frozen inputs. Staging needs
+its own reviewed oracle; S6 needs the complete approved product catalogue.
+Do not regenerate the oracle as part of a build to hide a coverage difference.
+Every station must be reachable from the start and back over actual directed
+segments, regardless of `reviewedDisconnectedServiceIds`.
+
+`dataset.json` selects `budgetProfile` (`23ku` by default or `capital-region`)
+and can override individual positive integer caps in `budgets`:
+
+| Cap | 23ku | capital-region (provisional) |
+|---|---:|---:|
+| `geojsonRaw` | 300,000 B | 1,572,864 B (1.5 MiB) |
+| `geojsonGzip` | 100,000 B | 460,800 B (450 KiB) |
+| `totalRaw` | 1,048,576 B | 3,145,728 B (3 MiB) |
+| `totalGzip` | 307,200 B | 921,600 B (900 KiB) |
+| `references` | 1,000 | 20,000 |
+| `maxChainLength` | 64 | 128 |
+
+Totals include all five files, including the manifest. Gzip reports sum each
+file compressed separately with level 9 and `mtime=0`; gzip artifacts are not
+shipped. Build rejects overruns before writing files; validation reports raw,
+gzip, total reference count and maximum chain length. The regional payload
+limits come from the S3b handoff; reference/chain caps and additional 23ku caps
+are conservative configuration defaults. S6P must measure and review them.
+
+`dataset.json` can set `simplifyToleranceM` (finite and positive, default 1 m).
+Keep 1 m for the shipped edition. Compare alternatives without writing game data:
+
+```bash
+uv run python -m scripts.data_pipeline.simplification \
+  --overrides-dir data/overrides --out-file /tmp/jrcr-simplification.json
+```
+
+The report compares 1/3/5 m against the routed geometry, including coordinate
+count, Hausdorff deviation, all size/reference metrics and budget errors. The
+current measured report is
+`.claude/docs/research/jr-east-capital-region-s3b-simplification.json`.

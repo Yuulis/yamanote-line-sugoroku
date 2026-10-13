@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -13,6 +14,7 @@ from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config
+from scripts.data_pipeline.composition import compose_chains, exact_chain_coordinates
 from scripts.data_pipeline.overrides import Overrides, ServiceOverrides
 from scripts.data_pipeline.registry import RegistryStation
 from scripts.data_pipeline.topology import station_order, station_pairs
@@ -30,9 +32,11 @@ def to_lon_lat(x: float, y: float) -> Coordinate:
     ]
 
 
-def line_to_lon_lat(line: LineString) -> list[Coordinate]:
+def line_to_lon_lat(
+    line: LineString, tolerance_m: float = config.SIMPLIFY_TOLERANCE_M
+) -> list[Coordinate]:
     """Simplify in metres, convert to lon/lat, round, and drop repeated points."""
-    simplified = line.simplify(config.SIMPLIFY_TOLERANCE_M, preserve_topology=False)
+    simplified = line.simplify(tolerance_m, preserve_topology=False)
     coords: list[Coordinate] = []
     for xy in simplified.coords:
         coordinate = to_lon_lat(xy[0], xy[1])
@@ -126,7 +130,10 @@ def build_segments(
 
 
 def build_segment_features(
-    segments: Sequence[Mapping[str, Any]], lines: Sequence[LineString], line_id: str
+    segments: Sequence[Mapping[str, Any]],
+    lines: Sequence[LineString],
+    line_id: str,
+    tolerance_m: float = config.SIMPLIFY_TOLERANCE_M,
 ) -> dict[str, Any]:
     canonical: list[Mapping[str, Any]] = []
     seen: set[str] = set()
@@ -146,7 +153,10 @@ def build_segment_features(
                 "from": segment["from"],
                 "to": segment["to"],
             },
-            "geometry": {"type": "LineString", "coordinates": line_to_lon_lat(line)},
+            "geometry": {
+                "type": "LineString",
+                "coordinates": line_to_lon_lat(line, tolerance_m),
+            },
         }
         for segment, line in zip(canonical, lines, strict=True)
     ]
@@ -217,6 +227,7 @@ def build_files(
     station_points: Mapping[str, Point],
     platforms: Mapping[tuple[str, str], Point],
     service_lines: Mapping[str, Sequence[LineString]],
+    simplify_tolerance_m: float | None = None,
 ) -> dict[str, str]:
     """The five v3 files, in canonical service / station / pair order."""
     registry = overrides.registry.by_id()
@@ -224,14 +235,50 @@ def build_files(
     stations = [registry[station_id] for station_id in order]
     segments_doc: list[dict[str, Any]] = []
     features: list[dict[str, Any]] = []
+    tolerance = (
+        overrides.dataset.simplify_tolerance_m
+        if simplify_tolerance_m is None
+        else simplify_tolerance_m
+    )
+    if (
+        not isinstance(tolerance, int | float)
+        or isinstance(tolerance, bool)
+        or not math.isfinite(tolerance)
+        or tolerance <= 0
+    ):
+        raise ValueError("simplification tolerance must be finite and positive")
+    owned = {}
+    for service in overrides.services:
+        pairs = station_pairs(service.station_ids, service.circular)
+        for (a, b), item, line in zip(
+            pairs, service.segment_ranges(), service_lines[service.id], strict=True
+        ):
+            if item.compose:
+                continue
+            segment = build_segments(service.id, (a, b), False)[0]
+            feature = build_segment_features(
+                [segment], [line], service.definition.line_ids[0], tolerance
+            )["features"][0]
+            features.append(feature)
+            owned[(service.id, a, b)] = feature["id"]
+    chains = compose_chains(overrides, owned)
+    by_id = {feature["id"]: feature for feature in features}
     for service in overrides.services:
         segments = build_segments(service.id, service.station_ids, service.circular)
+        for segment in segments:
+            key = (service.id, segment["from"], segment["to"])
+            chain = chains.get(key)
+            segment["geometryFeatureIds"] = (
+                chain
+                if chain is not None
+                else list(
+                    reversed(chains[(service.id, segment["to"], segment["from"])])
+                )
+            )
+            exact_chain_coordinates(
+                segment["geometryFeatureIds"], by_id, segment["from"]
+            )
         segments_doc.extend(segments)
-        features.extend(
-            build_segment_features(
-                segments, service_lines[service.id], service.definition.line_ids[0]
-            )["features"]
-        )
     files = {
         config.STATIONS_FILE: dumps_pretty(build_stations(stations, station_points)),
         config.SERVICES_FILE: dumps_pretty(

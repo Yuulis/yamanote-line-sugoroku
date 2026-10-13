@@ -10,6 +10,7 @@ v3 contract with shared station ids and one-element owned geometry chains.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -19,6 +20,13 @@ from pyproj import Transformer
 from shapely.geometry import Point
 
 from scripts.data_pipeline import config, export, rules
+from scripts.data_pipeline.budgets import check_file_budgets, file_size_report
+from scripts.data_pipeline.composition import dependency_order
+from scripts.data_pipeline.composition_build import (
+    check_inherited_route_anchors,
+    composed_pairs,
+    inherited_candidates,
+)
 from scripts.data_pipeline.constraints import SectionFilter
 from scripts.data_pipeline.n02 import N02Source, PlatformCandidate, TrackSection
 from scripts.data_pipeline.network import TrackNetwork
@@ -70,10 +78,16 @@ def stop_lines(
         adjacent: set[str] = set()
         if circular or index > 0:
             item = segment_lines[index - 1]
-            adjacent.add(item.route_lines[-1] if isinstance(item, LineRange) else item)
+            if not isinstance(item, LineRange) or item.route_lines:
+                adjacent.add(
+                    item.route_lines[-1] if isinstance(item, LineRange) else item
+                )
         if circular or index < count - 1:
             item = segment_lines[index]
-            adjacent.add(item.route_lines[0] if isinstance(item, LineRange) else item)
+            if not isinstance(item, LineRange) or item.route_lines:
+                adjacent.add(
+                    item.route_lines[0] if isinstance(item, LineRange) else item
+                )
         lines.append(adjacent)
     return lines
 
@@ -83,6 +97,7 @@ def group_candidates(
     registry: Registry,
     candidates: Sequence[PlatformCandidate],
     lines_per_stop: Sequence[set[str]],
+    inherited: Mapping[int, PlatformCandidate] | None = None,
 ) -> list[list[PlatformCandidate]]:
     """Candidates per stop: name, line and selector match, deduplicated.
 
@@ -91,7 +106,12 @@ def group_candidates(
     """
     stations = registry.by_id()
     grouped: list[list[PlatformCandidate]] = []
-    for stop, lines in zip(service.stops, lines_per_stop, strict=True):
+    for index, (stop, lines) in enumerate(
+        zip(service.stops, lines_per_stop, strict=True)
+    ):
+        if inherited and index in inherited:
+            grouped.append([inherited[index]])
+            continue
         station = stations[stop.station_id]
         seen: set[tuple[str, float, float]] = set()
         groups: set[str] = set()
@@ -151,9 +171,15 @@ def to_metric_point(lon_lat: tuple[float, float]) -> Point:
 
 
 def route_service(
-    source: N02Source, service: ServiceOverrides, registry: Registry
+    source: N02Source,
+    service: ServiceOverrides,
+    registry: Registry,
+    overrides: Overrides | None = None,
+    builds: Mapping[str, ServiceBuild] | None = None,
 ) -> ServiceBuild:
     """Choose platforms and trace every +1 stop pair of one service."""
+    composed = composed_pairs(service, overrides, builds or {}) if overrides else {}
+    inherited = inherited_candidates(composed, len(service.stops))
     ranges = service.segment_ranges()
     segment_lines = tuple(" -> ".join(item.route_lines) for item in ranges)
     all_lines = {line for item in ranges for line in item.route_lines}
@@ -163,7 +189,7 @@ def route_service(
         all_lines,
     )
     grouped = group_candidates(
-        service, registry, candidates, stop_lines(ranges, service.circular)
+        service, registry, candidates, stop_lines(ranges, service.circular), inherited
     )
     sections = source.track_sections(
         all_lines,
@@ -179,7 +205,11 @@ def route_service(
     # Graph cache keyed by the constraints, not just the line.
     networks: dict[tuple[str, SectionFilter], TrackNetwork] = {}
     routes: list[PairRoute] = []
-    for item in ranges:
+    for index, item in enumerate(ranges):
+        if index in composed:
+            path = composed[index][0]
+            routes.append(PairRoute(TrackNetwork([path.geometry]), fixed_path=path))
+            continue
         ordered_networks: list[TrackNetwork] = []
         for line in item.route_lines:
             section_filter = service.section_filter(line)
@@ -202,15 +232,16 @@ def route_service(
             )
         )
     route = route_loop if service.circular else route_path
-    return ServiceBuild(
-        service=service, segment_lines=segment_lines, routed=route(grouped, routes)
-    )
+    routed = route(grouped, routes)
+    check_inherited_route_anchors(routed.paths, inherited, len(service.stops))
+    return ServiceBuild(service=service, segment_lines=segment_lines, routed=routed)
 
 
 def route_network(source: N02Source, overrides: Overrides) -> dict[str, ServiceBuild]:
     builds: dict[str, ServiceBuild] = {}
-    for service in overrides.services:
-        item = route_service(source, service, overrides.registry)
+    for identifier in dependency_order(overrides.services):
+        service = overrides.service(identifier)
+        item = route_service(source, service, overrides.registry, overrides, builds)
         report = rules.Report()
         points = {
             station_id: chosen.midpoint
@@ -248,7 +279,7 @@ def route_network(source: N02Source, overrides: Overrides) -> dict[str, ServiceB
         builds[service.id] = ServiceBuild(
             item.service, item.segment_lines, item.routed, boundaries
         )
-    return builds
+    return {service.id: builds[service.id] for service in overrides.services}
 
 
 def platform_points(builds: Mapping[str, ServiceBuild]) -> dict[tuple[str, str], Point]:
@@ -273,8 +304,8 @@ def representative_points(
     }
 
 
-def build(raw_dir: Path, overrides_dir: Path) -> BuildResult:
-    overrides = load_overrides(overrides_dir)
+def generate_build(raw_dir: Path, overrides: Overrides) -> BuildResult:
+    """Route, export and check topology without enforcing publication budgets."""
     source = N02Source(
         raw_dir,
         operator=overrides.dataset.n02_operator,
@@ -290,7 +321,24 @@ def build(raw_dir: Path, overrides_dir: Path) -> BuildResult:
             for service_id, item in builds.items()
         },
     )
+    report = rules.Report()
+    segments = json.loads(files[config.SEGMENTS_FILE])
+    rules.check_two_way_reachability(
+        (station.id for station in overrides.registry.stations),
+        ((segment["from"], segment["to"]) for segment in segments),
+        overrides.dataset.start_station_id,
+        report,
+    )
+    if report.errors:
+        raise RoutingError("; ".join(report.errors))
     return BuildResult(files=files, services=builds)
+
+
+def build(raw_dir: Path, overrides_dir: Path) -> BuildResult:
+    overrides = load_overrides(overrides_dir)
+    result = generate_build(raw_dir, overrides)
+    check_file_budgets(result.files, overrides.dataset.budgets)
+    return result
 
 
 def describe(result: BuildResult) -> str:
@@ -337,6 +385,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     export.write_outputs(args.out_dir, result.files)
     if not args.quiet:
         print(describe(result))
+        for key, value in sorted(file_size_report(result.files).items()):
+            print(f"{key}: {value}")
         for name in sorted(result.files):
             size = (args.out_dir / name).stat().st_size
             print(f"wrote {args.out_dir / name} ({size} bytes)")
