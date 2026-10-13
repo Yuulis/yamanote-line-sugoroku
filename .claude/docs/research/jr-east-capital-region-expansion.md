@@ -480,14 +480,14 @@ Lower-priority follow-ups:
 - `togane` (5): 大網 – 福俵 – 東金 – 求名 – 成東
 
 
-## 11. Change log: v1 → revised catalog v2 (2026-10-13; approval pending)
+## 11. Change log: v1 → revised catalog v2 (2026-10-13; user-approved 2026-10-13)
 
 The user redefined services as track systems using their base train stop patterns. Catalog v2 is a
 deterministic filter of v1 evidence; no timetable re-scrape was performed. The sections above and Appendix A
 remain the **v1 research record**, including former recommendations and questions. Current rules and resolved
 Q1–Q11 are in `jr-east-capital-region-expansion-design.md` §§2/12.
 
-| Item | v1 | Revised v2 (approval pending) |
+| Item | v1 | Revised v2 (user-approved 2026-10-13) |
 |---|---:|---:|
 | Service-stop rows | 965 | 666 |
 | Services | 60 (36 local + 24 rapid) | 40 (36 local + 3 rapid-track bases + 1 rapid through-route base) |
@@ -547,7 +547,7 @@ All 472 remaining stations have a service and two-way reachability from 新橋; 
 Artifacts: `jr-east-capital-region-catalog-v2.csv`, `jr-east-capital-region-services-v2.csv`;
 `sim/build_catalog_v2.py`, `sim/verify_catalog_v2.py`, `sim/run-v2-manifest.json` under
 `.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/`.
-Catalog v2 SHA-256: `09e4bd80976b35457939515ed164b9a56b8ee0693effaa48f12aba1ca1b2acba`.
+Catalog v2 SHA-256 (LF-normalized UTF-8 bytes): `ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4`.
 
 Replica confirmation (50,000 games per rule, seed 20261012, cap 20,000): unchanged rules
 394/962/1,647 (>500: 19,248); 山手線 1/2 only 98/337/700 (>500: 1,842); adopted Q1(c)
@@ -569,5 +569,5 @@ reachability, 久留里 and orphan checks and reports complete hub candidate lis
 121 transfer stations, maximum k=10; 東京10 / 新宿7 / 大宮6 / 横浜5 / 千葉5. All three v2 networks and
 the four 50,000-game outputs were rebuilt; the manifest records their new hashes. The old 39-service
 outputs were overwritten. The separate v1 round-2 **APPROVE** applies only to the earlier design/v1
-measurements. This revised v2 awaits caller verification and approval; S0b research-input confirmation
-remains **NOT complete until approval**, with product-id mapping and real-engine MC also outstanding.
+measurements. The user approved revised research catalog v2 on 2026-10-13. S0 now supplies the frozen product-ID
+crosswalk and LF hashes; S0b product-catalog generation and S1M real-engine MC remain outstanding.

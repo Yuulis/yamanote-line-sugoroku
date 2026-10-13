@@ -1,0 +1,245 @@
+{
+  "catalogVersion": "v2",
+  "catalogPath": ".claude/docs/research/jr-east-capital-region-catalog-v2.csv",
+  "catalogRows": 666,
+  "services": 40,
+  "stations": 472,
+  "seed": 20261012,
+  "gamesPerRule": 50000,
+  "cap": 20000,
+  "method": "graph-level distributional replica; sfc32 float-interval RNG; not engine seed-exact",
+  "comparisonToV1Local39": "Adds the 36-stop shonan_shinjuku_rapid_takasaki base through route in v1 order; kururi shortened from 14 to 11 stops.",
+  "sha256": {
+    ".claude/docs/research/jr-east-capital-region-catalog.csv": "244bd49d40a957fa17e8eeba205746d268c1ba197306b636592b875b98f6194d",
+    ".claude/docs/research/jr-east-capital-region-services.csv": "ab58f1ff64d2e3b69f6f5225d73fdf88bd0042c1bea30a7f1540b9abda33da12",
+    ".claude/docs/research/jr-east-capital-region-catalog-v2.csv": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+    ".claude/docs/research/jr-east-capital-region-services-v2.csv": "45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/catalog_to_network.py": "a58f3452fe690897d667ed98058bed5706e17eccaebc5d78cbccdd2dc99d0fa3",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/montecarlo.mjs": "f82cc3db7e66895a75c1b26a1370c9cb4421acc8d861ed165b0923ee5af312fc",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/net-v2-all.json": "ce5668cd56e6739c60dd89edb1c92ddab8432bce467836af82bba3950e3ad853",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/build_catalog_v2.py": "35bf5c7407db57a14b324754b96378f045b3de2796a3f4998f254bf9dea4a573",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/verify_catalog_v2.py": "b61a472b4e5da534714f2be042104a96fe76209aad8fbf5f4ed0294ab4a5f4c4",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/net-v2-core.json": "c76ac8f1d97ea51fa34e26d65d500d2c21b16394f18121e6dc200d5cf31325a4",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/net-v2-local.json": "68f54187d9291ccfdfff03e7c9eb8b09ee538ec16ae1d4fba21a44bd38da5168",
+    ".claude/docs/research/jr-east-capital-region-id-map.csv": "ca6a7c7c957ab153f787d78a040dc5d57fa044d59da758064a632789ab96885f",
+    ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/verify_id_map.py": "43c323ef30d90b801ee78c9d6394bbcbaa16d0f0c54ee44ca9ea44ed97197840"
+  },
+  "commands": [
+    "python3 .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/build_catalog_v2.py",
+    "python3 .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/verify_catalog_v2.py",
+    "cd .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim",
+    "python3 catalog_to_network.py /home/yuulis/yamanote-line-sugoroku/.claude/docs/research/jr-east-capital-region-catalog-v2.csv v2",
+    "node montecarlo.mjs net-v2-all.json --games 50000 --seed 20261012 --cap 20000 --rules baseline > run-v2-baseline-50k.jsonl",
+    "node montecarlo.mjs net-v2-all.json --games 50000 --seed 20261012 --cap 20000 --rules yhalf > run-v2-yhalf-50k.jsonl",
+    "node montecarlo.mjs net-v2-all.json --games 50000 --seed 20261012 --cap 20000 --rules yhalfInbound2 > run-v2-yhalfInbound2-50k.jsonl",
+    "node montecarlo.mjs net-v2-all.json --games 50000 --seed 20261012 --cap 20000 --rules yhalfInbound2Pass > run-v2-yhalfInbound2Pass-50k.jsonl"
+  ],
+  "runs": [
+    {
+      "path": ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/run-v2-baseline-50k.jsonl",
+      "sha256": "4788aa8139aa21997f2518a2d094f75f67492c5fe698238d6bf28ee5581c9a30",
+      "result": {
+        "rule": "baseline",
+        "games": 50000,
+        "seed": 20261012,
+        "cap": 20000,
+        "median": 394,
+        "p90": 962,
+        "p99": 1647,
+        "mean": 475.13614,
+        "over200": 75.644,
+        "over500": 38.496,
+        "over1000": 8.788,
+        "capExceeded": 0,
+        "over500Count": 19248,
+        "max": 3277,
+        "endgameMedian": 5,
+        "endgameP90": 181,
+        "lotteriesPerGame": 622.0313,
+        "targetTurnShare": 5.0435523595405725
+      }
+    },
+    {
+      "path": ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/run-v2-yhalf-50k.jsonl",
+      "sha256": "4b681fb4bb29f43280d791f381d34372d1094307a70a927b2b077569d0a668f8",
+      "result": {
+        "rule": "yhalf",
+        "games": 50000,
+        "seed": 20261012,
+        "cap": 20000,
+        "median": 98,
+        "p90": 337,
+        "p99": 700,
+        "mean": 146.03428,
+        "over200": 24.276,
+        "over500": 3.6839999999999997,
+        "over1000": 0.152,
+        "capExceeded": 0,
+        "over500Count": 1842,
+        "max": 1626,
+        "endgameMedian": 1,
+        "endgameP90": 47,
+        "lotteriesPerGame": 182.78586,
+        "targetTurnShare": 14.889832715989698
+      }
+    },
+    {
+      "path": ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/run-v2-yhalfInbound2-50k.jsonl",
+      "sha256": "007a21d9393921835dd1131352de3c8808eead1ae3211e81988005eef2df98cd",
+      "result": {
+        "rule": "yhalfInbound2",
+        "games": 50000,
+        "seed": 20261012,
+        "cap": 20000,
+        "median": 61,
+        "p90": 148,
+        "p99": 258,
+        "mean": 73.93308,
+        "over200": 3.434,
+        "over500": 0.008,
+        "over1000": 0,
+        "capExceeded": 0,
+        "over500Count": 4,
+        "max": 599,
+        "endgameMedian": 1,
+        "endgameP90": 25,
+        "lotteriesPerGame": 93.94644,
+        "targetTurnShare": 29.435700501047705
+      }
+    },
+    {
+      "path": ".claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/run-v2-yhalfInbound2Pass-50k.jsonl",
+      "sha256": "b5555af5a988d3d51a26b162e050ced8fa5b57f4a4c21c8589ccdafd718ebb93",
+      "result": {
+        "rule": "yhalfInbound2Pass",
+        "games": 50000,
+        "seed": 20261012,
+        "cap": 20000,
+        "median": 58,
+        "p90": 142,
+        "p99": 252,
+        "mean": 71.01736,
+        "over200": 3.032,
+        "over500": 0.006,
+        "over1000": 0,
+        "capExceeded": 0,
+        "over500Count": 3,
+        "max": 550,
+        "endgameMedian": 1,
+        "endgameP90": 14,
+        "lotteriesPerGame": 90.21552,
+        "targetTurnShare": 29.52393611928126
+      }
+    }
+  ],
+  "catalogSelectionRevision": "Restore shonan_shinjuku_rapid_takasaki as the base Takasaki/Tokaido Shonan-Shinjuku route; 40 keep / 20 drop.",
+  "validationStatus": "Revised research catalog v2 user-approved 2026-10-13; S0 complete. S0b product catalog and S1M real-engine confirmation remain.",
+  "verification": {
+    "ok": true,
+    "rows": 666,
+    "services": 40,
+    "stations": 472,
+    "classification": {
+      "total": 60,
+      "keep": 40,
+      "drop": 20
+    },
+    "local_services": 36,
+    "rapid_base_services": 4,
+    "rapid_track_services": 3,
+    "rapid_through_route_services": 1,
+    "transfer_stations": 121,
+    "max_k": 10,
+    "hub_k": {
+      "東京": 10,
+      "新宿": 7,
+      "大宮": 6,
+      "横浜": 5,
+      "千葉": 5
+    },
+    "hub_candidates": {
+      "東京": [
+        "yamanote",
+        "keihin_tohoku_negishi",
+        "chuo_rapid",
+        "keiyo",
+        "tokaido",
+        "yokosuka",
+        "sobu_rapid",
+        "utsunomiya",
+        "takasaki",
+        "joban_rapid"
+      ],
+      "新宿": [
+        "yamanote",
+        "chuo_sobu_local",
+        "chuo_rapid",
+        "saikyo_kawagoe",
+        "sotetsu_direct",
+        "shonan_shinjuku_local",
+        "shonan_shinjuku_rapid_takasaki"
+      ],
+      "大宮": [
+        "keihin_tohoku_negishi",
+        "saikyo_kawagoe",
+        "utsunomiya",
+        "takasaki",
+        "shonan_shinjuku_local",
+        "shonan_shinjuku_rapid_takasaki"
+      ],
+      "横浜": [
+        "keihin_tohoku_negishi",
+        "tokaido",
+        "yokosuka",
+        "shonan_shinjuku_local",
+        "shonan_shinjuku_rapid_takasaki"
+      ],
+      "千葉": [
+        "chuo_sobu_local",
+        "sobu_rapid",
+        "sobu_main",
+        "sotobo",
+        "uchibo"
+      ]
+    },
+    "minimum_services_per_station": 1,
+    "reachable_from_shimbashi": 472,
+    "can_reach_shimbashi": 472,
+    "service_selection_orphans": 0,
+    "dropped_services_with_exclusive_stations": [],
+    "truncated_stations": [
+      "平山",
+      "上総松丘",
+      "上総亀山"
+    ],
+    "kururi_last_stop": "久留里",
+    "kururi_last_end_kind": "terminus",
+    "tsurumi_transfers": [
+      "浜川崎",
+      "鶴見"
+    ],
+    "undirected_service_segments": 627,
+    "distinct_station_pairs": 527,
+    "sha256": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+    "hash_byte_convention": "LF-normalized UTF-8 bytes",
+    "decision_items": []
+  },
+  "hashByteConvention": "Catalog CSV SHA-256 over LF-normalized UTF-8 bytes; other artifacts over their recorded bytes.",
+  "dataDates": {
+    "timetableEdition": "2610",
+    "timetableBasis": "JR Timetable October 2026 issue",
+    "n02Edition": "2025",
+    "n02BaseDate": "2025-12-31",
+    "researchCatalogApproval": "2026-10-13"
+  },
+  "s0NormalizationVerification": {
+    "csvContentChange": "Line endings only: CRLF to LF",
+    "networkByteEquality": {
+      "net-v2-all.json": true,
+      "net-v2-core.json": true,
+      "net-v2-local.json": true
+    },
+    "monteCarloRerun": false,
+    "reason": "All regenerated v2 network files match the existing bytes; run output hashes unchanged."
+  }
+}
