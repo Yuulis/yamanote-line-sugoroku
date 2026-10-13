@@ -392,8 +392,60 @@ node montecarlo.mjs net-v2-all.json --games 50000 --seed 20261012 --cap 20000 --
 Saved outputs: `sim/run-v2-{baseline,yhalf,yhalfInbound2,yhalfInbound2Pass}-50k.jsonl` overwrite the former
 39-service outputs. `sim/run-v2-manifest.json` records updated hashes, exact commands, sample settings,
 results and catalog verification. The generator, verifier and rebuilt networks remain in the sim directory.
-S1M must still confirm the adopted policies with the real engine after S1; these replica results do not
-complete that gate or the S0b product-catalog output.
+These replica results alone do not confirm the engine. S1M now completes that gate in §8.5;
+S0b product-catalog output remains required.
+
+### 8.5 S1M real-engine confirmation (2026-10-13)
+
+**S1M is complete** on `feature/jrcr-s1m` after S1 merged (engine revision `c0a9866`).
+The §8.4 replica-only limitation above is now resolved for approved research catalog v2;
+S0b product-catalog generation and S5's final-data remeasurement remain required.
+Full summaries, configs, input hashes, seed-set hashes, comparisons and smoke results:
+`jr-east-capital-region-s1m-results.json`. Runner: `tests/simulation/README.md`.
+
+The harness builds a `RailwayNetwork` directly from the approved catalog/services CSVs
+(666 rows / 40 services / 472 stations / 1,224 directed gameplay segments), preserving
+service/stop order and the +1 outer loop from 新橋 to 浜松町. Synthetic geometry references and
+coordinates are unused by gameplay; research `through-split` endpoints get synthetic `terminus`
+metadata with identical stop/discard-pips behavior. No engine or shipped-data behavior changed.
+Catalog SHA-256 (LF-normalized UTF-8 bytes):
+`ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4`;
+services CSV: `45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b`.
+
+Each required preset ran **20,000 games**, base seed **20261012**, cap **20,000** on Node
+`v24.21.0`. Per-game seed = `s1m-${baseSeed}-${zeroBasedGameIndex}`; both presets use the same
+set (`0..19999`), SHA-256 over LF-joined seeds with final LF:
+`0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e`.
+Every transition calls real `createGame` / `playTurn`; history is discarded after each turn.
+Small fixed-seed unit tests prove determinism, actual `playTurn` invocation and agreement of every
+final state field with full-history direct runs for all presets. Measurements are excluded from
+default Vitest; local acceptance: typecheck pass, **23 files / 513 unit tests passed**, both 200-game
+smokes and both large runs passed. No dependencies or existing-test modifications.
+
+| Preset | Games | Median | p90 | p99 | Mean | Max | >500 count / share | Cap hits | Runtime |
+|---|---:|---:|---:|---:|---:|---:|---|---:|---:|
+| **decided (Q1(c), Q2(a), Q5(a))** | 20,000 | **61** | **148** | **258** | 73.85715 | 481 | 0 / 0% | 0 | 44.15 s |
+| all-equal (current-rule comparison) | 20,000 | 396 | 967 | 1,643 | 476.74730 | 3,179 | 7,707 / 38.535% | 0 | 319.00 s |
+
+Nearest-rank quantiles match §8.4. Censored games would count as cap+1 and fail the command;
+none occurred. Runtime measures game creation/transitions/statistics, excluding CSV loading and
+Vitest startup. Neither preset exceeded 15 minutes, so no reduction to 10,000 games was needed.
+
+Against the **50,000-game** replica: decided **61/148/258** is unchanged; all-equal
+**394/962/1,647 → 396/967/1,643**, relative changes **+0.51% / +0.52% / −0.24%**.
+Neither has a median deviation >10% or p99 deviation >15%; there is no material discrepancy to
+investigate. Independent string seeds, integer modulo/rejection draws and the smaller sample make
+this distributional confirmation, not seed-exact replica agreement. Reverse-BFS proximity agrees
+with the replica's undirected distances on this catalog: all non-target edges are bidirectional,
+and all target-loop stops are distance zero. Decided's 0/20,000 >500 versus replica 4/50,000 is
+a rare-tail observation; maxima are sampled values, not game-length bounds.
+
+The adopted rules retain their intended 60–70-turn median and much shorter tail; current equal
+lotteries still yield long games. Product policies stay all-equal until **S5**, which reruns this
+harness on the final regional data. `SIM_BUNDLE` supports shipped data through product guards;
+S2 must update the adapter for the services envelope. Optional `decided-pass-through` uses the
+existing engine seam and is unit-tested only; it does not change the decided goal. No geometry,
+growing-history, save/restore or device-performance acceptance is claimed by these measurements.
 
 ---
 
@@ -408,7 +460,7 @@ Every step keeps all three CI jobs green (frontend, pipeline, Playwright); data-
 |---|---|---|---|---|---|
 | **S0 — DONE (2026-10-13)** Integration base + id mapping | branch; CI trigger for `feature/**` PRs; research→product id map (D7: `jr-*` service ids, frozen station ids, 67 shipped ids kept); data-date record (timetable 2610, N02 2025-12-31) | — | `.github/workflows/ci.yml`, id-map file under `.claude/docs/research/` (lead) | three jobs run on a PR into the branch; id map covers approved revised v2: 40 services / 472 stations, unique; preserve the 67 shipped station ids | Low → lead |
 | **S1** Engine rule seams (23-ward data, MVP stays all-equal) | §4: weighted draw, policies, proximity, save v3, config validation | S0 | `src/types/network.ts`, `engine/{rng,landing,config,network,game,save,types,index}.ts`, new `engine/proximity.ts`, `gameConfig.ts`, unit fixtures/tests (engine owner) | all-equal weights: identical rolls/choices/RNG states (existing snapshots untouched); forced = no draw; equal weights of any value delegate to `drawIndex`; weighted boundaries and rejection; share and weight formulas incl. kind bases; integer limits; distance ties, branch and rapid cases; save v3 round trips, v2 rejected, nested-config mutation | **High** → Opus + Codex review |
-| **S1M** Real-engine MC harness | input = existing research catalog (revised v2, research ids); build a simulation network and run candidate configs with the real engine; same entry point later on shipped data | S1, research catalog (not S0b output) | new `tests/simulation/**`, new `vitest.simulation.config.ts` (excluded from `npm test`), npm script | a small fixed-seed agreement test in the unit suite; large runs record catalog hash, seed set, config, cap count, median/p90/p99 | Medium-High → Opus |
+| **S1M — DONE (2026-10-13)** Real-engine MC harness | approved research v2; real `createGame`/`playTurn`; same entry point accepts shipped data | S1, research catalog (not S0b output) | `tests/simulation/**`, `vitest.simulation.config.ts`, npm `sim`, unit agreement test | §8.5: 20k games per preset, decided 61/148/258, all-equal 396/967/1643; zero caps; below discrepancy thresholds; 513 unit tests pass | Medium-High → Opus |
 | **S2** Atomic v3 cutover on 23-ward data | §3 shape with one-element chains; minimal display follow-up | S1 | `scripts/data_pipeline/{overrides,export,validate,rules}.py`, `data/overrides/**`, `public/data/*`, `src/types/{network,data}.ts`, `src/data/{guards,loaders}.ts`, `networkFromData.ts`, `engine/network.ts` (copy), `animation/movePath.ts`, `GameApp.tsx`, map contract readers, all TS/E2E/Python fixtures, `tests/e2e/support/app.ts` (single owner) | owner vs chain checks; empty/missing/misordered references rejected; service/station order, routes and uniform trajectories unchanged; fixture v3 + `readMap`; local rebuild identical | **High** → Opus + Codex review |
 | **S3a** Registry, area, routing preparation | prefecture/municipality, homonym selectors, configured bboxes, multi-line `route`, station-number rules, boundary truncation evidence, detour exceptions; v3 output byte-identical | S2 | `scripts/data_pipeline/{config,registry,overrides,build,n02,routing,network,constraints,rules,validate}.py`, overrides, `tests/data_pipeline/**` (pipeline owner) | failing fixtures: homonym mis-match, out-of-area gap bridged, skipped served stop, reversed/prefix-switched numbers, multi-line mis-route | **High** → Opus + Codex review |
 | **S3b** Composition, validation, budgets | `compose` DAG, multi-owner legs, anchors, flattening, chain lengths, two-way reachability, **per-dataset expected catalog** (23-ward dataset gets its own), raw/gzip/reference reports, simplification knob; estimate effort from remaining route/compose recipes, including through-service shared legs and multi-N02 routing | S3a | pipeline recipe/build/export/validate (+ optional `composition.py`), `data/overrides/dataset.json` + 23-ward expected catalog, synthetic fixtures (same owner) | reject: forward/reverse multi-owner errors, cycles, wrong-track sharing, platform gap joints, back-and-forth, wrong last station, disconnection, catalog mismatch; build order ≠ output order asserted; 23-ward output unchanged | **High** → Opus + Codex review |
@@ -453,8 +505,8 @@ directory produced byte-identical `net-v2-{all,core,local}.json` (hashes unchang
 `verify_id_map.py` passes coverage, uniqueness, ID format, all shipped IDs/order/corridors and the three
 shared identities. S0 does not produce the S0b product catalog or complete S1M.
 
-Parallelism: S1 → S2 are serial (shared `types/network.ts`, `engine/network.ts`); after S2, S3a/S3b (one pipeline
-owner), S4 and S1M run in parallel; S1M consumes the existing research catalog independently of S0b. S0b
+Sequence: S1 → S1M → S2; S1M is complete and S2 is next (shared `types/network.ts`, `engine/network.ts`).
+After S2, S3a/S3b (one pipeline owner) and S4 can run in parallel. S1M consumed the research catalog independently of S0b. S0b
 completes research-input approval, product-id mapping and real-engine confirmation before S6P starts
 after S3a and S0b. Q1–Q11 are resolved and the research catalog is approved; product-catalog output and implementation gates remain.
 
@@ -530,8 +582,8 @@ measured in §8.1–§8.3; they are not the approved rules. Revised catalog v2 m
 | Q10 — title/subtitle | **(a)** 「山手線すごろく」 + 「JR東日本 1都3県版」 | Update UI, page metadata and manual in S5/S7. |
 | Q11 — PR #4 / branch sequence | **Already released to production; no PR #4 action** | Branch from `develop`; feature → develop → master. Production deployment still requires explicit approval. |
 
-**Research-input approval:** revised catalog v2 was user-approved on 2026-10-13. S0b still requires
-the product-id-mapped catalog output and S1M real-engine confirmation; production approval stays separate.
+**Research-input approval:** revised catalog v2 was user-approved on 2026-10-13. S1M real-engine confirmation
+is complete (§8.5); S0b still requires the product-id-mapped catalog output. Production approval stays separate.
 **New Q1–Q11 choices:** none from the corrected v1 → v2 service classification. The rule is unambiguous for all 60
 v1 services, no excluded service uniquely served any station, and the only removed stations are the three
 explicitly excluded by Q6. Technical acceptance items (N02 routing, payload/device measurements and S1M
