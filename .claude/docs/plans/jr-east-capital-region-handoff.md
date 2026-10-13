@@ -3,8 +3,11 @@
 Status (2026-10-13): **S0 DONE** on `feature/jrcr-s0`, cut from integration branch
 `feature/jr-east-capital-region` (based on `develop`). The revised research catalog v2 was
 user-approved on 2026-10-13: **666 rows / 40 services / 472 physical stations**.
-**S1 implemented on `feature/jrcr-s1`; review findings addressed, pending final lead verification**;
-next step: **S1M**.
+**S1 merged via PR #7** (integration commit `c0a9866`). **S1M DONE** on
+`feature/jrcr-s1m`: real-engine measurements and local acceptance checks passed; lead verified
+(typecheck, default Vitest 23 files / 513 passed, `npm run sim` 300-game smoke, `verify_delegation.py`
+clean). PR https://github.com/Yuulis/yamanote-line-sugoroku/pull/8 (→ integration branch, merge after
+green CI). Next step: **S2** — branch `feature/jrcr-s2` off the integration branch after PR #8 merges.
 S1 changes engine code only; live data remains unchanged. Historical S0 commits:
 `a4cf781` (plan docs, = integration branch base on origin),
 `dd3af3a` (S0). S0 PR: https://github.com/Yuulis/yamanote-line-sugoroku/pull/6 (→ integration branch;
@@ -124,16 +127,76 @@ S0b must finalize product classification as `local | rapid`; S2 must narrow the 
 and aligned validation/config/schema/tests to those two kinds. Do not defer this to S5; broader
 research classifications remain separate.
 
-## Next step — S1M: real-engine Monte Carlo harness
+## S1M: real-engine Monte Carlo harness — DONE (2026-10-13)
 
-After final S1 lead verification of the review fixes, use the approved
-**research-ID catalog v2** (`jr-east-capital-region-{catalog,services}-v2.csv`, 666 rows / 40 services /
-472 stations), independently of S0b product-ID output. Build a simulation network and exercise
-candidate policies through the real engine. Own `tests/simulation/**`, a new
-`vitest.simulation.config.ts` and an npm script; large runs must remain excluded from `npm test`.
-Add one small fixed-seed agreement test to the unit suite. Record catalog hash, seed set, complete
-config, cap count and median/p90/p99 for each large run; keep the same entry point usable later
-with shipped regional data. S5 alone flips the product's all-equal policies.
+`tests/simulation/{csv,inputs,harness,measurement.test}.ts` builds an engine network directly from
+the approved **research-ID catalog v2**, preserving service order and stop order. Both CSVs are
+cross-checked; catalog SHA-256 remains
+`ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4` (LF-normalized UTF-8 bytes).
+Every game calls `createGame`, every turn calls `playTurn`; no rules or RNG are replicated.
+Synthetic coordinates/platforms/geometry ids are sufficient. Research `through-split` endpoints
+use synthetic `terminus` metadata: identical stop/discard-pips behavior; no engine change.
+
+`vitest.simulation.config.ts` and `npm run sim` keep measurements out of `npm test` / `npx vitest run`.
+The new config is included in `tsconfig.node.json` type checking. The new unit file
+`tests/unit/simulation-harness.test.ts` adds 9 fast checks: determinism, a real `playTurn` spy,
+full-history/discarded-history agreement for all three presets, caps, quantiles, CSV parsing,
+approved catalog hash/order/identity, and shipped-bundle loading. No existing tests, shipped data,
+engine, pipeline or UI files changed; no dependencies added.
+
+Run from repository root (full options: `tests/simulation/README.md`):
+
+```bash
+npm run sim # decided, 200 games, approved research v2
+SIM_PRESET=decided SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 \
+  SIM_OUTPUT=/tmp/jrcr-s1m-decided.json npm run sim
+SIM_PRESET=all-equal SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 \
+  SIM_OUTPUT=/tmp/jrcr-s1m-all-equal.json npm run sim
+SIM_BUNDLE=public/data SIM_PRESET=all-equal SIM_GAMES=200 npm run sim
+```
+
+CSV paths: `SIM_CATALOG` / `SIM_SERVICES`; optional ids: `SIM_TARGET` / `SIM_START`.
+`SIM_BUNDLE` uses product guards without geometry; S2 must adapt its services-envelope extraction.
+Optional `decided-pass-through` uses existing engine config; unit-tested, not measured at large scale.
+The adopted goal stays `truncate-on-target-service`.
+
+Results: `.claude/docs/research/jr-east-capital-region-s1m-results.json`, design §8.5.
+Both required presets ran **20,000 games**, base seed **20261012**, cap **20,000**.
+Same independent engine seeds: `s1m-20261012-0` through `s1m-20261012-19999`;
+seed-set SHA-256 `0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e`.
+Quantiles use nearest rank; caps count as cap+1 and fail the command after saving the summary.
+Runtime covers game creation/transitions/statistics, excluding input loading/Vitest startup.
+
+| Preset | Median / p90 / p99 | Mean | Max | >500 / games | Cap hits | Runtime | Replica median / p90 / p99 |
+|---|---|---:|---:|---|---:|---:|---|
+| decided | **61 / 148 / 258** | 73.85715 | 481 | 0 / 20,000 | 0 | 44.15 s | 61 / 148 / 258 |
+| all-equal | **396 / 967 / 1,643** | 476.74730 | 3,179 | 7,707 / 20,000 (38.535%) | 0 | 319.00 s | 394 / 962 / 1,647 |
+
+No material discrepancy: decided median/p99 changes 0%; all-equal median +0.51%, p99 −0.24%,
+below >10% / >15% investigation thresholds. Replica samples are 50,000 per preset, with different
+RNG seeding/sampling: distributional confirmation, not seed-exact agreement. Decided's 0/20,000
+>500 vs replica 4/50,000 is a rare-tail observation, not a bound. Both runtimes were below 15 minutes;
+no sample reduction. `npm run typecheck` passed; `npx vitest run` **23 files / 513 passed**, excluding
+measurements; both 200-game smokes and both large runs passed (one simulation file/test, zero caps).
+History is discarded in measurements; save/restore, history growth and device/map performance remain
+separate gates. S5 alone flips shipped policies and reruns on final product data.
+
+## Next step — S2: atomic v3 data-contract cutover on 23-ward data
+
+Apply design §3/§9 atomically to the existing **5-service / 67-station** dataset: non-empty
+`geometryFeatureIds` in travel order (one-element chains initially; reverse lists for reverse
+segments), service-owned geometry, `{ lines, services }` with `lineIds` and required `kind`,
+`service-boundary` endpoints, manifest schemaVersion 3. **Narrow product `ServiceKind` and aligned
+policy validation/config/schema/tests to `local | rapid` in S2**; historical research classifications
+stay separate. Preserve ids, station/service order, routes and all-equal seeded trajectories.
+Keep shipped policies all-equal until S5; do not expand live data in S2.
+
+Update pipeline overrides/export/validation/rules, overrides/public data, TS types/guards/loaders,
+`networkFromData`, engine network chain copying, animation/map readers and minimal display consumers,
+all TS/E2E/Python fixtures (`tests/e2e/support/app.ts` and `readMap` included), and simulation inputs.
+Gates: owner-vs-chain checks; reject empty/missing/misordered references; unit/type/build, pipeline and
+E2E; unchanged uniform trajectories; local raw-N02 rebuild byte equality. S0b product-catalog generation
+remains required before regional staging; S1M confirms the approved research input.
 
 ## Decisions and remaining gates
 
@@ -143,7 +206,7 @@ Adopt Q1(c) only at S5: Yamanote share 1/2, other services uniform, direction to
 Goal unchanged; weekday patterns; through junctions shown as service boundaries; subtitle 「JR東日本 1都3県版」.
 
 Prior v1 review APPROVE is historical; the former v2 NEEDS_REVISION selection issue was corrected before
-user approval. S1M real-engine confirmation, S0b product-catalog generation, N02 recipe/routing evidence,
+user approval. S1M confirms the approved research input; S0b product-catalog generation, N02 recipe/routing evidence,
 payload/device/zoom budgets and full-catalog UI/seed checks remain. N02 lacks the Ikebukuro–Akabane freight
 link and has a Joban junction gap; regional data preparation must address those. Release flow remains
 feature → develop → master; production deployment requires explicit approval.
