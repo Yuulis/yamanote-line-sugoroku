@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import type { GameState } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
 import { earlyStopNote, endpointKindAt, summarizeGame } from "../gameSummary";
@@ -13,8 +14,17 @@ interface ClearScreenProps {
   onShowTitle: () => void;
 }
 
+export const HISTORY_PAGE_SIZE = 20;
+
 /** Shown once the clearing move has finished animating (spec 6.1). */
 export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitle }: ClearScreenProps) {
+  const [page, setPage] = useState(0);
+  const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount - 1);
+  const historyRef = useRef<HTMLOListElement>(null);
+  useLayoutEffect(() => {
+    if (historyRef.current) historyRef.current.scrollTop = 0;
+  }, [currentPage]);
   const { turns, moves, transfers } = summarizeGame(game);
   const goalName = stationName(network, game.config.startStationId);
   return (
@@ -37,8 +47,8 @@ export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitl
         <dd>{transfers}回</dd>
       </dl>
       <h2 className="clear-screen__subtitle">移動履歴</h2>
-      <ol className="clear-screen__history">
-        {game.movementHistory.map((record) => {
+      <ol ref={historyRef} className="clear-screen__history">
+        {game.movementHistory.slice(currentPage * HISTORY_PAGE_SIZE, (currentPage + 1) * HISTORY_PAGE_SIZE).map((record) => {
           const note = earlyStopNote(record, (id) => stationName(network, id), endpointKindAt(network, record.serviceId, record.toStationId));
           return (
             <li key={record.turn}>
@@ -51,6 +61,13 @@ export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitl
           );
         })}
       </ol>
+      {pageCount > 1 && (
+        <nav className="clear-screen__paging" aria-label="移動履歴のページ">
+          <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>前のページ</button>
+          <span role="status">{currentPage + 1} / {pageCount}ページ</span>
+          <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)}>次のページ</button>
+        </nav>
+      )}
       <div className="clear-screen__actions">
         <button type="button" className="button-primary" onClick={onPlayAgain} autoFocus>
           もう一度遊ぶ

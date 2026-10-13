@@ -6,7 +6,7 @@ import { loadRailwayData, type RailwayData } from "../../../src/data/loaders";
 import { networkFromData } from "../../../src/features/game/networkFromData";
 import type { RailwayNetwork } from "../../../src/features/game/engine";
 
-export type DatasetKind = "fixture" | "real";
+export type DatasetKind = "fixture" | "capital-region" | "real";
 export interface RailwayBundle {
   data: RailwayData;
   network: RailwayNetwork;
@@ -16,7 +16,7 @@ export interface RailwayBundle {
 const DATA_FILES = ["stations.json", "services.json", "segments.json", "segments.geojson", "manifest.json"] as const;
 
 export async function loadBundle(kind: DatasetKind): Promise<RailwayBundle> {
-  const directory = kind === "fixture" ? new URL("./data/", import.meta.url) : new URL("../../../public/data/", import.meta.url);
+  const directory = kind === "capital-region" ? new URL("./capital-region/", import.meta.url) : kind === "fixture" ? new URL("./data/", import.meta.url) : new URL("../../../public/data/", import.meta.url);
   const payloads = Object.fromEntries(DATA_FILES.map((file) => [file, readFileSync(fileURLToPath(new URL(file, directory)), "utf8")]));
   const data = await loadRailwayData("", async (file) => JSON.parse(payloads[file]!));
   const result = networkFromData(data);

@@ -34,12 +34,14 @@ export function lastRollText(lastMove: LastMove | null, network: RailwayNetwork)
   return `${lastMove.roll}（${stationName(network, lastMove.stopStationId)}で停止${kind}、残り${lastMove.unusedPips}は使わず）`;
 }
 
+export const LOTTERY_INLINE_LIMIT = 4;
+
 export function landingText(lastMove: LastMove | null, network: RailwayNetwork): string {
   const event = lastMove?.landing;
   if (!event || !lastMove) return "—";
   const service = serviceName(network, event.serviceId);
   const heading = event.serviceDrawRequired
-    ? `${stationName(network, event.stationId)}：${event.serviceCandidates.map((id) => serviceName(network, id)).join("・")}から抽選 → ${service}`
+    ? `${stationName(network, event.stationId)}：${event.serviceCandidates.length > LOTTERY_INLINE_LIMIT ? `${event.serviceCandidates.length}系統` : event.serviceCandidates.map((id) => serviceName(network, id)).join("・")}から抽選 → ${service}`
     : `${service}のみ`;
   const direction = directionLabel(network, event.serviceId, event.direction);
   if (event.directionDrawRequired) return `${heading} ／ 方向抽選 → ${direction}`;

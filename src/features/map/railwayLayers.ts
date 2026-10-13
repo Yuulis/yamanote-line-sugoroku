@@ -1,7 +1,8 @@
 import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import type { Position, SegmentFeatureCollection } from "../../types/data";
-import type { ServicePattern, Station } from "../../types/network";
-import { buildLineColorExpression } from "./lineColor";
+import type { LineMetadata, ServicePattern, Station } from "../../types/network";
+import { MVP_GAME_CONFIG } from "../game/gameConfig";
+import { buildLineColorExpression, buildTrackColorExpression } from "./lineColor";
 import {
   CURRENT_POSITION_COLOR,
   CURRENT_POSITION_RADIUS,
@@ -14,7 +15,7 @@ import {
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
-  OTHER_SERVICE_LINE_OFFSET,
+  CURRENT_SERVICE_LINE_WIDTH,
   OTHER_SERVICE_LINE_OPACITY,
   OTHER_SERVICE_LINE_WIDTH,
   PENDING_SEGMENT_COLOR,
@@ -38,40 +39,57 @@ import { buildStationCollection } from "./stationCollection";
 export interface MapProgress {
   completedFeatureIds: readonly string[];
   currentPosition: Position | null;
+  highlightedServiceId?: string;
 }
 
 export interface RailwayLayerInput {
   stations?: readonly Station[];
   services?: readonly ServicePattern[];
   geometry?: SegmentFeatureCollection;
+  lines?: readonly LineMetadata[];
+  targetServiceId?: string;
 }
 
 /** Add whichever railway layers the available data allows. */
 export function addRailwayLayers(
   map: MapLibreMap,
-  { stations, services = [], geometry }: RailwayLayerInput,
+  { stations, services = [], lines = [], geometry, targetServiceId = MVP_GAME_CONFIG.targetServiceId }: RailwayLayerInput,
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
     map.addLayer({
+      id: LAYER_IDS.base,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": buildTrackColorExpression(lines), "line-width": 2, "line-opacity": 0.5 },
+    });
+    map.addLayer({
       id: LAYER_IDS.services,
       type: "line",
       source: SOURCE_IDS.segments,
-      filter: ["!=", ["get", "serviceId"], "jr-yamanote"],
+      filter: ["!=", ["get", "serviceId"], targetServiceId],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": buildLineColorExpression(services),
+        "line-color": buildTrackColorExpression(lines),
         "line-width": OTHER_SERVICE_LINE_WIDTH,
         "line-opacity": OTHER_SERVICE_LINE_OPACITY,
-        "line-offset": OTHER_SERVICE_LINE_OFFSET,
       },
+    });
+    map.addLayer({
+      id: LAYER_IDS.currentService,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: ["in", ["get", "featureId"], ["literal", []]],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: { "line-color": "#80c241", "line-width": CURRENT_SERVICE_LINE_WIDTH },
     });
     // Two layers so progress is told by line style as well as colour (spec 6.3).
     map.addLayer({
       id: LAYER_IDS.segmentsPending,
       type: "line",
       source: SOURCE_IDS.segments,
-      filter: pendingSegmentFilter([]),
+      filter: pendingSegmentFilter([], targetServiceId),
       layout: { "line-cap": "butt", "line-join": "round" },
       paint: {
         "line-color": PENDING_SEGMENT_COLOR,
@@ -83,7 +101,7 @@ export function addRailwayLayers(
       id: LAYER_IDS.segmentsCompleted,
       type: "line",
       source: SOURCE_IDS.segments,
-      filter: completedSegmentFilter([]),
+      filter: completedSegmentFilter([], targetServiceId),
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": buildLineColorExpression(services),
@@ -147,14 +165,22 @@ export function addRailwayLayers(
 export function updateCompletedSegments(
   map: MapLibreMap,
   completedFeatureIds: readonly string[],
+  targetServiceId = MVP_GAME_CONFIG.targetServiceId,
 ): void {
   if (!map.getLayer(LAYER_IDS.segmentsCompleted)) return;
-  map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedFeatureIds));
-  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedFeatureIds));
+  map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedFeatureIds, targetServiceId));
+  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedFeatureIds, targetServiceId));
 }
 
 /** Move the player marker (called on every animation frame). */
 export function updateCurrentPosition(map: MapLibreMap, position: Position | null): void {
   const source = map.getSource<GeoJSONSource>(SOURCE_IDS.currentPosition);
   source?.setData(currentPositionCollection(position));
+}
+
+/** Highlight by referenced feature IDs, never by primitive owner. */
+export function updateHighlightedService(map: MapLibreMap, featureIds: readonly string[], color: string): void {
+  if (!map.getLayer(LAYER_IDS.currentService)) return;
+  map.setFilter(LAYER_IDS.currentService, ["in", ["get", "featureId"], ["literal", [...featureIds]]]);
+  map.setPaintProperty(LAYER_IDS.currentService, "line-color", color);
 }

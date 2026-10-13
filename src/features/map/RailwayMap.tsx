@@ -6,13 +6,15 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
 import { buildDataAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
-import { isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
+import { MVP_GAME_CONFIG } from "../game/gameConfig";
+import { indexServiceGeometry } from "./serviceGeometry";
+import { initialOverviewServices, isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
 import {
   FOLLOW_EASE_MS,
   LAYER_IDS,
@@ -32,6 +34,7 @@ import {
   type MapProgress,
   updateCompletedSegments,
   updateCurrentPosition,
+  updateHighlightedService,
 } from "./railwayLayers";
 import { createStationPopupContent } from "./stationPopup";
 
@@ -50,6 +53,8 @@ interface RailwayMapProps {
   follow?: MapFollow;
   /** New/resumed turn-0 session: fit the entire network even on a reused map. */
   overviewKey?: number;
+  targetServiceId?: string;
+  minZoom?: number;
 }
 
 function isPhoneWidth(): boolean {
@@ -116,14 +121,14 @@ function attachStationPopup(map: MapLibreMap): void {
  * Returning null lets the game carry on without a map instead of unmounting
  * the whole React tree.
  */
-function createMap(container: HTMLElement): MapLibreMap | null {
+function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null {
   try {
     return new MapLibreMap({
       container,
       style: MAP_STYLE_URL,
       center: MAP_CENTER,
       zoom: MAP_ZOOM,
-      minZoom: MAP_MIN_ZOOM,
+      minZoom,
       maxZoom: MAP_MAX_ZOOM,
       attributionControl: false,
     });
@@ -133,7 +138,14 @@ function createMap(container: HTMLElement): MapLibreMap | null {
   }
 }
 
-export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapProps) {
+export function RailwayMap({ data, progress, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+  const serviceGeometry = useMemo(
+    () => indexServiceGeometry(data.segments.ok ? data.segments.value : []), [data.segments],
+  );
+  const initialServices = useMemo(
+    () => initialOverviewServices(data.services.ok ? data.services.value.services : [], targetServiceId),
+    [data.services, targetServiceId],
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
   // The browser cannot create a WebGL2 context: no map can ever be shown here.
@@ -156,7 +168,7 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
     const customAttribution = data.manifest.ok
       ? buildDataAttribution(data.manifest.value)
       : undefined;
-    const map = createMap(container);
+    const map = createMap(container, minZoom);
     if (!map) {
       setUnsupported(true);
       return;
@@ -191,8 +203,10 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
         stations: data.stations.ok ? data.stations.value : undefined,
         services: data.services.ok ? data.services.value.services : undefined,
         geometry: data.geometry.ok ? data.geometry.value : undefined,
+        lines: data.services.ok ? data.services.value.lines : undefined,
+        targetServiceId,
       });
-      if (data.services.ok) fitNetworkOverview(map, data.services.value.services);
+      fitNetworkOverview(map, initialServices);
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
@@ -211,7 +225,7 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
       setLoadedMap(null);
       map.remove();
     };
-  }, [data, attempt]);
+  }, [data, attempt, targetServiceId, minZoom, initialServices]);
 
   const completedFeatureIds = progress?.completedFeatureIds;
   const position = progress?.currentPosition ?? null;
@@ -219,17 +233,24 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
   // changes when a segment is finished, so the filters are set that often.
   const completedKey = completedFeatureIds?.join("\n");
   useEffect(() => {
-    if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds);
-  }, [loadedMap, completedKey]);
+    if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
+  }, [loadedMap, completedKey, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateCurrentPosition(loadedMap, position);
   }, [loadedMap, position]);
 
   useEffect(() => {
     if (loadedMap && overviewKey !== undefined && data.services.ok) {
-      fitNetworkOverview(loadedMap, data.services.value.services);
+      fitNetworkOverview(loadedMap, initialServices);
     }
-  }, [loadedMap, overviewKey, data.services]);
+  }, [loadedMap, overviewKey, initialServices]);
+
+  const highlightedServiceId = progress?.highlightedServiceId;
+  useEffect(() => {
+    if (!loadedMap) return;
+    const service = data.services.ok ? data.services.value.services.find((item) => item.id === highlightedServiceId) : undefined;
+    updateHighlightedService(loadedMap, serviceGeometry.get(highlightedServiceId ?? "") ?? [], service?.color ?? "#80c241");
+  }, [loadedMap, highlightedServiceId, data.services, serviceGeometry]);
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;
@@ -251,6 +272,20 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
   return (
     <>
       <div ref={containerRef} className="map-container" />
+      <div className="map-overview" aria-label="地図表示範囲">
+        <button type="button" disabled={!loadedMap} onClick={() => {
+          if (!loadedMap || !data.services.ok) return;
+          userMovedRef.current = true;
+          onUserCameraMoveRef.current?.();
+          fitNetworkOverview(loadedMap, data.services.value.services);
+        }}>全体</button>
+        <button type="button" disabled={!loadedMap} onClick={() => {
+          if (!loadedMap || !data.services.ok) return;
+          userMovedRef.current = true;
+          onUserCameraMoveRef.current?.();
+          fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
+        }}>目標路線</button>
+      </div>
       {unsupported && (
         <div className="map-error" role="status">
           <p>

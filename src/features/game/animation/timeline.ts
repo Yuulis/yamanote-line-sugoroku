@@ -1,7 +1,3 @@
-// Timing for the move animation: each station hop takes the same time
-// (spec 11: 0.3-0.6 s per station), eased so the marker slows into each
-// station like a train. Pure: elapsed time is passed in.
-
 import type { Position } from "../../../types/data";
 import { positionAlong, type StepPath } from "./movePath";
 
@@ -18,22 +14,32 @@ export function easeInOut(t: number): number {
   return (1 - Math.cos(Math.PI * clamped)) / 2;
 }
 
-/** Where the marker is `elapsedMs` into a move of `steps` at `stepMs` per hop. */
-export function frameAt(
-  steps: readonly StepPath[],
-  elapsedMs: number,
-  stepMs: number,
-): AnimationFrame {
+/** Normal speed: 450 ms at 1 km, bounded at 300–1,200 ms; other speeds scale proportionally. */
+export interface HopTiming { referenceKm: number; minScale: number; maxScale: number }
+
+export const HOP_TIMING: HopTiming = { referenceKm: 1, minScale: 2 / 3, maxScale: 8 / 3 };
+
+export function hopDurationMs(step: StepPath, stepMs: number, timing: HopTiming = HOP_TIMING): number {
+  if (stepMs <= 0) return 0;
+  if (step.distanceKm === undefined) return stepMs;
+  const scale = Math.sqrt(Math.max(step.distanceKm, 0) / timing.referenceKm);
+  return stepMs * Math.min(timing.maxScale, Math.max(timing.minScale, scale));
+}
+
+/** Sample elapsed time across distance-paced hops; passed stations never add steps. */
+export function frameAt(steps: readonly StepPath[], elapsedMs: number, stepMs: number): AnimationFrame {
   const last = steps.at(-1);
   const finalPosition = last ? positionAlong(last, 1) : null;
-  if (!last || stepMs <= 0 || elapsedMs >= steps.length * stepMs) {
-    return { stepsCompleted: steps.length, position: finalPosition, done: true };
+  if (!last || stepMs <= 0) return { stepsCompleted: steps.length, position: finalPosition, done: true };
+  let elapsed = Math.max(elapsedMs, 0);
+  for (const [index, step] of steps.entries()) {
+    const duration = hopDurationMs(step, stepMs);
+    if (elapsed < duration) {
+      return { stepsCompleted: index, position: positionAlong(step, easeInOut(elapsed / duration)), done: false };
+    }
+    elapsed -= duration;
   }
-  const elapsed = Math.max(elapsedMs, 0);
-  const stepIndex = Math.floor(elapsed / stepMs);
-  const step = steps[stepIndex] ?? last;
-  const fraction = easeInOut((elapsed - stepIndex * stepMs) / stepMs);
-  return { stepsCompleted: stepIndex, position: positionAlong(step, fraction), done: false };
+  return { stepsCompleted: steps.length, position: finalPosition, done: true };
 }
 
 /**

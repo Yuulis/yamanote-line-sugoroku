@@ -1,0 +1,298 @@
+[
+  {
+    "id": "shimbashi",
+    "name": "新橋",
+    "coordinates": [
+      139.7582,
+      35.66639
+    ]
+  },
+  {
+    "id": "hamamatsucho",
+    "name": "浜松町",
+    "coordinates": [
+      139.757125,
+      35.65541
+    ]
+  },
+  {
+    "id": "tamachi",
+    "name": "田町",
+    "coordinates": [
+      139.747605,
+      35.64574
+    ]
+  },
+  {
+    "id": "takanawa-gateway",
+    "name": "高輪ゲートウェイ",
+    "coordinates": [
+      139.740644,
+      35.635379
+    ]
+  },
+  {
+    "id": "shinagawa",
+    "name": "品川",
+    "coordinates": [
+      139.738535,
+      35.628135
+    ]
+  },
+  {
+    "id": "osaki",
+    "name": "大崎",
+    "coordinates": [
+      139.728245,
+      35.619945
+    ]
+  },
+  {
+    "id": "gotanda",
+    "name": "五反田",
+    "coordinates": [
+      139.723541,
+      35.626297
+    ]
+  },
+  {
+    "id": "meguro",
+    "name": "目黒",
+    "coordinates": [
+      139.715828,
+      35.632926
+    ]
+  },
+  {
+    "id": "ebisu",
+    "name": "恵比寿",
+    "coordinates": [
+      139.710125,
+      35.64668
+    ]
+  },
+  {
+    "id": "shibuya",
+    "name": "渋谷",
+    "coordinates": [
+      139.701639,
+      35.65811
+    ]
+  },
+  {
+    "id": "harajuku",
+    "name": "原宿",
+    "coordinates": [
+      139.702692,
+      35.671316
+    ]
+  },
+  {
+    "id": "yoyogi",
+    "name": "代々木",
+    "coordinates": [
+      139.70221,
+      35.683795
+    ]
+  },
+  {
+    "id": "shinjuku",
+    "name": "新宿",
+    "coordinates": [
+      139.70014,
+      35.690465
+    ]
+  },
+  {
+    "id": "shin-okubo",
+    "name": "新大久保",
+    "coordinates": [
+      139.700255,
+      35.70093
+    ]
+  },
+  {
+    "id": "takadanobaba",
+    "name": "高田馬場",
+    "coordinates": [
+      139.703829,
+      35.712904
+    ]
+  },
+  {
+    "id": "mejiro",
+    "name": "目白",
+    "coordinates": [
+      139.70628,
+      35.72039
+    ]
+  },
+  {
+    "id": "ikebukuro",
+    "name": "池袋",
+    "coordinates": [
+      139.711085,
+      35.730275
+    ]
+  },
+  {
+    "id": "otsuka",
+    "name": "大塚",
+    "coordinates": [
+      139.72794,
+      35.731785
+    ]
+  },
+  {
+    "id": "sugamo",
+    "name": "巣鴨",
+    "coordinates": [
+      139.74035,
+      35.73372
+    ]
+  },
+  {
+    "id": "komagome",
+    "name": "駒込",
+    "coordinates": [
+      139.748054,
+      35.736862
+    ]
+  },
+  {
+    "id": "tabata",
+    "name": "田端",
+    "coordinates": [
+      139.761575,
+      35.737475
+    ]
+  },
+  {
+    "id": "nishi-nippori",
+    "name": "西日暮里",
+    "coordinates": [
+      139.76678,
+      35.732082
+    ]
+  },
+  {
+    "id": "nippori",
+    "name": "日暮里",
+    "coordinates": [
+      139.770958,
+      35.727279
+    ]
+  },
+  {
+    "id": "uguisudani",
+    "name": "鶯谷",
+    "coordinates": [
+      139.77803,
+      35.721455
+    ]
+  },
+  {
+    "id": "ueno",
+    "name": "上野",
+    "coordinates": [
+      139.775855,
+      35.71322
+    ]
+  },
+  {
+    "id": "okachimachi",
+    "name": "御徒町",
+    "coordinates": [
+      139.774715,
+      35.707195
+    ]
+  },
+  {
+    "id": "akihabara",
+    "name": "秋葉原",
+    "coordinates": [
+      139.773045,
+      35.698535
+    ]
+  },
+  {
+    "id": "kanda",
+    "name": "神田",
+    "coordinates": [
+      139.770875,
+      35.69177
+    ]
+  },
+  {
+    "id": "tokyo",
+    "name": "東京",
+    "coordinates": [
+      139.766685,
+      35.680965
+    ]
+  },
+  {
+    "id": "yurakucho",
+    "name": "有楽町",
+    "coordinates": [
+      139.76326,
+      35.67504
+    ]
+  },
+  {
+    "id": "capital-joint",
+    "name": "合成中間駅",
+    "coordinates": [
+      139.5,
+      35.35
+    ]
+  },
+  {
+    "id": "capital-south",
+    "name": "南端駅",
+    "coordinates": [
+      139.2,
+      35.05
+    ]
+  },
+  {
+    "id": "capital-west",
+    "name": "西端駅",
+    "coordinates": [
+      138.95,
+      35.7
+    ]
+  },
+  {
+    "id": "capital-branch-end",
+    "name": "支線端駅",
+    "coordinates": [
+      139.3,
+      35.8
+    ]
+  },
+  {
+    "id": "capital-north",
+    "name": "北端駅",
+    "coordinates": [
+      139.7,
+      36.15
+    ]
+  },
+  {
+    "id": "capital-east",
+    "name": "東端駅",
+    "coordinates": [
+      140.4,
+      35.7
+    ]
+  },
+  {
+    "id": "capital-coast",
+    "name": "海岸端駅",
+    "coordinates": [
+      140.15,
+      35.1
+    ]
+  }
+]

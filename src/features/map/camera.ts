@@ -31,3 +31,16 @@ export function needsRecentre(current: Position, target: Position): boolean {
     Math.abs(current[1] - target[1]) > CENTER_TOLERANCE
   );
 }
+
+/** Compact city bundles keep their established initial overview. Regional bundles start at the target. */
+export function initialOverviewServices<T extends { id: string; platformCoordinates: Record<string, Position> }>(
+  services: readonly T[], targetServiceId: string,
+): readonly T[] {
+  const points = services.flatMap((service) => Object.values(service.platformCoordinates));
+  const longitudeSpan = Math.max(...points.map(([x]) => x)) - Math.min(...points.map(([x]) => x));
+  const latitudeSpan = Math.max(...points.map(([, y]) => y)) - Math.min(...points.map(([, y]) => y));
+  const COMPACT_SPAN_DEGREES = 0.5;
+  return Math.max(longitudeSpan, latitudeSpan) <= COMPACT_SPAN_DEGREES
+    ? services
+    : services.filter((service) => service.id === targetServiceId);
+}
