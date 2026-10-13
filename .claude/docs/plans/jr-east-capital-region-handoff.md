@@ -363,6 +363,137 @@ S2 is merged; next = **S3a**; **S4** can run in parallel; **S0b** awaits lead ve
   ridden/landing highlight timing, one step per composed hop, grouped legend, cameras/labels,
   lottery expansion and clear-history paging. Verify skip/reduced motion/reload, desktop/phone
   overview versus panel, all three browsers, full catalog candidate display and proven seeds.
+- **S0b (catalog owner):** map approved research v2 (666 rows / 40 services / 472 stations)
+  through frozen S0 product IDs, preserving service/stop order and endpoint kinds; record the
+  product-catalog hash and S1M real-engine confirmation. Keep research classifications separate
+  from the two-kind product contract; no live data expansion before the regional staging/final gates.
+
+## S4: map/UI scaling — lead-verified (Vitest 551, E2E 78/78), review APPROVE, PR #11 (2026-10-13)
+
+Worktree `jrcr-s4`, branch `feature/jrcr-s4`; uncommitted. **All acceptance gates pass.** The lead-authorized regression fixes
+resolve the single-service legend conflict and phone animation timeout. No existing assertion,
+snapshot or test was deleted, skipped or weakened. Lead verification remains
+required. S3a/S0b sections were not edited.
+
+Review `.claude/logs/codex/20261013T130114Z-jrcr-s4-review.md` returned **APPROVE** with
+no blocking issues. All three non-blocking polish/coverage items are applied:
+
+- Clear history resets its internal `scrollTop` to zero on page changes before paint.
+  Browser coverage scrolls page 1 to the bottom, verifies its first record is clipped,
+  then checks page 2 starts at zero with turn 21 fully in view.
+- The paced composed-hop browser case uses the full overview and asserts
+  `highlightedRenderedIds` includes both owner-A and owner-B primitives while rapid is highlighted.
+- A separate paced case restores the deterministic c4 turn-2 save and naturally completes
+  turn 3 without skip. At 650 ms the displayed ride/filter/colour remain rapid; after
+  completion they switch to owner A and `#0055AA`, preserving the committed save.
+  A real-engine unit proof pins the restored input, roll 6, reverse segment, different
+  landing service and 1,200 ms duration (650 ms unfinished / 1,300 ms finished).
+
+Implementation/files:
+
+- `src/features/map/{railwayLayers,serviceGeometry,lineColor,progressStyle,mapConfig}.ts`:
+  static primitive source, line-metadata-coloured base and non-target layers, no constant offset;
+  service-to-feature index deduplicates forward/reverse composed references. Separate highlight
+  paints shared primitives in the ridden service colour during animation and landing service
+  colour after accepted finish/skip. Target filters use the configured service, not an ID literal.
+- `src/features/map/{RailwayMap.tsx,camera.ts}`: configurable `minZoom` (default 6), initial
+  target view for regional extents; `全体` and `目標路線` camera controls disable follow and fit
+  platforms outside reserved desktop/phone panel space. Compact bundles (maximum coordinate
+  span <= 0.5 degrees) retain the existing full-network initial overview for compatibility.
+  Labels start at zoom 11, retaining MapLibre collision handling.
+- `src/features/game/animation/{movePath,timeline}.ts`: one step per composed hop in either
+  direction, distance calibration in km, square-root distance pacing with clamped scale.
+  Normal speed is 450 ms at 1 km, bounded 300–1,200 ms; fast 200–800 ms, slow 400–1,600 ms.
+  Reduced motion remains immediate. Existing displayed-progress/runner semantics are reused.
+- `src/{app/GameApp.tsx,features/game/presentation.ts,features/game/components/GamePanel.tsx,
+  features/game/components/ClearScreen.tsx,styles.css}`: pass displayed ride to the highlight;
+  flat service-name legend entries for single-service lines, collapsible groups only for two or
+  more services, data colours and a bounded legend scroll area; candidate counts above
+  four with a separate expandable complete list outside aria-live; 20-turn history pages.
+  Short lottery text and histories <=20 records retain existing presentation behavior.
+- `tests/e2e/{fixtures.ts,fixtures/bundle.ts,support/app.ts}`: new intercepted dataset and
+  highlight observation. Existing `tests/e2e/fixtures/data` is unchanged.
+- New `tests/e2e/fixtures/capital-region/{stations.json,services.json,segments.json,
+  segments.geojson,manifest.json,seeds.ts}`, `tests/e2e/capital-region.spec.ts`, and
+  `tests/unit/capital-region-scaling.test.ts`: **8 services / 5 lines / 37 stations /
+  46 directed segments / 37 primitives**, seven candidates at Shinagawa. Rapid references
+  owner A then owner B, reversed in reverse travel; branch crosses its hub and has a
+  service-boundary endpoint. Six browser cases, 15 unit proofs. Two new server-rendered panel
+  tests and the regional browser case cover both flat singleton items and collapsed/expanded groups.
+
+Pinned seeds (shared by browser specs and real-engine unit proofs):
+
+- `000000000000000000000000000000c4`: t1 roll 4, Shinagawa -> rapid; t2 roll 2,
+  one forward composed hop to the south endpoint and reverse rapid choice; t3 roll 6,
+  one reverse composed hop to Shinagawa and owner-A choice; **clears at t29**.
+- `00000000000000000000000000000009`: t3 chooses branch; t4 reaches its service boundary;
+  t5 traverses branch-end -> Shinagawa -> west-end. Separate from the old fixture trajectory.
+- Every save in the c4 trajectory restores and continues identically; seed/candidate order,
+  two-owner chains, one-hop presentation, clamp boundaries and stale finishes are unit-tested.
+
+Acceptance evidence:
+
+| Command | Result |
+|---|---|
+| `npm ci` | Required because node_modules was absent; 73 packages installed, 0 vulnerabilities |
+| `npm run typecheck` | Passed, exit 0 |
+| `npx vitest run` (final polish) | **24 files / 551 passed**, 0 failed; original 536 preserved + 15 new |
+| `npm run build` | Passed, 67 modules; existing >500 kB chunk advisory remains |
+| `npm run test:e2e` run 1 | **75 passed / 0 failed**, 2.8m; desktop-chromium **25/0**, phone-chromium **25/0**, desktop-firefox **25/0** (pass/fail) |
+| `npm run test:e2e` run 2 | **75 passed / 0 failed**, 2.4m; desktop-chromium **25/0**, phone-chromium **25/0**, desktop-firefox **25/0** (pass/fail) |
+| Phone paced case | **5.8 s / 5.7 s** in the two full runs, no retries or timeout increase |
+| New regional E2E cases | **15/15 passed in each run**; target/full fit, flat/grouped legends, expansion, reduced motion, animation/skip, reload, paging and branch pass on all projects |
+| Existing E2E cases | **60/60 passed in each run**, including the unmodified legend assertion, shipped-data smoke and old-fixture full game |
+| Regional E2E cases (polish targeted run) | **18/18 passed**, 43.4 s; **6/0** per desktop-chromium, phone-chromium and desktop-firefox |
+| `npm run test:e2e` (final polish) | **78 passed / 0 failed**, 2.5m; desktop-chromium **26/0**, phone-chromium **26/0**, desktop-firefox **26/0**; regional **18/18**, existing **60/60**, no retries |
+| `git diff --check` | Passed |
+
+Final polish logs: `.claude/logs/jrcr-s4/jrcr-s4-polish-{typecheck,vitest,build,e2e}.log`
+and `jrcr-s4-polish-targeted-e2e.log` (gitignored). All four final acceptance commands exit 0.
+Pre-polish regression-fix logs: `.claude/logs/jrcr-s4/jrcr-s4-fix-{typecheck,vitest,build}.log` and
+`jrcr-s4-fix-e2e-run{1,2}.log` (gitignored). The original failing output remains in
+`jrcr-s4-e2e.log`; original/fixed browser evidence is preserved independently of `test-results/`.
+`git diff --stat` and `git status --short` are captured in the executor return/log after this update.
+Local browser run used `::1`, WSLg Firefox WebGL2 and all three default projects; WebKit is not
+configured locally. No commits/pushes/branch switches, new dependencies, live-data/pipeline edits,
+or DESIGN.md/STATE.md edits.
+
+Resolved regressions and deviations:
+
+- **Existing UI conflict:** `tests/e2e/dice.spec.ts:80`:
+  `await expect(legend.getByRole("listitem")).toHaveText(["山手線 踏破済み（実線）",
+  "山手線 未踏破（点線）", "テスト南線", "テスト西線", "現在地"]);`
+  The lead resolved this by requiring flat service-name items for singleton lines, retaining the
+  service colour and omitting a group header/count. Only multi-service lines use `details`.
+  The exact assertion remains unmodified and passes in all projects. The regional fixture's
+  `広域支線` stays flat; `テスト広域線（3系統）` collapses/expands all three services.
+- **Phone timeout root cause:** the new paced forward/reverse spec called `clock.runFor(650)`
+  three times, synchronously replaying approximately 40 WebGL map/marker/follow frames per slice.
+  The original trace measures **9,350.627 / 6,841.314 / 7,179.333 ms** wall time (**23.371 s**
+  total) for those virtual 1.950 s. Setup/actions exhausted the unchanged 30 s test budget.
+  Context: Pixel 7 **412 x 839**, DPR **2.625**, `no-preference` motion; Chromium repeatedly
+  warns `GPU stall due to ReadPixels`. Roll/skip clicks finish in **114-230 ms** with visible,
+  enabled, stable elements. The screenshot shows the skip button inside the phone panel;
+  overlap/visibility and reduced motion are not the cause. The settled failure snapshot is
+  from the test completing its assertions after the timeout deadline had already fired.
+- **Phone fix:** prime each independent runner with `runFor(16)`, then `fastForward(634)`
+  to the same 650 ms midpoint and `fastForward(650)` to completion. This samples elapsed time
+  without replaying every intermediate software-WebGL frame; production animation is unchanged.
+  Preserve all original midpoint/progress/ride/arrival/highlight/skip/save assertions and add
+  midpoint-not-start coverage. No timeout, device settings or assertion was loosened. The
+  targeted phone run passes **5/5 in 18.4 s**; the paced case takes **6.2 s** and all five
+  clock calls together take **566 ms**. Original and fixed traces, screenshot and exact timings
+  are preserved under `.claude/logs/jrcr-s4/phone-timeout-{original,fixed}/` and
+  `phone-timeout-evidence.{md,json}`.
+- Distance pacing was required by this task although design §6 calls it optional. Compact
+  initial overview preserves shipped behavior; regional initial view follows the target design.
+  Zoom 6 is a conservative configurable floor; final-catalog/device zoom measurement is still S6.
+
+Remaining risks/TODOs: lead acceptance/diff verification; refresh synthetic candidate
+proofs against the frozen full catalog during S5/S6; measure 472-station payload/initialization,
+frame timing and long-history save/restore on final data. Synthetic-clock sampling is not a
+real-device frame-rate measurement; that remains an S6 gate.
+
 - **S0b (catalog owner):** implemented on `feature/jrcr-s0b`, pending lead verification; see the
   S0b section below. Approved v2 is mapped through frozen S0 IDs with service/stop order and endpoints
   preserved. Product hashes and real-engine confirmation are recorded; product kinds are `local | rapid`.

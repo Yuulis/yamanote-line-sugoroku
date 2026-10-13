@@ -25,8 +25,11 @@ export interface StepPath {
   /** cumulative[i] = distance from points[0] to points[i]; same length as points. */
   cumulative: readonly number[];
   total: number;
+  /** Physical calibration for distance-paced hops; absent in legacy caller paths. */
+  distanceKm?: number;
 }
 
+const KM_PER_DEGREE = 111.195;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 
 /**
@@ -127,6 +130,7 @@ export function stepPath(
     points,
     cumulative,
     total: cumulative.at(-1) ?? 0,
+    distanceKm: (cumulative.at(-1) ?? 0) * KM_PER_DEGREE,
   };
 }
 

@@ -21,6 +21,9 @@ export type SavedGame = GameState;
 
 export interface MapSnapshot {
   styleLoaded: boolean;
+  highlightedFeatureIds: string[];
+  highlightedColor: unknown;
+  highlightedRenderedIds: string[];
   /** Coordinates in the marker's GeoJSON source. */
   marker: [number, number] | null;
   /** The marker layer draws a visible feature at `marker` (not just stored). */
@@ -162,6 +165,9 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       const filter = map.getFilter(layers.completed) as [string, unknown, [string, unknown, [string, string[]]]];
       return {
         styleLoaded: Boolean(map.isStyleLoaded()),
+        highlightedFeatureIds: (map.getFilter(layers.highlighted) as [string, unknown, [string, string[]]])?.[2]?.[1] ?? [],
+        highlightedColor: map.getPaintProperty(layers.highlighted, "line-color"),
+        highlightedRenderedIds: renderedIds(layers.highlighted),
         marker,
         markerRendered:
           marker !== null &&
@@ -177,6 +183,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
     },
     {
       layers: {
+        highlighted: LAYER_IDS.currentService,
         completed: LAYER_IDS.segmentsCompleted,
         pending: LAYER_IDS.segmentsPending,
         marker: LAYER_IDS.currentPosition,

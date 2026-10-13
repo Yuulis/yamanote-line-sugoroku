@@ -6,7 +6,7 @@ export const MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 export const MAP_CENTER: [number, number] = [139.733, 35.69];
 export const MAP_ZOOM = 11.5;
 /** Zoom bounds: keep the loop findable and avoid zooming past useful detail. */
-export const MAP_MIN_ZOOM = 9;
+export const MAP_MIN_ZOOM = 6;
 export const MAP_MAX_ZOOM = 17;
 /** Must match the phone breakpoint in styles.css. */
 export const PHONE_MEDIA_QUERY = "(max-width: 600px)";
@@ -29,6 +29,8 @@ export const SOURCE_IDS = {
 
 export const LAYER_IDS = {
   services: "railway-services",
+  base: "railway-base",
+  currentService: "railway-current-service",
   /** Not yet traversed: grey dashed line. */
   segmentsPending: "railway-segments-pending",
   /** Traversed: solid line in the service colour. */
@@ -43,7 +45,7 @@ export const SEGMENT_LINE_WIDTH = 5;
 /** Other services remain visible beside the target's shared N02 track shape. */
 export const OTHER_SERVICE_LINE_WIDTH = 3;
 export const OTHER_SERVICE_LINE_OPACITY = 0.65;
-export const OTHER_SERVICE_LINE_OFFSET = 4;
+export const CURRENT_SERVICE_LINE_WIDTH = 7;
 export const NETWORK_FIT_PADDING_DESKTOP = { top: 60, right: 70, bottom: 50, left: 340 };
 export const NETWORK_FIT_PADDING_PHONE = { top: 100, right: 60, left: 20 };
 export const PHONE_PANEL_MAX_HEIGHT_SHARE = 0.45;
@@ -65,5 +67,5 @@ export const LABEL_SIZE = 12;
 export const LABEL_OFFSET_EM = 1.1;
 export const LABEL_HALO_COLOR = "#ffffff";
 export const LABEL_HALO_WIDTH = 1.5;
-export const LABEL_MIN_ZOOM = 10;
+export const LABEL_MIN_ZOOM = 11;
 export const LINE_NAME_SEPARATOR = "、";
