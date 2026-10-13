@@ -3,7 +3,12 @@
 Status (2026-10-13): **S0 DONE** on `feature/jrcr-s0`, cut from integration branch
 `feature/jr-east-capital-region` (based on `develop`). The revised research catalog v2 was
 user-approved on 2026-10-13: **666 rows / 40 services / 472 physical stations**. Next step: **S1**.
-No commit, push or branch change was made by the S0 executor. Product code/data remains unchanged.
+Product code/data remains unchanged. Commits: `a4cf781` (plan docs, = integration branch base on origin),
+`dd3af3a` (S0). S0 PR: https://github.com/Yuulis/yamanote-line-sugoroku/pull/6 (→ integration branch;
+merge after CI is green). The gitignored `sim/` directory is force-added; keep using `git add -f` for it.
+Branch flow per step: `feature/jrcr-s<N>` off the integration branch → PR into it → integration PR → develop.
+Lead verification for S0: both verify scripts exit 0, `verify.sh` pass (pytest 136), `verify_delegation.py`
+no actionable findings.
 
 ## Read first
 
