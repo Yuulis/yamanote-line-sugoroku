@@ -1,21 +1,28 @@
 # Handoff: JR East capital-region (1都3県) edition
 
-## Current status (2026-10-13, end of session) — resume here
+## Current status (2026-10-13) — resume here
 
-**S0, S1, S1M and S2 are merged** into the integration branch `feature/jr-east-capital-region`
-(head `8a92c8b`, based on `develop`). Nothing is uncommitted. The integration branch is NOT merged
-into `develop`; that happens via an integration PR after S7, and production needs explicit user approval.
+**S0, S1, S1M, S2, S0b, S3a and S4 are merged** into the integration branch
+`feature/jr-east-capital-region` (head `6e2e7e9`, based on `develop`). Nothing is uncommitted.
+The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
+and production needs explicit user approval. Shipped data is still the 23-ward edition (v3 contract),
+rules still all-equal.
 
 | Step | Status | PR | Lead verification |
 |------|--------|----|-------------------|
 | S0 CI trigger + id map | merged | #6 | verify scripts, `verify.sh` |
 | S1 engine rule seams, save v3 | merged | #7 | typecheck, Vitest 504, build; Codex review NEEDS_REVISION → fixed |
 | S1M real-engine Monte Carlo | merged | #8 | Vitest 513, `npm run sim` smoke; decided 61/148/258 matches replica |
-| S2 v3 data contract (23-ward data) | merged | #9 | `verify.sh` (pytest 156), validate, raw-N02 rebuild byte-identical, Vitest 536, build, E2E 60/60 (pre-fix), CI green; Codex review NEEDS_REVISION → fixed |
-| S0b product-id catalog | implemented; pending lead verification | — | three catalog/id verifiers pass; required 2k decided 62/151/262, zero caps; additional 20k matches all S1M statistics |
+| S2 v3 data contract (23-ward data) | merged | #9 | `verify.sh` (pytest 156), validate, raw-N02 rebuild byte-identical, Vitest 536, build, E2E 60/60, CI green; Codex review NEEDS_REVISION → fixed |
+| S0b product-id catalog | merged | #10 | three verifiers exit 0, product hashes match; 20k decided run = S1M exactly |
+| S4 map/UI scaling (fixture-driven) | merged | #11 | Vitest 551, build, E2E 78/78 (75/75 twice before polish); Codex review APPROVE, polish applied |
+| S3a registry/area/routing prep | merged | #12 | `verify.sh` (pytest 198), validate, rebuild byte-identical; Codex review NEEDS_REVISION → fixed, 41/41 guard-removal checks; CI green after merging S4 |
 
-**Next:** S3a (pipeline) — S4 (UI/animation) may run in parallel; S0b (product catalog) awaits lead verification.
-Briefs: section "Next step briefs" at the end of this file; scope/tests per design §9.
+**Next:** **S3b** (split `overrides.py` first, then compose DAG/validation/budgets). **S6P** (regional
+staging) may start route-only work after S3b's split lands; compose rows need S3b. Then S6 → S5 → S7.
+Briefs: section "Next step briefs"; scope/tests per design §9.
+Parallel steps use git worktrees under `.claude/worktrees/` (ignored); run Playwright in only one tree at a time
+(ports). Expect handoff merge conflicts when parallel steps each append a section — keep both sections.
 
 How to work each step (user instruction: update this handoff after every step):
 1. `git switch feature/jr-east-capital-region && git pull`, then `git switch -c feature/jrcr-<step>`.
@@ -446,11 +453,8 @@ pair's ratio limit and cannot bypass area/skipped-stop/joint checks.
 
 ## Next step briefs
 
-S2 is merged; next = **S3a**; **S4** can run in parallel; **S0b** awaits lead verification:
+S0b, S3a and S4 are merged (sections above/below). Next = **S3b**, then **S6P**:
 
-- **S3a (pipeline owner):** implemented on `feature/jrcr-s3a`; NEEDS_REVISION findings fixed,
-  pending lead verification/re-review;
-  see the S3a section above for schemas, migration, failing fixtures and gate evidence.
 - **S3b (pipeline owner, after S3a):** first split the 799-line
   `scripts/data_pipeline/overrides.py` into focused parsing/loading/consistency modules
   while retaining the current public override API and 23-ward bytes; do this before
@@ -466,14 +470,13 @@ S2 is merged; next = **S3a**; **S4** can run in parallel; **S0b** awaits lead ve
   catalogue mismatch. Preserve the 23-ward bytes. Estimate work from the remaining
   route/compose inventory, including through-service shared legs and multi-N02 routes;
   recipe/unique-owner counts remain unmeasured. Regional data stays in staging until S6.
-- **S4 (UI/animation owner):** dedicated bidirectional multi-owner composed-rapid + branch fixture;
-  ridden/landing highlight timing, one step per composed hop, grouped legend, cameras/labels,
-  lottery expansion and clear-history paging. Verify skip/reduced motion/reload, desktop/phone
-  overview versus panel, all three browsers, full catalog candidate display and proven seeds.
-- **S0b (catalog owner):** map approved research v2 (666 rows / 40 services / 472 stations)
-  through frozen S0 product IDs, preserving service/stop order and endpoint kinds; record the
-  product-catalog hash and S1M real-engine confirmation. Keep research classifications separate
-  from the two-kind product contract; no live data expansion before the regional staging/final gates.
+- **S6P (regional staging, after S3b's split; compose rows after S3b):** prepare Tokyo/Kanagawa/
+  Saitama/Chiba overrides from the product catalog (`jr-east-capital-region-product-*.csv`) in staging
+  only (never live `data/overrides` or `public/data`); one owner per cross-prefecture service; per-segment
+  visual review; early hub/branch/chain checks, raw/gzip budget and desktop/phone zoom/overview measurement.
+  N02 gaps to handle: 池袋–赤羽 freight link, 日暮里 常磐線 junction, 品鶴線 under N02 東海道線.
+- **Later:** S6 final data in one commit (rules still all-equal) → S5 rules flip (Q1(c), subtitle,
+  seed proofs, real-engine MC on final data) → S7 docs and release PR (production needs approval).
 
 ## S4: map/UI scaling — lead-verified (Vitest 551, E2E 78/78), review APPROVE, PR #11 (2026-10-13)
 
