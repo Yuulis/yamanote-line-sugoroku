@@ -368,7 +368,7 @@ S2 is merged; next = **S3a**; **S4** can run in parallel; **S0b** awaits lead ve
   product-catalog hash and S1M real-engine confirmation. Keep research classifications separate
   from the two-kind product contract; no live data expansion before the regional staging/final gates.
 
-## S4: map/UI scaling — review APPROVE, polish applied, pending lead verification (2026-10-13)
+## S4: map/UI scaling — lead-verified (Vitest 551, E2E 78/78), review APPROVE, PR #11 (2026-10-13)
 
 Worktree `jrcr-s4`, branch `feature/jrcr-s4`; uncommitted. **All acceptance gates pass.** The lead-authorized regression fixes
 resolve the single-service legend conflict and phone animation timeout. No existing assertion,
