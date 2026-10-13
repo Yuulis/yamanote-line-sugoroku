@@ -1,23 +1,33 @@
 # Handoff: JR East capital-region (1都3県) edition
 
-Current status (2026-10-13): **S2 review findings fixed on `feature/jrcr-s2`, pending lead verification**.
-No commit/push/branch change. After acceptance, next = S3a; S4 and S0b may proceed in parallel.
+## Current status (2026-10-13, end of session) — resume here
 
-Historical S0/S1/S1M status (2026-10-13): **S0 DONE** on `feature/jrcr-s0`, cut from integration branch
-`feature/jr-east-capital-region` (based on `develop`). The revised research catalog v2 was
-user-approved on 2026-10-13: **666 rows / 40 services / 472 physical stations**.
-**S1 merged via PR #7** (integration commit `c0a9866`). **S1M DONE** on
-`feature/jrcr-s1m`: real-engine measurements and local acceptance checks passed; lead verified
-(typecheck, default Vitest 23 files / 513 passed, `npm run sim` 300-game smoke, `verify_delegation.py`
-clean). PR https://github.com/Yuulis/yamanote-line-sugoroku/pull/8 (→ integration branch, merge after
-green CI). Next step: **S2** — branch `feature/jrcr-s2` off the integration branch after PR #8 merges.
-S1 changes engine code only; live data remains unchanged. Historical S0 commits:
-`a4cf781` (plan docs, = integration branch base on origin),
-`dd3af3a` (S0). S0 PR: https://github.com/Yuulis/yamanote-line-sugoroku/pull/6 (→ integration branch;
-merge after CI is green). The gitignored `sim/` directory is force-added; keep using `git add -f` for it.
-Branch flow per step: `feature/jrcr-s<N>` off the integration branch → PR into it → integration PR → develop.
-Lead verification for S0: both verify scripts exit 0, `verify.sh` pass (pytest 136), `verify_delegation.py`
-no actionable findings.
+**S0, S1, S1M and S2 are merged** into the integration branch `feature/jr-east-capital-region`
+(head `8a92c8b`, based on `develop`). Nothing is uncommitted. The integration branch is NOT merged
+into `develop`; that happens via an integration PR after S7, and production needs explicit user approval.
+
+| Step | Status | PR | Lead verification |
+|------|--------|----|-------------------|
+| S0 CI trigger + id map | merged | #6 | verify scripts, `verify.sh` |
+| S1 engine rule seams, save v3 | merged | #7 | typecheck, Vitest 504, build; Codex review NEEDS_REVISION → fixed |
+| S1M real-engine Monte Carlo | merged | #8 | Vitest 513, `npm run sim` smoke; decided 61/148/258 matches replica |
+| S2 v3 data contract (23-ward data) | merged | #9 | `verify.sh` (pytest 156), validate, raw-N02 rebuild byte-identical, Vitest 536, build, E2E 60/60 (pre-fix), CI green; Codex review NEEDS_REVISION → fixed |
+
+**Next:** S3a (pipeline) — S4 (UI/animation) and S0b (product catalog) may run in parallel.
+Briefs: section "Next step briefs" at the end of this file; scope/tests per design §9.
+
+How to work each step (user instruction: update this handoff after every step):
+1. `git switch feature/jr-east-capital-region && git pull`, then `git switch -c feature/jrcr-<step>`.
+2. Implement via Codex (`codex_consult.py --sandbox danger-full-access`, PATH prefix
+   `$HOME/.nvm/versions/node/v24.21.0/bin`); stop-and-report on any test conflict, never weaken tests.
+3. Lead gates: `verify.sh`, pipeline validate, raw-N02 rebuild `diff -r` with `public/data`,
+   `npm run typecheck`, `npx vitest run`, `npm run build`, `npm run test:e2e` (local host `::1`),
+   `verify_delegation.py`; then a read-only Codex review for High steps.
+4. Commit, PR into the integration branch, merge after green CI, then update this file.
+
+The gitignored `sim/` research directory is force-added; keep using `git add -f` for it.
+Older per-step history follows.
+
 
 ## Read first
 
@@ -60,7 +70,7 @@ Simulation scripts/manifest live under gitignored `.claude/logs/`; their edits d
 The crosswalk, CI and document edits are visible normally. Catalog line-ending-only changes match
 Git's existing LF-normalized blobs, so they also produce no content diff.
 
-## S1: engine rule seams — implemented, review findings addressed
+## S1: engine rule seams — DONE (merged via PR #7)
 
 Implement design §4 on the **shipped 23-ward data**. Keep `MVP_GAME_CONFIG` all-equal until S5.
 Scope: weighted RNG draw, service/direction lottery policies and validation, target-distance reverse BFS,
@@ -184,7 +194,7 @@ measurements; both 200-game smokes and both large runs passed (one simulation fi
 History is discarded in measurements; save/restore, history growth and device/map performance remain
 separate gates. S5 alone flips shipped policies and reruns on final product data.
 
-## S2: atomic v3 data-contract cutover on 23-ward data — review findings fixed, pending lead verification
+## S2: atomic v3 data-contract cutover on 23-ward data — DONE (merged via PR #9, `8a92c8b`)
 
 Apply design §3/§9 atomically to the existing **5-service / 67-station** dataset: non-empty
 `geometryFeatureIds` in travel order (one-element chains initially; reverse lists for reverse
@@ -217,7 +227,7 @@ feature → develop → master; production deployment requires explicit approval
 
 ## S2 completion handoff (2026-10-13)
 
-Status: **implemented, review findings fixed, pending lead verification** on `feature/jrcr-s2`.
+Status: **merged via PR #9** after lead verification (history of the uncommitted phase below).
 No commit, push or branch change. `.claude/docs/DESIGN.md` and `.claude/STATE.md` untouched.
 The earlier executor stopped on the weighted synthetic fixture conflict. The lead authorized a
 rewrite under the recorded two-kind product contract; that conflict is resolved below.
@@ -339,7 +349,9 @@ large frontend chunk advisory remains. New dataVersion and the two-key policy sc
 older saves through the existing discard path. This is the intentional atomic contract cutover,
 not an ID, route or all-equal trajectory migration. Regional data has not been shipped.
 
-After S2 passes lead verification/review, next = **S3a**; **S4** and **S0b** can run in parallel:
+## Next step briefs
+
+S2 is merged; next = **S3a**; **S4** and **S0b** can run in parallel:
 
 - **S3a (pipeline owner):** registry prefecture/municipality, homonym selectors, configured bboxes,
   multi-line route recipes, number/prefix rules, boundary truncation and reviewed detour evidence.
