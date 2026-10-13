@@ -350,7 +350,7 @@ large frontend chunk advisory remains. New dataVersion and the two-key policy sc
 older saves through the existing discard path. This is the intentional atomic contract cutover,
 not an ID, route or all-equal trajectory migration. Regional data has not been shipped.
 
-## S3a — registry, area and routing preparation (2026-10-13)
+## S3a — registry, area and routing preparation — lead-verified (pytest 198, rebuild identical), review fixed, PR #12 (2026-10-13)
 
 Status: **implemented; S3a review NEEDS_REVISION findings fixed, pending lead
 verification/re-review** on `feature/jrcr-s3a`. The review is
