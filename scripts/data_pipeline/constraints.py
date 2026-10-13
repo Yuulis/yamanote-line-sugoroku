@@ -15,9 +15,12 @@ All of them are plain data, hashable, and part of the track-graph cache key.
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Iterable, Sequence
+import json
+import math
+import re
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol
 
 from scripts.data_pipeline import config
 
@@ -26,6 +29,8 @@ SECTION_ACTIONS = ("allow", "deny")
 SECTION_DIGEST_CHARS = 8
 
 LonLat = tuple[float, float]
+BBox = tuple[float, float, float, float]
+STATION_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})(\d{2})$")
 
 
 class ConstraintError(ValueError):
@@ -146,7 +151,9 @@ def build_section_filter(rules: Iterable[tuple[str, str]]) -> SectionFilter:
     return SectionFilter(allow=frozenset(allow), deny=frozenset(deny))
 
 
-def parse_via(text: str) -> tuple[LonLat, ...]:
+def parse_via(
+    text: str, bbox: BBox = config.DEFAULT_CANDIDATE_SEARCH_BBOX
+) -> tuple[LonLat, ...]:
     """``"139.70000 35.60000|139.71000 35.61000"`` -> ordered lon/lat points."""
     points: list[LonLat] = []
     for item in (part.strip() for part in text.split("|")):
@@ -159,8 +166,186 @@ def parse_via(text: str) -> tuple[LonLat, ...]:
             lon, lat = float(fields[0]), float(fields[1])
         except ValueError as error:
             raise ConstraintError(f"via point is not numeric: {item!r}") from error
-        min_lon, min_lat, max_lon, max_lat = config.CANDIDATE_SEARCH_BBOX
+        min_lon, min_lat, max_lon, max_lat = bbox
         if not (min_lon <= lon <= max_lon and min_lat <= lat <= max_lat):
             raise ConstraintError(f"via point outside the search area: {item!r}")
         points.append((lon, lat))
     return tuple(points)
+
+
+@dataclass(frozen=True)
+class RouteRecipe:
+    lines: tuple[str, ...]
+    joints: tuple[LonLat, ...]
+    reason: str
+
+
+def parse_bbox(raw: Any, where: str) -> BBox:
+    if (
+        not isinstance(raw, list)
+        or len(raw) != 4
+        or not all(
+            isinstance(v, int | float) and not isinstance(v, bool) and math.isfinite(v)
+            for v in raw
+        )
+    ):
+        raise ConstraintError(f"{where}: bbox must have four finite numbers")
+    a, b, c, d = (float(v) for v in raw)
+    if not (-180 <= a < c <= 180 and -90 <= b < d <= 90):
+        raise ConstraintError(f"{where}: invalid bbox bounds")
+    return a, b, c, d
+
+
+def parse_route_recipe(text: str, bbox: BBox) -> RouteRecipe | None:
+    if not text:
+        return None
+    try:
+        raw = json.loads(text)
+    except json.JSONDecodeError as error:
+        raise ConstraintError(f"route is not valid JSON: {error}") from error
+    if not isinstance(raw, dict) or set(raw) != {"lines", "joints", "reason"}:
+        raise ConstraintError("route needs lines, joints and reason")
+    lines = raw["lines"]
+    joints = raw["joints"]
+    if (
+        not isinstance(lines, list)
+        or len(lines) < 2
+        or not all(isinstance(v, str) and v.strip() for v in lines)
+    ):
+        raise ConstraintError("route needs at least two non-empty ordered N02 lines")
+    if not isinstance(joints, list) or len(joints) != len(lines) - 1:
+        raise ConstraintError("route needs one joint per line transition")
+    points: list[LonLat] = []
+    for joint in joints:
+        if (
+            not isinstance(joint, list)
+            or len(joint) != 2
+            or not all(
+                isinstance(v, int | float) and not isinstance(v, bool) for v in joint
+            )
+        ):
+            raise ConstraintError("route joint must be a lon/lat pair")
+        try:
+            points.extend(parse_via(f"{joint[0]} {joint[1]}", bbox))
+        except ConstraintError as error:
+            raise ConstraintError(f"route: {error}") from error
+    reason = raw["reason"]
+    if not isinstance(reason, str) or not reason.strip():
+        raise ConstraintError("route needs a non-empty reason")
+    return RouteRecipe(tuple(lines), tuple(points), reason)
+
+
+def check_station_number_order(
+    numbers: Sequence[str],
+    station_ids: Sequence[str],
+    circular: bool,
+    where: str = "service",
+    expected_sequence: tuple[str, ...] | None = None,
+) -> None:
+    """Pin the reviewed sequence, including skips and prefix transitions.
+
+    Without explicit evidence, apply the legacy single-prefix ±1 rule (loops
+    wrap once, JY01 -> JY30). Stop order is never inferred from numbers. A
+    legacy service without numbers (every cell empty) is skipped.
+    """
+    if expected_sequence is not None:
+        if tuple(numbers) != expected_sequence:
+            raise ConstraintError(
+                f"{where}: station-number order broken: station-number evidence differs from stops.csv"
+            )
+        return
+    if not any(numbers):
+        return
+    parsed: list[tuple[str, int]] = []
+    for number in numbers:
+        match = STATION_NUMBER_PATTERN.match(number)
+        if match is None:
+            raise ConstraintError(f"{where}: invalid station number {number!r}")
+        parsed.append((match.group(1), int(match.group(2))))
+    if len({prefix for prefix, _ in parsed}) != 1:
+        raise ConstraintError(f"{where}: station numbers mix prefixes")
+    values = [value for _, value in parsed]
+    count = len(values)
+    low = min(values)
+    if circular and sorted(values) != list(range(low, low + count)):
+        raise ConstraintError(f"{where}: loop station numbers must be consecutive")
+    step = values[1] - values[0]
+    if step not in (1, -1):
+        step = 0  # reported below at the first pair
+    pairs = count if circular else count - 1
+    for index in range(pairs):
+        current = values[index]
+        following = values[(index + 1) % count]
+        expected = current + step
+        if circular:
+            expected = low + (current - low + step) % count
+        if step == 0 or following != expected:
+            raise ConstraintError(
+                f"{where}: station-number order broken after "
+                f"{station_ids[index]} ({numbers[index]} -> "
+                f"{numbers[(index + 1) % count]})"
+            )
+
+
+@dataclass(frozen=True)
+class OffsetException:
+    service_id: str
+    station_id: str
+    max_platform_offset_m: float
+    reason: str
+
+
+@dataclass(frozen=True)
+class DetourException:
+    service_id: str
+    from_id: str
+    to_id: str
+    max_detour_ratio: float
+    reason: str
+
+
+def parse_offset_rows(
+    rows: Sequence[Mapping[str, str]],
+) -> tuple[OffsetException, ...]:
+    exceptions: list[OffsetException] = []
+    for index, row in enumerate(rows):
+        try:
+            limit = float(row["max_platform_offset_m"])
+        except ValueError as error:
+            raise ConstraintError(f"offset exception row {index}: {error}") from error
+        if not math.isfinite(limit) or limit <= 0 or not row["reason"]:
+            raise ConstraintError(
+                f"offset exception row {index} needs a positive limit and a reason"
+            )
+        exceptions.append(
+            OffsetException(
+                service_id=row["service_id"],
+                station_id=row["station_id"],
+                max_platform_offset_m=limit,
+                reason=row["reason"],
+            )
+        )
+    return tuple(exceptions)
+
+
+def parse_detour_rows(rows: Sequence[Mapping[str, str]]) -> tuple[DetourException, ...]:
+    exceptions: list[DetourException] = []
+    for row in rows:
+        try:
+            limit = float(row["max_detour_ratio"])
+        except ValueError as error:
+            raise ConstraintError(f"detour exception: {error}") from error
+        if (
+            not math.isfinite(limit)
+            or limit <= config.MAX_DETOUR_RATIO
+            or not row["reason"]
+        ):
+            raise ConstraintError(
+                "detour exception needs an increased finite limit and a reason"
+            )
+        exceptions.append(
+            DetourException(
+                row["service_id"], row["from_id"], row["to_id"], limit, row["reason"]
+            )
+        )
+    return tuple(exceptions)

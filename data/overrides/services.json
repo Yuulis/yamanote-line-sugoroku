@@ -45,7 +45,43 @@
       "kind": "local",
       "lineIds": [
         "jr-yamanote"
-      ]
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JY29",
+          "JY28",
+          "JY27",
+          "JY26",
+          "JY25",
+          "JY24",
+          "JY23",
+          "JY22",
+          "JY21",
+          "JY20",
+          "JY19",
+          "JY18",
+          "JY17",
+          "JY16",
+          "JY15",
+          "JY14",
+          "JY13",
+          "JY12",
+          "JY11",
+          "JY10",
+          "JY09",
+          "JY08",
+          "JY07",
+          "JY06",
+          "JY05",
+          "JY04",
+          "JY03",
+          "JY02",
+          "JY01",
+          "JY30"
+        ],
+        "reason": "Reviewed shipped weekday stop pattern; JR East station numbering is secondary order evidence."
+      },
+      "scopeSource": "Reviewed 23-ward stop pattern and neighbouring stops: .claude/docs/research/jr-east-tokyo-service-graph.md; JR East weekday timetables."
     },
     {
       "id": "jr-keihin-tohoku",
@@ -69,7 +105,35 @@
       "kind": "local",
       "lineIds": [
         "jr-keihin-tohoku"
-      ]
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JK38",
+          "JK37",
+          "JK36",
+          "JK35",
+          "JK34",
+          "JK33",
+          "JK32",
+          "JK31",
+          "JK30",
+          "JK29",
+          "JK28",
+          "JK27",
+          "JK26",
+          "JK25",
+          "JK24",
+          "JK23",
+          "JK22",
+          "JK21",
+          "JK20",
+          "JK19",
+          "JK18",
+          "JK17"
+        ],
+        "reason": "Reviewed shipped weekday stop pattern; JR East station numbering is secondary order evidence."
+      },
+      "scopeSource": "Reviewed 23-ward stop pattern and neighbouring stops: .claude/docs/research/jr-east-tokyo-service-graph.md; JR East weekday timetables."
     },
     {
       "id": "jr-chuo-sobu-local",
@@ -93,7 +157,37 @@
       "kind": "local",
       "lineIds": [
         "jr-chuo-sobu-local"
-      ]
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JB03",
+          "JB04",
+          "JB05",
+          "JB06",
+          "JB07",
+          "JB08",
+          "JB09",
+          "JB10",
+          "JB11",
+          "JB12",
+          "JB13",
+          "JB14",
+          "JB15",
+          "JB16",
+          "JB17",
+          "JB18",
+          "JB19",
+          "JB20",
+          "JB21",
+          "JB22",
+          "JB23",
+          "JB24",
+          "JB25",
+          "JB26"
+        ],
+        "reason": "Reviewed shipped weekday stop pattern; JR East station numbering is secondary order evidence."
+      },
+      "scopeSource": "Reviewed 23-ward stop pattern and neighbouring stops: .claude/docs/research/jr-east-tokyo-service-graph.md; JR East weekday timetables."
     },
     {
       "id": "jr-saikyo",
@@ -117,7 +211,23 @@
       "kind": "local",
       "lineIds": [
         "jr-saikyo"
-      ]
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JA08",
+          "JA09",
+          "JA10",
+          "JA11",
+          "JA12",
+          "JA13",
+          "JA14",
+          "JA15",
+          "JA16",
+          "JA17"
+        ],
+        "reason": "Reviewed shipped weekday stop pattern; JR East station numbering is secondary order evidence."
+      },
+      "scopeSource": "Reviewed 23-ward stop pattern and neighbouring stops: .claude/docs/research/jr-east-tokyo-service-graph.md; JR East weekday timetables."
     },
     {
       "id": "jr-keiyo",
@@ -141,7 +251,19 @@
       "kind": "local",
       "lineIds": [
         "jr-keiyo"
-      ]
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JE01",
+          "JE02",
+          "JE03",
+          "JE04",
+          "JE05",
+          "JE06"
+        ],
+        "reason": "Reviewed shipped weekday stop pattern; JR East station numbering is secondary order evidence."
+      },
+      "scopeSource": "Reviewed 23-ward stop pattern and neighbouring stops: .claude/docs/research/jr-east-tokyo-service-graph.md; JR East weekday timetables."
     }
   ]
 }

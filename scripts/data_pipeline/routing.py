@@ -27,6 +27,7 @@ from scripts.data_pipeline.network import (
     TrackNetwork,
     TrackPath,
     concat_lines,
+    concat_route_legs,
 )
 
 
@@ -40,6 +41,9 @@ class PairRoute:
 
     network: TrackNetwork
     via: tuple[Point, ...] = ()  # metric CRS, visited in order
+    networks: tuple[TrackNetwork, ...] = ()  # explicit multi-line order
+    joints: tuple[Point, ...] = ()
+    line_order: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -51,6 +55,7 @@ class RoutedService:
 
 
 COST_RESOLUTION_M = 0.001  # compare costs as integer millimetres
+MAX_REJECTION_REASONS = 3
 
 State = tuple[int, tuple[int, ...]]  # (cost, candidate index per stop so far)
 
@@ -71,6 +76,51 @@ def routed_path(
     max_snap_offset_m: float = config.MAX_SNAP_OFFSET_M,
 ) -> TrackPath:
     """Shortest track path ``origin`` -> via points -> ``destination``."""
+    if route.networks:
+        if (
+            route.via
+            or len(route.networks) < 2
+            or len(route.joints) != len(route.networks) - 1
+        ):
+            raise RoutingError(
+                "multi-line route needs one joint per line transition and no via"
+            )
+        stops = [origin, *route.joints, destination]
+        legs: list[TrackPath] = []
+        for index, (network, start, end) in enumerate(
+            zip(route.networks, stops, stops[1:], strict=False)
+        ):
+            try:
+                legs.append(network.shortest_path(start, end))
+            except NoPathError as error:
+                raise NoPathError(
+                    f"multi-line route leg {index + 1}: {error}"
+                ) from error
+        if any(leg.length <= config.ROUTE_JOINT_TOLERANCE_M for leg in legs):
+            raise NoPathError("multi-line route has an unused or zero-length line leg")
+        for index, joint in enumerate(route.joints):
+            if (
+                max(legs[index].end_offset, legs[index + 1].start_offset)
+                > config.ROUTE_JOINT_TOLERANCE_M
+            ):
+                raise NoPathError(
+                    f"multi-line route joint {index + 1} is not on both declared lines"
+                )
+            if (
+                Point(legs[index].geometry.coords[-1]).distance(joint)
+                > config.ROUTE_JOINT_TOLERANCE_M
+            ):
+                raise NoPathError(
+                    f"multi-line route misses its declared joint {index + 1}"
+                )
+        return TrackPath(
+            geometry=concat_route_legs([leg.geometry for leg in legs]),
+            length=sum(leg.length for leg in legs),
+            start_offset=legs[0].start_offset,
+            end_offset=legs[-1].end_offset,
+        )
+    if route.joints:
+        raise RoutingError("route joints require explicit networks")
     if not route.via:
         return route.network.shortest_path(origin, destination)
     stops = [origin, *route.via, destination]
@@ -99,22 +149,57 @@ def _pair_paths(
 ) -> dict[tuple[int, int], TrackPath]:
     """Paths between every connected, on-track (origin, destination) pair."""
     paths: dict[tuple[int, int], TrackPath] = {}
+    rejections: dict[str, None] = {}
+
+    def reject(reason: str) -> None:
+        if route.networks and len(rejections) < MAX_REJECTION_REASONS:
+            rejections.setdefault(reason, None)
+
     for a, origin in enumerate(origins):
         for b, destination in enumerate(destinations):
+            if route.line_order and (
+                origin.n02_line != route.line_order[0]
+                or destination.n02_line != route.line_order[-1]
+            ):
+                reject(
+                    f"endpoint lines {origin.n02_line} -> {destination.n02_line} "
+                    "differ from the declared first/last lines"
+                )
+                continue
             try:
                 path = routed_path(
                     route, origin.midpoint, destination.midpoint, max_snap_offset_m
                 )
-            except NoPathError:
+            except NoPathError as error:
+                reject(str(error))
                 continue  # this platform pair is on disconnected track pieces
             if max(path.start_offset, path.end_offset) > max_snap_offset_m:
+                reject(
+                    f"platform snap offsets {path.start_offset:.1f}/{path.end_offset:.1f} m "
+                    f"exceed {max_snap_offset_m} m"
+                )
                 continue  # a platform this far away is not on this track
             paths[(a, b)] = path
     if not paths:
+        details = ""
+        if route.networks:
+            order = route.line_order or tuple(
+                f"line {index + 1}" for index in range(len(route.networks))
+            )
+            joints = ", ".join(
+                f"{index + 1}: {left} -> {right}"
+                for index, (left, right) in enumerate(
+                    zip(order, order[1:], strict=False)
+                )
+            )
+            details = (
+                f"; multi-line order {' -> '.join(order)}; joints [{joints}]; "
+                f"rejections: {'; '.join(rejections)}"
+            )
         raise RoutingError(
             f"no track path from {origins[0].station_name} "
             f"to {destinations[0].station_name} (platforms farther than "
-            f"{max_snap_offset_m} m from the track are rejected)"
+            f"{max_snap_offset_m} m from the track are rejected){details}"
         )
     return paths
 

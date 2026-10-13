@@ -24,7 +24,7 @@ from scripts.data_pipeline.overrides import (
     OffsetException,
     ServiceDefinition,
 )
-from scripts.data_pipeline.registry import Registry
+from scripts.data_pipeline.registry import Area, Registry
 from scripts.data_pipeline.topology import (
     Pair,
     directed_pairs,
@@ -53,13 +53,35 @@ class ServiceStops:
     circular: bool
 
 
+def check_detour(
+    label: str,
+    line: LineString,
+    start: Point,
+    end: Point,
+    max_ratio: float,
+    report: Report,
+) -> float:
+    direct = start.distance(end)
+    ratio = line.length / direct if direct > 0 else math.inf
+    if ratio > max_ratio:
+        report.errors.append(
+            f"{label} detour ratio {ratio:.2f} exceeds reviewed limit {max_ratio:.2f}"
+        )
+    return ratio
+
+
 # --- registry, area, catalogue (rules 2-4) ---------------------------------
 
 
 def check_registry_membership(
-    published: Iterable[tuple[str, str]], registry: Registry, report: Report
+    published: Iterable[tuple[str, str]],
+    registry: Registry,
+    report: Report,
+    area: Area | None = None,
 ) -> None:
     """Published (id, name) pairs are in-area registry stations, names agree."""
+    if area is None:
+        area = Area()
     stations = registry.by_id()
     for station_id, name in published:
         station = stations.get(station_id)
@@ -73,8 +95,10 @@ def check_registry_membership(
                 f"station {station_id} name {name!r} differs from the registry "
                 f"({station.name!r})"
             )
-        if station.ward not in config.TOKYO_23_WARDS:
-            report.errors.append(f"station {station_id} lies outside the 23 wards")
+        if not area.contains(station.prefecture, station.municipality):
+            report.errors.append(
+                f"station {station_id} lies outside the configured area"
+            )
 
 
 def check_catalogue(

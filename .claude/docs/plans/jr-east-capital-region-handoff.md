@@ -349,15 +349,122 @@ large frontend chunk advisory remains. New dataVersion and the two-key policy sc
 older saves through the existing discard path. This is the intentional atomic contract cutover,
 not an ID, route or all-equal trajectory migration. Regional data has not been shipped.
 
+## S3a — registry, area and routing preparation (2026-10-13)
+
+Status: **implemented; S3a review NEEDS_REVISION findings fixed, pending lead
+verification/re-review** on `feature/jrcr-s3a`. The review is
+`.claude/logs/codex/20261013T130053Z-jrcr-s3a-review.md`; both blocking findings,
+both diagnostic findings and all requested missing test cases are addressed.
+No commit, push or branch change was performed. The shipped 5 services / 67 stations
+and all five `public/data` files remain byte-identical. S0b/S4 sections are unchanged.
+
+Files by area:
+
+- Registry/config: `scripts/data_pipeline/{config,registry,overrides,n02}.py`,
+  `data/overrides/{dataset.json,stations.csv,services.json}`. Registry uses
+  `prefecture,municipality[,n02_selector]`; homonyms need disjoint selectors and
+  both registry/stop selectors must match. Regional bbox defaults are now dataset
+  options; the shipped dataset retains its 23-ward membership via configured
+  prefecture/municipality restrictions while using regional search/output bounds.
+- Evidence/routing: `scripts/data_pipeline/{constraints,build,routing,network,rules,validate}.py`,
+  per-service `scope.csv` and optional `detour_exceptions.csv` (empty live allow-list).
+  `scopeSource` cites the reviewed served-stop evidence; the in-area rows must be
+  contiguous and exactly equal `stops.csv`. Six existing area boundaries record
+  last in-area / first out-of-area neighbours in evidence and build diagnostics.
+  `stationNumberRules: {sequence, reason}` explicitly pins numbered, skip-number,
+  prefix-transition and unnumbered stops. The legacy ±1 check remains available
+  when no explicit sequence is configured.
+- Multi-line recipes: optional `line_mapping.csv` JSON `route` cell with
+  `{lines, joints, reason}`; one adjacent pair only, exclusive with `n02_line/via`.
+  Ordered constrained graphs enforce endpoint platform lines and an actual shared
+  joint, including an interior T-junction without a source vertex. Only `1e-6 m`
+  projection noise is normalized; nearby disconnected tracks are rejected.
+  Artifact validation checks route witnesses in order after simplification.
+- Tests/docs: `tests/data_pipeline/{test_regional_preparation,test_regional_routing}.py`, schema-only edits
+  to `test_overrides.py`/`test_geometry_chains.py`, migrated frozen core fixture,
+  and `data/README.md` schema/migration documentation. All existing assertions remain.
+
+Guard sensitivity was verified by **41 isolated in-memory mutations**, covering
+every negative fixture in `test_regional_preparation.py` (including each parameter
+and both negative assertions in mixed tests). Every mutated test failed during its
+call; setup/collection failures do not count. Source guards were restored after each
+run and no weakened/skipped tests were introduced. Full per-test failures and the
+reproducible audit runner are under `.claude/logs/codex/jrcr-s3a-guard-removal.{json,py}`.
+Strict messages prevent downstream guards from masking a regression: removing the
+NaN numeric guard exposes a different bounds error; removing the joint-offset guard
+exposes the separate disconnected-joint guard. Both make their tests fail.
+
+The scope negatives now preserve correct loaded municipalities and the Maihama
+boundary neighbour, injecting only an outside gap or an extra served registry stop.
+Their unmodified evidence is a positive control. Missing recipe joints and the
+`n02_line/via` exclusivity have separate negatives and positive controls. Added
+coverage includes three-line builder recipes with an intermediate section filter
+and ordered joints, consecutive recipes with one shared platform choice, incompatible
+end/start lines, registry/stop selector conflict, and duplicate/unknown/non-finite/
+non-increased detour exceptions. The two regional test files have **42 tests**.
+
+Multi-line candidate exhaustion now reports the declared line order, 1-based joint
+indices/transitions and up to three representative rejection reasons, including
+endpoint-line mismatch, joint mismatch, disconnected leg index and snap offsets.
+The zero-length guard is named `unused or zero-length line leg` to match its check.
+Valid routing and emitted bytes retain the original behavior.
+
+| Gate | Result |
+|---|---|
+| `uv run ruff check .` | All checks passed |
+| `uv run ruff format --check .` | 32 files already formatted |
+| `uv run ty check scripts/` | All checks passed |
+| `uv run pytest` | 198 passed, zero skips/failures; baseline 156 + 42 regional tests |
+| `uv run python -m scripts.data_pipeline.validate` | OK; 146 references, max chain 1, geometry 43,433 B, max detour 1.599; existing length/platform metrics unchanged |
+| `sha256sum --check data/n02-2025.sha256` | Both raw inputs OK |
+| Raw rebuild | `uv run python -m scripts.data_pipeline.build --out-dir /tmp/jrcr-s3a-review-fix-rebuild.u8VQdY > /tmp/jrcr-s3a-review-fix-build.log`; exit 0 |
+| Rebuild comparison | `diff -r /tmp/jrcr-s3a-review-fix-rebuild.u8VQdY public/data`: no output, exit 0; all five public files unchanged |
+| `npm run typecheck` | Passed in original S3a run; not rerun for Python-only review fixes |
+| `npx vitest run` | Original S3a run: 23 files / 536 passed, zero failures; not rerun for Python-only review fixes |
+| `git diff --check` | Passed |
+| `git diff --stat` / `git status --short` | 20 tracked paths modified / 14 new files; public data, TS/UI, dependencies, DESIGN.md and STATE.md unchanged |
+| Playwright E2E | Not run, as instructed; lead owns the browser/port gate |
+
+Deviations: no functional scope deviation. An exact reviewed station-number
+sequence is the explicit rule configuration, rather than a permissive arithmetic
+step/prefix allow-list. The optional municipality restriction preserves the old
+dataset's boundary semantics while regional membership defaults to prefecture only.
+Existing input tables and the frozen fixture were migrated together; outside
+neighbours are evidence, not new playable stations. Parsing helpers moved into
+`constraints.py` while retaining the existing override API. Compose, DAG, primitive
+anchors, budgets and catalogue expansion remain S3b/S6 work.
+
+Remaining risks: lead acceptance/diff verification and independent re-review are
+pending. `scripts/data_pipeline/overrides.py` is **799 lines** (800-line ceiling);
+its parsing/loading/consistency responsibilities must be split before S3b adds code.
+Regional selectors, track ownership and N02 gap workarounds still need
+per-recipe evidence and raw/visual review in staging. Artifact validation cannot
+prove N02 physical-line ownership without raw geometry. No missing 国立支線 or
+池袋–赤羽 freight link is invented; a detour exception only raises its reviewed
+pair's ratio limit and cannot bypass area/skipped-stop/joint checks.
+
 ## Next step briefs
 
 S2 is merged; next = **S3a**; **S4** and **S0b** can run in parallel:
 
-- **S3a (pipeline owner):** registry prefecture/municipality, homonym selectors, configured bboxes,
-  multi-line route recipes, number/prefix rules, boundary truncation and reviewed detour evidence.
-  Keep 23-ward v3 output byte-identical; reject wrong homonyms, bridged out-of-area gaps,
-  skipped served stops, reversed/prefix-switched numbers and multi-line mis-routes. S3b follows
-  with compose DAG/anchors, per-dataset catalog, two-way reachability and raw/gzip/reference budgets.
+- **S3a (pipeline owner):** implemented on `feature/jrcr-s3a`; NEEDS_REVISION findings fixed,
+  pending lead verification/re-review;
+  see the S3a section above for schemas, migration, failing fixtures and gate evidence.
+- **S3b (pipeline owner, after S3a):** first split the 799-line
+  `scripts/data_pipeline/overrides.py` into focused parsing/loading/consistency modules
+  while retaining the current public override API and 23-ward bytes; do this before
+  adding S3b code. Then implement `compose` DAG validation/build order,
+  multi-owner legs in both travel directions, exact primitive anchors, flattening and
+  chain-length checks. Keep catalogue output order independent of DAG build order.
+  Add per-dataset expected catalogues (the 23-ward dataset gets its own oracle),
+  two-way reachability, raw/gzip/reference reports, per-dataset budget checks and a
+  simplification knob with 1/3/5 m comparisons. Measure the proposed regional limits
+  (GeoJSON 1.5 MiB raw / 450 KiB gzip; all five files 3 MiB raw / 900 KiB gzip),
+  keeping the 23-ward dataset's own limits. Reject cycles, forward/reverse multi-owner errors, wrong-track
+  sharing, platform-gap joints, backtracking, wrong last station, disconnection and
+  catalogue mismatch. Preserve the 23-ward bytes. Estimate work from the remaining
+  route/compose inventory, including through-service shared legs and multi-N02 routes;
+  recipe/unique-owner counts remain unmeasured. Regional data stays in staging until S6.
 - **S4 (UI/animation owner):** dedicated bidirectional multi-owner composed-rapid + branch fixture;
   ridden/landing highlight timing, one step per composed hop, grouped legend, cameras/labels,
   lottery expansion and clear-history paging. Verify skip/reduced motion/reload, desktop/phone

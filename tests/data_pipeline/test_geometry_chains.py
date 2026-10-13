@@ -149,7 +149,8 @@ def test_multi_owner_rapid_chain_passes_whole_dataset_validation(
                 station,
                 station,
                 station,
-                config.TOKYO_23_WARDS[0],
+                "東京都",
+                "千代田区",
                 "owner-b" if station == "c" else "owner-a",
             )
             for station in coordinates

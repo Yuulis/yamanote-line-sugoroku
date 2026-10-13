@@ -61,13 +61,15 @@ diff -r /tmp/jrcr-s2-first /tmp/jrcr-s2-second
 
 | Path | Purpose |
 |---|---|
-| `dataset.json` | Operator, update date, target/start, ordered service catalogue, reviewed disconnected services |
-| `stations.csv` | Stable shared id, display/N02 spelling, ward, representative service |
-| `services.json` | Metadata, direction labels, endpoint kinds, stop counts, length references in lottery order |
+| `dataset.json` | Operator, update date, target/start, ordered service catalogue, reviewed disconnected services, area and bounding boxes |
+| `stations.csv` | Stable shared id, display/N02 spelling, prefecture/municipality, representative service, optional registry N02 selector |
+| `services.json` | Metadata, direction labels, endpoint kinds, stop counts, length references, station-number rules and scope evidence sources in lottery order |
 | `services/<id>/stops.csv` | Reviewed in-area stop order, station number, optional N02 platform selector |
-| `services/<id>/line_mapping.csv` | Physical N02 line per contiguous run, optional ordered via hints |
+| `services/<id>/scope.csv` | Independent reviewed served-stop order, with first excluded neighbours at area boundaries |
+| `services/<id>/line_mapping.csv` | Physical N02 line per contiguous run, optional via hints or explicit multi-line `route` |
 | `services/<id>/sections.csv` | Optional reviewed track-section allow/deny constraints |
 | `offset_exceptions.csv` | Reviewed large platform offsets, currently Tokyo on Keiyo |
+| `detour_exceptions.csv` | Optional reviewed per-forward-pair detour limits with reasons (currently empty) |
 
 The five services are Yamanote, Keihin-Tohoku (Akabane–Kamata), Chuo-Sobu local
 (Nishi-Ogikubo–Koiwa), Saikyo (Osaki–Ukima-Funado), and Keiyo
@@ -75,10 +77,82 @@ The five services are Yamanote, Keihin-Tohoku (Akabane–Kamata), Chuo-Sobu loca
 real termini are distinguished from area boundaries. The reviewed catalogue
 excludes Joban local, Joban rapid, Yokosuka/Sobu rapid, and other rapid/through services.
 
+### Regional preparation (S3a; shipped catalogue remains 5 services / 67 stations)
+
+The registry header is
+`id,name,n02_name,prefecture,municipality,representative_service_id[,n02_selector]`.
+The 67 existing rows retain their ids, names and representative services; their
+prefecture is `東京都` and municipality is the former ward value. Names are not
+identity: homonymous rows require disjoint selectors. Registry selectors use the
+same `line=...;group=...;code=...` grammar as stop selectors, with `|` for alternatives.
+Both selectors must match. Ambiguous N02 groups are checked before coordinate
+deduplication; a stop selector cannot override the registry's identity.
+
+`dataset.json` can set `areaPrefectures`, `areaMunicipalities`, `outputBbox` and
+`candidateSearchBbox`. Regional defaults are the four prefectures
+`東京都,千葉県,神奈川県,埼玉県`, no municipality restriction, output bounds
+`[138.6,34.8,141.0,36.8]` and candidate bounds `[138.5,34.65,141.2,37.0]`.
+These boxes cover the regional railway extent; area membership comes from the
+reviewed prefecture/municipality fields, rather than a rectangle or N03 input.
+The candidate box must enclose the output box. The shipped dataset explicitly
+restricts membership to Tokyo's 23 municipalities while using the wider regional
+search/output bounds. Artifact coordinates and route/via points use their dataset's
+configured bounds. No regional playable rows have been added.
+
+Every service needs `scopeSource` in `services.json` and `scope.csv` with columns
+`station_id,prefecture,municipality`. Record the independently reviewed served-stop
+sequence for the selected extent, including at least the immediate excluded neighbour
+at each `area-boundary`. The in-area rows must form one contiguous run and equal
+`stops.csv` exactly. An out-of-area stop between in-area stops is rejected, as is
+omitting a served in-area stop. An excluded neighbour is evidence only and does not
+enter the station registry or public files. Build diagnostics record each endpoint's
+last in-area station and first out-of-area station. Endpoint kinds must agree with
+this evidence; `terminus` and `service-boundary` have no excluded area neighbour.
+
+`stationNumberRules: {"sequence": ["JJ02","JJ04","JL20",""], "reason": "..."}`
+pins the exact reviewed number at each stop. It permits explicitly reviewed skipped
+numbers, multiple prefixes and unnumbered stretches while rejecting reversals or
+undeclared prefix switches. The sequence length must equal `expectedStopCount`.
+Without this optional configuration the existing single-prefix, consecutive ±1
+rule remains (circular sequences wrap once); stop order is never inferred from numbers.
+
+`line_mapping.csv` retains its required `from_id,to_id,n02_line,via` columns and
+may add a `route` column containing a quoted JSON cell. A multi-line example is
+`{"lines":["東北線","常磐線"],"joints":[[139.7712345678901,35.7312345678901]],"reason":"Reviewed junction"}`.
+This coordinate is illustrative: use the actual intersection in metric CRS,
+transformed back to source lon/lat at sufficient precision. A route requires at least
+two ordered lines and exactly one joint per transition. Leave `n02_line` and `via`
+empty on that row, and map exactly one adjacent stop pair. Other rows keep their
+single-line range and optional ordered via hints. Section filters apply separately
+to every route line, including interior lines.
+
+The builder searches sections around matched platforms and declared joints, routes
+each leg on its own constrained graph and enforces the first/last N02 platform line.
+An interior T-junction works without a shared source vertex because the explicit
+query point splits a track virtually. Joint projections must coincide within
+`1e-6 m` (numerical noise only); a platform's 30 m snap allowance never bridges a
+missing line. Zero-length route legs are rejected. The artifact validator checks
+the committed joints in travel order, allowing only simplification/rounding error
+for multi-line witnesses. Verifying physical N02 line ownership still requires the
+raw build and reviewed section constraints.
+
+`detour_exceptions.csv` has
+`service_id,from_id,to_id,max_detour_ratio,reason`. Each row applies only to one
+canonical forward adjacent pair, needs a finite limit greater than the default 1.8
+and a review reason, and cannot duplicate or refer to a stale pair. The builder and
+artifact validator use the same limit. An exception does not bypass skipped-stop,
+platform, joint or area checks. N02's missing 国立支線 and 池袋–赤羽 freight link
+require reviewed regional recipes later; S3a adds no substitute geometry or live exceptions.
+
+Migration: replace `ward` by `prefecture,municipality`, add `scopeSource` and per-service
+scope evidence, and optionally pin station numbers. The frozen Python fixture follows
+the same input migration. The five public v3 files and their content hash stay byte-identical.
+Composition DAGs, primitive anchors, shared owners and dataset budgets follow in S3b.
+
 ## Routing and schema v3
 
 1. Match each curated station to JR East N02 platform features on its adjacent
-   physical lines, inside the Tokyo bounding box; selectors resolve ambiguities.
+   physical lines, inside the configured candidate box; selectors resolve ambiguities.
    Matching uses explicit registry identity and N02 spelling, including ケ/ヶ.
 2. Build constrained track graphs from sections within 2 km of candidates.
    Platform/via snapping beyond 30 m is rejected before optimization. Graph cache
@@ -107,7 +181,7 @@ services require `kind` (`local | rapid`) and non-empty `lineIds`, plus
 Legacy v2 bundles are rejected by the runtime guards. `segments.json` is compact,
 with one object per line. IDs, stop order and all-equal gameplay remain unchanged.
 
-The validator checks the strict five-file schema, registry/wards/catalogue,
+The validator checks the strict five-file schema, registry/area/catalogue,
 metadata/stop order, pair coverage and walks, platforms/representatives and reviewed
 offsets, unique owned features and valid owner pairs, non-empty/known/ordered travel chains,
 reversed reverse-hop chains, exact joints, no backtracking/orphans, endpoint orientation,

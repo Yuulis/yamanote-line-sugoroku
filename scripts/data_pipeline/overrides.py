@@ -24,23 +24,36 @@ from typing import Any, TypeGuard
 
 from scripts.data_pipeline import config
 from scripts.data_pipeline.constraints import (
+    STATION_NUMBER_PATTERN,
+    BBox,
     ConstraintError,
+    DetourException,
     LonLat,
+    OffsetException,
     PlatformSelector,
+    RouteRecipe,
     SectionFilter,
     build_section_filter,
+    check_station_number_order,
+    parse_bbox,
+    parse_detour_rows,
+    parse_offset_rows,
     parse_platform_selector,
+    parse_route_recipe,
     parse_via,
 )
 from scripts.data_pipeline.registry import (
     STATION_ID_PATTERN,
+    Area,
     OverrideError,
     Registry,
+    ScopeStop,
+    check_scope,
     load_registry,
+    parse_scope,
     read_csv,
 )
 
-STATION_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})(\d{2})$")
 ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ENDPOINT_KINDS = ("terminus", "area-boundary", "service-boundary")
 SERVICE_KINDS = ("local", "rapid")
@@ -51,6 +64,8 @@ STOP_COLUMNS = ("order", "station_id", "station_number", "platform_selector")
 LINE_MAPPING_COLUMNS = ("from_id", "to_id", "n02_line", "via")
 SECTION_COLUMNS = ("n02_line", "action", "section_key", "reason")
 OFFSET_COLUMNS = ("service_id", "station_id", "max_platform_offset_m", "reason")
+SCOPE_COLUMNS = ("station_id", "prefecture", "municipality")
+DETOUR_COLUMNS = ("service_id", "from_id", "to_id", "max_detour_ratio", "reason")
 
 
 @dataclass(frozen=True)
@@ -63,6 +78,9 @@ class DatasetOverride:
     target_service_id: str  # the service whose segments form the goal
     service_ids: tuple[str, ...]  # reviewed catalogue, in lottery order
     reviewed_disconnected_service_ids: tuple[str, ...]
+    area: Area = Area()
+    output_bbox: BBox = config.DEFAULT_OUTPUT_BBOX
+    candidate_search_bbox: BBox = config.DEFAULT_CANDIDATE_SEARCH_BBOX
 
 
 @dataclass(frozen=True)
@@ -103,6 +121,8 @@ class ServiceDefinition:
     endpoints: Endpoints | None  # None iff circular
     expected_stop_count: int
     length_ref: LengthRef
+    station_number_sequence: tuple[str, ...] | None = None
+    scope_source: str = ""
 
 
 @dataclass(frozen=True)
@@ -119,6 +139,11 @@ class LineRange:
     to_id: str
     n02_line: str
     via: tuple[LonLat, ...] = ()  # only for a range of exactly one stop pair
+    route: RouteRecipe | None = None
+
+    @property
+    def route_lines(self) -> tuple[str, ...]:
+        return self.route.lines if self.route else (self.n02_line,)
 
 
 @dataclass(frozen=True)
@@ -127,6 +152,7 @@ class ServiceOverrides:
     stops: tuple[Stop, ...]
     line_ranges: tuple[LineRange, ...]
     section_filters: Mapping[str, SectionFilter]  # N02 line -> filter
+    scope_stops: tuple[ScopeStop, ...] = ()
 
     @property
     def id(self) -> str:
@@ -145,18 +171,10 @@ class ServiceOverrides:
         return expand_ranges(self.station_ids, self.line_ranges, self.circular)
 
     def segment_lines(self) -> tuple[str, ...]:
-        return tuple(item.n02_line for item in self.segment_ranges())
+        return tuple(" -> ".join(item.route_lines) for item in self.segment_ranges())
 
     def section_filter(self, n02_line: str) -> SectionFilter:
         return self.section_filters.get(n02_line, SectionFilter())
-
-
-@dataclass(frozen=True)
-class OffsetException:
-    service_id: str
-    station_id: str
-    max_platform_offset_m: float
-    reason: str
 
 
 @dataclass(frozen=True)
@@ -166,6 +184,7 @@ class Overrides:
     services: tuple[ServiceOverrides, ...]  # services.json order
     offset_exceptions: tuple[OffsetException, ...]
     lines: tuple[LineMetadata, ...]
+    detour_exceptions: tuple[DetourException, ...] = ()
 
     def service(self, service_id: str) -> ServiceOverrides:
         for service in self.services:
@@ -176,6 +195,16 @@ class Overrides:
     @property
     def target(self) -> ServiceOverrides:
         return self.service(self.dataset.target_service_id)
+
+    def detour_limit(self, service_id: str, from_id: str, to_id: str) -> float:
+        for exception in self.detour_exceptions:
+            if (exception.service_id, exception.from_id, exception.to_id) == (
+                service_id,
+                from_id,
+                to_id,
+            ):
+                return exception.max_detour_ratio
+        return config.MAX_DETOUR_RATIO
 
 
 # --- generic helpers -------------------------------------------------------
@@ -203,7 +232,7 @@ def _read_json(path: Path) -> Any:
 
 def _text(raw: Mapping[str, Any], key: str, where: str) -> str:
     value = raw.get(key)
-    if not isinstance(value, str) or not value:
+    if not isinstance(value, str) or not value.strip():
         raise OverrideError(f"{where}: '{key}' must be a non-empty string")
     return value
 
@@ -238,6 +267,39 @@ def parse_dataset(raw: Any) -> DatasetOverride:
         raise OverrideError(
             f"dataset 'updatedAt' must be a YYYY-MM-DD date, got {updated_at!r}"
         )
+    prefectures = (
+        _id_list(raw, "areaPrefectures", where)
+        if "areaPrefectures" in raw
+        else config.CAPITAL_REGION_PREFECTURES
+    )
+    if not prefectures or not set(prefectures) <= set(
+        config.CAPITAL_REGION_PREFECTURES
+    ):
+        raise OverrideError(
+            "dataset areaPrefectures must select capital-region prefectures"
+        )
+    municipalities = (
+        _id_list(raw, "areaMunicipalities", where)
+        if "areaMunicipalities" in raw
+        else ()
+    )
+    try:
+        output_bbox = parse_bbox(
+            raw.get("outputBbox", list(config.DEFAULT_OUTPUT_BBOX)), "outputBbox"
+        )
+        search_bbox = parse_bbox(
+            raw.get("candidateSearchBbox", list(config.DEFAULT_CANDIDATE_SEARCH_BBOX)),
+            "candidateSearchBbox",
+        )
+    except ConstraintError as error:
+        raise OverrideError(str(error)) from error
+    if (
+        search_bbox[0] > output_bbox[0]
+        or search_bbox[1] > output_bbox[1]
+        or search_bbox[2] < output_bbox[2]
+        or search_bbox[3] < output_bbox[3]
+    ):
+        raise OverrideError("candidateSearchBbox must enclose outputBbox")
     return DatasetOverride(
         operator=_text(raw, "operator", where),
         n02_operator=_text(raw, "n02Operator", where),
@@ -249,6 +311,9 @@ def parse_dataset(raw: Any) -> DatasetOverride:
         reviewed_disconnected_service_ids=_id_list(
             raw, "reviewedDisconnectedServiceIds", where
         ),
+        area=Area(prefectures, municipalities),
+        output_bbox=output_bbox,
+        candidate_search_bbox=search_bbox,
     )
 
 
@@ -319,6 +384,28 @@ def parse_service_definition(raw: Any) -> ServiceDefinition:
     line_ids = _id_list(raw, "lineIds", where)
     if not line_ids:
         raise OverrideError(f"{where}: lineIds must not be empty")
+    number_rules = raw.get("stationNumberRules")
+    number_sequence = None
+    if number_rules is not None:
+        if not isinstance(number_rules, dict) or set(number_rules) != {
+            "sequence",
+            "reason",
+        }:
+            raise OverrideError(
+                f"{where}: stationNumberRules needs sequence and reason"
+            )
+        _text(number_rules, "reason", where)
+        sequence = number_rules["sequence"]
+        if (
+            not isinstance(sequence, list)
+            or len(sequence) != count
+            or not all(
+                isinstance(v, str) and (not v or STATION_NUMBER_PATTERN.fullmatch(v))
+                for v in sequence
+            )
+        ):
+            raise OverrideError(f"{where}: invalid station-number evidence sequence")
+        number_sequence = tuple(sequence)
     return ServiceDefinition(
         id=service_id,
         kind=kind,
@@ -330,6 +417,8 @@ def parse_service_definition(raw: Any) -> ServiceDefinition:
         endpoints=_parse_endpoints(raw.get("endpoints"), circular, where),
         expected_stop_count=count,
         length_ref=_parse_length_ref(raw.get("lengthRef"), where),
+        station_number_sequence=number_sequence,
+        scope_source=_text(raw, "scopeSource", where),
     )
 
 
@@ -356,17 +445,27 @@ def parse_stops(rows: Sequence[Mapping[str, str]], service_id: str) -> tuple[Sto
 
 
 def parse_line_ranges(
-    rows: Sequence[Mapping[str, str]], service_id: str
+    rows: Sequence[Mapping[str, str]],
+    service_id: str,
+    bbox: BBox = config.DEFAULT_CANDIDATE_SEARCH_BBOX,
 ) -> tuple[LineRange, ...]:
     ranges: list[LineRange] = []
     for index, row in enumerate(rows):
         try:
-            via = parse_via(row["via"])
+            via = parse_via(row["via"], bbox)
         except ConstraintError as error:
             raise OverrideError(
                 f"{service_id} line mapping row {index}: {error}"
             ) from error
-        if not row["n02_line"]:
+        try:
+            route = parse_route_recipe(row.get("route", ""), bbox)
+        except ConstraintError as error:
+            raise OverrideError(f"{service_id} route row {index}: {error}") from error
+        if route and (row["n02_line"] or via):
+            raise OverrideError(
+                f"{service_id}: route cannot also specify n02_line or via"
+            )
+        if not route and not row["n02_line"]:
             raise OverrideError(f"{service_id} line mapping row {index}: no n02_line")
         ranges.append(
             LineRange(
@@ -374,6 +473,7 @@ def parse_line_ranges(
                 to_id=row["to_id"],
                 n02_line=row["n02_line"],
                 via=via,
+                route=route,
             )
         )
     return tuple(ranges)
@@ -408,50 +508,28 @@ def check_stops(definition: ServiceDefinition, stops: tuple[Stop, ...]) -> None:
     station_ids = [stop.station_id for stop in stops]
     if len(set(station_ids)) != len(station_ids):
         raise OverrideError(f"{where}: a station is listed twice")
-    check_station_numbers(stops, definition.circular, where)
+    check_station_numbers(
+        stops, definition.circular, where, definition.station_number_sequence
+    )
 
 
 def check_station_numbers(
-    stops: Sequence[Stop], circular: bool, where: str = "service"
+    stops: Sequence[Stop],
+    circular: bool,
+    where: str = "service",
+    expected_sequence: tuple[str, ...] | None = None,
 ) -> None:
-    """Evidence check: JR East station numbers step by exactly one along the
-    stop order (one prefix, one direction; loops wrap once, JY01 -> JY30).
-
-    Stop order is never inferred from numbers; this only catches swapped or
-    missing rows. A service without numbers (every cell empty) is skipped.
-    """
-    numbers = [stop.station_number for stop in stops]
-    if not any(numbers):
-        return
-    parsed: list[tuple[str, int]] = []
-    for number in numbers:
-        match = STATION_NUMBER_PATTERN.match(number)
-        if match is None:
-            raise OverrideError(f"{where}: invalid station number {number!r}")
-        parsed.append((match.group(1), int(match.group(2))))
-    if len({prefix for prefix, _ in parsed}) != 1:
-        raise OverrideError(f"{where}: station numbers mix prefixes")
-    values = [value for _, value in parsed]
-    count = len(values)
-    low = min(values)
-    if circular and sorted(values) != list(range(low, low + count)):
-        raise OverrideError(f"{where}: loop station numbers must be consecutive")
-    step = values[1] - values[0]
-    if step not in (1, -1):
-        step = 0  # reported below at the first pair
-    pairs = count if circular else count - 1
-    for index in range(pairs):
-        current = values[index]
-        following = values[(index + 1) % count]
-        expected = current + step
-        if circular:
-            expected = low + (current - low + step) % count
-        if step == 0 or following != expected:
-            raise OverrideError(
-                f"{where}: station-number order broken after "
-                f"{stops[index].station_id} ({numbers[index]} -> "
-                f"{numbers[(index + 1) % count]})"
-            )
+    """Compare configured numbering evidence or the legacy consecutive rule."""
+    try:
+        check_station_number_order(
+            [stop.station_number for stop in stops],
+            [stop.station_id for stop in stops],
+            circular,
+            where,
+            expected_sequence,
+        )
+    except ConstraintError as error:
+        raise OverrideError(str(error)) from error
 
 
 def expand_ranges(
@@ -476,7 +554,7 @@ def expand_ranges(
         if span <= 0:
             reason = "empty" if span == 0 else "backward (open chains never wrap)"
             raise OverrideError(f"{reason} line range: {line_range}")
-        if line_range.via and span != 1:
+        if (line_range.via or line_range.route) and span != 1:
             raise OverrideError(
                 f"via points need a single-pair range: {line_range.from_id} -> "
                 f"{line_range.to_id}"
@@ -500,10 +578,17 @@ def expand_line_ranges(
     station_ids: Sequence[str], ranges: Sequence[LineRange], circular: bool = True
 ) -> tuple[str, ...]:
     """The N02 line of every +1 stop pair (see :func:`expand_ranges`)."""
-    return tuple(item.n02_line for item in expand_ranges(station_ids, ranges, circular))
+    return tuple(
+        " -> ".join(item.route_lines)
+        for item in expand_ranges(station_ids, ranges, circular)
+    )
 
 
-def load_service(services_dir: Path, definition: ServiceDefinition) -> ServiceOverrides:
+def load_service(
+    services_dir: Path,
+    definition: ServiceDefinition,
+    bbox: BBox = config.DEFAULT_CANDIDATE_SEARCH_BBOX,
+) -> ServiceOverrides:
     directory = services_dir / definition.id
     stops = parse_stops(
         read_csv(directory / config.STOPS_OVERRIDE_FILE, STOP_COLUMNS), definition.id
@@ -512,6 +597,7 @@ def load_service(services_dir: Path, definition: ServiceDefinition) -> ServiceOv
     line_ranges = parse_line_ranges(
         read_csv(directory / config.LINE_MAPPING_OVERRIDE_FILE, LINE_MAPPING_COLUMNS),
         definition.id,
+        bbox,
     )
     sections_path = directory / config.SECTION_CONSTRAINTS_OVERRIDE_FILE
     section_filters = (
@@ -524,8 +610,13 @@ def load_service(services_dir: Path, definition: ServiceDefinition) -> ServiceOv
         stops=stops,
         line_ranges=line_ranges,
         section_filters=section_filters,
+        scope_stops=parse_scope(
+            read_csv(directory / config.SCOPE_OVERRIDE_FILE, SCOPE_COLUMNS)
+        ),
     )
-    mapped_lines = set(service.segment_lines())  # fails fast on a bad mapping
+    mapped_lines = {
+        line for item in service.segment_ranges() for line in item.route_lines
+    }
     unused = sorted(set(section_filters) - mapped_lines)
     if unused:
         raise OverrideError(
@@ -537,25 +628,10 @@ def load_service(services_dir: Path, definition: ServiceDefinition) -> ServiceOv
 def parse_offset_exceptions(
     rows: Sequence[Mapping[str, str]],
 ) -> tuple[OffsetException, ...]:
-    exceptions: list[OffsetException] = []
-    for index, row in enumerate(rows):
-        try:
-            limit = float(row["max_platform_offset_m"])
-        except ValueError as error:
-            raise OverrideError(f"offset exception row {index}: {error}") from error
-        if not math.isfinite(limit) or limit <= 0 or not row["reason"]:
-            raise OverrideError(
-                f"offset exception row {index} needs a positive limit and a reason"
-            )
-        exceptions.append(
-            OffsetException(
-                service_id=row["service_id"],
-                station_id=row["station_id"],
-                max_platform_offset_m=limit,
-                reason=row["reason"],
-            )
-        )
-    return tuple(exceptions)
+    try:
+        return parse_offset_rows(rows)
+    except ConstraintError as error:
+        raise OverrideError(str(error)) from error
 
 
 # --- cross-table checks ----------------------------------------------------
@@ -596,6 +672,8 @@ def check_consistency(overrides: Overrides) -> None:
     if unserved:
         raise OverrideError(f"registry stations served by no service: {unserved}")
     for station in overrides.registry.stations:
+        if not dataset.area.contains(station.prefecture, station.municipality):
+            raise OverrideError(f"station {station.id} is outside the configured area")
         if station.representative_service_id not in served[station.id]:
             raise OverrideError(
                 f"station {station.id}: representative service "
@@ -620,6 +698,39 @@ def check_consistency(overrides: Overrides) -> None:
                 f"start station {dataset.start_station_id} is an endpoint of {service.id}"
             )
     check_offset_exception_references(overrides)
+    for service in services:
+        ends = service.definition.endpoints
+        check_scope(
+            service.id,
+            service.station_ids,
+            service.scope_stops,
+            overrides.registry,
+            dataset.area,
+            (ends.first, ends.last) if ends else None,
+        )
+    seen_detours: set[tuple[str, str, str]] = set()
+    for exception in overrides.detour_exceptions:
+        key = (exception.service_id, exception.from_id, exception.to_id)
+        if key in seen_detours:
+            raise OverrideError(f"duplicate detour exception {key}")
+        seen_detours.add(key)
+        try:
+            service = overrides.service(exception.service_id)
+        except KeyError:
+            raise OverrideError(
+                f"detour exception for unknown service {exception.service_id}"
+            ) from None
+        pairs = tuple(
+            zip(
+                service.station_ids,
+                (*service.station_ids[1:], service.station_ids[0]),
+                strict=True,
+            )
+        )
+        if not service.circular:
+            pairs = pairs[:-1]
+        if (exception.from_id, exception.to_id) not in pairs:
+            raise OverrideError(f"detour exception is not a forward stop pair: {key}")
 
 
 def check_offset_exception_references(overrides: Overrides) -> None:
@@ -663,12 +774,26 @@ def load_overrides(overrides_dir: Path) -> Overrides:
         dataset=dataset,
         registry=registry,
         lines=lines,
-        services=tuple(load_service(services_dir, item) for item in definitions),
+        services=tuple(
+            load_service(services_dir, item, dataset.candidate_search_bbox)
+            for item in definitions
+        ),
         offset_exceptions=parse_offset_exceptions(
             read_csv(
                 overrides_dir / config.OFFSET_EXCEPTIONS_OVERRIDE_FILE, OFFSET_COLUMNS
             )
         ),
+        detour_exceptions=load_detour_exceptions(overrides_dir),
     )
     check_consistency(overrides)
     return overrides
+
+
+def load_detour_exceptions(directory: Path) -> tuple[DetourException, ...]:
+    path = directory / config.DETOUR_EXCEPTIONS_OVERRIDE_FILE
+    if not path.is_file():
+        return ()
+    try:
+        return parse_detour_rows(read_csv(path, DETOUR_COLUMNS))
+    except ConstraintError as error:
+        raise OverrideError(str(error)) from error
