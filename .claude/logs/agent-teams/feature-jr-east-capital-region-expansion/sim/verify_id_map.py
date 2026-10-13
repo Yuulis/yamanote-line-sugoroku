@@ -143,7 +143,7 @@ def main() -> None:
     )
 
     registry = read_csv(ROOT / "data/overrides/stations.csv")
-    shipped_services = json.loads((ROOT / "public/data/services.json").read_text())
+    shipped_services = json.loads((ROOT / "public/data/services.json").read_text())["services"]
     require(
         len(registry) == EXPECTED_SHIPPED_STATIONS, "Shipped station baseline changed"
     )

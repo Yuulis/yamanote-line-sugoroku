@@ -1,0 +1,318 @@
+{
+  "step": "S0b",
+  "status": "implemented; pending lead verification",
+  "measuredAt": "2026-10-13T12:39:02.617791+00:00",
+  "branch": "feature/jrcr-s0b",
+  "baseRevision": "ba079d46497a95f3c293743a9fdf4327ac807c24",
+  "nodeVersion": "v24.21.0",
+  "productCsvSchema": {
+    "catalog": "service_id,order,station_id,name_ja,prefecture,endpoint_kind,kind",
+    "services": "service_id,research_id,name_ja,kind,circular,first_end_kind,last_end_kind,stop_count",
+    "endpointKind": "Only linear first/last stop rows are populated. Interior/circular rows are empty; through-split maps to service-boundary."
+  },
+  "commands": [
+    "npm ci",
+    "python3 .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/build_product_catalog.py",
+    "SIM_PRESET=decided SIM_GAMES=2000 SIM_SEED=20261012 SIM_CAP=20000 SIM_OUTPUT=.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/s0b-decided-2000.json npm run sim",
+    "SIM_PRESET=decided SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 SIM_OUTPUT=.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/s0b-decided-20000.json npm run sim"
+  ],
+  "runs": [
+    {
+      "schemaVersion": 1,
+      "engine": "createGame/playTurn",
+      "preset": "decided",
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/jr-east-capital-region-catalog-v2.csv": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+          ".claude/docs/research/jr-east-capital-region-services-v2.csv": "45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 472,
+        "services": 40,
+        "directedSegments": 1224,
+        "catalogRows": 666,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "dataVersion": "simulation-ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4-45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b",
+      "baseSeed": 20261012,
+      "games": 2000,
+      "turnCap": 20000,
+      "seedSet": {
+        "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+        "first": "s1m-20261012-0",
+        "last": "s1m-20261012-1999",
+        "sha256": "c0c3da0876bf955573019e97263fa31f536a6776cde9350939c6a97474e46652"
+      },
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "history": "discarded after each real playTurn; no transition logic replaced",
+      "statistics": {
+        "games": 2000,
+        "completedGames": 2000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 62,
+        "p90": 151,
+        "p99": 262,
+        "mean": 75.9345,
+        "max": 481,
+        "over500Count": 0,
+        "totalPlayedTurns": 151869
+      },
+      "runtimeSeconds": 4.602109491
+    },
+    {
+      "schemaVersion": 1,
+      "engine": "createGame/playTurn",
+      "preset": "decided",
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/jr-east-capital-region-catalog-v2.csv": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+          ".claude/docs/research/jr-east-capital-region-services-v2.csv": "45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 472,
+        "services": 40,
+        "directedSegments": 1224,
+        "catalogRows": 666,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "dataVersion": "simulation-ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4-45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b",
+      "baseSeed": 20261012,
+      "games": 20000,
+      "turnCap": 20000,
+      "seedSet": {
+        "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+        "first": "s1m-20261012-0",
+        "last": "s1m-20261012-19999",
+        "sha256": "0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e"
+      },
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "history": "discarded after each real playTurn; no transition logic replaced",
+      "statistics": {
+        "games": 20000,
+        "completedGames": 20000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 61,
+        "p90": 148,
+        "p99": 258,
+        "mean": 73.85715,
+        "max": 481,
+        "over500Count": 0,
+        "totalPlayedTurns": 1477143
+      },
+      "runtimeSeconds": 45.401144718000005
+    }
+  ],
+  "s1mComparison": {
+    "source": "jr-east-capital-region-s1m-results.json",
+    "researchHashesUnchanged": true,
+    "same20000SeedSet": true,
+    "same20000Statistics": true,
+    "prefix": "2,000-game seeds are indices 0..1999 of the same independent seed scheme; runSimulation resets createGame per index. The historical summary has no per-game/prefix statistics, so its 2,000-game prefix cannot be compared directly.",
+    "sampleSizeNote": "2,000-game quantiles 62/151/262 differ from full 20,000-game quantiles 61/148/258. The additional full rerun matches every historical statistic, including totalPlayedTurns=1477143.",
+    "s2MetadataNote": "S2 now uses local/rapid weights only and service-boundary for research through-split. Historical S1M recorded two unused kind weights and synthetic terminus metadata; gameplay statistics are unchanged."
+  },
+  "acceptance": {
+    "verify_product_catalog.py": {
+      "exitCode": 0,
+      "output": {
+        "ok": true,
+        "rows": 666,
+        "services": 40,
+        "stations": 472,
+        "kinds": {
+          "local": 36,
+          "rapid": 4
+        },
+        "bijection": "verified",
+        "service_and_stop_order": "preserved",
+        "endpoints": "preserved; through-split -> service-boundary",
+        "endpoint_counts": {
+          "area-boundary": 10,
+          "service-boundary": 32,
+          "terminus": 36
+        },
+        "shipped_services_preserved": 5,
+        "shipped_stations_preserved": 67,
+        "reachable_from_shimbashi": 472,
+        "can_reach_shimbashi": 472,
+        "directed_gameplay_segments": 1224,
+        "lf_bytes": true,
+        "sha256": {
+          "jr-east-capital-region-product-catalog.csv": "3deb465895e55d381abd8b75adaddbc08ce7f242bb46b40ff88ea8c9c757a438",
+          "jr-east-capital-region-product-services.csv": "76d86cc98a312769151ca7cf9537b24822af21afe1a9113e827a2495d4fc3256"
+        }
+      }
+    },
+    "verify_id_map.py": {
+      "exitCode": 0,
+      "output": {
+        "ok": true,
+        "services": 40,
+        "stations": 472,
+        "shipped_services_preserved": 5,
+        "shipped_stations_preserved": 67,
+        "station_id_source": {
+          "jr-official": 405,
+          "shipped": 67
+        },
+        "hepburn_review_needed": [],
+        "new_service_namespace_ids": 35,
+        "shipped_order_and_n02_corridors": "verified",
+        "shared_station_identities": 3
+      }
+    },
+    "verify_catalog_v2.py": {
+      "exitCode": 0,
+      "output": {
+        "ok": true,
+        "rows": 666,
+        "services": 40,
+        "stations": 472,
+        "classification": {
+          "total": 60,
+          "keep": 40,
+          "drop": 20
+        },
+        "local_services": 36,
+        "rapid_base_services": 4,
+        "rapid_track_services": 3,
+        "rapid_through_route_services": 1,
+        "transfer_stations": 121,
+        "max_k": 10,
+        "hub_k": {
+          "東京": 10,
+          "新宿": 7,
+          "大宮": 6,
+          "横浜": 5,
+          "千葉": 5
+        },
+        "hub_candidates": {
+          "東京": [
+            "yamanote",
+            "keihin_tohoku_negishi",
+            "chuo_rapid",
+            "keiyo",
+            "tokaido",
+            "yokosuka",
+            "sobu_rapid",
+            "utsunomiya",
+            "takasaki",
+            "joban_rapid"
+          ],
+          "新宿": [
+            "yamanote",
+            "chuo_sobu_local",
+            "chuo_rapid",
+            "saikyo_kawagoe",
+            "sotetsu_direct",
+            "shonan_shinjuku_local",
+            "shonan_shinjuku_rapid_takasaki"
+          ],
+          "大宮": [
+            "keihin_tohoku_negishi",
+            "saikyo_kawagoe",
+            "utsunomiya",
+            "takasaki",
+            "shonan_shinjuku_local",
+            "shonan_shinjuku_rapid_takasaki"
+          ],
+          "横浜": [
+            "keihin_tohoku_negishi",
+            "tokaido",
+            "yokosuka",
+            "shonan_shinjuku_local",
+            "shonan_shinjuku_rapid_takasaki"
+          ],
+          "千葉": [
+            "chuo_sobu_local",
+            "sobu_rapid",
+            "sobu_main",
+            "sotobo",
+            "uchibo"
+          ]
+        },
+        "minimum_services_per_station": 1,
+        "reachable_from_shimbashi": 472,
+        "can_reach_shimbashi": 472,
+        "service_selection_orphans": 0,
+        "dropped_services_with_exclusive_stations": [],
+        "truncated_stations": [
+          "平山",
+          "上総松丘",
+          "上総亀山"
+        ],
+        "kururi_last_stop": "久留里",
+        "kururi_last_end_kind": "terminus",
+        "tsurumi_transfers": [
+          "浜川崎",
+          "鶴見"
+        ],
+        "undirected_service_segments": 627,
+        "distinct_station_pairs": 527,
+        "sha256": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+        "hash_byte_convention": "LF-normalized UTF-8 bytes",
+        "decision_items": []
+      }
+    }
+  },
+  "negativeVerifierChecks": {
+    "stationId": "rejected",
+    "stopOrder": "rejected",
+    "endpoint": "rejected",
+    "kind": "rejected",
+    "stationName": "rejected",
+    "CRLF": "rejected"
+  },
+  "limitations": [
+    "Research input only; final product data/config must still be measured in S5.",
+    "No map geometry, device performance or save/restore measurement."
+  ]
+}
