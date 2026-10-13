@@ -1,3 +1,4 @@
+import type { LineMetadata } from "../../../types/network";
 import type { CSSProperties } from "react";
 import type { RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
@@ -5,6 +6,7 @@ import {
   directionLabel,
   displayedRide,
   landingText,
+  LOTTERY_INLINE_LIMIT,
   lastRollText,
   serviceName,
   stationName,
@@ -14,6 +16,7 @@ import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
 export interface GamePanelProps {
   session: GameSession;
   network: RailwayNetwork;
+  lines: readonly LineMetadata[];
   /** Station the marker has reached (follows the animation). */
   displayedStationId: string;
   displayedCompletedCount: number;
@@ -41,6 +44,11 @@ export function GamePanel(props: GamePanelProps) {
   const currentService = network.servicesById.get(ride.serviceId);
   const lineColor = network.servicesById.get(game.config.targetServiceId)?.color;
   const legendStyle = { "--completed-line-color": lineColor } as CSSProperties;
+  const candidates = session.lastMove?.landing?.serviceCandidates ?? [];
+  const legendGroups = props.lines.map((line) => ({
+    ...line,
+    services: [...network.servicesById.values()].filter((service) => service.id !== game.config.targetServiceId && service.lineIds.includes(line.id)),
+  })).filter((line) => line.services.length > 0);
   const saveFailed = saveStatus === "failed" || saveStatus === "unavailable";
 
   return (
@@ -97,6 +105,12 @@ export function GamePanel(props: GamePanelProps) {
       <p className="game-panel__lottery" aria-live="polite" aria-atomic="true">
         <span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network)}
       </p>
+      {!animating && candidates.length > LOTTERY_INLINE_LIMIT && (
+        <details className="game-panel__candidates" key={game.turn}>
+          <summary>抽選候補をすべて表示（{candidates.length}系統）</summary>
+          <ul>{candidates.map((id) => <li key={id}>{serviceName(network, id)}</li>)}</ul>
+        </details>
+      )}
       <p
         className={`game-panel__save${saveFailed ? " game-panel__save--warning" : ""}`}
         role="status"
@@ -112,14 +126,19 @@ export function GamePanel(props: GamePanelProps) {
           <span className="legend-swatch legend-swatch--pending" aria-hidden="true" />
           山手線 未踏破（点線）
         </li>
-        {[...network.servicesById.values()]
-          .filter((service) => service.id !== game.config.targetServiceId)
-          .map((service) => (
-            <li key={service.id}>
-              <span className="legend-swatch legend-swatch--service" style={{ borderTopColor: service.color }} aria-hidden="true" />
-              {service.name}
-            </li>
-          ))}
+        {legendGroups.map((line) => line.services.length === 1 ? (
+          <li key={line.id}>
+            <span className="legend-swatch legend-swatch--service" style={{ borderTopColor: line.services[0]!.color }} aria-hidden="true" />
+            {line.services[0]!.name}
+          </li>
+        ) : (
+          <li key={line.id} className="game-panel__legend-group">
+            <details>
+              <summary><span className="legend-swatch legend-swatch--service" style={{ borderTopColor: line.color }} aria-hidden="true" />{line.name}（{line.services.length}系統）</summary>
+              <ul>{line.services.map((service) => <li key={service.id}>{service.name}</li>)}</ul>
+            </details>
+          </li>
+        ))}
         <li>
           <span className="legend-swatch legend-swatch--current" aria-hidden="true" />
           現在地

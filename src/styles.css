@@ -521,3 +521,58 @@ button:disabled {
     max-height: 120px;
   }
 }
+
+/* The overview controls reserve the same right-hand space as navigation. */
+.map-overview {
+  position: fixed;
+  z-index: var(--layer-panel);
+  top: 156px;
+  right: 10px;
+  display: grid;
+  gap: 4px;
+}
+
+.map-overview button {
+  background: #ffffff;
+  border: 1px solid #aaaaaa;
+  border-radius: 4px;
+}
+
+.game-panel__legend-group {
+  flex-basis: 100%;
+}
+
+.game-panel__legend-group details {
+  width: 100%;
+}
+
+.game-panel summary {
+  cursor: pointer;
+  min-height: 32px;
+  line-height: 32px;
+}
+
+.game-panel__legend-group ul,
+.game-panel__candidates ul {
+  margin: 0 0 6px;
+  padding-left: 20px;
+  line-height: 1.6;
+}
+
+.game-panel__candidates {
+  font-size: 12px;
+}
+
+.game-panel__legend {
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.clear-screen__paging {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
