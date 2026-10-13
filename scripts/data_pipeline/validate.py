@@ -25,6 +25,7 @@ from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config, rules
+from scripts.data_pipeline.constraints import BBox
 from scripts.data_pipeline.export import (
     GAME_DATA_FILES,
     build_segments,
@@ -95,7 +96,7 @@ def to_metric(coordinate: Sequence[float]) -> tuple[float, float]:
     return (float(x), float(y))
 
 
-def _is_coordinate(value: Any) -> bool:
+def _is_coordinate(value: Any, bbox: BBox = config.DEFAULT_OUTPUT_BBOX) -> bool:
     if not isinstance(value, list) or len(value) != 2:
         return False
     if not all(
@@ -104,7 +105,7 @@ def _is_coordinate(value: Any) -> bool:
         return False
     if not all(math.isfinite(item) for item in value):
         return False
-    min_lon, min_lat, max_lon, max_lat = config.OUTPUT_BBOX
+    min_lon, min_lat, max_lon, max_lat = bbox
     return min_lon <= value[0] <= max_lon and min_lat <= value[1] <= max_lat
 
 
@@ -121,6 +122,7 @@ def check_stations(
     stations: Any,
     official: Sequence[tuple[str, str]],
     report: Report,
+    bbox: BBox = config.DEFAULT_OUTPUT_BBOX,
 ) -> dict[str, list[float]]:
     """Count, unique ids/names, coordinates, and (id, name) vs. the override."""
     if not _is_object_list(stations):
@@ -145,7 +147,7 @@ def check_stations(
         else:
             names.append(name)
         coordinates = station.get("coordinates")
-        if not _is_coordinate(coordinates):
+        if not _is_coordinate(coordinates, bbox):
             report.errors.append(f"station {station_id} has invalid coordinates")
             continue
         if any(_too_many_decimals(value) for value in coordinates):
@@ -252,7 +254,7 @@ def check_services(
             continue
         rules.check_platform_keys(service, coords, report)
         for station_id, coordinate in coords.items():
-            if not _is_coordinate(coordinate):
+            if not _is_coordinate(coordinate, overrides.dataset.output_bbox):
                 report.errors.append(
                     f"{service_id}/{station_id} has invalid platform coordinates"
                 )
@@ -331,7 +333,10 @@ def check_segments(
 
 
 def _feature_geometry(
-    feature: dict[str, Any], label: str, report: Report
+    feature: dict[str, Any],
+    label: str,
+    report: Report,
+    bbox: BBox = config.DEFAULT_OUTPUT_BBOX,
 ) -> LineString | None:
     geometry = feature.get("geometry")
     if (
@@ -345,7 +350,7 @@ def _feature_geometry(
     if not isinstance(coordinates, list) or len(coordinates) < 2:
         report.errors.append(f"empty or degenerate geometry: {label}")
         return None
-    if not all(_is_coordinate(point) for point in coordinates):
+    if not all(_is_coordinate(point, bbox) for point in coordinates):
         report.errors.append(f"bad coordinate in {label}")
         return None
     if any(_too_many_decimals(value) for point in coordinates for value in point):
@@ -424,7 +429,7 @@ def check_geometry(
             "to": b,
         }:
             report.errors.append(f"properties mismatch on {label}")
-        line = _feature_geometry(raw, label, report)
+        line = _feature_geometry(raw, label, report, overrides.dataset.output_bbox)
         start, end = platforms.get((service_id, a)), platforms.get((service_id, b))
         if line is None or start is None or end is None:
             continue
@@ -434,11 +439,10 @@ def check_geometry(
         max_endpoint = max(max_endpoint, gap)
         if gap > config.ENDPOINT_MAX_DISTANCE_M:
             report.errors.append(f"{label} endpoint {gap:.1f} m from service platform")
-        direct = start.distance(end)
-        detour = line.length / direct if direct > 0 else math.inf
+        detour = rules.check_detour(
+            label, line, start, end, overrides.detour_limit(service_id, a, b), report
+        )
         max_detour = max(max_detour, detour)
-        if detour > config.MAX_DETOUR_RATIO:
-            report.errors.append(f"{label} detour ratio {detour:.2f}")
         lengths[service_id] += line.length
         service_points = {
             sid: point for (svc, sid), point in platforms.items() if svc == service_id
@@ -465,6 +469,20 @@ def check_geometry(
         for via in hint.via:
             if line.distance(Point(to_metric(via))) > config.ENDPOINT_MAX_DISTANCE_M:
                 report.errors.append(f"{label} misses a committed via point")
+        if hint.route:
+            joints = [Point(to_metric(joint)) for joint in hint.route.joints]
+            if any(
+                line.distance(joint) > config.SIMPLIFY_TOLERANCE_M + 1.0
+                for joint in joints
+            ):
+                report.errors.append(
+                    f"{label} multi-line route misses a committed joint"
+                )
+            distances = [line.project(joint) for joint in joints]
+            if any(a >= b for a, b in zip(distances, distances[1:], strict=False)):
+                report.errors.append(
+                    f"{label} multi-line route joints are out of order"
+                )
     report.metrics.update(
         {
             "max_endpoint_distance_m": round(max_endpoint, 3),
@@ -509,13 +527,17 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
     """Run all seventeen v3 rules without the raw N02 download."""
     report = Report()
     positions = check_stations(
-        dataset.stations, official_station_order(overrides), report
+        dataset.stations,
+        official_station_order(overrides),
+        report,
+        overrides.dataset.output_bbox,
     )
     stations = dataset.stations if _is_object_list(dataset.stations) else []
     rules.check_registry_membership(
         [(str(raw.get("id")), str(raw.get("name"))) for raw in stations],
         overrides.registry,
         report,
+        overrides.dataset.area,
     )
     services, platforms = check_services(dataset.services, positions, overrides, report)
     check_segments(dataset.segments, services, report)

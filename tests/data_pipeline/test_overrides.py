@@ -266,7 +266,7 @@ def test_load_overrides_with_unserved_registry_station_raises(
 ) -> None:
     append_line(
         overrides_copy / config.REGISTRY_OVERRIDE_FILE,
-        "unserved,未収録駅,,品川区,jr-yamanote",
+        "unserved,未収録駅,,東京都,品川区,jr-yamanote,",
     )
 
     with pytest.raises(OverrideError, match="served by no service"):
@@ -276,8 +276,8 @@ def test_load_overrides_with_unserved_registry_station_raises(
 def test_load_overrides_with_foreign_representative_raises(core_copy: Path) -> None:
     rewrite(
         core_copy / config.REGISTRY_OVERRIDE_FILE,
-        "shiomi,潮見,,江東区,jr-keiyo",
-        "shiomi,潮見,,江東区,jr-yamanote",
+        "shiomi,潮見,,東京都,江東区,jr-keiyo",
+        "shiomi,潮見,,東京都,江東区,jr-yamanote",
     )
 
     with pytest.raises(OverrideError, match="does not stop there"):

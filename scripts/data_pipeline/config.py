@@ -22,6 +22,8 @@ STOPS_OVERRIDE_FILE = "stops.csv"
 LINE_MAPPING_OVERRIDE_FILE = "line_mapping.csv"
 SECTION_CONSTRAINTS_OVERRIDE_FILE = "sections.csv"  # optional, per service
 OFFSET_EXCEPTIONS_OVERRIDE_FILE = "offset_exceptions.csv"
+DETOUR_EXCEPTIONS_OVERRIDE_FILE = "detour_exceptions.csv"  # optional
+SCOPE_OVERRIDE_FILE = "scope.csv"
 
 STATIONS_FILE = "stations.json"
 SERVICES_FILE = "services.json"
@@ -50,36 +52,14 @@ SECTION_KEY_DECIMALS = 5  # N02 source coordinates carry 5 decimals
 # A platform or via point farther than this from the track it is routed on is
 # not on that track: such a pair is rejected before the routing DP runs.
 MAX_SNAP_OFFSET_M = 30.0
-# Only N02 platforms inside this lon/lat box can represent a curated station.
-# It rejects same-name stations elsewhere in Japan (大久保 on the 奥羽線, Akita).
-CANDIDATE_SEARCH_BBOX = (139.45, 35.45, 140.05, 35.95)
-
-# Area: every registry station's ward must be one of Tokyo's 23 special wards.
-TOKYO_23_WARDS = (
-    "千代田区",
-    "中央区",
-    "港区",
-    "新宿区",
-    "文京区",
-    "台東区",
-    "墨田区",
-    "江東区",
-    "品川区",
-    "目黒区",
-    "大田区",
-    "世田谷区",
-    "渋谷区",
-    "中野区",
-    "杉並区",
-    "豊島区",
-    "北区",
-    "荒川区",
-    "板橋区",
-    "練馬区",
-    "足立区",
-    "葛飾区",
-    "江戸川区",
-)
+# Defaults cover the JR East railway extent in the four prefectures. Each
+# dataset can narrow its area/bounds without changing public metadata.
+CAPITAL_REGION_PREFECTURES = ("東京都", "千葉県", "神奈川県", "埼玉県")
+DEFAULT_OUTPUT_BBOX = (138.6, 34.8, 141.0, 36.8)
+DEFAULT_CANDIDATE_SEARCH_BBOX = (138.5, 34.65, 141.2, 37.0)
+# Only numerical projection noise is allowed at an explicitly declared
+# cross-line joint; platform snap tolerance must never bridge a track gap.
+ROUTE_JOINT_TOLERANCE_M = 0.000001
 
 # Validation thresholds.
 ENDPOINT_MAX_DISTANCE_M = 30.0
@@ -89,10 +69,6 @@ MAX_DETOUR_RATIO = 1.8  # 品川->大崎 is ~1.6 in reality (curved track)
 # point; larger offsets (東京 京葉線 ~450 m) need a reviewed exception row.
 DEFAULT_MAX_PLATFORM_OFFSET_M = 250.0
 MAX_GEOJSON_BYTES = 300_000
-
-# Sanity bbox for output coordinates, (min_lon, min_lat, max_lon, max_lat):
-# the 23 wards plus a margin (西荻窪 ~139.60 E, 葛西臨海公園 ~139.86 E).
-OUTPUT_BBOX = (139.55, 35.50, 139.95, 35.85)
 
 MANIFEST_SOURCE = {
     "name": "国土数値情報（鉄道データ）",
