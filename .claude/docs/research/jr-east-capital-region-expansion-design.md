@@ -393,13 +393,13 @@ Saved outputs: `sim/run-v2-{baseline,yhalf,yhalfInbound2,yhalfInbound2Pass}-50k.
 39-service outputs. `sim/run-v2-manifest.json` records updated hashes, exact commands, sample settings,
 results and catalog verification. The generator, verifier and rebuilt networks remain in the sim directory.
 These replica results alone do not confirm the engine. S1M now completes that gate in §8.5;
-S0b product-catalog output remains required.
+S0b product-catalog output is implemented in §8.6 (pending lead verification).
 
 ### 8.5 S1M real-engine confirmation (2026-10-13)
 
 **S1M is complete** on `feature/jrcr-s1m` after S1 merged (engine revision `c0a9866`).
 The §8.4 replica-only limitation above is now resolved for approved research catalog v2;
-S0b product-catalog generation and S5's final-data remeasurement remain required.
+S0b implementation is recorded in §8.6 (pending lead verification); S5's final-data remeasurement remains required.
 Full summaries, configs, input hashes, seed-set hashes, comparisons and smoke results:
 `jr-east-capital-region-s1m-results.json`. Runner: `tests/simulation/README.md`.
 
@@ -449,6 +449,55 @@ growing-history, save/restore or device-performance acceptance is claimed by the
 
 ---
 
+### 8.6 S0b product-id catalog (2026-10-13; implemented, pending lead verification)
+
+The approved research v2 is mapped through the frozen S0 crosswalk without changing service order,
+stop order, station identity or endpoint semantics. Product kinds are **36 local / 4 rapid**;
+the rapid services are `chuo_rapid`, `sobu_rapid`, `joban_rapid` and
+`shonan_shinjuku_rapid_takasaki`. Research `through-split` maps to the S2 enum
+`service-boundary`; `terminus` and `area-boundary` retain their names. Every endpoint stops
+and discards remaining pips. All 5 shipped service IDs and 67 shipped station IDs are preserved.
+
+| Product artifact | Rows | SHA-256 (UTF-8 / LF bytes) |
+|---|---:|---|
+| `jr-east-capital-region-product-catalog.csv` | 666 stops / 472 distinct stations | `3deb465895e55d381abd8b75adaddbc08ce7f242bb46b40ff88ea8c9c757a438` |
+| `jr-east-capital-region-product-services.csv` | 40 services | `76d86cc98a312769151ca7cf9537b24822af21afe1a9113e827a2495d4fc3256` |
+
+Catalog fields: `service_id,order,station_id,name_ja,prefecture,endpoint_kind,kind`.
+`endpoint_kind` is populated only on the first/last stops of linear services; interior and
+circular-service rows are empty. Service fields:
+`service_id,research_id,name_ja,kind,circular,first_end_kind,last_end_kind,stop_count`.
+The crosswalk hash remains `ca6a7c7c957ab153f787d78a040dc5d57fa044d59da758064a632789ab96885f`;
+both research hashes in §8.5 are unchanged.
+
+Generator/verifier: `.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/`
+`build_product_catalog.py` / `verify_product_catalog.py`. The independent verifier checks every
+mapped field, the bijection, ordering, endpoint placement, LF bytes and shipped identities.
+The directed gameplay graph (Yamanote +1 only, other services bidirectional) has **1,224 segments**;
+all **472 stations** are reachable from 新橋 and can reach 新橋. Endpoint occurrences:
+36 `terminus`, 10 `area-boundary`, 32 `service-boundary`. Existing `verify_id_map.py` now reads
+the S2 `services` envelope, keeping all identity/order/N02 checks intact; all three verifiers pass.
+
+Real-engine rerun uses unchanged research v2, `decided`, seed **20261012**, cap **20,000**:
+
+| Run | Games | Median / p90 / p99 | Mean | Max | >500 | Caps | Played turns | Runtime |
+|---|---:|---|---:|---:|---:|---:|---:|---:|
+| Required S0b prefix | 2,000 | 62 / 151 / 262 | 75.93450 | 481 | 0 | 0 | 151,869 | 4.60 s |
+| Additional full S1M comparison | 20,000 | 61 / 148 / 258 | 73.85715 | 481 | 0 | 0 | 1,477,143 | 45.40 s |
+
+The 2,000-game seeds are `s1m-20261012-0` through `s1m-20261012-1999`, seed-set SHA-256
+`c0c3da0876bf955573019e97263fa31f536a6776cde9350939c6a97474e46652`.
+These are the independent-seed prefix of S1M, so smaller-sample quantiles need not equal the
+20,000-game summary. The historical file has no per-game/prefix statistics for a direct prefix
+comparison. To check S2 consistency, the additional 20,000-game rerun uses the same seed-set
+hash as §8.5 and matches **every historical decided statistic exactly**, including total turns.
+S2's two-kind weights and `service-boundary` metadata replace the historical unused kind weights
+and synthetic `terminus` metadata without changing these gameplay results. The harness is unchanged.
+Full runs, hashes and acceptance outputs: `jr-east-capital-region-s0b-results.json`.
+Final product data/config remeasurement remains an S5 gate; no geometry/device acceptance is claimed.
+
+---
+
 ## 9. Implementation plan
 
 Integration branch `feature/jr-east-capital-region` off `develop`; step PRs into it; `.github/workflows/ci.yml`
@@ -465,7 +514,7 @@ Every step keeps all three CI jobs green (frontend, pipeline, Playwright); data-
 | **S3a** Registry, area, routing preparation | prefecture/municipality, homonym selectors, configured bboxes, multi-line `route`, station-number rules, boundary truncation evidence, detour exceptions; v3 output byte-identical | S2 | `scripts/data_pipeline/{config,registry,overrides,build,n02,routing,network,constraints,rules,validate}.py`, overrides, `tests/data_pipeline/**` (pipeline owner) | failing fixtures: homonym mis-match, out-of-area gap bridged, skipped served stop, reversed/prefix-switched numbers, multi-line mis-route | **High** → Opus + Codex review |
 | **S3b** Composition, validation, budgets | `compose` DAG, multi-owner legs, anchors, flattening, chain lengths, two-way reachability, **per-dataset expected catalog** (23-ward dataset gets its own), raw/gzip/reference reports, simplification knob; estimate effort from remaining route/compose recipes, including through-service shared legs and multi-N02 routing | S3a | pipeline recipe/build/export/validate (+ optional `composition.py`), `data/overrides/dataset.json` + 23-ward expected catalog, synthetic fixtures (same owner) | reject: forward/reverse multi-owner errors, cycles, wrong-track sharing, platform gap joints, back-and-forth, wrong last station, disconnection, catalog mismatch; build order ≠ output order asserted; 23-ward output unchanged | **High** → Opus + Codex review |
 | **S4** Map/UI scaling (fixture-driven) | §6 layers, highlight timing, legend, cameras, labels, lottery text, clear-screen paging; dedicated fixture bundle with a multi-owner composed rapid (both directions) and a branch | S2 (S3b if the fixture is generated) | `src/features/map/**`, `animation/{movePath,timeline,displayedProgress}.ts`, `presentation.ts`, `GamePanel.tsx`, `ClearScreen.tsx`, `GameApp.tsx`, CSS, `tests/e2e/{fixtures,specs,support}` | highlight = ridden then landing; composed hop = one step; skip/reduced motion/reload; desktop/phone overview vs panel; all three browsers; candidate display/expansion uses full final-catalog lists at every transfer station (refresh fixtures after catalog freeze); fixture seeds proven | **Medium-High** → Sonnet (UI) + Opus (animation/fixtures), Codex review |
-| **S0b** Catalog approval + product-id mapping | input = revised research **v2**, `jr-east-capital-region-catalog-v2.csv` + `jr-east-capital-region-services-v2.csv` (666 rows / 40 services / 472 stations; hash in §8.4); output = approved product-id-mapped catalog via S0, preserving order, stops and endpoint kinds; v1 stays historical | S0, resolved Q3–Q9; S1M (real-engine MC re-run) | `.claude/docs/research/` product-id-mapped approved-catalog CSV (lead + researcher) | research input **user-approved 2026-10-13**; S0 freezes the ID map, but generating the product-id-mapped catalog and S1M real-engine confirmation remain required | Low-Medium → lead / researcher |
+| **S0b — IMPLEMENTED (2026-10-13), pending lead verification** Catalog approval + product-id mapping | approved research **v2** via frozen S0 map; 666 rows / 40 services / 472 stations; order/stops/endpoints preserved; product kinds 36 local / 4 rapid; v1 stays historical | S0, resolved Q3–Q9; S1M (real-engine MC re-run) | `.claude/docs/research/jr-east-capital-region-product-{catalog,services}.csv`, `jr-east-capital-region-s0b-results.json`; sim generator/verifier | §8.6 hashes; all three verifiers pass; 5 shipped services / 67 station IDs kept; two-way reachability 472; required 2k decided 62/151/262, zero caps; extra 20k matches S1M exactly; lead verification pending | Low-Medium → lead / researcher |
 | **S6P** Regional staging | Tokyo/Kanagawa/Saitama/Chiba overrides prepared and routed in staging (a cross-prefecture service has one owner); per-segment visual review; early hub/branch/chain, §6 raw/gzip budget and map zoom/overview measurements; estimate work from the remaining recipe inventory | S3a (compose rows: S3b), S0b | staging inputs with stage catalogs only — **never live overrides or `public/data`** | validator green per staging bundle against its stage catalog; evidence for every stop, boundary and shared track | **High** → Sonnet tables, Opus routing review |
 | **S6** Final data (one commit) | approved-catalog overrides + regenerated `public/data`; rules still all-equal; `dataset.json` names the approved catalog | S3b, S4, S6P | `data/overrides/**`, `public/data/*`, `tests/data_pipeline/{test_overrides,test_validate,test_build}.py`, `tests/unit/real-data.test.ts`, `tests/e2e/real-data.spec.ts`; `gameConfig.ts` only if D7's `jr-yamanote`/count map changes (not expected) | coverage = approved catalog; two-way reachability; byte-identical rebuild; exact counts/order; fixed-seed playthrough + restore (cap reported as failure); phone parse/build/render; 300/1,000-turn save/restore timing; §6 raw/gzip budgets and desktop/phone zoom/overview gates on the full dataset | **High** → Opus integration, Sonnet mechanical |
 | **S5** Rules flip and texts | re-run S1M on final data; apply resolved Q1(c)/Q2(a)/Q5(a) to `MVP_GAME_CONFIG` (`jr-east-capital-1`), title/subtitle, rules texts, fixture seed proofs | S1M, S6, Q1, Q2, Q5, Q10 | `gameConfig.ts`, `TitleScreen.tsx`, `GamePanel.tsx`, `ClearScreen.tsx`, `index.html`, seeds/proofs/specs, real-data tests | final-config seed proofs use complete final-catalog candidate lists at every transfer station, not only max k; real-data completion + restore; config-mismatch discard; final real-engine MC numbers recorded | **Medium** (decided config flip; goal unchanged) → Sonnet |
@@ -507,8 +556,8 @@ shared identities. S0 does not produce the S0b product catalog or complete S1M.
 
 Sequence: S1 → S1M → S2; S1M is complete and S2 is next (shared `types/network.ts`, `engine/network.ts`).
 After S2, S3a/S3b (one pipeline owner) and S4 can run in parallel. S1M consumed the research catalog independently of S0b. S0b
-completes research-input approval, product-id mapping and real-engine confirmation before S6P starts
-after S3a and S0b. Q1–Q11 are resolved and the research catalog is approved; product-catalog output and implementation gates remain.
+product-id mapping and real-engine confirmation are implemented (§8.6), pending lead verification before S6P starts
+after S3a and S0b. Q1–Q11 are resolved and the research catalog is approved; S0b lead verification and remaining implementation gates remain.
 
 S3b/S6P effort must be estimated from an inventory of the remaining recipes: classify the 627 service
 pairs into direct routes, multi-N02 routes and shared-leg compositions, with owner/shared-track evidence.
@@ -583,7 +632,7 @@ measured in §8.1–§8.3; they are not the approved rules. Revised catalog v2 m
 | Q11 — PR #4 / branch sequence | **Already released to production; no PR #4 action** | Branch from `develop`; feature → develop → master. Production deployment still requires explicit approval. |
 
 **Research-input approval:** revised catalog v2 was user-approved on 2026-10-13. S1M real-engine confirmation
-is complete (§8.5); S0b still requires the product-id-mapped catalog output. Production approval stays separate.
+is complete (§8.5); S0b product-id-mapped output is implemented (§8.6), pending lead verification. Production approval stays separate.
 **New Q1–Q11 choices:** none from the corrected v1 → v2 service classification. The rule is unambiguous for all 60
 v1 services, no excluded service uniquely served any station, and the only removed stations are the three
 explicitly excluded by Q6. Technical acceptance items (N02 routing, payload/device measurements and S1M

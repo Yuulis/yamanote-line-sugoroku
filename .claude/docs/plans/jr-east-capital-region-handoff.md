@@ -12,8 +12,9 @@ into `develop`; that happens via an integration PR after S7, and production need
 | S1 engine rule seams, save v3 | merged | #7 | typecheck, Vitest 504, build; Codex review NEEDS_REVISION → fixed |
 | S1M real-engine Monte Carlo | merged | #8 | Vitest 513, `npm run sim` smoke; decided 61/148/258 matches replica |
 | S2 v3 data contract (23-ward data) | merged | #9 | `verify.sh` (pytest 156), validate, raw-N02 rebuild byte-identical, Vitest 536, build, E2E 60/60 (pre-fix), CI green; Codex review NEEDS_REVISION → fixed |
+| S0b product-id catalog | implemented; pending lead verification | — | three catalog/id verifiers pass; required 2k decided 62/151/262, zero caps; additional 20k matches all S1M statistics |
 
-**Next:** S3a (pipeline) — S4 (UI/animation) and S0b (product catalog) may run in parallel.
+**Next:** S3a (pipeline) — S4 (UI/animation) may run in parallel; S0b (product catalog) awaits lead verification.
 Briefs: section "Next step briefs" at the end of this file; scope/tests per design §9.
 
 How to work each step (user instruction: update this handoff after every step):
@@ -219,7 +220,7 @@ Adopt Q1(c) only at S5: Yamanote share 1/2, other services uniform, direction to
 Goal unchanged; weekday patterns; through junctions shown as service boundaries; subtitle 「JR東日本 1都3県版」.
 
 Prior v1 review APPROVE is historical; the former v2 NEEDS_REVISION selection issue was corrected before
-user approval. S1M confirms the approved research input; S0b product-catalog generation, N02 recipe/routing evidence,
+user approval. S1M confirms the approved research input; S0b lead verification, N02 recipe/routing evidence,
 payload/device/zoom budgets and full-catalog UI/seed checks remain. N02 lacks the Ikebukuro–Akabane freight
 link and has a Joban junction gap; regional data preparation must address those. Release flow remains
 feature → develop → master; production deployment requires explicit approval.
@@ -351,7 +352,7 @@ not an ID, route or all-equal trajectory migration. Regional data has not been s
 
 ## Next step briefs
 
-S2 is merged; next = **S3a**; **S4** and **S0b** can run in parallel:
+S2 is merged; next = **S3a**; **S4** can run in parallel; **S0b** awaits lead verification:
 
 - **S3a (pipeline owner):** registry prefecture/municipality, homonym selectors, configured bboxes,
   multi-line route recipes, number/prefix rules, boundary truncation and reviewed detour evidence.
@@ -362,7 +363,68 @@ S2 is merged; next = **S3a**; **S4** and **S0b** can run in parallel:
   ridden/landing highlight timing, one step per composed hop, grouped legend, cameras/labels,
   lottery expansion and clear-history paging. Verify skip/reduced motion/reload, desktop/phone
   overview versus panel, all three browsers, full catalog candidate display and proven seeds.
-- **S0b (catalog owner):** map approved research v2 (666 rows / 40 services / 472 stations)
-  through frozen S0 product IDs, preserving service/stop order and endpoint kinds; record the
-  product-catalog hash and S1M real-engine confirmation. Keep research classifications separate
-  from the two-kind product contract; no live data expansion before the regional staging/final gates.
+- **S0b (catalog owner):** implemented on `feature/jrcr-s0b`, pending lead verification; see the
+  S0b section below. Approved v2 is mapped through frozen S0 IDs with service/stop order and endpoints
+  preserved. Product hashes and real-engine confirmation are recorded; product kinds are `local | rapid`.
+  No live data expansion before the regional staging/final gates.
+
+## S0b: product-id catalog — implemented, pending lead verification (2026-10-13)
+
+Branch: `feature/jrcr-s0b`; no commit, push or branch change. Approved research v2 and the frozen S0
+crosswalk are unchanged. Outputs under `.claude/docs/research/`:
+
+- `jr-east-capital-region-product-catalog.csv`: **666 stop rows / 472 stations / 40 services**.
+- `jr-east-capital-region-product-services.csv`: **40 services**, **36 local / 4 rapid**.
+- `jr-east-capital-region-s0b-results.json`: input/product hashes, commands, full real-engine summaries,
+  exact S1M comparison and all three verifier outputs.
+
+| Artifact | SHA-256 (UTF-8 / LF bytes) |
+|---|---|
+| Product catalog | `3deb465895e55d381abd8b75adaddbc08ce7f242bb46b40ff88ea8c9c757a438` |
+| Product services | `76d86cc98a312769151ca7cf9537b24822af21afe1a9113e827a2495d4fc3256` |
+| Frozen S0 crosswalk (unchanged) | `ca6a7c7c957ab153f787d78a040dc5d57fa044d59da758064a632789ab96885f` |
+
+CSV schemas are documented in design §8.6. Catalog `endpoint_kind` is empty for interior/circular
+stops and populated at each linear end. Research `through-split` maps to product `service-boundary`;
+`terminus` / `area-boundary` stay unchanged. Service metadata contains both endpoint kinds,
+research ID, circular flag and stop count. Rapid IDs: `chuo_rapid`, `sobu_rapid`, `joban_rapid`,
+`shonan_shinjuku_rapid_takasaki`. All service/stop ordering and all 5 shipped service / 67 station
+IDs are preserved. Directed gameplay reachability from/to `shimbashi` covers all **472 stations**,
+with **1,224 directed segments** (Yamanote +1 only). Endpoints: 36 terminus, 10 area boundaries,
+32 service boundaries. All CSV bytes use LF.
+
+Scripts under `.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/`:
+`build_product_catalog.py` (deterministic generator), `verify_product_catalog.py` (independent oracle).
+Existing `verify_id_map.py` received only the S2 `services` envelope extraction fix; all original
+identity, ordered-corridor and N02 checks remain. This directory is gitignored: the lead must
+force-add new scripts and desired raw run summaries when committing.
+
+Checks (all exit 0):
+
+```bash
+python3 .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/build_product_catalog.py
+python3 .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/verify_product_catalog.py
+python3 .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/verify_id_map.py
+python3 .claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/verify_catalog_v2.py
+SIM_PRESET=decided SIM_GAMES=2000 SIM_SEED=20261012 SIM_CAP=20000 \
+  SIM_OUTPUT=.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/s0b-decided-2000.json npm run sim
+SIM_PRESET=decided SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 \
+  SIM_OUTPUT=.claude/logs/agent-teams/feature-jr-east-capital-region-expansion/sim/s0b-decided-20000.json npm run sim
+```
+
+`node_modules` was absent; `npm ci` succeeded (73 packages, zero vulnerabilities). The required
+2,000 games use unchanged research input and the independent S1M seed prefix `0..1999`:
+**median 62 / p90 151 / p99 262**, mean **75.93450**, max **481**, >500 **0**, caps **0**,
+played turns **151,869**, runtime **4.60 s**. Both sim runs pass (one file / one test each).
+
+Historical S1M has aggregate 20,000-game statistics, without per-game or prefix results; a direct
+historical 2,000-game prefix comparison is unavailable. The additional **20,000-game** rerun verifies
+the same full seed-set hash and **exact equality of every historical decided statistic**:
+**61 / 148 / 258**, mean **73.85715**, max **481**, >500 **0**, caps **0**, played turns
+**1,477,143**, runtime **45.40 s**. S2 now narrows weights to `local | rapid` and maps through-split
+to `service-boundary`; these metadata changes leave the measured gameplay unchanged. The harness
+was not edited. Smaller-prefix quantiles need not match full-sample quantiles.
+
+Negative verifier checks reject changed station ID/order/endpoint/kind/name and CRLF bytes.
+Lead verification is pending. S5 still requires real-engine measurement on final product data/config;
+geometry, device performance and save/restore are outside this confirmation.

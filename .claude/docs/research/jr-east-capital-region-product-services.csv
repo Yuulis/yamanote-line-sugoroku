@@ -1,0 +1,41 @@
+service_id,research_id,name_ja,kind,circular,first_end_kind,last_end_kind,stop_count
+jr-yamanote,yamanote,山手線,local,true,,,30
+jr-keihin-tohoku,keihin_tohoku_negishi,京浜東北線・根岸線,local,false,terminus,terminus,47
+jr-chuo-sobu-local,chuo_sobu_local,中央・総武線各駅停車,local,false,terminus,terminus,39
+jr-chuo-rapid,chuo_rapid,中央線快速,rapid,false,terminus,service-boundary,24
+jr-chuo-takao-fujino,chuo_takao_fujino,中央本線 高尾–藤野,local,false,service-boundary,area-boundary,3
+jr-ome,ome,青梅線,local,false,terminus,terminus,25
+jr-itsukaichi,itsukaichi,五日市線,local,false,service-boundary,terminus,7
+jr-hachiko,hachiko,八高線,local,false,terminus,area-boundary,20
+jr-kawagoe-west,kawagoe_west,川越線 川越–高麗川,local,false,service-boundary,service-boundary,6
+jr-saikyo,saikyo_kawagoe,埼京線・川越線,local,false,terminus,terminus,24
+jr-sotetsu-direct,sotetsu_direct,相鉄線直通 (JR区間),local,false,service-boundary,service-boundary,7
+jr-keiyo,keiyo,京葉線,local,false,terminus,terminus,18
+jr-musashino,musashino,武蔵野線,local,false,terminus,service-boundary,26
+jr-musashino-takaya,musashino_takaya,武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線),local,false,service-boundary,service-boundary,2
+jr-musashino-futamata,musashino_futamata,武蔵野線直通 西船橋–南船橋 (京葉線二俣支線),local,false,service-boundary,service-boundary,2
+jr-nambu,nambu,南武線,local,false,terminus,terminus,26
+jr-nambu-branch,nambu_branch,南武線 浜川崎支線,local,false,terminus,terminus,5
+jr-tsurumi,tsurumi,鶴見線,local,false,terminus,terminus,10
+jr-tsurumi-umishibaura,tsurumi_umishibaura,鶴見線 海芝浦支線,local,false,service-boundary,terminus,3
+jr-tsurumi-okawa,tsurumi_okawa,鶴見線 大川支線,local,false,service-boundary,terminus,2
+jr-yokohama,yokohama,横浜線,local,false,service-boundary,terminus,20
+jr-sagami,sagami,相模線,local,false,terminus,terminus,18
+jr-tokaido,tokaido,東海道線,local,false,service-boundary,area-boundary,20
+jr-yokosuka,yokosuka,横須賀線,local,false,service-boundary,terminus,19
+jr-sobu-rapid,sobu_rapid,総武快速線,rapid,false,service-boundary,service-boundary,10
+jr-utsunomiya,utsunomiya,宇都宮線 (上野東京ライン),local,false,service-boundary,area-boundary,15
+jr-takasaki,takasaki,高崎線 (上野東京ライン),local,false,service-boundary,area-boundary,22
+jr-shonan-shinjuku-local,shonan_shinjuku_local,湘南新宿ライン (宇都宮線・横須賀線系統 普通),local,false,area-boundary,terminus,27
+jr-shonan-shinjuku-rapid-takasaki,shonan_shinjuku_rapid_takasaki,湘南新宿ライン 快速 (高崎線・東海道線系統),rapid,false,area-boundary,terminus,36
+jr-joban-rapid,joban_rapid,常磐線快速 (上野東京ライン),rapid,false,service-boundary,area-boundary,12
+jr-joban-local,joban_local,常磐線各駅停車,local,false,service-boundary,area-boundary,13
+jr-narita-abiko,narita_abiko,成田線 我孫子支線,local,false,service-boundary,terminus,10
+jr-narita,narita,成田線 (佐倉–松岸),local,false,service-boundary,service-boundary,16
+jr-narita-airport-branch,narita_airport_branch,成田線 空港支線,local,false,service-boundary,terminus,3
+jr-kashima,kashima,鹿島線 (香取–十二橋),local,false,service-boundary,area-boundary,2
+jr-sobu-main,sobu_main,総武本線 (千葉–銚子),local,false,service-boundary,terminus,22
+jr-sotobo,sotobo,外房線,local,false,terminus,service-boundary,27
+jr-uchibo,uchibo,内房線,local,false,terminus,service-boundary,32
+jr-kururi,kururi,久留里線,local,false,terminus,terminus,11
+jr-togane,togane,東金線,local,false,service-boundary,terminus,5
