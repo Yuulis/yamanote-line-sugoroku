@@ -2,8 +2,8 @@
 
 ## Current status (2026-10-13) — resume here
 
-**S0, S1, S1M, S2, S0b, S3a, S4 and S3b are merged** into the integration branch
-`feature/jr-east-capital-region` (head after this update; S3b merge `cc87509`; based on `develop`). Nothing is uncommitted.
+**S0, S1, S1M, S2, S0b, S3a, S4, S3b and the S6P Tokyo stage are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; S6P Tokyo merge `76ae638`; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
 and production needs explicit user approval. Shipped data is still the 23-ward edition (v3 contract),
 rules still all-equal.
@@ -18,9 +18,11 @@ rules still all-equal.
 | S4 map/UI scaling (fixture-driven) | merged | #11 | Vitest 551, build, E2E 78/78 (75/75 twice before polish); Codex review APPROVE, polish applied |
 | S3a registry/area/routing prep | merged | #12 | `verify.sh` (pytest 198), validate, rebuild byte-identical; Codex review NEEDS_REVISION → fixed, 41/41 guard-removal checks; CI green after merging S4 |
 | S3b composition/validation/budgets | merged | #13 | `verify.sh` (pytest 259), validate, raw-N02 rebuild byte-identical, Vitest 551; Codex review NEEDS_REVISION (routed-chain bypass, generator reachability) → fixed, 33/33 guard removals; CI green |
+| S6P stage 1: Tokyo (Claude-led) | merged (partial: 21/23 services, 137/142 stations) | #14 | lead: staged build + validate OK, oracle hash + oracle-vs-product-catalog check, live rebuild byte-identical, pytest 262; CI green |
 
-**Next:** **S6P** (regional staging: prefecture-by-prefecture overrides from the product catalog in a
-staging area, never live data; route-only rows first, then compose rows). Then S6 → S5 → S7.
+**Next:** user decisions D1–D6 in section "S6P stage 1 — Tokyo" (below), then the next S6P stages
+(Kanagawa, Saitama, Chiba — each staged like Tokyo; cross-prefecture services keep one owner, and the
+Tokyo-excluded enclaves 成瀬/町田, 綾瀬–金町, 高尾–藤野 are picked up there). Then S6 → S5 → S7.
 Codex was near its rate limit at the end of this session: if Codex is unavailable, Claude subagents
 (`general-purpose-opus` for pipeline/routing judgment, `general-purpose-sonnet` for mechanical tables)
 can take a step with the same contract, gates and review (use a read-only Codex or Opus review).
@@ -843,3 +845,41 @@ was not edited. Smaller-prefix quantiles need not match full-sample quantiles.
 Negative verifier checks reject changed station ID/order/endpoint/kind/name and CRLF bytes.
 Lead verification is pending. S5 still requires real-engine measurement on final product data/config;
 geometry, device performance and save/restore are outside this confirmation.
+
+## S6P stage 1 — Tokyo (merged via PR #14, `76ae638`, 2026-10-14)
+
+Done Claude-led (`general-purpose-opus`; Codex read-only review NEEDS_REVISION → both items relabelled).
+Staging: `data/staging/jr-east-capital-region/tokyo/overrides/**`; evidence and per-segment metrics:
+`.claude/docs/research/jr-east-capital-region-s6p-tokyo.md`; test `tests/data_pipeline/test_staging_tokyo.py`;
+generators/logs (local, ignored): `.claude/logs/jrcr-s6p-tokyo/`.
+
+Result: 21 of 23 Tokyo-touching services, 137 of 142 Tokyo stations build from raw N02 and validate
+(two-way reachability 137/137, oracle SHA-256 `747a78c9b238329306eaf259c610a8d89d8231eb7bb1bca6abd1b30cbe7f2363`).
+Measurements: 198 +1 pairs = 177 single-line route / 4 route+via / 2 multi-N02 / 15 compose; 183 primitives;
+366 references, max chain 1; max compose depth 2; five files 215,611 B raw / 33,853 B gzip (~7 %/4 % of caps);
+1/3/5 m GeoJSON 105,451 / 84,829 / 77,100 B; warm build ~2.8 s (i5-1335U, WSL2). No shared flattening cache needed.
+Not staged: 中央本線 高尾–藤野 (only 高尾 in Tokyo), 常磐線各停 綾瀬–金町 (connects via 松戸), 横浜線 成瀬/町田 enclave.
+
+Open decisions (recommendation first; awaiting the user):
+- **D1 常磐線快速 品川–上野**: N02 東北線 track to 東京 and the 上野 常磐線 tracks are 17 m apart with no shared
+  vertex. (a) pipeline feature: reviewed per-pair section filter / platform choice at one stop (fixes G2) —
+  recommended; (b) synthetic 17 m connector (invents geometry, policy change); (c) drop the service (drops
+  三河島/南千住/北千住). Staging keeps an INCOMPLETE 上野–北千住 fragment meanwhile.
+- **D2 湘南新宿 赤羽–池袋**: N02 lacks the 駒込–田端信号場 freight curve. (a) accept the marked surrogate
+  (東北線→山手線 via a vertex near 田端, 10.47 km vs real 11.3 km, detour exception 2.1) — recommended;
+  (b) 赤羽線 route (5.5 km, wrong physical track); (c) leave open.
+- **D3** Enclaves 成瀬/町田, 綾瀬–金町, 高尾–藤野: defer to the Kanagawa/Chiba stages — recommended.
+- **D4** Duplicate 山手貨物線 geometry 池袋–新宿 (~4.8 km) because of gap G1: accept for staging, fix G1 before S6.
+- **D5** Line metadata: one line per service in staging; legend grouping lines decided at S6.
+- **D6** Staging-only endpoints: joban-rapid 上野 `service-boundary` (fragment), yokohama 相原 `area-boundary`
+  (橋本 excluded neighbour).
+
+Pipeline gaps (not patched in S6P; fix in a small pipeline step before S6):
+- **G1** `composition_build.py:composed_pairs` keeps the owner's platform line; `routing.py:_pair_paths` then
+  rejects an adjacent multi-line route's endpoint line; anchors also differ by 0.48 m.
+- **G2** `build.py:route_service` allows one section filter per (service, N02 line) and `routing.route_path`
+  picks one platform per stop, so a stop whose two neighbouring pairs need different disconnected parts of the
+  same N02 line (上野) cannot be expressed.
+
+Not done for Tokyo: browser visual review of segments, device performance, map zoom, save/restore (S6 gates).
+
