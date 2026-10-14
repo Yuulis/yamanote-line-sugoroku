@@ -12,7 +12,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -97,20 +97,24 @@ def group_candidates(
     registry: Registry,
     candidates: Sequence[PlatformCandidate],
     lines_per_stop: Sequence[set[str]],
-    inherited: Mapping[int, PlatformCandidate] | None = None,
+    inherited: Mapping[int, Sequence[PlatformCandidate]] | None = None,
+    open_stops: Collection[int] = (),
 ) -> list[list[PlatformCandidate]]:
     """Candidates per stop: name, line and selector match, deduplicated.
 
     Homonym guard: the platforms of one stop must share one N02 group code
     unless the stop's platform selector pins a group or station code.
+    ``inherited`` stops use their exact composed anchors only, unless they are
+    ``open_stops`` (a transfer stop with one free side), which add N02 options.
     """
     stations = registry.by_id()
     grouped: list[list[PlatformCandidate]] = []
     for index, (stop, lines) in enumerate(
         zip(service.stops, lines_per_stop, strict=True)
     ):
-        if inherited and index in inherited:
-            grouped.append([inherited[index]])
+        fixed = list(inherited.get(index, ())) if inherited else []
+        if fixed and index not in open_stops:
+            grouped.append(fixed)
             continue
         station = stations[stop.station_id]
         seen: set[tuple[str, float, float]] = set()
@@ -145,8 +149,21 @@ def group_candidates(
                 f"ambiguous N02 platforms for {station.name} ({service.id}): groups "
                 f"{sorted(groups)}; add a registry n02_selector or stops.csv platform_selector"
             )
-        grouped.append(options)
+        grouped.append([*fixed, *options])
     return grouped
+
+
+def distinct_anchors(
+    *anchors: PlatformCandidate | None,
+) -> tuple[PlatformCandidate, ...]:
+    """Inherited anchors of one stop, one per exact point, in side order."""
+    result: list[PlatformCandidate] = []
+    for anchor in anchors:
+        if anchor is not None and all(
+            anchor.midpoint.coords[0] != kept.midpoint.coords[0] for kept in result
+        ):
+            result.append(anchor)
+    return tuple(result)
 
 
 def filtered_network(
@@ -179,7 +196,20 @@ def route_service(
 ) -> ServiceBuild:
     """Choose platforms and trace every +1 stop pair of one service."""
     composed = composed_pairs(service, overrides, builds or {}) if overrides else {}
-    inherited = inherited_candidates(composed, len(service.stops))
+    transfers = {
+        index: limit
+        for index, station_id in enumerate(service.station_ids)
+        if overrides
+        and (limit := overrides.transfer_limit(service.id, station_id)) is not None
+    }
+    arrivals, departures = inherited_candidates(composed, len(service.stops), transfers)
+    inherited = {
+        stop: distinct_anchors(arrivals.get(stop), departures.get(stop))
+        for stop in set(arrivals) | set(departures)
+    }
+    open_stops = {
+        stop for stop in transfers if stop not in arrivals or stop not in departures
+    }
     ranges = service.segment_ranges()
     segment_lines = tuple(" -> ".join(item.route_lines) for item in ranges)
     all_lines = {line for item in ranges for line in item.route_lines}
@@ -189,7 +219,12 @@ def route_service(
         all_lines,
     )
     grouped = group_candidates(
-        service, registry, candidates, stop_lines(ranges, service.circular), inherited
+        service,
+        registry,
+        candidates,
+        stop_lines(ranges, service.circular),
+        inherited,
+        open_stops,
     )
     sections = source.track_sections(
         all_lines,
@@ -231,9 +266,13 @@ def route_service(
                 line_order=item.route.lines if item.route else (),
             )
         )
-    route = route_loop if service.circular else route_path
-    routed = route(grouped, routes)
-    check_inherited_route_anchors(routed.paths, inherited, len(service.stops))
+    if service.circular:
+        routed = route_loop(grouped, routes)
+    else:
+        routed = route_path(grouped, routes, transfers=transfers)
+    check_inherited_route_anchors(
+        routed.paths, arrivals, departures, len(service.stops)
+    )
     return ServiceBuild(service=service, segment_lines=segment_lines, routed=routed)
 
 
@@ -257,11 +296,18 @@ def route_network(source: N02Source, overrides: Overrides) -> dict[str, ServiceB
             rules.check_skipped_stops(
                 f"{service.id}/{a}~{b}", path.geometry, (a, b), points, report
             )
+            # At a reviewed transfer the departing pair's straight line starts at
+            # its own track point, exactly as the artifact validator sees it.
+            start = (
+                Point(path.geometry.coords[0])
+                if overrides.transfer_limit(service.id, a) is not None
+                else item.routed.departure(index).midpoint
+            )
             rules.check_detour(
                 f"{service.id}/{a}~{b}",
                 path.geometry,
-                points[a],
-                points[b],
+                start,
+                item.routed.arrival(index + 1).midpoint,
                 overrides.detour_limit(service.id, a, b),
                 report,
             )
@@ -352,7 +398,7 @@ def describe(result: BuildResult) -> str:
             "i  from -> to  | n02 line | track m | snap m (from/to) | platform (line/code)"
         )
         for i, path in enumerate(item.routed.paths):
-            chosen = item.routed.chosen[i]
+            chosen = item.routed.departure(i)
             rows.append(
                 f"{i:2d} {ids[i]} -> {ids[(i + 1) % count]} | "
                 f"{item.segment_lines[i]} | {path.length:7.1f} | "

@@ -26,7 +26,10 @@ from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config, rules
 from scripts.data_pipeline.budgets import BUDGET_PROFILES, budget_errors, size_report
-from scripts.data_pipeline.composition_validate import check_composed_artifacts
+from scripts.data_pipeline.composition_validate import (
+    check_composed_artifacts,
+    check_platform_transfers,
+)
 from scripts.data_pipeline.constraints import BBox
 from scripts.data_pipeline.export import (
     GAME_DATA_FILES,
@@ -435,14 +438,30 @@ def check_geometry(
         start, end = platforms.get((service_id, a)), platforms.get((service_id, b))
         if line is None or start is None or end is None:
             continue
-        gap = max(
-            Point(line.coords[0]).distance(start), Point(line.coords[-1]).distance(end)
+        gaps = (
+            Point(line.coords[0]).distance(start),
+            Point(line.coords[-1]).distance(end),
         )
-        max_endpoint = max(max_endpoint, gap)
-        if gap > config.ENDPOINT_MAX_DISTANCE_M:
-            report.errors.append(f"{label} endpoint {gap:.1f} m from service platform")
+        max_endpoint = max(max_endpoint, *gaps)
+        # A reviewed transfer publishes the arrival platform (the end of the
+        # +1 pair into the stop); only the departing +1 pair may start at
+        # another platform of that stop, and its detour starts on its track.
+        transfer = overrides.transfer_limit(service_id, a)
+        allowances = (config.ENDPOINT_MAX_DISTANCE_M + (transfer or 0.0),) + (
+            config.ENDPOINT_MAX_DISTANCE_M,
+        )
+        for gap, allowance in zip(gaps, allowances, strict=True):
+            if gap > allowance:
+                report.errors.append(
+                    f"{label} endpoint {gap:.1f} m from service platform"
+                )
         detour = rules.check_detour(
-            label, line, start, end, overrides.detour_limit(service_id, a, b), report
+            label,
+            line,
+            start if transfer is None else Point(line.coords[0]),
+            end,
+            overrides.detour_limit(service_id, a, b),
+            report,
         )
         max_detour = max(max_detour, detour)
         lengths[service_id] += line.length
@@ -554,6 +573,9 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         )
         check_composed_artifacts(
             dataset.segments, dataset.geojson["features"], overrides, platforms, report
+        )
+        check_platform_transfers(
+            dataset.segments, dataset.geojson["features"], overrides, report
         )
         for service in services:
             rules.check_service_length(

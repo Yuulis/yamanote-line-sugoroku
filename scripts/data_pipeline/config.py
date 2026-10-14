@@ -23,6 +23,7 @@ LINE_MAPPING_OVERRIDE_FILE = "line_mapping.csv"
 SECTION_CONSTRAINTS_OVERRIDE_FILE = "sections.csv"  # optional, per service
 OFFSET_EXCEPTIONS_OVERRIDE_FILE = "offset_exceptions.csv"
 DETOUR_EXCEPTIONS_OVERRIDE_FILE = "detour_exceptions.csv"  # optional
+PLATFORM_TRANSFERS_OVERRIDE_FILE = "platform_transfers.csv"  # optional
 SCOPE_OVERRIDE_FILE = "scope.csv"
 
 STATIONS_FILE = "stations.json"
@@ -49,6 +50,11 @@ NODE_SNAP_DECIMALS = 2  # node identity tolerance: 1 cm in metric CRS
 SIMPLIFY_TOLERANCE_M = 1.0  # Douglas-Peucker tolerance for segment geometry
 MAX_COMPOSE_PRIMITIVES = 4_096  # expansion safety cap, before recipe anchor checks
 COORDINATE_DECIMALS = 6  # ~0.1 m at Tokyo latitude
+# Largest metric distance error between two points each rounded to
+# COORDINATE_DECIMALS (0.5e-6 degree per axis is <= 0.056 m north, 0.046 m east
+# at the regional latitudes; twice the diagonal, rounded up). Used only where a
+# reviewed limit is re-checked on published coordinates, never for joints.
+COORDINATE_ROUNDING_M = 0.15
 SECTION_KEY_DECIMALS = 5  # N02 source coordinates carry 5 decimals
 # A platform or via point farther than this from the track it is routed on is
 # not on that track: such a pair is rejected before the routing DP runs.
@@ -69,6 +75,9 @@ MAX_DETOUR_RATIO = 1.8  # 品川->大崎 is ~1.6 in reality (curved track)
 # Default limit for a service's platform point -> the station's representative
 # point; larger offsets (東京 京葉線 ~450 m) need a reviewed exception row.
 DEFAULT_MAX_PLATFORM_OFFSET_M = 250.0
+# Upper bound for a reviewed platform transfer: a service arriving on one N02
+# platform feature of a stop and departing from another feature of that stop.
+MAX_PLATFORM_TRANSFER_M = 250.0
 MAX_GEOJSON_BYTES = 300_000
 
 MANIFEST_SOURCE = {

@@ -173,6 +173,7 @@ def check_consistency(overrides: Overrides) -> None:
 
     check_recipes(overrides)
     check_offset_exception_references(overrides)
+    check_platform_transfer_references(overrides)
     for service in services:
         ends = service.definition.endpoints
         check_scope(
@@ -225,4 +226,29 @@ def check_offset_exception_references(overrides: Overrides) -> None:
             raise OverrideError(
                 f"offset exception: {exception.service_id} does not stop at "
                 f"{exception.station_id!r}"
+            )
+
+
+def check_platform_transfer_references(overrides: Overrides) -> None:
+    """Transfers name an interior stop of a linear service, once each."""
+    seen: set[tuple[str, str]] = set()
+    for transfer in overrides.platform_transfers:
+        key = (transfer.service_id, transfer.station_id)
+        if key in seen:
+            raise OverrideError(f"duplicate platform transfer {key}")
+        seen.add(key)
+        try:
+            service = overrides.service(transfer.service_id)
+        except KeyError:
+            raise OverrideError(
+                f"platform transfer for unknown service {transfer.service_id!r}"
+            ) from None
+        if service.circular:
+            raise OverrideError(
+                f"platform transfer on circular service {service.id} is not supported"
+            )
+        if transfer.station_id not in service.station_ids[1:-1]:
+            raise OverrideError(
+                f"platform transfer needs an interior stop of {service.id}: "
+                f"{transfer.station_id!r}"
             )

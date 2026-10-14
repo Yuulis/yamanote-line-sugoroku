@@ -70,6 +70,7 @@ diff -r /tmp/jrcr-s2-first /tmp/jrcr-s2-second
 | `services/<id>/sections.csv` | Optional reviewed track-section allow/deny constraints |
 | `offset_exceptions.csv` | Reviewed large platform offsets, currently Tokyo on Keiyo |
 | `detour_exceptions.csv` | Optional reviewed per-forward-pair detour limits with reasons (currently empty) |
+| `platform_transfers.csv` | Optional reviewed stops where a service departs from another N02 platform feature (currently absent) |
 
 The five services are Yamanote, Keihin-Tohoku (Akabane–Kamata), Chuo-Sobu local
 (Nishi-Ogikubo–Koiwa), Saikyo (Osaki–Ukima-Funado), and Keiyo
@@ -243,6 +244,41 @@ its own reviewed oracle; S6 needs the complete approved product catalogue.
 Do not regenerate the oracle as part of a build to hide a coverage difference.
 Every station must be reachable from the start and back over actual directed
 segments, regardless of `reviewedDisconnectedServiceIds`.
+
+### Platform transfers and inherited anchor lines
+
+`platform_transfers.csv` (optional, next to `offset_exceptions.csv`) has
+`service_id,station_id,max_transfer_m,reason`. A row names an interior stop of
+a linear service whose arriving and departing +1 pairs need different N02
+platform features of the same station, for example two disconnected components
+of one N02 line. Routing then chooses the arrival and the departure platform
+independently, adds the straight transfer distance to the route cost and
+rejects pairs farther apart than `max_transfer_m` (finite, at most 250 m). No
+track is invented: each pair still starts and ends on its own platform. A row
+whose chosen platforms coincide is stale and fails the build, as do rows for
+unknown services, circular services, endpoints or duplicates.
+
+`platformCoordinates` publish the arrival platform in +1 order. Only the
+departing side of the canonical +1 pair out of that stop is relaxed: a routed
+primitive may start up to 30 m + `max_transfer_m` from the published point and
+a composed anchor up to `max_transfer_m` + 0.15 m (`COORDINATE_ROUNDING_M`,
+the rounding of two published points). The arriving side keeps the usual 30 m
+(routed) or exact (composed) rule, and the departing pair's detour is measured
+from its own track point. A row whose +1 chains into and out of the stop join
+exactly is reported as unused. Composition across a transfer stop of the owner is
+still rejected, because the two owner primitives do not join exactly.
+
+Composed anchors at a transfer stop are inherited per side: the arriving hop's
+anchor binds the arrival, the departing hop's anchor the departure. If only one
+side is composed, the other side may use any N02 platform of the stop. A
+consumer that composes hops on both sides needs its own reviewed transfer row.
+
+An inherited anchor is a point on the owner's primitive, so it carries the N02
+line that primitive starts or ends on, not the line of the owner's chosen
+platform. This lets a composed hop sit next to a multi-line `route` whose first
+or last line is that primitive line (for example a 東北線→山手線 route into a
+山手線 primitive whose owner chose its 赤羽線 platform). The routed neighbour must
+still meet the anchor exactly; no tolerance is added.
 
 `dataset.json` selects `budgetProfile` (`23ku` by default or `capital-region`)
 and can override individual positive integer caps in `budgets`:

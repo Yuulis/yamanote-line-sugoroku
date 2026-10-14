@@ -52,6 +52,7 @@ SECTION_COLUMNS = ("n02_line", "action", "section_key", "reason")
 OFFSET_COLUMNS = ("service_id", "station_id", "max_platform_offset_m", "reason")
 SCOPE_COLUMNS = ("station_id", "prefecture", "municipality")
 DETOUR_COLUMNS = ("service_id", "from_id", "to_id", "max_detour_ratio", "reason")
+TRANSFER_COLUMNS = ("service_id", "station_id", "max_transfer_m", "reason")
 
 
 def is_iso_date(value: object) -> TypeGuard[str]:
