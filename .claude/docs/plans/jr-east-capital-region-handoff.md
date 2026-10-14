@@ -20,9 +20,9 @@ rules still all-equal.
 | S3b composition/validation/budgets | merged | #13 | `verify.sh` (pytest 259), validate, raw-N02 rebuild byte-identical, Vitest 551; Codex review NEEDS_REVISION (routed-chain bypass, generator reachability) → fixed, 33/33 guard removals; CI green |
 | S6P stage 1: Tokyo (Claude-led) | merged (partial: 21/23 services, 137/142 stations) | #14 | lead: staged build + validate OK, oracle hash + oracle-vs-product-catalog check, live rebuild byte-identical, pytest 262; CI green |
 
-**Next:** user decisions D1–D6 in section "S6P stage 1 — Tokyo" (below), then the next S6P stages
-(Kanagawa, Saitama, Chiba — each staged like Tokyo; cross-prefecture services keep one owner, and the
-Tokyo-excluded enclaves 成瀬/町田, 綾瀬–金町, 高尾–藤野 are picked up there). Then S6 → S5 → S7.
+**Next (in progress 2026-10-14):** step 1 = pipeline fixes G1 + G2 (`feature/jrcr-pipeline-g1g2`), step 2 =
+Tokyo staging follow-up: extend 常磐線快速 to 品川 using G2, replace the duplicate 池袋–新宿 geometry with
+composition using G1, keep the D2 surrogate. Then the remaining S6P stages (Kanagawa, Saitama, Chiba). Then S6 → S5 → S7.
 Codex was near its rate limit at the end of this session: if Codex is unavailable, Claude subagents
 (`general-purpose-opus` for pipeline/routing judgment, `general-purpose-sonnet` for mechanical tables)
 can take a step with the same contract, gates and review (use a read-only Codex or Opus review).
@@ -860,7 +860,7 @@ Measurements: 198 +1 pairs = 177 single-line route / 4 route+via / 2 multi-N02 /
 1/3/5 m GeoJSON 105,451 / 84,829 / 77,100 B; warm build ~2.8 s (i5-1335U, WSL2). No shared flattening cache needed.
 Not staged: 中央本線 高尾–藤野 (only 高尾 in Tokyo), 常磐線各停 綾瀬–金町 (connects via 松戸), 横浜線 成瀬/町田 enclave.
 
-Open decisions (recommendation first; awaiting the user):
+Decisions (user 2026-10-14: **all recommendations accepted** — D1(a), D2(a), D3–D6 as recommended; recorded in DESIGN.md Key Decisions):
 - **D1 常磐線快速 品川–上野**: N02 東北線 track to 東京 and the 上野 常磐線 tracks are 17 m apart with no shared
   vertex. (a) pipeline feature: reviewed per-pair section filter / platform choice at one stop (fixes G2) —
   recommended; (b) synthetic 17 m connector (invents geometry, policy change); (c) drop the service (drops
