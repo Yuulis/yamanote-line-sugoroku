@@ -2,8 +2,8 @@
 
 ## Current status (2026-10-13) — resume here
 
-**S0, S1, S1M, S2, S0b, S3a, S4, S3b and the S6P Tokyo stage are merged** into the integration branch
-`feature/jr-east-capital-region` (head after this update; S6P Tokyo merge `76ae638`; based on `develop`). Nothing is uncommitted.
+**S0, S1, S1M, S2, S0b, S3a, S4, S3b, the S6P Tokyo stage and pipeline G1/G2 are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; last merge PR #16; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
 and production needs explicit user approval. Shipped data is still the 23-ward edition (v3 contract),
 rules still all-equal.
@@ -19,10 +19,13 @@ rules still all-equal.
 | S3a registry/area/routing prep | merged | #12 | `verify.sh` (pytest 198), validate, rebuild byte-identical; Codex review NEEDS_REVISION → fixed, 41/41 guard-removal checks; CI green after merging S4 |
 | S3b composition/validation/budgets | merged | #13 | `verify.sh` (pytest 259), validate, raw-N02 rebuild byte-identical, Vitest 551; Codex review NEEDS_REVISION (routed-chain bypass, generator reachability) → fixed, 33/33 guard removals; CI green |
 | S6P stage 1: Tokyo (Claude-led) | merged (partial: 21/23 services, 137/142 stations) | #14 | lead: staged build + validate OK, oracle hash + oracle-vs-product-catalog check, live rebuild byte-identical, pytest 262; CI green |
+| Pipeline G1/G2 (platform transfers, inherited anchor lines) | merged | #15 | `verify.sh` (pytest 306), live + Tokyo staging byte-identical before/after, raw-N02 proof; Codex review 4+1 findings fixed; 27/27 guard removals; CI green |
+| S6P Tokyo follow-up: full 常磐線快速 (G2), composed 池袋–新宿 (G1) | merged | #16 | staged build + validate OK, oracle `25bc9e50…` re-checked vs product catalog, live identical, pytest 306; CI green |
 
-**Next (in progress 2026-10-14):** step 1 = pipeline fixes G1 + G2 (`feature/jrcr-pipeline-g1g2`), step 2 =
-Tokyo staging follow-up: extend 常磐線快速 to 品川 using G2, replace the duplicate 池袋–新宿 geometry with
-composition using G1, keep the D2 surrogate. Then the remaining S6P stages (Kanagawa, Saitama, Chiba). Then S6 → S5 → S7.
+**Next:** the remaining S6P stages — **Kanagawa**, **Saitama**, **Chiba** — each staged like Tokyo under
+`data/staging/jr-east-capital-region/<stage>/overrides/` (cross-prefecture services keep one owner; pick up the
+Tokyo-deferred enclaves 成瀬/町田 and 高尾–藤野 in Kanagawa, 綾瀬/亀有/金町 in Chiba). Then S6 → S5 → S7.
+Optional later refinement: compose 常磐線快速 品川–上野 from 東海道線/宇都宮線 (needs a 64.3 m transfer at 東京).
 Codex was near its rate limit at the end of this session: if Codex is unavailable, Claude subagents
 (`general-purpose-opus` for pipeline/routing judgment, `general-purpose-sonnet` for mechanical tables)
 can take a step with the same contract, gates and review (use a read-only Codex or Opus review).
@@ -882,4 +885,17 @@ Pipeline gaps (not patched in S6P; fix in a small pipeline step before S6):
   same N02 line (上野) cannot be expressed.
 
 Not done for Tokyo: browser visual review of segments, device performance, map zoom, save/restore (S6 gates).
+
+### Tokyo follow-up (2026-10-14): G1/G2 and D1/D2/D4 resolved
+
+- PR #15 (pipeline): `platform_transfers.csv` (`service_id,station_id,max_transfer_m,reason`) lets a reviewed stop
+  arrive and depart on disconnected parts of one N02 line (limit (0, 250] m); published platform = arrival side
+  in +1 order; validator bounds only the departing side and flags unused rows. Composed anchors inherit the
+  owner primitive's N02 line (G1). Evidence: `.claude/docs/research/jr-east-capital-region-pipeline-g1g2.md`.
+- PR #16 (staging): 常磐線快速 is the full 品川–北千住 run (上野 transfer 131 m); 湘南新宿 池袋→新宿 composes
+  from 埼京線 (duplicate primitive removed); D2 surrogate unchanged. Stage now: 21 services, 137/142 stations,
+  201 +1 pairs (16 compose), 185 primitives, five files 218,480 B raw / 34,078 B gzip, build ~2.4 s,
+  oracle `25bc9e50ef0bb67494b0c24c7b81610acdcb62d1374707cfcc50f81565d8d224`.
+- Lead decision: recipe 3 (compose 品川–上野) not adopted — it would add a second 64.3 m jump at 東京.
+- Known limitation: the runner jumps the transfer distance at a transfer stop (131 m at 上野); browser review at S6.
 
