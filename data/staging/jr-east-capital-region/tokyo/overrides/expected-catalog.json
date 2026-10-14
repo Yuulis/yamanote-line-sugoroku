@@ -316,6 +316,9 @@
     {
       "id": "jr-joban-rapid",
       "stationIds": [
+        "shinagawa",
+        "shimbashi",
+        "tokyo",
         "ueno",
         "nippori",
         "mikawashima",
