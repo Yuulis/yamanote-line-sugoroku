@@ -850,17 +850,17 @@
       "circular": false,
       "directionLabels": {
         "forward": "北千住方面",
-        "backward": "上野方面"
+        "backward": "品川方面"
       },
       "endpoints": {
         "first": "service-boundary",
         "last": "area-boundary"
       },
-      "expectedStopCount": 5,
+      "expectedStopCount": 8,
       "lengthRef": {
-        "km": 7.4,
+        "km": 17.8,
         "toleranceKm": 1.5,
-        "source": "営業キロ 上野–日暮里 2.2 + 日暮里–北千住 5.2 km (常磐線快速 駅一覧); Wikipedia 駅一覧 (accessed 2026-10-14)"
+        "source": "営業キロ 品川–東京 6.8 + 東京–上野 3.6 + 上野–日暮里 2.2 + 日暮里–北千住 5.2 km; Wikipedia 駅一覧 (accessed 2026-10-14)"
       },
       "kind": "rapid",
       "lineIds": [
@@ -868,15 +868,18 @@
       ],
       "stationNumberRules": {
         "sequence": [
+          "",
+          "",
+          "",
           "JJ01",
           "JJ02",
           "JJ03",
           "JJ04",
           "JJ05"
         ],
-        "reason": "JR East station numbering of the staged Tokyo stops; secondary order evidence (Wikipedia 駅一覧 (accessed 2026-10-14))."
+        "reason": "常磐線快速 numbers JJ01 上野–JJ05 北千住 (常磐線快速 駅一覧); the 上野東京ライン section 品川–東京 carries JT/JU numbers of other lines and is left unnumbered."
       },
-      "scopeSource": "S6P Tokyo stage: 東京都 stops of the frozen product catalog .claude/docs/research/jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis) with the first excluded neighbour at each area boundary. INCOMPLETE staging fragment 上野–北千住, not the product scope: the product service starts at 品川 (品川–新橋–東京–上野 omitted) and 上野 is an interior stop; its service-boundary kind here is a staging artifact. N02 東北線 has no link between the 上野東京ライン tracks reaching 東京 and the 上野 tracks that connect to 常磐線 (components 17 m apart); lead decision pending."
+      "scopeSource": "S6P Tokyo stage: 東京都 stops of the frozen product catalog .claude/docs/research/jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis) with the first excluded neighbour at each area boundary. 上野 uses the reviewed platform transfer in platform_transfers.csv (N02 東北線 components 17 m apart)."
     }
   ]
 }

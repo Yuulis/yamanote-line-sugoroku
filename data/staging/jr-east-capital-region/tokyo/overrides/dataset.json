@@ -45,7 +45,7 @@
     37.0
   ],
   "expectedCatalogFile": "expected-catalog.json",
-  "expectedCatalogSha256": "747a78c9b238329306eaf259c610a8d89d8231eb7bb1bca6abd1b30cbe7f2363",
+  "expectedCatalogSha256": "25bc9e50ef0bb67494b0c24c7b81610acdcb62d1374707cfcc50f81565d8d224",
   "budgetProfile": "capital-region",
   "simplifyToleranceM": 1
 }

@@ -1,23 +1,32 @@
 # S6P Tokyo stage — JR East 1都3県 regional staging evidence (2026-10-14)
 
-Status: **partial-but-validated**. The Tokyo stage builds from raw N02 and validates with
-**21 of the 23 Tokyo-touching product services and 137 of the 142 Tokyo stations**.
-One staged service (`jr-joban-rapid`) is an explicitly **incomplete fragment** because of an N02
-topology gap. Lead decisions are listed in section 9. Nothing under `data/overrides`, `public/data`,
-`src`, `scripts` was changed.
+Status: **validated**. The Tokyo stage builds from raw N02 and validates with **21 of the 23
+Tokyo-touching product services, all with their complete Tokyo stop lists, and 137 of the 142 Tokyo stations**.
+The 5 stations not staged are 成瀬, 町田, 綾瀬, 亀有 and 金町 (§1, D3).
 
-Branch `feature/jrcr-s6p-tokyo`, uncommitted. Reviewed inputs:
+Update 2026-10-14 (branch `feature/jrcr-s6p-tokyo-g1g2`, after pipeline PR #15 `111ff95`): decisions D1, D2 and D4
+are applied (§8).
+- `jr-joban-rapid` is now the full product run 品川–北千住, using a reviewed platform transfer at 上野
+  (`platform_transfers.csv`).
+- shonan-shinjuku-local composes 池袋→新宿 from saikyo.
+- The 赤羽–池袋 surrogate stays.
+
+Nothing under `data/overrides`, `public/data`, `src` or `scripts` was changed by the stage.
+
+First stage: branch `feature/jrcr-s6p-tokyo` (merged as PR #14). Reviewed inputs:
 `data/staging/jr-east-capital-region/tokyo/overrides/**`. Generated outputs: `/tmp/jrcr-s6p-tokyo/`,
 `/tmp/jrcr-s6p-tokyo-simplification.json` (ephemeral). Generators and logs (gitignored, kept for the lead):
 `.claude/logs/jrcr-s6p-tokyo/{gen_oracle,gen_stage,probe,pairdebug,measure,evidence}.py`,
-`build-final.log`, `validate-final.log`, `measure-final.log`, `probe-final.log`, `hubs.log`,
+`build-g1g2.log`, `validate-g1g2.log`, `measure-g1g2.log`, `probe-g1g2.log`, `hubs-g1g2.log` (current)
+and the first-stage `*-final.log`,
 `codex-review.json` (review: `.claude/logs/codex/20261014T010729Z-s6p-tokyo-review*.md`).
 
 ## 1. Stage contents and curation rules
 
 The oracle (`expected-catalog.json`) is written by `gen_oracle.py` from the frozen product catalog only
 (never from build output), then pinned in `dataset.json` (`expectedCatalogSha256`
-`747a78c9b238329306eaf259c610a8d89d8231eb7bb1bca6abd1b30cbe7f2363`). Rules:
+`25bc9e50ef0bb67494b0c24c7b81610acdcb62d1374707cfcc50f81565d8d224`; the first stage, with the joban fragment, was
+`747a78c9…2363`). Rules:
 
 1. Product services in product order with at least two 東京都 stops; only 東京都 stops, product order.
 2. `jr-chuo-takao-fujino` excluded: only 高尾 is in 東京都 (a service needs two stops). 高尾 stays via 中央線快速.
@@ -26,13 +35,14 @@ The oracle (`expected-catalog.json`) is written by `gen_oracle.py` from the froz
 4. `jr-yokohama`: Tokyo stops are not contiguous (成瀬–町田 | 古淵…橋本 in 神奈川県 | 相原–八王子).
    Staged run = 相原–八王子 (contains the 八王子 transfer). 成瀬/町田 deferred to the Kanagawa stage.
    The scope evidence starts at the excluded neighbour 橋本; no out-of-area gap is bridged.
-5. `jr-joban-rapid`: **incomplete fragment 上野–北千住** (product: 品川–新橋–東京–上野–日暮里–…).
-   See section 5.2. 上野's `service-boundary` kind is a staging artifact, not product scope.
+5. `jr-joban-rapid`: full product Tokyo run 品川–新橋–東京–上野–日暮里–三河島–南千住–北千住 (8 stops).
+   上野 is routed with a reviewed platform transfer (§5.2). The earlier 上野–北千住 fragment and its
+   artificial 上野 endpoint are gone.
 
 Services (output order = product order): yamanote 30, keihin-tohoku 22, chuo-sobu-local 26 (三鷹–小岩),
 chuo-rapid 24, ome 25, itsukaichi 7, hachiko 6, saikyo 10, sotetsu-direct 5, keiyo 6, musashino 5,
 nambu 10, yokohama 4, tokaido 3, yokosuka 4, sobu-rapid 5, utsunomiya 4, takasaki 4,
-shonan-shinjuku-local 7, shonan-shinjuku-rapid-takasaki 6, joban-rapid 5 (fragment).
+shonan-shinjuku-local 7, shonan-shinjuku-rapid-takasaki 6, joban-rapid 8.
 
 Copied unchanged from live `data/overrides`: yamanote, keihin-tohoku, saikyo, keiyo (definition, stops,
 scope, line mapping) and the 67 registry rows. Chuo-Sobu local is the live service extended to 三鷹
@@ -49,24 +59,26 @@ sotetsu-direct 新宿 service-boundary / 西大井→武蔵小杉; musashino 府
 nambu 稲田堤→矢野口 / 立川 terminus; yokohama 橋本→相原 / 八王子 terminus; tokaido 東京 service-boundary /
 品川→川崎; yokosuka 東京 service-boundary / 西大井→武蔵小杉; sobu-rapid 東京 service-boundary / 新小岩→市川;
 utsunomiya and takasaki 東京 service-boundary / 赤羽→浦和; shonan-shinjuku-local 浦和→赤羽 / 西大井→武蔵小杉;
-shonan-shinjuku-rapid-takasaki 浦和→赤羽 / 大崎→武蔵小杉; joban-rapid 上野 (artifact) / 北千住→松戸.
+shonan-shinjuku-rapid-takasaki 浦和→赤羽 / 大崎→武蔵小杉; joban-rapid 品川 service-boundary / 北千住→松戸.
 
 Length references (`lengthRef`, tolerance 1.5 km; Wikipedia station tables accessed 2026-10-14) and
 measured track length: chuo-sobu-local 33.8 / 34.21; chuo-rapid 53.1 / 53.05; ome 37.2 / 37.07;
 itsukaichi 11.1 / 11.07; hachiko 15.7 / 15.84; sotetsu-direct 10.8 / 11.06 (8.6 + 大崎支線 2.2);
 musashino 13.0 / 13.12; nambu 13.1 / 12.97; yokohama 6.9 / 6.67; tokaido 6.8 / 6.69; yokosuka 10.4 / 10.28;
 sobu-rapid 10.0 / 9.94; utsunomiya, takasaki 13.4 (尾久経由) / 13.28; shonan-shinjuku-local 26.9 / 26.30;
-shonan-shinjuku-rapid 24.7 / 23.72; joban-rapid fragment 7.4 / 7.12. 大崎–西大井 uses the physical
+shonan-shinjuku-rapid 24.7 / 23.72; joban-rapid 17.8 / 17.55 (品川–東京 6.8 + 東京–上野 3.6 + 上野–日暮里 2.2 +
+日暮里–北千住 5.2). 大崎–西大井 uses the physical
 大崎支線 distance 2.2 km (大崎–蛇窪 1.7 + 蛇窪–西大井 0.5, Wikipedia 蛇窪信号場), not the 5.6 km fare route.
 Station numbers are pinned (`stationNumberRules`) where single-prefix and sourced: JB, JC, JN17–26,
-JH29–32, JT01–03, JO19–16, JO19–23, JU01–04, JS22–16/17, JJ01–05; ome, itsukaichi, hachiko, musashino and
+JH29–32, JT01–03, JO19–16, JO19–23, JU01–04, JS22–16/17, and for joban-rapid an explicit sequence
+(three unnumbered 上野東京ライン stops, then JJ01–JJ05); ome, itsukaichi, hachiko, musashino and
 sotetsu-direct carry none (legacy empty rule).
 
-## 2. Commands and results
+## 2. Commands and results (current stage)
 
 | Check | Result |
 |---|---|
-| `/usr/bin/time -p uv run python -m scripts.data_pipeline.build --raw-dir N02-25_GML/UTF-8 --overrides-dir data/staging/jr-east-capital-region/tokyo/overrides --out-dir /tmp/jrcr-s6p-tokyo` | exit 0, real 2.80 s |
+| `/usr/bin/time -p uv run python -m scripts.data_pipeline.build --raw-dir N02-25_GML/UTF-8 --overrides-dir data/staging/jr-east-capital-region/tokyo/overrides --out-dir /tmp/jrcr-s6p-tokyo` | exit 0, real 2.56 s |
 | `uv run python -m scripts.data_pipeline.validate --overrides-dir … --data-dir /tmp/jrcr-s6p-tokyo` | `OK` (exit 0) |
 | `uv run python -m scripts.data_pipeline.simplification --raw-dir N02-25_GML/UTF-8 --overrides-dir … --out-file /tmp/jrcr-s6p-tokyo-simplification.json` | exit 0, no budget errors |
 | Second build into `/tmp/jrcr-s6p-tokyo-b`, `diff -r` | identical (deterministic) |
@@ -74,43 +86,46 @@ sotetsu-direct carry none (legacy empty rule).
 | Two-way reachability over built directed segments | 137/137 from 新橋 and 137/137 back |
 | Live rebuild `build --raw-dir N02-25_GML/UTF-8 --quiet --out-dir $(mktemp -d)` + `diff -r … public/data` | no differences |
 | `git diff --quiet HEAD -- public data/overrides src scripts` | exit 0 |
-| `uv run ruff check .` / `uv run ruff format --check .` | pass / 47 files formatted |
-| `uv run pytest` | 262 passed (259 + 3 new in `tests/data_pipeline/test_staging_tokyo.py`) |
+| `uv run ruff check .` / `uv run ruff format --check .` | pass / 51 files formatted |
+| `uv run pytest` | 306 passed (includes the raw-N02 G1/G2 proof and `test_staging_tokyo.py` unchanged) |
+| Generators reproduce the committed first stage before the edit | regenerated files identical to HEAD |
 
 ## 3. Measurements
 
 | Metric | Value |
 |---|---|
-| Canonical +1 pairs | 198 = 177 single-line route + 4 single-line route with via + 2 multi-N02 route + 15 compose |
+| Canonical +1 pairs | 201 = 179 single-line route + 4 single-line route with via + 2 multi-N02 route + 16 compose (first stage: 198 = 177 + 4 + 2 + 15) |
 | Multi-N02 routes | 湘南新宿 local 赤羽→池袋 (東北線→山手線), 大崎→西大井 (山手線→東海道線) |
-| Compose pairs | takasaki 3 ← utsunomiya; shonan-shinjuku-local 3 (新宿→大崎) ← saikyo; shonan-shinjuku-rapid 5 ← shonan-shinjuku-local; sotetsu-direct 4 ← shonan-shinjuku-local |
-| Owned primitives / unique owners | 183 primitives, 18 owner services of 21 (non-owners: takasaki, shonan-shinjuku-rapid, sotetsu-direct) |
-| Directed segments / references / max chain | 366 / 366 / 1 (each composed hop maps one owner primitive) |
+| Compose pairs | takasaki 3 ← utsunomiya; shonan-shinjuku-local 4 (池袋→新宿→渋谷→恵比寿→大崎) ← saikyo; shonan-shinjuku-rapid 5 ← shonan-shinjuku-local; sotetsu-direct 4 ← shonan-shinjuku-local |
+| Platform transfers | 1: joban-rapid at 上野, limit 150 m, chosen 131.0 m (arrival feature (-5170.8,-31796.5), departure (-5050.9,-31743.9), EPSG:6677) |
+| Owned primitives / unique owners | 185 primitives (first stage 183: +3 joban 品川–上野 pairs, −1 duplicate 山手貨物線 池袋–新宿), 18 owner services of 21 (non-owners: takasaki, shonan-shinjuku-rapid, sotetsu-direct) |
+| Directed segments / references / max chain | 372 / 372 / 1 (each composed hop maps one owner primitive) |
 | Max compose dependency depth | 2 (shonan-shinjuku-rapid → shonan-shinjuku-local → saikyo; sotetsu-direct → shonan-shinjuku-local → saikyo) |
-| Transfer stations (≥2 services) | 40; largest hubs 東京 9, 新宿 7, 赤羽 6, 大崎/恵比寿/渋谷/上野 5 |
-| Validator | max detour 1.964 (reviewed exception), max endpoint distance 24.5 m, max platform offset 386.0 m (東京 京葉, live exception), min same-service skipped-stop distance 653.3 m |
+| Transfer stations (≥2 services) | 40; largest hubs 東京 10, 新宿 7, 赤羽 6, 新橋/品川/大崎/恵比寿/渋谷/上野 5 |
+| Validator | max detour 1.964 (reviewed exception), max endpoint distance 130.956 m (the 上野 departure side, allowed 30 + 150 m; all other endpoints ≤ 24.5 m), max platform offset 386.0 m (東京 京葉, live exception), min same-service skipped-stop distance 653.3 m |
 
 Payload at the 1 m default (capital-region profile: GeoJSON 1,572,864 / 460,800 B; total 3,145,728 / 921,600 B):
 
 | File | Raw B | Gzip B |
 |---|---:|---:|
-| `segments.geojson` | 105,451 | 20,149 |
-| `segments.json` | 59,849 | 5,550 |
-| `services.json` | 33,879 | 4,648 |
+| `segments.geojson` | 107,159 | 20,301 |
+| `segments.json` | 60,731 | 5,608 |
+| `services.json` | 34,158 | 4,665 |
 | `stations.json` | 15,976 | 3,166 |
-| `manifest.json` | 456 | 340 |
-| **Five files** | **215,611** | **33,853** |
+| `manifest.json` | 456 | 338 |
+| **Five files** | **218,480** | **34,078** |
 
-Simplification (`/tmp/jrcr-s6p-tokyo-simplification.json`; 366 references, max chain 1 at every tolerance):
+Simplification (`/tmp/jrcr-s6p-tokyo-simplification.json`; 372 references, max chain 1 at every tolerance):
 
 | Tolerance | GeoJSON raw / gzip | Five-file raw / gzip | Coordinates | Max Hausdorff | Budget errors | = default output |
 |---|---:|---:|---:|---:|---|---|
-| 1 m | 105,451 / 20,149 | 215,611 / 33,853 | 2,785 | 0.999689 m | none | yes |
-| 3 m | 84,829 / 14,878 | 194,989 / 28,583 | 1,794 | 2.990683 m | none | no |
-| 5 m | 77,100 / 12,804 | 187,260 / 26,508 | 1,423 | 4.983988 m | none | no |
+| 1 m | 107,159 / 20,301 | 218,480 / 34,078 | 2,844 | 0.999689 m | none | yes |
+| 3 m | 86,114 / 14,982 | 197,435 / 28,760 | 1,833 | 2.990683 m | none | no |
+| 5 m | 78,169 / 12,883 | 189,490 / 26,661 | 1,452 | 4.983988 m | none | no |
 
-Build wall time (`/usr/bin/time -p`, whole command incl. `uv` start-up): warm 3.39 / 2.82 / 2.91 s (three consecutive runs)
-and 2.80 s (final run); "cold input" 2.34 / 2.52 s after evicting the two raw GeoJSON files from the page cache with
+Build wall time (`/usr/bin/time -p`, whole command incl. `uv` start-up), current stage: 2.56 s (first run),
+warm 2.48 / 2.33 / 2.37 s, and 2.40 s with "cold input". First stage: warm 3.39 / 2.82 / 2.91 / 2.80 s,
+"cold input" 2.34 / 2.52 s. "Cold input" means the two raw GeoJSON files were evicted from the page cache with
 `posix_fadvise(DONTNEED)` (Python/venv not evicted; true cold boot not measurable without root).
 Raw input 17,501,449 B (`N02-25_RailroadSection.geojson` 14,239,859 + `N02-25_Station.geojson` 3,261,590).
 Machine: 13th Gen Intel Core i5-1335U, 12 logical CPUs, 7 GiB RAM, WSL2 kernel 6.18.54.1, Python 3.13.16.
@@ -129,7 +144,7 @@ N02 lines with empty section filters (the owners have none), and the S3b check
 | Consumer pairs | Owner | Physical evidence | N02 evidence |
 |---|---|---|---|
 | takasaki 東京→上野→尾久→赤羽 | utsunomiya | 上野東京ライン / 東北本線列車線 via 尾久 carry both 宇都宮線 and 高崎線 trains (Wikipedia 上野東京ライン) | owner routes N02 東北線; 13.28 km vs 実キロ 13.4 |
-| shonan-shinjuku-local 新宿→渋谷→恵比寿→大崎 | saikyo | 山手貨物線 is one double track for 埼京線, 湘南新宿ライン, 相鉄直通 (Wikipedia 湘南新宿ライン) | owner (live saikyo) routes N02 山手線 |
+| shonan-shinjuku-local 池袋→新宿→渋谷→恵比寿→大崎 | saikyo | 山手貨物線 is one double track for 埼京線, 湘南新宿ライン, 相鉄直通 (Wikipedia 湘南新宿ライン) | owner (live saikyo) routes N02 山手線 |
 | shonan-shinjuku-rapid all 5 pairs | shonan-shinjuku-local (nested to saikyo for 3) | both 湘南新宿 systems use 東北貨物線–田端信号場–山手貨物線 | lines 東北線+山手線 (赤羽→池袋), 山手線 |
 | sotetsu-direct 新宿→…→大崎→西大井 | shonan-shinjuku-local (nested to saikyo for 3) | 相鉄・JR直通線 trains use 山手貨物線 and 大崎支線→品鶴線 like 湘南新宿 | lines 山手線; 山手線+東海道線 (大崎→西大井) |
 
@@ -139,19 +154,25 @@ Deliberately **not** composed (separate physical tracks even where N02 geometry 
   geometrically identical (Hausdorff 0.0 m on 三鷹–吉祥寺–西荻窪–荻窪–阿佐ケ谷–高円寺–中野). Separate owners kept.
 - 東海道線 vs 京浜東北/山手 東京–品川, 東海道線 vs 横須賀線, 宇都宮/高崎 vs 京浜東北 東京–上野–赤羽,
   総武快速 vs 総武緩行 錦糸町–新小岩, 京浜東北 vs 埼京 赤羽: all separate tracks, all route-only.
-- 湘南新宿 local 池袋→新宿 is physically 山手貨物線 shared with saikyo but is **routed by itself** (blocked
-  composition; see pipeline gap G1). Its primitive differs from saikyo's by 0.5 m Hausdorff.
+- joban-rapid 品川–新橋–東京 and 東京–上野 physically share the 上野東京ライン tracks with tokaido and utsunomiya,
+  but joban owns its own primitives there (lead decision: recipe 3 not adopted, see §8). Its 品川–東京 primitives
+  equal tokaido's surface geometry (Hausdorff 0.0 m). Its 東京–上野 primitive is 64.2 m Hausdorff from utsunomiya's,
+  because it uses a different 東京 platform feature.
 
 Exact anchors: the build's `composition_build.composed_pairs` / `inherited_candidates` /
-`check_inherited_route_anchors` and the validator's `check_composed_artifacts` passed for all 15 composed
-hops, including the two mixed route/compose stops of shonan-shinjuku-local (新宿: routed 池袋→新宿 meets
-saikyo's inherited anchor; 大崎: saikyo anchor meets the routed 大崎→西大井 multi-line route) and the cross-owner
+`check_inherited_route_anchors` and the validator's `check_composed_artifacts` passed for all 16 composed hops. This
+includes the two mixed route/compose stops of shonan-shinjuku-local:
+- 池袋: the routed 東北線→山手線 surrogate meets saikyo's inherited anchor exactly. This was enabled by G1: the anchor
+  now carries 山手線, the line of the primitive it sits on, not saikyo's 赤羽線 platform line.
+- 大崎: saikyo's anchor meets the routed 大崎→西大井 multi-line route.
+
+It also includes the cross-owner
 stop 大崎 for sotetsu-direct (saikyo-owned 恵比寿→大崎, shonan-owned 大崎→西大井). Composed consumers'
 platform coordinates equal the owners' primitive endpoints (e.g. 大崎 all five services at the same point).
 
 ## 5. N02 findings
 
-### 5.1 池袋–赤羽 (湘南新宿ライン): reviewed surrogate, gap still open
+### 5.1 池袋–赤羽 (湘南新宿ライン): reviewed surrogate kept (D2(a)), N02 gap still open
 
 N02 has no 駒込–田端信号場 freight curve. The staged route is `東北線 → 山手線` with joint
 `(139.7585, 35.74006)`, the N02 vertex ~300 m north-west of 田端 where the 山手線 (from 駒込) and 東北線
@@ -163,16 +184,25 @@ fare route via 赤羽線 5.5 km; the earlier research estimate "~9.5 km" is supe
 ratio 1.96 → reviewed exception 2.1 for both 湘南新宿 services (`detour_exceptions.csv`). Alternatives measured:
 赤羽線 5,498 m (ratio 1.03; wrong physical track, passes 十条/板橋); other merge vertices 11,032 / 11,510 m.
 
-### 5.2 上野: 上野東京ライン is disconnected from the 常磐線 tracks (joban-rapid)
+### 5.2 上野: 上野東京ライン is disconnected from the 常磐線 tracks (joban-rapid) — resolved by a platform transfer
 
-N02 東北線 near 上野 has two components: the one reaching 東京 (上野東京ライン; 上野 platform features
-(-5200.6,-31815.4)/(-5170.8,-31796.5) EPSG:6677) and the 上野 tracks that join 常磐線 at 日暮里 (features
-(-5159.4,-31867.1)/(-5050.9,-31743.9)). The components come within **17.0 m** of each other near
-(139.77962, 35.71797) without a shared vertex or crossing. Route DP evidence for 品川…北千住: 東京→上野 reaches only
-the first pair of 上野 features; from those, 上野→日暮里 reaches only the 日暮里 東北線 feature
-(-5642.7,-30255.3), which is 69.9 m from 常磐線 → `no connected path reaches S[5]`. Actual through trains use
-上野's elevated platforms (JR East station guide), so this is a source-geometry gap. The stage carries the
-routable fragment 上野–北千住 (4 pairs). 日暮里 itself is fine: the 常磐線 feature snaps 0.0 m to both lines.
+N02 東北線 near 上野 has two components (EPSG:6677 coordinates):
+- the component reaching 東京 (上野東京ライン), with 上野 platform features (-5200.6,-31815.4) and (-5170.8,-31796.5);
+- the 上野 tracks that join 常磐線 at 日暮里, with features (-5159.4,-31867.1) and (-5050.9,-31743.9).
+
+The two components come within **17.0 m** of each other near (139.77962, 35.71797), without a shared vertex or crossing.
+With one platform per stop the route failed with `no connected path reaches S[5]`. Actual through trains use
+上野's elevated platforms (JR East station guide), so this is a source-geometry gap. D1(a) chose a pipeline
+feature (PR #15), not a synthetic connector. `platform_transfers.csv` row:
+
+```csv
+jr-joban-rapid,ueno,150,"N02 東北線 at 上野: 上野東京ライン component and the component joining 常磐線 are disconnected (17 m); arrive on the former, depart from the latter"
+```
+
+The service now arrives at (-5170.8,-31796.5) and departs from (-5050.9,-31743.9), a 131.0 m transfer. No track is
+drawn between the two platforms; the published platform point is the arrival feature. The full run is 17.545 km
+against 17.8 km 営業キロ. 日暮里 itself is fine: the 常磐線 feature snaps 0.0 m to both lines.
+Visual consequence: the animation jumps 131 m at 上野.
 
 ### 5.3 Other recipe facts
 
@@ -194,11 +224,12 @@ routable fragment 上野–北千住 (4 pairs). 日暮里 itself is fine: the �
 
 | Hub | Services | Notes |
 |---|---:|---|
-| 東京 | 9 | 京葉 386 m (live exception); yokosuka/sobu-rapid tunnel point 145 m from the 山手 representative |
+| 東京 | 10 | 京葉 386 m (live exception); yokosuka/sobu-rapid tunnel point 145 m from the 山手 representative; joban-rapid on the 東北縦貫線 feature |
 | 新宿 | 7 | 山手貨物線 group (saikyo, 湘南 ×2, 相鉄) 184.9 m from the 山手 platform (unchanged live saikyo value) |
 | 赤羽 | 6 | 湘南 starts on 東北線 feature 003157; utsunomiya/takasaki share owner geometry |
 | 大崎 | 5 | single N02 feature; all five services at one exact point (cross-owner anchor) |
-| 上野 | 5 | joban-rapid fragment on the 地平 feature, 166 m from the 山手 representative |
+| 上野 | 5 | joban-rapid: platform transfer (arrives on the 上野東京ライン feature, departs from the 地平 feature 131.0 m away) |
+| 新橋 / 品川 | 5 each | joban-rapid joins on tokaido's surface alignment; yokosuka stays in the tunnel (品川 128.7 m) |
 | 立川 / 八王子 / 拝島 | 3 each | branch hubs (青梅/南武, 八高/横浜, 青梅/五日市/八高); offsets ≤ 139.1 m (横浜線 at 八王子) |
 
 All other platform offsets are ≤ 74.1 m. Branches: 五日市線 (拝島), 八高線 (八王子/拝島), 青梅線 (立川) and
@@ -208,7 +239,8 @@ and need no joint because each service stays on its own line.
 ## 7. Per-segment metrics (raw-build probe, one row per canonical +1 pair)
 
 Track length and snap offsets of the metric routed path; detour = path / straight platform distance;
-start platform = chosen N02 feature (line/station code). Composed rows show the inherited owner path.
+start platform = the departure N02 feature (line/station code). Composed rows show the inherited owner path; their
+start-platform line is the line of the owner primitive (G1), with the owner feature's code.
 
 | Service | Pair (+1) | Recipe | N02 line(s) | Track m | Snap m | Detour | Start platform |
 |---|---|---|---|---:|---|---:|---|
@@ -355,8 +387,8 @@ start platform = chosen N02 feature (line/station code). Composed rows show the 
 |  | jujo→akabane | route | 赤羽線 | 1943 | 0.0/0.0 | 1.01 | 赤羽線/003218 |
 |  | akabane→kita-akabane | route | 東北線 | 1811 | 0.0/0.0 | 1.06 | 東北線/003157 |
 |  | kita-akabane→ukima-funado | route | 東北線 | 1425 | 0.0/0.0 | 1.03 | 東北線/003130 |
-| shonan-shinjuku-local | akabane→ikebukuro | route (multi-N02) | 東北線→山手線 | 10472 | 0.0/0.0 | 1.96 | 東北線/003157 |
-|  | ikebukuro→shinjuku | route | 山手線 | 4765 | 0.0/0.0 | 1.02 | 山手線/003390 |
+| shonan-shinjuku-local | akabane→ikebukuro | route (multi-N02) | 東北線→山手線 | 10471 | 0.0/0.0 | 1.96 | 東北線/003157 |
+|  | ikebukuro→shinjuku | compose ← saikyo | (owner) | 4766 | 0.0/0.0 | 1.02 | 山手線/003391 |
 |  | shinjuku→shibuya | compose ← saikyo | (owner) | 3485 | 0.0/0.0 | 1.02 | 山手線/003701 |
 |  | shibuya→ebisu | compose ← saikyo | (owner) | 1490 | 0.0/0.0 | 1.01 | 山手線/003932 |
 |  | ebisu→osaki | compose ← saikyo | (owner) | 3504 | 0.0/0.0 | 1.03 | 山手線/003992 |
@@ -401,59 +433,52 @@ start platform = chosen N02 feature (line/station code). Composed rows show the 
 | takasaki | tokyo→ueno | compose ← utsunomiya | (owner) | 3693 | 0.0/0.0 | 1.01 | 東北線/003766 |
 |  | ueno→oku | compose ← utsunomiya | (owner) | 4689 | 0.0/0.0 | 1.11 | 東北線/003504 |
 |  | oku→akabane | compose ← utsunomiya | (owner) | 4896 | 0.0/0.0 | 1.08 | 東北線/003278 |
-| shonan-shinjuku-rapid-takasaki | akabane→ikebukuro | compose ← shonan-shinjuku-local | (owner) | 10472 | 0.0/0.0 | 1.96 | 東北線/003157 |
-|  | ikebukuro→shinjuku | compose ← shonan-shinjuku-local | (owner) | 4765 | 0.0/0.0 | 1.02 | 山手線/003390 |
+| shonan-shinjuku-rapid-takasaki | akabane→ikebukuro | compose ← shonan-shinjuku-local | (owner) | 10471 | 0.0/0.0 | 1.96 | 東北線/003157 |
+|  | ikebukuro→shinjuku | compose ← shonan-shinjuku-local | (owner) | 4766 | 0.0/0.0 | 1.02 | 山手線/003391 |
 |  | shinjuku→shibuya | compose ← shonan-shinjuku-local | (owner) | 3485 | 0.0/0.0 | 1.02 | 山手線/003701 |
 |  | shibuya→ebisu | compose ← shonan-shinjuku-local | (owner) | 1490 | 0.0/0.0 | 1.01 | 山手線/003932 |
 |  | ebisu→osaki | compose ← shonan-shinjuku-local | (owner) | 3504 | 0.0/0.0 | 1.03 | 山手線/003992 |
-| joban-rapid | ueno→nippori | route | 東北線 | 1919 | 0.0/0.0 | 1.16 | 東北線/003504 |
+| joban-rapid | shinagawa→shimbashi | route | 東海道線 | 4847 | 0.0/0.0 | 1.07 | 東海道線/004095 |
+|  | shimbashi→tokyo | route | 東海道線 | 1848 | 0.0/0.0 | 1.03 | 東海道線/003872 |
+|  | tokyo→ueno | route | 東北線 | 3728 | 0.0/0.0 | 1.01 | 東北線/003766 |
+|  | ueno→nippori | route (departs after platform transfer) | 東北線 | 1919 | 0.0/0.0 | 1.15 | 東北線/003504 |
 |  | nippori→mikawashima | route | 常磐線 | 1281 | 0.0/0.0 | 1.60 | 常磐線/003417 |
 |  | mikawashima→minami-senju | route | 常磐線 | 2284 | 0.0/0.0 | 1.11 | 常磐線/003359 |
 |  | minami-senju→kita-senju | route | 常磐線 | 1638 | 0.0/0.0 | 1.00 | 常磐線/003352 |
 
-## 8. Decisions needed from the lead
+## 8. Decisions (status 2026-10-14)
 
-1. **joban-rapid 品川–上野 (N02 上野 component gap, §5.2).** Options: (a) keep the incomplete fragment in
-   staging and resolve before S6 by a pipeline feature for a reviewed per-pair section filter / component
-   choice at one stop; (b) a reviewed synthetic connector (17 m) — invents geometry, so it needs an explicit
-   policy change; (c) exclude jr-joban-rapid from the Tokyo stage (drops 三河島/南千住/北千住). Recommendation:
-   (a); the fragment validates 4 of the 7 Tokyo pairs meanwhile.
-2. **湘南新宿 赤羽–池袋 (§5.1).** Options: (a) accept the merge-vertex surrogate (10.47 km, follows the real
-   corridors except the acute switchback) with detour exception 2.1; (b) 赤羽線 fare route (no exception, wrong
-   physical track through 十条/板橋); (c) leave unresolved until a reviewed connector policy exists.
-   Recommendation: (a) for staging, explicitly marked as surrogate; revisit with decision 1's policy.
-3. **Non-contiguous / unconnected Tokyo stops.** 成瀬–町田 (横浜線) and 綾瀬–亀有–金町 (常磐線各停) cannot be
-   reached inside a Tokyo-only stage; 高尾–藤野 has one Tokyo stop. Options: (a) defer to the Kanagawa / Chiba
-   stages (current); (b) a combined Tokyo+Kanagawa+Chiba stage. Recommendation: (a).
-4. **Duplicate 山手貨物線 owner 池袋–新宿** (湘南新宿 local routes its own copy; gap G1). Options: (a) accept
-   for staging; (b) pipeline change G1 then compose from saikyo. Recommendation: (a) now, (b) before S6 if
-   payload or highlight consistency matters (cost ≈ 4.8 km of duplicate geometry).
-5. **Line metadata.** Stage uses one line per service. Grouping (e.g. 宇都宮/高崎, 湘南新宿 ×2, 横須賀・総武快速)
-   is an S6 legend decision.
-6. **Detour exceptions** (only these two rows): approve 2.1 for both 湘南新宿 services' 赤羽→池袋, or choose 2(b).
-7. **Endpoint/scope artifacts to confirm:** joban-rapid 上野 `service-boundary` (fragment only); yokohama
-   相原 `area-boundary` with 橋本 as the excluded neighbour (fragment rule).
+User decisions are recorded in `.claude/docs/DESIGN.md` Key Decisions and in the handoff.
 
-## 9. Pipeline gaps found (not patched)
+| # | Topic | Decision | Status in this stage |
+|---|---|---|---|
+| D1 | joban-rapid 品川–上野 (N02 上野 gap) | (a) pipeline feature, no synthetic connector | **Resolved.** Platform transfer at 上野 (PR #15); full 8-stop run staged |
+| D2 | 湘南新宿 赤羽–池袋 | (a) keep the marked surrogate, detour exception 2.1 | **Resolved**, unchanged (§5.1) |
+| D3 | 成瀬–町田, 綾瀬–金町, 高尾–藤野 | defer to the Kanagawa / Chiba stages | Deferred; 137 of 142 Tokyo stations staged |
+| D4 | duplicate 山手貨物線 owner 池袋–新宿 | fix G1, compose from saikyo | **Resolved.** shonan-shinjuku-local 池袋→新宿 ← saikyo; primitive removed |
+| D5 | line metadata | one line per service in staging; S6 owns grouping | unchanged |
+| D6 | detour exceptions | the two 湘南新宿 rows at 2.1 | unchanged |
 
-- **G1 — composed anchor next to a multi-line route keeps the owner's platform line.**
-  `scripts/data_pipeline/composition_build.py:composed_pairs` returns the owner's `PlatformCandidate` with only
-  `midpoint` replaced, so its `n02_line` stays the owner's choice (saikyo chose its 赤羽線 feature at 池袋).
-  `scripts/data_pipeline/routing.py:_pair_paths` rejects a multi-line `route` whose first/last line differs from
-  the endpoint candidate's `n02_line` ("endpoint lines 東北線 -> 赤羽線 differ"). A consumer therefore cannot
-  compose 池袋→新宿 from saikyo next to its own 東北線→山手線 route. Even with the label fixed, the routed leg must
-  end exactly on the inherited anchor (`check_inherited_route_anchors`); the independently routed primitives
-  currently differ by 0.483 m and their chosen platform midpoints by 24.5 m (Codex measurement).
-- **G2 — one platform per stop and one section filter per (service, N02 line).**
-  `scripts/data_pipeline/build.py:route_service` builds one filtered network per line for the whole service
-  (`ServiceOverrides.section_filter(line)`), and `routing.route_path` chooses one candidate per stop. A stop
-  whose two adjacent pairs need different disconnected components of the same N02 line (上野: 上野東京ライン vs
-  常磐線 side) cannot be expressed. Missing capability: a reviewed per-pair section filter or per-pair platform
-  choice at a named stop (consecutive pairs may already end/start at different snap points, as at 御茶ノ水).
-- No other gap: routing, composition depth, budgets, oracle, reachability and simplification handled the stage.
+**Optional later refinement (recipe 3, not adopted).** Compose joban-rapid 品川→新橋→東京 from tokaido and 東京→上野
+from utsunomiya.
+- Requirement: a second platform transfer at 東京 (64.3 m between tokaido's surface anchor and utsunomiya's
+  東北縦貫線 anchor) in addition to 上野.
+- Measured on raw N02 (`.claude/logs/jrcr-pipeline-g1g2/scratch-ov2`): builds and validates OK; 201 pairs with 19 compose;
+  182 primitives (−3); 372 references, max chain 1; GeoJSON 104,708 B (−2,451 B); 137/137 two-way reachability.
+- Lead decision: not adopted, to avoid a second transfer and animation jump at 東京. joban-rapid keeps its own 品川–上野
+  geometry, physically the same tracks as tokaido and utsunomiya.
+
+## 9. Pipeline gaps (resolved by PR #15)
+
+- **G1 — composed anchor next to a multi-line route kept the owner's platform line.** Fixed in
+  `composition_build.composed_pairs`: the inherited anchor carries the N02 line of the owner primitive's start or end.
+  Anchors stay exact. The 0.48 m mismatch did not occur with inheritance.
+- **G2 — one platform per stop.** Fixed by the reviewed `platform_transfers.csv` (`routing.route_path`, per-side
+  inherited anchors, validator allowance on the departing side only, unused-row check).
+- Evidence and tests: `.claude/docs/research/jr-east-capital-region-pipeline-g1g2.md`.
 
 ## 10. Files
 
-- `data/staging/jr-east-capital-region/tokyo/overrides/{dataset.json,stations.csv,services.json,expected-catalog.json,offset_exceptions.csv,detour_exceptions.csv}`
+- `data/staging/jr-east-capital-region/tokyo/overrides/{dataset.json,stations.csv,services.json,expected-catalog.json,offset_exceptions.csv,detour_exceptions.csv,platform_transfers.csv}`
 - `data/staging/jr-east-capital-region/tokyo/overrides/services/<21 service ids>/{stops,scope,line_mapping}.csv`
 - `tests/data_pipeline/test_staging_tokyo.py` (load + pinned oracle, stop-list two-way reachability, edited-oracle rejection; no raw N02)
