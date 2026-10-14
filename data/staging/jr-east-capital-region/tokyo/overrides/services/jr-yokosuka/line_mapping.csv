@@ -1,0 +1,4 @@
+from_id,to_id,n02_line,via,route,compose
+tokyo,shimbashi,東海道線,139.764130 35.680140,,
+shimbashi,shinagawa,東海道線,139.750640 35.644960,,
+shinagawa,nishi-oi,東海道線,,,

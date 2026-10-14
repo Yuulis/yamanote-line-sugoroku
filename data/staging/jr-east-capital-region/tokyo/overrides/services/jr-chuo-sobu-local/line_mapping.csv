@@ -1,0 +1,3 @@
+from_id,to_id,n02_line,via,route,compose
+mitaka,ochanomizu,中央線,,,
+ochanomizu,koiwa,総武線,,,

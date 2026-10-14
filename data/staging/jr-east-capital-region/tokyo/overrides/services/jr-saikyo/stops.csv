@@ -1,0 +1,11 @@
+order,station_id,station_number,platform_selector
+0,osaki,JA08,
+1,ebisu,JA09,
+2,shibuya,JA10,
+3,shinjuku,JA11,
+4,ikebukuro,JA12,
+5,itabashi,JA13,
+6,jujo,JA14,
+7,akabane,JA15,
+8,kita-akabane,JA16,
+9,ukima-funado,JA17,
