@@ -13,6 +13,7 @@ from scripts.data_pipeline.constraints import (
     LonLat,
     OffsetException,
     PlatformSelector,
+    PlatformTransfer,
     RouteRecipe,
     SectionFilter,
 )
@@ -152,6 +153,7 @@ class Overrides:
     offset_exceptions: tuple[OffsetException, ...]
     lines: tuple[LineMetadata, ...]
     detour_exceptions: tuple[DetourException, ...] = ()
+    platform_transfers: tuple[PlatformTransfer, ...] = ()
 
     def service(self, service_id: str) -> ServiceOverrides:
         for service in self.services:
@@ -172,3 +174,10 @@ class Overrides:
             ):
                 return exception.max_detour_ratio
         return config.MAX_DETOUR_RATIO
+
+    def transfer_limit(self, service_id: str, station_id: str) -> float | None:
+        """Reviewed platform transfer limit at one stop of a service, if any."""
+        for transfer in self.platform_transfers:
+            if (transfer.service_id, transfer.station_id) == (service_id, station_id):
+                return transfer.max_transfer_m
+        return None

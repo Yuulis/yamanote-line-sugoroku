@@ -7,7 +7,7 @@ from typing import Any
 
 from shapely.geometry import LineString, Point
 
-from scripts.data_pipeline import rules
+from scripts.data_pipeline import config, rules
 from scripts.data_pipeline.composition import compose_chains, exact_chain_coordinates
 from scripts.data_pipeline.export import feature_id
 from scripts.data_pipeline.override_models import Overrides
@@ -79,11 +79,27 @@ def check_composed_artifacts(
             report.errors.append(f"{segment.get('id')}: {error}")
             continue
         # Inherited platforms equal output primitive anchors, not nearby platforms.
+        # A reviewed transfer publishes the arrival anchor; only the departing
+        # side of the canonical +1 pair may use another anchor of the stop.
         from scripts.data_pipeline.validate import to_metric
 
+        ends: dict[str, Point] = {}
         for station, coordinate in ((a, coordinates[0]), (b, coordinates[-1])):
             point = platforms.get((identifier, station))
-            if point is None or point.coords[0] != to_metric(coordinate):
+            anchor = Point(to_metric(coordinate))
+            transfer = (
+                overrides.transfer_limit(identifier, station)
+                if station == canonical[0]
+                else None
+            )
+            ends[station] = anchor if transfer is not None or point is None else point
+            if point is None or (
+                point.coords[0] != anchor.coords[0]
+                and (
+                    transfer is None
+                    or point.distance(anchor) > transfer + config.COORDINATE_ROUNDING_M
+                )
+            ):
                 report.errors.append(
                     f"{identifier}: compose platform is not exact primitive anchor at {station}"
                 )
@@ -96,13 +112,53 @@ def check_composed_artifacts(
         rules.check_skipped_stops(
             str(segment.get("id")), geometry, (a, b), service_points, report
         )
-        first, last = platforms.get((identifier, a)), platforms.get((identifier, b))
-        if first is not None and last is not None:
-            rules.check_detour(
-                str(segment.get("id")),
-                geometry,
-                first,
-                last,
-                overrides.detour_limit(identifier, *canonical),
-                report,
+        rules.check_detour(
+            str(segment.get("id")),
+            geometry,
+            ends[a],
+            ends[b],
+            overrides.detour_limit(identifier, *canonical),
+            report,
+        )
+
+
+def check_platform_transfers(
+    segments: Sequence[Mapping[str, Any]],
+    features: Sequence[Mapping[str, Any]],
+    overrides: Overrides,
+    report: rules.Report,
+) -> None:
+    """A reviewed transfer must be used: the +1 chains into and out of it differ."""
+    by_id = {
+        str(feature.get("id")): feature
+        for feature in features
+        if isinstance(feature.get("id"), str)
+    }
+    chains = {
+        str(segment.get("id")): segment.get("geometryFeatureIds")
+        for segment in segments
+    }
+    for transfer in overrides.platform_transfers:
+        service = overrides.service(transfer.service_id)
+        stops = service.station_ids
+        index = stops.index(transfer.station_id)
+        legs = []
+        for start, end in (
+            (stops[index - 1], stops[index]),
+            (stops[index], stops[index + 1]),
+        ):
+            chain = chains.get(f"{service.id}:{start}:{end}")
+            if (
+                not isinstance(chain, list)
+                or not chain
+                or not all(isinstance(item, str) and item for item in chain)
+            ):
+                break  # malformed chains are reported by the chain checks
+            try:
+                legs.append(exact_chain_coordinates(chain, by_id, start))
+            except (KeyError, OverrideError):
+                break  # reported by the chain and composition checks
+        if len(legs) == 2 and legs[0][-1] == legs[1][0]:
+            report.errors.append(
+                f"{service.id}: platform transfer at {transfer.station_id} is unused"
             )

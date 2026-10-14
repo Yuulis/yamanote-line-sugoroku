@@ -15,7 +15,7 @@ rejected before the DP (a platform that far from the track is not on it).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from shapely.geometry import Point
@@ -49,16 +49,30 @@ class PairRoute:
 
 @dataclass(frozen=True)
 class RoutedService:
-    chosen: tuple[PlatformCandidate, ...]  # one per stop, in stop order
+    # One platform per stop in stop order; at a reviewed platform transfer this
+    # is the arrival platform of the +1 order (the published platform point).
+    chosen: tuple[PlatformCandidate, ...]
     paths: tuple[TrackPath, ...]  # paths[i] runs stop i -> stop i+1 (+1 order)
     total_cost_mm: int
     circular: bool
+    departures: tuple[PlatformCandidate, ...] = ()  # per stop; () = same as chosen
+
+    def arrival(self, stop: int) -> PlatformCandidate:
+        """Platform where the +1 pair ending at ``stop`` arrives."""
+        return self.chosen[stop % len(self.chosen)]
+
+    def departure(self, stop: int) -> PlatformCandidate:
+        """Platform where the +1 pair starting at ``stop`` departs."""
+        platforms = self.departures or self.chosen
+        return platforms[stop % len(platforms)]
 
 
 COST_RESOLUTION_M = 0.001  # compare costs as integer millimetres
 MAX_REJECTION_REASONS = 3
 
-State = tuple[int, tuple[int, ...]]  # (cost, candidate index per stop so far)
+# (cost, (arrival, departure) candidate indexes per stop so far); both indexes
+# are equal except at a reviewed platform transfer.
+State = tuple[int, tuple[tuple[int, int], ...]]
 
 
 def segment_cost(path: TrackPath) -> int:
@@ -240,10 +254,34 @@ def _advance(
             path = pair_paths.get((a, b))
             if path is None:
                 continue
-            entry = (cost + segment_cost(path), (*choice, b))
+            entry = (cost + segment_cost(path), (*choice, (b, b)))
             if b not in next_states or entry < next_states[b]:
                 next_states[b] = entry
     return next_states
+
+
+def _transfer(
+    states: dict[int, State], options: Sequence[PlatformCandidate], limit_m: float
+) -> dict[int, State]:
+    """Re-key arrival states by departure platform at a reviewed transfer stop.
+
+    The departure may be another platform of the same stop within ``limit_m``;
+    the straight transfer distance is added to the cost, so the closest
+    connected pair wins and staying on the arrival platform costs nothing.
+    """
+    departures: dict[int, State] = {}
+    for arrival, (cost, choice) in sorted(states.items()):
+        for departure, platform in enumerate(options):
+            gap = options[arrival].midpoint.distance(platform.midpoint)
+            if gap > limit_m:
+                continue
+            entry = (
+                cost + round(gap / COST_RESOLUTION_M),
+                (*choice[:-1], (arrival, departure)),
+            )
+            if departure not in departures or entry < departures[departure]:
+                departures[departure] = entry
+    return departures
 
 
 def route_loop(
@@ -267,7 +305,7 @@ def route_loop(
 
     best: State | None = None
     for first in range(len(candidates[0])):
-        states: dict[int, State] = {first: (0, (first,))}
+        states: dict[int, State] = {first: (0, ((first, first),))}
         for i in range(count - 1):
             states = _advance(states, pair_paths[i], len(candidates[i + 1]))
         for last, (cost, choice) in sorted(states.items()):
@@ -281,9 +319,9 @@ def route_loop(
     if best is None:
         raise RoutingError("no closed loop found")
     total, choice = best
-    chosen = tuple(candidates[i][choice[i]] for i in range(count))
+    chosen = tuple(candidates[i][choice[i][0]] for i in range(count))
     paths = tuple(
-        pair_paths[i][(choice[i], choice[(i + 1) % count])] for i in range(count)
+        pair_paths[i][(choice[i][0], choice[(i + 1) % count][0])] for i in range(count)
     )
     return RoutedService(chosen=chosen, paths=paths, total_cost_mm=total, circular=True)
 
@@ -292,15 +330,21 @@ def route_path(
     candidates: Sequence[Sequence[PlatformCandidate]],
     routes: Sequence[PairRoute],
     max_snap_offset_m: float = config.MAX_SNAP_OFFSET_M,
+    transfers: Mapping[int, float] | None = None,
 ) -> RoutedService:
     """Pick the platform combination minimising an open chain's track length.
 
     Every candidate of the first stop starts at cost 0; the n - 1 pairs are
-    propagated in stop order and the cheapest final state wins.
+    propagated in stop order and the cheapest final state wins. ``transfers``
+    maps a reviewed interior stop index to its maximum platform transfer: the
+    pair leaving that stop may start from another platform of the stop.
     """
     count = len(candidates)
     if count < 2:
         raise RoutingError("an open chain needs at least two stops")
+    transfers = transfers or {}
+    if any(not 0 < stop < count - 1 for stop in transfers):
+        raise RoutingError("a platform transfer needs an interior stop")
     _check_inputs(candidates, routes, count - 1)
     pair_paths = [
         _pair_paths(candidates[i], candidates[i + 1], routes[i], max_snap_offset_m)
@@ -308,15 +352,32 @@ def route_path(
     ]
 
     states: dict[int, State] = {
-        first: (0, (first,)) for first in range(len(candidates[0]))
+        first: (0, ((first, first),)) for first in range(len(candidates[0]))
     }
     for i in range(count - 1):
         states = _advance(states, pair_paths[i], len(candidates[i + 1]))
         if not states:
             raise RoutingError(f"no connected path reaches S[{i + 1}]")
+        if i + 1 in transfers:
+            states = _transfer(states, candidates[i + 1], transfers[i + 1])
     total, choice = min(states.values())
-    chosen = tuple(candidates[i][choice[i]] for i in range(count))
-    paths = tuple(pair_paths[i][(choice[i], choice[i + 1])] for i in range(count - 1))
+    stale = [
+        stop
+        for stop in sorted(transfers)
+        if candidates[stop][choice[stop][0]].midpoint.coords[0]
+        == candidates[stop][choice[stop][1]].midpoint.coords[0]
+    ]
+    if stale:
+        raise RoutingError(f"reviewed platform transfer is unused at S{stale}")
+    chosen = tuple(candidates[i][choice[i][0]] for i in range(count))
+    departures = tuple(candidates[i][choice[i][1]] for i in range(count))
+    paths = tuple(
+        pair_paths[i][(choice[i][1], choice[i + 1][0])] for i in range(count - 1)
+    )
     return RoutedService(
-        chosen=chosen, paths=paths, total_cost_mm=total, circular=False
+        chosen=chosen,
+        paths=paths,
+        total_cost_mm=total,
+        circular=False,
+        departures=departures if transfers else (),
     )

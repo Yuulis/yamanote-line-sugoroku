@@ -12,7 +12,9 @@ from scripts.data_pipeline.constraints import (
     BBox,
     ConstraintError,
     DetourException,
+    PlatformTransfer,
     parse_detour_rows,
+    parse_platform_transfer_rows,
 )
 from scripts.data_pipeline.override_checks import check_consistency, check_stops
 from scripts.data_pipeline.override_models import (
@@ -27,6 +29,7 @@ from scripts.data_pipeline.override_parsing import (
     SCOPE_COLUMNS,
     SECTION_COLUMNS,
     STOP_COLUMNS,
+    TRANSFER_COLUMNS,
     parse_dataset,
     parse_line_metadata,
     parse_line_ranges,
@@ -124,6 +127,7 @@ def load_overrides(overrides_dir: Path) -> Overrides:
             )
         ),
         detour_exceptions=load_detour_exceptions(overrides_dir),
+        platform_transfers=load_platform_transfers(overrides_dir),
     )
     check_consistency(overrides)
     check_expected_catalogue(overrides, overrides_dir)
@@ -136,5 +140,15 @@ def load_detour_exceptions(directory: Path) -> tuple[DetourException, ...]:
         return ()
     try:
         return parse_detour_rows(read_csv(path, DETOUR_COLUMNS))
+    except ConstraintError as error:
+        raise OverrideError(str(error)) from error
+
+
+def load_platform_transfers(directory: Path) -> tuple[PlatformTransfer, ...]:
+    path = directory / config.PLATFORM_TRANSFERS_OVERRIDE_FILE
+    if not path.is_file():
+        return ()
+    try:
+        return parse_platform_transfer_rows(read_csv(path, TRANSFER_COLUMNS))
     except ConstraintError as error:
         raise OverrideError(str(error)) from error

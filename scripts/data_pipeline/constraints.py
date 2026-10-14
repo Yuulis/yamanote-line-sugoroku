@@ -349,3 +349,37 @@ def parse_detour_rows(rows: Sequence[Mapping[str, str]]) -> tuple[DetourExceptio
             )
         )
     return tuple(exceptions)
+
+
+@dataclass(frozen=True)
+class PlatformTransfer:
+    """A reviewed stop where a service departs from another platform feature."""
+
+    service_id: str
+    station_id: str
+    max_transfer_m: float
+    reason: str
+
+
+def parse_platform_transfer_rows(
+    rows: Sequence[Mapping[str, str]],
+) -> tuple[PlatformTransfer, ...]:
+    transfers: list[PlatformTransfer] = []
+    for index, row in enumerate(rows):
+        try:
+            limit = float(row["max_transfer_m"])
+        except ValueError as error:
+            raise ConstraintError(f"platform transfer row {index}: {error}") from error
+        if (
+            not math.isfinite(limit)
+            or not 0 < limit <= config.MAX_PLATFORM_TRANSFER_M
+            or not row["reason"]
+        ):
+            raise ConstraintError(
+                f"platform transfer row {index} needs a limit in "
+                f"(0, {config.MAX_PLATFORM_TRANSFER_M}] m and a reason"
+            )
+        transfers.append(
+            PlatformTransfer(row["service_id"], row["station_id"], limit, row["reason"])
+        )
+    return tuple(transfers)
