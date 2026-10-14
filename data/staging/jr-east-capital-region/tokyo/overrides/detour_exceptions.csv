@@ -1,0 +1,3 @@
+service_id,from_id,to_id,max_detour_ratio,reason
+jr-shonan-shinjuku-local,akabane,ikebukuro,2.1,"Surrogate for the 湘南新宿ライン freight-line route via 田端信号場 (11.3 km actual, Wikipedia 湘南新宿ライン; 5.3 km straight line); N02 lacks the 駒込–田端信号場 curve, route switches lines at the 田端 corridor merge vertex (lead decision pending)"
+jr-shonan-shinjuku-rapid-takasaki,akabane,ikebukuro,2.1,"Surrogate for the 湘南新宿ライン freight-line route via 田端信号場 (11.3 km actual, Wikipedia 湘南新宿ライン; 5.3 km straight line); N02 lacks the 駒込–田端信号場 curve, route switches lines at the 田端 corridor merge vertex (lead decision pending)"

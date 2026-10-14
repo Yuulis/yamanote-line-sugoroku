@@ -1,0 +1,4 @@
+from_id,to_id,n02_line,via
+osaki,ikebukuro,山手線,
+ikebukuro,akabane,赤羽線,
+akabane,ukima-funado,東北線,

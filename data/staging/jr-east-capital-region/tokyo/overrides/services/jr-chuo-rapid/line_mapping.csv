@@ -1,0 +1,3 @@
+from_id,to_id,n02_line,via,route,compose
+tokyo,kanda,東北線,,,
+kanda,takao,中央線,,,
