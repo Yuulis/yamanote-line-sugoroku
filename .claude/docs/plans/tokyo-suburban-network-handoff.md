@@ -24,7 +24,7 @@ release needs explicit user approval. Lessons from the 1都3県 project: `.claud
 
 | Phase | Content | Status |
 |---|---|---|
-| R1 | Research inventories in parallel: R1-JR (近郊区間 boundary, JR lines incl. non-1都3県 parts), R1-SUB (3 subway operators), R1-PE (東武・西武・京成・TX), R1-PW (東急・京王・小田急・京急・相鉄) | R1-SUB done (17 services, 283 unique ids, 227 transfer rows — Toei/Yokohama transfers UNVERIFIED); R1-PW done (26 services, 337 unique ids, 120 transfers; open: 京急 YRP野比–三崎口 has no 普通, みなとみらい線 out of every scope, cross-operator identities); JR/PE running |
+| R1 | Research inventories in parallel: R1-JR (近郊区間 boundary, JR lines incl. non-1都3県 parts), R1-SUB (3 subway operators), R1-PE (東武・西武・京成・TX), R1-PW (東急・京王・小田急・京急・相鉄) | R1-SUB done (17 services, 283 unique ids, 227 transfer rows — Toei/Yokohama transfers UNVERIFIED); R1-PW done (26 services, 337 unique ids, 120 transfers; open: 京急 YRP野比–三崎口 has no 普通, みなとみらい線 out of every scope, cross-operator identities); R1-PE done (33 services, 404 unique ids, 103 transfers, full lines uncut; open: 京成成田空港線 has no 普通, 東武押上 no 普通, 北総/芝山 out of scope, 西武山口線 AGT); JR running |
 | R2 | Merge into one research catalog; inter-operator transfer/station-identity model; through-running split; real-engine Monte Carlo (`npm run sim` with the research catalog loader); size/perf estimates | pending |
 | R3 | Design doc + user decision list (goal/lottery levers if games get long, transfer rule, boundary rule for non-JR lines) | pending |
 | Impl | Step plan like the 1都3県 project (pipeline gaps for multi-operator N02 selection → staging per operator → final data → rules → docs → release) | pending |

@@ -1,0 +1,104 @@
+station_id,operator,other_operator,other_station_name,walking_note,source_url
+tobu-asakusa,東武鉄道,東京地下鉄,浅草,lines: 銀座線,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-asakusa,東武鉄道,東京都交通局,浅草,lines: 浅草線,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-oshiage,東武鉄道,東京地下鉄,押上,lines: 半蔵門線 (through-running); station excluded: no 普通,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-oshiage,東武鉄道,東京都交通局,押上,lines: 浅草線; station excluded: no 普通,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-oshiage,東武鉄道,京成電鉄,押上,lines: 押上線; station excluded: no 普通,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-ushida,東武鉄道,京成電鉄,京成関屋,lines: 本線; different station name; short walk,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-kita-senju,東武鉄道,東日本旅客鉄道,北千住,lines: 常磐線(快速),https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-kita-senju,東武鉄道,東京地下鉄,北千住,lines: 日比谷線 (through-running)/千代田線,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-kita-senju,東武鉄道,首都圏新都市鉄道,北千住,lines: つくばエクスプレス,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-shin-koshigaya,東武鉄道,東日本旅客鉄道,南越谷,lines: 武蔵野線; different station name; walk,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-kuki,東武鉄道,東日本旅客鉄道,久喜,lines: 宇都宮線,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-hanyu,東武鉄道,秩父鉄道,羽生,lines: 秩父本線,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-isesaki,東武鉄道,東日本旅客鉄道,伊勢崎,lines: 両毛線,https://ja.wikipedia.org/wiki/東武伊勢崎線
+tobu-kurihashi,東武鉄道,東日本旅客鉄道,栗橋,lines: 宇都宮線,https://ja.wikipedia.org/wiki/東武日光線
+tobu-tochigi,東武鉄道,東日本旅客鉄道,栃木,lines: 両毛線,https://ja.wikipedia.org/wiki/東武日光線
+tobu-tobu-nikko,東武鉄道,東日本旅客鉄道,日光,lines: 日光線; different station name; walk,https://ja.wikipedia.org/wiki/東武日光線
+tobu-shin-fujiwara,東武鉄道,野岩鉄道,新藤原,lines: 会津鬼怒川線 (through-running),https://ja.wikipedia.org/wiki/東武鬼怒川線
+tobu-sano,東武鉄道,東日本旅客鉄道,佐野,lines: 両毛線,https://ja.wikipedia.org/wiki/東武佐野線
+tobu-aioi,東武鉄道,わたらせ渓谷鐵道,相老,lines: わたらせ渓谷線,https://ja.wikipedia.org/wiki/東武桐生線
+tobu-akagi,東武鉄道,上毛電気鉄道,赤城,lines: 上毛線,https://ja.wikipedia.org/wiki/東武桐生線
+tobu-kameido,東武鉄道,東日本旅客鉄道,亀戸,lines: 総武線(各駅停車),https://ja.wikipedia.org/wiki/東武亀戸線
+tobu-omiya,東武鉄道,東日本旅客鉄道,大宮,lines: 東北・上越等新幹線/京浜東北線/宇都宮線/高崎線/埼京線/川越線/湘南新宿ライン,https://ja.wikipedia.org/wiki/東武野田線
+tobu-omiya,東武鉄道,埼玉新都市交通,大宮,lines: 伊奈線(ニューシャトル),https://ja.wikipedia.org/wiki/東武野田線
+tobu-nagareyama-otakanomori,東武鉄道,首都圏新都市鉄道,流山おおたかの森,lines: つくばエクスプレス,https://ja.wikipedia.org/wiki/東武野田線
+tobu-kashiwa,東武鉄道,東日本旅客鉄道,柏,lines: 常磐線(快速・各駅停車),https://ja.wikipedia.org/wiki/東武野田線
+tobu-shin-kamagaya,東武鉄道,京成電鉄,新鎌ヶ谷,lines: 松戸線/成田空港線,https://ja.wikipedia.org/wiki/東武野田線
+tobu-shin-kamagaya,東武鉄道,北総鉄道,新鎌ヶ谷,lines: 北総線,https://ja.wikipedia.org/wiki/東武野田線
+tobu-funabashi,東武鉄道,東日本旅客鉄道,船橋,lines: 総武線(快速・各駅停車),https://ja.wikipedia.org/wiki/東武野田線
+tobu-funabashi,東武鉄道,京成電鉄,京成船橋,lines: 本線; different station name; adjacent,https://ja.wikipedia.org/wiki/東武野田線
+tobu-ikebukuro,東武鉄道,東日本旅客鉄道,池袋,lines: 山手線/埼京線/湘南新宿ライン,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-ikebukuro,東武鉄道,東京地下鉄,池袋,lines: 丸ノ内線/有楽町線/副都心線,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-ikebukuro,東武鉄道,西武鉄道,池袋,lines: 池袋線,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-wakoshi,東武鉄道,東京地下鉄,和光市,lines: 有楽町線/副都心線 (through-running),https://ja.wikipedia.org/wiki/東武東上本線
+tobu-asakadai,東武鉄道,東日本旅客鉄道,北朝霞,lines: 武蔵野線; different station name; walk,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-kawagoe,東武鉄道,東日本旅客鉄道,川越,lines: 川越線,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-ogawamachi,東武鉄道,東日本旅客鉄道,小川町,lines: 八高線,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-yorii,東武鉄道,秩父鉄道,寄居,lines: 秩父本線,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-yorii,東武鉄道,東日本旅客鉄道,寄居,lines: 八高線,https://ja.wikipedia.org/wiki/東武東上本線
+tobu-ogose,東武鉄道,東日本旅客鉄道,越生,lines: 八高線,https://ja.wikipedia.org/wiki/東武越生線
+seibu-ikebukuro,西武鉄道,東日本旅客鉄道,池袋,lines: 山手線/埼京線/湘南新宿ライン,https://ja.wikipedia.org/wiki/西武池袋線
+seibu-ikebukuro,西武鉄道,東京地下鉄,池袋,lines: 丸ノ内線/有楽町線/副都心線,https://ja.wikipedia.org/wiki/西武池袋線
+seibu-ikebukuro,西武鉄道,東武鉄道,池袋,lines: 東上線,https://ja.wikipedia.org/wiki/西武池袋線
+seibu-nerima,西武鉄道,東京都交通局,練馬,lines: 大江戸線,https://ja.wikipedia.org/wiki/西武池袋線
+seibu-kotake-mukaihara,西武鉄道,東京地下鉄,小竹向原,lines: 有楽町線/副都心線 (through-running),https://ja.wikipedia.org/wiki/西武有楽町線
+seibu-akitsu,西武鉄道,東日本旅客鉄道,新秋津,lines: 武蔵野線; different station name; walk ~5 min,https://ja.wikipedia.org/wiki/西武池袋線
+seibu-higashi-hanno,西武鉄道,東日本旅客鉄道,東飯能,lines: 八高線,https://ja.wikipedia.org/wiki/西武池袋線
+seibu-seibu-chichibu,西武鉄道,秩父鉄道,御花畑,lines: 秩父本線; different station name; walk,https://ja.wikipedia.org/wiki/西武秩父線
+seibu-seibu-shinjuku,西武鉄道,東日本旅客鉄道,新宿,lines: 山手線/中央線/総武線/埼京線/湘南新宿ライン; walk,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-seibu-shinjuku,西武鉄道,東京地下鉄,新宿,lines: 丸ノ内線; walk,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-seibu-shinjuku,西武鉄道,東京地下鉄,新宿三丁目,lines: 副都心線; different station name; walk,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-seibu-shinjuku,西武鉄道,東京都交通局,新宿西口,lines: 大江戸線; different station name; walk,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-seibu-shinjuku,西武鉄道,小田急電鉄,新宿,lines: 小田原線; walk,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-seibu-shinjuku,西武鉄道,京王電鉄,新宿,lines: 京王線; walk,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-takadanobaba,西武鉄道,東日本旅客鉄道,高田馬場,lines: 山手線,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-takadanobaba,西武鉄道,東京地下鉄,高田馬場,lines: 東西線,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-nakai,西武鉄道,東京都交通局,中井,lines: 大江戸線,https://ja.wikipedia.org/wiki/西武新宿線
+seibu-tamagawa-josui,西武鉄道,多摩都市モノレール,玉川上水,lines: 多摩都市モノレール線,https://ja.wikipedia.org/wiki/西武拝島線
+seibu-haijima,西武鉄道,東日本旅客鉄道,拝島,lines: 青梅線/五日市線/八高線,https://ja.wikipedia.org/wiki/西武拝島線
+seibu-kokubunji,西武鉄道,東日本旅客鉄道,国分寺,lines: 中央線,https://ja.wikipedia.org/wiki/西武国分寺線
+seibu-musashi-sakai,西武鉄道,東日本旅客鉄道,武蔵境,lines: 中央線,https://ja.wikipedia.org/wiki/西武多摩川線
+keisei-keisei-ueno,京成電鉄,東日本旅客鉄道,上野,lines: 新幹線/山手線/京浜東北線/宇都宮線/高崎線/常磐線; different station name; walk,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-keisei-ueno,京成電鉄,東京地下鉄,上野,lines: 銀座線/日比谷線; different station name; walk,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-keisei-ueno,京成電鉄,東京都交通局,上野御徒町,lines: 大江戸線; different station name; walk; no 連絡運輸,https://ja.wikipedia.org/wiki/京成本線
+keisei-nippori,京成電鉄,東日本旅客鉄道,日暮里,lines: 山手線/京浜東北線/常磐線,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-nippori,京成電鉄,東京都交通局,日暮里,lines: 日暮里・舎人ライナー,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-machiya,京成電鉄,東京地下鉄,町屋,lines: 千代田線,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-machiya,京成電鉄,東京都交通局,町屋駅前,lines: 都電荒川線(東京さくらトラム); different station name,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-keisei-sekiya,京成電鉄,東武鉄道,牛田,lines: 伊勢崎線(東武スカイツリーライン); different station name; short walk,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-keisei-takasago,京成電鉄,北総鉄道,京成高砂,lines: 北総線 (through-running),https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-keisei-yawata,京成電鉄,東京都交通局,本八幡,lines: 新宿線; different station name; walk,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-keisei-funabashi,京成電鉄,東日本旅客鉄道,船橋,lines: 総武線(快速・各駅停車); different station name; adjacent,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-keisei-funabashi,京成電鉄,東武鉄道,船橋,lines: 野田線(東武アーバンパークライン); different station name; adjacent,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-katsutadai,京成電鉄,東葉高速鉄道,東葉勝田台,lines: 東葉高速線; different station name; walk,https://ja.wikipedia.org/wiki/京成本線
+keisei-yukarigaoka,京成電鉄,山万,ユーカリが丘,lines: ユーカリが丘線,https://ja.wikipedia.org/wiki/京成本線
+keisei-keisei-narita,京成電鉄,東日本旅客鉄道,成田,lines: 成田線; different station name; adjacent,https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-airport-terminal-2,京成電鉄,東日本旅客鉄道,空港第2ビル,lines: 成田線(空港支線),https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-narita-airport-terminal-1,京成電鉄,東日本旅客鉄道,成田空港,lines: 成田線(空港支線),https://www.keisei.co.jp/keisei/tetudou/railmap/railmap_250401.pdf
+keisei-oshiage,京成電鉄,東京都交通局,押上,lines: 浅草線 (through-running),https://ja.wikipedia.org/wiki/京成押上線
+keisei-oshiage,京成電鉄,東京地下鉄,押上,lines: 半蔵門線,https://ja.wikipedia.org/wiki/京成押上線
+keisei-oshiage,京成電鉄,東武鉄道,押上,lines: 伊勢崎線(東武スカイツリーライン); 東武 押上 has no 普通 (excluded),https://ja.wikipedia.org/wiki/京成押上線
+keisei-keisei-kanamachi,京成電鉄,東日本旅客鉄道,金町,lines: 常磐線(各駅停車); different station name; walk,https://ja.wikipedia.org/wiki/京成金町線
+keisei-keisei-makuharihongo,京成電鉄,東日本旅客鉄道,幕張本郷,lines: 総武線(各駅停車); different station name; adjacent,https://ja.wikipedia.org/wiki/京成千葉線
+keisei-keisei-chiba,京成電鉄,東日本旅客鉄道,千葉,lines: 総武線/総武本線/成田線/外房線/内房線; different station name; adjacent,https://ja.wikipedia.org/wiki/京成千葉線
+keisei-keisei-chiba,京成電鉄,千葉都市モノレール,千葉,lines: 1号線/2号線; different station name; adjacent,https://ja.wikipedia.org/wiki/京成千葉線
+keisei-higashi-narita,京成電鉄,芝山鉄道,東成田,lines: 芝山鉄道線 (through-running),https://ja.wikipedia.org/wiki/京成東成田線
+keisei-matsudo,京成電鉄,東日本旅客鉄道,松戸,lines: 常磐線(快速・各駅停車),https://ja.wikipedia.org/wiki/京成松戸線
+keisei-yabashira,京成電鉄,東日本旅客鉄道,新八柱,lines: 武蔵野線; different station name; walk,https://ja.wikipedia.org/wiki/京成松戸線
+keisei-shin-kamagaya,京成電鉄,北総鉄道,新鎌ヶ谷,lines: 北総線,https://ja.wikipedia.org/wiki/京成松戸線
+keisei-shin-kamagaya,京成電鉄,東武鉄道,新鎌ヶ谷,lines: 野田線(東武アーバンパークライン),https://ja.wikipedia.org/wiki/京成松戸線
+keisei-kita-narashino,京成電鉄,東葉高速鉄道,北習志野,lines: 東葉高速線,https://ja.wikipedia.org/wiki/京成松戸線
+keisei-shin-tsudanuma,京成電鉄,東日本旅客鉄道,津田沼,lines: 総武線(快速・各駅停車); different station name; walk,https://ja.wikipedia.org/wiki/京成松戸線
+tx-akihabara,首都圏新都市鉄道,東日本旅客鉄道,秋葉原,lines: 山手線/京浜東北線/総武線(各駅停車),https://www.mir.co.jp/route_map/
+tx-akihabara,首都圏新都市鉄道,東京地下鉄,秋葉原,lines: 日比谷線,https://www.mir.co.jp/route_map/
+tx-akihabara,首都圏新都市鉄道,東京都交通局,岩本町,lines: 新宿線; different station name; walk,https://www.mir.co.jp/route_map/
+tx-shin-okachimachi,首都圏新都市鉄道,東京都交通局,新御徒町,lines: 大江戸線,https://www.mir.co.jp/route_map/
+tx-minami-senju,首都圏新都市鉄道,東日本旅客鉄道,南千住,lines: 常磐線(快速),https://www.mir.co.jp/route_map/
+tx-minami-senju,首都圏新都市鉄道,東京地下鉄,南千住,lines: 日比谷線,https://www.mir.co.jp/route_map/
+tx-kita-senju,首都圏新都市鉄道,東日本旅客鉄道,北千住,lines: 常磐線(快速),https://www.mir.co.jp/route_map/
+tx-kita-senju,首都圏新都市鉄道,東武鉄道,北千住,lines: 伊勢崎線(東武スカイツリーライン),https://www.mir.co.jp/route_map/
+tx-kita-senju,首都圏新都市鉄道,東京地下鉄,北千住,lines: 日比谷線/千代田線,https://www.mir.co.jp/route_map/
+tx-minami-nagareyama,首都圏新都市鉄道,東日本旅客鉄道,南流山,lines: 武蔵野線,https://www.mir.co.jp/route_map/
+tx-nagareyama-otakanomori,首都圏新都市鉄道,東武鉄道,流山おおたかの森,lines: 野田線(東武アーバンパークライン),https://www.mir.co.jp/route_map/
+tx-moriya,首都圏新都市鉄道,関東鉄道,守谷,lines: 常総線,https://www.mir.co.jp/route_map/
