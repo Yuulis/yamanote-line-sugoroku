@@ -13,7 +13,10 @@ Integration branch `feature/tokyo-suburban-network` (off `develop` at `adc0812`)
 - After the network: X (Twitter) result sharing; before wide publication: logo, favicon, analytics.
 
 Process (user instructions carried over): update this handoff after every step; Codex lanes = Luna `high` for
-specified work, Sol `low` for reviews (Luna `xhigh` allowed); Claude subagents when Codex is limited. Production
+specified work, Sol `low` for reviews (Luna `xhigh` allowed); Claude subagents when Codex is limited.
+**When Claude is limited (user, 2026-10-15): Codex takes over, including web research — use Luna** with live web
+search (`web_search = "live"` in `.codex/config.toml`, verified 2026-10-15). The R1 contracts and the exact command
+are in `.claude/docs/plans/tokyo-suburban-r1-prompts.md`; check which R1 outputs already exist before re-running. Production
 release needs explicit user approval. Lessons from the 1都3県 project: `.claude/docs/plans/jr-east-capital-region-handoff.md`
 (geometric N02 agreement is not shared-track evidence; every composition needs a physical-track review).
 
@@ -21,7 +24,7 @@ release needs explicit user approval. Lessons from the 1都3県 project: `.claud
 
 | Phase | Content | Status |
 |---|---|---|
-| R1 | Research inventories in parallel: R1-JR (近郊区間 boundary, JR lines incl. non-1都3県 parts), R1-SUB (3 subway operators), R1-PE (東武・西武・京成・TX), R1-PW (東急・京王・小田急・京急・相鉄) | running |
+| R1 | Research inventories in parallel: R1-JR (近郊区間 boundary, JR lines incl. non-1都3県 parts), R1-SUB (3 subway operators), R1-PE (東武・西武・京成・TX), R1-PW (東急・京王・小田急・京急・相鉄) | R1-SUB done (17 services, 283 unique ids, 227 transfer rows — Toei/Yokohama transfers UNVERIFIED); JR/PE/PW running |
 | R2 | Merge into one research catalog; inter-operator transfer/station-identity model; through-running split; real-engine Monte Carlo (`npm run sim` with the research catalog loader); size/perf estimates | pending |
 | R3 | Design doc + user decision list (goal/lottery levers if games get long, transfer rule, boundary rule for non-JR lines) | pending |
 | Impl | Step plan like the 1都3県 project (pipeline gaps for multi-operator N02 selection → staging per operator → final data → rules → docs → release) | pending |

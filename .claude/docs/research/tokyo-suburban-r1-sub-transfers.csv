@@ -1,0 +1,228 @@
+station_id,operator,other_operator,other_station_name,walking_note,source_url
+metro-shibuya,東京地下鉄,JR東日本,渋谷 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-shibuya,東京地下鉄,東急電鉄,渋谷 (東横線・田園都市線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-shibuya,東京地下鉄,京王電鉄,渋谷 (井の頭線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-aoyama-itchome,東京地下鉄,東京都交通局,青山一丁目 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-akasaka-mitsuke,東京地下鉄,東京地下鉄,永田町 (有楽町線・半蔵門線・南北線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_ginza/index.html
+metro-tameike-sanno,東京地下鉄,東京地下鉄,国会議事堂前 (丸ノ内線・千代田線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_ginza/index.html
+metro-toranomon,東京地下鉄,東京地下鉄,虎ノ門ヒルズ (日比谷線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_ginza/index.html
+metro-shimbashi,東京地下鉄,東京都交通局,新橋 (浅草線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-shimbashi,東京地下鉄,JR東日本,新橋 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-shimbashi,東京地下鉄,ゆりかもめ,新橋 (ゆりかもめ),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-ginza,東京地下鉄,東京地下鉄,銀座一丁目 (有楽町線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_ginza/index.html
+metro-nihombashi,東京地下鉄,東京都交通局,日本橋 (浅草線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-mitsukoshimae,東京地下鉄,JR東日本,"新日本橋 (JR線; station name inferred, page shows only JR線)",different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-kanda,東京地下鉄,JR東日本,神田 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-ueno-hirokoji,東京地下鉄,東京地下鉄,仲御徒町 (日比谷線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_ginza/index.html
+metro-ueno-hirokoji,東京地下鉄,東京都交通局,上野御徒町 (大江戸線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-ueno,東京地下鉄,JR東日本,上野 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-ueno,東京地下鉄,京成電鉄,京成上野 (京成線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-asakusa,東京地下鉄,東京都交通局,浅草 (浅草線),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-asakusa,東京地下鉄,東武鉄道,浅草 (東武スカイツリーライン),same station name; listed on line page,https://www.tokyometro.jp/station/line_ginza/index.html
+metro-ogikubo,東京地下鉄,JR東日本,荻窪 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-nakano-sakaue,東京地下鉄,東京都交通局,中野坂上 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-shinjuku,東京地下鉄,東京都交通局,新宿 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-shinjuku,東京地下鉄,東京都交通局,新宿西口 (大江戸線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-shinjuku,東京地下鉄,JR東日本,新宿 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-shinjuku,東京地下鉄,京王電鉄,新宿 (京王線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-shinjuku,東京地下鉄,小田急電鉄,新宿 (小田原線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-shinjuku-sanchome,東京地下鉄,東京都交通局,新宿三丁目 (新宿線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-yotsuya,東京地下鉄,JR東日本,四ツ谷 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-kokkai-gijidomae,東京地下鉄,東京地下鉄,溜池山王 (銀座線・南北線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-tokyo,東京地下鉄,JR東日本,東京 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-otemachi,東京地下鉄,東京都交通局,大手町 (三田線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-otemachi,東京地下鉄,JR東日本,"東京 (JR線; shown on the 東西線 page only, station name inferred)",different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-awajicho,東京地下鉄,東京地下鉄,新御茶ノ水 (千代田線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-awajicho,東京地下鉄,東京都交通局,小川町 (新宿線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-ochanomizu,東京地下鉄,JR東日本,御茶ノ水 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-hongo-sanchome,東京地下鉄,東京都交通局,本郷三丁目 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-korakuen,東京地下鉄,東京都交通局,春日 (三田線・大江戸線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-ikebukuro,東京地下鉄,JR東日本,池袋 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-ikebukuro,東京地下鉄,東武鉄道,池袋 (東上線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-ikebukuro,東京地下鉄,西武鉄道,池袋 (池袋線),same station name; listed on line page,https://www.tokyometro.jp/station/line_marunouchi/index.html
+metro-naka-meguro,東京地下鉄,東急電鉄,中目黒 (東横線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-ebisu,東京地下鉄,JR東日本,恵比寿 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-roppongi,東京地下鉄,東京都交通局,六本木 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-toranomon-hills,東京地下鉄,東京地下鉄,虎ノ門 (銀座線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-hibiya,東京地下鉄,東京地下鉄,有楽町 (有楽町線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-hibiya,東京地下鉄,東京都交通局,日比谷 (三田線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-higashi-ginza,東京地下鉄,東京都交通局,東銀座 (浅草線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-tsukiji,東京地下鉄,東京地下鉄,新富町 (有楽町線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-hatchobori,東京地下鉄,JR東日本,八丁堀 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-ningyocho,東京地下鉄,東京地下鉄,水天宮前 (半蔵門線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-ningyocho,東京地下鉄,東京都交通局,人形町 (浅草線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-akihabara,東京地下鉄,東京都交通局,岩本町 (新宿線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-akihabara,東京地下鉄,JR東日本,秋葉原 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-akihabara,東京地下鉄,首都圏新都市鉄道,秋葉原 (つくばエクスプレス線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-naka-okachimachi,東京地下鉄,東京地下鉄,上野広小路 (銀座線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-naka-okachimachi,東京地下鉄,東京都交通局,上野御徒町 (大江戸線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-minami-senju,東京地下鉄,JR東日本,南千住 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-minami-senju,東京地下鉄,首都圏新都市鉄道,南千住 (つくばエクスプレス線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-kita-senju,東京地下鉄,JR東日本,北千住 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-kita-senju,東京地下鉄,東武鉄道,北千住 (東武スカイツリーライン),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-kita-senju,東京地下鉄,首都圏新都市鉄道,北千住 (つくばエクスプレス線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hibiya/index.html
+metro-nakano,東京地下鉄,JR東日本,中野 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-takadanobaba,東京地下鉄,JR東日本,高田馬場 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-takadanobaba,東京地下鉄,西武鉄道,高田馬場 (新宿線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-iidabashi,東京地下鉄,東京都交通局,飯田橋 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-iidabashi,東京地下鉄,JR東日本,飯田橋 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-kudanshita,東京地下鉄,東京都交通局,九段下 (新宿線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-otemachi,東京地下鉄,東京都交通局,大手町 (三田線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-monzen-nakacho,東京地下鉄,東京都交通局,門前仲町 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-nishi-funabashi,東京地下鉄,JR東日本,西船橋 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-nishi-funabashi,東京地下鉄,東葉高速鉄道,西船橋 (東葉高速線),same station name; listed on line page,https://www.tokyometro.jp/station/line_tozai/index.html
+metro-yoyogi-uehara,東京地下鉄,小田急電鉄,代々木上原 (小田原線),same station name; listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-meiji-jingumae,東京地下鉄,JR東日本,原宿 (JR線; station name inferred),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-shin-ochanomizu,東京地下鉄,東京都交通局,小川町 (新宿線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-shin-ochanomizu,東京地下鉄,JR東日本,御茶ノ水 (JR線; station name inferred),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-nishi-nippori,東京地下鉄,JR東日本,西日暮里 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-nishi-nippori,東京地下鉄,東京都交通局,西日暮里 (日暮里・舎人ライナー),same station name; listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-machiya,東京地下鉄,京成電鉄,町屋 (京成線),same station name; listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-machiya,東京地下鉄,東京都交通局,町屋駅前 (東京さくらトラム（都電荒川線）; station name inferred),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-ayase,東京地下鉄,JR東日本,綾瀬 (常磐線各駅停車),through-running boundary only; not shown as a transfer on the line page,https://www.tokyometro.jp/station/line_chiyoda/index.html
+metro-wakoshi,東京地下鉄,東武鉄道,和光市 (東上線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-kotake-mukaihara,東京地下鉄,西武鉄道,小竹向原 (西武有楽町線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-ichigaya,東京地下鉄,東京都交通局,市ヶ谷 (新宿線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-ichigaya,東京地下鉄,JR東日本,市ケ谷 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-nagatacho,東京地下鉄,東京地下鉄,赤坂見附 (銀座線・丸ノ内線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-yurakucho,東京地下鉄,東京都交通局,日比谷 (三田線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-yurakucho,東京地下鉄,JR東日本,有楽町 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-yurakucho,東京地下鉄,東京地下鉄,日比谷 (日比谷線・千代田線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-ginza-itchome,東京地下鉄,東京地下鉄,銀座 (銀座線・丸ノ内線・日比谷線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-shintomicho,東京地下鉄,東京地下鉄,築地 (日比谷線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-tsukishima,東京地下鉄,東京都交通局,月島 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-toyosu,東京地下鉄,ゆりかもめ,豊洲 (ゆりかもめ),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-shin-kiba,東京地下鉄,JR東日本,新木場 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-shin-kiba,東京地下鉄,東京臨海高速鉄道,新木場 (りんかい線),same station name; listed on line page,https://www.tokyometro.jp/station/line_yurakucho/index.html
+metro-jimbocho,東京地下鉄,東京都交通局,神保町 (三田線・新宿線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-mitsukoshimae,東京地下鉄,JR東日本,新日本橋 (JR線; station name inferred),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-suitengumae,東京地下鉄,東京地下鉄,人形町 (日比谷線),"same operator, different station (official transfer); listed on line page",https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-suitengumae,東京地下鉄,東京都交通局,人形町 (浅草線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-kiyosumi-shirakawa,東京地下鉄,東京都交通局,清澄白河 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-sumiyoshi,東京地下鉄,東京都交通局,住吉 (新宿線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-kinshicho,東京地下鉄,JR東日本,錦糸町 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-oshiage,東京地下鉄,東京都交通局,押上 (浅草線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-oshiage,東京地下鉄,京成電鉄,押上 (押上線),same station name; listed on line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-oshiage,東京地下鉄,東武鉄道,押上 (東武スカイツリーライン),through-running boundary only; not shown as a transfer on the line page,https://www.tokyometro.jp/station/line_hanzomon/index.html
+metro-meguro,東京地下鉄,JR東日本,目黒 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-meguro,東京地下鉄,東急電鉄,目黒 (目黒線),same station name; listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-meguro,東京地下鉄,東京都交通局,目黒 (三田線),same physical platforms (shared track section); listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-shirokanedai,東京地下鉄,東京都交通局,白金台 (三田線),same physical platforms (shared track section); listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-shirokane-takanawa,東京地下鉄,東京都交通局,白金高輪 (三田線),same physical platforms (shared track section); listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-azabu-juban,東京地下鉄,東京都交通局,麻布十番 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-yotsuya,東京地下鉄,JR東日本,四ツ谷 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-korakuen,東京地下鉄,東京都交通局,春日 (三田線・大江戸線),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-komagome,東京地下鉄,JR東日本,駒込 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-oji,東京地下鉄,JR東日本,王子 (JR線),same station name; listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-oji,東京地下鉄,東京都交通局,王子駅前 (東京さくらトラム（都電荒川線）; station name inferred),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-akabane-iwabuchi,東京地下鉄,埼玉高速鉄道,赤羽岩淵 (埼玉高速鉄道線),through-running boundary only; not shown as a transfer on the line page,https://www.tokyometro.jp/station/line_namboku/index.html
+metro-zoshigaya,東京地下鉄,東京都交通局,鬼子母神前 (東京さくらトラム（都電荒川線）),different station name (official transfer); listed on line page,https://www.tokyometro.jp/station/line_fukutoshin/index.html
+metro-higashi-shinjuku,東京地下鉄,東京都交通局,東新宿 (大江戸線),same station name; listed on line page,https://www.tokyometro.jp/station/line_fukutoshin/index.html
+metro-shinjuku-sanchome,東京地下鉄,東京都交通局,新宿三丁目 (新宿線),same station name; listed on line page,https://www.tokyometro.jp/station/line_fukutoshin/index.html
+toei-nakanobu,東京都交通局,東急電鉄,中延 (大井町線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-togoshi,東京都交通局,東急電鉄,戸越銀座 (池上線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-gotanda,東京都交通局,JR東日本,五反田 (山手線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-gotanda,東京都交通局,東急電鉄,五反田 (池上線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-sengakuji,東京都交通局,京浜急行電鉄,"泉岳寺 (京急本線; Toei-managed station, through-running junction)",same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-mita,東京都交通局,JR東日本,田町 (山手線・京浜東北線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-daimon,東京都交通局,JR東日本,浜松町 (山手線・京浜東北線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-daimon,東京都交通局,東京モノレール,浜松町 (東京モノレール羽田空港線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-shimbashi,東京都交通局,東京地下鉄,新橋 (銀座線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-shimbashi,東京都交通局,JR東日本,新橋 (JR線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-shimbashi,東京都交通局,ゆりかもめ,新橋 (ゆりかもめ),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-higashi-ginza,東京都交通局,東京地下鉄,東銀座 (日比谷線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-nihombashi,東京都交通局,東京地下鉄,日本橋 (銀座線・東西線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-ningyocho,東京都交通局,東京地下鉄,人形町 (日比谷線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-ningyocho,東京都交通局,東京地下鉄,水天宮前 (半蔵門線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-higashi-nihombashi,東京都交通局,東京都交通局,馬喰横山 (新宿線),"same operator, different station (official transfer); UNVERIFIED (compiled from knowledge)",https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-higashi-nihombashi,東京都交通局,JR東日本,馬喰町 (総武快速線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-asakusabashi,東京都交通局,JR東日本,浅草橋 (総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-asakusa,東京都交通局,東京地下鉄,浅草 (銀座線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-asakusa,東京都交通局,東武鉄道,浅草 (東武スカイツリーライン),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-oshiage,東京都交通局,東京地下鉄,押上 (半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-oshiage,東京都交通局,京成電鉄,押上 (押上線; Keisei-managed station),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-oshiage,東京都交通局,東武鉄道,とうきょうスカイツリー/押上 (東武スカイツリーライン),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/asakusa/
+toei-meguro,東京都交通局,東京地下鉄,目黒 (南北線),same physical platforms (shared track section); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-meguro,東京都交通局,JR東日本,目黒 (山手線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-meguro,東京都交通局,東急電鉄,目黒 (目黒線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-shirokanedai,東京都交通局,東京地下鉄,白金台 (南北線),same physical platforms (shared track section); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-shirokane-takanawa,東京都交通局,東京地下鉄,白金高輪 (南北線),same physical platforms (shared track section); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-hibiya,東京都交通局,東京地下鉄,日比谷 (日比谷線・千代田線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-hibiya,東京都交通局,東京地下鉄,有楽町 (有楽町線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-hibiya,東京都交通局,JR東日本,有楽町 (JR線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-otemachi,東京都交通局,東京地下鉄,大手町 (丸ノ内線・東西線・千代田線・半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-otemachi,東京都交通局,JR東日本,東京 (JR線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-jimbocho,東京都交通局,東京地下鉄,神保町 (半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-suidobashi,東京都交通局,JR東日本,水道橋 (中央・総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-kasuga,東京都交通局,東京地下鉄,後楽園 (丸ノ内線・南北線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-sugamo,東京都交通局,JR東日本,巣鴨 (山手線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-nishi-sugamo,東京都交通局,東京都交通局,新庚申塚 (東京さくらトラム（都電荒川線）),"same operator, different station (official transfer); UNVERIFIED (compiled from knowledge)",https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-shin-itabashi,東京都交通局,JR東日本,板橋 (埼京線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/mita/
+toei-shinjuku,東京都交通局,京王電鉄,新宿 (京王線・京王新線; S01 platforms Keio-managed),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-shinjuku,東京都交通局,JR東日本,新宿 (JR線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-shinjuku,東京都交通局,小田急電鉄,新宿 (小田原線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-shinjuku,東京都交通局,東京地下鉄,新宿 (丸ノ内線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-shinjuku-sanchome,東京都交通局,東京地下鉄,新宿三丁目 (丸ノ内線・副都心線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-ichigaya,東京都交通局,東京地下鉄,市ケ谷 (有楽町線・南北線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-ichigaya,東京都交通局,JR東日本,市ケ谷 (中央・総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-kudanshita,東京都交通局,東京地下鉄,九段下 (東西線・半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-jimbocho,東京都交通局,東京地下鉄,神保町 (半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-ogawamachi,東京都交通局,東京地下鉄,淡路町 (丸ノ内線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-ogawamachi,東京都交通局,東京地下鉄,新御茶ノ水 (千代田線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-iwamotocho,東京都交通局,東京地下鉄,秋葉原 (日比谷線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-iwamotocho,東京都交通局,JR東日本,秋葉原 (JR線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-iwamotocho,東京都交通局,首都圏新都市鉄道,秋葉原 (つくばエクスプレス線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-bakuro-yokoyama,東京都交通局,東京都交通局,東日本橋 (浅草線),"same operator, different station (official transfer); UNVERIFIED (compiled from knowledge)",https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-bakuro-yokoyama,東京都交通局,JR東日本,馬喰町 (総武快速線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-sumiyoshi,東京都交通局,東京地下鉄,住吉 (半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-motoyawata,東京都交通局,JR東日本,本八幡 (総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-motoyawata,東京都交通局,京成電鉄,京成八幡 (京成本線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/shinjuku/
+toei-shinjuku-nishiguchi,東京都交通局,東京地下鉄,新宿 (丸ノ内線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shinjuku-nishiguchi,東京都交通局,JR東日本,新宿 (JR線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shinjuku-nishiguchi,東京都交通局,京王電鉄,新宿 (京王線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shinjuku-nishiguchi,東京都交通局,小田急電鉄,新宿 (小田原線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shinjuku-nishiguchi,東京都交通局,西武鉄道,西武新宿 (新宿線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-higashi-shinjuku,東京都交通局,東京地下鉄,東新宿 (副都心線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-iidabashi,東京都交通局,東京地下鉄,飯田橋 (東西線・有楽町線・南北線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-iidabashi,東京都交通局,JR東日本,飯田橋 (中央・総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-hongo-sanchome,東京都交通局,東京地下鉄,本郷三丁目 (丸ノ内線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-ueno-okachimachi,東京都交通局,東京地下鉄,上野広小路 (銀座線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-ueno-okachimachi,東京都交通局,東京地下鉄,仲御徒町 (日比谷線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-ueno-okachimachi,東京都交通局,JR東日本,御徒町 (山手線・京浜東北線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shin-okachimachi,東京都交通局,首都圏新都市鉄道,新御徒町 (つくばエクスプレス線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-ryogoku,東京都交通局,JR東日本,両国 (総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-kiyosumi-shirakawa,東京都交通局,東京地下鉄,清澄白河 (半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-monzen-nakacho,東京都交通局,東京地下鉄,門前仲町 (東西線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-tsukishima,東京都交通局,東京地下鉄,月島 (有楽町線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shiodome,東京都交通局,東京都交通局,新橋 (浅草線),"same operator, different station (official transfer); UNVERIFIED (compiled from knowledge)",https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shiodome,東京都交通局,東京地下鉄,新橋 (銀座線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shiodome,東京都交通局,JR東日本,新橋 (JR線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-shiodome,東京都交通局,ゆりかもめ,汐留 (ゆりかもめ),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-azabu-juban,東京都交通局,東京地下鉄,麻布十番 (南北線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-roppongi,東京都交通局,東京地下鉄,六本木 (日比谷線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-aoyama-itchome,東京都交通局,東京地下鉄,青山一丁目 (銀座線・半蔵門線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-kokuritsu-kyogijo,東京都交通局,JR東日本,千駄ケ谷 (中央・総武線),different station name (official transfer); UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-yoyogi,東京都交通局,JR東日本,代々木 (山手線・中央・総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-nakano-sakaue,東京都交通局,東京地下鉄,中野坂上 (丸ノ内線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-higashi-nakano,東京都交通局,JR東日本,東中野 (中央・総武線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-nakai,東京都交通局,西武鉄道,中井 (新宿線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-nerima,東京都交通局,西武鉄道,練馬 (池袋線・西武有楽町線・豊島線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+toei-toshimaen,東京都交通局,西武鉄道,豊島園 (豊島線),same station name; UNVERIFIED (compiled from knowledge),https://www.kotsu.metro.tokyo.jp/subway/oedo/
+yokohama-shonandai,横浜市交通局,小田急電鉄,湘南台 (江ノ島線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-shonandai,横浜市交通局,相模鉄道,湘南台 (いずみ野線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-totsuka,横浜市交通局,JR東日本,戸塚 (東海道線・横須賀線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-kamiooka,横浜市交通局,京浜急行電鉄,上大岡 (京急本線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-kannai,横浜市交通局,JR東日本,関内 (根岸線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-sakuragicho,横浜市交通局,JR東日本,桜木町 (根岸線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-yokohama,横浜市交通局,JR東日本,横浜 (JR線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-yokohama,横浜市交通局,東急電鉄,横浜 (東横線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-yokohama,横浜市交通局,京浜急行電鉄,横浜 (京急本線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-yokohama,横浜市交通局,相模鉄道,横浜 (相鉄本線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-yokohama,横浜市交通局,横浜高速鉄道,横浜 (みなとみらい線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-shin-yokohama,横浜市交通局,JR東日本,新横浜 (横浜線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-shin-yokohama,横浜市交通局,JR東海,新横浜 (東海道新幹線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-shin-yokohama,横浜市交通局,相模鉄道,新横浜 (相鉄新横浜線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-shin-yokohama,横浜市交通局,東急電鉄,新横浜 (東急新横浜線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-azamino,横浜市交通局,東急電鉄,あざみ野 (田園都市線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-nakayama,横浜市交通局,JR東日本,中山 (横浜線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
+yokohama-hiyoshi,横浜市交通局,東急電鉄,日吉 (東横線・目黒線・新横浜線),same station name; UNVERIFIED (compiled from knowledge),https://www.city.yokohama.lg.jp/kotsu/sub/norikata/eki.html
