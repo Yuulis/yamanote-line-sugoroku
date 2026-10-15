@@ -1,5 +1,4 @@
 import type { LineMetadata } from "../../../types/network";
-import type { CSSProperties } from "react";
 import type { RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
 import {
@@ -12,6 +11,7 @@ import {
   stationName,
 } from "../presentation";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
+import { GameLegend } from "./GameLegend";
 
 export interface GamePanelProps {
   session: GameSession;
@@ -43,7 +43,6 @@ export function GamePanel(props: GamePanelProps) {
   const ride = displayedRide(session);
   const currentService = network.servicesById.get(ride.serviceId);
   const lineColor = network.servicesById.get(game.config.targetServiceId)?.color;
-  const legendStyle = { "--completed-line-color": lineColor } as CSSProperties;
   const candidates = session.lastMove?.landing?.serviceCandidates ?? [];
   const legendGroups = props.lines.map((line) => ({
     ...line,
@@ -117,33 +116,7 @@ export function GamePanel(props: GamePanelProps) {
       >
         セーブ: {saveStatusMessage(saveStatus)}
       </p>
-      <ul className="game-panel__legend" style={legendStyle} aria-label="凡例">
-        <li>
-          <span className="legend-swatch legend-swatch--completed" aria-hidden="true" />
-          山手線 踏破済み（実線）
-        </li>
-        <li>
-          <span className="legend-swatch legend-swatch--pending" aria-hidden="true" />
-          山手線 未踏破（点線）
-        </li>
-        {legendGroups.map((line) => line.services.length === 1 ? (
-          <li key={line.id}>
-            <span className="legend-swatch legend-swatch--service" style={{ borderTopColor: line.services[0]!.color }} aria-hidden="true" />
-            {line.services[0]!.name}
-          </li>
-        ) : (
-          <li key={line.id} className="game-panel__legend-group">
-            <details>
-              <summary><span className="legend-swatch legend-swatch--service" style={{ borderTopColor: line.color }} aria-hidden="true" />{line.name}（{line.services.length}系統）</summary>
-              <ul>{line.services.map((service) => <li key={service.id}>{service.name}</li>)}</ul>
-            </details>
-          </li>
-        ))}
-        <li>
-          <span className="legend-swatch legend-swatch--current" aria-hidden="true" />
-          現在地
-        </li>
-      </ul>
+      <GameLegend lines={legendGroups} targetColor={lineColor} />
     </section>
   );
 }

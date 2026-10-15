@@ -1,0 +1,192 @@
+import { mkdirSync } from "node:fs";
+import { resolve } from "node:path";
+import type { Page } from "@playwright/test";
+import { LAYER_IDS } from "../../src/features/map/mapConfig";
+import { expect, test } from "./fixtures";
+import { gamePanel, openTitle, readMap, startNewGame } from "./support/app";
+
+// S6V: the 1都3県 network must stay readable. Real data, both form factors.
+test.use({ dataset: "real" });
+
+const SCREENSHOT_DIR = resolve(".claude/logs/jrcr-s6v/screenshots");
+const TARGET_SERVICE_ID = "jr-yamanote";
+/** Allowed offset of the target line's centre from the free area's centre. */
+const CENTRE_TOLERANCE_SHARE = 0.12;
+
+interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+function isPhone(page: Page): boolean {
+  return page.viewportSize()!.width <= 600;
+}
+
+/** The map area the panel does not cover: beside it on desktop, above it on phone. */
+async function freeArea(page: Page): Promise<Rect> {
+  const viewport = page.viewportSize()!;
+  const panel = (await gamePanel(page).boundingBox())!;
+  return isPhone(page)
+    ? { left: 0, top: 0, right: viewport.width, bottom: panel.y }
+    : { left: panel.x + panel.width, top: 0, right: viewport.width, bottom: viewport.height };
+}
+
+async function project(page: Page, points: [number, number][]): Promise<{ x: number; y: number }[]> {
+  return page.evaluate((coordinates) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
+    return coordinates.map((point) => {
+      const { x, y } = hook.map.project(point);
+      return { x, y };
+    });
+  }, points);
+}
+
+async function expectInFreeArea(page: Page, points: [number, number][]): Promise<Rect> {
+  const area = await freeArea(page);
+  const projected = await project(page, points);
+  for (const { x, y } of projected) {
+    expect(x).toBeGreaterThanOrEqual(area.left);
+    expect(x).toBeLessThanOrEqual(area.right);
+    expect(y).toBeGreaterThanOrEqual(area.top);
+    expect(y).toBeLessThanOrEqual(area.bottom);
+  }
+  return {
+    left: Math.min(...projected.map((p) => p.x)),
+    right: Math.max(...projected.map((p) => p.x)),
+    top: Math.min(...projected.map((p) => p.y)),
+    bottom: Math.max(...projected.map((p) => p.y)),
+  };
+}
+
+function expectRoughlyCentred(bounds: Rect, area: Rect): void {
+  const width = area.right - area.left;
+  const height = area.bottom - area.top;
+  const dx = (bounds.left + bounds.right) / 2 - (area.left + area.right) / 2;
+  const dy = (bounds.top + bounds.bottom) / 2 - (area.top + area.bottom) / 2;
+  expect(Math.abs(dx)).toBeLessThanOrEqual(width * CENTRE_TOLERANCE_SHARE);
+  expect(Math.abs(dy)).toBeLessThanOrEqual(height * CENTRE_TOLERANCE_SHARE);
+}
+
+async function screenshot(page: Page, name: string): Promise<void> {
+  mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  await page.screenshot({ path: resolve(SCREENSHOT_DIR, `${name}.png`) });
+}
+
+async function renderedStationIds(page: Page): Promise<string[]> {
+  return page.evaluate((layers) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { queryRenderedFeatures(options: { layers: string[] }): { properties: { id: string } }[] } } }).__sugorokuE2E;
+    return [...new Set(hook.map.queryRenderedFeatures({ layers }).map((feature) => feature.properties.id))];
+  }, [LAYER_IDS.stationCircles, LAYER_IDS.stationCirclesOrdinary]);
+}
+
+async function startReadyGame(page: Page): Promise<void> {
+  await openTitle(page);
+  await startNewGame(page);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+}
+
+function deviceName(page: Page): "phone" | "desktop" {
+  return isPhone(page) ? "phone" : "desktop";
+}
+
+test("the target line starts centred in the free map area and 全体 shows every platform unclipped", async ({ page, railwayBundle }) => {
+  const services = [...railwayBundle.network.servicesById.values()];
+  const targetPoints = Object.values(railwayBundle.network.servicesById.get(TARGET_SERVICE_ID)!.platformCoordinates);
+  const allPoints = services.flatMap((service) => Object.values(service.platformCoordinates));
+  expect(services).toHaveLength(railwayBundle.network.servicesById.size);
+  await startReadyGame(page);
+  const device = deviceName(page);
+
+  const targetBounds = await expectInFreeArea(page, targetPoints);
+  expectRoughlyCentred(targetBounds, await freeArea(page));
+  await screenshot(page, `${device}-initial`);
+
+  await page.getByRole("button", { name: "全体", exact: true }).click();
+  // The camera and the panel layout settle a frame after the click.
+  await expect(async () => { await expectInFreeArea(page, allPoints); }).toPass();
+  await screenshot(page, `${device}-overview`);
+});
+
+test("at overview zoom only transfer and target stations are marked; close zoom shows them all", async ({ page, railwayBundle }) => {
+  await startReadyGame(page);
+  await page.getByRole("button", { name: "全体", exact: true }).click();
+  const { network } = railwayBundle;
+  const servedBy = (id: string) => network.servicesByStation.get(id) ?? [];
+  const ordinary = [...network.stationsById.keys()].filter(
+    (id) => servedBy(id).length < 2 && !servedBy(id).includes(TARGET_SERVICE_ID),
+  );
+  expect(ordinary.length).toBeGreaterThan(100);
+  // Rendering catches up with the camera a frame later: wait for the zoomed-out result.
+  await expect
+    .poll(async () => {
+      const rendered = await renderedStationIds(page);
+      return rendered.length > 0 && ordinary.every((id) => !rendered.includes(id));
+    })
+    .toBe(true);
+  const overview = new Set(await renderedStationIds(page));
+  expect(overview.has("ueno")).toBe(true);
+  for (const id of network.servicesById.get(TARGET_SERVICE_ID)!.stationIds) expect(overview.has(id)).toBe(true);
+
+  const ueno = network.stationsById.get("ueno")!.coordinates;
+  await page.evaluate((center) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+    hook.map.jumpTo({ center, zoom: 13.5 });
+  }, ueno);
+  await expect.poll(async () => (await renderedStationIds(page)).filter((id) => ordinary.includes(id)).length).toBeGreaterThan(0);
+  // Let labels finish fading in before the screenshot.
+  await page.evaluate(() => new Promise<void>((done) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { once(type: "idle", listener: () => void): void; triggerRepaint(): void } } }).__sugorokuE2E;
+    hook.map.once("idle", done);
+    hook.map.triggerRepaint();
+  }));
+  if (!isPhone(page)) await screenshot(page, "desktop-ueno-zoom");
+});
+
+test("the service legend collapses; 山手線 progress and 現在地 stay visible", async ({ page }) => {
+  await startReadyGame(page);
+  const panel = gamePanel(page);
+  const legend = panel.getByRole("list", { name: "凡例" });
+  const toggle = panel.getByRole("button", { name: /路線の凡例/ });
+  const serviceRow = legend.getByRole("listitem").filter({ hasText: "京浜東北線" });
+  await expect(legend.getByRole("listitem").filter({ hasText: "山手線 踏破済み" })).toBeVisible();
+  await expect(legend.getByRole("listitem").filter({ hasText: "山手線 未踏破" })).toBeVisible();
+  await expect(legend.getByRole("listitem").filter({ hasText: "現在地" })).toBeVisible();
+  if (isPhone(page)) {
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await expect(serviceRow).toBeHidden();
+    await expect(panel.getByRole("button", { name: "サイコロを振る" })).toBeInViewport();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(serviceRow).toBeVisible();
+    await screenshot(page, "phone-legend-expanded");
+    await toggle.click();
+    await expect(serviceRow).toBeHidden();
+  } else {
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await expect(serviceRow).toBeVisible();
+    await toggle.click();
+    await expect(serviceRow).toBeHidden();
+    await toggle.click();
+    await expect(serviceRow).toBeVisible();
+  }
+});
+
+test("clicking an ordinary station opens exactly one popup naming it", async ({ page, railwayBundle }) => {
+  await startReadyGame(page);
+  const { network } = railwayBundle;
+  const ordinary = [...network.stationsById.values()].find(
+    (station) => (network.servicesByStation.get(station.id) ?? []).length === 1 && !network.servicesByStation.get(station.id)!.includes(TARGET_SERVICE_ID),
+  )!;
+  await page.evaluate((center) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+    hook.map.jumpTo({ center, zoom: 13.5 });
+  }, ordinary.coordinates);
+  await expect.poll(async () => (await renderedStationIds(page)).includes(ordinary.id)).toBe(true);
+  const [point] = await project(page, [ordinary.coordinates]);
+  await page.mouse.click(point!.x, point!.y);
+  const popup = page.locator(".maplibregl-popup");
+  await expect(popup).toHaveCount(1);
+  await expect(popup).toContainText(ordinary.name);
+});
