@@ -2,8 +2,8 @@
 
 ## Current status (2026-10-15) — resume here
 
-**S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages, S6 (combined live 1都3県 dataset), S6V (map readability) and S5 (rules flip) are merged** into the integration branch
-`feature/jr-east-capital-region` (head after this update; last merge PR #23; based on `develop`). Nothing is uncommitted.
+**S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages, S6 (combined live 1都3県 dataset), S6V (map readability), S5 (rules flip) and S7 (docs + phone overview fit) are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; last merge PR #24; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
 and production needs explicit user approval. The integration branch now ships the 1都3県 dataset
 (40 services / 472 stations, title 「JR東日本 1都3県版」) with the decided rules `jr-east-capital-1`; production is still the 23-ward edition.
@@ -27,11 +27,11 @@ and production needs explicit user approval. The integration branch now ships th
 | S6P Saitama (Luna xhigh) | merged | #20 | 9/9 services, 75/75 stations; Sol review: 1 of 24 compositions wrong (湘南新宿 local 大宮–浦和 on 東北貨物線) → lead fix; CI green |
 | S6 combined live dataset (Luna xhigh; fixes by Sol) | merged | #21 | `verify.sh` (pytest 373), raw-N02 rebuild identical, validate OK, Vitest 552, build, E2E 78/78, catalogue order/stop lists = product catalog; Sol review NEEDS_REVISION (東海道/京浜東北 多摩川, 常磐 快速/緩行 江戸川, 赤羽–浦和) → fixed; CI green |
 | S6V map readability (Claude Sonnet; Opus review) | merged | #22 | typecheck, Vitest 575, build, E2E 90/90; screenshots reviewed by the lead; Opus review APPROVE WITH CHANGES → applied; CI green |
+| S7 docs + phone overview fit (Luna high; Sol low review) | merged | #24 | typecheck, Vitest 578, build, E2E 93 + `real-data` 6/6 after `test.slow()`; regression (phone tile test) found by the lead → fixed; Sol review NEEDS_REVISION (legend re-fit state) → re-fit removed; CI green |
 | S5 rules flip + texts (Luna high; Sol low review) | merged | #23 | typecheck, Vitest 578, build, E2E 93/93, pytest 373, lead rerun of `npm run sim` decided on `public/data` = 61/148/258; Sol review NEEDS_REVISION (old-ruleset app test, seed comment) → fixed; CI green |
 
-**Next: S7** (docs under `docs/manual/` in Japanese, `data/README.md`, README, DESIGN.md; then release PRs
-integration → develop → master; production needs explicit user approval). See section "S5" below for what changed.
-Minor UI leftovers (optional, S7): phone overview leaves empty space under the network when the legend is collapsed.
+**Next: release.** Integration → `develop` PR, then `develop` → `master` (production) ONLY after explicit user
+approval, then a production smoke. See sections "S5" and "S7" below. No open UI leftovers.
 **Executor lanes (user, 2026-10-15, S5 on):** Codex again — Luna `high` for simple/specified implementation,
 Sol `low` (`--sandbox read-only`) for reviews; Luna `xhigh` allowed. When Codex limits run out, switch to Claude
 subagents (`general-purpose-sonnet` for UI/mechanical work, `general-purpose-opus` for judgment and reviews).
@@ -992,3 +992,14 @@ preset equals the shipped policies. Shipped-data Monte Carlo (20,000 games, seed
 decided 61/148/258 (mean 73.86, max 481, 0 caps), all-equal 396/967/1,643 — identical to S1M because the shipped
 gameplay graph equals the research catalog (design §8.7, `.claude/docs/research/jr-east-capital-region-s5-results.json`).
 Title-screen copy explains the weighting; `index.html` title says 1都3県版.
+
+## S7 — docs and phone overview fit (merged via PR #24, 2026-10-15)
+
+Docs: `docs/manual/jr-east-capital-region/{rules.md,implementation-status.md}` (Japanese; the 40-service table lives in
+`rules.md`), 23-ward manual marked historical, `README.md`, `data/README.md`, spec addendum
+`railway_sugoroku_mvp_spec.md` v0.4.0. Phone overview: `fitNetworkOverview` pads the bottom by the panel's measured top
+(`phonePanelBottomPadding` in `src/features/map/RailwayMap.tsx`) instead of a fixed 45% inset; pressing 「全体」 re-measures
+(a legend-toggle auto re-fit was tried and removed after review). The network is width-limited on phone, so the fit
+centres it in the free area rather than enlarging it. Tests: phone `map-visual` fit for both legend states;
+`map-failure` tile test zooms until uncached tiles are requested; `real-data.spec.ts` uses `test.slow()` (22–33 s locally).
+Screenshots: `.claude/logs/jrcr-s7/screenshots/`.
