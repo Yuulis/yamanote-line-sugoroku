@@ -40,9 +40,9 @@ def enable_stage(directory: Path, start: str = "kasai-rinkai-koen") -> None:
 
 
 @pytest.fixture
-def stage_dir(overrides_copy: Path) -> Path:
-    """One real linear service; its last stop is the stage start (no circle)."""
-    enable_stage(overrides_copy)
+def stage_dir(core_copy: Path) -> Path:
+    """One fixture linear service; its last stop is the stage start (no circle)."""
+    enable_stage(core_copy)
     ids = [
         "tokyo",
         "hatchobori",
@@ -51,17 +51,17 @@ def stage_dir(overrides_copy: Path) -> Path:
         "shin-kiba",
         "kasai-rinkai-koen",
     ]
-    path = overrides_copy / "dataset.json"
+    path = core_copy / "dataset.json"
     raw = json.loads(path.read_text())
     oracle = {"services": [{"id": "jr-keiyo", "stationIds": ids}], "stationIds": ids}
     payload = dumps_pretty(oracle).encode()
-    (overrides_copy / "expected-catalog.json").write_bytes(payload)
+    (core_copy / "expected-catalog.json").write_bytes(payload)
     raw.update(
         serviceIds=["jr-keiyo"],
         expectedCatalogSha256=hashlib.sha256(payload).hexdigest(),
     )
     write_json(path, raw)
-    path = overrides_copy / "services.json"
+    path = core_copy / "services.json"
     envelope = json.loads(path.read_text())
     write_json(
         path,
@@ -70,7 +70,7 @@ def stage_dir(overrides_copy: Path) -> Path:
             for key, items in envelope.items()
         },
     )
-    path = overrides_copy / "stations.csv"
+    path = core_copy / "stations.csv"
     with path.open() as handle:
         reader = csv.DictReader(handle)
         fields = reader.fieldnames
@@ -83,10 +83,10 @@ def stage_dir(overrides_copy: Path) -> Path:
         writer = csv.DictWriter(handle, fieldnames=fields or [])
         writer.writeheader()
         writer.writerows(rows)
-    (overrides_copy / "offset_exceptions.csv").write_text(
+    (core_copy / "offset_exceptions.csv").write_text(
         "service_id,station_id,max_platform_offset_m,reason\n"
     )
-    return overrides_copy
+    return core_copy
 
 
 @pytest.fixture
@@ -97,14 +97,25 @@ def stage_artifact(
     service = next(
         item for item in published_dataset.service_patterns if item["id"] == "jr-keiyo"
     )
+    stage_stop_ids = overrides.service("jr-keiyo").station_ids
     platforms = {
-        station: Point(to_metric(coords))
-        for station, coords in service["platformCoordinates"].items()
+        station: Point(to_metric(service["platformCoordinates"][station]))
+        for station in stage_stop_ids
+    }
+    stage_segment_ids = {
+        f"jr-keiyo:{from_id}:{to_id}"
+        for from_id, to_id in zip(stage_stop_ids, stage_stop_ids[1:], strict=False)
+    }
+    feature_ids = {
+        feature_id
+        for segment in published_dataset.segments
+        if segment["id"] in stage_segment_ids
+        for feature_id in segment["geometryFeatureIds"]
     }
     lines = [
         LineString([to_metric(xy) for xy in feature["geometry"]["coordinates"]])
         for feature in published_dataset.geojson["features"]
-        if feature["properties"]["serviceId"] == "jr-keiyo"
+        if feature["id"] in feature_ids
     ]
     files = build_files(
         overrides,

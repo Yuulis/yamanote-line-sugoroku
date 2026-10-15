@@ -27,10 +27,18 @@ def test_validate_published_data_passes(
     report = validate_dataset(published_dataset, committed_overrides)
 
     assert report.errors == []
-    assert report.metrics["max_endpoint_distance_m"] <= config.ENDPOINT_MAX_DISTANCE_M
-    assert report.metrics["segments_geojson_bytes"] < config.MAX_GEOJSON_BYTES
+    transfer_allowance_m = max(
+        transfer.max_transfer_m for transfer in committed_overrides.platform_transfers
+    )
+    assert report.metrics["max_endpoint_distance_m"] <= (
+        config.ENDPOINT_MAX_DISTANCE_M + transfer_allowance_m
+    )
+    assert (
+        report.metrics["segments_geojson_bytes"]
+        < committed_overrides.dataset.budgets["geojsonRaw"]
+    )
     assert report.metrics["length_km[jr-yamanote]"] == pytest.approx(34.5, abs=1.5)
-    assert report.metrics["other_station_passes"] == 7
+    assert report.metrics["other_station_passes"] == 104
 
 
 def test_validate_published_data_has_contract_shapes(
@@ -62,7 +70,9 @@ def test_validate_with_missing_station_fails(
 ) -> None:
     del dataset.stations[5]
 
-    assert "expected 67 stations" in _errors(dataset, committed_overrides)
+    assert f"expected {len(committed_overrides.registry.stations)} stations" in _errors(
+        dataset, committed_overrides
+    )
 
 
 def test_validate_with_broken_chain_fails(
@@ -179,7 +189,7 @@ def test_validate_with_updated_at_differing_from_override_fails(
 def test_validate_with_oversized_geojson_fails(
     dataset: Dataset, committed_overrides: Overrides
 ) -> None:
-    padding = " " * (config.MAX_GEOJSON_BYTES + 1)
+    padding = " " * (committed_overrides.dataset.budgets["geojsonRaw"] + 1)
     payloads = {
         **dataset.payloads,
         config.SEGMENTS_GEOJSON_FILE: dataset.payloads[config.SEGMENTS_GEOJSON_FILE]

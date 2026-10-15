@@ -1,4 +1,5 @@
 station_id,prefecture,municipality
+mitaka,東京都,三鷹市
 kichijoji,東京都,武蔵野市
 nishi-ogikubo,東京都,杉並区
 ogikubo,東京都,杉並区
@@ -25,3 +26,15 @@ hirai,東京都,江戸川区
 shin-koiwa,東京都,葛飾区
 koiwa,東京都,江戸川区
 ichikawa,千葉県,市川市
+moto-yawata,千葉県,市川市
+shimosa-nakayama,千葉県,船橋市
+nishi-funabashi,千葉県,船橋市
+funabashi,千葉県,船橋市
+higashi-funabashi,千葉県,船橋市
+tsudanuma,千葉県,習志野市
+makuharihongo,千葉県,千葉市花見川区
+makuhari,千葉県,千葉市花見川区
+shin-kemigawa,千葉県,千葉市花見川区
+inage,千葉県,千葉市稲毛区
+nishi-chiba,千葉県,千葉市中央区
+chiba,千葉県,千葉市中央区

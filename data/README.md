@@ -1,9 +1,11 @@
-# JR East Tokyo 23-ward game data pipeline
+# JR East capital-region game data pipeline
 
 `public/data/*` is generated deterministically from MLIT N02 2025 and reviewed
-`data/overrides` tables. The current five-service catalogue has 67 shared stations,
-22 transfer stations, 146 directed gameplay segments and 88 geometry features.
-The source dataset and service scope are fixed; there is no live timetable lookup.
+`data/overrides` tables. The live S6 catalogue has 40 services and 472 shared
+stations across 東京都・千葉県・神奈川県・埼玉県. It contains 1,224 directed
+gameplay segments, 568 owned geometry features and 1,230 geometry references.
+The product stop order is frozen in the approved catalogue oracle; there is no
+live timetable lookup. Gameplay remains the all-equal Yamanote loop from 新橋.
 
 ## Source and licences
 
@@ -43,6 +45,39 @@ uv run pytest -q
 ```
 
 Build options: `--raw-dir`, `--overrides-dir`, `--out-dir`, `--quiet`.
+
+## Live edition (S6; 2026-10-15)
+
+The shipped catalogue is the approved JR East capital-region product catalogue:
+40 services and 472 stations in product order. All four prefectures are included;
+`data/overrides/dataset.json` pins the product-only `expected-catalog.json` with
+SHA-256 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`.
+The 67 previously shipped station IDs and five service IDs are retained. The
+target remains `jr-yamanote`, the start remains `shimbashi`, `budgetProfile` is
+`capital-region`, and simplification remains 1 m. S5 will change the game rules;
+S6 keeps the all-equal rules shipped by this step.
+
+Current output has 568 primitive features and 1,230 directed segment references;
+the maximum chain is 3 primitives. One reviewed platform transfer is at 上野 for
+常磐線快速, the maximum reviewed platform offset is 393.4 m at 武蔵小杉 on 南武線,
+and the two 湘南新宿ライン freight-corridor surrogate pairs retain their 2.1
+detour allowance. Raw/gzip measurements and N02 evidence are in
+`.claude/docs/research/jr-east-capital-region-s6.md` and its pair-evidence CSV. The annex
+separates actual section traversal from endpoint-only contact and nearby
+candidates. Service filters pin the distinguishable Tama, Joban and Minami-Urawa
+branches. N02 generalizes separate rapid/local tracks on the new Sobu span and
+parts of Joban, and merges the Tohoku passenger/freight through corridor; the
+S6 evidence specifies those representation limits without asserting physical
+track sharing.
+
+Rebuild into a temporary directory and compare before publishing:
+
+```bash
+uv run python -m scripts.data_pipeline.build \
+  --raw-dir N02-25_GML/UTF-8 --quiet --out-dir /tmp/jrcr-s6
+diff -r /tmp/jrcr-s6 public/data
+uv run python -m scripts.data_pipeline.validate
+```
 Validation options: `--data-dir`, `--overrides-dir`. Artifact validation and synthetic
 routing tests run in CI without raw N02. The existing raw-data build test module is
 skipped only when the raw download is absent; locally it checks pinned inputs and
@@ -122,13 +157,14 @@ gameplay checks before publishing a fresh v3 build. Never relabel a stage manife
 | `detour_exceptions.csv` | Optional reviewed per-forward-pair detour limits with reasons (currently empty) |
 | `platform_transfers.csv` | Optional reviewed stops where a service departs from another N02 platform feature (currently absent) |
 
-The five services are Yamanote, Keihin-Tohoku (Akabane–Kamata), Chuo-Sobu local
-(Nishi-Ogikubo–Koiwa), Saikyo (Osaki–Ukima-Funado), and Keiyo
-(Tokyo–Kasai-Rinkai-Koen). Every non-loop stop list ends at the last in-scope stop;
-real termini are distinguished from area boundaries. The reviewed catalogue
-excludes Joban local, Joban rapid, Yokosuka/Sobu rapid, and other rapid/through services.
+The initial 2026-10-12 23-ward release listed Yamanote, Keihin-Tohoku
+(Akabane–Kamata), Chuo-Sobu local (Nishi-Ogikubo–Koiwa), Saikyo
+(Osaki–Ukima-Funado), and Keiyo (Tokyo–Kasai-Rinkai-Koen). That historical
+catalogue excluded Joban local, Joban rapid, Yokosuka/Sobu rapid and other
+rapid/through services. S6 supersedes its live scope with the approved 40-service
+regional catalogue described above.
 
-### Regional preparation (S3a; shipped catalogue remains 5 services / 67 stations)
+### Regional preparation (historical S3a stage; no longer the shipped scope)
 
 The registry header is
 `id,name,n02_name,prefecture,municipality,representative_service_id[,n02_selector]`.
@@ -241,7 +277,7 @@ detours/via hints, service lengths, connectivity, start-not-endpoint, determinis
 bytes/content hash and the 300,000-byte GeoJSON limit. Other services' stations
 near a path are diagnostic only: Saikyo legitimately passes Yamanote-only stops.
 
-At the 2026-10-12 refresh: v3 geometry 43,433 B; maximum endpoint offset 24.507 m
+At the historical 2026-10-12 23-ward refresh: v3 geometry 43,433 B; maximum endpoint offset 24.507 m
 (Saikyo at Ikebukuro); Tokyo/Keiyo platform offset 386.0 m, within its reviewed
 500 m exception. Service lengths: Yamanote 34.453 km, Keihin-Tohoku 27.495 km,
 Chuo-Sobu local 30.697 km, Saikyo 21.979 km, Keiyo 10.532 km.

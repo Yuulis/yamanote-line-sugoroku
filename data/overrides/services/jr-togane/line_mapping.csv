@@ -1,0 +1,5 @@
+from_id,to_id,n02_line,via,route,compose
+oami,fukutawara,東金線,,,
+fukutawara,togane,東金線,,,
+togane,gumyo,東金線,,,
+gumyo,naruto,東金線,,,

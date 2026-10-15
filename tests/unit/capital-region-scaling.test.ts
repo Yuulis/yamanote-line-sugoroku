@@ -159,11 +159,11 @@ describe("scaled map and presentation", () => {
     expect(paints[`${LAYER_IDS.currentService}:line-color`]).toBe("#EE2222");
   });
 
-  it("keeps the compact shipped overview, starts the regional map on the target", async () => {
+  it("keeps the compact fixture overview and starts the live regional map on the target", async () => {
     expect(initialOverviewServices(services.services, MVP_GAME_CONFIG.targetServiceId).map((s) => s.id)).toEqual([MVP_GAME_CONFIG.targetServiceId]);
-    const compact = await loadBundle("real");
-    if (!compact.data.services.ok) throw new Error("Missing services");
-    expect(initialOverviewServices(compact.data.services.value.services, MVP_GAME_CONFIG.targetServiceId)).toEqual(compact.data.services.value.services);
+    const live = await loadBundle("real");
+    if (!live.data.services.ok) throw new Error("Missing services");
+    expect(initialOverviewServices(live.data.services.value.services, MVP_GAME_CONFIG.targetServiceId).map((s) => s.id)).toEqual([MVP_GAME_CONFIG.targetServiceId]);
     expect(stations).toHaveLength(37);
   });
 
