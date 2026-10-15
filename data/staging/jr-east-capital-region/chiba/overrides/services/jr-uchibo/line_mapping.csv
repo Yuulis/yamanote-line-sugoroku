@@ -1,0 +1,4 @@
+from_id,to_id,n02_line,via,route,compose
+chiba,hon-chiba,,,,"{""legs"":[{""source_service"":""jr-sotobo"",""from"":""chiba"",""to"":""hon-chiba""}],""shared_track_evidence"":[{""lines"":[""外房線""],""allow"":[],""deny"":[],""reason"":""Chiba–Soga is the Sotobo physical double track also used by Uchibo trains; N02 owner jr-sotobo uses 外房線 with empty section filters. Exact owner endpoints are inherited; no local/rapid track sharing.""}]}"
+hon-chiba,soga,,,,"{""legs"":[{""source_service"":""jr-sotobo"",""from"":""hon-chiba"",""to"":""soga""}],""shared_track_evidence"":[{""lines"":[""外房線""],""allow"":[],""deny"":[],""reason"":""Chiba–Soga is the Sotobo physical double track also used by Uchibo trains; N02 owner jr-sotobo uses 外房線 with empty section filters. Exact owner endpoints are inherited; no local/rapid track sharing.""}]}"
+soga,awa-kamogawa,内房線,,,

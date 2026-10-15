@@ -1,0 +1,10 @@
+service_id,from_id,to_id,from_prefecture,to_prefecture,proposed_n02_line,disposition
+jr-chuo-sobu-local,koiwa,ichikawa,東京都,千葉県,総武線,S6 retain: route on the local track; do not compose from rapid
+jr-keiyo,kasai-rinkai-koen,maihama,東京都,千葉県,京葉線,S6 retain: route on the Keiyo track
+jr-musashino,misato,minami-nagareyama,埼玉県,千葉県,武蔵野線,S6 retain: route on the Musashino track
+jr-sobu-rapid,shin-koiwa,ichikawa,東京都,千葉県,総武線,S6 retain: route on the rapid track; do not compose from local
+jr-joban-rapid,kita-senju,matsudo,東京都,千葉県,常磐線,S6 retain: route on the rapid track; do not compose from local
+jr-joban-local,kanamachi,matsudo,東京都,千葉県,常磐線,Defer to combined S6 with the Tokyo enclave; route on the local track
+jr-joban-rapid,tennodai,toride,千葉県,茨城県,常磐線,Scope-only neighbour outside approved 1都3県; never route
+jr-joban-local,tennodai,toride,千葉県,茨城県,常磐線,Scope-only neighbour outside approved 1都3県; never route
+jr-kashima,junikyo,itako,千葉県,茨城県,鹿島線,Scope-only neighbour outside approved 1都3県; never route
