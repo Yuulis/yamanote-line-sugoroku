@@ -4,6 +4,7 @@ import { gameSeed, presetConfig, runGame, runSimulation, summarizeTurns } from "
 import { parseCsv } from "../simulation/csv";
 import { loadResearchCatalog, loadShippedBundle } from "../simulation/inputs";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
+import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -82,6 +83,11 @@ describe("real-engine simulation harness", () => {
   it("accepts shipped data through the same measurement entry point", () => {
     const input = loadShippedBundle("public/data");
     const config = presetConfig("decided", input.targetServiceId, input.startStationId);
+    expect(config.serviceLottery).toEqual(MVP_GAME_CONFIG.serviceLottery);
+    expect(config.directionLottery).toEqual(MVP_GAME_CONFIG.directionLottery);
+    expect(config.targetServiceId).toBe(MVP_GAME_CONFIG.targetServiceId);
+    expect(config.startStationId).toBe(MVP_GAME_CONFIG.startStationId);
+    expect(config.goalArrivalPolicy).toBe(MVP_GAME_CONFIG.goalArrivalPolicy);
     expect(runSimulation(input.network, config, { baseSeed: 20261012, games: 3, turnCap: 2000 }).capHits).toBe(0);
   });
 });

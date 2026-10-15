@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   buildRailwayNetwork, createGame, landingOptions, moveByRoll, playTurn, restoreGame, rollDie, SAVE_VERSION, serializeGame,
 } from "../../src/features/game/engine";
+import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { GameConfig, GameState } from "../../src/types/network";
 import { deleteSave, readSave, SAVE_STORAGE_KEY, type StorageLike } from "../../src/features/game/store/persistence";
 import { kindInput, lotteryConfig } from "./fixtures/lottery";
 import { M_LINE, multiServiceInput } from "./fixtures/multiService";
+import { yamanoteInput } from "./fixtures/yamanote";
 
 const network = buildRailwayNetwork(kindInput());
+const yamanoteNetwork = buildRailwayNetwork(yamanoteInput());
 const INVALID_SAVE = expect.objectContaining({ code: "INVALID_SAVE" });
 type RawConfig = Record<string, unknown>;
 
@@ -28,6 +31,17 @@ function seededStates(config: GameConfig, seed: string): GameState[] {
 }
 
 describe("save v3 lottery policies", () => {
+  it("rejects a save made under the previously shipped ruleset", () => {
+    const oldConfig = structuredClone(MVP_GAME_CONFIG);
+    oldConfig.rulesetVersion = "jr-east-23ku-1";
+    oldConfig.serviceLottery.target = { kind: "weight", weight: 1 };
+    oldConfig.directionLottery.towardTargetWeight = 1;
+    const oldSave = serializeGame(createGame(oldConfig, "previous-ruleset", yamanoteNetwork));
+
+    expect(() => restoreGame(oldSave, yamanoteNetwork, { expectedConfig: MVP_GAME_CONFIG }))
+      .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
+  });
+
   it.each([
     ["share", "weighted-save-30"],
     // First weighted-save-v3-N (N ascending from 0) completing within 500 turns
@@ -92,6 +106,7 @@ describe("save v3 lottery policies", () => {
   });
 
   it.each<[string, (config: GameConfig) => void]>([
+    ["ruleset version", (config) => { config.rulesetVersion = "jr-east-23ku-1"; }],
     ["kind base", (config) => { (config.serviceLottery.kindWeights as Record<string, number>).rapid = 4; }],
     ["share numerator", (config) => { config.serviceLottery.target = { kind: "share", numerator: 1, denominator: 5 }; }],
     ["share denominator", (config) => { config.serviceLottery.target = { kind: "share", numerator: 2, denominator: 6 }; }],

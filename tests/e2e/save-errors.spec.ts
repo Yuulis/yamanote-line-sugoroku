@@ -24,6 +24,20 @@ function withField(valid: string, field: string, value: unknown): string {
   return JSON.stringify({ ...JSON.parse(valid), [field]: value });
 }
 
+function tamperOldRuleset(valid: string): string {
+  const save = JSON.parse(valid);
+  save.config = {
+    ...save.config,
+    rulesetVersion: "jr-east-23ku-1",
+    serviceLottery: {
+      ...save.config.serviceLottery,
+      target: { kind: "weight", weight: 1 },
+    },
+    directionLottery: { ...save.config.directionLottery, towardTargetWeight: 1 },
+  };
+  return JSON.stringify(save);
+}
+
 /** Flip the last hex digit of the seed: same shape, different dice. */
 function tamperSeed(valid: string): string {
   const seed = String(JSON.parse(valid).rngSeed);
@@ -41,6 +55,11 @@ const CASES: InvalidSaveCase[] = [
     name: "unknown saveVersion",
     message: "このバージョンでは読み込めない形式のセーブデータです。",
     tamper: (valid) => withField(valid, "saveVersion", 999),
+  },
+  {
+    name: "previous ruleset",
+    message: "ルールが異なるセーブデータのため読み込めません。",
+    tamper: tamperOldRuleset,
   },
   {
     name: "tampered rngSeed",
