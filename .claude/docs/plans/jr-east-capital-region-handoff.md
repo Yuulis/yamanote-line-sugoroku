@@ -1,6 +1,6 @@
 # Handoff: JR East capital-region (1都3県) edition
 
-## Current status (2026-10-15) — resume here
+## Current status (2026-10-15) — complete
 
 **S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages, S6 (combined live 1都3県 dataset), S6V (map readability), S5 (rules flip) and S7 (docs + phone overview fit) are merged** into the integration branch
 `feature/jr-east-capital-region` (head after this update; last merge PR #24; based on `develop`). Nothing is uncommitted.
@@ -30,8 +30,11 @@ and production needs explicit user approval. The integration branch now ships th
 | S7 docs + phone overview fit (Luna high; Sol low review) | merged | #24 | typecheck, Vitest 578, build, E2E 93 + `real-data` 6/6 after `test.slow()`; regression (phone tile test) found by the lead → fixed; Sol review NEEDS_REVISION (legend re-fit state) → re-fit removed; CI green |
 | S5 rules flip + texts (Luna high; Sol low review) | merged | #23 | typecheck, Vitest 578, build, E2E 93/93, pytest 373, lead rerun of `npm run sim` decided on `public/data` = 61/148/258; Sol review NEEDS_REVISION (old-ruleset app test, seed comment) → fixed; CI green |
 
-**Next: release.** Integration → `develop` PR, then `develop` → `master` (production) ONLY after explicit user
-approval, then a production smoke. See sections "S5" and "S7" below. No open UI leftovers.
+**PROJECT COMPLETE — released to production 2026-10-15** (integration → `develop` PR #25, `develop` → `master`
+PR #26, Vercel production deploy `88d1745` succeeded; the user runs the production smoke test). Post-release cleanup:
+all merged feature branches deleted (remote and local), the stale `.claude/worktrees/agent-a00334be…` worktree removed
+(its uncommitted diff archived in `.claude/logs/archive/`), build/test artifacts removed. `data/staging/` is kept because
+`tests/data_pipeline/test_staging_*.py` still use it. Next direction: `docs/manual/development-roadmap/proposal.md`.
 **Executor lanes (user, 2026-10-15, S5 on):** Codex again — Luna `high` for simple/specified implementation,
 Sol `low` (`--sandbox read-only`) for reviews; Luna `xhigh` allowed. When Codex limits run out, switch to Claude
 subagents (`general-purpose-sonnet` for UI/mechanical work, `general-purpose-opus` for judgment and reviews).

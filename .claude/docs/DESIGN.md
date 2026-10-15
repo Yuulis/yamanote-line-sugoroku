@@ -20,6 +20,8 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 
 An original browser railway board game on a real MapLibre map. The current edition is “山手線すごろく — JR東日本 東京23区版”: five reviewed JR East all-stop service patterns inside Tokyo's 23 wards, 67 shared station identities and 22 transfer stations. A solo player starts at Shimbashi on Yamanote outer and must traverse all 30 Yamanote outer directed segments, then arrive at Shimbashi. Arrival lotteries may change the next service and direction. The original Yamanote-only MVP remains the historical baseline in `railway_sugoroku_mvp_spec.md`; its dated JR expansion addendum and the Key Decisions below define the current edition. No original-work characters, art or text are used.
 
+Current edition (2026-10-15; supersedes the 東京23区版 paragraph above; primary source `railway_sugoroku_mvp_spec.md` v0.4.0): “山手線すごろく — JR東日本 1都3県版”, in production since 2026-10-15. 40 JR East conventional service patterns (one per track system; weekday base stop patterns) across 東京都 (excluding islands), 千葉県, 神奈川県 and 埼玉県, with 472 shared station identities. A solo player starts at Shimbashi on Yamanote outer and must traverse all 30 Yamanote outer directed segments, then arrive at Shimbashi. Arrival lotteries choose the next service (山手線 1/2 at its stations, the rest uniform) and direction (toward 山手線 2:1) under ruleset `jr-east-capital-1`.
+
 ## スコープ (Scope)
 
 ### In Scope
@@ -241,3 +243,11 @@ Current edition (2026-10-12): the following statements supersede the historical 
 - 1都3県版（2026-10-13）: 上記 Q1〜Q11 はユーザー決定で解決済み（Key Decisions 参照）。Q3 は「上位種別は系統にしない、緩行線と快速線を別系統」と再定義。23区版は本番リリース済み（PR #4 は判断不要）。次の作業: 研究カタログを線路系統単位で作り直し、モンテカルロを再計測してから実装に入る（`.claude/docs/plans/jr-east-capital-region-handoff.md`）。
 
 - 1都3県版（2026-10-13 更新）: 上の「ユーザー確認待ち」Q1〜Q11 一覧は履歴。catalog v2（40系統）とモンテカルロ再計測は完了。次は実装計画の承認と実装（`.claude/docs/plans/jr-east-capital-region-handoff.md`）。
+
+Current status (2026-10-15): the lists above are history; these items supersede them.
+
+- JR東日本 1都3県版は 2026-10-15 に本番リリース済み（PR #26）。23区版の R1〜R7 と 1都3県版の Q1〜Q11 はすべて Key Decisions で解決済み（経緯: `.claude/docs/research/jr-east-tokyo-expansion-design.md`、`.claude/docs/research/jr-east-capital-region-expansion-design.md`、`.claude/docs/plans/jr-east-capital-region-handoff.md`）。
+- MVP 由来の暫定事項（アニメーション速度、セーブタイミング、駅アイコン表示ズーム、端点許容、状態管理、OpenFreeMap 利用条件）は実装で確定済み。
+- [ ] 次の開発方針をユーザーが選ぶ（案: `docs/manual/development-roadmap/proposal.md`）。
+- [ ] 既知の制限: N02 の一般化区間（常磐 綾瀬–金町、総武 江戸川橋梁、赤羽–浦和）、上野の常磐線快速ホーム移動（131 m）。
+- [ ] 保守: `data/staging/` のステージ入力はテストが参照しているため残している。退役させる場合はテスト用フィクスチャへの移行が必要。
