@@ -17,7 +17,6 @@ import { indexServiceGeometry } from "./serviceGeometry";
 import { initialOverviewServices, isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
 import {
   FOLLOW_EASE_MS,
-  LAYER_IDS,
   MAP_CENTER,
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
@@ -26,8 +25,9 @@ import {
   NETWORK_FIT_PADDING_DESKTOP,
   NETWORK_FIT_PADDING_PHONE,
   NETWORK_FIT_PANEL_GAP,
-  PHONE_PANEL_MAX_HEIGHT_SHARE,
   PHONE_MEDIA_QUERY,
+  PHONE_PANEL_MAX_HEIGHT_SHARE,
+  isPhoneWidth,
 } from "./mapConfig";
 import {
   addRailwayLayers,
@@ -36,6 +36,7 @@ import {
   updateCurrentPosition,
   updateHighlightedService,
 } from "./railwayLayers";
+import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 
 export interface MapFollow {
@@ -55,10 +56,6 @@ interface RailwayMapProps {
   overviewKey?: number;
   targetServiceId?: string;
   minZoom?: number;
-}
-
-function isPhoneWidth(): boolean {
-  return typeof window.matchMedia === "function" && window.matchMedia(PHONE_MEDIA_QUERY).matches;
 }
 
 function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
@@ -94,25 +91,11 @@ function recentre(map: MapLibreMap, position: Position, immediate: boolean): voi
 }
 
 function attachStationPopup(map: MapLibreMap): void {
-  map.on("click", LAYER_IDS.stationCircles, (event) => {
-    const feature = event.features?.[0];
-    if (!feature || feature.geometry.type !== "Point") return;
-    const { name, lineNames } = feature.properties as {
-      name: string;
-      lineNames: string;
-    };
-    const [lon, lat] = feature.geometry.coordinates;
-    if (lon === undefined || lat === undefined) return;
+  bindStationInteractions(map, ({ name, lineNames, lngLat }) => {
     new Popup({ closeButton: true })
-      .setLngLat([lon, lat])
+      .setLngLat(lngLat)
       .setDOMContent(createStationPopupContent(name, lineNames))
       .addTo(map);
-  });
-  map.on("mouseenter", LAYER_IDS.stationCircles, () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", LAYER_IDS.stationCircles, () => {
-    map.getCanvas().style.cursor = "";
   });
 }
 

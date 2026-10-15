@@ -1,4 +1,4 @@
-import type { GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import type { Position, SegmentFeatureCollection } from "../../types/data";
 import type { LineMetadata, ServicePattern, Station } from "../../types/network";
 import { MVP_GAME_CONFIG } from "../game/gameConfig";
@@ -8,6 +8,9 @@ import {
   CURRENT_POSITION_RADIUS,
   CURRENT_POSITION_STROKE_COLOR,
   CURRENT_POSITION_STROKE_WIDTH,
+  CURRENT_SERVICE_LINE_WIDTH,
+  KEY_STATION_RADIUS_STOPS,
+  KEY_STATION_STROKE_STOPS,
   LABEL_FONT,
   LABEL_HALO_COLOR,
   LABEL_HALO_WIDTH,
@@ -15,7 +18,9 @@ import {
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
-  CURRENT_SERVICE_LINE_WIDTH,
+  ORDINARY_STATION_MIN_ZOOM,
+  ORDINARY_STATION_RADIUS_STOPS,
+  ORDINARY_STATION_STROKE_STOPS,
   OTHER_SERVICE_LINE_OPACITY,
   OTHER_SERVICE_LINE_WIDTH,
   PENDING_SEGMENT_COLOR,
@@ -24,9 +29,7 @@ import {
   SEGMENT_LINE_WIDTH,
   SOURCE_IDS,
   STATION_FILL_COLOR,
-  STATION_RADIUS,
   STATION_STROKE_COLOR,
-  STATION_STROKE_WIDTH,
 } from "./mapConfig";
 import {
   completedSegmentFilter,
@@ -34,6 +37,7 @@ import {
   pendingSegmentFilter,
 } from "./progressStyle";
 import { buildStationCollection } from "./stationCollection";
+import { classifyStations, keyStationIds, zoomInterpolation } from "./stationMarkers";
 
 /** Game progress drawn on the map. */
 export interface MapProgress {
@@ -114,15 +118,35 @@ export function addRailwayLayers(
       type: "geojson",
       data: buildStationCollection(stations, services),
     });
+    const isKeyStation: ExpressionSpecification = [
+      "in",
+      ["get", "id"],
+      ["literal", keyStationIds(classifyStations(stations, services, targetServiceId))],
+    ];
+    // Ordinary stations first so the always-visible markers are drawn on top.
+    map.addLayer({
+      id: LAYER_IDS.stationCirclesOrdinary,
+      type: "circle",
+      source: SOURCE_IDS.stations,
+      minzoom: ORDINARY_STATION_MIN_ZOOM,
+      filter: ["!", isKeyStation],
+      paint: {
+        "circle-radius": zoomInterpolation(ORDINARY_STATION_RADIUS_STOPS),
+        "circle-color": STATION_FILL_COLOR,
+        "circle-stroke-color": STATION_STROKE_COLOR,
+        "circle-stroke-width": zoomInterpolation(ORDINARY_STATION_STROKE_STOPS),
+      },
+    });
     map.addLayer({
       id: LAYER_IDS.stationCircles,
       type: "circle",
       source: SOURCE_IDS.stations,
+      filter: isKeyStation,
       paint: {
-        "circle-radius": STATION_RADIUS,
+        "circle-radius": zoomInterpolation(KEY_STATION_RADIUS_STOPS),
         "circle-color": STATION_FILL_COLOR,
         "circle-stroke-color": STATION_STROKE_COLOR,
-        "circle-stroke-width": STATION_STROKE_WIDTH,
+        "circle-stroke-width": zoomInterpolation(KEY_STATION_STROKE_STOPS),
       },
     });
     map.addLayer({
