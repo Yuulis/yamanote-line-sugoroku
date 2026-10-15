@@ -1,12 +1,12 @@
 # Handoff: JR East capital-region (1都3県) edition
 
-## Current status (2026-10-13) — resume here
+## Current status (2026-10-15) — resume here
 
-**S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages, S6 (combined live 1都3県 dataset) and S6V (map readability) are merged** into the integration branch
-`feature/jr-east-capital-region` (head after this update; last merge PR #22; based on `develop`). Nothing is uncommitted.
+**S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages, S6 (combined live 1都3県 dataset), S6V (map readability) and S5 (rules flip) are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; last merge PR #23; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
 and production needs explicit user approval. The integration branch now ships the 1都3県 dataset
-(40 services / 472 stations, title 「JR東日本 1都3県版」) with rules still all-equal; production is still the 23-ward edition.
+(40 services / 472 stations, title 「JR東日本 1都3県版」) with the decided rules `jr-east-capital-1`; production is still the 23-ward edition.
 
 | Step | Status | PR | Lead verification |
 |------|--------|----|-------------------|
@@ -27,15 +27,15 @@ and production needs explicit user approval. The integration branch now ships th
 | S6P Saitama (Luna xhigh) | merged | #20 | 9/9 services, 75/75 stations; Sol review: 1 of 24 compositions wrong (湘南新宿 local 大宮–浦和 on 東北貨物線) → lead fix; CI green |
 | S6 combined live dataset (Luna xhigh; fixes by Sol) | merged | #21 | `verify.sh` (pytest 373), raw-N02 rebuild identical, validate OK, Vitest 552, build, E2E 78/78, catalogue order/stop lists = product catalog; Sol review NEEDS_REVISION (東海道/京浜東北 多摩川, 常磐 快速/緩行 江戸川, 赤羽–浦和) → fixed; CI green |
 | S6V map readability (Claude Sonnet; Opus review) | merged | #22 | typecheck, Vitest 575, build, E2E 90/90; screenshots reviewed by the lead; Opus review APPROVE WITH CHANGES → applied; CI green |
+| S5 rules flip + texts (Luna high; Sol low review) | merged | #23 | typecheck, Vitest 578, build, E2E 93/93, pytest 373, lead rerun of `npm run sim` decided on `public/data` = 61/148/258; Sol review NEEDS_REVISION (old-ruleset app test, seed comment) → fixed; CI green |
 
-**Next: S5** (rules flip to Q1(c): 山手線 share 1/2 at its stations + toward-山手線 direction 2:1 in
-`MVP_GAME_CONFIG` with a new ruleset id, fixture seed proofs, real-engine Monte Carlo on the shipped data via
-`npm run sim` with the bundle input, rules/help texts) → **S7** (docs under `docs/manual/`, data README, release PR
-integration → develop → master; production needs explicit approval).
-Minor UI leftovers (optional, S5/S7): phone overview leaves empty space under the network when the legend is collapsed.
-**Executor switch (user, 2026-10-15): Codex limits are nearly exhausted — from S6V on, use Claude subagents only**
-(`general-purpose-sonnet` for UI/mechanical work, `general-purpose-opus` for judgment and the independent reviews
-that Codex Sol did before). Same contracts and lead gates.
+**Next: S7** (docs under `docs/manual/` in Japanese, `data/README.md`, README, DESIGN.md; then release PRs
+integration → develop → master; production needs explicit user approval). See section "S5" below for what changed.
+Minor UI leftovers (optional, S7): phone overview leaves empty space under the network when the legend is collapsed.
+**Executor lanes (user, 2026-10-15, S5 on):** Codex again — Luna `high` for simple/specified implementation,
+Sol `low` (`--sandbox read-only`) for reviews; Luna `xhigh` allowed. When Codex limits run out, switch to Claude
+subagents (`general-purpose-sonnet` for UI/mechanical work, `general-purpose-opus` for judgment and reviews).
+Same contracts and lead gates.
 Codex was near its rate limit at the end of this session: if Codex is unavailable, Claude subagents
 (`general-purpose-opus` for pipeline/routing judgment, `general-purpose-sonnet` for mechanical tables)
 can take a step with the same contract, gates and review (use a read-only Codex or Opus review).
@@ -979,3 +979,16 @@ collapsed on phone when > 6 rows, 山手線 progress + 現在地 always visible;
 off-centre" finding did not reproduce (the S6 screenshot was taken after a test-side fit); `tests/e2e/map-visual.spec.ts`
 now pins 山手線 centring and the 「全体」 fit on desktop and phone. Screenshots: `.claude/logs/jrcr-s6v/screenshots/`.
 
+## S5 — rules flip and texts (merged via PR #23, 2026-10-15)
+
+`MVP_GAME_CONFIG` → ruleset `jr-east-capital-1`: `serviceLottery.target = {kind:"share", numerator:1, denominator:2}`,
+`kindWeights` local = rapid = 1, `directionLottery.towardTargetWeight = 2`; goal unchanged. Old `jr-east-23ku-1` saves
+hit `CONFIG_MISMATCH` (unit test + `save-errors.spec.ts` case「ルールが異なるセーブデータのため読み込めません。」).
+Capital fixture seeds replaced: `CAPITAL_GAME_SEED` `…c4` → `…12b1b` (ascending search from `0x27c3`, criterion in
+`tests/e2e/fixtures/capital-region/seeds.ts`; completes in 24 turns), `CAPITAL_BRANCH_SEED` `…09` → `…18e`
+(ascending from 0). The browser fixture seed `…09` is unchanged. Real-data playthroughs pin turn counts
+32/41/136/24/103/31/24/73 (`tests/unit/real-data.test.ts`); `simulation-harness.test.ts` asserts the `decided`
+preset equals the shipped policies. Shipped-data Monte Carlo (20,000 games, seed 20261012, cap 20,000):
+decided 61/148/258 (mean 73.86, max 481, 0 caps), all-equal 396/967/1,643 — identical to S1M because the shipped
+gameplay graph equals the research catalog (design §8.7, `.claude/docs/research/jr-east-capital-region-s5-results.json`).
+Title-screen copy explains the weighting; `index.html` title says 1都3県版.
