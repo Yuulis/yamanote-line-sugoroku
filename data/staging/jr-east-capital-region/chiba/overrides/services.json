@@ -1,0 +1,784 @@
+{
+  "lines": [
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "color": "#C9252F"
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-musashino-takaya",
+      "name": "武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線)",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-musashino-futamata",
+      "name": "武蔵野線直通 西船橋–南船橋 (京葉線二俣支線)",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-sobu-rapid",
+      "name": "総武快速線",
+      "color": "#0067C0"
+    },
+    {
+      "id": "jr-joban-rapid",
+      "name": "常磐線快速 (上野東京ライン)",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-joban-local",
+      "name": "常磐線各駅停車",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-narita-abiko",
+      "name": "成田線 我孫子支線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-narita",
+      "name": "成田線 (佐倉–松岸)",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-narita-airport-branch",
+      "name": "成田線 空港支線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-kashima",
+      "name": "鹿島線 (香取–十二橋)",
+      "color": "#9F7BB5"
+    },
+    {
+      "id": "jr-sobu-main",
+      "name": "総武本線 (千葉–銚子)",
+      "color": "#FFC20D"
+    },
+    {
+      "id": "jr-sotobo",
+      "name": "外房線",
+      "color": "#E83F3F"
+    },
+    {
+      "id": "jr-uchibo",
+      "name": "内房線",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-kururi",
+      "name": "久留里線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-togane",
+      "name": "東金線",
+      "color": "#B38D4D"
+    }
+  ],
+  "services": [
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "kind": "local",
+      "lineIds": [
+        "jr-chuo-sobu-local"
+      ],
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "千葉方面",
+        "backward": "市川方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 13,
+      "lengthRef": {
+        "km": 23.8,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Ch%C5%AB%C5%8D-S%C5%8Dbu_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JB27",
+          "JB28",
+          "JB29",
+          "JB30",
+          "JB31",
+          "JB32",
+          "JB33",
+          "JB34",
+          "JB35",
+          "JB36",
+          "JB37",
+          "JB38",
+          "JB39"
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "kind": "local",
+      "lineIds": [
+        "jr-keiyo"
+      ],
+      "color": "#C9252F",
+      "circular": false,
+      "directionLabels": {
+        "forward": "蘇我方面",
+        "backward": "舞浜方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 12,
+      "lengthRef": {
+        "km": 30.3,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Keiy%C5%8D_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JE07",
+          "JE08",
+          "JE09",
+          "JE10",
+          "JE11",
+          "JE12",
+          "JE13",
+          "JE14",
+          "JE15",
+          "JE16",
+          "JE17",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino"
+      ],
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西船橋方面",
+        "backward": "南流山方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 16.4,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Musashino_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JM16",
+          "JM15",
+          "JM14",
+          "JM13",
+          "JM12",
+          "JM11",
+          "JM10"
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-musashino-takaya",
+      "name": "武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線)",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino-takaya"
+      ],
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "市川塩浜方面",
+        "backward": "西船橋方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 5.9,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Keiy%C5%8D_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-musashino-futamata",
+      "name": "武蔵野線直通 西船橋–南船橋 (京葉線二俣支線)",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino-futamata"
+      ],
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "南船橋方面",
+        "backward": "西船橋方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 5.4,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Keiy%C5%8D_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-sobu-rapid",
+      "name": "総武快速線",
+      "kind": "rapid",
+      "lineIds": [
+        "jr-sobu-rapid"
+      ],
+      "color": "#0067C0",
+      "circular": false,
+      "directionLabels": {
+        "forward": "千葉方面",
+        "backward": "市川方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 5,
+      "lengthRef": {
+        "km": 23.8,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Ch%C5%AB%C5%8D-S%C5%8Dbu_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JO24",
+          "JO25",
+          "JO26",
+          "JO27",
+          "JO28"
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-joban-rapid",
+      "name": "常磐線快速 (上野東京ライン)",
+      "kind": "rapid",
+      "lineIds": [
+        "jr-joban-rapid"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "天王台方面",
+        "backward": "松戸方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 4,
+      "lengthRef": {
+        "km": 18.3,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/J%C5%8Dban_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JJ06",
+          "JJ07",
+          "JJ08",
+          "JJ09"
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-joban-local",
+      "name": "常磐線各駅停車",
+      "kind": "local",
+      "lineIds": [
+        "jr-joban-local"
+      ],
+      "color": "#00B2E5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "天王台方面",
+        "backward": "松戸方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 18.3,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/J%C5%8Dban_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JL22",
+          "JL23",
+          "JL24",
+          "JL25",
+          "JL26",
+          "JL27",
+          "JL28",
+          "JL29",
+          "JL30",
+          "JL31"
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-narita-abiko",
+      "name": "成田線 我孫子支線",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita-abiko"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成田方面",
+        "backward": "我孫子方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 32.9,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Narita_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-narita",
+      "name": "成田線 (佐倉–松岸)",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "松岸方面",
+        "backward": "佐倉方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 16,
+      "lengthRef": {
+        "km": 75.4,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-narita-airport-branch",
+      "name": "成田線 空港支線",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita-airport-branch"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成田空港方面",
+        "backward": "成田方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 10.8,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Narita_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-kashima",
+      "name": "鹿島線 (香取–十二橋)",
+      "kind": "local",
+      "lineIds": [
+        "jr-kashima"
+      ],
+      "color": "#9F7BB5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "十二橋方面",
+        "backward": "香取方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 3.0,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/J%C5%ABniky%C5%8D_Station (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-sobu-main",
+      "name": "総武本線 (千葉–銚子)",
+      "kind": "local",
+      "lineIds": [
+        "jr-sobu-main"
+      ],
+      "color": "#FFC20D",
+      "circular": false,
+      "directionLabels": {
+        "forward": "銚子方面",
+        "backward": "千葉方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 22,
+      "lengthRef": {
+        "km": 81.3,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/S%C5%8Dbu_Main_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-sotobo",
+      "name": "外房線",
+      "kind": "local",
+      "lineIds": [
+        "jr-sotobo"
+      ],
+      "color": "#E83F3F",
+      "circular": false,
+      "directionLabels": {
+        "forward": "安房鴨川方面",
+        "backward": "千葉方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 27,
+      "lengthRef": {
+        "km": 93.3,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-uchibo",
+      "name": "内房線",
+      "kind": "local",
+      "lineIds": [
+        "jr-uchibo"
+      ],
+      "color": "#00B2E5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "安房鴨川方面",
+        "backward": "千葉方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 32,
+      "lengthRef": {
+        "km": 123.2,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-kururi",
+      "name": "久留里線",
+      "kind": "local",
+      "lineIds": [
+        "jr-kururi"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "久留里方面",
+        "backward": "木更津方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 11,
+      "lengthRef": {
+        "km": 22.6,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://en.wikipedia.org/wiki/Kururi_Line (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    },
+    {
+      "id": "jr-togane",
+      "name": "東金線",
+      "kind": "local",
+      "lineIds": [
+        "jr-togane"
+      ],
+      "color": "#B38D4D",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成東方面",
+        "backward": "大網方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 5,
+      "lengthRef": {
+        "km": 13.8,
+        "toleranceKm": 1.5,
+        "source": "Published operating distance for staged endpoints; see S6P Chiba evidence derivation. https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf (accessed 2026-10-15)"
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Published station-table numbering (S6P Chiba evidence); all-empty sequences mean numbering not curated for this service, not an assertion that stations have no numbers."
+      },
+      "scopeSource": "S6P Chiba: frozen jr-east-capital-region-product-catalog.csv (2026-10 timetable basis), contiguous Chiba-only run; immediate excluded neighbours at area boundaries. Tokyo enclave stations and prefecture-split runs are deferred to the combined S6 dataset. External neighbours Toride/Itako corroborated by the JREast timetable sources in the evidence document."
+    }
+  ]
+}

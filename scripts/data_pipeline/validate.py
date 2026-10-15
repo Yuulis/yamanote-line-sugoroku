@@ -1,4 +1,4 @@
-"""Validate ``public/data/*`` (v2 contract) against ``data/overrides``.
+"""Validate ``public/data/*`` (v3 contract) against ``data/overrides``.
 
 Usage: ``uv run python -m scripts.data_pipeline.validate [--data-dir ...]``
 
@@ -25,12 +25,19 @@ from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config, rules
+from scripts.data_pipeline.budgets import BUDGET_PROFILES, budget_errors, size_report
+from scripts.data_pipeline.composition_validate import (
+    check_composed_artifacts,
+    check_platform_transfers,
+)
+from scripts.data_pipeline.constraints import BBox
 from scripts.data_pipeline.export import (
     GAME_DATA_FILES,
     build_segments,
     data_version,
     dumps_feature_collection,
     dumps_pretty,
+    dumps_segments,
     feature_id,
     manifest_inputs,
 )
@@ -56,6 +63,10 @@ class Dataset:
     manifest: Any
     payloads: dict[str, str]  # raw text of the game data files, for the hash
     manifest_payload: str | None = None
+
+    @property
+    def service_patterns(self) -> Any:
+        return self.services["services"]
 
     @property
     def geojson_bytes(self) -> int:
@@ -90,7 +101,7 @@ def to_metric(coordinate: Sequence[float]) -> tuple[float, float]:
     return (float(x), float(y))
 
 
-def _is_coordinate(value: Any) -> bool:
+def _is_coordinate(value: Any, bbox: BBox = config.DEFAULT_OUTPUT_BBOX) -> bool:
     if not isinstance(value, list) or len(value) != 2:
         return False
     if not all(
@@ -99,7 +110,7 @@ def _is_coordinate(value: Any) -> bool:
         return False
     if not all(math.isfinite(item) for item in value):
         return False
-    min_lon, min_lat, max_lon, max_lat = config.OUTPUT_BBOX
+    min_lon, min_lat, max_lon, max_lat = bbox
     return min_lon <= value[0] <= max_lon and min_lat <= value[1] <= max_lat
 
 
@@ -116,6 +127,7 @@ def check_stations(
     stations: Any,
     official: Sequence[tuple[str, str]],
     report: Report,
+    bbox: BBox = config.DEFAULT_OUTPUT_BBOX,
 ) -> dict[str, list[float]]:
     """Count, unique ids/names, coordinates, and (id, name) vs. the override."""
     if not _is_object_list(stations):
@@ -129,7 +141,7 @@ def check_stations(
         station_id = station.get("id")
         name = station.get("name")
         if set(station) != {"id", "name", "coordinates"}:
-            report.errors.append(f"station {index} has invalid v2 fields")
+            report.errors.append(f"station {index} has invalid v3 fields")
         if not isinstance(station_id, str) or not station_id:
             report.errors.append(f"stations[{index}] has no id")
             continue
@@ -140,7 +152,7 @@ def check_stations(
         else:
             names.append(name)
         coordinates = station.get("coordinates")
-        if not _is_coordinate(coordinates):
+        if not _is_coordinate(coordinates, bbox):
             report.errors.append(f"station {station_id} has invalid coordinates")
             continue
         if any(_too_many_decimals(value) for value in coordinates):
@@ -160,9 +172,19 @@ def check_services(
     overrides: Overrides,
     report: Report,
 ) -> tuple[list[ServiceStops], dict[tuple[str, str], Point]]:
-    """Strict v2 metadata, topology and platform coordinates against overrides."""
+    """Strict v3 metadata, topology and platform coordinates against overrides."""
+    if not isinstance(services, dict) or set(services) != {"lines", "services"}:
+        report.errors.append("services.json must be a v3 {lines, services} object")
+        return [], {}
+    expected_lines = [
+        {"id": line.id, "name": line.name, "color": line.color}
+        for line in overrides.lines
+    ]
+    if services["lines"] != expected_lines:
+        report.errors.append("services.json lines differ from data/overrides")
+    services = services["services"]
     if not _is_object_list(services):
-        report.errors.append("services.json must be an array of objects")
+        report.errors.append("services.json services must be an array of objects")
         return [], {}
     parsed: list[ServiceStops] = []
     platforms: dict[tuple[str, str], Point] = {}
@@ -184,6 +206,8 @@ def check_services(
             "id",
             "name",
             "operator",
+            "kind",
+            "lineIds",
             "color",
             "circular",
             "stationIds",
@@ -193,7 +217,7 @@ def check_services(
         if not definition.circular:
             keys.add("endpoints")
         if set(raw) != keys:
-            report.errors.append(f"service {service_id} has invalid v2 fields")
+            report.errors.append(f"service {service_id} has invalid v3 fields")
         if type(raw.get("circular")) is not bool:
             report.errors.append(f"service {service_id} circular must be a boolean")
         rules.check_service_metadata(
@@ -235,7 +259,7 @@ def check_services(
             continue
         rules.check_platform_keys(service, coords, report)
         for station_id, coordinate in coords.items():
-            if not _is_coordinate(coordinate):
+            if not _is_coordinate(coordinate, overrides.dataset.output_bbox):
                 report.errors.append(
                     f"{service_id}/{station_id} has invalid platform coordinates"
                 )
@@ -290,14 +314,34 @@ def check_segments(
             report.errors.append(f"duplicate or invalid segment id at {index}")
         else:
             seen.add(identifier)
-        if index >= len(expected) or raw != expected[index]:
+        chain = raw.get("geometryFeatureIds")
+        if (
+            not isinstance(chain, list)
+            or not chain
+            or not all(isinstance(item, str) and item for item in chain)
+        ):
+            report.errors.append(
+                f"segment {identifier} needs a non-empty geometryFeatureIds chain"
+            )
+        keys = {"id", "serviceId", "from", "to", "geometryFeatureIds"}
+        if (
+            set(raw) != keys
+            or index >= len(expected)
+            or any(
+                raw.get(key) != expected[index][key]
+                for key in keys - {"geometryFeatureIds"}
+            )
+        ):
             report.errors.append(
                 f"segments[{index}] differs from the directed pair contract"
             )
 
 
 def _feature_geometry(
-    feature: dict[str, Any], label: str, report: Report
+    feature: dict[str, Any],
+    label: str,
+    report: Report,
+    bbox: BBox = config.DEFAULT_OUTPUT_BBOX,
 ) -> LineString | None:
     geometry = feature.get("geometry")
     if (
@@ -311,7 +355,7 @@ def _feature_geometry(
     if not isinstance(coordinates, list) or len(coordinates) < 2:
         report.errors.append(f"empty or degenerate geometry: {label}")
         return None
-    if not all(_is_coordinate(point) for point in coordinates):
+    if not all(_is_coordinate(point, bbox) for point in coordinates):
         report.errors.append(f"bad coordinate in {label}")
         return None
     if any(_too_many_decimals(value) for point in coordinates for value in point):
@@ -352,9 +396,10 @@ def check_geometry(
     ]
     identifiers = [feature_id(service_id, a, b) for service_id, a, b in expected]
     actual = [raw.get("id") if isinstance(raw, dict) else None for raw in features]
-    if actual != identifiers:
+    actual_ids = {identifier for identifier in actual if isinstance(identifier, str)}
+    if actual != [identifier for identifier in identifiers if identifier in actual_ids]:
         report.errors.append(
-            "geojson feature ids must match canonical pair order (missing geometry or orphan feature)"
+            "geojson feature ids must match canonical owner pair order (missing geometry or orphan feature)"
         )
     by_id: dict[str, Any] = {}
     for raw in features:
@@ -374,36 +419,51 @@ def check_geometry(
         label = feature_id(service_id, a, b)
         raw = by_id.get(label)
         if raw is None:
-            report.errors.append(f"missing geometry for {label}")
             continue
         if (
             set(raw) != {"type", "id", "properties", "geometry"}
             or raw.get("type") != "Feature"
         ):
-            report.errors.append(f"{label} is not a GeoJSON Feature with v2 fields")
+            report.errors.append(f"{label} is not a GeoJSON Feature with v3 fields")
             continue
         if raw.get("properties") != {
             "featureId": label,
             "serviceId": service_id,
+            "lineId": overrides.service(service_id).definition.line_ids[0],
             "from": a,
             "to": b,
         }:
             report.errors.append(f"properties mismatch on {label}")
-        line = _feature_geometry(raw, label, report)
+        line = _feature_geometry(raw, label, report, overrides.dataset.output_bbox)
         start, end = platforms.get((service_id, a)), platforms.get((service_id, b))
         if line is None or start is None or end is None:
             continue
-        gap = max(
-            Point(line.coords[0]).distance(start), Point(line.coords[-1]).distance(end)
+        gaps = (
+            Point(line.coords[0]).distance(start),
+            Point(line.coords[-1]).distance(end),
         )
-        max_endpoint = max(max_endpoint, gap)
-        if gap > config.ENDPOINT_MAX_DISTANCE_M:
-            report.errors.append(f"{label} endpoint {gap:.1f} m from service platform")
-        direct = start.distance(end)
-        detour = line.length / direct if direct > 0 else math.inf
+        max_endpoint = max(max_endpoint, *gaps)
+        # A reviewed transfer publishes the arrival platform (the end of the
+        # +1 pair into the stop); only the departing +1 pair may start at
+        # another platform of that stop, and its detour starts on its track.
+        transfer = overrides.transfer_limit(service_id, a)
+        allowances = (config.ENDPOINT_MAX_DISTANCE_M + (transfer or 0.0),) + (
+            config.ENDPOINT_MAX_DISTANCE_M,
+        )
+        for gap, allowance in zip(gaps, allowances, strict=True):
+            if gap > allowance:
+                report.errors.append(
+                    f"{label} endpoint {gap:.1f} m from service platform"
+                )
+        detour = rules.check_detour(
+            label,
+            line,
+            start if transfer is None else Point(line.coords[0]),
+            end,
+            overrides.detour_limit(service_id, a, b),
+            report,
+        )
         max_detour = max(max_detour, detour)
-        if detour > config.MAX_DETOUR_RATIO:
-            report.errors.append(f"{label} detour ratio {detour:.2f}")
         lengths[service_id] += line.length
         service_points = {
             sid: point for (svc, sid), point in platforms.items() if svc == service_id
@@ -430,13 +490,20 @@ def check_geometry(
         for via in hint.via:
             if line.distance(Point(to_metric(via))) > config.ENDPOINT_MAX_DISTANCE_M:
                 report.errors.append(f"{label} misses a committed via point")
-    for service in services:
-        rules.check_service_length(
-            service.id,
-            lengths[service.id],
-            overrides.service(service.id).definition.length_ref,
-            report,
-        )
+        if hint.route:
+            joints = [Point(to_metric(joint)) for joint in hint.route.joints]
+            if any(
+                line.distance(joint) > overrides.dataset.simplify_tolerance_m + 1.0
+                for joint in joints
+            ):
+                report.errors.append(
+                    f"{label} multi-line route misses a committed joint"
+                )
+            distances = [line.project(joint) for joint in joints]
+            if any(a >= b for a, b in zip(distances, distances[1:], strict=False)):
+                report.errors.append(
+                    f"{label} multi-line route joints are out of order"
+                )
     report.metrics.update(
         {
             "max_endpoint_distance_m": round(max_endpoint, 3),
@@ -452,16 +519,33 @@ def check_manifest(
     payloads: dict[str, str],
     report: Report,
     updated_at: str | None = None,
+    validation_profile: str = "gameplay",
+    stage_start_station_id: str = "",
 ) -> None:
     if not isinstance(manifest, dict):
         report.errors.append("manifest.json must be an object")
         return
-    if set(manifest) != {"schemaVersion", "dataVersion", "updatedAt", "source"}:
+    stage = validation_profile == "stage"
+    keys = {"schemaVersion", "dataVersion", "updatedAt", "source"}
+    if stage:
+        keys |= {"validationProfile", "stageStartStationId"}
+        if manifest.get("validationProfile") != "stage":
+            report.errors.append("manifest.validationProfile must be stage")
+        if manifest.get("stageStartStationId") != stage_start_station_id:
+            report.errors.append(
+                "manifest.stageStartStationId differs from the override"
+            )
+    if set(manifest) != keys:
         report.errors.append(
-            "manifest.json must have exactly schemaVersion, dataVersion, updatedAt and source"
+            f"manifest.json must have exactly {', '.join(sorted(keys))}"
         )
-    if type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 2:
-        report.errors.append("manifest.schemaVersion must be 2")
+    if stage:
+        if manifest.get("schemaVersion") != "3-stage":
+            report.errors.append("manifest.schemaVersion must be 3-stage")
+    elif (
+        type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 3
+    ):
+        report.errors.append("manifest.schemaVersion must be 3")
     if not is_iso_date(manifest.get("updatedAt")):
         report.errors.append("manifest.updatedAt must be a YYYY-MM-DD date")
     elif updated_at is not None and manifest["updatedAt"] != updated_at:
@@ -478,21 +562,46 @@ def check_manifest(
 
 
 def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
-    """Run all seventeen v2 rules without the raw N02 download."""
+    """Run all seventeen v3 rules without the raw N02 download."""
     report = Report()
     positions = check_stations(
-        dataset.stations, official_station_order(overrides), report
+        dataset.stations,
+        official_station_order(overrides),
+        report,
+        overrides.dataset.output_bbox,
     )
     stations = dataset.stations if _is_object_list(dataset.stations) else []
     rules.check_registry_membership(
         [(str(raw.get("id")), str(raw.get("name"))) for raw in stations],
         overrides.registry,
         report,
+        overrides.dataset.area,
     )
     services, platforms = check_services(dataset.services, positions, overrides, report)
     check_segments(dataset.segments, services, report)
     check_geometry(dataset.geojson, services, platforms, positions, overrides, report)
-    start = overrides.dataset.start_station_id
+    if (
+        _is_object_list(dataset.segments)
+        and isinstance(dataset.geojson, dict)
+        and _is_object_list(dataset.geojson.get("features"))
+    ):
+        lengths = rules.check_geometry_chains(
+            dataset.segments, dataset.geojson["features"], services, report
+        )
+        check_composed_artifacts(
+            dataset.segments, dataset.geojson["features"], overrides, platforms, report
+        )
+        check_platform_transfers(
+            dataset.segments, dataset.geojson["features"], overrides, report
+        )
+        for service in services:
+            rules.check_service_length(
+                service.id,
+                lengths.get(service.id, 0.0),
+                overrides.service(service.id).definition.length_ref,
+                report,
+            )
+    start = overrides.dataset.validation_start_station_id
     rules.check_connectivity(
         services,
         start,
@@ -500,7 +609,18 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         overrides.dataset.reviewed_disconnected_service_ids,
         report,
     )
-    rules.check_start_not_endpoint(services, start, report)
+    if _is_object_list(dataset.segments):
+        rules.check_two_way_reachability(
+            positions,
+            [
+                (str(segment.get("from")), str(segment.get("to")))
+                for segment in dataset.segments
+            ],
+            start,
+            report,
+        )
+    if overrides.dataset.validation_profile != "stage":
+        rules.check_start_not_endpoint(services, start, report)
     representatives = {
         station_id: Point(to_metric(coordinate))
         for station_id, coordinate in positions.items()
@@ -509,7 +629,12 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         platforms, representatives, overrides.offset_exceptions, report
     )
     check_manifest(
-        dataset.manifest, dataset.payloads, report, overrides.dataset.updated_at
+        dataset.manifest,
+        dataset.payloads,
+        report,
+        overrides.dataset.updated_at,
+        overrides.dataset.validation_profile,
+        overrides.dataset.stage_start_station_id,
     )
     documents = {
         config.STATIONS_FILE: dataset.stations,
@@ -524,18 +649,37 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
             if name == config.SEGMENTS_GEOJSON_FILE
             and isinstance(document, dict)
             and isinstance(document.get("features"), list)
+            else dumps_segments(document)
+            if name == config.SEGMENTS_FILE and _is_object_list(document)
             else dumps_pretty(document)
         )
         if payload != expected:
-            report.errors.append(f"{name} bytes are not the canonical v2 serialization")
+            report.errors.append(f"{name} bytes are not the canonical v3 serialization")
         report.metrics[f"bytes[{name}]"] = len(payload.encode())
     if dataset.manifest_payload is not None:
         if dataset.manifest_payload != dumps_pretty(dataset.manifest):
             report.errors.append("manifest.json bytes are not canonical")
         report.metrics["bytes[manifest.json]"] = len(dataset.manifest_payload.encode())
     report.metrics["segments_geojson_bytes"] = dataset.geojson_bytes
-    if dataset.geojson_bytes > config.MAX_GEOJSON_BYTES:
+    files = {
+        **dataset.payloads,
+        config.MANIFEST_FILE: dataset.manifest_payload
+        or dumps_pretty(dataset.manifest),
+    }
+    sizes = size_report(
+        files,
+        int(report.metrics.get("geometry_reference_count", 0)),
+        int(report.metrics.get("max_geometry_chain_length", 0)),
+    )
+    # Dataset.geojson_bytes reflects even malformed or padded payloads.
+    sizes[f"bytes[{config.SEGMENTS_GEOJSON_FILE}]"] = dataset.geojson_bytes
+    report.metrics.update(sizes)
+    limits = (
+        overrides.dataset.budgets or BUDGET_PROFILES[overrides.dataset.budget_profile]
+    )
+    if dataset.geojson_bytes > limits["geojsonRaw"]:
         report.errors.append(f"segments.geojson is {dataset.geojson_bytes} bytes")
+    report.errors.extend(budget_errors(sizes, limits))
     return report
 
 
@@ -564,7 +708,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"detour<={config.MAX_DETOUR_RATIO}, "
         f"platform offset<={config.DEFAULT_MAX_PLATFORM_OFFSET_M} m, "
         f"length=services.json lengthRef, "
-        f"geojson<={config.MAX_GEOJSON_BYTES} bytes"
+        f"budgetProfile={overrides.dataset.budget_profile}, "
+        f"geojson<={overrides.dataset.budgets['geojsonRaw']} raw / "
+        f"{overrides.dataset.budgets['geojsonGzip']} gzip bytes"
     )
     for error in report.errors:
         print(f"FAIL {error}")

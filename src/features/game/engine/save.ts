@@ -9,7 +9,8 @@ import type {
   MoveRecord,
   StopReason,
 } from "../../../types/network";
-import { GOAL_ARRIVAL_POLICIES } from "./config";
+import { GOAL_ARRIVAL_POLICIES, parseLotteryPolicies } from "./config";
+import { SERVICE_KINDS } from "../../../types/network";
 import { GameEngineError } from "./errors";
 import { type ComputedTurn, computeTurn, createGame, SAVE_VERSION, seededTurn } from "./game";
 import type { GamePosition } from "./movement";
@@ -75,12 +76,20 @@ function parseConfig(value: unknown): GameConfig {
   if (!GOAL_ARRIVAL_POLICIES.some((known) => known === policy)) {
     invalid("config.goalArrivalPolicy is unknown");
   }
+  let lotteries: Pick<GameConfig, "serviceLottery" | "directionLottery">;
+  try {
+    lotteries = parseLotteryPolicies(raw.serviceLottery, raw.directionLottery);
+  } catch (error) {
+    if (error instanceof GameEngineError) invalid(`config lottery policies are invalid: ${error.message}`);
+    throw error;
+  }
   return {
     rulesetVersion: asString(raw.rulesetVersion, "config.rulesetVersion"),
     targetServiceId: asString(raw.targetServiceId, "config.targetServiceId"),
     startStationId: asString(raw.startStationId, "config.startStationId"),
     targetDirection: asDirection(raw.targetDirection, "config.targetDirection"),
     goalArrivalPolicy: policy as GameConfig["goalArrivalPolicy"],
+    ...lotteries,
   };
 }
 
@@ -265,12 +274,21 @@ function assertReplayMatches(
 }
 
 function sameConfig(left: GameConfig, right: GameConfig): boolean {
+  const leftTarget = left.serviceLottery.target;
+  const rightTarget = right.serviceLottery.target;
+  const sameTarget = leftTarget.kind === "weight"
+    ? rightTarget.kind === "weight" && leftTarget.weight === rightTarget.weight
+    : rightTarget.kind === "share" && leftTarget.numerator === rightTarget.numerator &&
+      leftTarget.denominator === rightTarget.denominator;
   return (
     left.rulesetVersion === right.rulesetVersion &&
     left.targetServiceId === right.targetServiceId &&
     left.startStationId === right.startStationId &&
     left.targetDirection === right.targetDirection &&
-    left.goalArrivalPolicy === right.goalArrivalPolicy
+    left.goalArrivalPolicy === right.goalArrivalPolicy &&
+    SERVICE_KINDS.every((kind) => left.serviceLottery.kindWeights[kind] === right.serviceLottery.kindWeights[kind]) &&
+    sameTarget &&
+    left.directionLottery.towardTargetWeight === right.directionLottery.towardTargetWeight
   );
 }
 

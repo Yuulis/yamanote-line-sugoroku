@@ -12,7 +12,7 @@ export interface DataSource {
 }
 
 export interface Manifest {
-  schemaVersion: 2;
+  schemaVersion: 3;
   dataVersion: string;
   /** Data update date, `YYYY-MM-DD`. */
   updatedAt: string;
@@ -29,6 +29,7 @@ export interface SegmentLineString {
 export interface SegmentFeatureProperties {
   featureId: string;
   serviceId: ServiceId;
+  lineId: string;
   from: StationId;
   to: StationId;
 }

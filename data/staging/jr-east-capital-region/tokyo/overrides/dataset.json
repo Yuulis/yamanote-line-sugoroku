@@ -1,0 +1,51 @@
+{
+  "operator": "東日本旅客鉄道",
+  "n02Operator": "東日本旅客鉄道",
+  "updatedAt": "2026-10-14",
+  "areaName": "東京都 (S6P staging)",
+  "startStationId": "shimbashi",
+  "targetServiceId": "jr-yamanote",
+  "serviceIds": [
+    "jr-yamanote",
+    "jr-keihin-tohoku",
+    "jr-chuo-sobu-local",
+    "jr-chuo-rapid",
+    "jr-ome",
+    "jr-itsukaichi",
+    "jr-hachiko",
+    "jr-saikyo",
+    "jr-sotetsu-direct",
+    "jr-keiyo",
+    "jr-musashino",
+    "jr-nambu",
+    "jr-yokohama",
+    "jr-tokaido",
+    "jr-yokosuka",
+    "jr-sobu-rapid",
+    "jr-utsunomiya",
+    "jr-takasaki",
+    "jr-shonan-shinjuku-local",
+    "jr-shonan-shinjuku-rapid-takasaki",
+    "jr-joban-rapid"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "areaPrefectures": [
+    "東京都"
+  ],
+  "outputBbox": [
+    138.6,
+    34.8,
+    141.0,
+    36.8
+  ],
+  "candidateSearchBbox": [
+    138.5,
+    34.65,
+    141.2,
+    37.0
+  ],
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "25bc9e50ef0bb67494b0c24c7b81610acdcb62d1374707cfcc50f81565d8d224",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

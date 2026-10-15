@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createGame, playTurn, restoreGame, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
@@ -5,23 +7,60 @@ import { loadBundle } from "../e2e/fixtures/bundle";
 
 // Disk -> runtime guards -> the app's own network/config, exactly as in production.
 const { network, data } = await loadBundle("real");
+const catalog = JSON.parse(
+  readFileSync(fileURLToPath(new URL("../../data/overrides/expected-catalog.json", import.meta.url)), "utf8"),
+) as { services: { id: string; stationIds: string[] }[]; stationIds: string[] };
+const productCatalogRows = readFileSync(
+  fileURLToPath(new URL("../../.claude/docs/research/jr-east-capital-region-product-catalog.csv", import.meta.url)),
+  "utf8",
+).trim().split(/\r?\n/).slice(1).map((line) => line.split(","));
 const SEEDS = ["real-alpha", "real-beta", "real-gamma", "real-delta", "real-epsilon", "real-zeta", "real-eta", "real-theta"];
 const MAX_TURNS = 5_000;
+const EXPECTED_TURNS = [32, 41, 136, 24, 103, 31, 24, 73];
 const RESTORE_OPTIONS = { expectedConfig: MVP_GAME_CONFIG, requireSeededRolls: true } as const;
 
-describe("shipped JR East 23-ward network", () => {
-  it("contains exactly the reviewed five services, 67 stations and 146 directed segments", () => {
-    expect([...network.servicesById.keys()]).toEqual(["jr-yamanote", "jr-keihin-tohoku", "jr-chuo-sobu-local", "jr-saikyo", "jr-keiyo"]);
-    expect([...network.servicesById.values()].map((service) => service.stationIds.length)).toEqual([30, 22, 24, 10, 6]);
-    expect(network.stationsById.size).toBe(67);
-    expect(network.segmentsById.size).toBe(146);
-    expect([...network.servicesByStation.values()].filter((services) => services.length >= 2)).toHaveLength(22);
+describe("shipped JR East capital-region network", () => {
+  it("matches the approved product catalog and complete directed geometry contract", () => {
+    expect(catalog.services).toHaveLength(40);
+    expect(catalog.stationIds).toHaveLength(472);
+    expect([...network.servicesById.keys()]).toEqual(catalog.services.map((service) => service.id));
+    expect([...network.servicesById.values()].map((service) => service.stationIds)).toEqual(
+      catalog.services.map((service) => service.stationIds),
+    );
+    expect([...network.stationsById.keys()].sort()).toEqual([...catalog.stationIds].sort());
+    const expectedDirectedSegments = catalog.services.reduce(
+      (count, service) => count + (service.id === "jr-yamanote" ? service.stationIds.length : (service.stationIds.length - 1) * 2),
+      0,
+    );
+    expect(network.stationsById.size).toBe(catalog.stationIds.length);
+    expect(network.segmentsById.size).toBe(expectedDirectedSegments);
     if (!data.geometry.ok) throw new Error("geometry did not pass the runtime guard");
-    expect(data.geometry.value.features).toHaveLength(88);
+    const referencedFeatures = new Set(
+      [...network.segmentsById.values()].flatMap((segment) => segment.geometryFeatureIds),
+    );
+    expect(referencedFeatures.size).toBe(data.geometry.value.features.length);
+    expect(new Set(data.geometry.value.features.map((feature) => feature.id))).toEqual(referencedFeatures);
+  });
+
+  it("indexes every station's complete service membership from the product catalog", () => {
+    const expectedMembership = new Map<string, Set<string>>();
+    for (const [serviceId, , stationId] of productCatalogRows) {
+      const services = expectedMembership.get(stationId!) ?? new Set<string>();
+      services.add(serviceId!);
+      expectedMembership.set(stationId!, services);
+    }
+    expect(expectedMembership.size).toBe(472);
+    expect([...network.servicesByStation.keys()].sort()).toEqual([...expectedMembership.keys()].sort());
+    for (const [stationId, expectedServices] of expectedMembership) {
+      const actualServices = network.servicesByStation.get(stationId)!;
+      expect(actualServices, stationId).toHaveLength(expectedServices.size);
+      expect(new Set(actualServices), stationId).toEqual(expectedServices);
+    }
   });
 
   it("shares Tokyo identity while retaining the distant Keiyo platform", () => {
-    expect(network.servicesByStation.get("tokyo")).toEqual(["jr-yamanote", "jr-keihin-tohoku", "jr-keiyo"]);
+    const productServicesAtTokyo = productCatalogRows.filter((row) => row[2] === "tokyo").map((row) => row[0]);
+    expect(network.servicesByStation.get("tokyo")).toEqual(productServicesAtTokyo);
     const yamanote = network.servicesById.get("jr-yamanote")!.platformCoordinates.tokyo!;
     const keiyo = network.servicesById.get("jr-keiyo")!.platformCoordinates.tokyo!;
     expect(keiyo).not.toEqual(yamanote);
@@ -29,7 +68,7 @@ describe("shipped JR East 23-ward network", () => {
     expect(network.stationsById.get("tokyo")!.coordinates).toEqual(yamanote);
   });
 
-  it.each(SEEDS)("plays %s to completion and restores both mid-game and completed saves", (seed) => {
+  it.each(SEEDS.map((seed, index) => [seed, EXPECTED_TURNS[index]!] as const))("plays %s to completion and restores both mid-game and completed saves", (seed, expectedTurns) => {
     let game = createGame(MVP_GAME_CONFIG, seed, network);
     let checkedMidGame = false;
     while (game.status === "playing" && game.turn < MAX_TURNS) {
@@ -42,11 +81,26 @@ describe("shipped JR East 23-ward network", () => {
       }
     }
     expect(checkedMidGame).toBe(true);
+    expect(game.turn).toBeLessThan(MAX_TURNS);
+    expect(game.turn).toBe(expectedTurns);
     expect(game.status).toBe("completed");
     expect(game.currentStationId).toBe("shimbashi");
     const target = targetSegmentIds(MVP_GAME_CONFIG, network);
     expect(target).toHaveLength(30);
     expect(target.every((id) => game.completedSegmentIds.includes(id))).toBe(true);
+    const transferStations = new Set<string>();
+    for (const record of game.movementHistory) {
+      if (!record.landing || record.landing.serviceId === record.serviceId) continue;
+      transferStations.add(record.toStationId);
+    }
+    expect(transferStations.size).toBeGreaterThan(0);
+    for (const stationId of transferStations) {
+      const completeCandidates = [...network.servicesById.values()]
+        .filter((service) => service.stationIds.includes(stationId))
+        .map((service) => service.id);
+      expect(network.servicesByStation.get(stationId), `${seed} at ${stationId}`).toEqual(completeCandidates);
+      expect(completeCandidates.length, `${seed} at ${stationId}`).toBeGreaterThan(1);
+    }
     expect(restoreGame(serializeGame(game), network, RESTORE_OPTIONS)).toEqual(game);
   });
 });

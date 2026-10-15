@@ -62,7 +62,7 @@ test("[8.3-4] reload mid-game resumes the same game and the same next roll", asy
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, beforeReload));
   await expect
     .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
-    .toEqual(targetFeatureIds(beforeReload).sort());
+    .toEqual(targetFeatureIds(beforeReload, railwayBundle).sort());
 
   // The next roll continues the seeded sequence exactly like the control run.
   await rollOnce(page);

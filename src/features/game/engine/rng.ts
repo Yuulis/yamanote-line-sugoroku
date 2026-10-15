@@ -38,6 +38,8 @@ const SEED_WARMUP_ROUNDS = 15;
 
 const DIE_FACES = 6;
 const UINT32_RANGE = 2 ** 32;
+/** Inclusive bound on the sum of lottery weights; all arithmetic remains exact. */
+export const MAX_WEIGHT_TOTAL = UINT32_RANGE;
 /** Largest multiple of 6 that fits in 2^32; draws at or above it are rejected. */
 const UNBIASED_LIMIT = UINT32_RANGE - (UINT32_RANGE % DIE_FACES);
 /** A lottery needs at least two candidates; one candidate is forced and draws nothing. */
@@ -188,4 +190,30 @@ export function drawIndex(rngState: string, k: number): IndexDraw {
     const index = indexFromDraw(draw.value, k);
     if (index !== undefined) return { index, nextRngState: encodeState(state) };
   }
+}
+
+/**
+ * Positive safe-integer weights, total <= 2^32. Equal weights (of any valid
+ * magnitude) use the original drawIndex(k), preserving every RNG state.
+ * Otherwise one drawIndex(total) selects a cumulative interval in input
+ * order. No fractions or GCD normalization enter the RNG path.
+ * Forced choices are resolved by callers, so at least two weights are required.
+ */
+export function drawWeightedIndex(rngState: string, weights: readonly number[]): IndexDraw {
+  assertChoiceCount(weights.length);
+  let total = 0;
+  for (const weight of weights) {
+    if (!Number.isSafeInteger(weight) || weight < 1 || weight > MAX_WEIGHT_TOTAL - total) {
+      throw new GameEngineError("INVALID_STATE", "Weights must be positive safe integers with total <= 2^32");
+    }
+    total += weight;
+  }
+  if (weights.every((weight) => weight === weights[0])) return drawIndex(rngState, weights.length);
+  const draw = drawIndex(rngState, total);
+  let cumulative = 0;
+  for (const [index, weight] of weights.entries()) {
+    cumulative += weight;
+    if (draw.index < cumulative) return { index, nextRngState: draw.nextRngState };
+  }
+  throw new GameEngineError("INVALID_STATE", "Weighted draw has no matching interval");
 }

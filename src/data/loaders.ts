@@ -1,10 +1,10 @@
 import type { Manifest, SegmentFeatureCollection } from "../types/data";
-import type { Segment, ServicePattern, Station } from "../types/network";
+import type { Segment, ServicesData, Station } from "../types/network";
 import {
   isManifest,
   isSegmentFeatureCollection,
   isSegmentList,
-  isServicePatternList,
+  isServicesData,
   isStationList,
 } from "./guards";
 
@@ -26,7 +26,7 @@ export type JsonFetcher = (url: string) => Promise<unknown>;
 
 export interface RailwayData {
   stations: LoadResult<Station[]>;
-  services: LoadResult<ServicePattern[]>;
+  services: LoadResult<ServicesData>;
   segments: LoadResult<Segment[]>;
   geometry: LoadResult<SegmentFeatureCollection>;
   manifest: LoadResult<Manifest>;
@@ -39,7 +39,10 @@ export function validateData<T>(
   guard: (value: unknown) => value is T,
 ): LoadResult<T> {
   if (guard(json)) return { ok: true, value: json };
-  return { ok: false, file, reason: "invalid shape" };
+  const reason = file === DATA_FILES.manifest && typeof json === "object" && json !== null && "schemaVersion" in json && json.schemaVersion !== 3
+    ? "unsupported data schemaVersion; expected 3"
+    : file === DATA_FILES.services && Array.isArray(json) ? "unsupported v2 services array; expected v3 {lines, services}" : "invalid shape";
+  return { ok: false, file, reason };
 }
 
 export const defaultJsonFetcher: JsonFetcher = async (url) => {
@@ -70,7 +73,7 @@ export async function loadRailwayData(
 ): Promise<RailwayData> {
   const [stations, services, segments, geometry, manifest] = await Promise.all([
     loadFile(baseUrl, DATA_FILES.stations, isStationList, fetchJson),
-    loadFile(baseUrl, DATA_FILES.services, isServicePatternList, fetchJson),
+    loadFile(baseUrl, DATA_FILES.services, isServicesData, fetchJson),
     loadFile(baseUrl, DATA_FILES.segments, isSegmentList, fetchJson),
     loadFile(baseUrl, DATA_FILES.geometry, isSegmentFeatureCollection, fetchJson),
     loadFile(baseUrl, DATA_FILES.manifest, isManifest, fetchJson),

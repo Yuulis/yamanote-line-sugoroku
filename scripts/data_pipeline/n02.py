@@ -10,7 +10,7 @@ import geopandas as gpd
 from shapely.geometry import LineString, Point, box
 
 from scripts.data_pipeline import config
-from scripts.data_pipeline.constraints import section_key
+from scripts.data_pipeline.constraints import BBox, section_key
 from scripts.data_pipeline.registry import normalize_station_name
 
 
@@ -73,12 +73,17 @@ def _explode_lines(geometries: Iterable[object]) -> list[LineString]:
 class N02Source:
     """The raw N02 files of one operator, read once and queried per service."""
 
-    def __init__(self, raw_dir: Path, operator: str) -> None:
+    def __init__(
+        self,
+        raw_dir: Path,
+        operator: str,
+        candidate_search_bbox: BBox = config.DEFAULT_CANDIDATE_SEARCH_BBOX,
+    ) -> None:
         self.operator = operator
         stations = _read(raw_dir / config.RAW_STATION_FILE)
         stations = stations[stations[config.ATTR_OPERATOR] == operator]
         # Same-name platforms elsewhere in Japan never represent a curated stop.
-        stations = stations[stations.intersects(box(*config.CANDIDATE_SEARCH_BBOX))]
+        stations = stations[stations.intersects(box(*candidate_search_bbox))]
         self._stations = stations.assign(
             _match_name=stations[config.ATTR_STATION_NAME].map(normalize_station_name)
         )

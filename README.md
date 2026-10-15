@@ -1,10 +1,10 @@
 # 山手線すごろく
 
-Current edition: **JR東日本 東京23区版** — five services, 67 shared stations, arrival-only service/direction lotteries, and the unchanged 30-segment Yamanote outer goal.
+Current edition: **JR東日本 1都3県版** — 40 services and 472 stations across 東京都・千葉県・神奈川県・埼玉県. 山手線の抽選確率は候補に含まれる場合1/2、他サービスの方向抽選は山手線へ近づく方向を2:1で優先します。新橋から山手線外回り30区間を踏破して新橋へ戻るとクリアです。
 
-[遊び方（日本語）](docs/manual/jr-east-tokyo/rules.md) · [Data pipeline and schema v2](data/README.md)
+[遊び方・40サービス一覧（日本語）](docs/manual/jr-east-capital-region/rules.md) · [実装状況](docs/manual/jr-east-capital-region/implementation-status.md) · [データ生成と検証](data/README.md)
 
-Save format is v2; old saves are rejected with an unsupported-version message and can be discarded. E2E uses a pinned 15-turn three-service fixture for rule coverage and a separate real-data smoke test. Vitest additionally plays eight fixed seeds on the shipped network to completion.
+セーブ形式はv3です。互換性のない旧セーブは移行せず、未対応形式の案内から破棄できます。現行データを使う単体テストとE2Eに加え、固定シードによる実データの完走・復元確認があります。
 
 ## 開発環境のセットアップ（フロントエンド）
 

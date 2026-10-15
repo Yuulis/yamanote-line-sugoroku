@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -13,6 +14,7 @@ from pyproj import Transformer
 from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config
+from scripts.data_pipeline.composition import compose_chains, exact_chain_coordinates
 from scripts.data_pipeline.overrides import Overrides, ServiceOverrides
 from scripts.data_pipeline.registry import RegistryStation
 from scripts.data_pipeline.topology import station_order, station_pairs
@@ -30,9 +32,11 @@ def to_lon_lat(x: float, y: float) -> Coordinate:
     ]
 
 
-def line_to_lon_lat(line: LineString) -> list[Coordinate]:
+def line_to_lon_lat(
+    line: LineString, tolerance_m: float = config.SIMPLIFY_TOLERANCE_M
+) -> list[Coordinate]:
     """Simplify in metres, convert to lon/lat, round, and drop repeated points."""
-    simplified = line.simplify(config.SIMPLIFY_TOLERANCE_M, preserve_topology=False)
+    simplified = line.simplify(tolerance_m, preserve_topology=False)
     coords: list[Coordinate] = []
     for xy in simplified.coords:
         coordinate = to_lon_lat(xy[0], xy[1])
@@ -67,7 +71,7 @@ def build_services(
     operator: str,
     platforms: Mapping[tuple[str, str], Point],
 ) -> list[dict[str, Any]]:
-    """v2 service metadata and the platform point of every stop."""
+    """v3 service metadata and the platform point of every stop."""
     documents: list[dict[str, Any]] = []
     for service in services:
         definition = service.definition
@@ -75,6 +79,8 @@ def build_services(
             "id": service.id,
             "name": definition.name,
             "operator": operator,
+            "kind": definition.kind,
+            "lineIds": list(definition.line_ids),
             "stationIds": list(service.station_ids),
             "circular": definition.circular,
             "color": definition.color,
@@ -117,33 +123,40 @@ def build_segments(
                     "serviceId": service_id,
                     "from": from_id,
                     "to": to_id,
-                    "geometryFeatureId": feature_id(service_id, a, b),
+                    "geometryFeatureIds": [feature_id(service_id, a, b)],
                 }
             )
     return segments
 
 
 def build_segment_features(
-    segments: Sequence[Mapping[str, Any]], lines: Sequence[LineString]
+    segments: Sequence[Mapping[str, Any]],
+    lines: Sequence[LineString],
+    line_id: str,
+    tolerance_m: float = config.SIMPLIFY_TOLERANCE_M,
 ) -> dict[str, Any]:
     canonical: list[Mapping[str, Any]] = []
     seen: set[str] = set()
     for segment in segments:
-        identifier = segment["geometryFeatureId"]
+        identifier = segment["geometryFeatureIds"][0]
         if identifier not in seen:
             seen.add(identifier)
             canonical.append(segment)
     features = [
         {
             "type": "Feature",
-            "id": segment["geometryFeatureId"],
+            "id": segment["geometryFeatureIds"][0],
             "properties": {
-                "featureId": segment["geometryFeatureId"],
+                "featureId": segment["geometryFeatureIds"][0],
                 "serviceId": segment["serviceId"],
+                "lineId": line_id,
                 "from": segment["from"],
                 "to": segment["to"],
             },
-            "geometry": {"type": "LineString", "coordinates": line_to_lon_lat(line)},
+            "geometry": {
+                "type": "LineString",
+                "coordinates": line_to_lon_lat(line, tolerance_m),
+            },
         }
         for segment, line in zip(canonical, lines, strict=True)
     ]
@@ -152,6 +165,18 @@ def build_segment_features(
 
 def dumps_pretty(document: Any) -> str:
     return json.dumps(document, ensure_ascii=False, indent=2) + "\n"
+
+
+def dumps_segments(segments: Sequence[Mapping[str, Any]]) -> str:
+    """One compact directed segment per line, preserving travel/lottery order."""
+    return (
+        "[\n"
+        + ",\n".join(
+            json.dumps(segment, ensure_ascii=False, separators=(",", ":"))
+            for segment in segments
+        )
+        + "\n]\n"
+    )
 
 
 def dumps_feature_collection(collection: Mapping[str, Any]) -> str:
@@ -190,7 +215,7 @@ def build_manifest(payloads: Sequence[str], updated_at: str) -> dict[str, Any]:
     hashed: ``dataVersion`` identifies content, the date only records when the
     data was last refreshed."""
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "dataVersion": data_version(payloads),
         "updatedAt": updated_at,
         "source": dict(config.MANIFEST_SOURCE),
@@ -202,30 +227,84 @@ def build_files(
     station_points: Mapping[str, Point],
     platforms: Mapping[tuple[str, str], Point],
     service_lines: Mapping[str, Sequence[LineString]],
+    simplify_tolerance_m: float | None = None,
 ) -> dict[str, str]:
-    """The five v2 files, in canonical service / station / pair order."""
+    """The five v3 files, in canonical service / station / pair order."""
     registry = overrides.registry.by_id()
     order = station_order(service.station_ids for service in overrides.services)
     stations = [registry[station_id] for station_id in order]
     segments_doc: list[dict[str, Any]] = []
     features: list[dict[str, Any]] = []
+    tolerance = (
+        overrides.dataset.simplify_tolerance_m
+        if simplify_tolerance_m is None
+        else simplify_tolerance_m
+    )
+    if (
+        not isinstance(tolerance, int | float)
+        or isinstance(tolerance, bool)
+        or not math.isfinite(tolerance)
+        or tolerance <= 0
+    ):
+        raise ValueError("simplification tolerance must be finite and positive")
+    owned = {}
+    for service in overrides.services:
+        pairs = station_pairs(service.station_ids, service.circular)
+        for (a, b), item, line in zip(
+            pairs, service.segment_ranges(), service_lines[service.id], strict=True
+        ):
+            if item.compose:
+                continue
+            segment = build_segments(service.id, (a, b), False)[0]
+            feature = build_segment_features(
+                [segment], [line], service.definition.line_ids[0], tolerance
+            )["features"][0]
+            features.append(feature)
+            owned[(service.id, a, b)] = feature["id"]
+    chains = compose_chains(overrides, owned)
+    by_id = {feature["id"]: feature for feature in features}
     for service in overrides.services:
         segments = build_segments(service.id, service.station_ids, service.circular)
+        for segment in segments:
+            key = (service.id, segment["from"], segment["to"])
+            chain = chains.get(key)
+            segment["geometryFeatureIds"] = (
+                chain
+                if chain is not None
+                else list(
+                    reversed(chains[(service.id, segment["to"], segment["from"])])
+                )
+            )
+            exact_chain_coordinates(
+                segment["geometryFeatureIds"], by_id, segment["from"]
+            )
         segments_doc.extend(segments)
-        features.extend(
-            build_segment_features(segments, service_lines[service.id])["features"]
-        )
     files = {
         config.STATIONS_FILE: dumps_pretty(build_stations(stations, station_points)),
         config.SERVICES_FILE: dumps_pretty(
-            build_services(overrides.services, overrides.dataset.operator, platforms)
+            {
+                "lines": [
+                    {"id": line.id, "name": line.name, "color": line.color}
+                    for line in overrides.lines
+                ],
+                "services": build_services(
+                    overrides.services, overrides.dataset.operator, platforms
+                ),
+            }
         ),
-        config.SEGMENTS_FILE: dumps_pretty(segments_doc),
+        config.SEGMENTS_FILE: dumps_segments(segments_doc),
         config.SEGMENTS_GEOJSON_FILE: dumps_feature_collection(
             {"type": "FeatureCollection", "features": features}
         ),
     }
     manifest = build_manifest(manifest_inputs(files), overrides.dataset.updated_at)
+    if overrides.dataset.validation_profile == "stage":
+        # The existing browser contract rejects this schema, even if copied by hand.
+        manifest.update(
+            schemaVersion="3-stage",
+            validationProfile="stage",
+            stageStartStationId=overrides.dataset.stage_start_station_id,
+        )
     files[config.MANIFEST_FILE] = dumps_pretty(manifest)
     return files
 
@@ -241,6 +320,12 @@ def write_text(path: Path, text: str) -> None:
 def write_outputs(out_dir: Path, files: Mapping[str, str]) -> None:
     """Write the game data first and the manifest last, so a failed build
     never leaves a manifest that points at data which was not written."""
+    manifest = json.loads(files[config.MANIFEST_FILE])
+    if (
+        manifest.get("validationProfile") == "stage"
+        and out_dir.resolve() == config.DEFAULT_OUT_DIR.resolve()
+    ):
+        raise ValueError("stage output cannot be written to public/data")
     names = sorted(files, key=lambda name: (name == config.MANIFEST_FILE, name))
     for name in names:
         write_text(out_dir / name, files[name])

@@ -25,6 +25,8 @@ import {
 import type { Position, SegmentFeatureCollection } from "../../src/types/data";
 import { DEFAULT_CONFIG, SEGMENT_IDS, segmentId, STATION_IDS, yamanoteInput } from "./fixtures/yamanote";
 
+import { bothWays, M_LINE, multiServiceInput } from "./fixtures/multiService";
+
 const network = buildRailwayNetwork(yamanoteInput());
 
 /** Fixture station i sits at [139.7 + i/1000, 35.6 + i/1000]. */
@@ -46,7 +48,7 @@ function lineFeature(index: number, coordinates: Position[]) {
   return {
     type: "Feature" as const,
     id,
-    properties: { featureId: id, serviceId: "jr-yamanote", from, to },
+    properties: { featureId: id, serviceId: "jr-yamanote", lineId: "jr-yamanote", from, to },
     geometry: { type: "LineString" as const, coordinates },
   };
 }
@@ -120,7 +122,7 @@ describe("path orientation and distance", () => {
 describe("stepPath / buildMovePlan", () => {
   it("follows the segment geometry, oriented from the departure station", () => {
     const geometry = buildGeometryIndex(
-      geometryFor([{ ...lineFeature(0, [stationAt(1), DETOUR, stationAt(0)]), properties: { featureId: segmentId(0), serviceId: "jr-yamanote", from: STATION_IDS[1], to: STATION_IDS[0] } }]),
+      geometryFor([{ ...lineFeature(0, [stationAt(1), DETOUR, stationAt(0)]), properties: { featureId: segmentId(0), serviceId: "jr-yamanote", lineId: "jr-yamanote", from: STATION_IDS[1], to: STATION_IDS[0] } }]),
     );
     const path = stepPath(traversed(0), network, geometry);
     expect(path.points).toEqual([stationAt(0), DETOUR, stationAt(1)]);
@@ -136,6 +138,40 @@ describe("stepPath / buildMovePlan", () => {
   it("falls back to the station-to-station line only without geometry", () => {
     const path = stepPath(traversed(3), network, buildGeometryIndex(undefined));
     expect(path.points).toEqual([stationAt(3), stationAt(4)]);
+  });
+
+  it.each([
+    { direction: 1, mixedOrientations: false },
+    { direction: -1, mixedOrientations: false },
+    { direction: 1, mixedOrientations: true },
+    { direction: -1, mixedOrientations: true },
+  ] as const)("follows a multi-owner chain in direction $direction with mixed orientations $mixedOrientations without repeating the joint", ({ direction, mixedOrientations }) => {
+    const input = multiServiceInput();
+    const line = input.services.find((service) => service.id === M_LINE)!;
+    input.services = [...input.services, { ...line, id: "rapid-chain", kind: "rapid", stationIds: ["x", "y"], platformCoordinates: { x: [0, 0], y: [0, 4] } }];
+    input.segments = [...input.segments, ...bothWays("rapid-chain", ["x", "y"]).map((segment) => ({
+      ...segment, geometryFeatureIds: segment.from === "x"
+        ? ["owner-a:x~b", "owner-b:b~y"] as [string, ...string[]]
+        : ["owner-b:b~y", "owner-a:x~b"] as [string, ...string[]],
+    }))];
+    const net = buildRailwayNetwork(input);
+    const geometry = buildGeometryIndex(geometryFor([
+      { type: "Feature", id: "owner-a:x~b", properties: { featureId: "owner-a:x~b", serviceId: "owner-a", lineId: "a", from: "x", to: "b" }, geometry: { type: "LineString", coordinates: [[0, 0], [0, 1], [0, 3]] } },
+      { type: "Feature", id: "owner-b:b~y", properties: { featureId: "owner-b:b~y", serviceId: "owner-b", lineId: "b", from: mixedOrientations ? "y" : "b", to: mixedOrientations ? "b" : "y" }, geometry: { type: "LineString", coordinates: mixedOrientations ? [[0, 4], [0, 3]] : [[0, 3], [0, 4]] } },
+    ]));
+    const from = direction === 1 ? "x" : "y", to = direction === 1 ? "y" : "x";
+    const path = stepPath({ type: "segment-traversed", step: 1, segmentId: `rapid-chain:${from}:${to}`, serviceId: "rapid-chain", direction, fromStationId: from, toStationId: to, newlyCompleted: true }, net, geometry);
+    const forward: Position[] = [[0, 0], [0, 1], [0, 3], [0, 4]];
+    expect(path.points).toEqual(direction === 1 ? forward : [...forward].reverse());
+    expect(path.total).toBe(4);
+    expect(positionAlong(path, 0.5)).toEqual([0, 2]);
+    expect(positionAlong(path, 0)).toEqual(direction === 1 ? [0, 0] : [0, 4]);
+    expect(positionAlong(path, 1)).toEqual(direction === 1 ? [0, 4] : [0, 0]);
+  });
+
+  it("rejects a missing feature when a geometry bundle was loaded", () => {
+    const geometry = buildGeometryIndex(geometryFor([lineFeature(0, [stationAt(0), stationAt(1)])]));
+    expect(() => stepPath(traversed(1), network, geometry)).toThrowError(expect.objectContaining({ code: "INVALID_NETWORK" }));
   });
 
   it("builds one step per traversed segment and ignores the goal event", () => {

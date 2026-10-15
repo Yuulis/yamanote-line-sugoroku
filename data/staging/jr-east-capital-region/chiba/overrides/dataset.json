@@ -1,0 +1,47 @@
+{
+  "operator": "東日本旅客鉄道",
+  "n02Operator": "東日本旅客鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "千葉県 (S6P stage)",
+  "validationProfile": "stage",
+  "stageStartStationId": "funabashi",
+  "serviceIds": [
+    "jr-chuo-sobu-local",
+    "jr-keiyo",
+    "jr-musashino",
+    "jr-musashino-takaya",
+    "jr-musashino-futamata",
+    "jr-sobu-rapid",
+    "jr-joban-rapid",
+    "jr-joban-local",
+    "jr-narita-abiko",
+    "jr-narita",
+    "jr-narita-airport-branch",
+    "jr-kashima",
+    "jr-sobu-main",
+    "jr-sotobo",
+    "jr-uchibo",
+    "jr-kururi",
+    "jr-togane"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "areaPrefectures": [
+    "千葉県"
+  ],
+  "outputBbox": [
+    138.6,
+    34.8,
+    141.0,
+    36.8
+  ],
+  "candidateSearchBbox": [
+    138.5,
+    34.65,
+    141.2,
+    37.0
+  ],
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "c752d29aec3048224c38f806f6c84f2d5a9a91dbf8ce1579882fe3b4bbb7dfb9",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

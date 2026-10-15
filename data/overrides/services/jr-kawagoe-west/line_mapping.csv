@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+kawagoe,nishi-kawagoe,川越線,,,
+nishi-kawagoe,matoba,川越線,,,
+matoba,kasahata,川越線,,,
+kasahata,musashi-takahagi,川越線,,,
+musashi-takahagi,komagawa,川越線,,,

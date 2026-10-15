@@ -1,0 +1,31 @@
+n02_line,action,section_key,reason
+東北線,allow,139.62360 35.90764~139.63154 35.93067#782db249,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.62477 35.90472~139.62668 35.90163#050f34bf,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.62668 35.90163~139.63308 35.89478#8d8c886b,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63285 35.93316~139.63982 35.94696#506d29f0,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63472 35.89241~139.63864 35.88514#c4198f4d,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63864 35.88514~139.63934 35.88361#354b42a8,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63934 35.88361~139.64498 35.87290#8e6d5297,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.64070 35.94976~139.65226 35.97992#2d5ce764,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.64652 35.87150~139.65666 35.85936#85d2ff01,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.65367 35.98241~139.66680 36.01633#80404b17,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.66696 36.01923~139.67168 36.03683#acfd4c54,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67210 36.03967~139.67670 36.06452#f7ef5cc3,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67805 36.06710~139.67991 36.08020#94a3f212,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67875 36.09798~139.69376 36.13422#4b43db5f,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67978 36.08859~139.67991 36.08020#9641f391,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.62360 35.90764~139.62477 35.90472#45a9a795,N02 RailroadSection East-line approach from the Utsunomiya-owned Omiya route; raw key observed in the routed Utsunomiya approach.
+東北線,allow,139.62491 35.90505~139.62668 35.90163#11e266f9,N02 RailroadSection East-line section shared by the Utsunomiya route and the Takasaki-tagged approach in the raw source.
+東北線,allow,139.63154 35.93067~139.63285 35.93316#e3f8b59a,N02 RailroadSection East-line connector into the Omiya boundary approach.
+東北線,allow,139.63308 35.89478~139.63472 35.89241#698b3d4f,N02 RailroadSection East-line connector at Saitama-Shintoshin.
+東北線,allow,139.64498 35.87290~139.64652 35.87150#442cd3cc,N02 RailroadSection East-line connector in the Urawa approach.
+東北線,allow,139.65666 35.85936~139.65763 35.85777#c6264b2e,N02 RailroadSection East-line connector at Urawa.
+東北線,allow,139.63982 35.94696~139.64070 35.94976#14faf829,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.65226 35.97992~139.65367 35.98241#249e98a6,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.66680 36.01633~139.66696 36.01923#eb51f7ab,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67168 36.03683~139.67210 36.03967#cc17c27b,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67670 36.06452~139.67805 36.06710#fc9d5243,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67875 36.09798~139.67961 36.09068#36e30057,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67875 36.09798~139.67991 36.08020#8e971203,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67961 36.09068~139.67978 36.08859#b9c6a4d5,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.69376 36.13422~139.69431 36.13721#86c68209,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.

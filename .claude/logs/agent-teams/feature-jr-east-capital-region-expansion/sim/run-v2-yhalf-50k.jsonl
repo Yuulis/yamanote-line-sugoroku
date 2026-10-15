@@ -1,0 +1,2 @@
+{"network":{"stations":472,"services":40,"transferStations":121,"kMax":10,"kTop":[["tokyo",10],["shinjuku",7],["omiya",6],["akabane",6],["shimbashi",5],["shinagawa",5],["osaki",5],["ebisu",5]],"startK":5,"unreachableFromTarget":0}}
+{"rule":"yhalf","games":50000,"seed":20261012,"cap":20000,"median":98,"p90":337,"p99":700,"mean":146.03428,"over200":24.276,"over500":3.6839999999999997,"over1000":0.152,"capExceeded":0,"over500Count":1842,"max":1626,"endgameMedian":1,"endgameP90":47,"lotteriesPerGame":182.78586,"targetTurnShare":14.889832715989698}

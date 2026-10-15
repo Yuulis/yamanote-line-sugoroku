@@ -1,0 +1,75 @@
+{
+  "budget_profile": "23ku",
+  "default_tolerance_m": 1.0,
+  "comparisons": [
+    {
+      "tolerance_m": 1.0,
+      "metrics": {
+        "bytes[stations.json]": 7763,
+        "gzip_bytes[stations.json]": 1673,
+        "bytes[services.json]": 11718,
+        "gzip_bytes[services.json]": 2092,
+        "bytes[segments.json]": 24277,
+        "gzip_bytes[segments.json]": 2480,
+        "bytes[segments.geojson]": 43433,
+        "gzip_bytes[segments.geojson]": 7126,
+        "bytes[manifest.json]": 456,
+        "gzip_bytes[manifest.json]": 339,
+        "total_raw_bytes": 87647,
+        "total_gzip_bytes": 13710,
+        "geometry_reference_count": 146,
+        "max_geometry_chain_length": 1
+      },
+      "coordinate_count": 973,
+      "max_hausdorff_distance_m": 0.995212,
+      "budget_errors": [],
+      "equals_default_output": true
+    },
+    {
+      "tolerance_m": 3.0,
+      "metrics": {
+        "bytes[stations.json]": 7763,
+        "gzip_bytes[stations.json]": 1673,
+        "bytes[services.json]": 11718,
+        "gzip_bytes[services.json]": 2092,
+        "bytes[segments.json]": 24277,
+        "gzip_bytes[segments.json]": 2480,
+        "bytes[segments.geojson]": 36850,
+        "gzip_bytes[segments.geojson]": 5582,
+        "bytes[manifest.json]": 456,
+        "gzip_bytes[manifest.json]": 340,
+        "total_raw_bytes": 81064,
+        "total_gzip_bytes": 12167,
+        "geometry_reference_count": 146,
+        "max_geometry_chain_length": 1
+      },
+      "coordinate_count": 657,
+      "max_hausdorff_distance_m": 2.984168,
+      "budget_errors": [],
+      "equals_default_output": false
+    },
+    {
+      "tolerance_m": 5.0,
+      "metrics": {
+        "bytes[stations.json]": 7763,
+        "gzip_bytes[stations.json]": 1673,
+        "bytes[services.json]": 11718,
+        "gzip_bytes[services.json]": 2092,
+        "bytes[segments.json]": 24277,
+        "gzip_bytes[segments.json]": 2480,
+        "bytes[segments.geojson]": 34327,
+        "gzip_bytes[segments.geojson]": 4992,
+        "bytes[manifest.json]": 456,
+        "gzip_bytes[manifest.json]": 339,
+        "total_raw_bytes": 78541,
+        "total_gzip_bytes": 11576,
+        "geometry_reference_count": 146,
+        "max_geometry_chain_length": 1
+      },
+      "coordinate_count": 536,
+      "max_hausdorff_distance_m": 4.973172,
+      "budget_errors": [],
+      "equals_default_output": false
+    }
+  ]
+}

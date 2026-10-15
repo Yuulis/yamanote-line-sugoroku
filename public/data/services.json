@@ -1,553 +1,4452 @@
-[
-  {
-    "id": "jr-yamanote",
-    "name": "山手線",
-    "operator": "東日本旅客鉄道",
-    "stationIds": [
-      "shimbashi",
-      "hamamatsucho",
-      "tamachi",
-      "takanawa-gateway",
-      "shinagawa",
-      "osaki",
-      "gotanda",
-      "meguro",
-      "ebisu",
-      "shibuya",
-      "harajuku",
-      "yoyogi",
-      "shinjuku",
-      "shin-okubo",
-      "takadanobaba",
-      "mejiro",
-      "ikebukuro",
-      "otsuka",
-      "sugamo",
-      "komagome",
-      "tabata",
-      "nishi-nippori",
-      "nippori",
-      "uguisudani",
-      "ueno",
-      "okachimachi",
-      "akihabara",
-      "kanda",
-      "tokyo",
-      "yurakucho"
-    ],
-    "circular": true,
-    "color": "#9ACD32",
-    "directionLabels": {
-      "forward": "外回り",
-      "backward": "内回り"
+{
+  "lines": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "color": "#9ACD32"
     },
-    "platformCoordinates": {
-      "shimbashi": [
-        139.7582,
-        35.66639
-      ],
-      "hamamatsucho": [
-        139.757125,
-        35.65541
-      ],
-      "tamachi": [
-        139.747605,
-        35.64574
-      ],
-      "takanawa-gateway": [
-        139.740644,
-        35.635379
-      ],
-      "shinagawa": [
-        139.738535,
-        35.628135
-      ],
-      "osaki": [
-        139.728245,
-        35.619945
-      ],
-      "gotanda": [
-        139.723541,
-        35.626297
-      ],
-      "meguro": [
-        139.715828,
-        35.632926
-      ],
-      "ebisu": [
-        139.710125,
-        35.64668
-      ],
-      "shibuya": [
-        139.701639,
-        35.65811
-      ],
-      "harajuku": [
-        139.702692,
-        35.671316
-      ],
-      "yoyogi": [
-        139.70221,
-        35.683795
-      ],
-      "shinjuku": [
-        139.70014,
-        35.690465
-      ],
-      "shin-okubo": [
-        139.700255,
-        35.70093
-      ],
-      "takadanobaba": [
-        139.703829,
-        35.712904
-      ],
-      "mejiro": [
-        139.70628,
-        35.72039
-      ],
-      "ikebukuro": [
-        139.711085,
-        35.730275
-      ],
-      "otsuka": [
-        139.72794,
-        35.731785
-      ],
-      "sugamo": [
-        139.74035,
-        35.73372
-      ],
-      "komagome": [
-        139.748054,
-        35.736862
-      ],
-      "tabata": [
-        139.761575,
-        35.737475
-      ],
-      "nishi-nippori": [
-        139.76678,
-        35.732082
-      ],
-      "nippori": [
-        139.770958,
-        35.727279
-      ],
-      "uguisudani": [
-        139.77803,
-        35.721455
-      ],
-      "ueno": [
-        139.775855,
-        35.71322
-      ],
-      "okachimachi": [
-        139.774715,
-        35.707195
-      ],
-      "akihabara": [
-        139.773045,
-        35.698535
-      ],
-      "kanda": [
-        139.770875,
-        35.69177
-      ],
-      "tokyo": [
-        139.766685,
-        35.680965
-      ],
-      "yurakucho": [
-        139.76326,
-        35.67504
-      ]
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "color": "#C9242F"
+    },
+    {
+      "id": "jr-chuo-rapid",
+      "name": "中央線快速",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-ome",
+      "name": "青梅線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-itsukaichi",
+      "name": "五日市線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-hachiko",
+      "name": "八高線",
+      "color": "#A8A39D"
+    },
+    {
+      "id": "jr-sotetsu-direct",
+      "name": "相鉄線直通 (JR区間)",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-nambu",
+      "name": "南武線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-yokohama",
+      "name": "横浜線",
+      "color": "#80C241"
+    },
+    {
+      "id": "jr-tokaido",
+      "name": "東海道線",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-yokosuka",
+      "name": "横須賀線",
+      "color": "#0067C0"
+    },
+    {
+      "id": "jr-sobu-rapid",
+      "name": "総武快速線",
+      "color": "#0067C0"
+    },
+    {
+      "id": "jr-utsunomiya",
+      "name": "宇都宮線 (上野東京ライン)",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-takasaki",
+      "name": "高崎線 (上野東京ライン)",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "color": "#E21F26"
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "color": "#E21F26"
+    },
+    {
+      "id": "jr-joban-rapid",
+      "name": "常磐線快速 (上野東京ライン)",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-musashino-takaya",
+      "name": "武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線)",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-musashino-futamata",
+      "name": "武蔵野線直通 西船橋–南船橋 (京葉線二俣支線)",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-joban-local",
+      "name": "常磐線各駅停車",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-narita-abiko",
+      "name": "成田線 我孫子支線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-narita",
+      "name": "成田線 (佐倉–松岸)",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-narita-airport-branch",
+      "name": "成田線 空港支線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-kashima",
+      "name": "鹿島線 (香取–十二橋)",
+      "color": "#9F7BB5"
+    },
+    {
+      "id": "jr-sobu-main",
+      "name": "総武本線 (千葉–銚子)",
+      "color": "#FFC20D"
+    },
+    {
+      "id": "jr-sotobo",
+      "name": "外房線",
+      "color": "#E83F3F"
+    },
+    {
+      "id": "jr-uchibo",
+      "name": "内房線",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-kururi",
+      "name": "久留里線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-togane",
+      "name": "東金線",
+      "color": "#B38D4D"
+    },
+    {
+      "id": "jr-nambu-branch",
+      "name": "南武線 浜川崎支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi",
+      "name": "鶴見線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi-umishibaura",
+      "name": "鶴見線 海芝浦支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi-okawa",
+      "name": "鶴見線 大川支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-sagami",
+      "name": "相模線",
+      "color": "#009793"
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "name": "川越線 川越–高麗川",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-chuo-takao-fujino",
+      "name": "中央本線 高尾–藤野",
+      "color": "#00843D"
     }
-  },
-  {
-    "id": "jr-keihin-tohoku",
-    "name": "京浜東北線",
-    "operator": "東日本旅客鉄道",
-    "stationIds": [
-      "akabane",
-      "higashi-jujo",
-      "oji",
-      "kami-nakazato",
-      "tabata",
-      "nishi-nippori",
-      "nippori",
-      "uguisudani",
-      "ueno",
-      "okachimachi",
-      "akihabara",
-      "kanda",
-      "tokyo",
-      "yurakucho",
-      "shimbashi",
-      "hamamatsucho",
-      "tamachi",
-      "takanawa-gateway",
-      "shinagawa",
-      "oimachi",
-      "omori",
-      "kamata"
-    ],
-    "circular": false,
-    "color": "#00B2E5",
-    "directionLabels": {
-      "forward": "蒲田方面",
-      "backward": "赤羽方面"
+  ],
+  "services": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-yamanote"
+      ],
+      "stationIds": [
+        "shimbashi",
+        "hamamatsucho",
+        "tamachi",
+        "takanawa-gateway",
+        "shinagawa",
+        "osaki",
+        "gotanda",
+        "meguro",
+        "ebisu",
+        "shibuya",
+        "harajuku",
+        "yoyogi",
+        "shinjuku",
+        "shin-okubo",
+        "takadanobaba",
+        "mejiro",
+        "ikebukuro",
+        "otsuka",
+        "sugamo",
+        "komagome",
+        "tabata",
+        "nishi-nippori",
+        "nippori",
+        "uguisudani",
+        "ueno",
+        "okachimachi",
+        "akihabara",
+        "kanda",
+        "tokyo",
+        "yurakucho"
+      ],
+      "circular": true,
+      "color": "#9ACD32",
+      "directionLabels": {
+        "forward": "外回り",
+        "backward": "内回り"
+      },
+      "platformCoordinates": {
+        "shimbashi": [
+          139.7582,
+          35.66639
+        ],
+        "hamamatsucho": [
+          139.757125,
+          35.65541
+        ],
+        "tamachi": [
+          139.747605,
+          35.64574
+        ],
+        "takanawa-gateway": [
+          139.740644,
+          35.635379
+        ],
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "osaki": [
+          139.728245,
+          35.619945
+        ],
+        "gotanda": [
+          139.723541,
+          35.626297
+        ],
+        "meguro": [
+          139.715828,
+          35.632926
+        ],
+        "ebisu": [
+          139.710125,
+          35.64668
+        ],
+        "shibuya": [
+          139.701639,
+          35.65811
+        ],
+        "harajuku": [
+          139.702692,
+          35.671316
+        ],
+        "yoyogi": [
+          139.70221,
+          35.683795
+        ],
+        "shinjuku": [
+          139.70014,
+          35.690465
+        ],
+        "shin-okubo": [
+          139.700255,
+          35.70093
+        ],
+        "takadanobaba": [
+          139.703829,
+          35.712904
+        ],
+        "mejiro": [
+          139.70628,
+          35.72039
+        ],
+        "ikebukuro": [
+          139.711085,
+          35.730275
+        ],
+        "otsuka": [
+          139.72794,
+          35.731785
+        ],
+        "sugamo": [
+          139.74035,
+          35.73372
+        ],
+        "komagome": [
+          139.748054,
+          35.736862
+        ],
+        "tabata": [
+          139.761575,
+          35.737475
+        ],
+        "nishi-nippori": [
+          139.76678,
+          35.732082
+        ],
+        "nippori": [
+          139.770958,
+          35.727279
+        ],
+        "uguisudani": [
+          139.77803,
+          35.721455
+        ],
+        "ueno": [
+          139.775855,
+          35.71322
+        ],
+        "okachimachi": [
+          139.774715,
+          35.707195
+        ],
+        "akihabara": [
+          139.773045,
+          35.698535
+        ],
+        "kanda": [
+          139.770875,
+          35.69177
+        ],
+        "tokyo": [
+          139.766685,
+          35.680965
+        ],
+        "yurakucho": [
+          139.76326,
+          35.67504
+        ]
+      }
     },
-    "platformCoordinates": {
-      "akabane": [
-        139.721252,
-        35.777622
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線・根岸線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-keihin-tohoku"
       ],
-      "higashi-jujo": [
-        139.726713,
-        35.763835
+      "stationIds": [
+        "omiya",
+        "saitama-shintoshin",
+        "yono",
+        "kita-urawa",
+        "urawa",
+        "minami-urawa",
+        "warabi",
+        "nishi-kawaguchi",
+        "kawaguchi",
+        "akabane",
+        "higashi-jujo",
+        "oji",
+        "kami-nakazato",
+        "tabata",
+        "nishi-nippori",
+        "nippori",
+        "uguisudani",
+        "ueno",
+        "okachimachi",
+        "akihabara",
+        "kanda",
+        "tokyo",
+        "yurakucho",
+        "shimbashi",
+        "hamamatsucho",
+        "tamachi",
+        "takanawa-gateway",
+        "shinagawa",
+        "oimachi",
+        "omori",
+        "kamata",
+        "kawasaki",
+        "tsurumi",
+        "shin-koyasu",
+        "higashi-kanagawa",
+        "yokohama",
+        "sakuragicho",
+        "kannai",
+        "ishikawacho",
+        "yamate",
+        "negishi",
+        "isogo",
+        "shin-sugita",
+        "yokodai",
+        "konandai",
+        "hongodai",
+        "ofuna"
       ],
-      "oji": [
-        139.73821,
-        35.752325
-      ],
-      "kami-nakazato": [
-        139.745922,
-        35.747081
-      ],
-      "tabata": [
-        139.761575,
-        35.737475
-      ],
-      "nishi-nippori": [
-        139.76678,
-        35.732082
-      ],
-      "nippori": [
-        139.770958,
-        35.727279
-      ],
-      "uguisudani": [
-        139.77803,
-        35.721455
-      ],
-      "ueno": [
-        139.775855,
-        35.71322
-      ],
-      "okachimachi": [
-        139.774715,
-        35.707195
-      ],
-      "akihabara": [
-        139.773045,
-        35.698535
-      ],
-      "kanda": [
-        139.770875,
-        35.69177
-      ],
-      "tokyo": [
-        139.766685,
-        35.680965
-      ],
-      "yurakucho": [
-        139.76326,
-        35.67504
-      ],
-      "shimbashi": [
-        139.7582,
-        35.66639
-      ],
-      "hamamatsucho": [
-        139.757125,
-        35.65541
-      ],
-      "tamachi": [
-        139.747605,
-        35.64574
-      ],
-      "takanawa-gateway": [
-        139.740644,
-        35.635379
-      ],
-      "shinagawa": [
-        139.738535,
-        35.628135
-      ],
-      "oimachi": [
-        139.734991,
-        35.60681
-      ],
-      "omori": [
-        139.728149,
-        35.588916
-      ],
-      "kamata": [
-        139.71603,
-        35.562485
-      ]
+      "circular": false,
+      "color": "#00B2E5",
+      "directionLabels": {
+        "forward": "蒲田方面",
+        "backward": "赤羽方面"
+      },
+      "platformCoordinates": {
+        "omiya": [
+          139.624185,
+          35.90618
+        ],
+        "saitama-shintoshin": [
+          139.6339,
+          35.893595
+        ],
+        "yono": [
+          139.63899,
+          35.884375
+        ],
+        "kita-urawa": [
+          139.64575,
+          35.8722
+        ],
+        "urawa": [
+          139.657145,
+          35.858565
+        ],
+        "minami-urawa": [
+          139.668615,
+          35.848335
+        ],
+        "warabi": [
+          139.690415,
+          35.82793
+        ],
+        "nishi-kawaguchi": [
+          139.70436,
+          35.815515
+        ],
+        "kawaguchi": [
+          139.717503,
+          35.801817
+        ],
+        "akabane": [
+          139.721252,
+          35.777622
+        ],
+        "higashi-jujo": [
+          139.726713,
+          35.763835
+        ],
+        "oji": [
+          139.73821,
+          35.752325
+        ],
+        "kami-nakazato": [
+          139.745922,
+          35.747081
+        ],
+        "tabata": [
+          139.761575,
+          35.737475
+        ],
+        "nishi-nippori": [
+          139.76678,
+          35.732082
+        ],
+        "nippori": [
+          139.770958,
+          35.727279
+        ],
+        "uguisudani": [
+          139.77803,
+          35.721455
+        ],
+        "ueno": [
+          139.775855,
+          35.71322
+        ],
+        "okachimachi": [
+          139.774715,
+          35.707195
+        ],
+        "akihabara": [
+          139.773045,
+          35.698535
+        ],
+        "kanda": [
+          139.770875,
+          35.69177
+        ],
+        "tokyo": [
+          139.766685,
+          35.680965
+        ],
+        "yurakucho": [
+          139.76326,
+          35.67504
+        ],
+        "shimbashi": [
+          139.7582,
+          35.66639
+        ],
+        "hamamatsucho": [
+          139.757125,
+          35.65541
+        ],
+        "tamachi": [
+          139.747605,
+          35.64574
+        ],
+        "takanawa-gateway": [
+          139.740644,
+          35.635379
+        ],
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "oimachi": [
+          139.734991,
+          35.60681
+        ],
+        "omori": [
+          139.728149,
+          35.588916
+        ],
+        "kamata": [
+          139.71603,
+          35.562485
+        ],
+        "kawasaki": [
+          139.69681,
+          35.531365
+        ],
+        "tsurumi": [
+          139.676247,
+          35.50849
+        ],
+        "shin-koyasu": [
+          139.654054,
+          35.486777
+        ],
+        "higashi-kanagawa": [
+          139.633165,
+          35.477875
+        ],
+        "yokohama": [
+          139.622492,
+          35.465756
+        ],
+        "sakuragicho": [
+          139.63088,
+          35.4511
+        ],
+        "kannai": [
+          139.636028,
+          35.444163
+        ],
+        "ishikawacho": [
+          139.642997,
+          35.438736
+        ],
+        "yamate": [
+          139.64647,
+          35.4268
+        ],
+        "negishi": [
+          139.636095,
+          35.41586
+        ],
+        "isogo": [
+          139.61847,
+          35.400575
+        ],
+        "shin-sugita": [
+          139.619435,
+          35.3868
+        ],
+        "yokodai": [
+          139.596835,
+          35.378779
+        ],
+        "konandai": [
+          139.576236,
+          35.375167
+        ],
+        "hongodai": [
+          139.550115,
+          35.367855
+        ],
+        "ofuna": [
+          139.531519,
+          35.354103
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
     },
-    "endpoints": {
-      "first": "area-boundary",
-      "last": "area-boundary"
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-chuo-sobu-local"
+      ],
+      "stationIds": [
+        "mitaka",
+        "kichijoji",
+        "nishi-ogikubo",
+        "ogikubo",
+        "asagaya",
+        "koenji",
+        "nakano",
+        "higashi-nakano",
+        "okubo",
+        "shinjuku",
+        "yoyogi",
+        "sendagaya",
+        "shinanomachi",
+        "yotsuya",
+        "ichigaya",
+        "iidabashi",
+        "suidobashi",
+        "ochanomizu",
+        "akihabara",
+        "asakusabashi",
+        "ryogoku",
+        "kinshicho",
+        "kameido",
+        "hirai",
+        "shin-koiwa",
+        "koiwa",
+        "ichikawa",
+        "moto-yawata",
+        "shimosa-nakayama",
+        "nishi-funabashi",
+        "funabashi",
+        "higashi-funabashi",
+        "tsudanuma",
+        "makuharihongo",
+        "makuhari",
+        "shin-kemigawa",
+        "inage",
+        "nishi-chiba",
+        "chiba"
+      ],
+      "circular": false,
+      "color": "#FFD400",
+      "directionLabels": {
+        "forward": "小岩方面",
+        "backward": "三鷹方面"
+      },
+      "platformCoordinates": {
+        "mitaka": [
+          139.56064,
+          35.70269
+        ],
+        "kichijoji": [
+          139.57981,
+          35.703144
+        ],
+        "nishi-ogikubo": [
+          139.59945,
+          35.703782
+        ],
+        "ogikubo": [
+          139.620245,
+          35.70443
+        ],
+        "asagaya": [
+          139.635855,
+          35.704878
+        ],
+        "koenji": [
+          139.6497,
+          35.705324
+        ],
+        "nakano": [
+          139.665585,
+          35.705955
+        ],
+        "higashi-nakano": [
+          139.68508,
+          35.70625
+        ],
+        "okubo": [
+          139.697445,
+          35.700635
+        ],
+        "shinjuku": [
+          139.700617,
+          35.69019
+        ],
+        "yoyogi": [
+          139.70221,
+          35.683795
+        ],
+        "sendagaya": [
+          139.71153,
+          35.681196
+        ],
+        "shinanomachi": [
+          139.721098,
+          35.679942
+        ],
+        "yotsuya": [
+          139.73053,
+          35.685652
+        ],
+        "ichigaya": [
+          139.73532,
+          35.691155
+        ],
+        "iidabashi": [
+          139.743655,
+          35.700137
+        ],
+        "suidobashi": [
+          139.753745,
+          35.702
+        ],
+        "ochanomizu": [
+          139.76503,
+          35.699605
+        ],
+        "akihabara": [
+          139.773215,
+          35.69832
+        ],
+        "asakusabashi": [
+          139.78449,
+          35.69739
+        ],
+        "ryogoku": [
+          139.79335,
+          35.695755
+        ],
+        "kinshicho": [
+          139.81432,
+          35.696719
+        ],
+        "kameido": [
+          139.82661,
+          35.697342
+        ],
+        "hirai": [
+          139.842387,
+          35.706448
+        ],
+        "shin-koiwa": [
+          139.857645,
+          35.71679
+        ],
+        "koiwa": [
+          139.88185,
+          35.73333
+        ],
+        "ichikawa": [
+          139.90817,
+          35.72887
+        ],
+        "moto-yawata": [
+          139.927405,
+          35.72085
+        ],
+        "shimosa-nakayama": [
+          139.94307,
+          35.714285
+        ],
+        "nishi-funabashi": [
+          139.958045,
+          35.707985
+        ],
+        "funabashi": [
+          139.984675,
+          35.701734
+        ],
+        "higashi-funabashi": [
+          140.00407,
+          35.699828
+        ],
+        "tsudanuma": [
+          140.020226,
+          35.691374
+        ],
+        "makuharihongo": [
+          140.042075,
+          35.672905
+        ],
+        "makuhari": [
+          140.057821,
+          35.659546
+        ],
+        "shin-kemigawa": [
+          140.073345,
+          35.651799
+        ],
+        "inage": [
+          140.092565,
+          35.63731
+        ],
+        "nishi-chiba": [
+          140.103322,
+          35.622628
+        ],
+        "chiba": [
+          140.113504,
+          35.613505
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-chuo-rapid",
+      "name": "中央線快速",
+      "operator": "東日本旅客鉄道",
+      "kind": "rapid",
+      "lineIds": [
+        "jr-chuo-rapid"
+      ],
+      "stationIds": [
+        "tokyo",
+        "kanda",
+        "ochanomizu",
+        "yotsuya",
+        "shinjuku",
+        "nakano",
+        "koenji",
+        "asagaya",
+        "ogikubo",
+        "nishi-ogikubo",
+        "kichijoji",
+        "mitaka",
+        "musashi-sakai",
+        "higashi-koganei",
+        "musashi-koganei",
+        "kokubunji",
+        "nishi-kokubunji",
+        "kunitachi",
+        "tachikawa",
+        "hino",
+        "toyoda",
+        "hachioji",
+        "nishi-hachioji",
+        "takao"
+      ],
+      "circular": false,
+      "color": "#F15A22",
+      "directionLabels": {
+        "forward": "高尾方面",
+        "backward": "東京方面"
+      },
+      "platformCoordinates": {
+        "tokyo": [
+          139.767324,
+          35.681217
+        ],
+        "kanda": [
+          139.770875,
+          35.69177
+        ],
+        "ochanomizu": [
+          139.76503,
+          35.699605
+        ],
+        "yotsuya": [
+          139.73053,
+          35.685652
+        ],
+        "shinjuku": [
+          139.700617,
+          35.69019
+        ],
+        "nakano": [
+          139.665585,
+          35.705955
+        ],
+        "koenji": [
+          139.6497,
+          35.705324
+        ],
+        "asagaya": [
+          139.635855,
+          35.704878
+        ],
+        "ogikubo": [
+          139.620245,
+          35.70443
+        ],
+        "nishi-ogikubo": [
+          139.59945,
+          35.703782
+        ],
+        "kichijoji": [
+          139.57981,
+          35.703144
+        ],
+        "mitaka": [
+          139.56064,
+          35.70269
+        ],
+        "musashi-sakai": [
+          139.543555,
+          35.70209
+        ],
+        "higashi-koganei": [
+          139.52376,
+          35.70156
+        ],
+        "musashi-koganei": [
+          139.50593,
+          35.701035
+        ],
+        "kokubunji": [
+          139.480855,
+          35.700134
+        ],
+        "nishi-kokubunji": [
+          139.465925,
+          35.699727
+        ],
+        "kunitachi": [
+          139.446415,
+          35.699195
+        ],
+        "tachikawa": [
+          139.413765,
+          35.697765
+        ],
+        "hino": [
+          139.393426,
+          35.678546
+        ],
+        "toyoda": [
+          139.381452,
+          35.659453
+        ],
+        "hachioji": [
+          139.33882,
+          35.655503
+        ],
+        "nishi-hachioji": [
+          139.312005,
+          35.656275
+        ],
+        "takao": [
+          139.282635,
+          35.642375
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-chuo-takao-fujino",
+      "name": "中央本線 高尾–藤野",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-chuo-takao-fujino"
+      ],
+      "stationIds": [
+        "takao",
+        "sagamiko",
+        "fujino"
+      ],
+      "circular": false,
+      "color": "#00843D",
+      "directionLabels": {
+        "forward": "相模湖・藤野方面",
+        "backward": "高尾方面"
+      },
+      "platformCoordinates": {
+        "takao": [
+          139.282635,
+          35.642375
+        ],
+        "sagamiko": [
+          139.188525,
+          35.617315
+        ],
+        "fujino": [
+          139.15133,
+          35.615995
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-ome",
+      "name": "青梅線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-ome"
+      ],
+      "stationIds": [
+        "tachikawa",
+        "nishi-tachikawa",
+        "higashi-nakagami",
+        "nakagami",
+        "akishima",
+        "haijima",
+        "ushihama",
+        "fussa",
+        "hamura",
+        "ozaku",
+        "kabe",
+        "higashi-ome",
+        "ome",
+        "miyanohira",
+        "hinatawada",
+        "ishigamimae",
+        "futamatao",
+        "ikusabata",
+        "sawai",
+        "mitake",
+        "kawai",
+        "kori",
+        "hatonosu",
+        "shiromaru",
+        "oku-tama"
+      ],
+      "circular": false,
+      "color": "#F15A22",
+      "directionLabels": {
+        "forward": "奥多摩方面",
+        "backward": "立川方面"
+      },
+      "platformCoordinates": {
+        "tachikawa": [
+          139.414155,
+          35.69828
+        ],
+        "nishi-tachikawa": [
+          139.393156,
+          35.703611
+        ],
+        "higashi-nakagami": [
+          139.384595,
+          35.706275
+        ],
+        "nakagami": [
+          139.37571,
+          35.709
+        ],
+        "akishima": [
+          139.361635,
+          35.71322
+        ],
+        "haijima": [
+          139.343467,
+          35.721194
+        ],
+        "ushihama": [
+          139.33379,
+          35.734335
+        ],
+        "fussa": [
+          139.327745,
+          35.742485
+        ],
+        "hamura": [
+          139.3163,
+          35.75794
+        ],
+        "ozaku": [
+          139.302275,
+          35.776055
+        ],
+        "kabe": [
+          139.284055,
+          35.784775
+        ],
+        "higashi-ome": [
+          139.272805,
+          35.789815
+        ],
+        "ome": [
+          139.258125,
+          35.790545
+        ],
+        "miyanohira": [
+          139.237315,
+          35.78759
+        ],
+        "hinatawada": [
+          139.229535,
+          35.788645
+        ],
+        "ishigamimae": [
+          139.225135,
+          35.79683
+        ],
+        "futamatao": [
+          139.216145,
+          35.803945
+        ],
+        "ikusabata": [
+          139.20765,
+          35.80758
+        ],
+        "sawai": [
+          139.1934,
+          35.80595
+        ],
+        "mitake": [
+          139.182631,
+          35.801416
+        ],
+        "kawai": [
+          139.164226,
+          35.813775
+        ],
+        "kori": [
+          139.15114,
+          35.81632
+        ],
+        "hatonosu": [
+          139.12894,
+          35.815105
+        ],
+        "shiromaru": [
+          139.11483,
+          35.81172
+        ],
+        "oku-tama": [
+          139.096917,
+          35.809404
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-itsukaichi",
+      "name": "五日市線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-itsukaichi"
+      ],
+      "stationIds": [
+        "haijima",
+        "kumagawa",
+        "higashi-akiru",
+        "akigawa",
+        "musashi-hikida",
+        "musashi-masuko",
+        "musashi-itsukaichi"
+      ],
+      "circular": false,
+      "color": "#F15A22",
+      "directionLabels": {
+        "forward": "武蔵五日市方面",
+        "backward": "拝島方面"
+      },
+      "platformCoordinates": {
+        "haijima": [
+          139.343467,
+          35.721194
+        ],
+        "kumagawa": [
+          139.33573,
+          35.72829
+        ],
+        "higashi-akiru": [
+          139.311675,
+          35.725935
+        ],
+        "akigawa": [
+          139.28675,
+          35.72805
+        ],
+        "musashi-hikida": [
+          139.270085,
+          35.72969
+        ],
+        "musashi-masuko": [
+          139.256305,
+          35.730955
+        ],
+        "musashi-itsukaichi": [
+          139.22812,
+          35.732145
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-hachiko",
+      "name": "八高線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-hachiko"
+      ],
+      "stationIds": [
+        "hachioji",
+        "kita-hachioji",
+        "komiya",
+        "haijima",
+        "higashi-fussa",
+        "hakonegasaki",
+        "kaneko",
+        "higashi-hanno",
+        "komagawa",
+        "moro",
+        "ogose",
+        "myokaku",
+        "ogawamachi",
+        "takezawa",
+        "orihara",
+        "yorii",
+        "yodo",
+        "matsuhisa",
+        "kodama",
+        "tansho"
+      ],
+      "circular": false,
+      "color": "#A8A39D",
+      "directionLabels": {
+        "forward": "箱根ケ崎方面",
+        "backward": "八王子方面"
+      },
+      "platformCoordinates": {
+        "hachioji": [
+          139.33882,
+          35.655503
+        ],
+        "kita-hachioji": [
+          139.3634,
+          35.669275
+        ],
+        "komiya": [
+          139.368441,
+          35.685917
+        ],
+        "haijima": [
+          139.343728,
+          35.721334
+        ],
+        "higashi-fussa": [
+          139.33589,
+          35.745831
+        ],
+        "hakonegasaki": [
+          139.346735,
+          35.771695
+        ],
+        "kaneko": [
+          139.32861,
+          35.810815
+        ],
+        "higashi-hanno": [
+          139.32613,
+          35.85302
+        ],
+        "komagawa": [
+          139.33813,
+          35.89637
+        ],
+        "moro": [
+          139.309335,
+          35.940735
+        ],
+        "ogose": [
+          139.299268,
+          35.962868
+        ],
+        "myokaku": [
+          139.289215,
+          36.003565
+        ],
+        "ogawamachi": [
+          139.26069,
+          36.058995
+        ],
+        "takezawa": [
+          139.22995,
+          36.0755
+        ],
+        "orihara": [
+          139.195325,
+          36.096175
+        ],
+        "yorii": [
+          139.193525,
+          36.117855
+        ],
+        "yodo": [
+          139.200643,
+          36.153851
+        ],
+        "matsuhisa": [
+          139.1821,
+          36.173065
+        ],
+        "kodama": [
+          139.135711,
+          36.192838
+        ],
+        "tansho": [
+          139.102585,
+          36.216465
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "name": "川越線 川越–高麗川",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-kawagoe-west"
+      ],
+      "stationIds": [
+        "kawagoe",
+        "nishi-kawagoe",
+        "matoba",
+        "kasahata",
+        "musashi-takahagi",
+        "komagawa"
+      ],
+      "circular": false,
+      "color": "#00AC9A",
+      "directionLabels": {
+        "forward": "高麗川方面",
+        "backward": "川越方面"
+      },
+      "platformCoordinates": {
+        "kawagoe": [
+          139.4832,
+          35.906682
+        ],
+        "nishi-kawagoe": [
+          139.459935,
+          35.919095
+        ],
+        "matoba": [
+          139.43541,
+          35.91754
+        ],
+        "kasahata": [
+          139.40626,
+          35.90758
+        ],
+        "musashi-takahagi": [
+          139.371121,
+          35.901682
+        ],
+        "komagawa": [
+          139.33813,
+          35.89637
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線・川越線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-saikyo"
+      ],
+      "stationIds": [
+        "osaki",
+        "ebisu",
+        "shibuya",
+        "shinjuku",
+        "ikebukuro",
+        "itabashi",
+        "jujo",
+        "akabane",
+        "kita-akabane",
+        "ukima-funado",
+        "toda-koen",
+        "toda",
+        "kita-toda",
+        "musashi-urawa",
+        "naka-urawa",
+        "minami-yono",
+        "yono-hommachi",
+        "kita-yono",
+        "omiya",
+        "nisshin",
+        "nishi-omiya",
+        "sashiogi",
+        "minami-furuya",
+        "kawagoe"
+      ],
+      "circular": false,
+      "color": "#00AC9A",
+      "directionLabels": {
+        "forward": "浮間舟渡方面",
+        "backward": "大崎方面"
+      },
+      "platformCoordinates": {
+        "osaki": [
+          139.728245,
+          35.619945
+        ],
+        "ebisu": [
+          139.710125,
+          35.64668
+        ],
+        "shibuya": [
+          139.701639,
+          35.65811
+        ],
+        "shinjuku": [
+          139.700916,
+          35.688923
+        ],
+        "ikebukuro": [
+          139.71134,
+          35.7302
+        ],
+        "itabashi": [
+          139.719171,
+          35.744992
+        ],
+        "jujo": [
+          139.72225,
+          35.76039
+        ],
+        "akabane": [
+          139.720845,
+          35.777721
+        ],
+        "kita-akabane": [
+          139.705762,
+          35.786995
+        ],
+        "ukima-funado": [
+          139.691377,
+          35.791262
+        ],
+        "toda-koen": [
+          139.67835,
+          35.807765
+        ],
+        "toda": [
+          139.66961,
+          35.817595
+        ],
+        "kita-toda": [
+          139.661445,
+          35.826755
+        ],
+        "musashi-urawa": [
+          139.646893,
+          35.845429
+        ],
+        "naka-urawa": [
+          139.637387,
+          35.85382
+        ],
+        "minami-yono": [
+          139.631055,
+          35.867355
+        ],
+        "yono-hommachi": [
+          139.626005,
+          35.880925
+        ],
+        "kita-yono": [
+          139.628512,
+          35.890683
+        ],
+        "omiya": [
+          139.623038,
+          35.906244
+        ],
+        "nisshin": [
+          139.60606,
+          35.93153
+        ],
+        "nishi-omiya": [
+          139.5789,
+          35.921959
+        ],
+        "sashiogi": [
+          139.56497,
+          35.916965
+        ],
+        "minami-furuya": [
+          139.519155,
+          35.90318
+        ],
+        "kawagoe": [
+          139.4832,
+          35.906682
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-sotetsu-direct",
+      "name": "相鉄線直通 (JR区間)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-sotetsu-direct"
+      ],
+      "stationIds": [
+        "shinjuku",
+        "shibuya",
+        "ebisu",
+        "osaki",
+        "nishi-oi",
+        "musashi-kosugi",
+        "hazawa-yokohama-kokudai"
+      ],
+      "circular": false,
+      "color": "#00AC9A",
+      "directionLabels": {
+        "forward": "西大井方面",
+        "backward": "新宿方面"
+      },
+      "platformCoordinates": {
+        "shinjuku": [
+          139.700916,
+          35.688923
+        ],
+        "shibuya": [
+          139.701639,
+          35.65811
+        ],
+        "ebisu": [
+          139.710125,
+          35.64668
+        ],
+        "osaki": [
+          139.728245,
+          35.619945
+        ],
+        "nishi-oi": [
+          139.721607,
+          35.601699
+        ],
+        "musashi-kosugi": [
+          139.663361,
+          35.574671
+        ],
+        "hazawa-yokohama-kokudai": [
+          139.586135,
+          35.481229
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-keiyo"
+      ],
+      "stationIds": [
+        "tokyo",
+        "hatchobori",
+        "etchujima",
+        "shiomi",
+        "shin-kiba",
+        "kasai-rinkai-koen",
+        "maihama",
+        "shin-urayasu",
+        "ichikawashiohama",
+        "futamatashimmachi",
+        "minami-funabashi",
+        "shin-narashino",
+        "makuhari-toyosuna",
+        "kaihimmakuhari",
+        "kemigawahama",
+        "inagekaigan",
+        "chibaminato",
+        "soga"
+      ],
+      "circular": false,
+      "color": "#C9242F",
+      "directionLabels": {
+        "forward": "葛西臨海公園方面",
+        "backward": "東京方面"
+      },
+      "platformCoordinates": {
+        "tokyo": [
+          139.765237,
+          35.677692
+        ],
+        "hatchobori": [
+          139.77799,
+          35.67462
+        ],
+        "etchujima": [
+          139.792495,
+          35.668
+        ],
+        "shiomi": [
+          139.81717,
+          35.658865
+        ],
+        "shin-kiba": [
+          139.826845,
+          35.645995
+        ],
+        "kasai-rinkai-koen": [
+          139.861485,
+          35.64417
+        ],
+        "maihama": [
+          139.88372,
+          35.63616
+        ],
+        "shin-urayasu": [
+          139.91253,
+          35.64952
+        ],
+        "ichikawashiohama": [
+          139.923652,
+          35.666479
+        ],
+        "futamatashimmachi": [
+          139.959555,
+          35.69132
+        ],
+        "minami-funabashi": [
+          139.9957,
+          35.681665
+        ],
+        "shin-narashino": [
+          140.012975,
+          35.6674
+        ],
+        "makuhari-toyosuna": [
+          140.027073,
+          35.658161
+        ],
+        "kaihimmakuhari": [
+          140.041995,
+          35.6484
+        ],
+        "kemigawahama": [
+          140.059085,
+          35.63717
+        ],
+        "inagekaigan": [
+          140.07385,
+          35.629519
+        ],
+        "chibaminato": [
+          140.102795,
+          35.60671
+        ],
+        "soga": [
+          140.130737,
+          35.582156
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino"
+      ],
+      "stationIds": [
+        "fuchuhommachi",
+        "kita-fuchu",
+        "nishi-kokubunji",
+        "shin-kodaira",
+        "shin-akitsu",
+        "higashi-tokorozawa",
+        "niiza",
+        "kita-asaka",
+        "nishi-urawa",
+        "musashi-urawa",
+        "minami-urawa",
+        "higashi-urawa",
+        "higashi-kawaguchi",
+        "minami-koshigaya",
+        "koshigaya-laketown",
+        "yoshikawa",
+        "yoshikawaminami",
+        "shim-misato",
+        "misato",
+        "minami-nagareyama",
+        "shim-matsudo",
+        "shin-yahashira",
+        "higashi-matsudo",
+        "ichikawaono",
+        "funabashihoten",
+        "nishi-funabashi"
+      ],
+      "circular": false,
+      "color": "#F15A22",
+      "directionLabels": {
+        "forward": "新秋津方面",
+        "backward": "府中本町方面"
+      },
+      "platformCoordinates": {
+        "fuchuhommachi": [
+          139.477061,
+          35.665834
+        ],
+        "kita-fuchu": [
+          139.471795,
+          35.680855
+        ],
+        "nishi-kokubunji": [
+          139.465985,
+          35.69991
+        ],
+        "shin-kodaira": [
+          139.470494,
+          35.730922
+        ],
+        "shin-akitsu": [
+          139.493755,
+          35.77831
+        ],
+        "higashi-tokorozawa": [
+          139.51454,
+          35.79489
+        ],
+        "niiza": [
+          139.556287,
+          35.803797
+        ],
+        "kita-asaka": [
+          139.58723,
+          35.81547
+        ],
+        "nishi-urawa": [
+          139.627765,
+          35.844185
+        ],
+        "musashi-urawa": [
+          139.647935,
+          35.846045
+        ],
+        "minami-urawa": [
+          139.66894,
+          35.847585
+        ],
+        "higashi-urawa": [
+          139.704474,
+          35.864029
+        ],
+        "higashi-kawaguchi": [
+          139.744031,
+          35.875162
+        ],
+        "minami-koshigaya": [
+          139.79115,
+          35.876045
+        ],
+        "koshigaya-laketown": [
+          139.82226,
+          35.876106
+        ],
+        "yoshikawa": [
+          139.843241,
+          35.876654
+        ],
+        "yoshikawaminami": [
+          139.858122,
+          35.868087
+        ],
+        "shim-misato": [
+          139.869535,
+          35.85839
+        ],
+        "misato": [
+          139.886835,
+          35.844835
+        ],
+        "minami-nagareyama": [
+          139.90423,
+          35.837845
+        ],
+        "shim-matsudo": [
+          139.920983,
+          35.825553
+        ],
+        "shin-yahashira": [
+          139.938555,
+          35.79129
+        ],
+        "higashi-matsudo": [
+          139.94386,
+          35.77049
+        ],
+        "ichikawaono": [
+          139.95128,
+          35.755405
+        ],
+        "funabashihoten": [
+          139.966721,
+          35.730464
+        ],
+        "nishi-funabashi": [
+          139.959529,
+          35.707217
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-musashino-takaya",
+      "name": "武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino-takaya"
+      ],
+      "stationIds": [
+        "nishi-funabashi",
+        "ichikawashiohama"
+      ],
+      "circular": false,
+      "color": "#F15A22",
+      "directionLabels": {
+        "forward": "市川塩浜方面",
+        "backward": "西船橋方面"
+      },
+      "platformCoordinates": {
+        "nishi-funabashi": [
+          139.959529,
+          35.707217
+        ],
+        "ichikawashiohama": [
+          139.923652,
+          35.666479
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-musashino-futamata",
+      "name": "武蔵野線直通 西船橋–南船橋 (京葉線二俣支線)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino-futamata"
+      ],
+      "stationIds": [
+        "nishi-funabashi",
+        "minami-funabashi"
+      ],
+      "circular": false,
+      "color": "#F15A22",
+      "directionLabels": {
+        "forward": "南船橋方面",
+        "backward": "西船橋方面"
+      },
+      "platformCoordinates": {
+        "nishi-funabashi": [
+          139.959529,
+          35.707217
+        ],
+        "minami-funabashi": [
+          139.9957,
+          35.681665
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-nambu",
+      "name": "南武線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-nambu"
+      ],
+      "stationIds": [
+        "kawasaki",
+        "shitte",
+        "yako",
+        "kashimada",
+        "hirama",
+        "mukaigawara",
+        "musashi-kosugi",
+        "musashi-nakahara",
+        "musashi-shinjo",
+        "musashi-mizonokuchi",
+        "tsudayama",
+        "kuji",
+        "shukugawara",
+        "noborito",
+        "nakanoshima",
+        "inadazutsumi",
+        "yanokuchi",
+        "inaginaganuma",
+        "minami-tama",
+        "fuchuhommachi",
+        "bubaigawara",
+        "nishifu",
+        "yaho",
+        "yagawa",
+        "nishi-kunitachi",
+        "tachikawa"
+      ],
+      "circular": false,
+      "color": "#FFD400",
+      "directionLabels": {
+        "forward": "立川方面",
+        "backward": "矢野口方面"
+      },
+      "platformCoordinates": {
+        "kawasaki": [
+          139.69681,
+          35.531365
+        ],
+        "shitte": [
+          139.6843,
+          35.530975
+        ],
+        "yako": [
+          139.680421,
+          35.539359
+        ],
+        "kashimada": [
+          139.67498,
+          35.551455
+        ],
+        "hirama": [
+          139.671095,
+          35.560565
+        ],
+        "mukaigawara": [
+          139.667295,
+          35.572175
+        ],
+        "musashi-kosugi": [
+          139.659695,
+          35.576569
+        ],
+        "musashi-nakahara": [
+          139.64214,
+          35.58056
+        ],
+        "musashi-shinjo": [
+          139.62909,
+          35.587415
+        ],
+        "musashi-mizonokuchi": [
+          139.611375,
+          35.598815
+        ],
+        "tsudayama": [
+          139.60072,
+          35.60365
+        ],
+        "kuji": [
+          139.593075,
+          35.610105
+        ],
+        "shukugawara": [
+          139.579545,
+          35.61542
+        ],
+        "noborito": [
+          139.570269,
+          35.620695
+        ],
+        "nakanoshima": [
+          139.551075,
+          35.63002
+        ],
+        "inadazutsumi": [
+          139.535935,
+          35.63341
+        ],
+        "yanokuchi": [
+          139.520435,
+          35.641735
+        ],
+        "inaginaganuma": [
+          139.50261,
+          35.644275
+        ],
+        "minami-tama": [
+          139.489545,
+          35.649215
+        ],
+        "fuchuhommachi": [
+          139.477286,
+          35.665882
+        ],
+        "bubaigawara": [
+          139.468915,
+          35.66842
+        ],
+        "nishifu": [
+          139.45739,
+          35.670935
+        ],
+        "yaho": [
+          139.44678,
+          35.68138
+        ],
+        "yagawa": [
+          139.43159,
+          35.685075
+        ],
+        "nishi-kunitachi": [
+          139.423905,
+          35.69379
+        ],
+        "tachikawa": [
+          139.414305,
+          35.697535
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-nambu-branch",
+      "name": "南武線 浜川崎支線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-nambu-branch"
+      ],
+      "stationIds": [
+        "shitte",
+        "hatchonawate",
+        "kawasakishimmachi",
+        "odasakae",
+        "hama-kawasaki"
+      ],
+      "circular": false,
+      "color": "#FFD400",
+      "directionLabels": {
+        "forward": "浜川崎方面",
+        "backward": "尻手方面"
+      },
+      "platformCoordinates": {
+        "shitte": [
+          139.6843,
+          35.530975
+        ],
+        "hatchonawate": [
+          139.691375,
+          35.52307
+        ],
+        "kawasakishimmachi": [
+          139.69926,
+          35.518325
+        ],
+        "odasakae": [
+          139.705078,
+          35.514415
+        ],
+        "hama-kawasaki": [
+          139.71378,
+          35.510385
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-tsurumi",
+      "name": "鶴見線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi"
+      ],
+      "stationIds": [
+        "tsurumi",
+        "kokudo",
+        "tsurumiono",
+        "bentembashi",
+        "asano",
+        "anzen",
+        "musashi-shiraishi",
+        "hama-kawasaki",
+        "showa",
+        "ogimachi"
+      ],
+      "circular": false,
+      "color": "#FFD400",
+      "directionLabels": {
+        "forward": "扇町方面",
+        "backward": "鶴見方面"
+      },
+      "platformCoordinates": {
+        "tsurumi": [
+          139.67579,
+          35.50794
+        ],
+        "kokudo": [
+          139.67571,
+          35.50077
+        ],
+        "tsurumiono": [
+          139.681275,
+          35.49702
+        ],
+        "bentembashi": [
+          139.689485,
+          35.495795
+        ],
+        "asano": [
+          139.695675,
+          35.497605
+        ],
+        "anzen": [
+          139.701245,
+          35.49984
+        ],
+        "musashi-shiraishi": [
+          139.70653,
+          35.50193
+        ],
+        "hama-kawasaki": [
+          139.713535,
+          35.50966
+        ],
+        "showa": [
+          139.723958,
+          35.506858
+        ],
+        "ogimachi": [
+          139.72242,
+          35.50174
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-tsurumi-umishibaura",
+      "name": "鶴見線 海芝浦支線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi-umishibaura"
+      ],
+      "stationIds": [
+        "asano",
+        "shin-shibaura",
+        "umi-shibaura"
+      ],
+      "circular": false,
+      "color": "#FFD400",
+      "directionLabels": {
+        "forward": "海芝浦方面",
+        "backward": "浅野方面"
+      },
+      "platformCoordinates": {
+        "asano": [
+          139.695745,
+          35.497285
+        ],
+        "shin-shibaura": [
+          139.700125,
+          35.491915
+        ],
+        "umi-shibaura": [
+          139.700675,
+          35.48613
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-tsurumi-okawa",
+      "name": "鶴見線 大川支線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi-okawa"
+      ],
+      "stationIds": [
+        "anzen",
+        "okawa"
+      ],
+      "circular": false,
+      "color": "#FFD400",
+      "directionLabels": {
+        "forward": "大川方面",
+        "backward": "安善方面"
+      },
+      "platformCoordinates": {
+        "anzen": [
+          139.701245,
+          35.49984
+        ],
+        "okawa": [
+          139.71138,
+          35.495405
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-yokohama",
+      "name": "横浜線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-yokohama"
+      ],
+      "stationIds": [
+        "higashi-kanagawa",
+        "oguchi",
+        "kikuna",
+        "shin-yokohama",
+        "kozukue",
+        "kamoi",
+        "nakayama",
+        "tokaichiba",
+        "nagatsuta",
+        "naruse",
+        "machida",
+        "kobuchi",
+        "fuchinobe",
+        "yabe",
+        "sagamihara",
+        "hashimoto",
+        "aihara",
+        "hachiojiminamino",
+        "katakura",
+        "hachioji"
+      ],
+      "circular": false,
+      "color": "#80C241",
+      "directionLabels": {
+        "forward": "八王子方面",
+        "backward": "相原方面"
+      },
+      "platformCoordinates": {
+        "higashi-kanagawa": [
+          139.633165,
+          35.477875
+        ],
+        "oguchi": [
+          139.646335,
+          35.492295
+        ],
+        "kikuna": [
+          139.630102,
+          35.509656
+        ],
+        "shin-yokohama": [
+          139.617425,
+          35.506765
+        ],
+        "kozukue": [
+          139.59962,
+          35.508635
+        ],
+        "kamoi": [
+          139.56695,
+          35.51085
+        ],
+        "nakayama": [
+          139.539216,
+          35.514771
+        ],
+        "tokaichiba": [
+          139.516495,
+          35.526264
+        ],
+        "nagatsuta": [
+          139.495285,
+          35.531637
+        ],
+        "naruse": [
+          139.472914,
+          35.53542
+        ],
+        "machida": [
+          139.44659,
+          35.541545
+        ],
+        "kobuchi": [
+          139.41924,
+          35.55598
+        ],
+        "fuchinobe": [
+          139.395602,
+          35.568363
+        ],
+        "yabe": [
+          139.386538,
+          35.573099
+        ],
+        "sagamihara": [
+          139.370645,
+          35.581482
+        ],
+        "hashimoto": [
+          139.345094,
+          35.594839
+        ],
+        "aihara": [
+          139.33168,
+          35.60693
+        ],
+        "hachiojiminamino": [
+          139.330978,
+          35.63129
+        ],
+        "katakura": [
+          139.341165,
+          35.639675
+        ],
+        "hachioji": [
+          139.34025,
+          35.655045
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-sagami",
+      "name": "相模線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-sagami"
+      ],
+      "stationIds": [
+        "chigasaki",
+        "kita-chigasaki",
+        "kagawa",
+        "samukawa",
+        "miyayama",
+        "kurami",
+        "kadosawabashi",
+        "shake",
+        "atsugi",
+        "ebina",
+        "iriya",
+        "sobudaishita",
+        "shimomizo",
+        "harataima",
+        "banda",
+        "kamimizo",
+        "minami-hashimoto",
+        "hashimoto"
+      ],
+      "circular": false,
+      "color": "#009793",
+      "directionLabels": {
+        "forward": "橋本方面",
+        "backward": "茅ケ崎方面"
+      },
+      "platformCoordinates": {
+        "chigasaki": [
+          139.407018,
+          35.330674
+        ],
+        "kita-chigasaki": [
+          139.40747,
+          35.33968
+        ],
+        "kagawa": [
+          139.39983,
+          35.3566
+        ],
+        "samukawa": [
+          139.387315,
+          35.367705
+        ],
+        "miyayama": [
+          139.379665,
+          35.382215
+        ],
+        "kurami": [
+          139.378385,
+          35.395055
+        ],
+        "kadosawabashi": [
+          139.380055,
+          35.4067
+        ],
+        "shake": [
+          139.377185,
+          35.42041
+        ],
+        "atsugi": [
+          139.378605,
+          35.44382
+        ],
+        "ebina": [
+          139.3893,
+          35.45423
+        ],
+        "iriya": [
+          139.39187,
+          35.47838
+        ],
+        "sobudaishita": [
+          139.38632,
+          35.492775
+        ],
+        "shimomizo": [
+          139.38051,
+          35.51832
+        ],
+        "harataima": [
+          139.375365,
+          35.528995
+        ],
+        "banda": [
+          139.363132,
+          35.545361
+        ],
+        "kamimizo": [
+          139.363133,
+          35.557639
+        ],
+        "minami-hashimoto": [
+          139.35242,
+          35.5804
+        ],
+        "hashimoto": [
+          139.345094,
+          35.594839
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-tokaido",
+      "name": "東海道線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-tokaido"
+      ],
+      "stationIds": [
+        "tokyo",
+        "shimbashi",
+        "shinagawa",
+        "kawasaki",
+        "yokohama",
+        "totsuka",
+        "ofuna",
+        "fujisawa",
+        "tsujido",
+        "chigasaki",
+        "hiratsuka",
+        "oiso",
+        "ninomiya",
+        "kozu",
+        "kamonomiya",
+        "odawara",
+        "hayakawa",
+        "nebukawa",
+        "manazuru",
+        "yugawara"
+      ],
+      "circular": false,
+      "color": "#F68B1E",
+      "directionLabels": {
+        "forward": "品川方面",
+        "backward": "東京方面"
+      },
+      "platformCoordinates": {
+        "tokyo": [
+          139.766685,
+          35.680965
+        ],
+        "shimbashi": [
+          139.7582,
+          35.66639
+        ],
+        "shinagawa": [
+          139.73904,
+          35.628495
+        ],
+        "kawasaki": [
+          139.69681,
+          35.531365
+        ],
+        "yokohama": [
+          139.622247,
+          35.465845
+        ],
+        "totsuka": [
+          139.534301,
+          35.400433
+        ],
+        "ofuna": [
+          139.531163,
+          35.354155
+        ],
+        "fujisawa": [
+          139.48642,
+          35.338835
+        ],
+        "tsujido": [
+          139.445895,
+          35.336845
+        ],
+        "chigasaki": [
+          139.408003,
+          35.330639
+        ],
+        "hiratsuka": [
+          139.349,
+          35.327439
+        ],
+        "oiso": [
+          139.313277,
+          35.311458
+        ],
+        "ninomiya": [
+          139.25675,
+          35.29867
+        ],
+        "kozu": [
+          139.214955,
+          35.281395
+        ],
+        "kamonomiya": [
+          139.180166,
+          35.275726
+        ],
+        "odawara": [
+          139.155755,
+          35.256101
+        ],
+        "hayakawa": [
+          139.145007,
+          35.238713
+        ],
+        "nebukawa": [
+          139.138637,
+          35.202572
+        ],
+        "manazuru": [
+          139.132341,
+          35.156841
+        ],
+        "yugawara": [
+          139.1022,
+          35.146125
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-yokosuka",
+      "name": "横須賀線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-yokosuka"
+      ],
+      "stationIds": [
+        "tokyo",
+        "shimbashi",
+        "shinagawa",
+        "nishi-oi",
+        "musashi-kosugi",
+        "shin-kawasaki",
+        "yokohama",
+        "hodogaya",
+        "higashi-totsuka",
+        "totsuka",
+        "ofuna",
+        "kita-kamakura",
+        "kamakura",
+        "zushi",
+        "higashi-zushi",
+        "taura",
+        "yokosuka",
+        "kinugasa",
+        "kurihama"
+      ],
+      "circular": false,
+      "color": "#0067C0",
+      "directionLabels": {
+        "forward": "西大井方面",
+        "backward": "東京方面"
+      },
+      "platformCoordinates": {
+        "tokyo": [
+          139.765381,
+          35.681728
+        ],
+        "shimbashi": [
+          139.75873,
+          35.666205
+        ],
+        "shinagawa": [
+          139.739427,
+          35.629038
+        ],
+        "nishi-oi": [
+          139.721607,
+          35.601699
+        ],
+        "musashi-kosugi": [
+          139.663361,
+          35.574671
+        ],
+        "shin-kawasaki": [
+          139.67155,
+          35.551727
+        ],
+        "yokohama": [
+          139.622247,
+          35.465845
+        ],
+        "hodogaya": [
+          139.60037,
+          35.44722
+        ],
+        "higashi-totsuka": [
+          139.556503,
+          35.429955
+        ],
+        "totsuka": [
+          139.534301,
+          35.400433
+        ],
+        "ofuna": [
+          139.531371,
+          35.354004
+        ],
+        "kita-kamakura": [
+          139.544565,
+          35.33794
+        ],
+        "kamakura": [
+          139.55041,
+          35.319311
+        ],
+        "zushi": [
+          139.578372,
+          35.297392
+        ],
+        "higashi-zushi": [
+          139.60182,
+          35.298765
+        ],
+        "taura": [
+          139.637525,
+          35.29284
+        ],
+        "yokosuka": [
+          139.6549,
+          35.28421
+        ],
+        "kinugasa": [
+          139.66099,
+          35.25711
+        ],
+        "kurihama": [
+          139.700923,
+          35.233186
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-sobu-rapid",
+      "name": "総武快速線",
+      "operator": "東日本旅客鉄道",
+      "kind": "rapid",
+      "lineIds": [
+        "jr-sobu-rapid"
+      ],
+      "stationIds": [
+        "tokyo",
+        "shin-nihombashi",
+        "bakurocho",
+        "kinshicho",
+        "shin-koiwa",
+        "ichikawa",
+        "funabashi",
+        "tsudanuma",
+        "inage",
+        "chiba"
+      ],
+      "circular": false,
+      "color": "#0067C0",
+      "directionLabels": {
+        "forward": "新小岩方面",
+        "backward": "東京方面"
+      },
+      "platformCoordinates": {
+        "tokyo": [
+          139.765381,
+          35.681728
+        ],
+        "shin-nihombashi": [
+          139.774299,
+          35.689031
+        ],
+        "bakurocho": [
+          139.782428,
+          35.693376
+        ],
+        "kinshicho": [
+          139.81432,
+          35.696719
+        ],
+        "shin-koiwa": [
+          139.857645,
+          35.71679
+        ],
+        "ichikawa": [
+          139.90817,
+          35.72887
+        ],
+        "funabashi": [
+          139.984675,
+          35.701734
+        ],
+        "tsudanuma": [
+          140.020226,
+          35.691374
+        ],
+        "inage": [
+          140.092565,
+          35.63731
+        ],
+        "chiba": [
+          140.113504,
+          35.613505
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-utsunomiya",
+      "name": "宇都宮線 (上野東京ライン)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-utsunomiya"
+      ],
+      "stationIds": [
+        "tokyo",
+        "ueno",
+        "oku",
+        "akabane",
+        "urawa",
+        "saitama-shintoshin",
+        "omiya",
+        "toro",
+        "higashi-omiya",
+        "hasuda",
+        "shiraoka",
+        "shin-shiraoka",
+        "kuki",
+        "higashi-washinomiya",
+        "kurihashi"
+      ],
+      "circular": false,
+      "color": "#F68B1E",
+      "directionLabels": {
+        "forward": "赤羽方面",
+        "backward": "東京方面"
+      },
+      "platformCoordinates": {
+        "tokyo": [
+          139.767324,
+          35.681217
+        ],
+        "ueno": [
+          139.776185,
+          35.71339
+        ],
+        "oku": [
+          139.753886,
+          35.74682
+        ],
+        "akabane": [
+          139.721252,
+          35.777622
+        ],
+        "urawa": [
+          139.657145,
+          35.858565
+        ],
+        "saitama-shintoshin": [
+          139.6339,
+          35.893595
+        ],
+        "omiya": [
+          139.624185,
+          35.90618
+        ],
+        "toro": [
+          139.632195,
+          35.931915
+        ],
+        "higashi-omiya": [
+          139.64026,
+          35.94836
+        ],
+        "hasuda": [
+          139.652965,
+          35.981165
+        ],
+        "shiraoka": [
+          139.66688,
+          36.01778
+        ],
+        "shin-shiraoka": [
+          139.67189,
+          36.03825
+        ],
+        "kuki": [
+          139.677375,
+          36.06581
+        ],
+        "higashi-washinomiya": [
+          139.679695,
+          36.089635
+        ],
+        "kurihashi": [
+          139.694035,
+          36.135715
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-takasaki",
+      "name": "高崎線 (上野東京ライン)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-takasaki"
+      ],
+      "stationIds": [
+        "tokyo",
+        "ueno",
+        "oku",
+        "akabane",
+        "urawa",
+        "saitama-shintoshin",
+        "omiya",
+        "miyahara",
+        "ageo",
+        "kita-ageo",
+        "okegawa",
+        "kitamoto",
+        "konosu",
+        "kita-konosu",
+        "fukiage",
+        "gyoda",
+        "kumagaya",
+        "kagohara",
+        "fukaya",
+        "okabe",
+        "honjo",
+        "jimbohara"
+      ],
+      "circular": false,
+      "color": "#F68B1E",
+      "directionLabels": {
+        "forward": "赤羽方面",
+        "backward": "東京方面"
+      },
+      "platformCoordinates": {
+        "tokyo": [
+          139.767324,
+          35.681217
+        ],
+        "ueno": [
+          139.776185,
+          35.71339
+        ],
+        "oku": [
+          139.753886,
+          35.74682
+        ],
+        "akabane": [
+          139.721252,
+          35.777622
+        ],
+        "urawa": [
+          139.657145,
+          35.858565
+        ],
+        "saitama-shintoshin": [
+          139.6339,
+          35.893595
+        ],
+        "omiya": [
+          139.62437,
+          35.906435
+        ],
+        "miyahara": [
+          139.60952,
+          35.94053
+        ],
+        "ageo": [
+          139.58881,
+          35.97302
+        ],
+        "kita-ageo": [
+          139.577575,
+          35.98515
+        ],
+        "okegawa": [
+          139.564215,
+          35.998435
+        ],
+        "kitamoto": [
+          139.533556,
+          36.032184
+        ],
+        "konosu": [
+          139.509585,
+          36.05924
+        ],
+        "kita-konosu": [
+          139.476955,
+          36.085495
+        ],
+        "fukiage": [
+          139.4536,
+          36.102883
+        ],
+        "gyoda": [
+          139.432076,
+          36.113889
+        ],
+        "kumagaya": [
+          139.389925,
+          36.13981
+        ],
+        "kagohara": [
+          139.33026,
+          36.17442
+        ],
+        "fukaya": [
+          139.281345,
+          36.191345
+        ],
+        "okabe": [
+          139.237483,
+          36.205729
+        ],
+        "honjo": [
+          139.188136,
+          36.236301
+        ],
+        "jimbohara": [
+          139.149014,
+          36.253624
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-shonan-shinjuku-local"
+      ],
+      "stationIds": [
+        "kurihashi",
+        "higashi-washinomiya",
+        "kuki",
+        "shin-shiraoka",
+        "shiraoka",
+        "hasuda",
+        "higashi-omiya",
+        "toro",
+        "omiya",
+        "urawa",
+        "akabane",
+        "ikebukuro",
+        "shinjuku",
+        "shibuya",
+        "ebisu",
+        "osaki",
+        "nishi-oi",
+        "musashi-kosugi",
+        "shin-kawasaki",
+        "yokohama",
+        "hodogaya",
+        "higashi-totsuka",
+        "totsuka",
+        "ofuna",
+        "kita-kamakura",
+        "kamakura",
+        "zushi"
+      ],
+      "circular": false,
+      "color": "#E21F26",
+      "directionLabels": {
+        "forward": "西大井方面",
+        "backward": "赤羽方面"
+      },
+      "platformCoordinates": {
+        "kurihashi": [
+          139.694035,
+          36.135715
+        ],
+        "higashi-washinomiya": [
+          139.679695,
+          36.089635
+        ],
+        "kuki": [
+          139.677375,
+          36.06581
+        ],
+        "shin-shiraoka": [
+          139.67189,
+          36.03825
+        ],
+        "shiraoka": [
+          139.66688,
+          36.01778
+        ],
+        "hasuda": [
+          139.652965,
+          35.981165
+        ],
+        "higashi-omiya": [
+          139.64026,
+          35.94836
+        ],
+        "toro": [
+          139.632195,
+          35.931915
+        ],
+        "omiya": [
+          139.624185,
+          35.90618
+        ],
+        "urawa": [
+          139.657145,
+          35.858565
+        ],
+        "akabane": [
+          139.721252,
+          35.777622
+        ],
+        "ikebukuro": [
+          139.711087,
+          35.730279
+        ],
+        "shinjuku": [
+          139.700916,
+          35.688923
+        ],
+        "shibuya": [
+          139.701639,
+          35.65811
+        ],
+        "ebisu": [
+          139.710125,
+          35.64668
+        ],
+        "osaki": [
+          139.728245,
+          35.619945
+        ],
+        "nishi-oi": [
+          139.721607,
+          35.601699
+        ],
+        "musashi-kosugi": [
+          139.663361,
+          35.574671
+        ],
+        "shin-kawasaki": [
+          139.67155,
+          35.551727
+        ],
+        "yokohama": [
+          139.622247,
+          35.465845
+        ],
+        "hodogaya": [
+          139.60037,
+          35.44722
+        ],
+        "higashi-totsuka": [
+          139.556503,
+          35.429955
+        ],
+        "totsuka": [
+          139.534301,
+          35.400433
+        ],
+        "ofuna": [
+          139.531371,
+          35.354004
+        ],
+        "kita-kamakura": [
+          139.544565,
+          35.33794
+        ],
+        "kamakura": [
+          139.55041,
+          35.319311
+        ],
+        "zushi": [
+          139.578372,
+          35.297392
+        ]
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "operator": "東日本旅客鉄道",
+      "kind": "rapid",
+      "lineIds": [
+        "jr-shonan-shinjuku-rapid-takasaki"
+      ],
+      "stationIds": [
+        "jimbohara",
+        "honjo",
+        "okabe",
+        "fukaya",
+        "kagohara",
+        "kumagaya",
+        "gyoda",
+        "fukiage",
+        "kita-konosu",
+        "konosu",
+        "kitamoto",
+        "okegawa",
+        "kita-ageo",
+        "ageo",
+        "miyahara",
+        "omiya",
+        "urawa",
+        "akabane",
+        "ikebukuro",
+        "shinjuku",
+        "shibuya",
+        "ebisu",
+        "osaki",
+        "musashi-kosugi",
+        "yokohama",
+        "totsuka",
+        "ofuna",
+        "fujisawa",
+        "tsujido",
+        "chigasaki",
+        "hiratsuka",
+        "oiso",
+        "ninomiya",
+        "kozu",
+        "kamonomiya",
+        "odawara"
+      ],
+      "circular": false,
+      "color": "#E21F26",
+      "directionLabels": {
+        "forward": "大崎方面",
+        "backward": "赤羽方面"
+      },
+      "platformCoordinates": {
+        "jimbohara": [
+          139.149014,
+          36.253624
+        ],
+        "honjo": [
+          139.188136,
+          36.236301
+        ],
+        "okabe": [
+          139.237483,
+          36.205729
+        ],
+        "fukaya": [
+          139.281345,
+          36.191345
+        ],
+        "kagohara": [
+          139.33026,
+          36.17442
+        ],
+        "kumagaya": [
+          139.389925,
+          36.13981
+        ],
+        "gyoda": [
+          139.432076,
+          36.113889
+        ],
+        "fukiage": [
+          139.4536,
+          36.102883
+        ],
+        "kita-konosu": [
+          139.476955,
+          36.085495
+        ],
+        "konosu": [
+          139.509585,
+          36.05924
+        ],
+        "kitamoto": [
+          139.533556,
+          36.032184
+        ],
+        "okegawa": [
+          139.564215,
+          35.998435
+        ],
+        "kita-ageo": [
+          139.577575,
+          35.98515
+        ],
+        "ageo": [
+          139.58881,
+          35.97302
+        ],
+        "miyahara": [
+          139.60952,
+          35.94053
+        ],
+        "omiya": [
+          139.62437,
+          35.906435
+        ],
+        "urawa": [
+          139.657145,
+          35.858565
+        ],
+        "akabane": [
+          139.721252,
+          35.777622
+        ],
+        "ikebukuro": [
+          139.711087,
+          35.730279
+        ],
+        "shinjuku": [
+          139.700916,
+          35.688923
+        ],
+        "shibuya": [
+          139.701639,
+          35.65811
+        ],
+        "ebisu": [
+          139.710125,
+          35.64668
+        ],
+        "osaki": [
+          139.728245,
+          35.619945
+        ],
+        "musashi-kosugi": [
+          139.663361,
+          35.574671
+        ],
+        "yokohama": [
+          139.622247,
+          35.465845
+        ],
+        "totsuka": [
+          139.534301,
+          35.400433
+        ],
+        "ofuna": [
+          139.531163,
+          35.354155
+        ],
+        "fujisawa": [
+          139.48642,
+          35.338835
+        ],
+        "tsujido": [
+          139.445895,
+          35.336845
+        ],
+        "chigasaki": [
+          139.408003,
+          35.330639
+        ],
+        "hiratsuka": [
+          139.349,
+          35.327439
+        ],
+        "oiso": [
+          139.313277,
+          35.311458
+        ],
+        "ninomiya": [
+          139.25675,
+          35.29867
+        ],
+        "kozu": [
+          139.214955,
+          35.281395
+        ],
+        "kamonomiya": [
+          139.180166,
+          35.275726
+        ],
+        "odawara": [
+          139.155755,
+          35.256101
+        ]
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-joban-rapid",
+      "name": "常磐線快速 (上野東京ライン)",
+      "operator": "東日本旅客鉄道",
+      "kind": "rapid",
+      "lineIds": [
+        "jr-joban-rapid"
+      ],
+      "stationIds": [
+        "shinagawa",
+        "shimbashi",
+        "tokyo",
+        "ueno",
+        "nippori",
+        "mikawashima",
+        "minami-senju",
+        "kita-senju",
+        "matsudo",
+        "kashiwa",
+        "abiko",
+        "tennodai"
+      ],
+      "circular": false,
+      "color": "#00B261",
+      "directionLabels": {
+        "forward": "北千住方面",
+        "backward": "品川方面"
+      },
+      "platformCoordinates": {
+        "shinagawa": [
+          139.73904,
+          35.628495
+        ],
+        "shimbashi": [
+          139.7582,
+          35.66639
+        ],
+        "tokyo": [
+          139.766685,
+          35.680965
+        ],
+        "ueno": [
+          139.776185,
+          35.71339
+        ],
+        "nippori": [
+          139.771329,
+          35.727874
+        ],
+        "mikawashima": [
+          139.777074,
+          35.733382
+        ],
+        "minami-senju": [
+          139.79982,
+          35.734632
+        ],
+        "kita-senju": [
+          139.80464,
+          35.748845
+        ],
+        "matsudo": [
+          139.900821,
+          35.784603
+        ],
+        "kashiwa": [
+          139.970955,
+          35.8621
+        ],
+        "abiko": [
+          140.01042,
+          35.872869
+        ],
+        "tennodai": [
+          140.04232,
+          35.87247
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-joban-local",
+      "name": "常磐線各駅停車",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-joban-local"
+      ],
+      "stationIds": [
+        "ayase",
+        "kameari",
+        "kanamachi",
+        "matsudo",
+        "kita-matsudo",
+        "mabashi",
+        "shim-matsudo",
+        "kita-kogane",
+        "minami-kashiwa",
+        "kashiwa",
+        "kita-kashiwa",
+        "abiko",
+        "tennodai"
+      ],
+      "circular": false,
+      "color": "#00B2E5",
+      "directionLabels": {
+        "forward": "天王台方面",
+        "backward": "松戸方面"
+      },
+      "platformCoordinates": {
+        "ayase": [
+          139.824935,
+          35.762165
+        ],
+        "kameari": [
+          139.847545,
+          35.766553
+        ],
+        "kanamachi": [
+          139.87039,
+          35.76951
+        ],
+        "matsudo": [
+          139.900821,
+          35.784603
+        ],
+        "kita-matsudo": [
+          139.911625,
+          35.800365
+        ],
+        "mabashi": [
+          139.91732,
+          35.811685
+        ],
+        "shim-matsudo": [
+          139.921156,
+          35.825422
+        ],
+        "kita-kogane": [
+          139.93075,
+          35.83317
+        ],
+        "minami-kashiwa": [
+          139.954285,
+          35.844689
+        ],
+        "kashiwa": [
+          139.970955,
+          35.8621
+        ],
+        "kita-kashiwa": [
+          139.988043,
+          35.875689
+        ],
+        "abiko": [
+          140.01042,
+          35.872869
+        ],
+        "tennodai": [
+          140.04232,
+          35.87247
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-narita-abiko",
+      "name": "成田線 我孫子支線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita-abiko"
+      ],
+      "stationIds": [
+        "abiko",
+        "higashi-abiko",
+        "kohoku",
+        "araki",
+        "fusa",
+        "kioroshi",
+        "kobayashi",
+        "ajiki",
+        "shimosa-manzaki",
+        "narita"
+      ],
+      "circular": false,
+      "color": "#00B261",
+      "directionLabels": {
+        "forward": "成田方面",
+        "backward": "我孫子方面"
+      },
+      "platformCoordinates": {
+        "abiko": [
+          140.01042,
+          35.872869
+        ],
+        "higashi-abiko": [
+          140.047605,
+          35.86898
+        ],
+        "kohoku": [
+          140.077945,
+          35.867195
+        ],
+        "araki": [
+          140.10705,
+          35.8624
+        ],
+        "fusa": [
+          140.132975,
+          35.84935
+        ],
+        "kioroshi": [
+          140.14799,
+          35.83888
+        ],
+        "kobayashi": [
+          140.19311,
+          35.83075
+        ],
+        "ajiki": [
+          140.242275,
+          35.835715
+        ],
+        "shimosa-manzaki": [
+          140.27755,
+          35.807775
+        ],
+        "narita": [
+          140.313669,
+          35.777206
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-narita",
+      "name": "成田線 (佐倉–松岸)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita"
+      ],
+      "stationIds": [
+        "sakura",
+        "shisui",
+        "narita",
+        "kuzumi",
+        "namegawa",
+        "shimosa-kozaki",
+        "oto",
+        "sawara",
+        "katori",
+        "suigo",
+        "omigawa",
+        "sasagawa",
+        "shimosa-tachibana",
+        "shimosa-toyosato",
+        "shiishiba",
+        "matsugishi"
+      ],
+      "circular": false,
+      "color": "#00B261",
+      "directionLabels": {
+        "forward": "松岸方面",
+        "backward": "佐倉方面"
+      },
+      "platformCoordinates": {
+        "sakura": [
+          140.226785,
+          35.709743
+        ],
+        "shisui": [
+          140.275405,
+          35.73185
+        ],
+        "narita": [
+          140.313669,
+          35.777206
+        ],
+        "kuzumi": [
+          140.33887,
+          35.832185
+        ],
+        "namegawa": [
+          140.347865,
+          35.87706
+        ],
+        "shimosa-kozaki": [
+          140.41067,
+          35.894845
+        ],
+        "oto": [
+          140.45773,
+          35.88993
+        ],
+        "sawara": [
+          140.49377,
+          35.89493
+        ],
+        "katori": [
+          140.53241,
+          35.897885
+        ],
+        "suigo": [
+          140.570175,
+          35.885455
+        ],
+        "omigawa": [
+          140.6046,
+          35.84998
+        ],
+        "sasagawa": [
+          140.655825,
+          35.83943
+        ],
+        "shimosa-tachibana": [
+          140.70215,
+          35.818785
+        ],
+        "shimosa-toyosato": [
+          140.720895,
+          35.793005
+        ],
+        "shiishiba": [
+          140.758929,
+          35.765219
+        ],
+        "matsugishi": [
+          140.795195,
+          35.739375
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-narita-airport-branch",
+      "name": "成田線 空港支線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita-airport-branch"
+      ],
+      "stationIds": [
+        "narita",
+        "narita-airport-terminal-2-3",
+        "narita-airport-terminal-1"
+      ],
+      "circular": false,
+      "color": "#00B261",
+      "directionLabels": {
+        "forward": "成田空港方面",
+        "backward": "成田方面"
+      },
+      "platformCoordinates": {
+        "narita": [
+          140.313669,
+          35.777206
+        ],
+        "narita-airport-terminal-2-3": [
+          140.38761,
+          35.77296
+        ],
+        "narita-airport-terminal-1": [
+          140.386305,
+          35.765725
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-kashima",
+      "name": "鹿島線 (香取–十二橋)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-kashima"
+      ],
+      "stationIds": [
+        "katori",
+        "junikyo"
+      ],
+      "circular": false,
+      "color": "#9F7BB5",
+      "directionLabels": {
+        "forward": "十二橋方面",
+        "backward": "香取方面"
+      },
+      "platformCoordinates": {
+        "katori": [
+          140.53241,
+          35.897885
+        ],
+        "junikyo": [
+          140.54583,
+          35.91702
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      }
+    },
+    {
+      "id": "jr-sobu-main",
+      "name": "総武本線 (千葉–銚子)",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-sobu-main"
+      ],
+      "stationIds": [
+        "chiba",
+        "higashi-chiba",
+        "tsuga",
+        "yotsukaido",
+        "monoi",
+        "sakura",
+        "minami-shisui",
+        "enokido",
+        "yachimata",
+        "hyuga",
+        "naruto",
+        "matsuo",
+        "yokoshiba",
+        "iigura",
+        "yokaichiba",
+        "higata",
+        "asahi",
+        "iioka",
+        "kurahashi",
+        "saruda",
+        "matsugishi",
+        "choshi"
+      ],
+      "circular": false,
+      "color": "#FFC20D",
+      "directionLabels": {
+        "forward": "銚子方面",
+        "backward": "千葉方面"
+      },
+      "platformCoordinates": {
+        "chiba": [
+          140.113504,
+          35.613505
+        ],
+        "higashi-chiba": [
+          140.12242,
+          35.617125
+        ],
+        "tsuga": [
+          140.149185,
+          35.63602
+        ],
+        "yotsukaido": [
+          140.164898,
+          35.662785
+        ],
+        "monoi": [
+          140.200315,
+          35.685725
+        ],
+        "sakura": [
+          140.226785,
+          35.709743
+        ],
+        "minami-shisui": [
+          140.267931,
+          35.704287
+        ],
+        "enokido": [
+          140.288115,
+          35.684075
+        ],
+        "yachimata": [
+          140.317415,
+          35.663175
+        ],
+        "hyuga": [
+          140.36243,
+          35.628295
+        ],
+        "naruto": [
+          140.41028,
+          35.608535
+        ],
+        "matsuo": [
+          140.458075,
+          35.636355
+        ],
+        "yokoshiba": [
+          140.490775,
+          35.661785
+        ],
+        "iigura": [
+          140.521415,
+          35.68509
+        ],
+        "yokaichiba": [
+          140.552395,
+          35.699295
+        ],
+        "higata": [
+          140.60331,
+          35.718345
+        ],
+        "asahi": [
+          140.65469,
+          35.721835
+        ],
+        "iioka": [
+          140.68335,
+          35.72938
+        ],
+        "kurahashi": [
+          140.71399,
+          35.737755
+        ],
+        "saruda": [
+          140.737365,
+          35.74735
+        ],
+        "matsugishi": [
+          140.795195,
+          35.739375
+        ],
+        "choshi": [
+          140.827465,
+          35.729325
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-sotobo",
+      "name": "外房線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-sotobo"
+      ],
+      "stationIds": [
+        "chiba",
+        "hon-chiba",
+        "soga",
+        "kamatori",
+        "honda",
+        "toke",
+        "oami",
+        "nagata",
+        "honno",
+        "shim-mobara",
+        "mobara",
+        "yatsumi",
+        "kazusa-ichinomiya",
+        "torami",
+        "taito",
+        "chojamachi",
+        "mikado",
+        "ohara",
+        "namihana",
+        "onjuku",
+        "katsuura",
+        "ubara",
+        "kazusa-okitsu",
+        "namegawa-island",
+        "awa-kominato",
+        "awa-amatsu",
+        "awa-kamogawa"
+      ],
+      "circular": false,
+      "color": "#E83F3F",
+      "directionLabels": {
+        "forward": "安房鴨川方面",
+        "backward": "千葉方面"
+      },
+      "platformCoordinates": {
+        "chiba": [
+          140.113081,
+          35.613146
+        ],
+        "hon-chiba": [
+          140.121416,
+          35.60062
+        ],
+        "soga": [
+          140.130737,
+          35.582156
+        ],
+        "kamatori": [
+          140.178742,
+          35.562648
+        ],
+        "honda": [
+          140.213785,
+          35.547
+        ],
+        "toke": [
+          140.269769,
+          35.530918
+        ],
+        "oami": [
+          140.311183,
+          35.522481
+        ],
+        "nagata": [
+          140.311265,
+          35.503241
+        ],
+        "honno": [
+          140.30757,
+          35.48216
+        ],
+        "shim-mobara": [
+          140.299715,
+          35.44943
+        ],
+        "mobara": [
+          140.30407,
+          35.42683
+        ],
+        "yatsumi": [
+          140.345355,
+          35.403955
+        ],
+        "kazusa-ichinomiya": [
+          140.365525,
+          35.374685
+        ],
+        "torami": [
+          140.37665,
+          35.34677
+        ],
+        "taito": [
+          140.38129,
+          35.320095
+        ],
+        "chojamachi": [
+          140.38481,
+          35.29626
+        ],
+        "mikado": [
+          140.391445,
+          35.28292
+        ],
+        "ohara": [
+          140.391028,
+          35.25101
+        ],
+        "namihana": [
+          140.379135,
+          35.222635
+        ],
+        "onjuku": [
+          140.351445,
+          35.18754
+        ],
+        "katsuura": [
+          140.31197,
+          35.15262
+        ],
+        "ubara": [
+          140.278965,
+          35.14125
+        ],
+        "kazusa-okitsu": [
+          140.25047,
+          35.137215
+        ],
+        "namegawa-island": [
+          140.22571,
+          35.118255
+        ],
+        "awa-kominato": [
+          140.18977,
+          35.128635
+        ],
+        "awa-amatsu": [
+          140.15474,
+          35.12579
+        ],
+        "awa-kamogawa": [
+          140.10371,
+          35.10762
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-uchibo",
+      "name": "内房線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-uchibo"
+      ],
+      "stationIds": [
+        "chiba",
+        "hon-chiba",
+        "soga",
+        "hamano",
+        "yawatajuku",
+        "goi",
+        "anegasaki",
+        "nagaura",
+        "sodegaura",
+        "iwane",
+        "kisarazu",
+        "kimitsu",
+        "aohori",
+        "onuki",
+        "sanukimachi",
+        "kazusa-minato",
+        "takeoka",
+        "hama-kanaya",
+        "hota",
+        "awa-katsuyama",
+        "iwai",
+        "tomiura",
+        "nakofunakata",
+        "tateyama",
+        "kokonoe",
+        "chikura",
+        "chitose",
+        "minamihara",
+        "wadaura",
+        "emi",
+        "futomi",
+        "awa-kamogawa"
+      ],
+      "circular": false,
+      "color": "#00B2E5",
+      "directionLabels": {
+        "forward": "安房鴨川方面",
+        "backward": "千葉方面"
+      },
+      "platformCoordinates": {
+        "chiba": [
+          140.113081,
+          35.613146
+        ],
+        "hon-chiba": [
+          140.121416,
+          35.60062
+        ],
+        "soga": [
+          140.130737,
+          35.582156
+        ],
+        "hamano": [
+          140.132185,
+          35.5521
+        ],
+        "yawatajuku": [
+          140.120035,
+          35.53616
+        ],
+        "goi": [
+          140.089745,
+          35.513115
+        ],
+        "anegasaki": [
+          140.041895,
+          35.478636
+        ],
+        "nagaura": [
+          139.995425,
+          35.450285
+        ],
+        "sodegaura": [
+          139.95721,
+          35.431905
+        ],
+        "iwane": [
+          139.933805,
+          35.414785
+        ],
+        "kisarazu": [
+          139.926132,
+          35.381625
+        ],
+        "kimitsu": [
+          139.895715,
+          35.33359
+        ],
+        "aohori": [
+          139.85888,
+          35.330565
+        ],
+        "onuki": [
+          139.855625,
+          35.291625
+        ],
+        "sanukimachi": [
+          139.87614,
+          35.259985
+        ],
+        "kazusa-minato": [
+          139.870995,
+          35.22183
+        ],
+        "takeoka": [
+          139.83003,
+          35.19759
+        ],
+        "hama-kanaya": [
+          139.82226,
+          35.168195
+        ],
+        "hota": [
+          139.83816,
+          35.141465
+        ],
+        "awa-katsuyama": [
+          139.83341,
+          35.114065
+        ],
+        "iwai": [
+          139.84987,
+          35.09305
+        ],
+        "tomiura": [
+          139.837755,
+          35.04623
+        ],
+        "nakofunakata": [
+          139.8514,
+          35.02904
+        ],
+        "tateyama": [
+          139.86199,
+          34.995915
+        ],
+        "kokonoe": [
+          139.911395,
+          34.997515
+        ],
+        "chikura": [
+          139.954545,
+          34.976736
+        ],
+        "chitose": [
+          139.96628,
+          34.99135
+        ],
+        "minamihara": [
+          139.97907,
+          35.021195
+        ],
+        "wadaura": [
+          140.01961,
+          35.04171
+        ],
+        "emi": [
+          140.06114,
+          35.0625
+        ],
+        "futomi": [
+          140.09623,
+          35.081485
+        ],
+        "awa-kamogawa": [
+          140.10371,
+          35.10762
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "jr-kururi",
+      "name": "久留里線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-kururi"
+      ],
+      "stationIds": [
+        "kisarazu",
+        "gion",
+        "kazusa-kiyokawa",
+        "higashi-kiyokawa",
+        "yokota",
+        "higashi-yokota",
+        "makuta",
+        "shimogori",
+        "obitsu",
+        "tawarada",
+        "kururi"
+      ],
+      "circular": false,
+      "color": "#00B261",
+      "directionLabels": {
+        "forward": "久留里方面",
+        "backward": "木更津方面"
+      },
+      "platformCoordinates": {
+        "kisarazu": [
+          139.926132,
+          35.381625
+        ],
+        "gion": [
+          139.948385,
+          35.391615
+        ],
+        "kazusa-kiyokawa": [
+          139.96564,
+          35.39083
+        ],
+        "higashi-kiyokawa": [
+          139.9859,
+          35.390001
+        ],
+        "yokota": [
+          140.02013,
+          35.386205
+        ],
+        "higashi-yokota": [
+          140.03594,
+          35.38616
+        ],
+        "makuta": [
+          140.058515,
+          35.36682
+        ],
+        "shimogori": [
+          140.05541,
+          35.35499
+        ],
+        "obitsu": [
+          140.05978,
+          35.328245
+        ],
+        "tawarada": [
+          140.061415,
+          35.314625
+        ],
+        "kururi": [
+          140.075605,
+          35.295795
+        ]
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "jr-togane",
+      "name": "東金線",
+      "operator": "東日本旅客鉄道",
+      "kind": "local",
+      "lineIds": [
+        "jr-togane"
+      ],
+      "stationIds": [
+        "oami",
+        "fukutawara",
+        "togane",
+        "gumyo",
+        "naruto"
+      ],
+      "circular": false,
+      "color": "#B38D4D",
+      "directionLabels": {
+        "forward": "成東方面",
+        "backward": "大網方面"
+      },
+      "platformCoordinates": {
+        "oami": [
+          140.31143,
+          35.523025
+        ],
+        "fukutawara": [
+          140.341875,
+          35.546165
+        ],
+        "togane": [
+          140.3636,
+          35.560095
+        ],
+        "gumyo": [
+          140.396175,
+          35.579845
+        ],
+        "naruto": [
+          140.41028,
+          35.608535
+        ]
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
     }
-  },
-  {
-    "id": "jr-chuo-sobu-local",
-    "name": "中央・総武線各駅停車",
-    "operator": "東日本旅客鉄道",
-    "stationIds": [
-      "nishi-ogikubo",
-      "ogikubo",
-      "asagaya",
-      "koenji",
-      "nakano",
-      "higashi-nakano",
-      "okubo",
-      "shinjuku",
-      "yoyogi",
-      "sendagaya",
-      "shinanomachi",
-      "yotsuya",
-      "ichigaya",
-      "iidabashi",
-      "suidobashi",
-      "ochanomizu",
-      "akihabara",
-      "asakusabashi",
-      "ryogoku",
-      "kinshicho",
-      "kameido",
-      "hirai",
-      "shin-koiwa",
-      "koiwa"
-    ],
-    "circular": false,
-    "color": "#FFD400",
-    "directionLabels": {
-      "forward": "小岩方面",
-      "backward": "西荻窪方面"
-    },
-    "platformCoordinates": {
-      "nishi-ogikubo": [
-        139.59945,
-        35.703782
-      ],
-      "ogikubo": [
-        139.620245,
-        35.70443
-      ],
-      "asagaya": [
-        139.635855,
-        35.704878
-      ],
-      "koenji": [
-        139.6497,
-        35.705324
-      ],
-      "nakano": [
-        139.665585,
-        35.705955
-      ],
-      "higashi-nakano": [
-        139.68508,
-        35.70625
-      ],
-      "okubo": [
-        139.697445,
-        35.700635
-      ],
-      "shinjuku": [
-        139.700617,
-        35.69019
-      ],
-      "yoyogi": [
-        139.70221,
-        35.683795
-      ],
-      "sendagaya": [
-        139.71153,
-        35.681196
-      ],
-      "shinanomachi": [
-        139.721098,
-        35.679942
-      ],
-      "yotsuya": [
-        139.73053,
-        35.685652
-      ],
-      "ichigaya": [
-        139.73532,
-        35.691155
-      ],
-      "iidabashi": [
-        139.743655,
-        35.700137
-      ],
-      "suidobashi": [
-        139.753745,
-        35.702
-      ],
-      "ochanomizu": [
-        139.76503,
-        35.699605
-      ],
-      "akihabara": [
-        139.773215,
-        35.69832
-      ],
-      "asakusabashi": [
-        139.78449,
-        35.69739
-      ],
-      "ryogoku": [
-        139.79335,
-        35.695755
-      ],
-      "kinshicho": [
-        139.81432,
-        35.696719
-      ],
-      "kameido": [
-        139.82661,
-        35.697342
-      ],
-      "hirai": [
-        139.842387,
-        35.706448
-      ],
-      "shin-koiwa": [
-        139.857645,
-        35.71679
-      ],
-      "koiwa": [
-        139.88185,
-        35.73333
-      ]
-    },
-    "endpoints": {
-      "first": "area-boundary",
-      "last": "area-boundary"
-    }
-  },
-  {
-    "id": "jr-saikyo",
-    "name": "埼京線",
-    "operator": "東日本旅客鉄道",
-    "stationIds": [
-      "osaki",
-      "ebisu",
-      "shibuya",
-      "shinjuku",
-      "ikebukuro",
-      "itabashi",
-      "jujo",
-      "akabane",
-      "kita-akabane",
-      "ukima-funado"
-    ],
-    "circular": false,
-    "color": "#00AC9A",
-    "directionLabels": {
-      "forward": "浮間舟渡方面",
-      "backward": "大崎方面"
-    },
-    "platformCoordinates": {
-      "osaki": [
-        139.728245,
-        35.619945
-      ],
-      "ebisu": [
-        139.710125,
-        35.64668
-      ],
-      "shibuya": [
-        139.701639,
-        35.65811
-      ],
-      "shinjuku": [
-        139.700916,
-        35.688923
-      ],
-      "ikebukuro": [
-        139.71134,
-        35.7302
-      ],
-      "itabashi": [
-        139.719171,
-        35.744992
-      ],
-      "jujo": [
-        139.72225,
-        35.76039
-      ],
-      "akabane": [
-        139.720845,
-        35.777721
-      ],
-      "kita-akabane": [
-        139.705762,
-        35.786995
-      ],
-      "ukima-funado": [
-        139.691377,
-        35.791262
-      ]
-    },
-    "endpoints": {
-      "first": "terminus",
-      "last": "area-boundary"
-    }
-  },
-  {
-    "id": "jr-keiyo",
-    "name": "京葉線",
-    "operator": "東日本旅客鉄道",
-    "stationIds": [
-      "tokyo",
-      "hatchobori",
-      "etchujima",
-      "shiomi",
-      "shin-kiba",
-      "kasai-rinkai-koen"
-    ],
-    "circular": false,
-    "color": "#C9242F",
-    "directionLabels": {
-      "forward": "葛西臨海公園方面",
-      "backward": "東京方面"
-    },
-    "platformCoordinates": {
-      "tokyo": [
-        139.765237,
-        35.677692
-      ],
-      "hatchobori": [
-        139.77799,
-        35.67462
-      ],
-      "etchujima": [
-        139.792495,
-        35.668
-      ],
-      "shiomi": [
-        139.81717,
-        35.658865
-      ],
-      "shin-kiba": [
-        139.826845,
-        35.645995
-      ],
-      "kasai-rinkai-koen": [
-        139.861485,
-        35.64417
-      ]
-    },
-    "endpoints": {
-      "first": "terminus",
-      "last": "area-boundary"
-    }
-  }
-]
+  ]
+}

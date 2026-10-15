@@ -6,32 +6,38 @@
 //   through never do, and a move that clears the game has no landing.
 // - Service candidates: the distinct services stopping at the station, in
 //   network (services.json) order, the ridden service included.
-// - k >= 2 candidates: uniform service draw; k = 1: that service, no draw.
+// - k >= 2 candidates: policy-weighted service draw; k = 1: no draw.
 // - Target service: always `config.targetDirection`, no draw.
 // - Any other service: movable directions in [1, -1] order; two movable:
-//   uniform direction draw (re-drawn at every landing, even when the service
+//   policy-weighted direction draw (re-drawn at every landing, even when the service
 //   is unchanged: rule R1-a); one movable: forced, no draw.
 // - Draw order per turn: rollDie (game.ts), service draw, direction draw.
 
 import type {
   Direction,
+  GameConfig,
   GameState,
   LandingChoice,
   ServiceId,
   StationId,
 } from "../../../types/network";
 import { GameEngineError } from "./errors";
-import { movableDirections, type RailwayNetwork, transferOptions } from "./network";
-import { drawIndex } from "./rng";
+import { movableDirections, nextStationId, type RailwayNetwork, transferOptions } from "./network";
+import { targetHopDistances } from "./proximity";
+import { drawWeightedIndex } from "./rng";
 import type { LandingResolvedEvent } from "./types";
 
 export interface LandingOptions {
   stationId: StationId;
   /** Canonical order, deduplicated, the ridden service included. */
   services: readonly ServiceId[];
+  /** Positive integer weights aligned with services (no GCD normalization). */
+  serviceWeights: readonly number[];
   serviceDrawRequired: boolean;
   /** Target service -> [targetDirection]; others -> movable directions in [1, -1] order. */
   directionsByService: ReadonlyMap<ServiceId, readonly Direction[]>;
+  /** Weights aligned with each service's direction candidates. */
+  directionWeightsByService: ReadonlyMap<ServiceId, readonly number[]>;
 }
 
 export interface LandingDraw {
@@ -44,6 +50,48 @@ const LOTTERY_MIN = 2;
 
 function invalidState(message: string): never {
   throw new GameEngineError("INVALID_STATE", message);
+}
+
+function serviceWeights(
+  services: readonly ServiceId[],
+  config: GameConfig,
+  network: RailwayNetwork,
+): number[] {
+  const policy = config.serviceLottery;
+  const bases = services.map((id) => {
+    const service = network.servicesById.get(id);
+    if (!service) invalidState(`Unknown service ${id}`);
+    return policy.kindWeights[service.kind];
+  });
+  const targetIndex = services.indexOf(config.targetServiceId);
+  if (targetIndex < 0 || services.length === 1) return bases;
+  const target = policy.target;
+  if (target.kind === "weight") {
+    return bases.map((base, index) => index === targetIndex ? base * target.weight : base);
+  }
+  const otherTotal = bases.reduce((sum, base, index) => index === targetIndex ? sum : sum + base, 0);
+  return bases.map((base, index) => index === targetIndex
+    ? target.numerator * otherTotal
+    : (target.denominator - target.numerator) * base);
+}
+
+function directionWeights(
+  directions: readonly Direction[],
+  serviceId: ServiceId,
+  stationId: StationId,
+  config: GameConfig,
+  network: RailwayNetwork,
+): number[] {
+  const weight = config.directionLottery.towardTargetWeight;
+  if (weight === 1 || directions.length < LOTTERY_MIN) return directions.map(() => 1);
+  const distances = targetHopDistances(network, config.targetServiceId);
+  const nextDistances = directions.map((direction) => {
+    const next = nextStationId(network, serviceId, stationId, direction);
+    return next === undefined ? Infinity : distances.get(next) ?? Infinity;
+  });
+  const [forward = Infinity, backward = Infinity] = nextDistances;
+  if (forward === backward) return [1, 1];
+  return forward < backward ? [weight, 1] : [1, weight];
 }
 
 /**
@@ -62,6 +110,7 @@ export function landingOptions(
     invalidState(`Service ${currentServiceId} does not stop at ${stationId}`);
   }
   const directionsByService = new Map<ServiceId, readonly Direction[]>();
+  const directionWeightsByService = new Map<ServiceId, readonly number[]>();
   for (const serviceId of services) {
     const directions =
       serviceId === config.targetServiceId
@@ -69,12 +118,15 @@ export function landingOptions(
         : movableDirections(network, serviceId, stationId);
     if (directions.length === 0) invalidState(`Service ${serviceId} cannot leave ${stationId}`);
     directionsByService.set(serviceId, directions);
+    directionWeightsByService.set(serviceId, directionWeights(directions, serviceId, stationId, config, network));
   }
   return {
     stationId,
     services,
+    serviceWeights: serviceWeights(services, config, network),
     serviceDrawRequired: services.length >= LOTTERY_MIN,
     directionsByService,
+    directionWeightsByService,
   };
 }
 
@@ -143,7 +195,8 @@ export function drawLanding(options: LandingOptions, rngState: string): LandingD
   let state = rngState;
   let serviceId = options.services[0];
   if (options.serviceDrawRequired) {
-    const draw = drawIndex(state, options.services.length);
+    if (options.serviceWeights.length !== options.services.length) invalidState("Service weights do not match candidates");
+    const draw = drawWeightedIndex(state, options.serviceWeights);
     serviceId = options.services[draw.index];
     state = draw.nextRngState;
   }
@@ -151,7 +204,9 @@ export function drawLanding(options: LandingOptions, rngState: string): LandingD
   const directions = directionsOf(options, serviceId);
   let direction = directions[0];
   if (directions.length >= LOTTERY_MIN) {
-    const draw = drawIndex(state, directions.length);
+    const weights = options.directionWeightsByService.get(serviceId);
+    if (!weights || weights.length !== directions.length) invalidState("Direction weights do not match candidates");
+    const draw = drawWeightedIndex(state, weights);
     direction = directions[draw.index];
     state = draw.nextRngState;
   }

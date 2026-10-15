@@ -15,9 +15,22 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from scripts.data_pipeline import config
+from scripts.data_pipeline.constraints import (
+    ANY_PLATFORM,
+    ConstraintError,
+    PlatformSelector,
+    parse_platform_selector,
+)
 
 STATION_ID_PATTERN = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
-REGISTRY_COLUMNS = ("id", "name", "n02_name", "ward", "representative_service_id")
+REGISTRY_COLUMNS = (
+    "id",
+    "name",
+    "n02_name",
+    "prefecture",
+    "municipality",
+    "representative_service_id",
+)
 
 # Small katakana that JR East timetables write large (阿佐ヶ谷 -> 阿佐ケ谷).
 _SMALL_KANA = str.maketrans({"ヶ": "ケ", "ヵ": "カ"})
@@ -37,8 +50,10 @@ class RegistryStation:
     id: str
     name: str  # official JR East spelling (large ケ)
     n02_name: str  # name used to match N02 platforms (defaults to ``name``)
-    ward: str
+    prefecture: str
+    municipality: str
     representative_service_id: str
+    n02_selector: PlatformSelector = ANY_PLATFORM
 
     @property
     def match_name(self) -> str:
@@ -58,6 +73,118 @@ class Registry:
         return {station.id: station for station in self.stations}
 
 
+@dataclass(frozen=True)
+class Area:
+    prefectures: tuple[str, ...] = config.CAPITAL_REGION_PREFECTURES
+    municipalities: tuple[str, ...] = ()  # optional restriction for older datasets
+
+    def contains(self, prefecture: str, municipality: str) -> bool:
+        return prefecture in self.prefectures and (
+            not self.municipalities or municipality in self.municipalities
+        )
+
+
+@dataclass(frozen=True)
+class ScopeStop:
+    station_id: str
+    prefecture: str
+    municipality: str
+
+
+@dataclass(frozen=True)
+class BoundaryTruncation:
+    endpoint: str
+    last_in_area: str
+    first_out_of_area: str
+
+
+def parse_scope(rows: Iterable[Mapping[str, str]]) -> tuple[ScopeStop, ...]:
+    stops = tuple(
+        ScopeStop(row["station_id"], row["prefecture"], row["municipality"])
+        for row in rows
+    )
+    if not stops or len({stop.station_id for stop in stops}) != len(stops):
+        raise OverrideError("served stop evidence must be non-empty with unique ids")
+    for stop in stops:
+        if (
+            not STATION_ID_PATTERN.fullmatch(stop.station_id)
+            or not stop.prefecture
+            or not stop.municipality
+        ):
+            raise OverrideError(
+                "served stop evidence needs an id, prefecture and municipality"
+            )
+    return stops
+
+
+def check_scope(
+    service_id: str,
+    station_ids: tuple[str, ...],
+    evidence: tuple[ScopeStop, ...],
+    registry: Registry,
+    area: Area,
+    endpoint_kinds: tuple[str, str] | None,
+) -> tuple[BoundaryTruncation, ...]:
+    """One contiguous in-area run, all served stops and boundary neighbours.
+
+    Evidence is a reviewed ordered stop pattern, including at least the first
+    excluded stop at each area boundary. A filtered list alone cannot prove
+    that a service did not leave and re-enter the area between playable stops.
+    """
+    indices = [
+        i
+        for i, stop in enumerate(evidence)
+        if area.contains(stop.prefecture, stop.municipality)
+    ]
+    if not indices:
+        raise OverrideError(f"{service_id}: served stop evidence has no in-area stops")
+    if indices != list(range(indices[0], indices[-1] + 1)):
+        raise OverrideError(f"{service_id}: out-of-area gap cannot be bridged")
+    in_area = tuple(evidence[i].station_id for i in indices)
+    if in_area != station_ids:
+        raise OverrideError(
+            f"{service_id}: served stop evidence differs from stops.csv"
+        )
+    stations = registry.by_id()
+    for i in indices:
+        stop = evidence[i]
+        station = stations[stop.station_id]
+        if (stop.prefecture, stop.municipality) != (
+            station.prefecture,
+            station.municipality,
+        ):
+            raise OverrideError(
+                f"{service_id}/{stop.station_id}: served stop evidence area differs from registry"
+            )
+    boundaries: list[BoundaryTruncation] = []
+    for endpoint, index, neighbour, kind in (
+        (
+            "first",
+            indices[0],
+            indices[0] - 1,
+            endpoint_kinds[0] if endpoint_kinds else None,
+        ),
+        (
+            "last",
+            indices[-1],
+            indices[-1] + 1,
+            endpoint_kinds[1] if endpoint_kinds else None,
+        ),
+    ):
+        has_outside = 0 <= neighbour < len(evidence)
+        if has_outside != (kind == "area-boundary"):
+            raise OverrideError(
+                f"{service_id}: {endpoint} boundary truncation evidence disagrees with endpoint kind"
+            )
+        if has_outside:
+            boundaries.append(
+                BoundaryTruncation(
+                    endpoint, evidence[index].station_id, evidence[neighbour].station_id
+                )
+            )
+    return tuple(boundaries)
+
+
 def read_csv(path: Path, columns: Iterable[str]) -> list[dict[str, str]]:
     """Rows of a UTF-8 CSV override, requiring the given header columns."""
     if not path.is_file():
@@ -74,26 +201,33 @@ def read_csv(path: Path, columns: Iterable[str]) -> list[dict[str, str]]:
 
 
 def parse_registry(rows: Iterable[Mapping[str, str]]) -> Registry:
-    stations = tuple(
-        RegistryStation(
-            id=row["id"],
-            name=row["name"],
-            n02_name=row["n02_name"] or row["name"],
-            ward=row["ward"],
-            representative_service_id=row["representative_service_id"],
+    stations: list[RegistryStation] = []
+    for row in rows:
+        try:
+            selector = parse_platform_selector(row.get("n02_selector", ""))
+        except ConstraintError as error:
+            raise OverrideError(f"station {row['id']}: {error}") from error
+        stations.append(
+            RegistryStation(
+                id=row["id"],
+                name=row["name"],
+                n02_name=row["n02_name"] or row["name"],
+                prefecture=row["prefecture"],
+                municipality=row["municipality"],
+                representative_service_id=row["representative_service_id"],
+                n02_selector=selector,
+            )
         )
-        for row in rows
-    )
-    validate_registry(stations)
-    return Registry(stations=stations)
+    validate_registry(tuple(stations))
+    return Registry(stations=tuple(stations))
 
 
 def validate_registry(stations: tuple[RegistryStation, ...]) -> None:
-    """Unique kebab-case ids, official spelling, no homonyms, in-area wards."""
+    """Unique ids, official spelling, explicit homonym identity and area."""
     if not stations:
         raise OverrideError("station registry is empty")
     seen_ids: set[str] = set()
-    seen_names: dict[str, str] = {}
+    seen_names: dict[str, list[RegistryStation]] = {}
     for station in stations:
         if not STATION_ID_PATTERN.match(station.id):
             raise OverrideError(f"station id is not kebab-case: {station.id!r}")
@@ -109,17 +243,29 @@ def validate_registry(stations: tuple[RegistryStation, ...]) -> None:
                 "N02 spelling in n02_name)"
             )
         key = station.match_name
-        if key in seen_names:
-            raise OverrideError(
-                f"homonym in registry: {station.id} and {seen_names[key]} both "
-                f"match N02 name {key!r}"
+        for previous in seen_names.get(key, []):
+            left, right = station.n02_selector, previous.n02_selector
+            disjoint = any(
+                a and b and a.isdisjoint(b)
+                for a, b in (
+                    (left.lines, right.lines),
+                    (left.groups, right.groups),
+                    (left.codes, right.codes),
+                )
             )
-        seen_names[key] = station.id
-        if station.ward not in config.TOKYO_23_WARDS:
+            if not disjoint:
+                raise OverrideError(
+                    f"homonym in registry: {station.id} and {previous.id} need "
+                    "disjoint N02 selectors"
+                )
+        seen_names.setdefault(key, []).append(station)
+        if station.prefecture not in config.CAPITAL_REGION_PREFECTURES:
             raise OverrideError(
-                f"station {station.id} ward {station.ward!r} is not one of the "
-                "23 special wards"
+                f"station {station.id} prefecture {station.prefecture!r} is outside "
+                "the capital region"
             )
+        if not station.municipality:
+            raise OverrideError(f"station {station.id} has no municipality")
         if not station.representative_service_id:
             raise OverrideError(f"station {station.id} has no representative service")
 

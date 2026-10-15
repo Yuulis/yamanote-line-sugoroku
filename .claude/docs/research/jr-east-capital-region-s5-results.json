@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "step": "S5",
+  "measuredAt": "2026-10-15T06:53:54.057350+00:00",
+  "branch": "feature/jrcr-s5",
+  "method": "Real createGame/playTurn on the shipped public/data bundle; independent engine string seeds; history discarded after every turn.",
+  "runtimeScope": "Game creation, transitions and statistics only; excludes input loading and Vitest startup.",
+  "commands": [
+    "SIM_BUNDLE=public/data SIM_PRESET=decided SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 npm run sim",
+    "SIM_BUNDLE=public/data SIM_PRESET=all-equal SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 npm run sim"
+  ],
+  "researchCatalogReference": {
+    "source": ".claude/docs/research/jr-east-capital-region-s1m-results.json",
+    "decidedMedianP90P99": [
+      61,
+      148,
+      258
+    ],
+    "allEqualMedianP90P99": [
+      396,
+      967,
+      1643
+    ]
+  },
+  "comparison": "Both shipped-data distributions match the research-catalog real-engine results exactly for median/p90/p99; the product catalog preserves the same gameplay graph and service order.",
+  "runs": [
+    {
+      "schemaVersion": 1,
+      "engine": "createGame/playTurn",
+      "preset": "decided",
+      "input": {
+        "source": "shipped-bundle",
+        "sha256": {
+          "public/data/manifest.json": "dace0aec00edb8d5328f45a4f5fe00fb007f9fa9f39d894368297ee45d800243",
+          "public/data/stations.json": "43a3110f53667583558519658cd4ab224475247e0804570d388dcbd3faae2fd7",
+          "public/data/services.json": "7d317a1d0a007dfbf94cca5d9ed2b561ab61b1d00552bb72c9cdb0fd14547de0",
+          "public/data/segments.json": "25bcec4bfecc74f9047bdeb827a5bc0dce14d9d7be8354fd9eddc5cd5e355a13"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 472,
+        "services": 40,
+        "directedSegments": 1224
+      },
+      "dataVersion": "n02-2025-82589587088b",
+      "baseSeed": 20261012,
+      "games": 20000,
+      "turnCap": 20000,
+      "seedSet": {
+        "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+        "first": "s1m-20261012-0",
+        "last": "s1m-20261012-19999",
+        "sha256": "0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e"
+      },
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "history": "discarded after each real playTurn; no transition logic replaced",
+      "statistics": {
+        "games": 20000,
+        "completedGames": 20000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 61,
+        "p90": 148,
+        "p99": 258,
+        "mean": 73.85715,
+        "max": 481,
+        "over500Count": 0,
+        "totalPlayedTurns": 1477143
+      },
+      "runtimeSeconds": 49.369355508
+    },
+    {
+      "schemaVersion": 1,
+      "engine": "createGame/playTurn",
+      "preset": "all-equal",
+      "input": {
+        "source": "shipped-bundle",
+        "sha256": {
+          "public/data/manifest.json": "dace0aec00edb8d5328f45a4f5fe00fb007f9fa9f39d894368297ee45d800243",
+          "public/data/stations.json": "43a3110f53667583558519658cd4ab224475247e0804570d388dcbd3faae2fd7",
+          "public/data/services.json": "7d317a1d0a007dfbf94cca5d9ed2b561ab61b1d00552bb72c9cdb0fd14547de0",
+          "public/data/segments.json": "25bcec4bfecc74f9047bdeb827a5bc0dce14d9d7be8354fd9eddc5cd5e355a13"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 472,
+        "services": 40,
+        "directedSegments": 1224
+      },
+      "dataVersion": "n02-2025-82589587088b",
+      "baseSeed": 20261012,
+      "games": 20000,
+      "turnCap": 20000,
+      "seedSet": {
+        "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+        "first": "s1m-20261012-0",
+        "last": "s1m-20261012-19999",
+        "sha256": "0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e"
+      },
+      "config": {
+        "rulesetVersion": "simulation-s1m-all-equal",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "weight",
+            "weight": 1
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 1
+        }
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "history": "discarded after each real playTurn; no transition logic replaced",
+      "statistics": {
+        "games": 20000,
+        "completedGames": 20000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 396,
+        "p90": 967,
+        "p99": 1643,
+        "mean": 476.7473,
+        "max": 3179,
+        "over500Count": 7707,
+        "totalPlayedTurns": 9534946
+      },
+      "runtimeSeconds": 563.3726337329999
+    }
+  ]
+}

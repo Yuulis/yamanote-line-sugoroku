@@ -1,0 +1,18 @@
+n02_line,action,section_key,reason
+横浜線,allow,139.49429 35.53159~139.49628 35.53167#2b3c357c,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.49628 35.53167~139.51576 35.52649#8ce0a7fe,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.51576 35.52649~139.51723 35.52604#5ebf1ec4,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.51723 35.52604~139.53842 35.51519#dd2e0374,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.53842 35.51519~139.54001 35.51435#bc4ac27c,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.54001 35.51435~139.56609 35.51071#62459a63,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.56609 35.51071~139.56781 35.51099#a3805588,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.56781 35.51099~139.59878 35.50903#61f9a364,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.59878 35.50903~139.60046 35.50824#eef72cec,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.60046 35.50824~139.61636 35.50666#ded6dd5a,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.61636 35.50666~139.61849 35.50687#f5edd810,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.61849 35.50687~139.62893 35.50968#27c1e46f,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.62893 35.50968~139.63127 35.50958#e8a9aeb7,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.63127 35.50958~139.64624 35.49279#ffea636d,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.63240 35.47706~139.63393 35.47869#ce57e37e,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.63393 35.47869~139.64643 35.49180#641232e2,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.64624 35.49279~139.64643 35.49180#b11b0537,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv

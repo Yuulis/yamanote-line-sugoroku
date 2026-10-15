@@ -1,11 +1,13 @@
 // Public surface of the game engine. Pure TypeScript: no React, DOM,
 // MapLibre, clock, or global randomness may be imported here.
 
-export type { LandingChoice, StopReason } from "../../../types/network";
+export type { DirectionLotteryPolicy, LandingChoice, ServiceKind, ServiceLotteryPolicy, StopReason } from "../../../types/network";
+export { SERVICE_KINDS } from "../../../types/network";
 export { GOAL_ARRIVAL_POLICIES, validateConfig } from "./config";
 export { GameEngineError, type GameEngineErrorCode, isGameEngineError } from "./errors";
 export { createGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";
 export { checkGoal, stopsAtGoal, targetSegmentIds } from "./goal";
+export { targetHopDistances } from "./proximity";
 export {
   drawLanding,
   type LandingDraw,
@@ -30,6 +32,8 @@ export {
   type DieFace,
   type DieRoll,
   drawIndex,
+  drawWeightedIndex,
+  MAX_WEIGHT_TOTAL,
   faceFromDraw,
   type IndexDraw,
   indexFromDraw,

@@ -70,6 +70,28 @@ def concat_lines(parts: Sequence[LineString]) -> LineString:
     return LineString(coords)
 
 
+def concat_route_legs(parts: Sequence[LineString]) -> LineString:
+    """Join explicit cross-line legs without inventing a connecting line.
+
+    Transforming a source junction onto two tracks can differ at the last
+    floating-point bit. Normalize only that numerical noise at a shared joint.
+    Ordinary platform-snap tolerance cannot authorize a missing railway link.
+    """
+    joined: list[LineString] = []
+    for part in parts:
+        coordinates = list(part.coords)
+        if joined:
+            joint = joined[-1].coords[-1]
+            if (
+                Point(joint).distance(Point(coordinates[0]))
+                > config.ROUTE_JOINT_TOLERANCE_M
+            ):
+                raise NoPathError("multi-line route has a disconnected joint")
+            coordinates[0] = joint
+        joined.append(LineString(coordinates))
+    return concat_lines(joined)
+
+
 def _sub(edge: Edge, start: float, end: float) -> LineString:
     """Substring of ``edge`` from ``start`` to ``end`` (reversed if end < start)."""
     part = substring(edge.geometry, start, end)

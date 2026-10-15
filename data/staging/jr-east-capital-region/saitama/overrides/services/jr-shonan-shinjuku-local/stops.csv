@@ -1,0 +1,11 @@
+order,station_id,station_number,platform_selector
+0,kurihashi,JU15,
+1,higashi-washinomiya,JU14,
+2,kuki,JU13,
+3,shin-shiraoka,JU12,
+4,shiraoka,JU11,
+5,hasuda,JU10,
+6,higashi-omiya,JU09,
+7,toro,JU08,
+8,omiya,JS24,
+9,urawa,JS23,

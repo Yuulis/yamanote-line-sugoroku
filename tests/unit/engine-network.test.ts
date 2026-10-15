@@ -124,7 +124,7 @@ describe("buildRailwayNetwork", () => {
       serviceId: SERVICE_ID,
       from: START,
       to: "tokyo",
-      geometryFeatureId: "bogus",
+      geometryFeatureIds: ["bogus"] as [string],
     };
     expect(() =>
       buildRailwayNetwork({ ...input, segments: [...input.segments, bogus] }),

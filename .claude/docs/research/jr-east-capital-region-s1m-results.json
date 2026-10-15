@@ -1,0 +1,349 @@
+{
+  "schemaVersion": 1,
+  "step": "S1M",
+  "measuredAt": "2026-10-13T01:37:50.278176+00:00",
+  "branch": "feature/jrcr-s1m",
+  "engineRevision": "c0a9866988ba336e9d21bb45ec35635b012bd79e",
+  "nodeVersion": "v24.21.0",
+  "method": "Real createGame/playTurn; independent engine string seed per game; history discarded after every turn. Distributional comparison to the float-interval continuous-PRNG replica.",
+  "runtimeScope": "Game creation, transitions and statistics only; excludes input loading and Vitest startup.",
+  "commands": [
+    "SIM_PRESET=decided SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 SIM_OUTPUT=/tmp/jrcr-s1m-decided.json npm run sim",
+    "SIM_PRESET=all-equal SIM_GAMES=20000 SIM_SEED=20261012 SIM_CAP=20000 SIM_OUTPUT=/tmp/jrcr-s1m-all-equal.json npm run sim"
+  ],
+  "runs": [
+    {
+      "schemaVersion": 1,
+      "engine": "createGame/playTurn",
+      "preset": "decided",
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/jr-east-capital-region-catalog-v2.csv": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+          ".claude/docs/research/jr-east-capital-region-services-v2.csv": "45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 472,
+        "services": 40,
+        "directedSegments": 1224,
+        "catalogRows": 666,
+        "endpointNote": "Synthetic through-split -> terminus; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "dataVersion": "simulation-ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4-45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b",
+      "baseSeed": 20261012,
+      "games": 20000,
+      "turnCap": 20000,
+      "seedSet": {
+        "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+        "first": "s1m-20261012-0",
+        "last": "s1m-20261012-19999",
+        "sha256": "0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e"
+      },
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1,
+            "special-rapid": 1,
+            "medium-distance": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "history": "discarded after each real playTurn; no transition logic replaced",
+      "statistics": {
+        "games": 20000,
+        "completedGames": 20000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 61,
+        "p90": 148,
+        "p99": 258,
+        "mean": 73.85715,
+        "max": 481,
+        "over500Count": 0,
+        "totalPlayedTurns": 1477143
+      },
+      "runtimeSeconds": 44.148434615999996
+    },
+    {
+      "schemaVersion": 1,
+      "engine": "createGame/playTurn",
+      "preset": "all-equal",
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/jr-east-capital-region-catalog-v2.csv": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+          ".claude/docs/research/jr-east-capital-region-services-v2.csv": "45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 472,
+        "services": 40,
+        "directedSegments": 1224,
+        "catalogRows": 666,
+        "endpointNote": "Synthetic through-split -> terminus; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "dataVersion": "simulation-ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4-45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b",
+      "baseSeed": 20261012,
+      "games": 20000,
+      "turnCap": 20000,
+      "seedSet": {
+        "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+        "first": "s1m-20261012-0",
+        "last": "s1m-20261012-19999",
+        "sha256": "0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e"
+      },
+      "config": {
+        "rulesetVersion": "simulation-s1m-all-equal",
+        "targetServiceId": "yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1,
+            "special-rapid": 1,
+            "medium-distance": 1
+          },
+          "target": {
+            "kind": "weight",
+            "weight": 1
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 1
+        }
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "history": "discarded after each real playTurn; no transition logic replaced",
+      "statistics": {
+        "games": 20000,
+        "completedGames": 20000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 396,
+        "p90": 967,
+        "p99": 1643,
+        "mean": 476.7473,
+        "max": 3179,
+        "over500Count": 7707,
+        "totalPlayedTurns": 9534946
+      },
+      "runtimeSeconds": 318.99595599400004
+    }
+  ],
+  "replicaComparison": {
+    "source": ".claude/docs/research/jr-east-capital-region-expansion-design.md section 8.4",
+    "materialDifferenceThresholdPercent": {
+      "median": 10,
+      "p99": 15
+    },
+    "comparisons": [
+      {
+        "preset": "decided",
+        "replica": {
+          "games": 50000,
+          "median": 61,
+          "p90": 148,
+          "p99": 258,
+          "mean": 73.93308,
+          "max": 599,
+          "over500Count": 4,
+          "capHits": 0
+        },
+        "percentChange": {
+          "median": 0.0,
+          "p90": 0.0,
+          "p99": 0.0
+        },
+        "materialDifference": false
+      },
+      {
+        "preset": "all-equal",
+        "replica": {
+          "games": 50000,
+          "median": 394,
+          "p90": 962,
+          "p99": 1647,
+          "mean": 475.13614,
+          "max": 3277,
+          "over500Count": 19248,
+          "capHits": 0
+        },
+        "percentChange": {
+          "median": 0.50761421319796,
+          "p90": 0.5197505197505281,
+          "p99": -0.24286581663630624
+        },
+        "materialDifference": false
+      }
+    ],
+    "conclusion": "Both presets are below the specified material-difference thresholds. Decided retains the 61-turn median and 258-turn p99; confirms Q1(c)/Q2(a)/Q5(a) on approved research catalog v2. No reduction to 10,000 games was needed.",
+    "rareTailNote": "Decided >500 is 0/20,000 versus replica 4/50,000; different samples cannot rule out rare long games. Maxima are observed values, not bounds."
+  },
+  "acceptance": {
+    "typecheck": "npm run typecheck: exit 0",
+    "defaultUnitSuite": "npx vitest run: 23 files / 513 passed; measurement suite excluded",
+    "simulationSuite": "Both 20,000-game runs: 1 file / 1 passed; zero cap hits",
+    "smokeRuns": [
+      {
+        "schemaVersion": 1,
+        "engine": "createGame/playTurn",
+        "preset": "decided",
+        "input": {
+          "source": "research-csv",
+          "sha256": {
+            ".claude/docs/research/jr-east-capital-region-catalog-v2.csv": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+            ".claude/docs/research/jr-east-capital-region-services-v2.csv": "45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b"
+          },
+          "hashConvention": "LF-normalized UTF-8 bytes",
+          "stations": 472,
+          "services": 40,
+          "directedSegments": 1224,
+          "catalogRows": 666,
+          "endpointNote": "Synthetic through-split -> terminus; same stop/discard-pips semantics. No geometry loaded."
+        },
+        "dataVersion": "simulation-ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4-45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b",
+        "baseSeed": 20261012,
+        "games": 200,
+        "turnCap": 20000,
+        "seedSet": {
+          "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+          "first": "s1m-20261012-0",
+          "last": "s1m-20261012-199",
+          "sha256": "750ca1bf08226a949a249fe470816acd21224b232ba1f6a8199586ad6aef83d5"
+        },
+        "config": {
+          "rulesetVersion": "simulation-s1m-decided",
+          "targetServiceId": "yamanote",
+          "startStationId": "shimbashi",
+          "targetDirection": 1,
+          "goalArrivalPolicy": "truncate-on-target-service",
+          "serviceLottery": {
+            "kindWeights": {
+              "local": 1,
+              "rapid": 1,
+              "special-rapid": 1,
+              "medium-distance": 1
+            },
+            "target": {
+              "kind": "share",
+              "numerator": 1,
+              "denominator": 2
+            }
+          },
+          "directionLottery": {
+            "towardTargetWeight": 2
+          }
+        },
+        "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+        "capConvention": "unfinished games counted as cap+1; not completed",
+        "history": "discarded after each real playTurn; no transition logic replaced",
+        "statistics": {
+          "games": 200,
+          "completedGames": 200,
+          "capHits": 0,
+          "cappedGameIndices": [],
+          "median": 58,
+          "p90": 130,
+          "p99": 252,
+          "mean": 71.685,
+          "max": 343,
+          "over500Count": 0,
+          "totalPlayedTurns": 14337
+        },
+        "runtimeSeconds": 0.536238552
+      },
+      {
+        "schemaVersion": 1,
+        "engine": "createGame/playTurn",
+        "preset": "all-equal",
+        "input": {
+          "source": "research-csv",
+          "sha256": {
+            ".claude/docs/research/jr-east-capital-region-catalog-v2.csv": "ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4",
+            ".claude/docs/research/jr-east-capital-region-services-v2.csv": "45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b"
+          },
+          "hashConvention": "LF-normalized UTF-8 bytes",
+          "stations": 472,
+          "services": 40,
+          "directedSegments": 1224,
+          "catalogRows": 666,
+          "endpointNote": "Synthetic through-split -> terminus; same stop/discard-pips semantics. No geometry loaded."
+        },
+        "dataVersion": "simulation-ef440ac45ffad0308e9121b8c0d202fa1d1895ef94cc1881fe94d0b1ed937fc4-45ee942862f0def53625e76dbafbc4ab306cc181123d71bd37cf225d70746d8b",
+        "baseSeed": 20261012,
+        "games": 200,
+        "turnCap": 20000,
+        "seedSet": {
+          "scheme": "s1m-${baseSeed}-${zeroBasedGameIndex}",
+          "first": "s1m-20261012-0",
+          "last": "s1m-20261012-199",
+          "sha256": "750ca1bf08226a949a249fe470816acd21224b232ba1f6a8199586ad6aef83d5"
+        },
+        "config": {
+          "rulesetVersion": "simulation-s1m-all-equal",
+          "targetServiceId": "yamanote",
+          "startStationId": "shimbashi",
+          "targetDirection": 1,
+          "goalArrivalPolicy": "truncate-on-target-service",
+          "serviceLottery": {
+            "kindWeights": {
+              "local": 1,
+              "rapid": 1,
+              "special-rapid": 1,
+              "medium-distance": 1
+            },
+            "target": {
+              "kind": "weight",
+              "weight": 1
+            }
+          },
+          "directionLottery": {
+            "towardTargetWeight": 1
+          }
+        },
+        "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+        "capConvention": "unfinished games counted as cap+1; not completed",
+        "history": "discarded after each real playTurn; no transition logic replaced",
+        "statistics": {
+          "games": 200,
+          "completedGames": 200,
+          "capHits": 0,
+          "cappedGameIndices": [],
+          "median": 381,
+          "p90": 960,
+          "p99": 1644,
+          "mean": 453.315,
+          "max": 2289,
+          "over500Count": 64,
+          "totalPlayedTurns": 90663
+        },
+        "runtimeSeconds": 3.303686335
+      }
+    ]
+  },
+  "limitations": [
+    "Synthetic research coordinates, platform coordinates and geometry ids; no geometry or device performance measured.",
+    "Research through-split endpoints use synthetic terminus metadata with identical stop/discard-pips semantics; S2 adds service-boundary metadata.",
+    "No save/restore or growing-history benchmark.",
+    "Re-run on final product data/config in S5; production policy remains all-equal until S5.",
+    "Optional decided-pass-through is supported and unit-tested, but not part of the required large measurements."
+  ]
+}

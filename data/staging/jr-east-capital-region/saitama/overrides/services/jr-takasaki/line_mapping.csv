@@ -1,0 +1,4 @@
+from_id,to_id,n02_line,via,route,compose
+urawa,saitama-shintoshin,東北線,,,
+saitama-shintoshin,omiya,東北線,,,
+omiya,jimbohara,高崎線,,,
