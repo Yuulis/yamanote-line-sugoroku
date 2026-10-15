@@ -2,8 +2,8 @@
 
 ## Current status (2026-10-13) — resume here
 
-**S0, S1, S1M, S2, S0b, S3a, S4, S3b, the S6P Tokyo stage and pipeline G1/G2 are merged** into the integration branch
-`feature/jr-east-capital-region` (head after this update; last merge PR #16; based on `develop`). Nothing is uncommitted.
+**S0–S3b, pipeline G1/G2 and the stage validation profile, and all four S6P stages (Tokyo, Chiba, Kanagawa, Saitama) are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; last merge PR #20; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
 and production needs explicit user approval. Shipped data is still the 23-ward edition (v3 contract),
 rules still all-equal.
@@ -21,11 +21,13 @@ rules still all-equal.
 | S6P stage 1: Tokyo (Claude-led) | merged (partial: 21/23 services, 137/142 stations) | #14 | lead: staged build + validate OK, oracle hash + oracle-vs-product-catalog check, live rebuild byte-identical, pytest 262; CI green |
 | Pipeline G1/G2 (platform transfers, inherited anchor lines) | merged | #15 | `verify.sh` (pytest 306), live + Tokyo staging byte-identical before/after, raw-N02 proof; Codex review 4+1 findings fixed; 27/27 guard removals; CI green |
 | S6P Tokyo follow-up: full 常磐線快速 (G2), composed 池袋–新宿 (G1) | merged | #16 | staged build + validate OK, oracle `25bc9e50…` re-checked vs product catalog, live identical, pytest 306; CI green |
+| Pipeline stage validation profile | merged | #17 | `verify.sh` (pytest 342), live + Tokyo staging byte-identical; guard removals caught; CI green |
+| S6P Chiba (Luna xhigh) | merged | #18 | 17/17 services, 152/152 stations; build+validate, oracle vs product catalog, live identical; CI green |
+| S6P Kanagawa (Luna xhigh) | merged | #19 | 13/14 services, 97/103 stations; Sol review: 2 of 19 compositions wrong (湘南新宿 rapid 横浜–戸塚, 戸塚–大船) → fixed; CI green |
+| S6P Saitama (Luna xhigh) | merged | #20 | 9/9 services, 75/75 stations; Sol review: 1 of 24 compositions wrong (湘南新宿 local 大宮–浦和 on 東北貨物線) → lead fix; CI green |
 
-**Next:** the remaining S6P stages — **Kanagawa**, **Saitama**, **Chiba** — each staged like Tokyo under
-`data/staging/jr-east-capital-region/<stage>/overrides/` (cross-prefecture services keep one owner; pick up the
-Tokyo-deferred enclaves 成瀬/町田 and 高尾–藤野 in Kanagawa, 綾瀬/亀有/金町 in Chiba). Then S6 → S5 → S7.
-Optional later refinement: compose 常磐線快速 品川–上野 from 東海道線/宇都宮線 (needs a 64.3 m transfer at 東京).
+**Next: S6** — combine the four stages into the final live dataset in one commit (rules still all-equal).
+See section "S6P complete — inputs for S6" at the end. Then S5 → S7.
 Codex was near its rate limit at the end of this session: if Codex is unavailable, Claude subagents
 (`general-purpose-opus` for pipeline/routing judgment, `general-purpose-sonnet` for mechanical tables)
 can take a step with the same contract, gates and review (use a read-only Codex or Opus review).
@@ -907,4 +909,34 @@ Not done for Tokyo: browser visual review of segments, device performance, map z
   oracle `25bc9e50ef0bb67494b0c24c7b81610acdcb62d1374707cfcc50f81565d8d224`.
 - Lead decision: recipe 3 (compose 品川–上野) not adopted — it would add a second 64.3 m jump at 東京.
 - Known limitation: the runner jumps the transfer distance at a transfer stop (131 m at 上野); browser review at S6.
+
+## S6P complete — inputs for S6 (2026-10-15)
+
+All four prefecture stages build from raw N02 and validate (stage profile for Chiba/Kanagawa/Saitama, gameplay
+profile for Tokyo). Stage dirs: `data/staging/jr-east-capital-region/{tokyo,chiba,kanagawa,saitama}/overrides/`;
+evidence: `.claude/docs/research/jr-east-capital-region-s6p-{tokyo,chiba,kanagawa,saitama}.md`.
+
+| Stage | Services | Stations | +1 pairs (compose) | Five files raw / gzip | Oracle SHA-256 (prefix) |
+|---|---|---|---|---|---|
+| Tokyo | 21/23 | 137/142 | 201 (16) | 218,480 / 34,078 | `25bc9e50` |
+| Chiba | 17/17 | 152/152 | 166 (2) | 228,003 / 41,395 | `c752d29a` |
+| Kanagawa | 13/14 | 97/103 | 123 (18) | 149,326 / 25,240 | `dea41cf1` |
+| Saitama | 9/9 | 75/75 | 104 (23) | 118,990 / 20,335 | `09651aec` |
+
+Sum of stage outputs ≈ 715 KB raw / 121 KB gzip, well inside the capital-region caps (3 MiB / 900 KiB); builds take ~2 s each.
+
+S6 work list (combined dataset, `areaPrefectures` = all four, gameplay profile, target 山手線, start 新橋):
+1. Merge the four stages into one override set with ONE owner per service (a cross-prefecture service's
+   stage fragments become one stop list/recipe set following the product catalog order).
+2. Route the cross-border pairs listed in each stage's `cross-border-pairs.csv` (e.g. 蒲田–川崎, 金町–松戸).
+3. Add the deferred stations/runs: Tokyo enclaves 成瀬・町田 (横浜線), 高尾–相模湖–藤野 (中央本線), 綾瀬・亀有・金町
+   (常磐線各停); Kanagawa split run 横浜線 古淵–淵野辺–矢部–相模原–橋本.
+4. Author the full expected catalogue from the product catalog (40 services / 472 stations), regenerate
+   `public/data`, update real-data tests, and run the S6 gates (two-way reachability from 新橋, budgets,
+   byte-identical rebuild, desktop/phone zoom/overview, browser visual review incl. the 131 m 上野 transfer jump,
+   save/restore timing).
+
+Review lesson from S6P: every composition (shared-track claim) must get an independent physical-track review —
+geometric N02 agreement is not evidence (3 of 59 Luna/Sol compositions were wrong and caught only by review).
+Model routing used: Luna xhigh for staging execution, Sol read-only for composition reviews (user approved).
 
