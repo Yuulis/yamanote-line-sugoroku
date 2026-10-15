@@ -1,0 +1,5 @@
+n02_line,action,section_key,reason
+鶴見線,allow,139.70088 35.49970~139.70161 35.49998#13e45cb9,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+鶴見線,allow,139.70161 35.49998~139.70555 35.50155#7c6421fa,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+鶴見線,allow,139.70555 35.50155~139.71119 35.49567#49d5a754,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+鶴見線,allow,139.71119 35.49567~139.71157 35.49514#efb777b0,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv

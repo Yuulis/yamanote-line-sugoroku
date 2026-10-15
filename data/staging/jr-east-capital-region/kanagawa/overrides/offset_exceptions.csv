@@ -1,0 +1,2 @@
+service_id,station_id,max_platform_offset_m,reason
+jr-nambu,musashi-kosugi,400.0,"The N02 南武線 platform at 武蔵小杉 is on the separate Nambu-line station facility, 393.4 m from the representative platform point selected for this shared JR station id; allow the measured cross-platform offset."
