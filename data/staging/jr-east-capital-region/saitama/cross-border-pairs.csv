@@ -1,0 +1,15 @@
+service_id,from_id,to_id,from_name,to_name,from_prefecture,to_prefecture,proposed_n02_line_or_recipe,evidence_status
+jr-keihin-tohoku,kawaguchi,akabane,川口,赤羽,埼玉県,東京都,東北線,frozen product catalog adjacency; proposed only; not routed
+jr-hachiko,tansho,gumma-fujioka,丹荘,群馬藤岡,埼玉県,群馬県,八高線,research expansion §2 boundaries; outside product catalog; proposed only
+jr-hachiko,hakonegasaki,kaneko,箱根ケ崎,金子,東京都,埼玉県,八高線,frozen product catalog adjacency; proposed only; not routed
+jr-saikyo,ukima-funado,toda-koen,浮間舟渡,戸田公園,東京都,埼玉県,東北線 (埼京別線),frozen product catalog adjacency; proposed only; not routed
+jr-musashino,shin-akitsu,higashi-tokorozawa,新秋津,東所沢,東京都,埼玉県,武蔵野線,frozen product catalog adjacency; proposed only; not routed
+jr-musashino,misato,minami-nagareyama,三郷,南流山,埼玉県,千葉県,武蔵野線,frozen product catalog adjacency; proposed only; not routed
+jr-utsunomiya,kurihashi,koga,栗橋,古河,埼玉県,茨城県,東北線,research expansion §2 boundaries; outside product catalog; proposed only
+jr-utsunomiya,akabane,urawa,赤羽,浦和,東京都,埼玉県,東北線 (旅客線),frozen product catalog adjacency; proposed only; not routed
+jr-takasaki,jimbohara,shimmachi,神保原,新町,埼玉県,群馬県,高崎線,research expansion §2 boundaries; outside product catalog; proposed only
+jr-takasaki,akabane,urawa,赤羽,浦和,東京都,埼玉県,東北線 (旅客線),frozen product catalog adjacency; proposed only; not routed
+jr-shonan-shinjuku-local,koga,kurihashi,古河,栗橋,茨城県,埼玉県,東北線,research expansion §2 boundaries; outside product catalog; proposed only
+jr-shonan-shinjuku-local,urawa,akabane,浦和,赤羽,埼玉県,東京都,東北線 (東北貨物線; N02 section evidence pending),frozen product catalog adjacency; proposed only; not routed
+jr-shonan-shinjuku-rapid-takasaki,shimmachi,jimbohara,新町,神保原,群馬県,埼玉県,高崎線,research expansion §2 boundaries; outside product catalog; proposed only
+jr-shonan-shinjuku-rapid-takasaki,urawa,akabane,浦和,赤羽,埼玉県,東京都,東北線 (東北貨物線; N02 section evidence pending),frozen product catalog adjacency; proposed only; not routed

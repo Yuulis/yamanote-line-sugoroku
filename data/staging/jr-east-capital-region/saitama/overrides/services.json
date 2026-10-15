@@ -1,0 +1,434 @@
+{
+  "lines": [
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線・根岸線",
+      "color": "#00A7DB"
+    },
+    {
+      "id": "jr-hachiko",
+      "name": "八高線",
+      "color": "#A8A39D"
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "name": "川越線 川越–高麗川",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線・川越線",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-utsunomiya",
+      "name": "宇都宮線 (上野東京ライン)",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-takasaki",
+      "name": "高崎線 (上野東京ライン)",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "color": "#E21F26"
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "color": "#E21F26"
+    }
+  ],
+  "services": [
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線・根岸線",
+      "color": "#00A7DB",
+      "circular": false,
+      "directionLabels": {
+        "forward": "川口方面",
+        "backward": "大宮方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 9,
+      "lengthRef": {
+        "km": 14.5,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02, 京浜東北線 大宮30.3km−川口15.8km"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-keihin-tohoku"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JK47",
+          "JK46",
+          "JK45",
+          "JK44",
+          "JK43",
+          "JK42",
+          "JK41",
+          "JK40",
+          "JK39"
+        ],
+        "reason": "JR東日本「首都圏エリアへ駅ナンバリングを導入します」 (2016), JK47–JK39."
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-hachiko",
+      "name": "八高線",
+      "color": "#A8A39D",
+      "circular": false,
+      "directionLabels": {
+        "forward": "丹荘方面",
+        "backward": "金子方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 14,
+      "lengthRef": {
+        "km": 59.5,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02, 八高線 丹荘80.0km−金子20.5km"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-hachiko"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "JR東日本の2016年首都圏駅ナンバリング対象表に八高線の対象駅番号なし。Tokyo stage でも空欄。"
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "name": "川越線 川越–高麗川",
+      "color": "#00AC9A",
+      "circular": false,
+      "directionLabels": {
+        "forward": "高麗川方面",
+        "backward": "川越方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 14.5,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02, 川越線 高麗川30.6km−川越16.1km"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-kawagoe-west"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JA31",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "JR東日本2016駅ナンバリング: 川越駅 JA31; 西川越–高麗川は対象表に番号なし。"
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線・川越線",
+      "color": "#00AC9A",
+      "circular": false,
+      "directionLabels": {
+        "forward": "川越方面",
+        "backward": "戸田公園方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 14,
+      "lengthRef": {
+        "km": 28.6,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02, 埼京線 大宮28.3km−戸田公園15.8km + 川越線 大宮–川越16.1km"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-saikyo"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JA18",
+          "JA19",
+          "JA20",
+          "JA21",
+          "JA22",
+          "JA23",
+          "JA24",
+          "JA25",
+          "JA26",
+          "JA27",
+          "JA28",
+          "JA29",
+          "JA30",
+          "JA31"
+        ],
+        "reason": "JR東日本2016駅ナンバリング: 埼京線 JA18–JA26, 川越線 JA27–JA31."
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "三郷方面",
+        "backward": "東所沢方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 14,
+      "lengthRef": {
+        "km": 37.7,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02, 武蔵野線 三郷53.4km−東所沢15.7km"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JM30",
+          "JM29",
+          "JM28",
+          "JM27",
+          "JM26",
+          "JM25",
+          "JM24",
+          "JM23",
+          "JM22",
+          "JM21",
+          "JM20",
+          "JM19",
+          "JM18",
+          "JM17"
+        ],
+        "reason": "JR東日本2016駅ナンバリング: JM30–JM17."
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-utsunomiya",
+      "name": "宇都宮線 (上野東京ライン)",
+      "color": "#F68B1E",
+      "circular": false,
+      "directionLabels": {
+        "forward": "栗橋方面",
+        "backward": "浦和方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 11,
+      "lengthRef": {
+        "km": 33.0,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02, 宇都宮線 栗橋53.6km−浦和20.6km"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-utsunomiya"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JU05",
+          "JU06",
+          "JU07",
+          "JU08",
+          "JU09",
+          "JU10",
+          "JU11",
+          "JU12",
+          "JU13",
+          "JU14",
+          "JU15"
+        ],
+        "reason": "JR東日本2016駅ナンバリング: JU05–JU15."
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-takasaki",
+      "name": "高崎線 (上野東京ライン)",
+      "color": "#F68B1E",
+      "circular": false,
+      "directionLabels": {
+        "forward": "神保原方面",
+        "backward": "浦和方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 18,
+      "lengthRef": {
+        "km": 65.8,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02: Urawa–Omiya 6.1 km (宇都宮線列車線経由) + Omiya–Jimbohara 59.7 km (高崎線)"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-takasaki"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JU05",
+          "JU06",
+          "JU07",
+          "JU08",
+          "JU09",
+          "JU10",
+          "JU11",
+          "JU12",
+          "JU13",
+          "JU14",
+          "JU15",
+          "JU16",
+          "JU17",
+          "JU18",
+          "JU19",
+          "JU20",
+          "JU21",
+          "JU22"
+        ],
+        "reason": "JR東日本2016駅ナンバリング: JU05–JU22; shared Utsunomiya/Takasaki stations keep their JU number."
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "color": "#E21F26",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浦和方面",
+        "backward": "栗橋方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 33.0,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02, 宇都宮線 栗橋53.6km−浦和20.6km"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-shonan-shinjuku-local"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JU15",
+          "JU14",
+          "JU13",
+          "JU12",
+          "JU11",
+          "JU10",
+          "JU09",
+          "JU08",
+          "JS24",
+          "JS23"
+        ],
+        "reason": "JR東日本2016駅ナンバリング資料および浦和駅/大宮駅公式駅情報。北側支線は宇都宮線JU/高崎線JUの番号、浦和はJS23、大宮はJS24を使用。"
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "color": "#E21F26",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浦和方面",
+        "backward": "神保原方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 17,
+      "lengthRef": {
+        "km": 65.8,
+        "toleranceKm": 1.5,
+        "source": "埼玉県「県内鉄道線の営業キロ」2026-06-02: Urawa–Omiya 6.1 km (宇都宮線列車線経由) + Omiya–Jimbohara 59.7 km (高崎線)"
+      },
+      "kind": "rapid",
+      "lineIds": [
+        "jr-shonan-shinjuku-rapid-takasaki"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JU22",
+          "JU21",
+          "JU20",
+          "JU19",
+          "JU18",
+          "JU17",
+          "JU16",
+          "JU15",
+          "JU14",
+          "JU13",
+          "JU12",
+          "JU11",
+          "JU10",
+          "JU09",
+          "JU08",
+          "JS24",
+          "JS23"
+        ],
+        "reason": "JR東日本2016駅ナンバリング資料および浦和駅/大宮駅公式駅情報。北側支線は宇都宮線JU/高崎線JUの番号、浦和はJS23、大宮はJS24を使用。"
+      },
+      "scopeSource": "S6P Saitama: frozen product catalog, contiguous 埼玉県 run and immediate excluded neighbours. Endpoint kinds follow the reviewed scope; municipalities follow the staged registry."
+    }
+  ]
+}
