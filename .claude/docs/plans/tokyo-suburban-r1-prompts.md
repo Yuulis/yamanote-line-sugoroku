@@ -85,3 +85,65 @@ Outputs: `.claude/docs/research/tokyo-suburban-r1-pw.md`, `...-r1-pw-catalog.csv
 Acceptance: as r1-sub, check script under `.claude/logs/r1-pw/`.
 
 Return (≤40 lines): counts per operator/line, 各停 coverage gaps, N02 gaps, open questions, file paths.
+
+## r1b — みなとみらい線・北総線 + 実質各停の例外 (Codex Luna, web search)
+
+Objective: complete the R1 inventory with the two operators the user added on 2026-10-15 and apply the
+"実質各停" exception rule, so R2 can merge one complete set.
+
+Read first: `tokyo-suburban-network-handoff.md` (decisions, R1 conventions, R1 results), the R1 notes
+`.claude/docs/research/tokyo-suburban-r1-{pe,pw}.md` (excluded-candidate sections), `.claude/rules/language.md`.
+
+Tasks:
+1. New inventory `tokyo-suburban-r1-extra-catalog.csv` / `-transfers.csv` / `.md` in the R1 schema for
+   みなとみらい線 (横浜高速鉄道, prefix `mm-`) and 北総線 (北総鉄道, prefix `hokuso-`), weekday 各停, travel order,
+   prefecture + municipality, N02 names, official transfers. Cite official pages via web search.
+2. Apply the user's rule "a section without 普通 where every regular train stops at every station counts as 各停"
+   (2026-10-15) as an ADDENDUM file `tokyo-suburban-r1-exceptions-catalog.csv` (R1 schema) — do not edit the R1
+   CSVs: 京急久里浜線 extended to 三崎口 (replace service `keikyu-kurihama` rows in the addendum with the full
+   堀ノ内–三崎口 list), 東武 押上–曳舟 (service or extension; justify), 京成成田空港線: only the part where every
+   regular train stops at every station qualifies (with 北総線 now in scope, 京成高砂–印旛日本医大 is covered by
+   北総's 各停; check 印旛日本医大–成田湯川–空港第2ビル–成田空港 and the 京成 track sharing) — state facts with
+   sources and the resulting service(s).
+3. Re-run the R1 checks on the new files (write `.claude/logs/r1b/check.py`).
+
+Return: counts, decisions taken with sources, open questions, file paths.
+
+## r2 — merged research catalog, station identity, Monte Carlo (Codex Sol or Luna xhigh)
+
+Objective: one research catalog for the whole 東京近郊版 network that the real-engine simulation harness can load,
+plus game-length numbers and the decision list for the user (R3).
+
+Inputs: all R1/R1b outputs (`.claude/docs/research/tokyo-suburban-r1-*`), DESIGN.md Key Decisions (2026-10-15),
+`tests/simulation/{inputs,harness}.ts` and `tests/simulation/README.md` (loader schema: catalog + services CSV,
+`service_type`, `stop_ids`, `first_end_kind`/`last_end_kind`, `line_name`; the 1都3県 research files
+`.claude/docs/research/jr-east-capital-region-catalog-v2.csv` / `-services-v2.csv` are working examples).
+
+Tasks:
+1. Area: apply the full 東京近郊区間 (2026-03-14 definition) for JR; for non-JR apply rule B from
+   `tokyo-suburban-r1-jr.md` (stations inside 1都6県, cross-checked with the in-area JR hull) and report any cut.
+2. Merge JR + subway + PE + PW + extra + exceptions into `tokyo-suburban-research-catalog.csv` and
+   `tokyo-suburban-research-services.csv` (loader schema). Keep shipped ids for the 472 shipped stations / 40 services.
+3. Cross-operator station identity (the key design question): build the candidate list of station pairs/groups
+   across operators (same name, official transfer lists from R1, distance between N02 station points). Propose
+   2–3 rules (e.g. A: merge only same-structure stations such as 目黒/白金高輪 shared platforms, other transfers
+   become no move; B: merge every officially listed transfer within N m into one game station; C: B plus walking
+   transfers as zero-pip links — only if the engine supports it, otherwise say so) with counts and examples
+   (大手町–東京, 春日–後楽園, 浜松町–大門, 押上 group, 新宿/西武新宿). Verify the R1 transfer rows flagged
+   UNVERIFIED (都営, 横浜市営, two PW rows) against official pages with web search. Produce the catalog under the
+   recommended rule and keep the others reproducible (script flag).
+4. Representation checks: 大江戸線 loop + radial sharing 都庁前; long JR services (常磐 品川–浪江 59 stops, 中央本線
+   to 塩尻, 宇都宮線 to 黒磯) kept whole vs split variants; 篠ノ井線 + 信越 篠ノ井–長野 merge; 水戸線 to 水戸.
+5. Monte Carlo with the REAL engine (`npm run sim`, research-catalog input — add an env var for the catalog paths if
+   the harness lacks one; harness-only change, unit-tested): presets `decided` (shipped rules) and `all-equal`,
+   20,000 games, seed 20261012, cap 20,000, target `yamanote`, start `shimbashi`; also each identity rule and the
+   split variants (5,000 games each is fine). If the decided median is far above the 1都3県 61 turns, propose levers
+   (target share, direction weight, goal change) with measured numbers.
+6. Size/performance estimate: N02 geometry for all lines (raw/gzip after the current simplification), compare with
+   the `capital-region` budget, and flag MapLibre rendering concerns (station count, label density).
+
+Outputs: the two CSVs, `tokyo-suburban-r2.md` (rules, counts, MC tables, size estimate, decision list for the
+user with a recommendation each), `tokyo-suburban-r2-results.json`, scripts under `.claude/logs/r2/` (tracked
+copies of the generator in `.claude/docs/research/tokyo-suburban-r2-tools/` so either vendor can rerun).
+Constraints: no product code/data changes; harness changes only if needed and tested; never weaken tests.
+Acceptance: loader parses the catalog (`npm run sim` smoke), `npx vitest run` passes, counts reconcile with R1.
