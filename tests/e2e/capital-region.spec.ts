@@ -142,7 +142,7 @@ test.describe("paced composed-hop reveal", () => {
   });
 
   test("natural reverse completion switches from the ridden rapid to the landing service", async ({ page, railwayBundle }) => {
-    // The real-engine proof pins c4 turns 1-3 and the 1,200 ms reverse hop.
+    // The real-engine proof pins this seed's turns 1-3 and the 1,200 ms reverse hop.
     let game = createGame(MVP_GAME_CONFIG, CAPITAL_GAME_SEED, railwayBundle.network);
     for (let turn = 0; turn < CAPITAL_SCENARIO_TURNS.rapidForward; turn += 1) game = playTurn(game, railwayBundle.network).state;
     await page.clock.install();
@@ -186,7 +186,7 @@ test("clear history pages without losing records, and reopened results retain fu
   await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
   const clear = page.getByRole("region", { name: "クリア！" });
   const items = clear.locator(".clear-screen__history li");
-  await expect(items).toHaveCount(20);
+  await expect(items).toHaveCount(Math.min(20, game.turn));
   await expect(items.first()).toContainText("1ターン目");
   await expect(clear.getByRole("button", { name: "前のページ" })).toBeDisabled();
   const history = clear.locator(".clear-screen__history");
@@ -194,18 +194,18 @@ test("clear history pages without losing records, and reopened results retain fu
   await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   await expect(items.first()).not.toBeInViewport();
   await clear.getByRole("button", { name: "次のページ" }).click();
-  await expect(items).toHaveCount(9);
+  await expect(items).toHaveCount(game.turn - 20);
   await expect(items.first()).toContainText("21ターン目");
   await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBe(0);
   await expect(items.first()).toBeInViewport({ ratio: 1 });
-  await expect(items.last()).toContainText("29ターン目");
+  await expect(items.last()).toContainText(`${game.turn}ターン目`);
   await expect(clear.getByRole("button", { name: "次のページ" })).toBeDisabled();
   await clear.getByRole("button", { name: "前のページ" }).click();
-  await expect(items).toHaveCount(20);
+  await expect(items).toHaveCount(Math.min(20, game.turn));
   expect((await readSave(page))?.movementHistory).toEqual(game.movementHistory);
   await page.reload();
   await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
-  await expect(items).toHaveCount(20);
+  await expect(items).toHaveCount(Math.min(20, game.turn));
   expect(await readSave(page)).toEqual(game);
 });
 

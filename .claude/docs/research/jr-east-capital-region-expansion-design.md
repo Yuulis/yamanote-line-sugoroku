@@ -496,6 +496,24 @@ and synthetic `terminus` metadata without changing these gameplay results. The h
 Full runs, hashes and acceptance outputs: `jr-east-capital-region-s0b-results.json`.
 Final product data/config remeasurement remains an S5 gate; no geometry/device acceptance is claimed.
 
+### 8.7 S5 shipped-data remeasurement (2026-10-15)
+
+S5 reran the S1M harness on the shipped S6 bundle (`SIM_BUNDLE=public/data`: 40 services /
+472 stations / 1,224 directed segments, data version `n02-2025-82589587088b`) with the same
+seed set (`s1m-20261012-0..19999`, SHA-256 `0b085fc9…5715e`), 20,000 games, cap 20,000.
+The harness's `decided` preset is unit-tested to equal the shipped `MVP_GAME_CONFIG` policies
+(`jr-east-capital-1`: 山手線 share 1/2, equal `local`/`rapid` bases, toward-target weight 2).
+
+| Preset | Median / p90 / p99 | Mean | Max | >500 | Caps | Runtime |
+|---|---|---:|---:|---:|---:|---:|
+| **decided (shipped)** | **61 / 148 / 258** | 73.85715 | 481 | 0 | 0 | 49.37 s |
+| all-equal (comparison) | 396 / 967 / 1,643 | 476.7473 | 3,179 | 7,707 | 0 | 563.37 s |
+
+All gameplay statistics match §8.5 exactly (runtimes differ): the shipped bundle preserves the research-catalog gameplay graph
+(service order, stop order, endpoint stop/discard behaviour), and the engine draws only from that
+graph, so identical seeds give identical games. Geometry differences do not affect gameplay.
+Full runs and input hashes: `jr-east-capital-region-s5-results.json`.
+
 ---
 
 ## 9. Implementation plan

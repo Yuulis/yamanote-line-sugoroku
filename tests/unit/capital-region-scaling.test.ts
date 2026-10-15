@@ -25,6 +25,9 @@ const geometry = buildGeometryIndex(data.geometry.value);
 const services = data.services.value;
 const segments = data.segments.value;
 const stations = data.stations.value;
+const expectedServiceIdsAt = (stationId: string): string[] => services.services
+  .filter((service) => service.stationIds.includes(stationId))
+  .map((service) => service.id);
 const fresh = createGame(MVP_GAME_CONFIG, CAPITAL_GAME_SEED, network);
 const turns: MoveResult[] = [];
 let game = fresh;
@@ -47,10 +50,13 @@ describe("capital-region fixture and pinned seeds", () => {
   });
 
   it("pins transfer, forward rapid, reverse rapid and completion", () => {
+    expect(network.servicesByStation.get("shinagawa")).toEqual(expectedServiceIdsAt("shinagawa"));
+    expect(network.servicesByStation.get("shinagawa")).toHaveLength(7);
+    expect(network.servicesByStation.get("capital-south")).toEqual(expectedServiceIdsAt("capital-south"));
     expect(turns.slice(0, 3).map((t) => ({ roll: t.roll, station: t.state.currentStationId, service: t.state.currentServiceId, direction: t.state.direction }))).toEqual([
       { roll: 4, station: "shinagawa", service: "capital-rapid", direction: 1 },
       { roll: 2, station: "capital-south", service: "capital-rapid", direction: -1 },
-      { roll: 6, station: "shinagawa", service: "capital-owner-a", direction: 1 },
+      { roll: 3, station: "shinagawa", service: "capital-owner-a", direction: 1 },
     ]);
     expect(game).toMatchObject({ status: "completed", turn: CAPITAL_SCENARIO_TURNS.completed, currentStationId: "shimbashi" });
     expect(game.movementHistory.at(-1)?.landing).toBeNull();
@@ -63,7 +69,7 @@ describe("capital-region fixture and pinned seeds", () => {
     const result = playTurn(restored, network);
     expect(result).toEqual(turns[CAPITAL_SCENARIO_TURNS.rapidReverse - 1]);
     expect(result.state.movementHistory.at(-1)).toMatchObject({
-      roll: 6,
+      roll: 3,
       serviceId: "capital-rapid",
       fromStationId: "capital-south",
       toStationId: "shinagawa",

@@ -24,6 +24,21 @@ describe("pinned browser-fixture trajectory", () => {
     expect(result.events.at(-1)).toMatchObject({ type: "landing-resolved", changedService: true, serviceDrawRequired: true, directionDrawRequired: false, serviceId: "fixture-south" });
   });
 
+  it("proves complete candidate lists at every transfer station in the pinned trajectory", () => {
+    const transferStations = new Set(turns.flatMap((turn) => {
+      const record = turn.state.movementHistory.at(-1);
+      return record?.landing && record.landing.serviceId !== record.serviceId ? [turn.state.currentStationId] : [];
+    }));
+    expect(transferStations.size).toBeGreaterThan(0);
+    for (const stationId of transferStations) {
+      const expected = [...network.servicesById.values()]
+        .filter((service) => service.stationIds.includes(stationId))
+        .map((service) => service.id);
+      expect(network.servicesByStation.get(stationId), stationId).toEqual(expected);
+      expect(expected.length, stationId).toBeGreaterThan(1);
+    }
+  });
+
   it.each([
     [FIXTURE_SCENARIO_TURNS.boundary, "fixture-omori", "area-boundary", 1],
     [FIXTURE_SCENARIO_TURNS.terminus, "shinagawa", "terminus", -1],

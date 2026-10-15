@@ -16,6 +16,7 @@ const productCatalogRows = readFileSync(
 ).trim().split(/\r?\n/).slice(1).map((line) => line.split(","));
 const SEEDS = ["real-alpha", "real-beta", "real-gamma", "real-delta", "real-epsilon", "real-zeta", "real-eta", "real-theta"];
 const MAX_TURNS = 5_000;
+const EXPECTED_TURNS = [32, 41, 136, 24, 103, 31, 24, 73];
 const RESTORE_OPTIONS = { expectedConfig: MVP_GAME_CONFIG, requireSeededRolls: true } as const;
 
 describe("shipped JR East capital-region network", () => {
@@ -67,7 +68,7 @@ describe("shipped JR East capital-region network", () => {
     expect(network.stationsById.get("tokyo")!.coordinates).toEqual(yamanote);
   });
 
-  it.each(SEEDS)("plays %s to completion and restores both mid-game and completed saves", (seed) => {
+  it.each(SEEDS.map((seed, index) => [seed, EXPECTED_TURNS[index]!] as const))("plays %s to completion and restores both mid-game and completed saves", (seed, expectedTurns) => {
     let game = createGame(MVP_GAME_CONFIG, seed, network);
     let checkedMidGame = false;
     while (game.status === "playing" && game.turn < MAX_TURNS) {
@@ -81,11 +82,25 @@ describe("shipped JR East capital-region network", () => {
     }
     expect(checkedMidGame).toBe(true);
     expect(game.turn).toBeLessThan(MAX_TURNS);
+    expect(game.turn).toBe(expectedTurns);
     expect(game.status).toBe("completed");
     expect(game.currentStationId).toBe("shimbashi");
     const target = targetSegmentIds(MVP_GAME_CONFIG, network);
     expect(target).toHaveLength(30);
     expect(target.every((id) => game.completedSegmentIds.includes(id))).toBe(true);
+    const transferStations = new Set<string>();
+    for (const record of game.movementHistory) {
+      if (!record.landing || record.landing.serviceId === record.serviceId) continue;
+      transferStations.add(record.toStationId);
+    }
+    expect(transferStations.size).toBeGreaterThan(0);
+    for (const stationId of transferStations) {
+      const completeCandidates = [...network.servicesById.values()]
+        .filter((service) => service.stationIds.includes(stationId))
+        .map((service) => service.id);
+      expect(network.servicesByStation.get(stationId), `${seed} at ${stationId}`).toEqual(completeCandidates);
+      expect(completeCandidates.length, `${seed} at ${stationId}`).toBeGreaterThan(1);
+    }
     expect(restoreGame(serializeGame(game), network, RESTORE_OPTIONS)).toEqual(game);
   });
 });
