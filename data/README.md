@@ -1,11 +1,16 @@
 # JR East capital-region game data pipeline
 
 `public/data/*` is generated deterministically from MLIT N02 2025 and reviewed
-`data/overrides` tables. The live S6 catalogue has 40 services and 472 shared
-stations across 東京都・千葉県・神奈川県・埼玉県. It contains 1,224 directed
+`data/overrides` tables. The live S6/S5 edition contains 40 services and 472
+shared stations across 東京都・千葉県・神奈川県・埼玉県, with 1,224 directed
 gameplay segments, 568 owned geometry features and 1,230 geometry references.
-The product stop order is frozen in the approved catalogue oracle; there is no
-live timetable lookup. Gameplay remains the all-equal Yamanote loop from 新橋.
+The product stop order is pinned by `data/overrides/expected-catalog.json`
+(SHA-256 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`);
+there is no live timetable lookup. Gameplay starts at 新橋 and uses the adopted
+weighted lotteries (`jr-east-capital-1`). The five public files total 744,720 raw
+bytes and 125,322 gzip bytes (level 9, mtime 0), within the `capital-region`
+profile caps of 3,145,728 raw and 921,600 gzip bytes. GeoJSON is 398,311 raw / 83,972
+gzip bytes; the maximum feature chain is 3 references.
 
 ## Source and licences
 
@@ -46,29 +51,33 @@ uv run pytest -q
 
 Build options: `--raw-dir`, `--overrides-dir`, `--out-dir`, `--quiet`.
 
-## Live edition (S6; 2026-10-15)
+## Live edition (S6 data + S5 rules; 2026-10-15)
 
 The shipped catalogue is the approved JR East capital-region product catalogue:
 40 services and 472 stations in product order. All four prefectures are included;
-`data/overrides/dataset.json` pins the product-only `expected-catalog.json` with
-SHA-256 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`.
-The 67 previously shipped station IDs and five service IDs are retained. The
-target remains `jr-yamanote`, the start remains `shimbashi`, `budgetProfile` is
-`capital-region`, and simplification remains 1 m. S5 will change the game rules;
-S6 keeps the all-equal rules shipped by this step.
+`data/overrides/dataset.json` pins `expected-catalog.json` with SHA-256
+`42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`. The 67
+previously shipped station IDs and five service IDs are retained. The game starts
+at `shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile,
+and simplifies geometry by 1 m. S5 sets the ruleset to `jr-east-capital-1`:
+Yamanote has a 1/2 share when it is a candidate, remaining services share the
+other half uniformly, local and rapid bases have equal weight, and the direction
+toward Yamanote is weighted 2:1 when both directions can move.
 
-Current output has 568 primitive features and 1,230 directed segment references;
-the maximum chain is 3 primitives. One reviewed platform transfer is at 上野 for
-常磐線快速, the maximum reviewed platform offset is 393.4 m at 武蔵小杉 on 南武線,
-and the two 湘南新宿ライン freight-corridor surrogate pairs retain their 2.1
-detour allowance. Raw/gzip measurements and N02 evidence are in
-`.claude/docs/research/jr-east-capital-region-s6.md` and its pair-evidence CSV. The annex
-separates actual section traversal from endpoint-only contact and nearby
-candidates. Service filters pin the distinguishable Tama, Joban and Minami-Urawa
-branches. N02 generalizes separate rapid/local tracks on the new Sobu span and
-parts of Joban, and merges the Tohoku passenger/freight through corridor; the
-S6 evidence specifies those representation limits without asserting physical
-track sharing.
+The output has 1,224 directed segments, 568 primitive features and 1,230 geometry
+references; the maximum chain is 3 primitives. One reviewed platform transfer is
+at 上野 for 常磐線快速 (maximum transfer 150 m; the maximum measured endpoint jump
+is 130.956 m). Reviewed platform-offset exceptions are 東京 on 京葉線 (up to 500 m)
+and 武蔵小杉 on 南武線 (up to 400 m; measured 393.4 m). Two 湘南新宿ライン freight-corridor
+surrogate pairs have a reviewed detour ratio of 2.1. Full sizes, budget use and N02
+routing evidence are recorded in `.claude/docs/research/jr-east-capital-region-s6.md`.
+
+N02 has known generalized-line limits: it does not distinguish the separate
+常磐線各停・快速 tracks between 綾瀬 and 金町, the separate 総武快速・緩行 tracks
+on the 江戸川 bridge, or the passenger/freight track distinction on the 赤羽–浦和
+bypass. Service patterns remain distinct in game data; the mapped N02 geometry is
+not proof that the real tracks are shared. The 上野 transfer described above is
+explicitly modeled rather than bridged with invented track geometry.
 
 Rebuild into a temporary directory and compare before publishing:
 
@@ -83,19 +92,15 @@ routing tests run in CI without raw N02. The existing raw-data build test module
 skipped only when the raw download is absent; locally it checks pinned inputs and
 byte-for-byte equality with the committed output.
 
-```bash
-# Keep the reviewed public/data candidate unchanged while checking both rebuilds.
-uv run python -m scripts.data_pipeline.build --quiet --out-dir /tmp/jrcr-s2-first
-uv run python -m scripts.data_pipeline.build --quiet --out-dir /tmp/jrcr-s2-second
-diff -r public/data /tmp/jrcr-s2-first
-diff -r public/data /tmp/jrcr-s2-second
-diff -r /tmp/jrcr-s2-first /tmp/jrcr-s2-second
-```
+The regional staging inputs are under `data/staging/jr-east-capital-region/` and
+use the `stage` validation profile with separate outputs. Tokyo, Chiba, Kanagawa
+and Saitama stage catalogues were used to assemble the live catalogue. Stage
+manifests use schema `3-stage`, are rejected by the browser, and must never be
+written to `public/data/`; the live bundle uses the `gameplay` profile and schema 3.
 
 ### Prefecture stage validation
 
-`validationProfile` in `dataset.json` defaults to `"gameplay"`; existing live and
-Tokyo staging overrides retain that profile and their byte-identical v3 output.
+`validationProfile` in `dataset.json` defaults to `"gameplay"`; the live override uses that profile; regional stage overrides opt into `stage`.
 For a stage without a circular gameplay target, opt in with:
 
 ```json
@@ -164,7 +169,7 @@ catalogue excluded Joban local, Joban rapid, Yokosuka/Sobu rapid and other
 rapid/through services. S6 supersedes its live scope with the approved 40-service
 regional catalogue described above.
 
-### Regional preparation (historical S3a stage; no longer the shipped scope)
+### Historical regional preparation (S3a; superseded by the live S6 dataset)
 
 The registry header is
 `id,name,n02_name,prefecture,municipality,representative_service_id[,n02_selector]`.
@@ -181,10 +186,10 @@ deduplication; a stop selector cannot override the registry's identity.
 `[138.6,34.8,141.0,36.8]` and candidate bounds `[138.5,34.65,141.2,37.0]`.
 These boxes cover the regional railway extent; area membership comes from the
 reviewed prefecture/municipality fields, rather than a rectangle or N03 input.
-The candidate box must enclose the output box. The shipped dataset explicitly
-restricts membership to Tokyo's 23 municipalities while using the wider regional
-search/output bounds. Artifact coordinates and route/via points use their dataset's
-configured bounds. No regional playable rows have been added.
+The candidate box must enclose the output box. The then-shipped 23-ward dataset explicitly
+restricted membership to Tokyo's municipalities while using wider regional
+search/output bounds. Artifact coordinates and route/via points use each dataset's
+configured bounds. This historical description was superseded by the S6 live dataset.
 
 Every service needs `scopeSource` in `services.json` and `scope.csv` with columns
 `station_id,prefecture,municipality`. Record the independently reviewed served-stop
@@ -255,8 +260,8 @@ Composition DAGs, primitive anchors, shared owners and dataset budgets follow in
 
 A directed segment id is `<service>:<from>:<to>`. Linear services have both directions;
 Yamanote has outer only. Segments carry a non-empty `geometryFeatureIds` chain in travel order. Reverse
-segments carry the reversed list. The current five services use one-element chains:
-`<service>:<forward-from>~<forward-to>`. Features are service-owned primitives with
+segments carry the reversed list. The historical 23-ward bundle used one-element chains; the current 1都3県 bundle
+uses chains of up to 3 primitives. Features are service-owned primitives with
 `{featureId, serviceId, lineId, from, to}`; future rapid/through consumers may compose
 primitives from multiple owners without changing ownership or gameplay progress.
 Animation orients each primitive by station identity, concatenates exact joints once,
@@ -266,7 +271,7 @@ services require `kind` (`local | rapid`) and non-empty `lineIds`, plus
 `directionLabels`, `platformCoordinates`, and (if linear) `endpoints.first/last`
 (`terminus`, `area-boundary`, or `service-boundary`, displayed as 「系統の端」).
 Legacy v2 bundles are rejected by the runtime guards. `segments.json` is compact,
-with one object per line. IDs, stop order and all-equal gameplay remain unchanged.
+with one object per line. The current live bundle uses the approved 40-service stop order and the S5 weighted gameplay rules.
 
 The validator checks the strict five-file schema, registry/area/catalogue,
 metadata/stop order, pair coverage and walks, platforms/representatives and reviewed
@@ -274,7 +279,8 @@ offsets, unique owned features and valid owner pairs, non-empty/known/ordered tr
 reversed reverse-hop chains, exact joints, no backtracking/orphans, endpoint orientation,
 same-service skipped stops,
 detours/via hints, service lengths, connectivity, start-not-endpoint, deterministic
-bytes/content hash and the 300,000-byte GeoJSON limit. Other services' stations
+bytes/content hash and the selected dataset budget profile limits (300,000 B GeoJSON
+for `23ku`; 1,572,864 B raw for `capital-region`). Other services' stations
 near a path are diagnostic only: Saikyo legitimately passes Yamanote-only stops.
 
 At the historical 2026-10-12 23-ward refresh: v3 geometry 43,433 B; maximum endpoint offset 24.507 m
@@ -383,7 +389,7 @@ file compressed separately with level 9 and `mtime=0`; gzip artifacts are not
 shipped. Build rejects overruns before writing files; validation reports raw,
 gzip, total reference count and maximum chain length. The regional payload
 limits come from the S3b handoff; reference/chain caps and additional 23ku caps
-are conservative configuration defaults. S6P must measure and review them.
+are conservative configuration defaults. S6 measured and accepted them for the live regional dataset.
 
 `dataset.json` can set `simplifyToleranceM` (finite and positive, default 1 m).
 Keep 1 m for the shipped edition. Compare alternatives without writing game data:

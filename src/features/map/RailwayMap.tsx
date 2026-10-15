@@ -26,7 +26,6 @@ import {
   NETWORK_FIT_PADDING_PHONE,
   NETWORK_FIT_PANEL_GAP,
   PHONE_MEDIA_QUERY,
-  PHONE_PANEL_MAX_HEIGHT_SHARE,
   isPhoneWidth,
 } from "./mapConfig";
 import {
@@ -75,11 +74,21 @@ function fitNetworkOverview(map: MapLibreMap, services: readonly ServicePattern[
   const padding = isPhoneWidth()
     ? {
         ...NETWORK_FIT_PADDING_PHONE,
-        bottom: map.getContainer().clientHeight * PHONE_PANEL_MAX_HEIGHT_SHARE + NETWORK_FIT_PANEL_GAP,
+        bottom: phonePanelBottomPadding(map),
       }
     : NETWORK_FIT_PADDING_DESKTOP;
   map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
   map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+}
+
+/** Reserve the visible panel height, which can be smaller than its CSS cap. */
+function phonePanelBottomPadding(map: MapLibreMap): number {
+  const container = map.getContainer();
+  const panel = document.querySelector<HTMLElement>(".game-panel");
+  if (!panel) return NETWORK_FIT_PANEL_GAP;
+  const containerBottom = container.getBoundingClientRect().bottom;
+  const panelTop = panel.getBoundingClientRect().top;
+  return Math.max(0, containerBottom - panelTop) + NETWORK_FIT_PANEL_GAP;
 }
 
 /** Centre the camera on `position` without touching the zoom. */

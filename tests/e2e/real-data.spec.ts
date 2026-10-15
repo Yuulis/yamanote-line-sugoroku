@@ -31,6 +31,9 @@ async function expectPlatformsInView(page: Page, points: [number, number][]): Pr
 
 
 test("the shipped capital-region network starts, moves and restores without console errors", async ({ page, railwayBundle }, testInfo) => {
+  // One smoke over the full 472-station bundle with several reloads under
+  // software WebGL; it measures 22-33 s locally, at the default 30 s limit.
+  test.slow();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
