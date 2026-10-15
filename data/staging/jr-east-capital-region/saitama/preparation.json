@@ -1,0 +1,132 @@
+{
+  "status": "validated-stage",
+  "validationProfile": "stage",
+  "stageStartStationId": "musashi-urawa",
+  "serviceCount": 9,
+  "stationCount": 75,
+  "serviceStopRows": 113,
+  "forwardPairs": 104,
+  "expectedCatalogSha256": "09651aec08c4855a81b344fa9ee02059e20cb489df0f14be77e8a259e859dd30",
+  "services": [
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線・根岸線",
+      "expectedStopCount": 9,
+      "endpoints": {
+        "first": "terminus",
+        "last": "area-boundary"
+      },
+      "lengthRefKm": 14.5,
+      "builtLengthKm": 14.485,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-hachiko",
+      "name": "八高線",
+      "expectedStopCount": 14,
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "lengthRefKm": 59.5,
+      "builtLengthKm": 59.588,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "name": "川越線 川越–高麗川",
+      "expectedStopCount": 6,
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "lengthRefKm": 14.5,
+      "builtLengthKm": 14.629,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線・川越線",
+      "expectedStopCount": 14,
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "lengthRefKm": 28.6,
+      "builtLengthKm": 28.636,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "expectedStopCount": 14,
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "lengthRefKm": 37.7,
+      "builtLengthKm": 37.836,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-utsunomiya",
+      "name": "宇都宮線 (上野東京ライン)",
+      "expectedStopCount": 11,
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "lengthRefKm": 33.0,
+      "builtLengthKm": 32.959,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-takasaki",
+      "name": "高崎線 (上野東京ライン)",
+      "expectedStopCount": 18,
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "lengthRefKm": 65.8,
+      "builtLengthKm": 66.031,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "expectedStopCount": 10,
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "lengthRefKm": 33.0,
+      "builtLengthKm": 32.959,
+      "status": "build-and-stage-validation-OK"
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "expectedStopCount": 17,
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "lengthRefKm": 65.8,
+      "builtLengthKm": 66.031,
+      "status": "build-and-stage-validation-OK"
+    }
+  ],
+  "missingOverrides": [],
+  "excludedFromStage": "Cross-prefecture neighbors are recorded in cross-border-pairs.csv only; Tokyo enclaves and inter-prefecture split runs are deferred to the combined S6 dataset.",
+  "acceptance": {
+    "buildsExit0": true,
+    "repeatBuildDiffEmpty": true,
+    "stageValidateOK": true,
+    "liveOutputMatchesPublicData": true,
+    "protectedDiffClean": true,
+    "ruffCheckPass": true,
+    "ruffFormatCheckPass": true,
+    "pytest": "339 passed, 9 skipped"
+  }
+}
