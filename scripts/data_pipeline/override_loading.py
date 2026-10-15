@@ -98,6 +98,11 @@ def load_service(
 
 def load_overrides(overrides_dir: Path) -> Overrides:
     dataset = parse_dataset(_read_json(overrides_dir / config.DATASET_OVERRIDE_FILE))
+    if (
+        dataset.validation_profile == "stage"
+        and overrides_dir.resolve() == config.DEFAULT_OVERRIDES_DIR.resolve()
+    ):
+        raise OverrideError("stage profile is forbidden for live data/overrides")
     registry = load_registry(overrides_dir / config.REGISTRY_OVERRIDE_FILE)
     envelope = _read_json(overrides_dir / config.SERVICES_OVERRIDE_FILE)
     if not isinstance(envelope, dict) or set(envelope) != {"lines", "services"}:

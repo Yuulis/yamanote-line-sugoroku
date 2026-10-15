@@ -42,6 +42,17 @@ class DatasetOverride:
     budget_profile: str = "23ku"
     budgets: Mapping[str, int] = field(default_factory=dict)
     simplify_tolerance_m: float = config.SIMPLIFY_TOLERANCE_M
+    validation_profile: str = "gameplay"
+    stage_start_station_id: str = ""
+
+    @property
+    def validation_start_station_id(self) -> str:
+        """The stage seed is independent of the game's start and target."""
+        return (
+            self.stage_start_station_id
+            if self.validation_profile == "stage"
+            else self.start_station_id
+        )
 
 
 @dataclass(frozen=True)

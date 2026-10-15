@@ -519,15 +519,32 @@ def check_manifest(
     payloads: dict[str, str],
     report: Report,
     updated_at: str | None = None,
+    validation_profile: str = "gameplay",
+    stage_start_station_id: str = "",
 ) -> None:
     if not isinstance(manifest, dict):
         report.errors.append("manifest.json must be an object")
         return
-    if set(manifest) != {"schemaVersion", "dataVersion", "updatedAt", "source"}:
+    stage = validation_profile == "stage"
+    keys = {"schemaVersion", "dataVersion", "updatedAt", "source"}
+    if stage:
+        keys |= {"validationProfile", "stageStartStationId"}
+        if manifest.get("validationProfile") != "stage":
+            report.errors.append("manifest.validationProfile must be stage")
+        if manifest.get("stageStartStationId") != stage_start_station_id:
+            report.errors.append(
+                "manifest.stageStartStationId differs from the override"
+            )
+    if set(manifest) != keys:
         report.errors.append(
-            "manifest.json must have exactly schemaVersion, dataVersion, updatedAt and source"
+            f"manifest.json must have exactly {', '.join(sorted(keys))}"
         )
-    if type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 3:
+    if stage:
+        if manifest.get("schemaVersion") != "3-stage":
+            report.errors.append("manifest.schemaVersion must be 3-stage")
+    elif (
+        type(manifest.get("schemaVersion")) is not int or manifest["schemaVersion"] != 3
+    ):
         report.errors.append("manifest.schemaVersion must be 3")
     if not is_iso_date(manifest.get("updatedAt")):
         report.errors.append("manifest.updatedAt must be a YYYY-MM-DD date")
@@ -584,7 +601,7 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
                 overrides.service(service.id).definition.length_ref,
                 report,
             )
-    start = overrides.dataset.start_station_id
+    start = overrides.dataset.validation_start_station_id
     rules.check_connectivity(
         services,
         start,
@@ -602,7 +619,8 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
             start,
             report,
         )
-    rules.check_start_not_endpoint(services, start, report)
+    if overrides.dataset.validation_profile != "stage":
+        rules.check_start_not_endpoint(services, start, report)
     representatives = {
         station_id: Point(to_metric(coordinate))
         for station_id, coordinate in positions.items()
@@ -611,7 +629,12 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         platforms, representatives, overrides.offset_exceptions, report
     )
     check_manifest(
-        dataset.manifest, dataset.payloads, report, overrides.dataset.updated_at
+        dataset.manifest,
+        dataset.payloads,
+        report,
+        overrides.dataset.updated_at,
+        overrides.dataset.validation_profile,
+        overrides.dataset.stage_start_station_id,
     )
     documents = {
         config.STATIONS_FILE: dataset.stations,

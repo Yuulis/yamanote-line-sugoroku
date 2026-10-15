@@ -152,23 +152,11 @@ def check_consistency(overrides: Overrides) -> None:
                 f"{station.representative_service_id!r} does not stop there"
             )
 
-    if dataset.target_service_id not in service_ids:
-        raise OverrideError(f"target service {dataset.target_service_id!r} is unknown")
-    target = overrides.target
-    if not target.circular:
-        raise OverrideError("the target service must be circular")
-    if target.station_ids[0] != dataset.start_station_id:
-        raise OverrideError(
-            f"S[0] of {target.id} must be the start station {dataset.start_station_id!r}"
-        )
-    for service in services:
-        if service.circular:
-            continue
-        ends = (service.station_ids[0], service.station_ids[-1])
-        if dataset.start_station_id in ends:
-            raise OverrideError(
-                f"start station {dataset.start_station_id} is an endpoint of {service.id}"
-            )
+    if dataset.validation_profile == "stage":
+        if dataset.stage_start_station_id not in registry:
+            raise OverrideError("stage start must be an in-area registry station")
+    else:
+        check_gameplay_goal(overrides)
     from scripts.data_pipeline.composition import check_recipes
 
     check_recipes(overrides)
@@ -207,6 +195,30 @@ def check_consistency(overrides: Overrides) -> None:
             pairs = pairs[:-1]
         if (exception.from_id, exception.to_id) not in pairs:
             raise OverrideError(f"detour exception is not a forward stop pair: {key}")
+
+
+def check_gameplay_goal(overrides: Overrides) -> None:
+    """Goal-only invariants; stage data has no gameplay target."""
+    dataset = overrides.dataset
+    if dataset.target_service_id not in dataset.service_ids:
+        raise OverrideError(f"target service {dataset.target_service_id!r} is unknown")
+    target = overrides.target
+    if not target.circular:
+        raise OverrideError("the target service must be circular")
+    if target.station_ids[0] != dataset.start_station_id:
+        raise OverrideError(
+            f"S[0] of {target.id} must be the start station {dataset.start_station_id!r}"
+        )
+    for service in overrides.services:
+        if service.circular:
+            continue
+        if dataset.start_station_id in (
+            service.station_ids[0],
+            service.station_ids[-1],
+        ):
+            raise OverrideError(
+                f"start station {dataset.start_station_id} is an endpoint of {service.id}"
+            )
 
 
 def check_offset_exception_references(overrides: Overrides) -> None:
