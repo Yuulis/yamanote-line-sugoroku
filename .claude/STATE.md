@@ -66,7 +66,7 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 ### Context
 
 - Goal: replace the 23-ward edition with a 1都3県 edition covering every JR East conventional line (Tokyo excl. islands, Chiba, Saitama, Kanagawa), with 緩行線/快速線 track systems as separate services.
-- Status (2026-10-15): 1都3県版 released to production 2026-10-15 (PRs #6–#26); merged branches cleaned up. Next: the user picks a direction from `docs/manual/development-roadmap/proposal.md`. Codex lanes: Luna high / Sol low review. Resume from the handoff.
+- Status (2026-10-15): 1都3県版 released to production 2026-10-15 (PRs #6–#26). New project: 東京近郊版 on `feature/tokyo-suburban-network` — R1 research done; Codex owns the rest (next R1b → R2). Resume from `.claude/docs/plans/tokyo-suburban-network-handoff.md`. Codex lanes: Luna high / Sol low review. Resume from the handoff.
 - Handoff: .claude/docs/plans/jr-east-capital-region-handoff.md (next steps in order).
 - Design: .claude/docs/research/jr-east-capital-region-expansion-design.md; research + catalog v1: .claude/docs/research/jr-east-capital-region-*.{md,csv}
 - Dependencies: none new
