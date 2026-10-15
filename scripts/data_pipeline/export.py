@@ -298,6 +298,13 @@ def build_files(
         ),
     }
     manifest = build_manifest(manifest_inputs(files), overrides.dataset.updated_at)
+    if overrides.dataset.validation_profile == "stage":
+        # The existing browser contract rejects this schema, even if copied by hand.
+        manifest.update(
+            schemaVersion="3-stage",
+            validationProfile="stage",
+            stageStartStationId=overrides.dataset.stage_start_station_id,
+        )
     files[config.MANIFEST_FILE] = dumps_pretty(manifest)
     return files
 
@@ -313,6 +320,12 @@ def write_text(path: Path, text: str) -> None:
 def write_outputs(out_dir: Path, files: Mapping[str, str]) -> None:
     """Write the game data first and the manifest last, so a failed build
     never leaves a manifest that points at data which was not written."""
+    manifest = json.loads(files[config.MANIFEST_FILE])
+    if (
+        manifest.get("validationProfile") == "stage"
+        and out_dir.resolve() == config.DEFAULT_OUT_DIR.resolve()
+    ):
+        raise ValueError("stage output cannot be written to public/data")
     names = sorted(files, key=lambda name: (name == config.MANIFEST_FILE, name))
     for name in names:
         write_text(out_dir / name, files[name])

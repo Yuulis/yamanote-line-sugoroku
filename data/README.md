@@ -57,6 +57,56 @@ diff -r public/data /tmp/jrcr-s2-second
 diff -r /tmp/jrcr-s2-first /tmp/jrcr-s2-second
 ```
 
+### Prefecture stage validation
+
+`validationProfile` in `dataset.json` defaults to `"gameplay"`; existing live and
+Tokyo staging overrides retain that profile and their byte-identical v3 output.
+For a stage without a circular gameplay target, opt in with:
+
+```json
+{
+  "validationProfile": "stage",
+  "stageStartStationId": "musashi-urawa"
+}
+```
+
+These fields supplement the ordinary dataset metadata, area, catalogue, oracle
+and budgets. Omit `startStationId` and `targetServiceId` in this profile (their
+presence is rejected); `stageStartStationId` must name a served in-area registry
+station, including an endpoint if desired. `stageStartStationId` is forbidden in
+the gameplay profile. Unknown validation profiles are rejected.
+
+Exactly these gameplay checks are omitted: target service membership, target
+circularity, target first stop equal to gameplay start, gameplay start not being
+an endpoint of any linear service (both override and artifact checks), and the
+target-specific unreachable-segment check. There is no stage target. The reviewed
+disconnected-service list check still runs. All registry/area/scope, numbering,
+routing, composition, geometry, platform-transfer, length, budget and hash-pinned
+expected-catalogue checks remain, as does reachability of **every station from
+and back to the stage start**, in both build and artifact validation. Stop-pair
+and end-to-end walk checks remain for every linear or circular service.
+
+Stage manifests have `schemaVersion: "3-stage"`, `validationProfile: "stage"`
+and `stageStartStationId`; the current browser rejects that schema. Artifact
+validation requires those fields to match the overrides. Stage overrides are
+rejected at the resolved live `data/overrides` path by both build and validation,
+including symlink aliases. The writer also rejects stage output at the resolved
+`public/data` path before writing any files. Always choose a separate output:
+
+```bash
+uv run python -m scripts.data_pipeline.build --raw-dir N02-25_GML/UTF-8 \
+  --overrides-dir data/staging/jr-east-capital-region/saitama/overrides \
+  --out-dir /tmp/jrcr-saitama --quiet
+uv run python -m scripts.data_pipeline.validate \
+  --overrides-dir data/staging/jr-east-capital-region/saitama/overrides \
+  --data-dir /tmp/jrcr-saitama
+```
+
+The commands assume complete reviewed stage inputs; this profile does not fill
+in missing recipes or metadata. For an integrated gameplay release, remove the
+stage fields, restore `startStationId`/`targetServiceId` and pass all default
+gameplay checks before publishing a fresh v3 build. Never relabel a stage manifest.
+
 ## Reviewed overrides
 
 | Path | Purpose |

@@ -372,7 +372,7 @@ def generate_build(raw_dir: Path, overrides: Overrides) -> BuildResult:
     rules.check_two_way_reachability(
         (station.id for station in overrides.registry.stations),
         ((segment["from"], segment["to"]) for segment in segments),
-        overrides.dataset.start_station_id,
+        overrides.dataset.validation_start_station_id,
         report,
     )
     if report.errors:

@@ -851,6 +851,15 @@ geometry, device performance and save/restore are outside this confirmation.
 
 ## S6P stage 1 — Tokyo (merged via PR #14, `76ae638`, 2026-10-14)
 
+Prefecture validation follow-up: datasets without a circle can opt into
+`validationProfile: "stage"` with a served `stageStartStationId`, omitting gameplay
+`startStationId`/`targetServiceId`. Only target membership/circularity/first-stop,
+start endpoint and target-only reachability checks are omitted; every-station
+two-way reachability, pinned oracle and all other data checks remain. Stage output
+uses the non-playable `3-stage` manifest schema and is forbidden at live overrides
+and `public/data` paths. Tokyo keeps the default gameplay profile and identical
+output. See `data/README.md` for syntax, commands and release migration.
+
 Done Claude-led (`general-purpose-opus`; Codex read-only review NEEDS_REVISION → both items relabelled).
 Staging: `data/staging/jr-east-capital-region/tokyo/overrides/**`; evidence and per-segment metrics:
 `.claude/docs/research/jr-east-capital-region-s6p-tokyo.md`; test `tests/data_pipeline/test_staging_tokyo.py`;

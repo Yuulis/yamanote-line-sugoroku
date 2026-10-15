@@ -145,13 +145,30 @@ def parse_dataset(raw: Any) -> DatasetOverride:
     for key in ("expectedCatalogFile", "expectedCatalogSha256"):
         if key in raw and (not isinstance(raw[key], str) or not raw[key]):
             raise OverrideError(f"{key} must be a non-empty string")
+    validation_profile = raw.get("validationProfile", "gameplay")
+    if validation_profile not in ("gameplay", "stage"):
+        raise OverrideError("validationProfile must be 'gameplay' or 'stage'")
+    stage_start = ""
+    start = ""
+    target = ""
+    if validation_profile == "stage":
+        if "startStationId" in raw or "targetServiceId" in raw:
+            raise OverrideError("stage profile must omit gameplay start/target fields")
+        stage_start = _text(raw, "stageStartStationId", where)
+    else:
+        if "stageStartStationId" in raw:
+            raise OverrideError(
+                "stageStartStationId requires validationProfile 'stage'"
+            )
+        start = _text(raw, "startStationId", where)
+        target = _text(raw, "targetServiceId", where)
     return DatasetOverride(
         operator=_text(raw, "operator", where),
         n02_operator=_text(raw, "n02Operator", where),
         updated_at=updated_at,
         area_name=_text(raw, "areaName", where),
-        start_station_id=_text(raw, "startStationId", where),
-        target_service_id=_text(raw, "targetServiceId", where),
+        start_station_id=start,
+        target_service_id=target,
         service_ids=_id_list(raw, "serviceIds", where),
         reviewed_disconnected_service_ids=_id_list(
             raw, "reviewedDisconnectedServiceIds", where
@@ -164,6 +181,8 @@ def parse_dataset(raw: Any) -> DatasetOverride:
         budget_profile=profile,
         budgets=budgets,
         simplify_tolerance_m=float(simplify),
+        validation_profile=validation_profile,
+        stage_start_station_id=stage_start,
     )
 
 
