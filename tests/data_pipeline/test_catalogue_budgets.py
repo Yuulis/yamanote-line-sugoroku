@@ -110,7 +110,7 @@ def test_each_budget_rejects_only_its_own_overrun(budget: str, key: str) -> None
 
 
 def test_size_report_includes_all_five_files_gzip_and_flattened_references(
-    published_dataset: Dataset,
+    published_dataset: Dataset, committed_overrides: Overrides
 ) -> None:
     files = {
         **published_dataset.payloads,
@@ -118,15 +118,17 @@ def test_size_report_includes_all_five_files_gzip_and_flattened_references(
     }
     report = file_size_report(files)
     assert len([key for key in report if key.startswith("gzip_bytes[")]) == 5
-    assert report["geometry_reference_count"] == 146
-    assert report["max_geometry_chain_length"] == 1
+    assert report["geometry_reference_count"] == 1_230
+    assert report["max_geometry_chain_length"] == 3
     assert report["total_raw_bytes"] == sum(
         len(payload.encode()) for payload in files.values()
     )
     assert report == file_size_report(files)
-    check_file_budgets(files, BUDGET_PROFILES["23ku"])
+    check_file_budgets(files, committed_overrides.dataset.budgets)
     with pytest.raises(OverrideError, match="budget overrun maxChainLength"):
-        check_file_budgets(files, {**BUDGET_PROFILES["23ku"], "maxChainLength": 0})
+        check_file_budgets(
+            files, {**committed_overrides.dataset.budgets, "maxChainLength": 0}
+        )
 
 
 def test_regional_profile_and_configured_simplification(
@@ -147,7 +149,10 @@ def test_regional_profile_and_configured_simplification(
     assert parsed.budgets["totalGzip"] == 921_600
     assert parsed.budgets["references"] == 10_000
     assert parsed.simplify_tolerance_m == 3
-    assert committed_overrides.dataset.budgets["geojsonRaw"] == config.MAX_GEOJSON_BYTES
+    assert (
+        committed_overrides.dataset.budgets["geojsonRaw"]
+        == BUDGET_PROFILES["capital-region"]["geojsonRaw"]
+    )
 
 
 @pytest.mark.parametrize(
@@ -173,13 +178,13 @@ def test_invalid_budget_or_simplification_config_is_rejected(
 def test_validator_honours_dataset_chain_budget(
     dataset: Dataset, committed_overrides: Overrides
 ) -> None:
-    limits = {**committed_overrides.dataset.budgets, "references": 145}
+    limits = {**committed_overrides.dataset.budgets, "references": 1_229}
     overrides = replace(
         committed_overrides,
         dataset=replace(committed_overrides.dataset, budgets=limits),
     )
     report = validate_dataset(dataset, overrides)
-    assert report.errors == ["budget overrun references: 146 > 145"]
+    assert report.errors == ["budget overrun references: 1230 > 1229"]
 
 
 @pytest.mark.parametrize(

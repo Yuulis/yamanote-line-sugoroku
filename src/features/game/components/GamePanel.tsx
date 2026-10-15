@@ -54,7 +54,7 @@ export function GamePanel(props: GamePanelProps) {
   return (
     <section className="game-panel" aria-label="ゲーム操作">
       <h1 className="game-panel__title">山手線すごろく</h1>
-      <p className="game-panel__subtitle">JR東日本 東京23区版</p>
+      <p className="game-panel__subtitle">JR東日本 1都3県版</p>
       <dl className="game-panel__stats">
         <dt>現在駅</dt>
         <dd>{stationName(network, props.displayedStationId)}</dd>

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -27,6 +28,11 @@ EXPECTED_OUTER_LOOP = (
 
 YAMANOTE_DIR = Path(config.SERVICES_OVERRIDE_DIR) / "jr-yamanote"
 KEIYO_DIR = Path(config.SERVICES_OVERRIDE_DIR) / "jr-keiyo"
+EXPECTED_CATALOG = json.loads(
+    (Path(config.DEFAULT_OVERRIDES_DIR) / "expected-catalog.json").read_text(
+        encoding="utf-8"
+    )
+)
 
 
 def _stops(*numbers: str) -> tuple[Stop, ...]:
@@ -54,13 +60,12 @@ def test_load_overrides_with_committed_tables_returns_outer_loop(
     assert target.station_ids[0] == "shimbashi"
     assert target.id == "jr-yamanote"
     assert target.definition.direction_labels.forward == "外回り"
-    assert committed_overrides.dataset.updated_at == "2026-10-12"
-    assert committed_overrides.dataset.service_ids == (
-        "jr-yamanote",
-        "jr-keihin-tohoku",
-        "jr-chuo-sobu-local",
-        "jr-saikyo",
-        "jr-keiyo",
+    assert committed_overrides.dataset.updated_at == "2026-10-15"
+    assert committed_overrides.dataset.service_ids == tuple(
+        service["id"] for service in EXPECTED_CATALOG["services"]
+    )
+    assert len(committed_overrides.registry.stations) == len(
+        EXPECTED_CATALOG["stationIds"]
     )
 
 
@@ -425,9 +430,12 @@ def test_is_iso_date_with_malformed_value_returns_false(value: object) -> None:
 def test_load_overrides_with_malformed_updated_at_raises(
     overrides_copy: Path, value: str
 ) -> None:
+    updated_at = json.loads(
+        (overrides_copy / config.DATASET_OVERRIDE_FILE).read_text(encoding="utf-8")
+    )["updatedAt"]
     rewrite(
         overrides_copy / config.DATASET_OVERRIDE_FILE,
-        '"updatedAt": "2026-10-12"',
+        f'"updatedAt": "{updated_at}"',
         f'"updatedAt": "{value}"',
     )
 
@@ -436,9 +444,12 @@ def test_load_overrides_with_malformed_updated_at_raises(
 
 
 def test_load_overrides_without_updated_at_raises(overrides_copy: Path) -> None:
+    updated_at = json.loads(
+        (overrides_copy / config.DATASET_OVERRIDE_FILE).read_text(encoding="utf-8")
+    )["updatedAt"]
     rewrite(
         overrides_copy / config.DATASET_OVERRIDE_FILE,
-        '  "updatedAt": "2026-10-12",\n',
+        f'  "updatedAt": "{updated_at}",\n',
         "",
     )
 

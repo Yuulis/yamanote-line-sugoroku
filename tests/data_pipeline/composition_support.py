@@ -222,6 +222,8 @@ def composition_overrides(template: Overrides) -> Overrides:
         services=tuple(services),
         registry=registry,
         offset_exceptions=(),
+        platform_transfers=(),
+        detour_exceptions=(),
         lines=(LineMetadata("track", "Track", "#000000"),),
     )
 

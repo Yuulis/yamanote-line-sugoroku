@@ -279,10 +279,10 @@ def test_homonyms_with_disjoint_registry_selectors_keep_distinct_ids() -> None:
 def test_shipped_registry_has_prefecture_and_municipality(
     committed_overrides: Overrides,
 ) -> None:
-    assert len(committed_overrides.registry.stations) == 67
+    assert len(committed_overrides.registry.stations) == 472
     assert {
         station.prefecture for station in committed_overrides.registry.stations
-    } == {"東京都"}
+    } == {"東京都", "千葉県", "神奈川県", "埼玉県"}
     assert committed_overrides.registry.by_id()["tokyo"].municipality == "千代田区"
     assert (
         committed_overrides.registry.by_id()["kasai-rinkai-koen"].municipality

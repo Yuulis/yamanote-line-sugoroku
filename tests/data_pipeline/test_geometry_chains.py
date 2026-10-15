@@ -182,6 +182,7 @@ def test_multi_owner_rapid_chain_passes_whole_dataset_validation(
         registry=registry,
         services=service_overrides,
         offset_exceptions=(),
+        platform_transfers=(),
         lines=(LineMetadata("track", "Track", "#000000"),),
     )
     segments = [
