@@ -9,6 +9,7 @@ import { gamePanel, openTitle, readMap, startNewGame } from "./support/app";
 test.use({ dataset: "real" });
 
 const SCREENSHOT_DIR = resolve(".claude/logs/jrcr-s6v/screenshots");
+const JRCR_S7_SCREENSHOT_DIR = resolve(".claude/logs/jrcr-s7/screenshots");
 const TARGET_SERVICE_ID = "jr-yamanote";
 /** Allowed offset of the target line's centre from the free area's centre. */
 const CENTRE_TOLERANCE_SHARE = 0.12;
@@ -44,20 +45,28 @@ async function project(page: Page, points: [number, number][]): Promise<{ x: num
 }
 
 async function expectInFreeArea(page: Page, points: [number, number][]): Promise<Rect> {
-  const area = await freeArea(page);
-  const projected = await project(page, points);
-  for (const { x, y } of projected) {
-    expect(x).toBeGreaterThanOrEqual(area.left);
-    expect(x).toBeLessThanOrEqual(area.right);
-    expect(y).toBeGreaterThanOrEqual(area.top);
-    expect(y).toBeLessThanOrEqual(area.bottom);
-  }
-  return {
-    left: Math.min(...projected.map((p) => p.x)),
-    right: Math.max(...projected.map((p) => p.x)),
-    top: Math.min(...projected.map((p) => p.y)),
-    bottom: Math.max(...projected.map((p) => p.y)),
-  };
+  const result = await page.evaluate(({ coordinates, phone }) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
+    const panel = document.querySelector<HTMLElement>(".game-panel")!.getBoundingClientRect();
+    const viewport = { width: window.innerWidth, height: window.innerHeight };
+    const projected = coordinates.map((point) => hook.map.project(point));
+    return {
+      bounds: {
+        left: Math.min(...projected.map((point) => point.x)),
+        right: Math.max(...projected.map((point) => point.x)),
+        top: Math.min(...projected.map((point) => point.y)),
+        bottom: Math.max(...projected.map((point) => point.y)),
+      },
+      area: phone
+        ? { left: 0, top: 0, right: viewport.width, bottom: panel.top }
+        : { left: panel.right, top: 0, right: viewport.width, bottom: viewport.height },
+    };
+  }, { coordinates: points, phone: isPhone(page) });
+  expect(result.bounds.left).toBeGreaterThanOrEqual(result.area.left);
+  expect(result.bounds.right).toBeLessThanOrEqual(result.area.right);
+  expect(result.bounds.top).toBeGreaterThanOrEqual(result.area.top);
+  expect(result.bounds.bottom).toBeLessThanOrEqual(result.area.bottom);
+  return result.bounds;
 }
 
 function expectRoughlyCentred(bounds: Rect, area: Rect): void {
@@ -72,6 +81,11 @@ function expectRoughlyCentred(bounds: Rect, area: Rect): void {
 async function screenshot(page: Page, name: string): Promise<void> {
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
   await page.screenshot({ path: resolve(SCREENSHOT_DIR, `${name}.png`) });
+}
+
+async function screenshotAt(page: Page, directory: string, name: string): Promise<void> {
+  mkdirSync(directory, { recursive: true });
+  await page.screenshot({ path: resolve(directory, name) });
 }
 
 async function renderedStationIds(page: Page): Promise<string[]> {
@@ -107,6 +121,37 @@ test("the target line starts centred in the free map area and 全体 shows every
   // The camera and the panel layout settle a frame after the click.
   await expect(async () => { await expectInFreeArea(page, allPoints); }).toPass();
   await screenshot(page, `${device}-overview`);
+  if (!isPhone(page)) await screenshotAt(page, JRCR_S7_SCREENSHOT_DIR, "after-desktop-overview.png");
+});
+
+test("phone 全体 fits the collapsed-legend map area and remains clear when expanded", async ({ page, railwayBundle }) => {
+  test.skip(!isPhone(page), "Phone-specific overview fit assertion");
+  const allPoints = [...railwayBundle.network.servicesById.values()]
+    .flatMap((service) => Object.values(service.platformCoordinates));
+  await startReadyGame(page);
+  await page.getByRole("button", { name: "全体", exact: true }).click();
+  await expect(async () => { await expectInFreeArea(page, allPoints); }).toPass();
+  await screenshotAt(page, JRCR_S7_SCREENSHOT_DIR, "after-collapsed.png");
+
+  const collapsedBounds = await expectInFreeArea(page, allPoints);
+  const collapsedArea = await freeArea(page);
+  const collapsedBottomGap = collapsedArea.bottom - collapsedBounds.bottom;
+  const maxBottomGap = 16 + Math.ceil(page.viewportSize()!.height * 0.1);
+
+  const toggle = gamePanel(page).getByRole("button", { name: /路線の凡例/ });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "全体", exact: true }).click();
+  await expect(async () => { await expectInFreeArea(page, allPoints); }).toPass();
+  await screenshotAt(page, JRCR_S7_SCREENSHOT_DIR, "after-expanded.png");
+  const expandedBounds = await expectInFreeArea(page, allPoints);
+  const expandedArea = await freeArea(page);
+  const expandedBottomGap = expandedArea.bottom - expandedBounds.bottom;
+
+  // The fit leaves 16 px beyond the panel; the 10% viewport allowance covers
+  // the phone's width-limited network aspect ratio and platform extrema.
+  expect(collapsedBottomGap).toBeLessThanOrEqual(maxBottomGap);
+  expect(expandedBottomGap).toBeLessThanOrEqual(maxBottomGap);
 });
 
 test("at overview zoom only transfer and target stations are marked; close zoom shows them all", async ({ page, railwayBundle }) => {

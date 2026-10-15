@@ -105,10 +105,18 @@ test("[8.3-6] tiles failing after the map loaded are tolerated without losing th
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   await rollOnce(page);
 
-  // New tiles are needed at the next zoom level, and all of them fail.
+  // Keep zooming until the viewport needs uncached tiles, and fail those requests.
   mapStub.failTiles = true;
   const tilesBefore = mapStub.counts.tiles;
-  await page.getByRole("button", { name: "Zoom in" }).click();
+  const zoomIn = page.getByRole("button", { name: "Zoom in" });
+  for (let attempt = 0; attempt < 3 && mapStub.counts.tiles === tilesBefore; attempt += 1) {
+    await zoomIn.click();
+    try {
+      await expect.poll(() => mapStub.counts.tiles, { timeout: 1_000 }).toBeGreaterThan(tilesBefore);
+    } catch {
+      // Some camera zoom steps stay within tiles already in the viewport cache.
+    }
+  }
   await expect.poll(() => mapStub.counts.tiles).toBeGreaterThan(tilesBefore);
 
   await rollOnce(page);
