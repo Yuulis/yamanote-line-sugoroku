@@ -1,0 +1,11 @@
+order,station_id,station_number,platform_selector
+0,musashi-kosugi,JS15,
+1,shin-kawasaki,JS14,
+2,yokohama,JS13,
+3,hodogaya,JS12,
+4,higashi-totsuka,JS11,
+5,totsuka,JS10,
+6,ofuna,JS09,
+7,kita-kamakura,JS08,
+8,kamakura,JS07,
+9,zushi,JS06,

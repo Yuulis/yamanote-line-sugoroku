@@ -72,6 +72,7 @@ test("[8.3-2] a roll updates station, turn, progress and the map marker", async 
 
 test("[8.3-3] completed segments are told apart by legend, line style and colour", async ({
   page,
+  railwayBundle,
 }) => {
   await openTitle(page);
   await startNewGame(page);
@@ -97,10 +98,10 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
   // The solid "completed" layer is filtered to exactly the traversed segments.
   await expect
     .poll(async () => sorted((await readMap(page))?.completedFilterIds ?? []))
-    .toEqual(sorted(targetFeatureIds(save)));
+    .toEqual(sorted(targetFeatureIds(save, railwayBundle)));
   // What is drawn agrees: traversed segments only in the completed layer,
   // never in the pending one (both layers have visible features).
-  const completed = new Set(targetFeatureIds(save));
+  const completed = new Set(targetFeatureIds(save, railwayBundle));
   await expect
     .poll(async () => {
       const map = await readMap(page);

@@ -1,0 +1,437 @@
+{
+  "lines": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "color": "#9ACD32"
+    },
+    {
+      "id": "capital-main-a",
+      "name": "テスト幹線A",
+      "color": "#0055AA"
+    },
+    {
+      "id": "capital-main-b",
+      "name": "テスト幹線B",
+      "color": "#BB4400"
+    },
+    {
+      "id": "capital-branch",
+      "name": "テスト支線",
+      "color": "#AA3399"
+    },
+    {
+      "id": "capital-fan",
+      "name": "テスト広域線",
+      "color": "#008866"
+    }
+  ],
+  "services": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "operator": "東日本旅客鉄道",
+      "stationIds": [
+        "shimbashi",
+        "hamamatsucho",
+        "tamachi",
+        "takanawa-gateway",
+        "shinagawa",
+        "osaki",
+        "gotanda",
+        "meguro",
+        "ebisu",
+        "shibuya",
+        "harajuku",
+        "yoyogi",
+        "shinjuku",
+        "shin-okubo",
+        "takadanobaba",
+        "mejiro",
+        "ikebukuro",
+        "otsuka",
+        "sugamo",
+        "komagome",
+        "tabata",
+        "nishi-nippori",
+        "nippori",
+        "uguisudani",
+        "ueno",
+        "okachimachi",
+        "akihabara",
+        "kanda",
+        "tokyo",
+        "yurakucho"
+      ],
+      "circular": true,
+      "color": "#9ACD32",
+      "directionLabels": {
+        "forward": "外回り",
+        "backward": "内回り"
+      },
+      "platformCoordinates": {
+        "shimbashi": [
+          139.7582,
+          35.66639
+        ],
+        "hamamatsucho": [
+          139.757125,
+          35.65541
+        ],
+        "tamachi": [
+          139.747605,
+          35.64574
+        ],
+        "takanawa-gateway": [
+          139.740644,
+          35.635379
+        ],
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "osaki": [
+          139.728245,
+          35.619945
+        ],
+        "gotanda": [
+          139.723541,
+          35.626297
+        ],
+        "meguro": [
+          139.715828,
+          35.632926
+        ],
+        "ebisu": [
+          139.710125,
+          35.64668
+        ],
+        "shibuya": [
+          139.701639,
+          35.65811
+        ],
+        "harajuku": [
+          139.702692,
+          35.671316
+        ],
+        "yoyogi": [
+          139.70221,
+          35.683795
+        ],
+        "shinjuku": [
+          139.70014,
+          35.690465
+        ],
+        "shin-okubo": [
+          139.700255,
+          35.70093
+        ],
+        "takadanobaba": [
+          139.703829,
+          35.712904
+        ],
+        "mejiro": [
+          139.70628,
+          35.72039
+        ],
+        "ikebukuro": [
+          139.711085,
+          35.730275
+        ],
+        "otsuka": [
+          139.72794,
+          35.731785
+        ],
+        "sugamo": [
+          139.74035,
+          35.73372
+        ],
+        "komagome": [
+          139.748054,
+          35.736862
+        ],
+        "tabata": [
+          139.761575,
+          35.737475
+        ],
+        "nishi-nippori": [
+          139.76678,
+          35.732082
+        ],
+        "nippori": [
+          139.770958,
+          35.727279
+        ],
+        "uguisudani": [
+          139.77803,
+          35.721455
+        ],
+        "ueno": [
+          139.775855,
+          35.71322
+        ],
+        "okachimachi": [
+          139.774715,
+          35.707195
+        ],
+        "akihabara": [
+          139.773045,
+          35.698535
+        ],
+        "kanda": [
+          139.770875,
+          35.69177
+        ],
+        "tokyo": [
+          139.766685,
+          35.680965
+        ],
+        "yurakucho": [
+          139.76326,
+          35.67504
+        ]
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-yamanote"
+      ]
+    },
+    {
+      "id": "capital-owner-a",
+      "name": "幹線A 各駅停車",
+      "operator": "Fixture railway",
+      "kind": "local",
+      "lineIds": [
+        "capital-main-a"
+      ],
+      "stationIds": [
+        "shinagawa",
+        "capital-joint"
+      ],
+      "color": "#0055AA",
+      "directionLabels": {
+        "forward": "南・東方面",
+        "backward": "北・西方面"
+      },
+      "platformCoordinates": {
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "capital-joint": [
+          139.5,
+          35.35
+        ]
+      },
+      "circular": false,
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "capital-owner-b",
+      "name": "幹線B 各駅停車",
+      "operator": "Fixture railway",
+      "kind": "local",
+      "lineIds": [
+        "capital-main-b"
+      ],
+      "stationIds": [
+        "capital-joint",
+        "capital-south"
+      ],
+      "color": "#BB4400",
+      "directionLabels": {
+        "forward": "南・東方面",
+        "backward": "北・西方面"
+      },
+      "platformCoordinates": {
+        "capital-joint": [
+          139.5,
+          35.35
+        ],
+        "capital-south": [
+          139.2,
+          35.05
+        ]
+      },
+      "circular": false,
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "capital-rapid",
+      "name": "広域直通快速",
+      "operator": "Fixture railway",
+      "kind": "rapid",
+      "lineIds": [
+        "capital-main-a",
+        "capital-main-b"
+      ],
+      "stationIds": [
+        "shinagawa",
+        "capital-south"
+      ],
+      "color": "#EE2222",
+      "directionLabels": {
+        "forward": "南・東方面",
+        "backward": "北・西方面"
+      },
+      "platformCoordinates": {
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "capital-south": [
+          139.2,
+          35.05
+        ]
+      },
+      "circular": false,
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "capital-branch",
+      "name": "広域支線",
+      "operator": "Fixture railway",
+      "kind": "local",
+      "lineIds": [
+        "capital-branch"
+      ],
+      "stationIds": [
+        "capital-west",
+        "shinagawa",
+        "capital-branch-end"
+      ],
+      "color": "#AA3399",
+      "directionLabels": {
+        "forward": "南・東方面",
+        "backward": "北・西方面"
+      },
+      "platformCoordinates": {
+        "capital-west": [
+          138.95,
+          35.7
+        ],
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "capital-branch-end": [
+          139.3,
+          35.8
+        ]
+      },
+      "circular": false,
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "capital-north",
+      "name": "広域北系統",
+      "operator": "Fixture railway",
+      "kind": "local",
+      "lineIds": [
+        "capital-fan"
+      ],
+      "stationIds": [
+        "shinagawa",
+        "capital-north"
+      ],
+      "color": "#008866",
+      "directionLabels": {
+        "forward": "南・東方面",
+        "backward": "北・西方面"
+      },
+      "platformCoordinates": {
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "capital-north": [
+          139.7,
+          36.15
+        ]
+      },
+      "circular": false,
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "capital-east",
+      "name": "広域東系統",
+      "operator": "Fixture railway",
+      "kind": "local",
+      "lineIds": [
+        "capital-fan"
+      ],
+      "stationIds": [
+        "shinagawa",
+        "capital-east"
+      ],
+      "color": "#008866",
+      "directionLabels": {
+        "forward": "南・東方面",
+        "backward": "北・西方面"
+      },
+      "platformCoordinates": {
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "capital-east": [
+          140.4,
+          35.7
+        ]
+      },
+      "circular": false,
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "capital-coast",
+      "name": "広域海岸系統",
+      "operator": "Fixture railway",
+      "kind": "local",
+      "lineIds": [
+        "capital-fan"
+      ],
+      "stationIds": [
+        "shinagawa",
+        "capital-coast"
+      ],
+      "color": "#008866",
+      "directionLabels": {
+        "forward": "南・東方面",
+        "backward": "北・西方面"
+      },
+      "platformCoordinates": {
+        "shinagawa": [
+          139.738535,
+          35.628135
+        ],
+        "capital-coast": [
+          140.15,
+          35.1
+        ]
+      },
+      "circular": false,
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    }
+  ]
+}

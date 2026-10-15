@@ -12,6 +12,7 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "test": "vitest run",
+    "sim": "vitest run --config vitest.simulation.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:install": "playwright install chromium firefox"
   },

@@ -17,6 +17,7 @@ import {
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
+import { displayedRide } from "../features/game/presentation";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 
@@ -75,13 +76,14 @@ export function GameApp({ data, network }: GameAppProps) {
     () =>
       shown
         ? {
-            completedFeatureIds: shown.completedSegmentIds.filter((id) => requiredIds.has(id)).map(
-              (id) => network.segmentsById.get(id)!.geometryFeatureId,
+            completedFeatureIds: shown.completedSegmentIds.filter((id) => requiredIds.has(id)).flatMap(
+              (id) => network.segmentsById.get(id)!.geometryFeatureIds,
             ),
             currentPosition: shown.position,
+            highlightedServiceId: session ? displayedRide(session).serviceId : undefined,
           }
         : NO_PROGRESS,
-    [shown, requiredIds, network],
+    [shown, requiredIds, network, session],
   );
 
   const stopFollowing = useCallback(() => setFollow(false), []);
@@ -157,6 +159,7 @@ export function GameApp({ data, network }: GameAppProps) {
         <GamePanel
           session={session}
           network={network}
+          lines={data.services.ok ? data.services.value.lines : []}
           displayedStationId={shown.stationId}
           displayedCompletedCount={shown.completedSegmentIds.filter((id) => requiredIds.has(id)).length}
           requiredCount={requiredIds.size}

@@ -2,6 +2,7 @@
 // only after the accepted animation finish; these helpers never draw randomness.
 import type { Direction } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
+import { endpointKindLabel } from "./gameSummary";
 import type { GameSession, LastMove } from "./gameSession";
 
 export function stationName(network: RailwayNetwork, stationId: string): string {
@@ -28,24 +29,26 @@ export function lastRollText(lastMove: LastMove | null, network: RailwayNetwork)
   if (!lastMove) return "—";
   if (lastMove.stopReason === "roll" || lastMove.unusedPips === 0) return String(lastMove.roll);
   const kind = lastMove.stopReason === "endpoint"
-    ? `〔${lastMove.endpointKind === "terminus" ? "終点" : "エリア端"}〕`
+    ? `〔${endpointKindLabel(lastMove.endpointKind)}〕`
     : "";
   return `${lastMove.roll}（${stationName(network, lastMove.stopStationId)}で停止${kind}、残り${lastMove.unusedPips}は使わず）`;
 }
+
+export const LOTTERY_INLINE_LIMIT = 4;
 
 export function landingText(lastMove: LastMove | null, network: RailwayNetwork): string {
   const event = lastMove?.landing;
   if (!event || !lastMove) return "—";
   const service = serviceName(network, event.serviceId);
   const heading = event.serviceDrawRequired
-    ? `${stationName(network, event.stationId)}：${event.serviceCandidates.map((id) => serviceName(network, id)).join("・")}から抽選 → ${service}`
+    ? `${stationName(network, event.stationId)}：${event.serviceCandidates.length > LOTTERY_INLINE_LIMIT ? `${event.serviceCandidates.length}系統` : event.serviceCandidates.map((id) => serviceName(network, id)).join("・")}から抽選 → ${service}`
     : `${service}のみ`;
   const direction = directionLabel(network, event.serviceId, event.direction);
   if (event.directionDrawRequired) return `${heading} ／ 方向抽選 → ${direction}`;
   const chosen = network.servicesById.get(event.serviceId);
   if (chosen?.circular && event.directionCandidates.length === 1) return `${heading} ／ ${direction}に固定`;
   if (!event.changedService && lastMove.endpointKind && event.direction !== lastMove.direction) {
-    const kind = lastMove.endpointKind === "terminus" ? "終点" : "エリア端";
+    const kind = endpointKindLabel(lastMove.endpointKind);
     return `${heading} ／ ${kind}のため折り返し（${direction}）`;
   }
   return `${heading} ／ 乗車方向は${direction}のみ`;

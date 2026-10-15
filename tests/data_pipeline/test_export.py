@@ -36,10 +36,10 @@ def test_build_segments_closes_loop_with_directed_ids() -> None:
         "svc:b:c",
         "svc:c:a",
     ]
-    assert [s["geometryFeatureId"] for s in segments] == [
-        "svc:a~b",
-        "svc:b~c",
-        "svc:c~a",
+    assert [s["geometryFeatureIds"] for s in segments] == [
+        ["svc:a~b"],
+        ["svc:b~c"],
+        ["svc:c~a"],
     ]
 
 
@@ -47,6 +47,7 @@ def test_dumps_feature_collection_is_valid_json_without_crs() -> None:
     collection = export.build_segment_features(
         export.build_segments("svc", ["a", "b"]),
         [LineString([(0, 0), (10, 10)]), LineString([(10, 10), (0, 0)])],
+        "line",
     )
 
     parsed = json.loads(export.dumps_feature_collection(collection))
@@ -108,20 +109,22 @@ def test_linear_segments_share_one_feature_per_pair() -> None:
         ("b", "c"),
         ("c", "b"),
     ]
-    assert [s["geometryFeatureId"] for s in segments] == [
-        "svc:a~b",
-        "svc:a~b",
-        "svc:b~c",
-        "svc:b~c",
+    assert [s["geometryFeatureIds"] for s in segments] == [
+        ["svc:a~b"],
+        ["svc:a~b"],
+        ["svc:b~c"],
+        ["svc:b~c"],
     ]
     collection = export.build_segment_features(
         segments,
         [LineString([(0, 0), (10, 0)]), LineString([(10, 0), (20, 0)])],
+        "line",
     )
     assert [f["id"] for f in collection["features"]] == ["svc:a~b", "svc:b~c"]
     assert collection["features"][0]["properties"] == {
         "featureId": "svc:a~b",
         "serviceId": "svc",
+        "lineId": "line",
         "from": "a",
         "to": "b",
     }

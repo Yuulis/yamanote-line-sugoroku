@@ -5,7 +5,7 @@ import type {
   SegmentFeature,
   SegmentFeatureCollection,
 } from "../types/data";
-import type { Segment, ServicePattern, Station } from "../types/network";
+import { SERVICE_KINDS, type LineMetadata, type ServicesData, type Segment, type ServicePattern, type Station } from "../types/network";
 
 const MAX_LONGITUDE = 180;
 const MAX_LATITUDE = 90;
@@ -56,6 +56,9 @@ export function isStation(value: unknown): value is Station {
 export function isServicePattern(value: unknown): value is ServicePattern {
   if (!isRecord(value)) return false;
   const { directionLabels, platformCoordinates, stationIds, endpoints } = value;
+  if (!SERVICE_KINDS.some((kind) => kind === value.kind)) return false;
+  if (!isNonEmptyArray(value.lineIds) || !value.lineIds.every(isNonEmptyString)) return false;
+  if (new Set(value.lineIds).size !== value.lineIds.length) return false;
   if (!isNonEmptyArray(stationIds) || !stationIds.every(isNonEmptyString)) return false;
   if (new Set(stationIds).size !== stationIds.length) return false;
   if (typeof value.circular !== "boolean" || stationIds.length < (value.circular ? 3 : 2)) return false;
@@ -83,7 +86,7 @@ export function isServicePattern(value: unknown): value is ServicePattern {
 }
 
 function isEndpointKind(value: unknown): boolean {
-  return value === "terminus" || value === "area-boundary";
+  return value === "terminus" || value === "area-boundary" || value === "service-boundary";
 }
 
 export function isSegment(value: unknown): value is Segment {
@@ -93,7 +96,8 @@ export function isSegment(value: unknown): value is Segment {
     isNonEmptyString(value.serviceId) &&
     isNonEmptyString(value.from) &&
     isNonEmptyString(value.to) &&
-    isNonEmptyString(value.geometryFeatureId)
+    !("geometryFeatureId" in value) &&
+    isNonEmptyArray(value.geometryFeatureIds) && value.geometryFeatureIds.every(isNonEmptyString)
   );
 }
 
@@ -132,7 +136,7 @@ function isIsoDate(value: unknown): value is string {
 export function isManifest(value: unknown): value is Manifest {
   if (!isRecord(value)) return false;
   return (
-    value.schemaVersion === 2 &&
+    value.schemaVersion === 3 &&
     isNonEmptyString(value.dataVersion) &&
     isIsoDate(value.updatedAt) &&
     isDataSource(value.source)
@@ -148,11 +152,12 @@ function isSegmentGeometry(value: unknown): boolean {
 export function isSegmentFeature(value: unknown): value is SegmentFeature {
   if (!isRecord(value) || value.type !== "Feature") return false;
   if (!isNonEmptyString(value.id) || !isRecord(value.properties)) return false;
-  const { featureId, serviceId, from, to } = value.properties;
+  const { featureId, serviceId, lineId, from, to } = value.properties;
   return (
     isNonEmptyString(featureId) &&
     value.id === featureId &&
     isNonEmptyString(serviceId) &&
+    isNonEmptyString(lineId) &&
     isNonEmptyString(from) &&
     isNonEmptyString(to) &&
     isSegmentGeometry(value.geometry)
@@ -182,3 +187,14 @@ export const isServicePatternList = (value: unknown): value is ServicePattern[] 
 
 export const isSegmentList = (value: unknown): value is Segment[] =>
   isNonEmptyArrayOf(value, isSegment);
+
+export function isLineMetadata(value: unknown): value is LineMetadata {
+  return isRecord(value) && isNonEmptyString(value.id) && isNonEmptyString(value.name) && isNonEmptyString(value.color);
+}
+
+/** v3 envelope; reject legacy arrays and unknown/duplicate line references. */
+export function isServicesData(value: unknown): value is ServicesData {
+  if (!isRecord(value) || !isNonEmptyArrayOf(value.lines, isLineMetadata) || !isServicePatternList(value.services)) return false;
+  const ids = new Set(value.lines.map((line) => line.id));
+  return ids.size === value.lines.length && value.services.every((service) => service.lineIds.every((id) => ids.has(id)));
+}

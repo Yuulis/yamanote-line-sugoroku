@@ -1,0 +1,4 @@
+n02_line,action,section_key,reason
+東海道線,allow,139.58522 35.48055~139.58705 35.48190#8209d78d,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.58705 35.48190~139.66375 35.57335#33902481,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.66332 35.57602~139.66375 35.57335#864b87ee,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv

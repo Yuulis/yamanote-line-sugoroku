@@ -1,0 +1,27 @@
+{
+  "operator": "東日本旅客鉄道",
+  "n02Operator": "東日本旅客鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "埼玉県 (S6P stage)",
+  "serviceIds": [
+    "jr-keihin-tohoku",
+    "jr-hachiko",
+    "jr-kawagoe-west",
+    "jr-saikyo",
+    "jr-musashino",
+    "jr-utsunomiya",
+    "jr-takasaki",
+    "jr-shonan-shinjuku-local",
+    "jr-shonan-shinjuku-rapid-takasaki"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "areaPrefectures": [
+    "埼玉県"
+  ],
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "09651aec08c4855a81b344fa9ee02059e20cb489df0f14be77e8a259e859dd30",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1,
+  "validationProfile": "stage",
+  "stageStartStationId": "musashi-urawa"
+}

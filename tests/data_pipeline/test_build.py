@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from scripts.data_pipeline import config, rules
@@ -53,6 +55,24 @@ def test_build_reproduces_published_files_byte_for_byte(result: BuildResult) -> 
     for name, text in result.files.items():
         published = (config.DEFAULT_OUT_DIR / name).read_bytes()
         assert text.encode("utf-8") == published, f"{name} is stale; rebuild"
+
+
+def test_build_preserves_approved_product_catalog_order(result: BuildResult) -> None:
+    expected_catalog = json.loads(
+        (config.DEFAULT_OVERRIDES_DIR / "expected-catalog.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert list(result.services) == [
+        service["id"] for service in expected_catalog["services"]
+    ]
+    for service_id, expected in zip(
+        result.services, expected_catalog["services"], strict=True
+    ):
+        assert result.services[service_id].service.station_ids == tuple(
+            expected["stationIds"]
+        )
 
 
 def test_build_routes_every_segment_on_snapped_track(result: BuildResult) -> None:

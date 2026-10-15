@@ -11,6 +11,7 @@ import type {
   StationId,
 } from "../../../types/network";
 import { GameEngineError } from "./errors";
+import { SERVICE_KINDS } from "../../../types/network";
 
 export interface RailwayNetworkInput {
   dataVersion: string;
@@ -28,6 +29,11 @@ export interface RailwayNetworkOptions {
   expectedStationCounts?: Readonly<Partial<Record<ServiceId, number>>>;
 }
 
+/**
+ * A built network and every record reachable from it are immutable by contract.
+ * Identity-keyed caches (e.g. proximity distances) are never invalidated; to
+ * change railway data, build a new network.
+ */
 export interface RailwayNetwork {
   readonly dataVersion: string;
   readonly stationsById: ReadonlyMap<StationId, Station>;
@@ -103,6 +109,9 @@ function validateService(
   service: ServicePattern,
   stationsById: ReadonlyMap<StationId, Station>,
 ): void {
+  if (!SERVICE_KINDS.includes(service.kind)) {
+    invalid(`Service ${service.id} has unknown kind ${service.kind}`);
+  }
   const minStops = service.circular ? MIN_LOOP_STOPS : MIN_LINEAR_STOPS;
   if (service.stationIds.length < minStops) invalid(`Service ${service.id} is too short`);
   if (new Set(service.stationIds).size !== service.stationIds.length) {
@@ -167,9 +176,11 @@ function indexServicesByStation(
 }
 
 function copyService(service: ServicePattern): ServicePattern {
+  if (!Array.isArray(service.lineIds) || service.lineIds.length === 0 || !service.lineIds.every((id) => typeof id === "string" && id.length > 0) || new Set(service.lineIds).size !== service.lineIds.length) invalid(`Service ${service.id} needs non-empty unique lineIds`);
   const base = {
     ...service,
     stationIds: [...service.stationIds],
+    lineIds: [...service.lineIds] as ServicePattern["lineIds"],
     directionLabels: { ...service.directionLabels },
     platformCoordinates: Object.fromEntries(Object.entries(service.platformCoordinates).map(
       ([id, point]) => [id, [...point] as Station["coordinates"]],
@@ -208,7 +219,10 @@ export function buildRailwayNetwork(
     "service",
   );
   const segmentsById = indexUnique(
-    input.segments.map((segment) => ({ ...segment })),
+    input.segments.map((segment) => {
+      if (!Array.isArray(segment.geometryFeatureIds) || segment.geometryFeatureIds.length === 0 || !segment.geometryFeatureIds.every((id) => typeof id === "string" && id.length > 0)) invalid(`Segment ${segment.id} needs a non-empty geometryFeatureIds chain`);
+      return { ...segment, geometryFeatureIds: [...segment.geometryFeatureIds] as Segment["geometryFeatureIds"] };
+    }),
     "segment",
   );
   if (servicesById.size === 0) invalid("No services");

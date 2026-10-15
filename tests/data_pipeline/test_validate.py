@@ -27,17 +27,25 @@ def test_validate_published_data_passes(
     report = validate_dataset(published_dataset, committed_overrides)
 
     assert report.errors == []
-    assert report.metrics["max_endpoint_distance_m"] <= config.ENDPOINT_MAX_DISTANCE_M
-    assert report.metrics["segments_geojson_bytes"] < config.MAX_GEOJSON_BYTES
+    transfer_allowance_m = max(
+        transfer.max_transfer_m for transfer in committed_overrides.platform_transfers
+    )
+    assert report.metrics["max_endpoint_distance_m"] <= (
+        config.ENDPOINT_MAX_DISTANCE_M + transfer_allowance_m
+    )
+    assert (
+        report.metrics["segments_geojson_bytes"]
+        < committed_overrides.dataset.budgets["geojsonRaw"]
+    )
     assert report.metrics["length_km[jr-yamanote]"] == pytest.approx(34.5, abs=1.5)
-    assert report.metrics["other_station_passes"] == 7
+    assert report.metrics["other_station_passes"] == 104
 
 
 def test_validate_published_data_has_contract_shapes(
     published_dataset: Dataset,
 ) -> None:
     station = published_dataset.stations[0]
-    service = published_dataset.services[0]
+    service = published_dataset.service_patterns[0]
 
     assert list(station) == ["id", "name", "coordinates"]
     assert station["id"] == "shimbashi"
@@ -62,7 +70,9 @@ def test_validate_with_missing_station_fails(
 ) -> None:
     del dataset.stations[5]
 
-    assert "expected 67 stations" in _errors(dataset, committed_overrides)
+    assert f"expected {len(committed_overrides.registry.stations)} stations" in _errors(
+        dataset, committed_overrides
+    )
 
 
 def test_validate_with_broken_chain_fails(
@@ -82,6 +92,19 @@ def test_validate_with_missing_geometry_fails(
     del dataset.geojson["features"][7]
 
     assert "missing geometry" in _errors(dataset, committed_overrides)
+
+
+@pytest.mark.parametrize("owner", [[], {}], ids=["list", "object"])
+def test_validate_with_non_string_geometry_owner_returns_errors(
+    dataset: Dataset, committed_overrides: Overrides, owner: object
+) -> None:
+    dataset.geojson["features"][0]["properties"]["serviceId"] = owner
+
+    report = validate_dataset(dataset, committed_overrides)
+
+    assert not report.ok
+    assert "geometry owner" in "\n".join(report.errors)
+    assert "must be a string" in "\n".join(report.errors)
 
 
 def test_validate_with_far_endpoint_fails(
@@ -166,7 +189,7 @@ def test_validate_with_updated_at_differing_from_override_fails(
 def test_validate_with_oversized_geojson_fails(
     dataset: Dataset, committed_overrides: Overrides
 ) -> None:
-    padding = " " * (config.MAX_GEOJSON_BYTES + 1)
+    padding = " " * (committed_overrides.dataset.budgets["geojsonRaw"] + 1)
     payloads = {
         **dataset.payloads,
         config.SEGMENTS_GEOJSON_FILE: dataset.payloads[config.SEGMENTS_GEOJSON_FILE]
@@ -206,7 +229,7 @@ def test_validate_with_multilinestring_gap_fails(
     assert "geometry must be a LineString" in _errors(dataset, committed_overrides)
 
 
-def test_validate_with_contiguous_multilinestring_is_rejected_in_v2(
+def test_validate_with_contiguous_multilinestring_is_rejected_in_v3(
     dataset: Dataset, committed_overrides: Overrides
 ) -> None:
     coordinates = dataset.geojson["features"][0]["geometry"]["coordinates"]
@@ -242,7 +265,7 @@ def test_validate_with_edited_payload_flags_stale_version(
 def test_validate_with_null_station_ids_reports_instead_of_crashing(
     dataset: Dataset, committed_overrides: Overrides
 ) -> None:
-    dataset.services[0]["stationIds"] = None
+    dataset.service_patterns[0]["stationIds"] = None
     dataset.stations[3]["name"] = {}
 
     errors = _errors(dataset, committed_overrides)
@@ -254,32 +277,40 @@ def test_validate_with_null_station_ids_reports_instead_of_crashing(
 @pytest.mark.parametrize(
     "edit, expected",
     [
-        (lambda d: d.manifest.update(schemaVersion=1), "schemaVersion must be 2"),
-        (lambda d: d.services[0].update(circular=1), "circular must be a boolean"),
-        (lambda d: d.services[0].update(directionLabels={}), "directionLabels differ"),
+        (lambda d: d.manifest.update(schemaVersion=1), "schemaVersion must be 3"),
         (
-            lambda d: d.services[0].update(
-                endpoints={"first": "terminus", "last": "terminus"}
-            ),
-            "invalid v2 fields",
+            lambda d: d.service_patterns[0].update(circular=1),
+            "circular must be a boolean",
         ),
         (
-            lambda d: d.services[0]["platformCoordinates"].pop("tokyo"),
+            lambda d: d.service_patterns[0].update(directionLabels={}),
+            "directionLabels differ",
+        ),
+        (
+            lambda d: d.service_patterns[0].update(
+                endpoints={"first": "terminus", "last": "terminus"}
+            ),
+            "invalid v3 fields",
+        ),
+        (
+            lambda d: d.service_patterns[0]["platformCoordinates"].pop("tokyo"),
             "cover exactly its stops",
         ),
         (
-            lambda d: d.services[0]["platformCoordinates"].update(tokyo=[139.8, 35.8]),
+            lambda d: d.service_patterns[0]["platformCoordinates"].update(
+                tokyo=[139.8, 35.8]
+            ),
             "representative platform",
         ),
         (
-            lambda d: d.services[0].update(
+            lambda d: d.service_patterns[0].update(
                 stationIds=["shimbashi", "tokyo", "yurakucho"]
             ),
             "stop order differs",
         ),
         (
-            lambda d: d.segments[0].update(geometryFeatureId="orphan"),
-            "directed pair contract",
+            lambda d: d.segments[0].update(geometryFeatureIds=["orphan"]),
+            "missing geometry",
         ),
         (
             lambda d: d.geojson["features"].append(d.geojson["features"][0]),
@@ -295,7 +326,7 @@ def test_validate_with_null_station_ids_reports_instead_of_crashing(
         ),
     ],
 )
-def test_v2_contract_rejects_invalid_metadata_and_geometry(
+def test_v3_contract_rejects_invalid_metadata_and_geometry(
     dataset: Dataset,
     committed_overrides: Overrides,
     edit: Callable[[Dataset], None],
@@ -303,6 +334,21 @@ def test_v2_contract_rejects_invalid_metadata_and_geometry(
 ) -> None:
     edit(dataset)
     assert expected in _errors(dataset, committed_overrides)
+
+
+@pytest.mark.parametrize("value", [None, [], [""], "scalar"])
+def test_validate_rejects_invalid_geometry_chain_shape(
+    dataset: Dataset, committed_overrides: Overrides, value: object
+) -> None:
+    dataset.segments[0]["geometryFeatureIds"] = value
+    assert "non-empty geometryFeatureIds chain" in _errors(dataset, committed_overrides)
+
+
+def test_validate_rejects_missing_geometry_chain(
+    dataset: Dataset, committed_overrides: Overrides
+) -> None:
+    del dataset.segments[0]["geometryFeatureIds"]
+    assert "non-empty geometryFeatureIds chain" in _errors(dataset, committed_overrides)
 
 
 def test_noncanonical_bytes_fail_even_with_recomputed_hash(

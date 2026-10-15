@@ -1,11 +1,32 @@
 # 鉄道すごろく — MVP仕様書
 
-- Document version: 0.3.0 (2026-10-12: JR East Tokyo 23-ward expansion addendum; original MVP retained)
+- Document version: 0.4.0 (2026-10-15: JR East capital-region edition addendum; prior addenda retained as history)
 - 作成日: 2026-10-10
 - 状態: MVP開発開始用（未確定事項は「暫定」「要確認」を付記）
 - 対象: Webブラウザで動作する、実際の鉄道地図を利用したオリジナルすごろく
 
-## Current edition addendum — JR East Tokyo 23 wards (2026-10-12, v0.3.0)
+## Current edition addendum — JR East capital region (2026-10-15, v0.4.0)
+
+This contract supersedes the 23-ward edition addendum below and the original MVP scope and pending transfer/endpoint choices in sections 1–4 and 11. Earlier sections and dated addenda are retained as historical baselines. The title is “山手線すごろく” with subtitle “JR東日本 1都3県版”. The current user-facing manual is [docs/manual/jr-east-capital-region/rules.md](docs/manual/jr-east-capital-region/rules.md); data build and validation details are in [data/README.md](data/README.md).
+
+### Scope, movement and lotteries
+
+- The approved product catalogue contains 40 service patterns and 472 shared stations across 東京都・千葉県・神奈川県・埼玉県. It uses weekday stop patterns. Shinkansen, 御殿場線, private railways, subways, monorails, りんかい線 and islands are excluded. 久留里線 ends at 久留里. Services truncate at the final in-area stop.
+- A service is a game track pattern; `local` and `rapid` are lottery base classes, not selectable train types. The two 湘南新宿ライン services are the 宇都宮線・横須賀線 local pattern and 高崎線・東海道線 rapid pattern.
+- Start at 新橋 on 山手線 outer. One pip advances one stop on the ridden service. Only 山手線 outer segments count toward the 30-segment goal. Passing a station does not trigger a draw. At a terminus, area boundary or service boundary, movement stops and remaining pips are discarded.
+- Unless the move clears, draw a service at the arrival station, including the service just ridden. If 山手線 is a candidate among at least two services, it has a 1/2 probability and the remaining half is divided uniformly among other candidates. Without 山手線, candidates are uniform. Base weights for `local` and `rapid` are equal.
+- 山手線 always proceeds outer. On another service with two movable directions, choose the direction whose next stop is closer to any 山手線 stop in directed service-segment distance with weight 2:1; tied distances are uniform. A single available service or direction is forced without consuming a lottery draw.
+- After all 30 target segments are complete, arrival at 新橋 on 山手線 truncates and clears; on another service, clear only when the roll ends exactly at 新橋. Passing 新橋 on another service does not clear.
+- Lottery candidate order follows `services.json`. Draw order is die, service if there is a choice, then direction if the chosen non-target service has two movable directions. Movement results are committed before animation and saved; restoring does not replay the draw.
+
+### Data and persistence
+
+- Five public files use `manifest.schemaVersion: 3`: stations, service/line metadata, directed segments, shared GeoJSON geometry and manifest. `segments.json` references ordered chains of service-owned primitives. Reverse segments reference the reversed chain. One station identity is shared for transfers, including distant platforms at 東京 and 武蔵小杉.
+- Linear service endpoints are `terminus`, `area-boundary` or `service-boundary`; every endpoint stops and discards remaining pips. The map geometry is based on MLIT N02 2025, base date 2025-12-31. Stop order is pinned by the reviewed, hash-checked product catalogue, based on JR timetable edition 2610 (October 2026); the app does not load live timetables.
+- Game saves use `saveVersion: 3` and ruleset `jr-east-capital-1`. Incompatible prior saves are not migrated; the existing unsupported-save UI allows users to discard them.
+- N02 is generalized in places and does not fully separate parallel tracks on 綾瀬–金町, the 総武線 江戸川 bridge, or 赤羽–浦和. These geometries do not establish that real tracks are shared. 上野の常磐線快速 platform transfer is represented by a reviewed explicit transfer.
+
+## Historical edition addendum — JR East Tokyo 23 wards (2026-10-12, v0.3.0)
 
 This dated contract supersedes the Yamanote-only scope and pending transfer/endpoint
 choices in the original MVP sections 1–4 and 11 below. Those sections remain as

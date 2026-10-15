@@ -6,16 +6,17 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
 import { buildDataAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
-import { isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
+import { MVP_GAME_CONFIG } from "../game/gameConfig";
+import { indexServiceGeometry } from "./serviceGeometry";
+import { initialOverviewServices, isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
 import {
   FOLLOW_EASE_MS,
-  LAYER_IDS,
   MAP_CENTER,
   MAP_MAX_ZOOM,
   MAP_MIN_ZOOM,
@@ -24,15 +25,17 @@ import {
   NETWORK_FIT_PADDING_DESKTOP,
   NETWORK_FIT_PADDING_PHONE,
   NETWORK_FIT_PANEL_GAP,
-  PHONE_PANEL_MAX_HEIGHT_SHARE,
   PHONE_MEDIA_QUERY,
+  isPhoneWidth,
 } from "./mapConfig";
 import {
   addRailwayLayers,
   type MapProgress,
   updateCompletedSegments,
   updateCurrentPosition,
+  updateHighlightedService,
 } from "./railwayLayers";
+import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 
 export interface MapFollow {
@@ -50,10 +53,8 @@ interface RailwayMapProps {
   follow?: MapFollow;
   /** New/resumed turn-0 session: fit the entire network even on a reused map. */
   overviewKey?: number;
-}
-
-function isPhoneWidth(): boolean {
-  return typeof window.matchMedia === "function" && window.matchMedia(PHONE_MEDIA_QUERY).matches;
+  targetServiceId?: string;
+  minZoom?: number;
 }
 
 function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
@@ -73,11 +74,21 @@ function fitNetworkOverview(map: MapLibreMap, services: readonly ServicePattern[
   const padding = isPhoneWidth()
     ? {
         ...NETWORK_FIT_PADDING_PHONE,
-        bottom: map.getContainer().clientHeight * PHONE_PANEL_MAX_HEIGHT_SHARE + NETWORK_FIT_PANEL_GAP,
+        bottom: phonePanelBottomPadding(map),
       }
     : NETWORK_FIT_PADDING_DESKTOP;
   map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
   map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+}
+
+/** Reserve the visible panel height, which can be smaller than its CSS cap. */
+function phonePanelBottomPadding(map: MapLibreMap): number {
+  const container = map.getContainer();
+  const panel = document.querySelector<HTMLElement>(".game-panel");
+  if (!panel) return NETWORK_FIT_PANEL_GAP;
+  const containerBottom = container.getBoundingClientRect().bottom;
+  const panelTop = panel.getBoundingClientRect().top;
+  return Math.max(0, containerBottom - panelTop) + NETWORK_FIT_PANEL_GAP;
 }
 
 /** Centre the camera on `position` without touching the zoom. */
@@ -89,25 +100,11 @@ function recentre(map: MapLibreMap, position: Position, immediate: boolean): voi
 }
 
 function attachStationPopup(map: MapLibreMap): void {
-  map.on("click", LAYER_IDS.stationCircles, (event) => {
-    const feature = event.features?.[0];
-    if (!feature || feature.geometry.type !== "Point") return;
-    const { name, lineNames } = feature.properties as {
-      name: string;
-      lineNames: string;
-    };
-    const [lon, lat] = feature.geometry.coordinates;
-    if (lon === undefined || lat === undefined) return;
+  bindStationInteractions(map, ({ name, lineNames, lngLat }) => {
     new Popup({ closeButton: true })
-      .setLngLat([lon, lat])
+      .setLngLat(lngLat)
       .setDOMContent(createStationPopupContent(name, lineNames))
       .addTo(map);
-  });
-  map.on("mouseenter", LAYER_IDS.stationCircles, () => {
-    map.getCanvas().style.cursor = "pointer";
-  });
-  map.on("mouseleave", LAYER_IDS.stationCircles, () => {
-    map.getCanvas().style.cursor = "";
   });
 }
 
@@ -116,14 +113,14 @@ function attachStationPopup(map: MapLibreMap): void {
  * Returning null lets the game carry on without a map instead of unmounting
  * the whole React tree.
  */
-function createMap(container: HTMLElement): MapLibreMap | null {
+function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null {
   try {
     return new MapLibreMap({
       container,
       style: MAP_STYLE_URL,
       center: MAP_CENTER,
       zoom: MAP_ZOOM,
-      minZoom: MAP_MIN_ZOOM,
+      minZoom,
       maxZoom: MAP_MAX_ZOOM,
       attributionControl: false,
     });
@@ -133,7 +130,14 @@ function createMap(container: HTMLElement): MapLibreMap | null {
   }
 }
 
-export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapProps) {
+export function RailwayMap({ data, progress, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+  const serviceGeometry = useMemo(
+    () => indexServiceGeometry(data.segments.ok ? data.segments.value : []), [data.segments],
+  );
+  const initialServices = useMemo(
+    () => initialOverviewServices(data.services.ok ? data.services.value.services : [], targetServiceId),
+    [data.services, targetServiceId],
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
   // The browser cannot create a WebGL2 context: no map can ever be shown here.
@@ -156,7 +160,7 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
     const customAttribution = data.manifest.ok
       ? buildDataAttribution(data.manifest.value)
       : undefined;
-    const map = createMap(container);
+    const map = createMap(container, minZoom);
     if (!map) {
       setUnsupported(true);
       return;
@@ -189,10 +193,12 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
       loaded = true;
       addRailwayLayers(map, {
         stations: data.stations.ok ? data.stations.value : undefined,
-        services: data.services.ok ? data.services.value : undefined,
+        services: data.services.ok ? data.services.value.services : undefined,
         geometry: data.geometry.ok ? data.geometry.value : undefined,
+        lines: data.services.ok ? data.services.value.lines : undefined,
+        targetServiceId,
       });
-      if (data.services.ok) fitNetworkOverview(map, data.services.value);
+      fitNetworkOverview(map, initialServices);
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
@@ -211,7 +217,7 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
       setLoadedMap(null);
       map.remove();
     };
-  }, [data, attempt]);
+  }, [data, attempt, targetServiceId, minZoom, initialServices]);
 
   const completedFeatureIds = progress?.completedFeatureIds;
   const position = progress?.currentPosition ?? null;
@@ -219,17 +225,24 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
   // changes when a segment is finished, so the filters are set that often.
   const completedKey = completedFeatureIds?.join("\n");
   useEffect(() => {
-    if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds);
-  }, [loadedMap, completedKey]);
+    if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
+  }, [loadedMap, completedKey, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateCurrentPosition(loadedMap, position);
   }, [loadedMap, position]);
 
   useEffect(() => {
     if (loadedMap && overviewKey !== undefined && data.services.ok) {
-      fitNetworkOverview(loadedMap, data.services.value);
+      fitNetworkOverview(loadedMap, initialServices);
     }
-  }, [loadedMap, overviewKey, data.services]);
+  }, [loadedMap, overviewKey, initialServices]);
+
+  const highlightedServiceId = progress?.highlightedServiceId;
+  useEffect(() => {
+    if (!loadedMap) return;
+    const service = data.services.ok ? data.services.value.services.find((item) => item.id === highlightedServiceId) : undefined;
+    updateHighlightedService(loadedMap, serviceGeometry.get(highlightedServiceId ?? "") ?? [], service?.color ?? "#80c241");
+  }, [loadedMap, highlightedServiceId, data.services, serviceGeometry]);
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;
@@ -251,6 +264,20 @@ export function RailwayMap({ data, progress, follow, overviewKey }: RailwayMapPr
   return (
     <>
       <div ref={containerRef} className="map-container" />
+      <div className="map-overview" aria-label="地図表示範囲">
+        <button type="button" disabled={!loadedMap} onClick={() => {
+          if (!loadedMap || !data.services.ok) return;
+          userMovedRef.current = true;
+          onUserCameraMoveRef.current?.();
+          fitNetworkOverview(loadedMap, data.services.value.services);
+        }}>全体</button>
+        <button type="button" disabled={!loadedMap} onClick={() => {
+          if (!loadedMap || !data.services.ok) return;
+          userMovedRef.current = true;
+          onUserCameraMoveRef.current?.();
+          fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
+        }}>目標路線</button>
+      </div>
       {unsupported && (
         <div className="map-error" role="status">
           <p>

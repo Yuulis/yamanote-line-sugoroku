@@ -37,7 +37,7 @@ export const test = base.extend<E2EFixtures & E2EOptions>({
     async ({ page, baseURL, dataset }, use) => {
       if (!baseURL) throw new Error("baseURL must be configured");
       const bundle = await loadBundle(dataset);
-      if (dataset === "fixture") {
+      if (dataset !== "real") {
         await page.route(`${baseURL}data/*`, async (route) => {
           const file = new URL(route.request().url()).pathname.split("/").at(-1)!;
           const body = bundle.payloads[file];
