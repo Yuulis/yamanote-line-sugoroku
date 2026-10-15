@@ -66,7 +66,7 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 ### Context
 
 - Goal: replace the 23-ward edition with a 1都3県 edition covering every JR East conventional line (Tokyo excl. islands, Chiba, Saitama, Kanagawa), with 緩行線/快速線 track systems as separate services.
-- Status (2026-10-15): S0–S3b, pipeline G1/G2 + stage profile, and all four S6P stages merged (PRs #6–#20). Next: S6 combined final data. Resume from the handoff.
+- Status (2026-10-15): S0–S6 merged (PRs #6–#21); integration branch ships the 1都3県 dataset, rules still all-equal. Next: S6V visual fixes, then S5, S7. Claude subagents only from S6V (Codex limits). Resume from the handoff.
 - Handoff: .claude/docs/plans/jr-east-capital-region-handoff.md (next steps in order).
 - Design: .claude/docs/research/jr-east-capital-region-expansion-design.md; research + catalog v1: .claude/docs/research/jr-east-capital-region-*.{md,csv}
 - Dependencies: none new

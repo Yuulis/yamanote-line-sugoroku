@@ -2,11 +2,11 @@
 
 ## Current status (2026-10-13) — resume here
 
-**S0–S3b, pipeline G1/G2 and the stage validation profile, and all four S6P stages (Tokyo, Chiba, Kanagawa, Saitama) are merged** into the integration branch
-`feature/jr-east-capital-region` (head after this update; last merge PR #20; based on `develop`). Nothing is uncommitted.
+**S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages and S6 (combined live 1都3県 dataset) are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; last merge PR #21; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
-and production needs explicit user approval. Shipped data is still the 23-ward edition (v3 contract),
-rules still all-equal.
+and production needs explicit user approval. The integration branch now ships the 1都3県 dataset
+(40 services / 472 stations, title 「JR東日本 1都3県版」) with rules still all-equal; production is still the 23-ward edition.
 
 | Step | Status | PR | Lead verification |
 |------|--------|----|-------------------|
@@ -25,9 +25,13 @@ rules still all-equal.
 | S6P Chiba (Luna xhigh) | merged | #18 | 17/17 services, 152/152 stations; build+validate, oracle vs product catalog, live identical; CI green |
 | S6P Kanagawa (Luna xhigh) | merged | #19 | 13/14 services, 97/103 stations; Sol review: 2 of 19 compositions wrong (湘南新宿 rapid 横浜–戸塚, 戸塚–大船) → fixed; CI green |
 | S6P Saitama (Luna xhigh) | merged | #20 | 9/9 services, 75/75 stations; Sol review: 1 of 24 compositions wrong (湘南新宿 local 大宮–浦和 on 東北貨物線) → lead fix; CI green |
+| S6 combined live dataset (Luna xhigh; fixes by Sol) | merged | #21 | `verify.sh` (pytest 373), raw-N02 rebuild identical, validate OK, Vitest 552, build, E2E 78/78, catalogue order/stop lists = product catalog; Sol review NEEDS_REVISION (東海道/京浜東北 多摩川, 常磐 快速/緩行 江戸川, 赤羽–浦和) → fixed; CI green |
 
-**Next: S6** — combine the four stages into the final live dataset in one commit (rules still all-equal).
-See section "S6P complete — inputs for S6" at the end. Then S5 → S7.
+**Next: S6V** (visual fixes found in the S6 browser review, Claude-led), then **S5** (rules flip Q1(c), seed proofs,
+real-engine MC on final data) → **S7** (docs, release PR; production needs explicit approval).
+**Executor switch (user, 2026-10-15): Codex limits are nearly exhausted — from S6V on, use Claude subagents only**
+(`general-purpose-sonnet` for UI/mechanical work, `general-purpose-opus` for judgment and the independent reviews
+that Codex Sol did before). Same contracts and lead gates.
 Codex was near its rate limit at the end of this session: if Codex is unavailable, Claude subagents
 (`general-purpose-opus` for pipeline/routing judgment, `general-purpose-sonnet` for mechanical tables)
 can take a step with the same contract, gates and review (use a read-only Codex or Opus review).
@@ -939,4 +943,26 @@ S6 work list (combined dataset, `areaPrefectures` = all four, gameplay profile, 
 Review lesson from S6P: every composition (shared-track claim) must get an independent physical-track review —
 geometric N02 agreement is not evidence (3 of 59 Luna/Sol compositions were wrong and caught only by review).
 Model routing used: Luna xhigh for staging execution, Sol read-only for composition reviews (user approved).
+
+## S6 — combined live dataset (merged via PR #21, 2026-10-15)
+
+Evidence: `.claude/docs/research/jr-east-capital-region-s6.md`, per-pair N02 evidence
+`.claude/docs/research/jr-east-capital-region-s6-n02-pair-evidence.csv` (traversed / endpoint-touch / candidate);
+screenshots (local, ignored): `.claude/logs/jrcr-s6/screenshots/`.
+Dataset: 40 services / 472 stations, 1,224 directed segments, 568 primitives, max chain 3, 59 compositions, 1 platform
+transfer (上野), offset exceptions 2, detour exceptions 2; five files 744,720 B raw / 125,322 B gzip; build ~5 s;
+expected catalogue SHA-256 prefix `42bcd19b`. Real-data playthroughs (all-equal rules): seed `real-alpha` 867 turns;
+1,000-turn save ~362 KB, restore ~75 ms. N02 representation limits recorded: 常磐 綾瀬–金町 (one generalized line),
+総武 江戸川 bridge (one line), 赤羽–浦和 列車線/東北貨物線 (one line west of the 京浜東北 track).
+
+### S6V — visual issues to fix next (from the lead's screenshot review)
+
+1. **Station markers hide the lines at overview zoom** (472 white circles). Scale marker radius with zoom and/or hide
+   non-transfer stations below a zoom threshold; keep the current station, transfer stations and the target line visible.
+2. **Desktop initial view is off-centre** (network pushed to the lower right, partly off-screen) — the initial
+   target-line camera should centre 山手線 in the free area beside the panel; the 「全体」 fit must not be clipped.
+3. **Legend too long on phone** (39 flat rows fill the panel): make the legend collapsible (collapsed by default on
+   phone) or group by line family; keep the 山手線 progress entries always visible.
+Gates: unit tests for the zoom/marker rules, E2E overview/target camera assertions on desktop and phone, updated
+screenshots reviewed by the lead.
 
