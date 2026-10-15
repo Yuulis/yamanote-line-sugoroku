@@ -2,8 +2,8 @@
 
 ## Current status (2026-10-13) — resume here
 
-**S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages and S6 (combined live 1都3県 dataset) are merged** into the integration branch
-`feature/jr-east-capital-region` (head after this update; last merge PR #21; based on `develop`). Nothing is uncommitted.
+**S0–S3b, pipeline G1/G2, the stage validation profile, all four S6P stages, S6 (combined live 1都3県 dataset) and S6V (map readability) are merged** into the integration branch
+`feature/jr-east-capital-region` (head after this update; last merge PR #22; based on `develop`). Nothing is uncommitted.
 The integration branch is NOT merged into `develop`; that happens via an integration PR after S7,
 and production needs explicit user approval. The integration branch now ships the 1都3県 dataset
 (40 services / 472 stations, title 「JR東日本 1都3県版」) with rules still all-equal; production is still the 23-ward edition.
@@ -26,9 +26,13 @@ and production needs explicit user approval. The integration branch now ships th
 | S6P Kanagawa (Luna xhigh) | merged | #19 | 13/14 services, 97/103 stations; Sol review: 2 of 19 compositions wrong (湘南新宿 rapid 横浜–戸塚, 戸塚–大船) → fixed; CI green |
 | S6P Saitama (Luna xhigh) | merged | #20 | 9/9 services, 75/75 stations; Sol review: 1 of 24 compositions wrong (湘南新宿 local 大宮–浦和 on 東北貨物線) → lead fix; CI green |
 | S6 combined live dataset (Luna xhigh; fixes by Sol) | merged | #21 | `verify.sh` (pytest 373), raw-N02 rebuild identical, validate OK, Vitest 552, build, E2E 78/78, catalogue order/stop lists = product catalog; Sol review NEEDS_REVISION (東海道/京浜東北 多摩川, 常磐 快速/緩行 江戸川, 赤羽–浦和) → fixed; CI green |
+| S6V map readability (Claude Sonnet; Opus review) | merged | #22 | typecheck, Vitest 575, build, E2E 90/90; screenshots reviewed by the lead; Opus review APPROVE WITH CHANGES → applied; CI green |
 
-**Next: S6V** (visual fixes found in the S6 browser review, Claude-led), then **S5** (rules flip Q1(c), seed proofs,
-real-engine MC on final data) → **S7** (docs, release PR; production needs explicit approval).
+**Next: S5** (rules flip to Q1(c): 山手線 share 1/2 at its stations + toward-山手線 direction 2:1 in
+`MVP_GAME_CONFIG` with a new ruleset id, fixture seed proofs, real-engine Monte Carlo on the shipped data via
+`npm run sim` with the bundle input, rules/help texts) → **S7** (docs under `docs/manual/`, data README, release PR
+integration → develop → master; production needs explicit approval).
+Minor UI leftovers (optional, S5/S7): phone overview leaves empty space under the network when the legend is collapsed.
 **Executor switch (user, 2026-10-15): Codex limits are nearly exhausted — from S6V on, use Claude subagents only**
 (`general-purpose-sonnet` for UI/mechanical work, `general-purpose-opus` for judgment and the independent reviews
 that Codex Sol did before). Same contracts and lead gates.
@@ -965,4 +969,13 @@ expected catalogue SHA-256 prefix `42bcd19b`. Real-data playthroughs (all-equal 
    phone) or group by line family; keep the 山手線 progress entries always visible.
 Gates: unit tests for the zoom/marker rules, E2E overview/target camera assertions on desktop and phone, updated
 screenshots reviewed by the lead.
+
+## S6V — map readability (merged via PR #22, 2026-10-15)
+
+Station markers: 山手線 (30) and transfer (100) stations always shown with zoom-interpolated radius; ordinary (342)
+from zoom 10.5; labels from zoom 11 (`src/features/map/stationMarkers.ts`, `mapConfig.ts`). Popups/cursor bound once
+across both circle layers (`stationInteraction.ts`). Collapsible legend (`GameLegend.tsx`, `legendCollapse.ts`):
+collapsed on phone when > 6 rows, 山手線 progress + 現在地 always visible; desktop panel scrolls. The "desktop
+off-centre" finding did not reproduce (the S6 screenshot was taken after a test-side fit); `tests/e2e/map-visual.spec.ts`
+now pins 山手線 centring and the 「全体」 fit on desktop and phone. Screenshots: `.claude/logs/jrcr-s6v/screenshots/`.
 
