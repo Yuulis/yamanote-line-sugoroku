@@ -1,0 +1,14 @@
+service_id,from_id,to_id,pair,from_prefecture,to_prefecture,proposed_recipe,status
+jr-keihin-tohoku,kamata,kawasaki,蒲田–川崎,東京都,神奈川県,N02 東海道線; own 京浜東北電車線 primitive (separate from 東海道列車線),"frozen product adjacent pair; proposed only, unrouted"
+jr-chuo-takao-fujino,takao,sagamiko,高尾–相模湖,東京都,神奈川県,N02 中央線; do not route 高尾→相模湖 in this stage,"frozen product adjacent pair; proposed only, unrouted"
+jr-chuo-takao-fujino,fujino,uenohara,藤野–上野原,神奈川県,山梨県,"N02 中央線; external regional-extent neighbour, never routed at S6",regional-extent neighbour from expansion research; not in product catalogue
+jr-sotetsu-direct,nishi-oi,musashi-kosugi,西大井–武蔵小杉,東京都,神奈川県,N02 東海道線 品鶴線; shared with 横須賀/湘南新宿 only after exact-track review at S6,"frozen product adjacent pair; proposed only, unrouted"
+jr-nambu,inadazutsumi,yanokuchi,稲田堤–矢野口,神奈川県,東京都,N02 南武線; boundary pair only,"frozen product adjacent pair; proposed only, unrouted"
+jr-yokohama,nagatsuta,naruse,長津田–成瀬,神奈川県,東京都,N02 横浜線; boundary pair only; full 成瀬/町田 enclave run requires an area exception,"frozen product adjacent pair; proposed only, unrouted"
+jr-yokohama,machida,kobuchi,町田–古淵,東京都,神奈川県,N02 横浜線; boundary pair only; full 成瀬/町田 enclave run requires an area exception,"frozen product adjacent pair; proposed only, unrouted"
+jr-yokohama,hashimoto,aihara,橋本–相原,神奈川県,東京都,N02 横浜線; boundary pair only; full 成瀬/町田 enclave run requires an area exception,"frozen product adjacent pair; proposed only, unrouted"
+jr-tokaido,shinagawa,kawasaki,品川–川崎,東京都,神奈川県,N02 東海道線 passenger main line; keep separate from 京浜東北/横須賀/freight,"frozen product adjacent pair; proposed only, unrouted"
+jr-tokaido,yugawara,atami,湯河原–熱海,神奈川県,静岡県,"N02 東海道線; external regional-extent neighbour, never routed at S6",regional-extent neighbour from expansion research; not in product catalogue
+jr-yokosuka,nishi-oi,musashi-kosugi,西大井–武蔵小杉,東京都,神奈川県,N02 東海道線 品鶴線; boundary pair only,"frozen product adjacent pair; proposed only, unrouted"
+jr-shonan-shinjuku-local,nishi-oi,musashi-kosugi,西大井–武蔵小杉,東京都,神奈川県,N02 東海道線 品鶴線; potential compose from yokosuka after S6 owner/anchor review,"frozen product adjacent pair; proposed only, unrouted"
+jr-shonan-shinjuku-rapid-takasaki,osaki,musashi-kosugi,大崎–武蔵小杉,東京都,神奈川県,"N02 山手線→東海道線 via Tokyo-reviewed joint (139.7328,35.61677), then 品鶴線; skips 西大井","frozen product adjacent pair; proposed only, unrouted"

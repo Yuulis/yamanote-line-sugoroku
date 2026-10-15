@@ -1,0 +1,4 @@
+n02_line,action,section_key,reason
+東海道線,allow,139.53164 35.35542~139.53470 35.39917#5100ea0f,N02 section used by the rapid service-owned direct Totsuka-Ofuna route; the source line label does not encode the crossover south of Totsuka
+東海道線,allow,139.53392 35.40170~139.53470 35.39917#30bf9182,N02 section used by the rapid service-owned direct Totsuka-Ofuna route; the source line label does not encode the crossover south of Totsuka
+東海道線,allow,139.53069 35.35289~139.53164 35.35542#41ba2b37,N02 section connecting the through route at Ofuna; included to reach the selected Ofuna platform anchor

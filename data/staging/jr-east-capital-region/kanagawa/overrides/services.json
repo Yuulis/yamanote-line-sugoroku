@@ -1,0 +1,597 @@
+{
+  "lines": [
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線・根岸線",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-sotetsu-direct",
+      "name": "相鉄線直通 (JR区間)",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-nambu",
+      "name": "南武線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-nambu-branch",
+      "name": "南武線 浜川崎支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi",
+      "name": "鶴見線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi-umishibaura",
+      "name": "鶴見線 海芝浦支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi-okawa",
+      "name": "鶴見線 大川支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-yokohama",
+      "name": "横浜線",
+      "color": "#80C241"
+    },
+    {
+      "id": "jr-sagami",
+      "name": "相模線",
+      "color": "#009793"
+    },
+    {
+      "id": "jr-tokaido",
+      "name": "東海道線",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-yokosuka",
+      "name": "横須賀線",
+      "color": "#0067C0"
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "color": "#E21F26"
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "color": "#E21F26"
+    }
+  ],
+  "services": [
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線・根岸線",
+      "color": "#00B2E5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "大船方面",
+        "backward": "川崎方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 16,
+      "lengthRef": {
+        "km": 32.7,
+        "toleranceKm": 1.5,
+        "source": "京浜東北線 川崎→横浜: 28.8-18.2=10.6 km; 根岸線 横浜→大船:22.1 km; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/京浜東北線 https://ja.wikipedia.org/wiki/根岸線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-keihin-tohoku"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JK16",
+          "JK15",
+          "JK14",
+          "JK13",
+          "JK12",
+          "JK11",
+          "JK10",
+          "JK09",
+          "JK08",
+          "JK07",
+          "JK06",
+          "JK05",
+          "JK04",
+          "JK03",
+          "JK02",
+          "JK01"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-sotetsu-direct",
+      "name": "相鉄線直通 (JR区間)",
+      "color": "#00AC9A",
+      "circular": false,
+      "directionLabels": {
+        "forward": "羽沢横浜国大方面",
+        "backward": "武蔵小杉方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 16.6,
+        "toleranceKm": 1.5,
+        "source": "相鉄・JR直通線 武蔵小杉→羽沢横浜国大:16.6 km via 鶴見/東海道貨物線; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/相鉄・JR直通線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-sotetsu-direct"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JS15",
+          ""
+        ],
+        "reason": "Musashi-Kosugi is JR East JS15; 羽沢横浜国大 is the through-service endpoint and has no JR East station-number code in the JR East metropolitan numbering map (Sotetsu code SO51 is not a JR East number). JR East Station Numbering Map, https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf; station pages accessed 2026-10-15."
+      }
+    },
+    {
+      "id": "jr-nambu",
+      "name": "南武線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "稲田堤方面",
+        "backward": "川崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 16,
+      "lengthRef": {
+        "km": 20.8,
+        "toleranceKm": 1.5,
+        "source": "南武線 川崎→稲田堤:20.8 km; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/南武線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-nambu"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JN01",
+          "JN02",
+          "JN03",
+          "JN04",
+          "JN05",
+          "JN06",
+          "JN07",
+          "JN08",
+          "JN09",
+          "JN10",
+          "JN11",
+          "JN12",
+          "JN13",
+          "JN14",
+          "JN15",
+          "JN16"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-nambu-branch",
+      "name": "南武線 浜川崎支線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浜川崎方面",
+        "backward": "尻手方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 5,
+      "lengthRef": {
+        "km": 4.1,
+        "toleranceKm": 1.5,
+        "source": "南武線 尻手→浜川崎:4.1 km; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/南武線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-nambu-branch"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JN02",
+          "JN51",
+          "JN52",
+          "JN53",
+          "JN54"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-tsurumi",
+      "name": "鶴見線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "扇町方面",
+        "backward": "鶴見方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 7.0,
+        "toleranceKm": 1.5,
+        "source": "鶴見線 鶴見→扇町:7.0 km; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/鶴見線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JI01",
+          "JI02",
+          "JI03",
+          "JI04",
+          "JI05",
+          "JI06",
+          "JI07",
+          "JI08",
+          "JI09",
+          "JI10"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-tsurumi-umishibaura",
+      "name": "鶴見線 海芝浦支線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "海芝浦方面",
+        "backward": "浅野方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 1.7,
+        "toleranceKm": 1.5,
+        "source": "鶴見線 浅野→海芝浦:1.7 km; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/鶴見線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi-umishibaura"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JI05",
+          "JI51",
+          "JI52"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-tsurumi-okawa",
+      "name": "鶴見線 大川支線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "大川方面",
+        "backward": "安善方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 1.6,
+        "toleranceKm": 1.5,
+        "source": "鶴見線 安善→武蔵白石分岐:0.6 km + 大川支線:1.0 km (武蔵白石 is not a served stop); station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/鶴見線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi-okawa"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JI06",
+          "JI61"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-yokohama",
+      "name": "横浜線",
+      "color": "#80C241",
+      "circular": false,
+      "directionLabels": {
+        "forward": "長津田方面",
+        "backward": "東神奈川方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 9,
+      "lengthRef": {
+        "km": 17.9,
+        "toleranceKm": 1.5,
+        "source": "横浜線 東神奈川→長津田:17.9 km; western Kanagawa run deferred; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/横浜線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-yokohama"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JH13",
+          "JH14",
+          "JH15",
+          "JH16",
+          "JH17",
+          "JH18",
+          "JH19",
+          "JH20",
+          "JH21"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-sagami",
+      "name": "相模線",
+      "color": "#009793",
+      "circular": false,
+      "directionLabels": {
+        "forward": "橋本方面",
+        "backward": "茅ケ崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 18,
+      "lengthRef": {
+        "km": 33.3,
+        "toleranceKm": 1.5,
+        "source": "相模線 茅ケ崎→橋本:33.3 km; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/相模線"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-sagami"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JT10",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "JH28"
+        ],
+        "reason": "The Sagami-line intermediate stations have no JR East station-number sequence in the metropolitan numbering map; the shared terminal facilities retain their displayed numbers 茅ケ崎 JT10 and 橋本 JH28. JR East station pages and Station Numbering Map accessed 2026-10-15: https://www.jreast.co.jp/estation/station/info.aspx?StationCD=982 https://www.jreast.co.jp/estation/station/info.aspx?StationCD=1224 https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf."
+      }
+    },
+    {
+      "id": "jr-tokaido",
+      "name": "東海道線",
+      "color": "#F68B1E",
+      "circular": false,
+      "directionLabels": {
+        "forward": "湯河原方面",
+        "backward": "川崎方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 17,
+      "lengthRef": {
+        "km": 80.9,
+        "toleranceKm": 1.5,
+        "source": "東海道線 川崎→湯河原:99.1-18.2=80.9 km; station mileage tables accessed 2026-10-15: https://ja.wikipedia.org/wiki/東海道線_(JR東日本)"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tokaido"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JT04",
+          "JT05",
+          "JT06",
+          "JT07",
+          "JT08",
+          "JT09",
+          "JT10",
+          "JT11",
+          "JT12",
+          "JT13",
+          "JT14",
+          "JT15",
+          "JT16",
+          "JT17",
+          "JT18",
+          "JT19",
+          "JT20"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-yokosuka",
+      "name": "横須賀線",
+      "color": "#0067C0",
+      "circular": false,
+      "directionLabels": {
+        "forward": "久里浜方面",
+        "backward": "武蔵小杉方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 15,
+      "lengthRef": {
+        "km": 56.5,
+        "toleranceKm": 1.5,
+        "source": "横須賀線 武蔵小杉→久里浜:73.3-16.8=56.5 km via 品鶴線; station mileage tables accessed 2026-10-15: https://en.wikipedia.org/wiki/Yokosuka_Line"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-yokosuka"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JO15",
+          "JO14",
+          "JO13",
+          "JO12",
+          "JO11",
+          "JO10",
+          "JO09",
+          "JO08",
+          "JO07",
+          "JO06",
+          "JO05",
+          "JO04",
+          "JO03",
+          "JO02",
+          "JO01"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area); exact service stop sequence retained, including branch jumps: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "color": "#E21F26",
+      "circular": false,
+      "directionLabels": {
+        "forward": "逗子方面",
+        "backward": "武蔵小杉方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 41.0,
+        "toleranceKm": 1.5,
+        "source": "横須賀線 武蔵小杉→大船:49.4-16.8=32.6 km + 大船→逗子:8.4 km; station mileage tables accessed 2026-10-15: https://en.wikipedia.org/wiki/Yokosuka_Line"
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-shonan-shinjuku-local"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JS15",
+          "JS14",
+          "JS13",
+          "JS12",
+          "JS11",
+          "JS10",
+          "JS09",
+          "JS08",
+          "JS07",
+          "JS06"
+        ],
+        "reason": "JR East Station Numbering Map (Metropolitan Area), service sequence JS15–JS06; branch skips are explicit in stop order: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf (accessed 2026-10-15)."
+      }
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "color": "#E21F26",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小田原方面",
+        "backward": "武蔵小杉方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 13,
+      "lengthRef": {
+        "km": 70.0,
+        "toleranceKm": 1.5,
+        "source": "武蔵小杉→大船 via 横須賀線:32.6 km + 東海道線 大船→小田原:83.9-46.5=37.4 km; station mileage tables accessed 2026-10-15: https://en.wikipedia.org/wiki/Yokosuka_Line https://ja.wikipedia.org/wiki/東海道線_(JR東日本)"
+      },
+      "kind": "rapid",
+      "lineIds": [
+        "jr-shonan-shinjuku-rapid-takasaki"
+      ],
+      "scopeSource": "S6P Kanagawa stage: contiguous in-prefecture stop run derived from the frozen jr-east-capital-region-product-catalog.csv (JR時刻表 2026年10月号 basis); scope.csv records the reviewed served-stop sequence and immediate excluded neighbour at every area boundary. Tokyo enclaves and prefecture-split service runs are deferred to the combined S6 dataset. This stage uses 横浜 only as the two-way reachability seed; it is not a playable release.",
+      "stationNumberRules": {
+        "sequence": [
+          "JS15",
+          "JT05",
+          "JT06",
+          "JT07",
+          "JT08",
+          "JT09",
+          "JT10",
+          "JT11",
+          "JT12",
+          "JT13",
+          "JT14",
+          "JT15",
+          "JT16"
+        ],
+        "reason": "JR East station numbering along the selected route: JS15 at 武蔵小杉, then Tokaido JT05–JT16 from 横浜 through 小田原; JR East Station Numbering Map accessed 2026-10-15: https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf."
+      }
+    }
+  ]
+}
