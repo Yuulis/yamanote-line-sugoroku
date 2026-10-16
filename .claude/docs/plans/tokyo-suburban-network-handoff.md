@@ -1,5 +1,43 @@
 # Handoff: 東京近郊版 (Tokyo suburban network edition)
 
+## Implementation (2026-10-16, Claude main; supersedes the "ON HOLD" status below)
+
+- **User authorized implementation (2026-10-16). D1–D4 are FINAL** (DESIGN.md Key Decisions, 2026-10-16):
+  - D1: R2 rule B (600 m official-interchange groups) as proposed.
+  - D2: Yamanote target share 2/3, direction 2:1, goal unchanged; new ruleset id (proposed `tokyo-suburban-1`).
+  - D3: research boundaries as proposed. Changed: Oedo loop + radial may stay two engine services, but the UI shows
+    them as ONE line 大江戸線.
+  - D4: `山手線すごろく` / `東京近郊版`. Also remove BOTH notice sentences in `TitleScreen.tsx` (original-game and
+    unofficial fan-made). The user was told the non-affiliation sentence mitigates implied-endorsement risk with
+    15+ operator names shown, and chose removal anyway.
+- Working mode: Codex Luna `high` for specified work, Sol `low` read-only for reviews; Claude main integrates and
+  verifies. **Stop after every step**: update this handoff, report, and wait for the user's go-ahead.
+- Step prompts: `.claude/docs/plans/tokyo-suburban-impl-prompts.md` (one section per step).
+
+| Step | Status | Evidence |
+|---|---|---|
+| S0 freeze baseline | DONE, lead-verified 2026-10-16; uncommitted (awaiting user) | Luna run `20261016T023600Z-s0` (180 s). New: `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (24 input hashes, counts 135/1,586/2,142/3,988, ruleset `tokyo-suburban-1` from case `target-two-thirds` 55/146/261/max 446, Oedo `toei-oedo-loop`+`toei-oedo-radial` → UI group `toei-oedo` 大江戸線, D4 presentation) and `tokyo-suburban-r2-tools/check_freeze.py` (ruleset/stats read from r2-results, not hard-coded; `--write` regenerates). Lead reran: check_freeze/check_catalog/verify_results/ruff exit 0; tampered catalog (renamed 中野) and truncated services both exit 2; `verify_delegation.py` 0 actionable. No Sol review (record-only step). |
+| S1 pipeline multi-operator selection | NEXT — prompt not yet written | — |
+| S2–S8 | pending | — |
+
+S0 note: the freeze hashes R1b/R2 research files that are still untracked; commit them together with S0 so the
+hashes refer to tracked content. Rerun `check_freeze.py` at the start of every later step.
+
+## Active session (2026-10-15, Codex; superseded by "Implementation" above)
+
+- **R1b and R2 DONE. R3 D1 and D2 accepted as proposals; D3 and D4 remain unconfirmed. Implementation is ON HOLD by explicit user instruction (2026-10-15).**
+- User accepted D1 as a proposal: official interchange grouping within a 600 m station-point group, with the documented same-service/JR-id and walking-link exclusions.
+- User accepted D2 as a proposal: target share **2/3**, direction **2:1**, with the current goal rule unchanged.
+- Proposal acceptance does not authorize implementation or release. Update this handoff only; retain D3 (service boundaries/Oedo representation) and D4 (title) as unconfirmed, and await an explicit user instruction before starting product implementation.
+- User-authorized repair is complete: corrected CSV quoting, strict column validation, original-name/id and N02 membership checks. All checks pass.
+- Recommended research input: **135 services / 1,586 station groups / 2,142 rows / 3,988 directed segments**. Every station is reachable; shipped 472 station ids, 40 services and original contiguous stop sequences are preserved.
+- Station proposal B: official interchanges inside a 600 m station-point group, no same-service/JR-id collapse, same-name priority. Main Shinjuku is one group; Seibu-Shinjuku/Shinjuku-nishiguchi remain separate from it. Certain walking links are explicitly excluded.
+- **16 cases / 110,000 games verified**, no cap hits. Current rule: 137 / 311 / 516 turns (median/p90/p99). All-equal: 1,607 / 3,144 / 4,942. Recommended target share **2/3**, direction **2:1**, unchanged goal: **55 / 146 / 261** (5,000 games, none above 500). The 3/4 share option is shorter: 33 / 100 / 198.
+- Artifacts: `.claude/docs/research/tokyo-suburban-r2.md`, tracked CSV/JSON/tools; user decision and implementation proposal: `.claude/docs/plans/tokyo-suburban-network-design.md`.
+- Final validation: 578 unit tests, 10 repository checks, research regressions/N02 checks, byte-identical CSV rebuild/hash checks, standard `npm run sim` agreement, all shard/seed/config/raw-statistics checks. Fresh-context Sol reviews: no blocking findings; per-stop N02 match-name requirement added to S1.
+- The Mito-through experiment's copied rapid/local kind conflict was corrected and remeasured; the superseded failed matrix was not accepted. A 500 m prototype was superseded by 600 m because of Shinjuku grouping.
+- No product code/data, commits, pushes or releases. Geometry budget and device-performance checks await actual staging; current size report is a planning proxy.
+
 ## Current status (2026-10-15) — resume here (Codex takes over)
 
 **The user handed all remaining work to Codex (2026-10-15).** A Codex main session (Sol) owns routing and
@@ -38,18 +76,28 @@ services (常磐 品川–浪江, 中央本線 to 塩尻, 宇都宮線 to 黒磯
 (`jr-chuo-takao-fujino` → `jr-chuo-main`); 西武山口線 (AGT) kept as a normal line (default yes); 東急 98 vs 99
 stations (世田谷線 三軒茶屋); risk: JR plans to merge Suica areas in spring 2027 — the area stays frozen on 2026-03-14.
 
-Next: **R1b** (みなとみらい線・北総線 + 実質各停 addendum, Luna high with web search) → **R2** (merged catalog,
-identity rules, real-engine Monte Carlo, size estimate) → **R3** (design + user decisions) → implementation.
+Next: retain **R3 D1/D2 as accepted proposals**, with **D3/D4 unconfirmed**. Implementation steps S0–S8 remain on hold until the user explicitly authorizes implementation. This handoff records the latest user instruction; the linked design proposal has not been updated. The initial R1b/R2 sequence described below is historical.
+
+## Verification stop history (2026-10-15; user authorized resumption and CSV is repaired)
+
+- R1b Luna runs: `20261015T105248Z-r1b` and the single correction `20261015T105612Z-r1b-fix` (responses in `.claude/logs/codex/`). Outputs remain uncommitted.
+- Correction adds the four-stop Keisei airport segment and checks local N02 membership. Intended totals: extra 2 services / 21 rows; exceptions 3 services / 15 rows.
+- **BLOCKER:** `tokyo-suburban-r1-exceptions-catalog.csv` line 13 has unquoted commas in `notes`; `csv.DictReader` produces a `None` key with two extra fields. Luna's checker falsely passes because it does not reject surplus fields. Root AGENTS.md false-completion protocol requires explicit user approval after this second verification failure; no further dependent work was performed.
+- Next, after approval: repair CSV quoting, harden all catalog readers/checkers to reject extra/missing fields, translate the new Japanese technical prose to English, then independently revalidate R1b.
+- Transfer audit correction `20261015T105612Z-r2-transfer-fix.md` covers all 136 requested original row keys exactly (107 subway, 3 PW, 26 PE); saved parsed evidence: `.claude/logs/r2/transfer-audit-corrected.json`. Individual claims still need integration review; do not reuse the first audit's blanket Toei certification.
+- Draft R2 tools are under `tokyo-suburban-r2-tools/` in research. They are unfinished and have not passed acceptance/review. No final merged catalog or final MC results exist.
+- Validation: `npx vitest run` passed 578 tests / 26 files. Provisional simulations only (temporary CSVs, not accepted): decided 200 games and all-equal 100 games completed. Do not use these as R2 conclusions; required 20,000-game runs and variants remain pending.
+- R2 counts must reconcile actual PW CSV identities (332) separately from the 337 count that includes five excluded stations. N02 raw files are present locally. No product code/data changed; no commits, pushes, or release actions taken.
 
 ## Phase plan
 
 | Phase | Content | Status |
 |---|---|---|
 | R1 | Research inventories in parallel: R1-JR, R1-SUB, R1-PE, R1-PW | DONE (Claude Opus, 2026-10-15) — see "R1 results" above |
-| R1b | みなとみらい線・北総線 inventory + 実質各停 addendum (prompt `r1b`) | next |
-| R2 | Merge into one research catalog; inter-operator transfer/station-identity model; through-running split; real-engine Monte Carlo (`npm run sim` with the research catalog loader); size/perf estimates | pending |
-| R3 | Design doc + user decision list (goal/lottery levers if games get long, transfer rule, boundary rule for non-JR lines) | pending |
-| Impl | Step plan like the 1都3県 project (pipeline gaps for multi-operator N02 selection → staging per operator → final data → rules → docs → release) | pending |
+| R1b | みなとみらい線・北総線 inventory + 実質各停 addendum (prompt `r1b`) | DONE after user-authorized CSV repair and independent checks |
+| R2 | Merged catalog, identity alternatives, real-engine matrix, geometry/performance estimate | DONE: 16 cases / 110,000 games, final acceptance passed |
+| R3 | Design proposal, user decision list and implementation plan | D1 identity / D2 duration accepted as proposals; D3 representations / D4 title unconfirmed |
+| Impl | Step plan like the 1都3県 project (pipeline gaps for multi-operator N02 selection → staging per operator → final data → rules → docs → release) | ON HOLD: user explicitly requested no implementation; proposal acceptance is not implementation authorization |
 | Share | X share (Web Intent), then branding (logo, favicon, OGP) and analytics | pending |
 
 ## R1 shared conventions (all research agents)

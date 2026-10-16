@@ -1,0 +1,1698 @@
+[
+  {
+    "station_id": "toei-nakanobu",
+    "other_operator": "東急電鉄",
+    "other_station_name": "中延 (大井町線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s official station transfer entry names the Ōimachi Line."
+  },
+  {
+    "station_id": "toei-togoshi",
+    "other_operator": "東急電鉄",
+    "other_station_name": "戸越銀座 (池上線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s official station transfer entry names Togoshi-ginza on the Ikegami Line."
+  },
+  {
+    "station_id": "toei-gotanda",
+    "other_operator": "JR東日本",
+    "other_station_name": "五反田 (山手線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s official Gotanda entry names the JR Yamanote Line."
+  },
+  {
+    "station_id": "toei-gotanda",
+    "other_operator": "東急電鉄",
+    "other_station_name": "五反田 (池上線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s official Gotanda entry names the Tokyu Ikegami Line."
+  },
+  {
+    "station_id": "toei-sengakuji",
+    "other_operator": "京浜急行電鉄",
+    "other_station_name": "泉岳寺 (京急本線; Toei-managed station, through-running junction)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s official Sengakuji entry identifies the Keikyu Line connection."
+  },
+  {
+    "station_id": "toei-mita",
+    "other_operator": "JR東日本",
+    "other_station_name": "田町 (山手線・京浜東北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Mita entry names Tamachi and its JR lines."
+  },
+  {
+    "station_id": "toei-daimon",
+    "other_operator": "JR東日本",
+    "other_station_name": "浜松町 (山手線・京浜東北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Daimon entry names Hamamatsuchō and its JR lines."
+  },
+  {
+    "station_id": "toei-daimon",
+    "other_operator": "東京モノレール",
+    "other_station_name": "浜松町 (東京モノレール羽田空港線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Daimon entry names the Tokyo Monorail."
+  },
+  {
+    "station_id": "toei-shimbashi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新橋 (銀座線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Shimbashi entry names the Ginza Line."
+  },
+  {
+    "station_id": "toei-shimbashi",
+    "other_operator": "JR東日本",
+    "other_station_name": "新橋 (JR線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Shimbashi entry names JR lines."
+  },
+  {
+    "station_id": "toei-shimbashi",
+    "other_operator": "ゆりかもめ",
+    "other_station_name": "新橋 (ゆりかもめ)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Shimbashi entry names Yurikamome."
+  },
+  {
+    "station_id": "toei-higashi-ginza",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "東銀座 (日比谷線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Higashi-ginza entry names the Hibiya Line."
+  },
+  {
+    "station_id": "toei-nihombashi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "日本橋 (銀座線・東西線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Nihombashi entry names the Ginza and Tōzai lines."
+  },
+  {
+    "station_id": "toei-ningyocho",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "人形町 (日比谷線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Ningyōchō entry names the Hibiya Line."
+  },
+  {
+    "station_id": "toei-ningyocho",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "水天宮前 (半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Ningyōchō entry lists Suitengūmae on the Hanzōmon Line."
+  },
+  {
+    "station_id": "toei-higashi-nihombashi",
+    "other_operator": "東京都交通局",
+    "other_station_name": "馬喰横山 (新宿線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Higashi-nihombashi entry names Bakuro-yokoyama on the Shinjuku Line."
+  },
+  {
+    "station_id": "toei-higashi-nihombashi",
+    "other_operator": "JR東日本",
+    "other_station_name": "馬喰町 (総武快速線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Higashi-nihombashi entry names Bakurochō on the JR Sōbu Rapid Line."
+  },
+  {
+    "station_id": "toei-asakusabashi",
+    "other_operator": "JR東日本",
+    "other_station_name": "浅草橋 (総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Asakusabashi entry names the JR Sōbu Line."
+  },
+  {
+    "station_id": "toei-asakusa",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "浅草 (銀座線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Asakusa entry names the Ginza Line."
+  },
+  {
+    "station_id": "toei-asakusa",
+    "other_operator": "東武鉄道",
+    "other_station_name": "浅草 (東武スカイツリーライン)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Asakusa entry names the Tobu Skytree Line."
+  },
+  {
+    "station_id": "toei-oshiage",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "押上 (半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Oshiage entry names the Hanzōmon Line."
+  },
+  {
+    "station_id": "toei-oshiage",
+    "other_operator": "京成電鉄",
+    "other_station_name": "押上 (押上線; Keisei-managed station)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Oshiage entry identifies the Keisei Oshiage Line."
+  },
+  {
+    "station_id": "toei-oshiage",
+    "other_operator": "東武鉄道",
+    "other_station_name": "とうきょうスカイツリー/押上 (東武スカイツリーライン)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "Toei’s Oshiage entry names the Tobu Skytree Line."
+  },
+  {
+    "station_id": "toei-meguro",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "目黒 (南北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Meguro entry names the Namboku Line."
+  },
+  {
+    "station_id": "toei-meguro",
+    "other_operator": "JR東日本",
+    "other_station_name": "目黒 (山手線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Meguro entry names the JR Yamanote Line."
+  },
+  {
+    "station_id": "toei-meguro",
+    "other_operator": "東急電鉄",
+    "other_station_name": "目黒 (目黒線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Meguro entry names the Tokyu Meguro Line."
+  },
+  {
+    "station_id": "toei-shirokanedai",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "白金台 (南北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Shirokanedai entry names the Namboku Line."
+  },
+  {
+    "station_id": "toei-shirokane-takanawa",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "白金高輪 (南北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Shirokane-takanawa entry names the Namboku Line."
+  },
+  {
+    "station_id": "toei-hibiya",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "日比谷 (日比谷線・千代田線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Hibiya entry names the Hibiya and Chiyoda lines."
+  },
+  {
+    "station_id": "toei-hibiya",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "有楽町 (有楽町線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Hibiya entry names Yūrakuchō on the Yūrakuchō Line."
+  },
+  {
+    "station_id": "toei-hibiya",
+    "other_operator": "JR東日本",
+    "other_station_name": "有楽町 (JR線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/hibiya.html",
+    "evidence": "The official Hibiya station transfer list names JR Yamanote and Keihin-Tohoku lines at 有楽町."
+  },
+  {
+    "station_id": "toei-otemachi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "大手町 (丸ノ内線・東西線・千代田線・半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Otemachi entry names the four Tokyo Metro lines."
+  },
+  {
+    "station_id": "toei-otemachi",
+    "other_operator": "JR東日本",
+    "other_station_name": "東京 (JR線)",
+    "status": "unclear",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/otemachi.html",
+    "evidence": "The official Otemachi transfer list names four Tokyo Metro lines but does not list JR Tokyo. This absence does not establish that no connection exists."
+  },
+  {
+    "station_id": "toei-jimbocho",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "神保町 (半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Jimbochō entry names the Hanzōmon Line."
+  },
+  {
+    "station_id": "toei-suidobashi",
+    "other_operator": "JR東日本",
+    "other_station_name": "水道橋 (中央・総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Suidōbashi entry names the JR Chūō-Sōbu Line."
+  },
+  {
+    "station_id": "toei-kasuga",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "後楽園 (丸ノ内線・南北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Kasuga entry names Kōrakuen on the Marunouchi and Namboku lines."
+  },
+  {
+    "station_id": "toei-sugamo",
+    "other_operator": "JR東日本",
+    "other_station_name": "巣鴨 (山手線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Sugamo entry names the JR Yamanote Line."
+  },
+  {
+    "station_id": "toei-nishi-sugamo",
+    "other_operator": "東京都交通局",
+    "other_station_name": "新庚申塚 (東京さくらトラム（都電荒川線）)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Nishi-sugamo entry names Shinkōshinzuka on the Toden Arakawa Line."
+  },
+  {
+    "station_id": "toei-shin-itabashi",
+    "other_operator": "JR東日本",
+    "other_station_name": "板橋 (埼京線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/mita/",
+    "evidence": "Toei’s Shin-itabashi entry names JR Itabashi on the Saikyō Line."
+  },
+  {
+    "station_id": "toei-shinjuku",
+    "other_operator": "京王電鉄",
+    "other_station_name": "新宿 (京王線・京王新線; S01 platforms Keio-managed)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Shinjuku entry names the Keio lines."
+  },
+  {
+    "station_id": "toei-shinjuku",
+    "other_operator": "JR東日本",
+    "other_station_name": "新宿 (JR線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Shinjuku entry names JR lines."
+  },
+  {
+    "station_id": "toei-shinjuku",
+    "other_operator": "小田急電鉄",
+    "other_station_name": "新宿 (小田原線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Shinjuku entry names the Odakyu Odawara Line."
+  },
+  {
+    "station_id": "toei-shinjuku",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新宿 (丸ノ内線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Shinjuku entry names the Marunouchi Line."
+  },
+  {
+    "station_id": "toei-shinjuku-sanchome",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新宿三丁目 (丸ノ内線・副都心線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Shinjuku-sanchōme entry names the Marunouchi and Fukutoshin lines."
+  },
+  {
+    "station_id": "toei-ichigaya",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "市ケ谷 (有楽町線・南北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Ichigaya entry names the Yūrakuchō and Namboku lines."
+  },
+  {
+    "station_id": "toei-ichigaya",
+    "other_operator": "JR東日本",
+    "other_station_name": "市ケ谷 (中央・総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Ichigaya entry names the JR Chūō-Sōbu Line."
+  },
+  {
+    "station_id": "toei-kudanshita",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "九段下 (東西線・半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Kudanshita entry names the Tōzai and Hanzōmon lines."
+  },
+  {
+    "station_id": "toei-ogawamachi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "淡路町 (丸ノ内線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Ogawamachi entry names Awajichō on the Marunouchi Line."
+  },
+  {
+    "station_id": "toei-ogawamachi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新御茶ノ水 (千代田線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Ogawamachi entry names Shin-ochanomizu on the Chiyoda Line."
+  },
+  {
+    "station_id": "toei-iwamotocho",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "秋葉原 (日比谷線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Iwamotochō entry names the Hibiya Line."
+  },
+  {
+    "station_id": "toei-iwamotocho",
+    "other_operator": "JR東日本",
+    "other_station_name": "秋葉原 (JR線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Iwamotochō entry names JR Akihabara."
+  },
+  {
+    "station_id": "toei-iwamotocho",
+    "other_operator": "首都圏新都市鉄道",
+    "other_station_name": "秋葉原 (つくばエクスプレス線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Iwamotochō entry names the Tsukuba Express."
+  },
+  {
+    "station_id": "toei-bakuro-yokoyama",
+    "other_operator": "東京都交通局",
+    "other_station_name": "東日本橋 (浅草線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Bakuro-yokoyama entry names Higashi-nihombashi on the Asakusa Line."
+  },
+  {
+    "station_id": "toei-bakuro-yokoyama",
+    "other_operator": "JR東日本",
+    "other_station_name": "馬喰町 (総武快速線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Bakuro-yokoyama entry names Bakurochō on the JR Sōbu Rapid Line."
+  },
+  {
+    "station_id": "toei-sumiyoshi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "住吉 (半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Sumiyoshi entry names the Hanzōmon Line."
+  },
+  {
+    "station_id": "toei-motoyawata",
+    "other_operator": "JR東日本",
+    "other_station_name": "本八幡 (総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Motoyawata entry names the JR Sōbu Line."
+  },
+  {
+    "station_id": "toei-motoyawata",
+    "other_operator": "京成電鉄",
+    "other_station_name": "京成八幡 (京成本線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/shinjuku/",
+    "evidence": "Toei’s Motoyawata entry names Keisei Yawata on the Keisei Main Line."
+  },
+  {
+    "station_id": "toei-shinjuku-nishiguchi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新宿 (丸ノ内線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Shinjuku-nishiguchi entry names the Marunouchi Line."
+  },
+  {
+    "station_id": "toei-shinjuku-nishiguchi",
+    "other_operator": "JR東日本",
+    "other_station_name": "新宿 (JR線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/shinjuku-nishiguchi.html",
+    "evidence": "The official Shinjuku-nishiguchi station transfer list names JR lines at Shinjuku."
+  },
+  {
+    "station_id": "toei-shinjuku-nishiguchi",
+    "other_operator": "京王電鉄",
+    "other_station_name": "新宿 (京王線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/shinjuku-nishiguchi.html",
+    "evidence": "The official Shinjuku-nishiguchi station transfer list names the Keio Line at Shinjuku."
+  },
+  {
+    "station_id": "toei-shinjuku-nishiguchi",
+    "other_operator": "小田急電鉄",
+    "other_station_name": "新宿 (小田原線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/shinjuku-nishiguchi.html",
+    "evidence": "The official Shinjuku-nishiguchi station transfer list names the Odakyu Line at Shinjuku."
+  },
+  {
+    "station_id": "toei-shinjuku-nishiguchi",
+    "other_operator": "西武鉄道",
+    "other_station_name": "西武新宿 (新宿線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Shinjuku-nishiguchi entry names Seibu-Shinjuku."
+  },
+  {
+    "station_id": "toei-higashi-shinjuku",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "東新宿 (副都心線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Higashi-shinjuku entry names the Fukutoshin Line."
+  },
+  {
+    "station_id": "toei-iidabashi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "飯田橋 (東西線・有楽町線・南北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Iidabashi entry names the Tōzai, Yūrakuchō, and Namboku lines."
+  },
+  {
+    "station_id": "toei-iidabashi",
+    "other_operator": "JR東日本",
+    "other_station_name": "飯田橋 (中央・総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Iidabashi entry names the JR Chūō-Sōbu Line."
+  },
+  {
+    "station_id": "toei-hongo-sanchome",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "本郷三丁目 (丸ノ内線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Hongō-sanchōme entry names the Marunouchi Line."
+  },
+  {
+    "station_id": "toei-ueno-okachimachi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "上野広小路 (銀座線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Ueno-okachimachi entry names Ueno-hirokoji on the Ginza Line."
+  },
+  {
+    "station_id": "toei-ueno-okachimachi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "仲御徒町 (日比谷線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Ueno-okachimachi entry names Naka-okachimachi on the Hibiya Line."
+  },
+  {
+    "station_id": "toei-ueno-okachimachi",
+    "other_operator": "JR東日本",
+    "other_station_name": "御徒町 (山手線・京浜東北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Ueno-okachimachi entry names Okachimachi and its JR lines."
+  },
+  {
+    "station_id": "toei-shin-okachimachi",
+    "other_operator": "首都圏新都市鉄道",
+    "other_station_name": "新御徒町 (つくばエクスプレス線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Shin-okachimachi entry names the Tsukuba Express."
+  },
+  {
+    "station_id": "toei-ryogoku",
+    "other_operator": "JR東日本",
+    "other_station_name": "両国 (総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Ryōgoku entry names the JR Sōbu Line."
+  },
+  {
+    "station_id": "toei-kiyosumi-shirakawa",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "清澄白河 (半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Kiyosumi-shirakawa entry names the Hanzōmon Line."
+  },
+  {
+    "station_id": "toei-monzen-nakacho",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "門前仲町 (東西線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Monzen-nakachō entry names the Tōzai Line."
+  },
+  {
+    "station_id": "toei-tsukishima",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "月島 (有楽町線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Tsukishima entry names the Yūrakuchō Line."
+  },
+  {
+    "station_id": "toei-shiodome",
+    "other_operator": "東京都交通局",
+    "other_station_name": "新橋 (浅草線)",
+    "status": "unclear",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/shiodome.html",
+    "evidence": "The official Shiodome transfer list names Yurikamome but does not list the Asakusa Line at Shimbashi. This absence does not establish that no connection exists."
+  },
+  {
+    "station_id": "toei-shiodome",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新橋 (銀座線)",
+    "status": "unclear",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/shiodome.html",
+    "evidence": "The official Shiodome transfer list names Yurikamome but does not list the Ginza Line at Shimbashi. This absence does not establish that no connection exists."
+  },
+  {
+    "station_id": "toei-shiodome",
+    "other_operator": "JR東日本",
+    "other_station_name": "新橋 (JR線)",
+    "status": "unclear",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/shiodome.html",
+    "evidence": "The official Shiodome transfer list names Yurikamome but does not list JR Shimbashi. This absence does not establish that no connection exists."
+  },
+  {
+    "station_id": "toei-shiodome",
+    "other_operator": "ゆりかもめ",
+    "other_station_name": "汐留 (ゆりかもめ)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Shiodome entry names Yurikamome."
+  },
+  {
+    "station_id": "toei-azabu-juban",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "麻布十番 (南北線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Azabu-jūban entry names the Namboku Line."
+  },
+  {
+    "station_id": "toei-roppongi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "六本木 (日比谷線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Roppongi entry names the Hibiya Line."
+  },
+  {
+    "station_id": "toei-aoyama-itchome",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "青山一丁目 (銀座線・半蔵門線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Aoyama-itchōme entry names the Ginza and Hanzōmon lines."
+  },
+  {
+    "station_id": "toei-kokuritsu-kyogijo",
+    "other_operator": "JR東日本",
+    "other_station_name": "千駄ケ谷 (中央・総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Kokuritsu-kyōgijō entry names Sendagaya on the JR Chūō-Sōbu Line."
+  },
+  {
+    "station_id": "toei-yoyogi",
+    "other_operator": "JR東日本",
+    "other_station_name": "代々木 (山手線・中央・総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Yoyogi entry names the JR Yamanote and Chūō-Sōbu lines."
+  },
+  {
+    "station_id": "toei-nakano-sakaue",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "中野坂上 (丸ノ内線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Nakano-sakaue entry names the Marunouchi Line."
+  },
+  {
+    "station_id": "toei-higashi-nakano",
+    "other_operator": "JR東日本",
+    "other_station_name": "東中野 (中央・総武線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Higashi-nakano entry names the JR Chūō-Sōbu Line."
+  },
+  {
+    "station_id": "toei-nakai",
+    "other_operator": "西武鉄道",
+    "other_station_name": "中井 (新宿線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Nakai entry names the Seibu Shinjuku Line."
+  },
+  {
+    "station_id": "toei-nerima",
+    "other_operator": "西武鉄道",
+    "other_station_name": "練馬 (池袋線・西武有楽町線・豊島線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Nerima entry names the Seibu lines."
+  },
+  {
+    "station_id": "toei-toshimaen",
+    "other_operator": "西武鉄道",
+    "other_station_name": "豊島園 (豊島線)",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/oedo/",
+    "evidence": "Toei’s Toshimaen entry names the Seibu Toshima Line."
+  },
+  {
+    "station_id": "yokohama-shonandai",
+    "other_operator": "小田急電鉄",
+    "other_station_name": "湘南台 (江ノ島線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official Yokohama subway route map marks the Odakyu connection at Shōnandai."
+  },
+  {
+    "station_id": "yokohama-shonandai",
+    "other_operator": "相模鉄道",
+    "other_station_name": "湘南台 (いずみ野線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Sōtetsu connection at Shōnandai."
+  },
+  {
+    "station_id": "yokohama-totsuka",
+    "other_operator": "JR東日本",
+    "other_station_name": "戸塚 (東海道線・横須賀線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the JR connection at Totsuka."
+  },
+  {
+    "station_id": "yokohama-kamiooka",
+    "other_operator": "京浜急行電鉄",
+    "other_station_name": "上大岡 (京急本線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Keikyu connection at Kamiooka."
+  },
+  {
+    "station_id": "yokohama-kannai",
+    "other_operator": "JR東日本",
+    "other_station_name": "関内 (根岸線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the JR Negishi Line connection at Kannai."
+  },
+  {
+    "station_id": "yokohama-sakuragicho",
+    "other_operator": "JR東日本",
+    "other_station_name": "桜木町 (根岸線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the JR Negishi Line connection at Sakuragichō."
+  },
+  {
+    "station_id": "yokohama-yokohama",
+    "other_operator": "JR東日本",
+    "other_station_name": "横浜 (JR線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the JR connection at Yokohama."
+  },
+  {
+    "station_id": "yokohama-yokohama",
+    "other_operator": "東急電鉄",
+    "other_station_name": "横浜 (東横線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Tokyu Toyoko Line connection at Yokohama."
+  },
+  {
+    "station_id": "yokohama-yokohama",
+    "other_operator": "京浜急行電鉄",
+    "other_station_name": "横浜 (京急本線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Keikyu Line connection at Yokohama."
+  },
+  {
+    "station_id": "yokohama-yokohama",
+    "other_operator": "相模鉄道",
+    "other_station_name": "横浜 (相鉄本線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Sōtetsu connection at Yokohama."
+  },
+  {
+    "station_id": "yokohama-yokohama",
+    "other_operator": "横浜高速鉄道",
+    "other_station_name": "横浜 (みなとみらい線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Minatomirai Line connection at Yokohama."
+  },
+  {
+    "station_id": "yokohama-shin-yokohama",
+    "other_operator": "JR東日本",
+    "other_station_name": "新横浜 (横浜線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the JR Yokohama Line connection at Shin-Yokohama."
+  },
+  {
+    "station_id": "yokohama-shin-yokohama",
+    "other_operator": "JR東海",
+    "other_station_name": "新横浜 (東海道新幹線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Tōkaidō Shinkansen connection at Shin-Yokohama."
+  },
+  {
+    "station_id": "yokohama-shin-yokohama",
+    "other_operator": "相模鉄道",
+    "other_station_name": "新横浜 (相鉄新横浜線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Sōtetsu Shin-Yokohama Line connection."
+  },
+  {
+    "station_id": "yokohama-shin-yokohama",
+    "other_operator": "東急電鉄",
+    "other_station_name": "新横浜 (東急新横浜線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Tokyu Shin-Yokohama Line connection."
+  },
+  {
+    "station_id": "yokohama-azamino",
+    "other_operator": "東急電鉄",
+    "other_station_name": "あざみ野 (田園都市線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the Tokyu Den-en-toshi Line connection at Azamino."
+  },
+  {
+    "station_id": "yokohama-nakayama",
+    "other_operator": "JR東日本",
+    "other_station_name": "中山 (横浜線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks the JR Yokohama Line connection at Nakayama."
+  },
+  {
+    "station_id": "yokohama-hiyoshi",
+    "other_operator": "東急電鉄",
+    "other_station_name": "日吉 (東横線・目黒線・新横浜線)",
+    "status": "yes",
+    "source_url": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf",
+    "evidence": "The official route map marks Tokyu lines at Hiyoshi."
+  },
+  {
+    "station_id": "keikyu-sengakuji",
+    "other_operator": "JR東日本",
+    "other_station_name": "高輪ゲートウェイ (山手線・京浜東北線)",
+    "status": "no",
+    "source_url": "https://www.keikyu.co.jp/company/news/2022/20220630HP_22046TS.html",
+    "evidence": "Keikyu describes Takanawa Gateway as an 8-minute walk from Sengakuji; this establishes a walk, not a listed rail transfer."
+  },
+  {
+    "station_id": "keio-shinjuku",
+    "other_operator": "西武鉄道",
+    "other_station_name": "西武新宿 (新宿線)",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/seibu-shinjuku/",
+    "evidence": "Seibu’s Seibu-Shinjuku station page lists Keio as a transfer line."
+  },
+  {
+    "station_id": "odakyu-shinjuku",
+    "other_operator": "西武鉄道",
+    "other_station_name": "西武新宿 (新宿線)",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/seibu-shinjuku/",
+    "evidence": "Seibu’s Seibu-Shinjuku station page lists Odakyu as a transfer line."
+  },
+  {
+    "station_id": "tobu-ushida",
+    "other_operator": "京成電鉄",
+    "other_station_name": "京成関屋",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-sekiya.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 京成関屋 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-shin-koshigaya",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "南越谷",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/1408.html",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 南越谷 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-tobu-nikko",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "日光",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/3215/",
+    "evidence": "Tobu’s official Tobu-Nikko station page lists JR as a transfer line."
+  },
+  {
+    "station_id": "tobu-funabashi",
+    "other_operator": "京成電鉄",
+    "other_station_name": "京成船橋",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/6412/",
+    "evidence": "Tobu’s official Funabashi station page lists Keisei as a transfer line."
+  },
+  {
+    "station_id": "tobu-asakadai",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "北朝霞",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/7307/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 北朝霞 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-akitsu",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "新秋津",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/akitsu/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 新秋津 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-seibu-chichibu",
+    "other_operator": "秩父鉄道",
+    "other_station_name": "御花畑",
+    "status": "no",
+    "source_url": "https://www.chichibu-railway.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "seibu-seibu-shinjuku",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新宿三丁目",
+    "status": "unclear",
+    "source_url": "https://www.seiburailway.jp/railway/station/seibu-shinjuku/",
+    "evidence": "The official Seibu-Shinjuku page does not identify a transfer to the separately named Shinjuku-sanchome station."
+  },
+  {
+    "station_id": "seibu-seibu-shinjuku",
+    "other_operator": "東京都交通局",
+    "other_station_name": "新宿西口",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/stations/shinjuku-nishiguchi.html",
+    "evidence": "Toei’s official Shinjuku-nishiguchi station transfer list names the Seibu Shinjuku Line at 西武新宿."
+  },
+  {
+    "station_id": "keisei-keisei-ueno",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "上野",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-ueno.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 上野 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-keisei-ueno",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "上野",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-ueno.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 上野 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-keisei-ueno",
+    "other_operator": "東京都交通局",
+    "other_station_name": "上野御徒町",
+    "status": "unclear",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-ueno.php",
+    "evidence": "Keisei’s official Keisei-Ueno station page lists JR and Tokyo Metro transfers, but does not establish a transfer to Toei Ueno-okachimachi."
+  },
+  {
+    "station_id": "keisei-machiya",
+    "other_operator": "東京都交通局",
+    "other_station_name": "町屋駅前",
+    "status": "no",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/toden/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "keisei-keisei-sekiya",
+    "other_operator": "東武鉄道",
+    "other_station_name": "牛田",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/goriyo.htm",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 牛田 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-keisei-yawata",
+    "other_operator": "東京都交通局",
+    "other_station_name": "本八幡",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-yawata.php",
+    "evidence": "Keisei’s official Keisei-Yawata station page says Toei Shinjuku Line’s Motoyawata station is nearby and lists it as a transfer line."
+  },
+  {
+    "station_id": "keisei-keisei-funabashi",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "船橋",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/keisei-funabashi.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 船橋 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-keisei-funabashi",
+    "other_operator": "東武鉄道",
+    "other_station_name": "船橋",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/keisei-funabashi.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 船橋 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-katsutadai",
+    "other_operator": "東葉高速鉄道",
+    "other_station_name": "東葉勝田台",
+    "status": "no",
+    "source_url": "https://www.toyokosoku.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "keisei-keisei-narita",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "成田",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/keisei-narita.php",
+    "evidence": "Keisei’s official Keisei-Narita station page lists the JR Narita Line as a transfer line."
+  },
+  {
+    "station_id": "keisei-keisei-kanamachi",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "金町",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-kanamachi.php",
+    "evidence": "Keisei’s official Keisei-Kanamachi station page lists the JR Joban Local Line as a transfer line."
+  },
+  {
+    "station_id": "keisei-keisei-makuharihongo",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "幕張本郷",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-makuharihongo.php",
+    "evidence": "Keisei’s official Keisei-Makuharihongo station page lists the JR Sobu Local Line as a transfer line."
+  },
+  {
+    "station_id": "keisei-keisei-chiba",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "千葉",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/keisei-chiba.php",
+    "evidence": "Keisei’s official Keisei-Chiba station page lists JR lines as transfer lines."
+  },
+  {
+    "station_id": "keisei-keisei-chiba",
+    "other_operator": "千葉都市モノレール",
+    "other_station_name": "千葉",
+    "status": "no",
+    "source_url": "https://chiba-monorail.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "keisei-yabashira",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "新八柱",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/yabashira.php",
+    "evidence": "Keisei’s official Yabashira station page says JR Shin-Yabashira is adjacent and lists the JR Musashino Line as a transfer."
+  },
+  {
+    "station_id": "keisei-shin-tsudanuma",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "津田沼",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/accessj/shin-tsudanuma.php",
+    "evidence": "Keisei’s official Shin-Tsudanuma station page explicitly calls it a transfer station for JR Tsudanuma and lists the JR Sobu Line."
+  },
+  {
+    "station_id": "tx-akihabara",
+    "other_operator": "東京都交通局",
+    "other_station_name": "岩本町",
+    "status": "yes",
+    "source_url": "https://ftp.mir.co.jp/route_map/akihabara/",
+    "evidence": "TX’s official Akihabara station page lists Toei Shinjuku Line (Iwamotocho) among rail transfers."
+  },
+  {
+    "station_id": "tobu-asakusa",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "浅草",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 浅草 / tobu-asakusa station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-asakusa",
+    "other_operator": "東京都交通局",
+    "other_station_name": "浅草",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 浅草 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-oshiage",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "押上",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 押上 / tobu-oshiage station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-oshiage",
+    "other_operator": "東京都交通局",
+    "other_station_name": "押上",
+    "status": "yes",
+    "source_url": "https://www.kotsu.metro.tokyo.jp/subway/asakusa/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 押上 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-oshiage",
+    "other_operator": "京成電鉄",
+    "other_station_name": "押上",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/shin-kamagaya.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 押上 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-kita-senju",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "北千住",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 北千住 / tobu-kita-senju station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-kita-senju",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "北千住",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 北千住 / tobu-kita-senju station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-kita-senju",
+    "other_operator": "首都圏新都市鉄道",
+    "other_station_name": "北千住",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 北千住 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-kuki",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "久喜",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 久喜 / tobu-kuki station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-hanyu",
+    "other_operator": "秩父鉄道",
+    "other_station_name": "羽生",
+    "status": "no",
+    "source_url": "https://www.chichibu-railway.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "tobu-isesaki",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "伊勢崎",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 伊勢崎 / tobu-isesaki station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-kurihashi",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "栗橋",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 栗橋 / tobu-kurihashi station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-tochigi",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "栃木",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 栃木 / tobu-tochigi station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-shin-fujiwara",
+    "other_operator": "野岩鉄道",
+    "other_station_name": "新藤原",
+    "status": "no",
+    "source_url": "https://www.yagan.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "tobu-sano",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "佐野",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 佐野 / tobu-sano station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-aioi",
+    "other_operator": "わたらせ渓谷鐵道",
+    "other_station_name": "相老",
+    "status": "no",
+    "source_url": "https://www.watetsu.com/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "tobu-akagi",
+    "other_operator": "上毛電気鉄道",
+    "other_station_name": "赤城",
+    "status": "no",
+    "source_url": "https://jomorailway.com/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "tobu-kameido",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "亀戸",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 亀戸 / tobu-kameido station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-omiya",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "大宮",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 大宮 / tobu-omiya station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-omiya",
+    "other_operator": "埼玉新都市交通",
+    "other_station_name": "大宮",
+    "status": "no",
+    "source_url": "https://www.new-shuttle.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "tobu-nagareyama-otakanomori",
+    "other_operator": "首都圏新都市鉄道",
+    "other_station_name": "流山おおたかの森",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 流山おおたかの森 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-kashiwa",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "柏",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 柏 / tobu-kashiwa station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-shin-kamagaya",
+    "other_operator": "京成電鉄",
+    "other_station_name": "新鎌ヶ谷",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/shin-kamagaya.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 新鎌ヶ谷 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-shin-kamagaya",
+    "other_operator": "北総鉄道",
+    "other_station_name": "新鎌ヶ谷",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/shin-kamagaya.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 新鎌ヶ谷 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-funabashi",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "船橋",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/6412/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 船橋 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-ikebukuro",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "池袋",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/7105/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 池袋 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-ikebukuro",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "池袋",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/7105/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 池袋 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-ikebukuro",
+    "other_operator": "西武鉄道",
+    "other_station_name": "池袋",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/railway/guide/station/info/7105/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 池袋 for the receiving operator."
+  },
+  {
+    "station_id": "tobu-wakoshi",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "和光市",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 和光市 / tobu-wakoshi station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-kawagoe",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "川越",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 川越 / tobu-kawagoe station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-ogawamachi",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "小川町",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 小川町 / tobu-ogawamachi station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-yorii",
+    "other_operator": "秩父鉄道",
+    "other_station_name": "寄居",
+    "status": "no",
+    "source_url": "https://www.chichibu-railway.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "tobu-yorii",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "寄居",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 寄居 / tobu-yorii station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "tobu-ogose",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "越生",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 越生 / tobu-ogose station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "seibu-ikebukuro",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "池袋",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/ikebukuro/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 池袋 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-ikebukuro",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "池袋",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/ikebukuro/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 池袋 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-ikebukuro",
+    "other_operator": "東武鉄道",
+    "other_station_name": "池袋",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/ikebukuro/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 池袋 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-nerima",
+    "other_operator": "東京都交通局",
+    "other_station_name": "練馬",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/nerima/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 練馬 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-kotake-mukaihara",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "小竹向原",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/kotake-mukaihara/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 小竹向原 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-higashi-hanno",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "東飯能",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/higashi-hanno/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 東飯能 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-seibu-shinjuku",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "新宿",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/seibu-shinjuku/",
+    "evidence": "Seibu’s official Seibu-Shinjuku station entry lists JR lines as transfer lines."
+  },
+  {
+    "station_id": "seibu-seibu-shinjuku",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "新宿",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/seibu-shinjuku/",
+    "evidence": "Seibu’s official Seibu-Shinjuku station transfer list names the Marunouchi Line."
+  },
+  {
+    "station_id": "seibu-seibu-shinjuku",
+    "other_operator": "小田急電鉄",
+    "other_station_name": "新宿",
+    "status": "unclear",
+    "source_url": "https://www.seiburailway.jp/railway/station/seibu-shinjuku/",
+    "evidence": "The official station entry lists Odakyu, but does not give station-specific walking or connection guidance for the separately operated Shinjuku station."
+  },
+  {
+    "station_id": "seibu-seibu-shinjuku",
+    "other_operator": "京王電鉄",
+    "other_station_name": "新宿",
+    "status": "unclear",
+    "source_url": "https://www.seiburailway.jp/railway/station/seibu-shinjuku/",
+    "evidence": "The official station entry lists Keio, but does not give station-specific walking or connection guidance for the separately operated Shinjuku station."
+  },
+  {
+    "station_id": "seibu-takadanobaba",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "高田馬場",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/takadanobaba/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 高田馬場 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-takadanobaba",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "高田馬場",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/takadanobaba/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 高田馬場 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-nakai",
+    "other_operator": "東京都交通局",
+    "other_station_name": "中井",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/nakai/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 中井 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-tamagawa-josui",
+    "other_operator": "多摩都市モノレール",
+    "other_station_name": "玉川上水",
+    "status": "no",
+    "source_url": "https://www.tama-monorail.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "seibu-haijima",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "拝島",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/haijima/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 拝島 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-kokubunji",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "国分寺",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/kokubunji/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 国分寺 for the receiving operator."
+  },
+  {
+    "station_id": "seibu-musashi-sakai",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "武蔵境",
+    "status": "yes",
+    "source_url": "https://www.seiburailway.jp/railway/station/musashi-sakai/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 武蔵境 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-nippori",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "日暮里",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/skyliner/us/traffic/nippori_transfer.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 日暮里 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-nippori",
+    "other_operator": "東京都交通局",
+    "other_station_name": "日暮里",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/railmap/railmap.php",
+    "evidence": "The official route map identifies the 日暮里 / keisei-nippori station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "keisei-machiya",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "町屋",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/goriyo.htm",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 町屋 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-keisei-takasago",
+    "other_operator": "北総鉄道",
+    "other_station_name": "京成高砂",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/railmap/railmap.php",
+    "evidence": "The official route map identifies the 京成高砂 / keisei-keisei-takasago station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "keisei-yukarigaoka",
+    "other_operator": "山万",
+    "other_station_name": "ユーカリが丘",
+    "status": "no",
+    "source_url": "https://town.yukarigaoka.jp/yukariline/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "keisei-airport-terminal-2",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "空港第2ビル",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/railmap/railmap.php",
+    "evidence": "The official route map identifies the 空港第2ビル / keisei-airport-terminal-2 station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "keisei-narita-airport-terminal-1",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "成田空港",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/railmap/railmap.php",
+    "evidence": "The official route map identifies the 成田空港 / keisei-narita-airport-terminal-1 station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "keisei-oshiage",
+    "other_operator": "東京都交通局",
+    "other_station_name": "押上",
+    "status": "yes",
+    "source_url": "https://www.keisei.co.jp/keisei/tetudou/goriyo.htm",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 押上 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-oshiage",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "押上",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/railmap/railmap.php",
+    "evidence": "The official route map identifies the 押上 / keisei-oshiage station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "keisei-oshiage",
+    "other_operator": "東武鉄道",
+    "other_station_name": "押上",
+    "status": "yes",
+    "source_url": "https://www.tobu.co.jp/pdf/guide/barrierfreemap.pdf?2026=",
+    "evidence": "The official route map identifies the 押上 / keisei-oshiage station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "keisei-higashi-narita",
+    "other_operator": "芝山鉄道",
+    "other_station_name": "東成田",
+    "status": "no",
+    "source_url": "https://www.sibatetu.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "keisei-matsudo",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "松戸",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/railmap/railmap.php",
+    "evidence": "The official route map identifies the 松戸 / keisei-matsudo station pair as a connection for the receiving operator’s line."
+  },
+  {
+    "station_id": "keisei-shin-kamagaya",
+    "other_operator": "北総鉄道",
+    "other_station_name": "新鎌ヶ谷",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/shin-kamagaya.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 新鎌ヶ谷 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-shin-kamagaya",
+    "other_operator": "東武鉄道",
+    "other_station_name": "新鎌ヶ谷",
+    "status": "yes",
+    "source_url": "https://new-www.keisei.co.jp/keisei/tetudou/accessj/shin-kamagaya.php",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 新鎌ヶ谷 for the receiving operator."
+  },
+  {
+    "station_id": "keisei-kita-narashino",
+    "other_operator": "東葉高速鉄道",
+    "other_station_name": "北習志野",
+    "status": "no",
+    "source_url": "https://www.toyokosoku.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  },
+  {
+    "station_id": "tx-akihabara",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "秋葉原",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 秋葉原 for the receiving operator."
+  },
+  {
+    "station_id": "tx-akihabara",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "秋葉原",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 秋葉原 for the receiving operator."
+  },
+  {
+    "station_id": "tx-shin-okachimachi",
+    "other_operator": "東京都交通局",
+    "other_station_name": "新御徒町",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 新御徒町 for the receiving operator."
+  },
+  {
+    "station_id": "tx-minami-senju",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "南千住",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 南千住 for the receiving operator."
+  },
+  {
+    "station_id": "tx-minami-senju",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "南千住",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 南千住 for the receiving operator."
+  },
+  {
+    "station_id": "tx-kita-senju",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "北千住",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 北千住 for the receiving operator."
+  },
+  {
+    "station_id": "tx-kita-senju",
+    "other_operator": "東武鉄道",
+    "other_station_name": "北千住",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 北千住 for the receiving operator."
+  },
+  {
+    "station_id": "tx-kita-senju",
+    "other_operator": "東京地下鉄",
+    "other_station_name": "北千住",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 北千住 for the receiving operator."
+  },
+  {
+    "station_id": "tx-minami-nagareyama",
+    "other_operator": "東日本旅客鉄道",
+    "other_station_name": "南流山",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 南流山 for the receiving operator."
+  },
+  {
+    "station_id": "tx-nagareyama-otakanomori",
+    "other_operator": "東武鉄道",
+    "other_station_name": "流山おおたかの森",
+    "status": "yes",
+    "source_url": "https://www.mir.co.jp/route_map/",
+    "evidence": "The official station or transfer page identifies a transfer between this station and 流山おおたかの森 for the receiving operator."
+  },
+  {
+    "station_id": "tx-moriya",
+    "other_operator": "関東鉄道",
+    "other_station_name": "守谷",
+    "status": "no",
+    "source_url": "https://www.kantetsu.co.jp/",
+    "evidence": "OUT OF SCOPE: the receiving operator/line is explicitly outside the requested catalogue scope."
+  }
+]
