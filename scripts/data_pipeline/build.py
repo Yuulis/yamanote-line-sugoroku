@@ -28,12 +28,13 @@ from scripts.data_pipeline.composition_build import (
     composed_pairs,
     inherited_candidates,
 )
-from scripts.data_pipeline.constraints import SectionFilter
+from scripts.data_pipeline.constraints import JunctionRule, SectionFilter
 from scripts.data_pipeline.n02 import (
     N02Source,
     N02SourceProvider,
     PlatformCandidate,
     TrackSection,
+    split_reviewed_junctions,
 )
 from scripts.data_pipeline.network import TrackNetwork
 from scripts.data_pipeline.override_models import StopResolution, resolve_stop_target
@@ -199,19 +200,21 @@ def distinct_anchors(
 
 
 def filtered_network(
-    sections: Sequence[TrackSection], section_filter: SectionFilter, label: str
+    sections: Sequence[TrackSection],
+    section_filter: SectionFilter,
+    label: str,
+    junction_rules: Sequence[JunctionRule] = (),
 ) -> TrackNetwork:
     """Track graph of one N02 line after applying a reviewed section filter."""
     keys = {section.key for section in sections}
     stale = sorted((section_filter.allow | section_filter.deny) - keys)
     if stale:
         raise RoutingError(f"{label}: section keys not found near the service {stale}")
-    kept = [
-        section.geometry for section in sections if section_filter.admits(section.key)
-    ]
-    if not kept:
+    filtered = [section for section in sections if section_filter.admits(section.key)]
+    if not filtered:
         raise RoutingError(f"{label}: the section filter removes every section")
-    return TrackNetwork(kept)
+    reviewed = split_reviewed_junctions(filtered, junction_rules)
+    return TrackNetwork([section.geometry for section in reviewed])
 
 
 def to_metric_point(lon_lat: tuple[float, float]) -> Point:
@@ -325,7 +328,9 @@ def route_service(
             {(operator, line): values for line, values in operator_sections.items()}
         )
     # Graph cache keyed by the constraints, not just the line.
-    networks: dict[tuple[str, str, SectionFilter], TrackNetwork] = {}
+    networks: dict[
+        tuple[str, str, SectionFilter, tuple[JunctionRule, ...]], TrackNetwork
+    ] = {}
     routes: list[PairRoute] = []
     for index, item in enumerate(ranges):
         if index in composed:
@@ -339,13 +344,24 @@ def route_service(
             else (default_operator,) * len(item.route_lines)
         )
         for line, operator in zip(item.route_lines, route_operators, strict=True):
-            section_filter = service.section_filter(line, operator)
-            key = (operator, line, section_filter)
+            section_filter = service.section_filter_for_pair(
+                line,
+                operator,
+                service.stops[index].station_id,
+                service.stops[(index + 1) % len(service.stops)].station_id,
+            )
+            junction_rules = tuple(
+                rule
+                for rule in service.junction_rules
+                if rule.n02_operator == operator and rule.n02_line == line
+            )
+            key = (operator, line, section_filter, junction_rules)
             if key not in networks:
                 networks[key] = filtered_network(
                     sections[(operator, line)],
                     section_filter,
                     f"{service.id}/{operator}/{line}",
+                    junction_rules,
                 )
             ordered_networks.append(networks[key])
         via = tuple(to_metric_point(point) for point in item.via)

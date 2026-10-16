@@ -1,0 +1,7 @@
+from_id,to_id,n02_line,via,route,compose
+haijima,kumagawa,五日市線,,,
+kumagawa,higashi-akiru,五日市線,,,
+higashi-akiru,akigawa,五日市線,,,
+akigawa,musashi-hikida,五日市線,,,
+musashi-hikida,musashi-masuko,五日市線,,,
+musashi-masuko,musashi-itsukaichi,五日市線,,,

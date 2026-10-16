@@ -16,6 +16,7 @@ from scripts.data_pipeline.constraints import (
     BBox,
     ConstraintError,
     OffsetException,
+    ScopedSectionFilter,
     SectionFilter,
     build_section_filter,
     parse_bbox,
@@ -51,6 +52,16 @@ LINE_MAPPING_COLUMNS = ("from_id", "to_id", "n02_line", "via")
 SECTION_COLUMNS = ("n02_line", "action", "section_key", "reason")
 OFFSET_COLUMNS = ("service_id", "station_id", "max_platform_offset_m", "reason")
 SCOPE_COLUMNS = ("station_id", "prefecture", "municipality")
+JUNCTIONS_OVERRIDE_FILE = "junctions.csv"
+JUNCTION_COLUMNS = (
+    "n02_operator",
+    "n02_line",
+    "section_key",
+    "peer_section_key",
+    "lon",
+    "lat",
+    "reason",
+)
 DETOUR_COLUMNS = ("service_id", "from_id", "to_id", "max_detour_ratio", "reason")
 TRANSFER_COLUMNS = ("service_id", "station_id", "max_transfer_m", "reason")
 
@@ -433,6 +444,64 @@ def parse_section_filters(
         return {key: build_section_filter(rules) for key, rules in by_line.items()}
     except ConstraintError as error:
         raise OverrideError(f"{service_id} sections: {error}") from error
+
+
+def parse_scoped_section_filters(
+    rows: Sequence[Mapping[str, str]], service_id: str, default_operator: str = ""
+) -> tuple[dict[tuple[str, str], SectionFilter], tuple[ScopedSectionFilter, ...]]:
+    """Parse legacy service-wide and optional stop-range section rules."""
+    has_from = any("from_id" in row for row in rows)
+    has_to = any("to_id" in row for row in rows)
+    if has_from != has_to:
+        raise OverrideError(
+            f"{service_id} sections.csv needs both from_id and to_id columns"
+        )
+    global_rows: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    scoped: list[ScopedSectionFilter] = []
+    seen_scoped: set[tuple[str, str, str, str, str]] = set()
+    for index, row in enumerate(rows):
+        if not row.get("reason", ""):
+            raise OverrideError(f"{service_id} sections row {index}: reason required")
+        if row.get("source_reason"):
+            raise OverrideError(
+                f"{service_id} sections row {index}: source_reason is unsupported; use reason"
+            )
+        operator = row.get("n02_operator", "") or default_operator
+        line = row.get("n02_line", "")
+        action = row.get("action", "")
+        key = row.get("section_key", "")
+        if not line or not key:
+            raise OverrideError(
+                f"{service_id} sections row {index}: line and key required"
+            )
+        from_id = row.get("from_id", "")
+        to_id = row.get("to_id", "")
+        if not from_id and not to_id:
+            global_rows.setdefault((operator, line), []).append((action, key))
+            continue
+        if not from_id or not to_id:
+            raise OverrideError(
+                f"{service_id} sections row {index}: from_id and to_id must both be set"
+            )
+        if action not in {"allow", "deny"}:
+            raise OverrideError(
+                f"{service_id} sections row {index}: action must be allow or deny"
+            )
+        identity = (operator, line, from_id, to_id, key)
+        if identity in seen_scoped:
+            raise OverrideError(
+                f"{service_id} sections row {index}: duplicate scoped key"
+            )
+        seen_scoped.add(identity)
+        scoped.append(ScopedSectionFilter(operator, line, from_id, to_id, action, key))
+    try:
+        filters = {
+            identity: build_section_filter(rules)
+            for identity, rules in global_rows.items()
+        }
+    except ConstraintError as error:
+        raise OverrideError(f"{service_id} sections: {error}") from error
+    return filters, tuple(scoped)
 
 
 def parse_offset_exceptions(

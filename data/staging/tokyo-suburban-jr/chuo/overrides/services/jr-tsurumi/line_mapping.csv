@@ -1,0 +1,10 @@
+from_id,to_id,n02_line,via,route,compose
+tsurumi,kokudo,鶴見線,,,
+kokudo,tsurumiono,鶴見線,,,
+tsurumiono,bentembashi,鶴見線,,,
+bentembashi,asano,鶴見線,,,
+asano,anzen,鶴見線,,,
+anzen,musashi-shiraishi,鶴見線,,,
+musashi-shiraishi,hama-kawasaki,鶴見線,,,
+hama-kawasaki,showa,鶴見線,,,
+showa,ogimachi,鶴見線,,,

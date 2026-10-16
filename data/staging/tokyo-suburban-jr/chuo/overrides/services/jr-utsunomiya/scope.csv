@@ -1,0 +1,17 @@
+station_id,prefecture,municipality,in_area
+tokyo,東京都,千代田区,true
+ueno,東京都,台東区,true
+oku,東京都,北区,true
+akabane,東京都,北区,true
+urawa,埼玉県,さいたま市,true
+saitama-shintoshin,埼玉県,さいたま市,true
+omiya,埼玉県,さいたま市,true
+toro,埼玉県,さいたま市,true
+higashi-omiya,埼玉県,さいたま市,true
+hasuda,埼玉県,蓮田市,true
+shiraoka,埼玉県,白岡市,true
+shin-shiraoka,埼玉県,白岡市,true
+kuki,埼玉県,久喜市,true
+higashi-washinomiya,埼玉県,久喜市,true
+kurihashi,埼玉県,久喜市,true
+koga,茨城県,古河市,false

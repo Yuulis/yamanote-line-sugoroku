@@ -10,7 +10,7 @@ import geopandas as gpd
 from shapely.geometry import LineString, Point, box
 
 from scripts.data_pipeline import config
-from scripts.data_pipeline.constraints import BBox, section_key
+from scripts.data_pipeline.constraints import BBox, JunctionRule, section_key
 from scripts.data_pipeline.registry import normalize_station_name
 
 
@@ -51,6 +51,68 @@ class TrackSection:
 
     key: str
     geometry: LineString  # metric CRS
+    source_coordinates: tuple[tuple[float, float], ...] = ()
+
+
+def split_reviewed_junctions(
+    sections: Iterable[TrackSection], rules: Iterable[JunctionRule]
+) -> list[TrackSection]:
+    """Split only named sections at exact source vertices shared with peer ends."""
+    values = list(sections)
+    pending = list(rules)
+    if not pending:
+        return values
+    result = list(values)
+    for rule in pending:
+        targets = [i for i, item in enumerate(result) if item.key == rule.section_key]
+        peers = [
+            i for i, item in enumerate(result) if item.key == rule.peer_section_key
+        ]
+        if len(targets) != 1 or len(peers) != 1:
+            raise SourceDataError(
+                f"junction section keys must each resolve once: {rule.section_key}, {rule.peer_section_key}"
+            )
+        target_index, peer_index = targets[0], peers[0]
+        target, peer = result[target_index], result[peer_index]
+        coordinate = (rule.lon, rule.lat)
+        if not target.source_coordinates or not peer.source_coordinates:
+            raise SourceDataError("junction source coordinates are unavailable")
+        target_matches = [
+            index
+            for index, point in enumerate(target.source_coordinates)
+            if point == coordinate
+        ]
+        if len(target_matches) != 1 or target_matches[0] in (
+            0,
+            len(target.source_coordinates) - 1,
+        ):
+            raise SourceDataError(
+                f"junction coordinate must be one exact internal source vertex in {rule.section_key}"
+            )
+        if coordinate not in (peer.source_coordinates[0], peer.source_coordinates[-1]):
+            raise SourceDataError(
+                f"junction coordinate is not a peer section endpoint in {rule.peer_section_key}"
+            )
+        metric_coords = list(target.geometry.coords)
+        split_index = target_matches[0]
+        if len(metric_coords) != len(target.source_coordinates):
+            raise SourceDataError("junction source and metric vertices do not align")
+        if not 0 < split_index < len(metric_coords) - 1:
+            raise SourceDataError("junction split would create an empty section")
+        left_source = target.source_coordinates[: split_index + 1]
+        right_source = target.source_coordinates[split_index:]
+        left = TrackSection(
+            target.key,
+            LineString(metric_coords[: split_index + 1]),
+            left_source,
+        )
+        right = TrackSection(
+            target.key,
+            LineString(metric_coords[split_index:]),
+            right_source,
+        )
+        result[target_index : target_index + 1] = [left, right]
+    return result
 
 
 def _read(path: Path) -> gpd.GeoDataFrame:
@@ -154,7 +216,13 @@ class N02Source:
             if len(metric_parts) != len(source_parts):
                 raise SourceDataError(f"section parts do not align on {line}")
             parts = [
-                TrackSection(key=section_key(list(source.coords)), geometry=metric)
+                TrackSection(
+                    key=section_key(list(source.coords)),
+                    geometry=metric,
+                    source_coordinates=tuple(
+                        (float(point[0]), float(point[1])) for point in source.coords
+                    ),
+                )
                 for source, metric in zip(source_parts, metric_parts, strict=True)
             ]
             sections[line] = sorted(

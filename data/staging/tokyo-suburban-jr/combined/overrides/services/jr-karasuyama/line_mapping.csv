@@ -1,0 +1,8 @@
+from_id,to_id,n02_line,via,route,compose
+hoshakuji,shimotsuke-hanaoka,烏山線,,,
+shimotsuke-hanaoka,niita,烏山線,,,
+niita,konoyama,烏山線,,,
+konoyama,ogane,烏山線,,,
+ogane,kobana,烏山線,,,
+kobana,taki,烏山線,,,
+taki,karasuyama,烏山線,,,

@@ -1,0 +1,2 @@
+n02_operator,n02_line,section_key,peer_section_key,lon,lat,reason
+東日本旅客鉄道,常磐線,141.00748 37.24274~141.00776 37.24270#9d1f3f94,140.99921 37.21210~141.00738 37.24077#de4dc6de,141.0073806,37.24077448,"Jヴィレッジ station section: its internal source vertex 1 equals the exact end of the southern 常磐線 section (S2 plan, R1 review)."

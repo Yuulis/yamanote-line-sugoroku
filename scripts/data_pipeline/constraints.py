@@ -135,6 +135,66 @@ class SectionFilter:
         return not self.allow and not self.deny
 
 
+@dataclass(frozen=True)
+class ScopedSectionFilter:
+    """One reviewed section rule limited to a forward stop-pair interval."""
+
+    n02_operator: str
+    n02_line: str
+    from_id: str
+    to_id: str
+    action: str
+    section_key: str
+
+
+@dataclass(frozen=True)
+class JunctionRule:
+    """Explicitly split one section at an existing peer section endpoint."""
+
+    n02_operator: str
+    n02_line: str
+    section_key: str
+    peer_section_key: str
+    lon: float
+    lat: float
+    reason: str
+
+
+def parse_junction_rows(rows: Iterable[Mapping[str, str]]) -> tuple[JunctionRule, ...]:
+    rules: list[JunctionRule] = []
+    seen: set[tuple[str, str, str, str, float, float]] = set()
+    for row in rows:
+        try:
+            lon, lat = float(row["lon"]), float(row["lat"])
+        except (KeyError, ValueError) as error:
+            raise ConstraintError("junction coordinates must be numeric") from error
+        if not math.isfinite(lon) or not math.isfinite(lat):
+            raise ConstraintError("junction coordinates must be finite")
+        if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            raise ConstraintError("junction coordinates must be valid lon/lat")
+        values = (
+            row.get("n02_operator", ""),
+            row.get("n02_line", ""),
+            row.get("section_key", ""),
+            row.get("peer_section_key", ""),
+            lon,
+            lat,
+        )
+        if not all(values[:4]) or not row.get("reason", ""):
+            raise ConstraintError(
+                "junction rules need operator, line, section keys and reason"
+            )
+        if values[2] == values[3]:
+            raise ConstraintError("junction target and peer sections must differ")
+        if values in seen:
+            raise ConstraintError("duplicate junction rule")
+        seen.add(values)
+        rules.append(JunctionRule(*values, row["reason"]))
+    if not rules:
+        raise ConstraintError("junctions.csv must contain at least one rule")
+    return tuple(rules)
+
+
 OPEN_SECTIONS = SectionFilter()
 
 

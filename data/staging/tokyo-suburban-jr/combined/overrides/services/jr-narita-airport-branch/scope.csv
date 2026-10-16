@@ -1,0 +1,4 @@
+station_id,prefecture,municipality,in_area
+narita,千葉県,成田市,true
+narita-airport-terminal-2-3,千葉県,成田市,true
+narita-airport-terminal-1,千葉県,成田市,true

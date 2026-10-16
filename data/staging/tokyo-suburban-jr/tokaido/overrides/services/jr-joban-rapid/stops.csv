@@ -1,0 +1,13 @@
+order,station_id,station_number,platform_selector
+0,shinagawa,,
+1,shimbashi,,
+2,tokyo,,
+3,ueno,JJ01,
+4,nippori,JJ02,
+5,mikawashima,JJ03,
+6,minami-senju,JJ04,
+7,kita-senju,JJ05,
+8,matsudo,JJ06,
+9,kashiwa,JJ07,
+10,abiko,JJ08,
+11,tennodai,JJ09,

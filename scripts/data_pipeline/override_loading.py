@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,7 @@ from scripts.data_pipeline.constraints import (
     DetourException,
     PlatformTransfer,
     parse_detour_rows,
+    parse_junction_rows,
     parse_platform_transfer_rows,
 )
 from scripts.data_pipeline.override_checks import check_consistency, check_stops
@@ -24,6 +26,8 @@ from scripts.data_pipeline.override_models import (
 )
 from scripts.data_pipeline.override_parsing import (
     DETOUR_COLUMNS,
+    JUNCTION_COLUMNS,
+    JUNCTIONS_OVERRIDE_FILE,
     LINE_MAPPING_COLUMNS,
     OFFSET_COLUMNS,
     SCOPE_COLUMNS,
@@ -34,7 +38,7 @@ from scripts.data_pipeline.override_parsing import (
     parse_line_metadata,
     parse_line_ranges,
     parse_offset_exceptions,
-    parse_section_filters,
+    parse_scoped_section_filters,
     parse_service_definition,
     parse_stops,
 )
@@ -72,23 +76,43 @@ def load_service(
         bbox,
     )
     sections_path = directory / config.SECTION_CONSTRAINTS_OVERRIDE_FILE
-    section_filters = (
-        parse_section_filters(
+    section_filters, scoped_section_filters = {}, ()
+    if sections_path.is_file():
+        with sections_path.open(encoding="utf-8", newline="") as handle:
+            header = csv.DictReader(handle).fieldnames or []
+        if ("from_id" in header) != ("to_id" in header):
+            raise OverrideError(
+                f"{definition.id} sections.csv needs both from_id and to_id columns"
+            )
+        section_filters, scoped_section_filters = parse_scoped_section_filters(
             read_csv(sections_path, SECTION_COLUMNS),
             definition.id,
             definition.n02_operator or dataset.n02_operator,
         )
-        if sections_path.is_file()
-        else {}
-    )
+    junctions_path = directory / JUNCTIONS_OVERRIDE_FILE
+    junction_rules = ()
+    if junctions_path.is_file():
+        try:
+            junction_rules = parse_junction_rows(
+                read_csv(junctions_path, JUNCTION_COLUMNS)
+            )
+        except ConstraintError as error:
+            raise OverrideError(f"{definition.id}: {error}") from error
+        expected_operator = definition.n02_operator or dataset.n02_operator
+        if any(rule.n02_operator != expected_operator for rule in junction_rules):
+            raise OverrideError(
+                f"{definition.id}: junction rules must use the service N02 operator"
+            )
     service = ServiceOverrides(
         definition=definition,
         stops=stops,
         line_ranges=line_ranges,
         section_filters=section_filters,
+        scoped_section_filters=scoped_section_filters,
         scope_stops=parse_scope(
             read_csv(directory / config.SCOPE_OVERRIDE_FILE, SCOPE_COLUMNS)
         ),
+        junction_rules=junction_rules,
     )
     mapped_keys = {
         (operator, line)
@@ -97,11 +121,56 @@ def load_service(
             item.route_lines, service.range_operators(item, dataset), strict=True
         )
     }
+    unused_junctions = [
+        (rule.n02_operator, rule.n02_line)
+        for rule in junction_rules
+        if (rule.n02_operator, rule.n02_line) not in mapped_keys
+    ]
+    if unused_junctions:
+        raise OverrideError(
+            f"{definition.id}: junction rules name unmapped lines {unused_junctions}"
+        )
     unused = sorted(set(section_filters) - mapped_keys)
     if unused:
         raise OverrideError(
             f"{definition.id} sections.csv names unmapped lines {unused}"
         )
+    if scoped_section_filters:
+        if service.circular:
+            raise OverrideError(
+                f"{definition.id} scoped section filters require a linear service"
+            )
+        indexes = {
+            station_id: index for index, station_id in enumerate(service.station_ids)
+        }
+        for rule in scoped_section_filters:
+            if rule.from_id not in indexes or rule.to_id not in indexes:
+                raise OverrideError(
+                    f"{definition.id} scoped section range names an unknown station"
+                )
+            first, last = indexes[rule.from_id], indexes[rule.to_id]
+            if first >= last:
+                raise OverrideError(
+                    f"{definition.id} scoped section range must follow forward stop order"
+                )
+            applicable = False
+            for pair_index in range(first, last):
+                item = service.segment_ranges()[pair_index]
+                operators = service.range_operators(item, dataset)
+                if any(
+                    line == rule.n02_line and operator == rule.n02_operator
+                    for line, operator in zip(item.route_lines, operators, strict=True)
+                ):
+                    applicable = True
+            if not applicable:
+                raise OverrideError(
+                    f"{definition.id} scoped section range has no matching direct route"
+                )
+        for pair_index, item in enumerate(service.segment_ranges()):
+            operators = service.range_operators(item, dataset)
+            from_id, to_id = service.station_ids[pair_index : pair_index + 2]
+            for line, operator in zip(item.route_lines, operators, strict=True):
+                service.section_filter_for_pair(line, operator, from_id, to_id)
     return service
 
 

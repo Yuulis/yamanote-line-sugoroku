@@ -1,0 +1,43 @@
+n02_line,action,section_key,reason,from_id,to_id
+東海道線,allow,139.53069 35.35289~139.53164 35.35542#41ba2b37,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.53164 35.35542~139.53470 35.39917#5100ea0f,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.53392 35.40170~139.53470 35.39917#30bf9182,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.53392 35.40170~139.53605 35.41219#41e70bbc,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.53605 35.41219~139.55652 35.42876#9f44d632,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.55649 35.43115~139.55652 35.42876#6e238acd,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.55649 35.43115~139.57961 35.44699#9e74bed0,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.57961 35.44699~139.59907 35.44598#2352e574,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.59907 35.44598~139.60167 35.44846#ec9cd0f6,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.60167 35.44846~139.62133 35.46475#45ddf1c8,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.62133 35.46475~139.62320 35.46692#7e373bde,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.62320 35.46692~139.64568 35.48515#be7c8fdc,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.64568 35.48515~139.65298 35.48629#bb5d8342,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.65298 35.48629~139.65507 35.48734#0c59f991,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.65507 35.48734~139.66112 35.49077#0e684075,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.66112 35.49077~139.66353 35.49326#1db58c69,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.66332 35.57602~139.66375 35.57335#864b87ee,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.66353 35.49326~139.66723 35.49607#93d04b54,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.66375 35.57335~139.67088 35.55309#8df03ef6,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.66723 35.49607~139.67600 35.50740#7f094849,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.67088 35.55309~139.67218 35.55035#89b68efa,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.67218 35.55035~139.67710 35.51197#9092aaba,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.67600 35.50740~139.67649 35.50958#1ed078de,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.67649 35.50958~139.67710 35.51197#560516da,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.53102 35.35260~139.53164 35.35542#d0dc0aaa,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.53102 35.35260~139.54377 35.33867#1ee9efaf,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.54377 35.33867~139.54536 35.33721#5ef095f0,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.54536 35.33721~139.54852 35.33331#d198bf31,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.54848 35.32840~139.54852 35.33331#7e24b288,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.54848 35.32840~139.55051 35.32036#a47ad2da,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.55039 35.31826~139.55051 35.32036#690f807a,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.55039 35.31826~139.56007 35.30998#cabe3e94,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.56007 35.30998~139.56764 35.30636#c4c48186,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.56764 35.30636~139.57708 35.29729#64dfa8b1,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+横須賀線,allow,139.57708 35.29729~139.57965 35.29759#e29d14d0,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,kurihashi,zushi
+東海道線,allow,139.66332 35.57602~139.72124 35.60085#5297ea6a,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,kurihashi,zushi
+東海道線,allow,139.72124 35.60085~139.72197 35.60255#128b8e07,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,kurihashi,zushi
+東海道線,allow,139.72197 35.60255~139.73280 35.61677#7c3c3efc,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,kurihashi,zushi
+東海道線,allow,139.73280 35.61677~139.73762 35.62049#67df2d8f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,kurihashi,zushi
+東北線,deny,139.66635 35.85033~139.66760 35.84922#fb84d894,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,,
+東北線,deny,139.66760 35.84922~139.66963 35.84745#a6459c6d,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,,
+東北線,deny,139.66963 35.84745~139.68335 35.83490#5a0729ea,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,,

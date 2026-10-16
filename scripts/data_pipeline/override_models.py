@@ -10,12 +10,15 @@ from scripts.data_pipeline.composition import ComposeRecipe
 from scripts.data_pipeline.constraints import (
     BBox,
     DetourException,
+    JunctionRule,
     LonLat,
     OffsetException,
     PlatformSelector,
     PlatformTransfer,
     RouteRecipe,
+    ScopedSectionFilter,
     SectionFilter,
+    build_section_filter,
 )
 from scripts.data_pipeline.registry import (
     Area,
@@ -173,6 +176,8 @@ class ServiceOverrides:
         tuple[str, str], SectionFilter
     ]  # (operator, N02 line) -> filter
     scope_stops: tuple[ScopeStop, ...] = ()
+    junction_rules: tuple[JunctionRule, ...] = ()
+    scoped_section_filters: tuple[ScopedSectionFilter, ...] = ()
 
     @property
     def id(self) -> str:
@@ -236,6 +241,37 @@ class ServiceOverrides:
             if (isinstance(key, tuple) and key[1] == n02_line) or key == n02_line
         ]
         return matching[0] if len(matching) == 1 else direct
+
+    def section_filter_for_pair(
+        self, n02_line: str, n02_operator: str, from_id: str, to_id: str
+    ) -> SectionFilter:
+        """Resolve the filter active on one canonical forward stop pair."""
+        base = self.section_filter(n02_line, n02_operator)
+        rules = [("allow", key) for key in base.allow]
+        rules.extend(("deny", key) for key in base.deny)
+        indexes = {
+            station_id: index for index, station_id in enumerate(self.station_ids)
+        }
+        first, last = indexes.get(from_id), indexes.get(to_id)
+        pair_index = first if first is not None and last == first + 1 else None
+        rules.extend(
+            (rule.action, rule.section_key)
+            for rule in self.scoped_section_filters
+            if rule.n02_line == n02_line
+            and rule.n02_operator == n02_operator
+            and rule.from_id in indexes
+            and rule.to_id in indexes
+            and pair_index is not None
+            and indexes[rule.from_id] <= pair_index < indexes[rule.to_id]
+        )
+        try:
+            return build_section_filter(rules)
+        except ValueError as error:
+            from scripts.data_pipeline.registry import OverrideError
+
+            raise OverrideError(
+                f"{self.id} {from_id}->{to_id} {n02_line}: conflicting section filters: {error}"
+            ) from error
 
     def range_operators(
         self, item: LineRange, dataset: DatasetOverride

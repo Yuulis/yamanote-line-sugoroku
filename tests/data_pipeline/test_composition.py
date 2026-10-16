@@ -476,6 +476,69 @@ def test_inherited_anchor_rejects_a_neighbouring_operator_mismatch() -> None:
         )
 
 
+def test_inherited_anchor_accepts_exact_same_operator_group_midpoint_on_other_line() -> (
+    None
+):
+    anchor = replace(
+        candidate("Hub", 100, 200, code="anchor", line="Inherited line"),
+        operator="JR East",
+    )
+    same_feature_other_line = replace(
+        candidate("Hub", 100, 200, code="peer", line="Neighbour line", group="anchor"),
+        operator="JR East",
+    )
+
+    check_inherited_route_sources(
+        {(0, "from"): ("Neighbour line", "JR East")},
+        {},
+        {0: anchor},
+        (),
+        2,
+        (same_feature_other_line,),
+    )
+
+
+@pytest.mark.parametrize(
+    ("x", "group", "operator"),
+    [
+        (100.0, "different-group", "JR East"),
+        (100.000001, "anchor", "JR East"),
+        (100.0, "anchor", "Other operator"),
+    ],
+    ids=["different-group", "midpoint-offset", "different-operator"],
+)
+def test_inherited_anchor_rejects_near_but_not_identical_peer_feature(
+    x: float,
+    group: str,
+    operator: str,
+) -> None:
+    anchor = replace(
+        candidate("Hub", 100, 200, code="anchor", line="Inherited line"),
+        operator="JR East",
+    )
+    peer = replace(
+        candidate(
+            "Hub",
+            x,
+            200,
+            code="peer",
+            line="Neighbour line",
+            group=group,
+        ),
+        operator=operator,
+    )
+
+    with pytest.raises(OverrideError, match="wrong-source anchor"):
+        check_inherited_route_sources(
+            {(0, "from"): ("Neighbour line", "JR East")},
+            {},
+            {0: anchor},
+            (),
+            2,
+            (peer,),
+        )
+
+
 @pytest.mark.parametrize(
     "raw",
     [

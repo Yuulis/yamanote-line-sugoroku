@@ -250,7 +250,7 @@ def flatten_recipe(
                 operators = owner_service.range_operators(item, overrides.dataset)
                 lines.update(item.route_lines)
                 if any(
-                    owner_service.section_filter(line, operator)
+                    owner_service.section_filter_for_pair(line, operator, a, b)
                     != leg.evidence.filter_for(line)
                     for line, operator in zip(item.route_lines, operators, strict=True)
                 ):

@@ -1,0 +1,11 @@
+n02_line,action,section_key,reason
+南武線,allow,139.68401 35.53158~139.68459 35.53037#f5070de4,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.68459 35.53037~139.68530 35.52916#95f03734,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.68530 35.52916~139.69099 35.52323#43646db9,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.69099 35.52323~139.69176 35.52291#f4ca32d7,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.69176 35.52291~139.69886 35.51859#a4e8d53f,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.69886 35.51859~139.69966 35.51806#8eb327f2,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.69966 35.51806~139.70442 35.51486#9774e07c,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.70442 35.51486~139.70574 35.51397#2a2afe02,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.70574 35.51397~139.71343 35.51045#bea1c3a0,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+南武線,allow,139.71343 35.51045~139.71413 35.51032#6d03acf6,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv

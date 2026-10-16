@@ -135,3 +135,74 @@ Run 5–6 additionally: the full acceptance block in the plan (second build `-b`
 
 Output (≤60 lines): `Summary`, `Files changed` (one line each), `Tests added` (names), `Acceptance` (command →
 exit code + tail), `Deviations from plan`, `Open issues`.
+
+## s2-plan — S2 implementation plan (Codex Sol `low`, `--sandbox read-only`)
+
+Objective: produce a directly executable plan for S2 (JR outlying staging) that Codex Luna can implement in a few
+bounded runs without making design or product decisions.
+
+S2 per `.claude/docs/plans/tokyo-suburban-network-design.md` section 4: stage the JR services of the frozen Tokyo
+suburban area beyond the shipped 1都3県 set (15 new JR services, 10 extended shipped services, ~274 new JR station
+ids per R1), preserving the existing routed/composed capital-region segments. Route each new pair; resolve the
+Oyama (Ryomo/Mito) and Mito/Suigun 25–41 m N02 junction gaps explicitly; no fabricated connectors.
+
+Read: the design doc (sections 1, 3–5); `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (frozen JR services,
+boundaries D3: Joban Shinagawa–Namie, Chuo main Takao–Shiojiri, Utsunomiya Tokyo–Kuroiso single services; Shinonoi /
+Shinetsu separate; Mito line ends at Tomobe; keep `jr-chuo-takao-fujino`); `.claude/docs/research/tokyo-suburban-r1-jr.md`
+and `-r1-jr-catalog.csv`; `.claude/docs/research/tokyo-suburban-research-catalog.csv` / `-services.csv` (the frozen
+JR rows); `.claude/docs/plans/tokyo-suburban-s1-plan.md` and `.claude/docs/reviews/tokyo-suburban-s1-review-2.md`
+(new S1 override fields; carry-overs a/b); `data/README.md`; `data/overrides/**`; the previous edition's staging
+precedent `data/staging/jr-east-capital-region/**` and how it was merged (git log of `data/staging`,
+`.claude/docs/plans/jr-east-capital-region-handoff.md`); `scripts/data_pipeline/*.py`; `tests/data_pipeline/`.
+
+Constraints:
+- S2 stages JR data only (no subway/private: S3; no cross-operator identity merge: S4). It must not change the
+  shipped bundle: `public/data/*` and live `data/overrides/**` stay byte-identical, unless you show that staging
+  cannot work without a live-override change and specify it exactly (then the live build must still be byte-identical).
+- Preserve all 472 shipped station ids and 40 service ids and their geometry/compositions; extended services keep the
+  shipped prefix order and add only the frozen outward stops.
+- Raw N02 is read-only; no relaxed snap/joint/offset/detour/wrong-track tolerances; no proximity-only joins; no
+  fabricated connector geometry. A junction gap is resolved only by a reviewed, evidenced rule (say exactly which).
+- Station order must equal the frozen research catalog rows; every new stop needs an N02 match (name/operator/selector).
+- Split into runs a Luna executor can finish in ≤ ~30 min each (e.g. per region: Tohoku/Joban side, Takasaki/
+  Ryomo side, Chuo/Shinonoi/Shinetsu side, Tokaido/Ito side), each independently testable.
+
+Output (markdown, ≤150 lines): `TL;DR`; `Staging layout` (directories, which files, how the staged build is invoked
+and how S5 will consume it); `Service inventory` (new vs extended, per run, with stop counts from the freeze);
+`Known geometry problems` (Oyama, Mito/Suigun, any other the R1/N02 data shows, with the proposed evidenced
+resolution); `Runs` (per run: files, steps, tests, acceptance commands — exact); `S1 carry-overs` (where a and b are
+done); `Risks`; `Decisions needing the user` (only genuine product choices; "none" if none).
+
+## s2-run — S2 implementation runs (Codex Luna `high`; replace `<RUNS>` with the run ids, e.g. `R0 and R1`)
+
+Objective: implement S2 plan run(s) <RUNS> of `.claude/docs/plans/tokyo-suburban-s2-plan.md` exactly, keeping the
+shipped bundle byte-identical, so the next S2 run can build on it.
+
+Read first: `.claude/docs/plans/tokyo-suburban-s2-plan.md` (the contract: layout, inventory, geometry rules, the
+`s2gate` function, per-run files/tests/acceptance), `.claude/docs/plans/tokyo-suburban-s0-freeze.json`,
+`data/README.md`, `.claude/rules/coding-principles.md`, `.claude/rules/testing.md`, `.claude/rules/dev-environment.md`.
+Earlier S2 runs are already in the working tree or committed; build on them, never redo or revert them.
+
+Scope: in — exactly the files the plan assigns to <RUNS> (staging directories, new tests, and — only for R0–R2 —
+the named pipeline files). Out — `public/data`, live `data/overrides/**`, `src/**`, raw `N02-25_GML/**`, research
+files, docs under `.claude/`, git commits/pushes. Region runs (R3–R6) must NOT modify `scripts/` or shared test
+helpers: if one is needed, stop and report exactly what and why. Another region run may be working in parallel in
+its own staging directory: never touch other regions' files.
+No relaxed tolerances (snap 30 m, joint 1e-6 m, offset, detour, wrong-track), no proximity-only joins, no fabricated
+connectors, no cross-operator fallback. Never weaken, skip or delete existing tests. Expected values come from the
+frozen research catalog, never from the build output. Use Python `shutil.rmtree` to clear output dirs (`rm -rf`
+is blocked). Write prose (README, comments) in English. If the plan is wrong on a point, take the most conservative
+option and report it.
+
+Acceptance: the plan's acceptance for <RUNS> (region runs: `s2gate <region>`), plus always:
+```bash
+uv run ruff check scripts/data_pipeline tests/data_pipeline && uv run ruff format --check scripts/data_pipeline tests/data_pipeline
+uv run ty check scripts/data_pipeline
+uv run pytest tests/data_pipeline -q -rs
+uv run python .claude/docs/research/tokyo-suburban-r2-tools/check_freeze.py
+git diff --exit-code -- public/data data/overrides src N02-25_GML
+```
+and for R0–R2 and R7 the live byte-identity build from the plan (`diff -r public/data .claude/logs/s2/live`).
+
+Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
+`Deviations from plan`, `Open issues`.

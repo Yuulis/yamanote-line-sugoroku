@@ -12,6 +12,19 @@ bytes and 125,322 gzip bytes (level 9, mtime 0), within the `capital-region`
 profile caps of 3,145,728 raw and 921,600 gzip bytes. GeoJSON is 398,311 raw / 83,972
 gzip bytes; the maximum feature chain is 3 references.
 
+Optional service `scope.csv` files can add an `in_area` column containing exactly
+`true` or `false` on every row. This pins the contiguous served run when a
+geographic prefecture boundary does not match a service boundary; the first
+out-of-area neighbour at each `area-boundary` endpoint remains required. Files
+without `in_area` keep the legacy prefecture and municipality scope rule.
+
+An optional service `junctions.csv` records narrowly reviewed graph splits with
+`n02_operator,n02_line,section_key,peer_section_key,lon,lat,reason`. The target
+coordinate must exactly match one existing internal source vertex, and the peer
+section must end at that same coordinate. The section filter runs first. A rule
+only divides the named section into its existing pieces; it adds no geometry or
+nearby connection.
+
 ## Source and licences
 
 | Item | Value |
@@ -443,6 +456,19 @@ set `n02Operator`; otherwise it uses the immediate consumer service's effective
 source, including for nested recipes. Every primitive in one compose leg must
 resolve to that same source operator, so split a composed leg if its source
 changes.
+
+`sections.csv` may also include both optional columns `from_id,to_id`. When
+both cells are blank, the row keeps its service-wide meaning. When both are
+set, the row applies to the adjacent forward pairs from `from_id` up to but not
+including `to_id` in the service's ordered stop list. Scoped filters are only
+allowed on linear services and must cover at least one direct route on the
+specified operator and line. Effective filters combine matching service-wide
+rows with rows whose interval covers that pair; duplicate keys and allow/deny
+conflicts in that effective set are errors. To extend an allow-listed service,
+limit the old allow rows to the shipped interval and add any new-range rules in
+their own interval. Compose evidence is checked against each owner's effective
+pair filter, including reverse and nested use; one compose leg cannot span
+pairs with different effective filters.
 
 Operator selection is exact at every stop and track leg. It never falls back to
 another operator when a source has no candidates. This supports boundary cases

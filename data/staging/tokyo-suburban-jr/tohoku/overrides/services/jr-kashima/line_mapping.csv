@@ -1,0 +1,5 @@
+from_id,to_id,n02_line,via,route,compose
+katori,junikyo,鹿島線,,,
+junikyo,itako,鹿島線,,,
+itako,nobukata,鹿島線,,,
+nobukata,kashimajingu,鹿島線,,,

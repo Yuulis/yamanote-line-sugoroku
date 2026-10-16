@@ -92,6 +92,7 @@ class ScopeStop:
     station_id: str
     prefecture: str
     municipality: str
+    in_area: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -102,10 +103,24 @@ class BoundaryTruncation:
 
 
 def parse_scope(rows: Iterable[Mapping[str, str]]) -> tuple[ScopeStop, ...]:
-    stops = tuple(
-        ScopeStop(row["station_id"], row["prefecture"], row["municipality"])
-        for row in rows
-    )
+    values = tuple(rows)
+    has_in_area = any("in_area" in row for row in values)
+    if has_in_area and any("in_area" not in row for row in values):
+        raise OverrideError("scope.csv in_area must be present on every row")
+    stops_list: list[ScopeStop] = []
+    for row in values:
+        in_area: bool | None = None
+        if has_in_area:
+            raw = row.get("in_area", "")
+            if raw not in ("true", "false"):
+                raise OverrideError("scope.csv in_area must be exactly true or false")
+            in_area = raw == "true"
+        stops_list.append(
+            ScopeStop(
+                row["station_id"], row["prefecture"], row["municipality"], in_area
+            )
+        )
+    stops = tuple(stops_list)
     if not stops or len({stop.station_id for stop in stops}) != len(stops):
         raise OverrideError("served stop evidence must be non-empty with unique ids")
     for stop in stops:
@@ -134,11 +149,20 @@ def check_scope(
     excluded stop at each area boundary. A filtered list alone cannot prove
     that a service did not leave and re-enter the area between playable stops.
     """
-    indices = [
-        i
-        for i, stop in enumerate(evidence)
-        if area.contains(stop.prefecture, stop.municipality)
-    ]
+    explicit = any(stop.in_area is not None for stop in evidence)
+    if explicit and any(stop.in_area is None for stop in evidence):
+        raise OverrideError(
+            f"{service_id}: scope.csv mixes explicit and implicit in_area"
+        )
+    indices = (
+        [i for i, stop in enumerate(evidence) if stop.in_area]
+        if explicit
+        else [
+            i
+            for i, stop in enumerate(evidence)
+            if area.contains(stop.prefecture, stop.municipality)
+        ]
+    )
     if not indices:
         raise OverrideError(f"{service_id}: served stop evidence has no in-area stops")
     if indices != list(range(indices[0], indices[-1] + 1)):
@@ -149,9 +173,22 @@ def check_scope(
             f"{service_id}: served stop evidence differs from stops.csv"
         )
     stations = registry.by_id()
+    for stop in evidence:
+        if (
+            explicit
+            and stop.in_area
+            and stop.prefecture not in config.ALLOWED_RAILWAY_PREFECTURES
+        ):
+            raise OverrideError(
+                f"{service_id}/{stop.station_id}: unsupported in-area prefecture {stop.prefecture!r}"
+            )
     for i in indices:
         stop = evidence[i]
-        station = stations[stop.station_id]
+        station = stations.get(stop.station_id)
+        if station is None:
+            raise OverrideError(
+                f"{service_id}/{stop.station_id}: in-area stop is missing from registry"
+            )
         if (stop.prefecture, stop.municipality) != (
             station.prefecture,
             station.municipality,
