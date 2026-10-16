@@ -23,6 +23,7 @@ class SharedTrackEvidence:
     section_filter: SectionFilter
     reason: str
     line_filters: tuple[tuple[str, SectionFilter], ...] = ()
+    n02_operator: str = ""
 
     def filter_for(self, line: str) -> SectionFilter:
         return dict(self.line_filters).get(line, self.section_filter)
@@ -66,7 +67,10 @@ def parse_compose(value: str) -> ComposeRecipe | None:
             or not all(isinstance(v, str) and v.strip() for v in leg.values())
         ):
             raise OverrideError("compose leg needs source_service/from/to strings")
-        if not isinstance(witness, dict) or set(witness) - {"line_filters"} != {
+        if not isinstance(witness, dict) or set(witness) - {
+            "line_filters",
+            "n02Operator",
+        } != {
             "lines",
             "allow",
             "deny",
@@ -75,6 +79,11 @@ def parse_compose(value: str) -> ComposeRecipe | None:
             raise OverrideError("shared_track_evidence needs lines/allow/deny/reason")
         if not isinstance(witness["reason"], str) or not witness["reason"].strip():
             raise OverrideError("shared_track_evidence needs a review reason")
+        n02_operator = witness.get("n02Operator", "")
+        if not isinstance(n02_operator, str) or (
+            "n02Operator" in witness and not n02_operator.strip()
+        ):
+            raise OverrideError("shared_track_evidence n02Operator must be non-empty")
         for key in ("lines", "allow", "deny"):
             items = witness[key]
             if (
@@ -124,6 +133,7 @@ def parse_compose(value: str) -> ComposeRecipe | None:
                     ),
                     witness["reason"],
                     tuple(filters),
+                    n02_operator,
                 ),
             )
         )
@@ -181,6 +191,7 @@ def source_pairs(
 def flatten_recipe(
     overrides: Overrides,
     recipe: ComposeRecipe,
+    consumer: ServiceOverrides,
     *,
     max_primitives: int = config.MAX_COMPOSE_PRIMITIVES,
 ) -> tuple[Primitive, ...]:
@@ -200,19 +211,24 @@ def flatten_recipe(
             strict=True,
         )
     }
-    cache: dict[ComposeRecipe, tuple[Primitive, ...]] = {}
+    cache: dict[tuple[ComposeRecipe, str], tuple[Primitive, ...]] = {}
 
-    def expand(current: ComposeRecipe) -> tuple[Primitive, ...]:
-        if current in cache:
-            return cache[current]
+    def expand(
+        current: ComposeRecipe, current_consumer: ServiceOverrides
+    ) -> tuple[Primitive, ...]:
+        consumer_operator = current_consumer.effective_n02_operator(overrides.dataset)
+        cache_key = (current, consumer_operator)
+        if cache_key in cache:
+            return cache[cache_key]
         primitives: list[Primitive] = []
         for leg in current.legs:
             source = services[leg.source_service]
+            evidence_operator = leg.evidence.n02_operator or consumer_operator
             expanded: list[Primitive] = []
             for a, b, reverse in source_pairs(source, leg.from_id, leg.to_id):
                 item = ranges[(source.id, a, b)]
                 nested = (
-                    expand(item.compose)
+                    expand(item.compose, source)
                     if item.compose
                     else ((source.id, a, b, False),)
                 )
@@ -227,26 +243,40 @@ def flatten_recipe(
                 else:
                     expanded.extend(nested)
             lines: set[str] = set()
+            leg_operators: set[str] = set()
             for owner, a, b, _ in expanded:
                 owner_service = services[owner]
                 item = ranges[(owner, a, b)]
+                operators = owner_service.range_operators(item, overrides.dataset)
                 lines.update(item.route_lines)
                 if any(
-                    owner_service.section_filter(line) != leg.evidence.filter_for(line)
-                    for line in item.route_lines
+                    owner_service.section_filter(line, operator)
+                    != leg.evidence.filter_for(line)
+                    for line, operator in zip(item.route_lines, operators, strict=True)
                 ):
                     raise OverrideError(
                         "compose wrong-track sharing: section filter differs from owner"
                     )
+                if len(set(operators)) != 1:
+                    raise OverrideError(
+                        "compose shared leg spans multiple N02 operators"
+                    )
+                leg_operators.add(operators[0])
+            if len(leg_operators) != 1:
+                raise OverrideError("compose shared leg spans multiple N02 operators")
+            if leg_operators != {evidence_operator}:
+                raise OverrideError(
+                    "compose wrong-track sharing: N02 operator differs from consumer evidence"
+                )
             if lines != set(leg.evidence.lines):
                 raise OverrideError(
                     "compose wrong-track sharing: N02 lines differ from owner"
                 )
             primitives.extend(expanded)
-        cache[current] = tuple(primitives)
-        return cache[current]
+        cache[cache_key] = tuple(primitives)
+        return cache[cache_key]
 
-    return expand(recipe)
+    return expand(recipe, consumer)
 
 
 def check_recipe_anchors(start: str, end: str, primitives: Sequence[Primitive]) -> None:
@@ -275,7 +305,9 @@ def check_recipes(overrides: Overrides) -> None:
             strict=True,
         ):
             if item.compose:
-                check_recipe_anchors(a, b, flatten_recipe(overrides, item.compose))
+                check_recipe_anchors(
+                    a, b, flatten_recipe(overrides, item.compose, service)
+                )
 
 
 def compose_chains(
@@ -292,7 +324,7 @@ def compose_chains(
             strict=True,
         ):
             primitives = (
-                flatten_recipe(overrides, item.compose)
+                flatten_recipe(overrides, item.compose, service)
                 if item.compose
                 else ((identifier, a, b, False),)
             )

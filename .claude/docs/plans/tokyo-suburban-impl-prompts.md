@@ -72,3 +72,66 @@ uv run ruff check .claude/docs/research/tokyo-suburban-r2-tools/ && uv run ruff 
 Output: sections `Summary`, `Frozen values` (counts, ruleset case id + stats, Oedo ids), `Acceptance` (command →
 exit code + last lines), `Deviations / open issues`. Keep it under 60 lines; anything longer goes to
 `.claude/logs/codex/` and you return the path.
+
+## s1-plan — S1 implementation plan (Codex Sol `low`, `--sandbox read-only`)
+
+Objective: produce a directly executable implementation plan for S1 (multi-operator pipeline selection) that a
+Codex Luna executor can implement in one or a few runs without making design decisions.
+
+S1 per `.claude/docs/plans/tokyo-suburban-network-design.md` section 4: per-service N02 operator/source and
+per-stop match-name/selector selection; curated display aliases; extended scope validation. Acceptance there:
+both sides of different-name groups (後楽園/春日, 浜松町/大門) select real platforms; multi-operator homonym and
+operator-boundary regressions; legacy single-operator regression; no relaxed wrong-track checks.
+
+Read: the design doc (sections 3–4), `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (frozen decisions; D1
+identity rule, D3 Oedo UI group), `data/README.md`, `scripts/data_pipeline/*.py` (notably `build.py`, `export.py`,
+`n02.py`, `registry.py`, `catalogue.py`, `override_*.py`, `validate.py`, `config.py`), `data/overrides/**`,
+`tests/data_pipeline/`, `src/types/` (only the generated-data contract), `.claude/rules/coding-principles.md`,
+`.claude/rules/testing.md`.
+
+Constraints:
+- S1 changes the pipeline and override schema only. It does NOT stage any new operator or JR outlying data (that
+  is S2/S3) and does NOT change runtime/UI code. The current 40-service build must regenerate `public/data/*`
+  byte-identical (or, if a contract change is truly unavoidable, state exactly which bytes change and why).
+- Raw N02 under `N02-25_GML/UTF-8/` is read-only. No relaxed wrong-track/offset checks; no proximity-only joins.
+- Keep display/registry names separate from per-stop original names and N02 match names.
+- Prefer the smallest schema extension that S2–S4 can build on; avoid speculative abstraction.
+
+Output (markdown, ≤150 lines): `TL;DR`; `Current single-operator assumptions` (file:line list); `Schema changes`
+(override tables/fields with an example row each, defaults that keep legacy data valid); `Code changes` (per file,
+in implementation order, small enough for one Luna run each — mark run boundaries); `Tests` (named test cases
+incl. fixtures for 後楽園/春日 and 浜松町/大門 across operators, a homonym such as 押上 or 新宿 across operators, an
+operator-boundary station, and legacy byte-identity); `Acceptance commands` (exact); `Risks`; `Decisions needing
+the user` (only genuine product choices; say "none" if none).
+
+## s1-run — S1 implementation runs (Codex Luna `high`; replace `<RUNS>` with `1–2`, `3–4` or `5–6`)
+
+Objective: implement plan runs <RUNS> of `.claude/docs/plans/tokyo-suburban-s1-plan.md` exactly, leaving the
+live 40-service build byte-identical, so the next run (or S2) can build on it.
+
+Read first: `.claude/docs/plans/tokyo-suburban-s1-plan.md` (the contract — follow its schema, file list, tests
+and constraints; implement only runs <RUNS>), `.claude/docs/plans/tokyo-suburban-s0-freeze.json`,
+`.claude/rules/coding-principles.md`, `.claude/rules/testing.md`, `.claude/rules/dev-environment.md`.
+Earlier runs are already in the working tree (uncommitted); build on them, do not redo or revert them.
+
+Scope: in — the files the plan assigns to runs <RUNS>, plus the tests the plan names for them. Out — `public/data`,
+live `data/overrides/**` content (fixtures go under `tests/`), `src/**`, raw `N02-25_GML/**`, research files,
+handoff/design docs, git commits/pushes. No relaxed tolerances (snap 30 m, joint 1e-6 m, offset, detour, wrong-track);
+no proximity-only joins; no fallback to another operator when candidates are empty. Never weaken, skip or delete
+existing tests. If the plan is wrong or ambiguous on a point, choose the most conservative option and report it.
+
+Acceptance (run all, paste exit codes and tails):
+```bash
+uv run ruff check scripts/data_pipeline tests/data_pipeline && uv run ruff format --check scripts/data_pipeline tests/data_pipeline
+uv run ty check scripts/data_pipeline
+uv run pytest tests/data_pipeline -q
+rm -rf .claude/logs/s1-build-a && uv run python -m scripts.data_pipeline.build --raw-dir N02-25_GML/UTF-8 --overrides-dir data/overrides --out-dir .claude/logs/s1-build-a --quiet
+diff -r public/data .claude/logs/s1-build-a
+git diff --exit-code -- public/data data/overrides src N02-25_GML
+uv run python .claude/docs/research/tokyo-suburban-r2-tools/check_freeze.py
+```
+Run 5–6 additionally: the full acceptance block in the plan (second build `-b`, `diff -r` a/b, `validate`,
+`pytest tests/data_pipeline/test_multi_operator_raw.py -q -rs` with zero skips).
+
+Output (≤60 lines): `Summary`, `Files changed` (one line each), `Tests added` (names), `Acceptance` (command →
+exit code + tail), `Deviations from plan`, `Open issues`.

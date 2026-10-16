@@ -221,7 +221,7 @@ def check_services(
         if type(raw.get("circular")) is not bool:
             report.errors.append(f"service {service_id} circular must be a boolean")
         rules.check_service_metadata(
-            raw, definition, overrides.dataset.operator, report
+            raw, definition, expected.effective_operator(overrides.dataset), report
         )
         if raw.get("directionLabels") != {
             "forward": definition.direction_labels.forward,

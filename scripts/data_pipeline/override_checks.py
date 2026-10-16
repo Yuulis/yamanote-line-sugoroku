@@ -6,6 +6,7 @@ from collections.abc import Sequence
 
 from scripts.data_pipeline.constraints import (
     ConstraintError,
+    PlatformSelector,
     check_station_number_order,
 )
 from scripts.data_pipeline.override_models import (
@@ -55,6 +56,23 @@ def check_station_numbers(
         )
     except ConstraintError as error:
         raise OverrideError(str(error)) from error
+
+
+def _selector_sets_are_disjoint(selectors: Sequence[PlatformSelector]) -> bool:
+    """Whether ANDed selector clauses cannot select the same platform."""
+    for attribute in ("lines", "groups", "codes"):
+        constraints = [
+            getattr(selector, attribute)
+            for selector in selectors
+            if getattr(selector, attribute)
+        ]
+        if constraints:
+            allowed = set(constraints[0])
+            for constraint in constraints[1:]:
+                allowed.intersection_update(constraint)
+            if not allowed:
+                return True
+    return False
 
 
 def expand_ranges(
@@ -130,9 +148,30 @@ def check_consistency(overrides: Overrides) -> None:
     registry = overrides.registry.by_id()
     served: dict[str, list[str]] = {station_id: [] for station_id in registry}
     known_lines = {line.id for line in overrides.lines}
+    service_by_id = {service.id: service for service in services}
+    registry_operators = {
+        station.id: station.n02_operator
+        or (
+            service_by_id[station.representative_service_id].effective_n02_operator(
+                dataset
+            )
+            if station.representative_service_id in service_by_id
+            else ""
+        )
+        for station in overrides.registry.stations
+    }
+    resolved_targets: dict[
+        tuple[str, str], dict[str, list[tuple[PlatformSelector, ...]]]
+    ] = {}
     for service in services:
         if not set(service.definition.line_ids) <= known_lines:
             raise OverrideError(f"{service.id}: unknown lineIds")
+        if service.definition.area_prefectures and not set(
+            service.definition.area_prefectures
+        ) <= set(dataset.area.prefectures):
+            raise OverrideError(
+                f"{service.id}: areaPrefectures must be a subset of dataset area"
+            )
         for station_id in service.station_ids:
             if station_id not in registry:
                 raise OverrideError(
@@ -140,6 +179,38 @@ def check_consistency(overrides: Overrides) -> None:
                     "in-area registry station"
                 )
             served[station_id].append(service.id)
+            station = registry[station_id]
+            effective_area = service.effective_area(dataset)
+            if not effective_area.contains(station.prefecture, station.municipality):
+                raise OverrideError(
+                    f"service {service.id} stops at {station_id!r}, outside its configured area"
+                )
+        for stop in service.stops:
+            station = registry[stop.station_id]
+            resolution = service.resolve_stop(
+                stop, station, dataset, registry_operators[station.id]
+            )
+            uses_override_target = (
+                resolution.source_operator,
+                resolution.match_name,
+            ) != (registry_operators[station.id], station.match_name)
+            if uses_override_target and (not stop.original_name or not stop.n02_name):
+                raise OverrideError(
+                    f"{service.id}/{station.id}: alternate N02 match requires original_name and n02_name"
+                )
+            if resolution.original_name not in (
+                station.name,
+                *station.aliases,
+            ):
+                raise OverrideError(
+                    f"{service.id}/{station.id}: original_name must match registry name or alias"
+                )
+            selectors = (stop.platform_selector,)
+            if resolution.registry_selector_applies:
+                selectors = (*selectors, station.n02_selector)
+            resolved_targets.setdefault(
+                (resolution.source_operator, resolution.match_name), {}
+            ).setdefault(station.id, []).append(selectors)
     unserved = sorted(station_id for station_id, ids in served.items() if not ids)
     if unserved:
         raise OverrideError(f"registry stations served by no service: {unserved}")
@@ -151,6 +222,18 @@ def check_consistency(overrides: Overrides) -> None:
                 f"station {station.id}: representative service "
                 f"{station.representative_service_id!r} does not stop there"
             )
+
+    for (operator, name), station_rows in resolved_targets.items():
+        station_ids = sorted(station_rows)
+        for index, station_id in enumerate(station_ids):
+            for previous_id in station_ids[:index]:
+                for left in station_rows[previous_id]:
+                    for right in station_rows[station_id]:
+                        if not _selector_sets_are_disjoint((*left, *right)):
+                            raise OverrideError(
+                                f"homonym identity ({operator}, {name}) assigned to "
+                                f"{previous_id} and {station_id} without disjoint selectors"
+                            )
 
     if dataset.validation_profile == "stage":
         if dataset.stage_start_station_id not in registry:
@@ -169,7 +252,7 @@ def check_consistency(overrides: Overrides) -> None:
             service.station_ids,
             service.scope_stops,
             overrides.registry,
-            dataset.area,
+            service.effective_area(dataset),
             (ends.first, ends.last) if ends else None,
         )
     seen_detours: set[tuple[str, str, str]] = set()

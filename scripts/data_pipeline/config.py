@@ -62,6 +62,19 @@ MAX_SNAP_OFFSET_M = 30.0
 # Defaults cover the JR East railway extent in the four prefectures. Each
 # dataset can narrow its area/bounds without changing public metadata.
 CAPITAL_REGION_PREFECTURES = ("東京都", "千葉県", "神奈川県", "埼玉県")
+ALLOWED_RAILWAY_PREFECTURES = (
+    "千葉県",
+    "埼玉県",
+    "山梨県",
+    "東京都",
+    "栃木県",
+    "神奈川県",
+    "福島県",
+    "群馬県",
+    "茨城県",
+    "長野県",
+    "静岡県",
+)
 DEFAULT_OUTPUT_BBOX = (138.6, 34.8, 141.0, 36.8)
 DEFAULT_CANDIDATE_SEARCH_BBOX = (138.5, 34.65, 141.2, 37.0)
 # Only numerical projection noise is allowed at an explicitly declared

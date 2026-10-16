@@ -15,7 +15,11 @@ from shapely.geometry import LineString, Point
 
 from scripts.data_pipeline import config
 from scripts.data_pipeline.composition import compose_chains, exact_chain_coordinates
-from scripts.data_pipeline.overrides import Overrides, ServiceOverrides
+from scripts.data_pipeline.overrides import (
+    DatasetOverride,
+    Overrides,
+    ServiceOverrides,
+)
 from scripts.data_pipeline.registry import RegistryStation
 from scripts.data_pipeline.topology import station_order, station_pairs
 
@@ -68,7 +72,7 @@ def build_stations(
 
 def build_services(
     services: Sequence[ServiceOverrides],
-    operator: str,
+    dataset: DatasetOverride | str,
     platforms: Mapping[tuple[str, str], Point],
 ) -> list[dict[str, Any]]:
     """v3 service metadata and the platform point of every stop."""
@@ -78,7 +82,11 @@ def build_services(
         document = {
             "id": service.id,
             "name": definition.name,
-            "operator": operator,
+            "operator": (
+                service.effective_operator(dataset)
+                if isinstance(dataset, DatasetOverride)
+                else dataset
+            ),
             "kind": definition.kind,
             "lineIds": list(definition.line_ids),
             "stationIds": list(service.station_ids),
@@ -288,7 +296,7 @@ def build_files(
                     for line in overrides.lines
                 ],
                 "services": build_services(
-                    overrides.services, overrides.dataset.operator, platforms
+                    overrides.services, overrides.dataset, platforms
                 ),
             }
         ),

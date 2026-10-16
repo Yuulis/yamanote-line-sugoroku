@@ -58,6 +58,7 @@ def _read_json(path: Path) -> Any:
 def load_service(
     services_dir: Path,
     definition: ServiceDefinition,
+    dataset: Any,
     bbox: BBox = config.DEFAULT_CANDIDATE_SEARCH_BBOX,
 ) -> ServiceOverrides:
     directory = services_dir / definition.id
@@ -72,7 +73,11 @@ def load_service(
     )
     sections_path = directory / config.SECTION_CONSTRAINTS_OVERRIDE_FILE
     section_filters = (
-        parse_section_filters(read_csv(sections_path, SECTION_COLUMNS), definition.id)
+        parse_section_filters(
+            read_csv(sections_path, SECTION_COLUMNS),
+            definition.id,
+            definition.n02_operator or dataset.n02_operator,
+        )
         if sections_path.is_file()
         else {}
     )
@@ -85,10 +90,14 @@ def load_service(
             read_csv(directory / config.SCOPE_OVERRIDE_FILE, SCOPE_COLUMNS)
         ),
     )
-    mapped_lines = {
-        line for item in service.segment_ranges() for line in item.route_lines
+    mapped_keys = {
+        (operator, line)
+        for item in service.segment_ranges()
+        for line, operator in zip(
+            item.route_lines, service.range_operators(item, dataset), strict=True
+        )
     }
-    unused = sorted(set(section_filters) - mapped_lines)
+    unused = sorted(set(section_filters) - mapped_keys)
     if unused:
         raise OverrideError(
             f"{definition.id} sections.csv names unmapped lines {unused}"
@@ -123,7 +132,7 @@ def load_overrides(overrides_dir: Path) -> Overrides:
         registry=registry,
         lines=lines,
         services=tuple(
-            load_service(services_dir, item, dataset.candidate_search_bbox)
+            load_service(services_dir, item, dataset, dataset.candidate_search_bbox)
             for item in definitions
         ),
         offset_exceptions=parse_offset_exceptions(

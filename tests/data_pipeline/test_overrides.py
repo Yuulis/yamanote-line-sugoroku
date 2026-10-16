@@ -6,7 +6,17 @@ from pathlib import Path
 import pytest
 
 from scripts.data_pipeline import config
-from scripts.data_pipeline.constraints import ANY_PLATFORM, parse_platform_selector
+from scripts.data_pipeline.constraints import (
+    ANY_PLATFORM,
+    ConstraintError,
+    parse_platform_selector,
+    parse_route_recipe,
+)
+from scripts.data_pipeline.override_parsing import (
+    parse_section_filters,
+    parse_service_definition,
+    parse_stops,
+)
 from scripts.data_pipeline.overrides import (
     LineRange,
     OverrideError,
@@ -17,7 +27,9 @@ from scripts.data_pipeline.overrides import (
     expand_ranges,
     is_iso_date,
     load_overrides,
+    parse_line_ranges,
 )
+from scripts.data_pipeline.registry import parse_registry
 from tests.data_pipeline.support import CORE_FIXTURE_DIR, append_line, rewrite
 
 EXPECTED_OUTER_LOOP = (
@@ -98,6 +110,195 @@ def test_load_overrides_with_core_fixture_returns_five_services() -> None:
     assert len(keihin.segment_lines()) == 21
     assert keihin.definition.endpoints is not None
     assert keihin.definition.endpoints.first == "area-boundary"
+
+
+def test_legacy_optional_fields_preserve_defaults(
+    committed_overrides: Overrides,
+) -> None:
+    service = committed_overrides.target
+    stop = service.stops[0]
+    registry_station = committed_overrides.registry.by_id()[stop.station_id]
+
+    assert (
+        service.effective_operator(committed_overrides.dataset)
+        == committed_overrides.dataset.operator
+    )
+    assert (
+        service.effective_n02_operator(committed_overrides.dataset)
+        == committed_overrides.dataset.n02_operator
+    )
+    assert stop.original_name == ""
+    assert stop.n02_name == ""
+    assert stop.n02_operator == ""
+    assert registry_station.aliases == ()
+    assert registry_station.n02_operator == ""
+
+
+def test_extended_scope_preserves_exact_catalogue(overrides_copy: Path) -> None:
+    path = overrides_copy / config.DATASET_OVERRIDE_FILE
+    dataset = json.loads(path.read_text(encoding="utf-8"))
+    dataset["areaPrefectures"] = [*config.CAPITAL_REGION_PREFECTURES, "山梨県"]
+    path.write_text(json.dumps(dataset, ensure_ascii=False), encoding="utf-8")
+    services_path = overrides_copy / config.SERVICES_OVERRIDE_FILE
+    services = json.loads(services_path.read_text(encoding="utf-8"))
+    for service in services["services"]:
+        service["areaPrefectures"] = list(config.CAPITAL_REGION_PREFECTURES)
+    services_path.write_text(json.dumps(services, ensure_ascii=False), encoding="utf-8")
+    parsed = load_overrides(overrides_copy).dataset
+
+    assert parsed.area.prefectures == (
+        *config.CAPITAL_REGION_PREFECTURES,
+        "山梨県",
+    )
+    assert parsed.service_ids == tuple(
+        item["id"] for item in EXPECTED_CATALOG["services"]
+    )
+
+
+def test_extended_scope_rejects_unapproved_prefecture(overrides_copy: Path) -> None:
+    path = overrides_copy / config.DATASET_OVERRIDE_FILE
+    dataset = json.loads(path.read_text(encoding="utf-8"))
+    dataset["areaPrefectures"] = ["東京都", "沖縄県"]
+    path.write_text(json.dumps(dataset, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(OverrideError, match="supported railway prefectures"):
+        load_overrides(overrides_copy)
+
+
+def test_service_scope_must_be_subset_of_dataset_area(overrides_copy: Path) -> None:
+    path = overrides_copy / config.SERVICES_OVERRIDE_FILE
+    services = json.loads(path.read_text(encoding="utf-8"))
+    services["services"][0]["areaPrefectures"] = ["山梨県"]
+    path.write_text(json.dumps(services, ensure_ascii=False), encoding="utf-8")
+
+    with pytest.raises(OverrideError, match="areaPrefectures must be a subset"):
+        load_overrides(overrides_copy)
+
+
+def test_aliases_do_not_merge_station_ids(core_copy: Path) -> None:
+    path = core_copy / config.REGISTRY_OVERRIDE_FILE
+    import csv
+
+    with path.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+        fields = [*(reader.fieldnames or ()), "aliases"]
+    rows[0]["aliases"] = '["Shared Alias"]'
+    rows[1]["aliases"] = '["Shared Alias"]'
+    for row in rows[2:]:
+        row["aliases"] = "[]"
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(rows)
+
+    registry = load_overrides(core_copy).registry
+    assert len(registry.stations) == 67
+    assert len(registry.ids) == len(set(registry.ids))
+    assert registry.stations[0].aliases == ("Shared Alias",)
+    assert registry.stations[1].aliases == ("Shared Alias",)
+
+
+def test_optional_schema_rejects_explicit_empty_and_malformed_values(
+    committed_overrides: Overrides,
+) -> None:
+    definition = committed_overrides.services[0].definition
+    raw = {
+        "id": definition.id,
+        "kind": definition.kind,
+        "lineIds": list(definition.line_ids),
+        "name": definition.name,
+        "color": definition.color,
+        "circular": definition.circular,
+        "directionLabels": {
+            "forward": definition.direction_labels.forward,
+            "backward": definition.direction_labels.backward,
+        },
+        "endpoints": None,
+        "expectedStopCount": definition.expected_stop_count,
+        "lengthRef": {
+            "km": definition.length_ref.km,
+            "toleranceKm": definition.length_ref.tolerance_km,
+            "source": definition.length_ref.source,
+        },
+        "scopeSource": definition.scope_source,
+        "operator": "",
+    }
+    with pytest.raises(OverrideError, match="non-empty string"):
+        parse_service_definition(raw)
+
+    registry_row = {
+        "id": "station",
+        "name": "駅",
+        "n02_name": "駅",
+        "prefecture": "東京都",
+        "municipality": "市",
+        "representative_service_id": "service",
+        "aliases": "[1]",
+    }
+    with pytest.raises(OverrideError, match="JSON string array"):
+        parse_registry([registry_row])
+
+    route = (
+        '{"lines":["A","B"],"operators":[],"joints":[[139.7,35.7]],"reason":"reviewed"}'
+    )
+    with pytest.raises(ConstraintError, match="operators must match lines"):
+        parse_route_recipe(route, config.DEFAULT_CANDIDATE_SEARCH_BBOX)
+
+
+def test_route_operator_list_rejects_row_operator_and_orphan_source_reason() -> None:
+    route = json.dumps(
+        {
+            "lines": ["A", "B"],
+            "operators": ["Operator A", "Operator B"],
+            "joints": [[139.7, 35.7]],
+            "reason": "Reviewed transition",
+        }
+    )
+    row = {
+        "from_id": "a",
+        "to_id": "b",
+        "n02_line": "",
+        "via": "",
+        "route": route,
+        "n02_operator": "Ignored operator",
+        "source_reason": "Reviewed source",
+    }
+    with pytest.raises(OverrideError, match="cannot be combined"):
+        parse_line_ranges([row], "service")
+
+    with pytest.raises(OverrideError, match="source_reason requires n02_operator"):
+        parse_line_ranges(
+            [{**row, "n02_operator": "", "source_reason": "orphan"}], "service"
+        )
+
+    stop = {
+        "order": "0",
+        "station_id": "a",
+        "station_number": "",
+        "platform_selector": "",
+        "source_reason": "orphan",
+    }
+    with pytest.raises(OverrideError, match="source_reason requires n02_operator"):
+        parse_stops([stop], "service")
+
+
+def test_sections_operator_uses_existing_reason_without_source_reason() -> None:
+    parsed = parse_section_filters(
+        [
+            {
+                "n02_line": "L",
+                "action": "deny",
+                "section_key": "section-1",
+                "reason": "Reviewed exclusion",
+                "n02_operator": "Operator A",
+            }
+        ],
+        "service",
+        default_operator="Operator B",
+    )
+
+    assert parsed["Operator A", "L"].deny == frozenset({"section-1"})
 
 
 # --- line ranges -------------------------------------------------------------

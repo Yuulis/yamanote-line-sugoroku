@@ -178,6 +178,7 @@ class RouteRecipe:
     lines: tuple[str, ...]
     joints: tuple[LonLat, ...]
     reason: str
+    operators: tuple[str, ...] = ()
 
 
 def parse_bbox(raw: Any, where: str) -> BBox:
@@ -203,7 +204,11 @@ def parse_route_recipe(text: str, bbox: BBox) -> RouteRecipe | None:
         raw = json.loads(text)
     except json.JSONDecodeError as error:
         raise ConstraintError(f"route is not valid JSON: {error}") from error
-    if not isinstance(raw, dict) or set(raw) != {"lines", "joints", "reason"}:
+    if (
+        not isinstance(raw, dict)
+        or not {"lines", "joints", "reason"} <= set(raw)
+        or set(raw) - {"lines", "joints", "reason", "operators"}
+    ):
         raise ConstraintError("route needs lines, joints and reason")
     lines = raw["lines"]
     joints = raw["joints"]
@@ -232,7 +237,14 @@ def parse_route_recipe(text: str, bbox: BBox) -> RouteRecipe | None:
     reason = raw["reason"]
     if not isinstance(reason, str) or not reason.strip():
         raise ConstraintError("route needs a non-empty reason")
-    return RouteRecipe(tuple(lines), tuple(points), reason)
+    operators = raw.get("operators", [])
+    if "operators" in raw and (
+        not isinstance(operators, list)
+        or len(operators) != len(lines)
+        or not all(isinstance(value, str) and value.strip() for value in operators)
+    ):
+        raise ConstraintError("route operators must match lines with non-empty names")
+    return RouteRecipe(tuple(lines), tuple(points), reason, tuple(operators))
 
 
 def check_station_number_order(

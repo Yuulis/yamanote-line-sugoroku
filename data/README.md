@@ -403,3 +403,51 @@ The report compares 1/3/5 m against the routed geometry, including coordinate
 count, Hausdorff deviation, all size/reference metrics and budget errors. The
 current measured report is
 `.claude/docs/research/jr-east-capital-region-s3b-simplification.json`.
+
+## Multi-operator override fields (S1)
+
+The override parser accepts optional operator and naming fields while preserving
+the existing files when they are omitted. `services.json` may set `operator`
+(the published display operator) and `n02Operator` (the exact N02 `N02_004`
+source value). Each defaults to the corresponding dataset value. A service may
+also set `areaPrefectures`, which must be a non-empty subset of the dataset's
+allowed prefectures.
+
+`stations.csv` may add an `aliases` cell containing a JSON string array and an
+`n02_operator` cell. Aliases are retained as reviewed identity evidence; they
+are not expanded into candidate searches and do not merge station IDs. The
+station source operator defaults to its representative service's effective
+N02 operator. For example, a curated display station can be named `後楽園・春日`
+while its `aliases` cell contains `後楽園` and `春日`.
+
+`services/<id>/stops.csv` may add `original_name`, `n02_name`, `n02_operator`,
+and `source_reason`. Defaults are the registry N02 name and the service's
+effective N02 operator. When a stop overrides the registry spelling or source,
+it must state both the original and matching N02 names, and the original must
+be the registry name or one of its aliases. A non-empty reason is required to
+set a stop source override. An omitted stop source uses the service's effective
+N02 operator; the registry source only determines whether the registry selector
+applies. The registry selector is ANDed with the stop selector only when the
+resolved `(operator, normalized n02_name)` equals the registry target. An
+alternate explicit match uses the stop selector alone.
+
+`line_mapping.csv` may add `n02_operator` and `source_reason`; the operator
+defaults to the service source, and a row-level operator needs a non-empty
+`source_reason`. A route row can include an `operators` JSON array parallel to
+`lines`, allowing an explicitly reviewed source ownership transition. Rows with
+a route cannot also set row-level `n02_operator`; `source_reason` without a
+row-level operator is rejected.
+`sections.csv` can qualify section filters by `(n02_operator, n02_line)`; its
+existing `reason` column records the review reason. `shared_track_evidence` may
+set `n02Operator`; otherwise it uses the immediate consumer service's effective
+source, including for nested recipes. Every primitive in one compose leg must
+resolve to that same source operator, so split a composed leg if its source
+changes.
+
+Operator selection is exact at every stop and track leg. It never falls back to
+another operator when a source has no candidates. This supports boundary cases
+such as JR/Metro 綾瀬 platforms and differently named operator platforms at
+後楽園・春日 or 浜松町・大門 without proximity-only joins. Extended prefecture
+scope still requires a complete, independently reviewed `scope.csv` and the
+hash-pinned expected catalogue; allowing a prefecture does not automatically
+add stations to the product.

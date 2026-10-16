@@ -8,23 +8,32 @@ from pathlib import Path
 
 import pytest
 
-from scripts.data_pipeline.build import platform_points
+from scripts.data_pipeline.build import RoutingError, platform_points, route_service
 from scripts.data_pipeline.composition import (
+    ComposeLeg,
+    ComposeRecipe,
+    SharedTrackEvidence,
     check_recipes,
     dependency_order,
+    flatten_recipe,
     parse_compose,
 )
-from scripts.data_pipeline.composition_build import composed_pairs
+from scripts.data_pipeline.composition_build import (
+    check_inherited_route_sources,
+    composed_pairs,
+)
 from scripts.data_pipeline.constraints import SectionFilter
 from scripts.data_pipeline.override_checks import check_consistency
 from scripts.data_pipeline.overrides import LineRange, Overrides, parse_line_ranges
 from scripts.data_pipeline.registry import OverrideError
 from scripts.data_pipeline.validate import load_dataset, validate_dataset
 from tests.data_pipeline.composition_support import (
+    SyntheticSource,
     composition_overrides,
     recipe,
     synthetic_build,
 )
+from tests.data_pipeline.support import candidate
 
 
 def test_nested_mixed_recipes_build_in_both_directions_and_preserve_output_order(
@@ -197,6 +206,273 @@ def test_compose_csv_schema_and_exclusive_recipe_fields() -> None:
             ("a", "b", "c"),
             (LineRange("a", "c", "", compose=parse_compose(cell)),),
             False,
+        )
+
+
+def test_compose_requires_owner_operator_evidence(
+    committed_overrides: Overrides,
+) -> None:
+    overrides = composition_overrides(committed_overrides)
+    owner = overrides.service("owner-a")
+    first = replace(owner.line_ranges[0], n02_operator="Alternate N02")
+    owner = replace(owner, line_ranges=(first, *owner.line_ranges[1:]))
+    overrides = replace(
+        overrides,
+        services=tuple(
+            owner if service.id == owner.id else service
+            for service in overrides.services
+        ),
+    )
+    recipe_without_operator = recipe(("owner-a", "a", "b", ("L0",)))
+    with pytest.raises(OverrideError, match="differs from consumer evidence"):
+        flatten_recipe(overrides, recipe_without_operator, overrides.service("nested"))
+
+    raw = {
+        "legs": [{"source_service": "owner-a", "from": "a", "to": "b"}],
+        "shared_track_evidence": [
+            {
+                "lines": ["L0"],
+                "allow": [],
+                "deny": [],
+                "reason": "Reviewed source ownership",
+                "n02Operator": "Alternate N02",
+            }
+        ],
+    }
+    named_recipe = parse_compose(json.dumps(raw))
+    assert named_recipe is not None
+    assert flatten_recipe(overrides, named_recipe, overrides.service("nested")) == (
+        ("owner-a", "a", "b", False),
+    )
+
+
+def test_compose_omitted_operator_resolves_to_consumer(
+    committed_overrides: Overrides,
+) -> None:
+    overrides = composition_overrides(committed_overrides)
+    owner = overrides.service("owner-a")
+    owner = replace(
+        owner,
+        definition=replace(owner.definition, n02_operator="Owner operator"),
+    )
+    consumer = replace(
+        overrides.service("nested"),
+        definition=replace(
+            overrides.service("nested").definition,
+            n02_operator="Consumer operator",
+        ),
+    )
+    overrides = replace(
+        overrides,
+        services=tuple(
+            owner
+            if item.id == owner.id
+            else consumer
+            if item.id == consumer.id
+            else item
+            for item in overrides.services
+        ),
+    )
+
+    with pytest.raises(OverrideError, match="differs from consumer evidence"):
+        flatten_recipe(
+            overrides,
+            recipe(("owner-a", "a", "b", ("L0",))),
+            consumer,
+        )
+
+
+def test_compose_rejects_one_leg_with_multiple_primitive_operators(
+    committed_overrides: Overrides,
+) -> None:
+    overrides = composition_overrides(committed_overrides)
+    owner_a = replace(
+        overrides.service("owner-a"),
+        definition=replace(overrides.service("owner-a").definition, n02_operator="A"),
+    )
+    owner_b = replace(
+        overrides.service("owner-b"),
+        definition=replace(overrides.service("owner-b").definition, n02_operator="B"),
+    )
+    nested = overrides.service("nested")
+    inner = ComposeRecipe(
+        (
+            ComposeLeg(
+                "owner-a",
+                "a",
+                "b",
+                SharedTrackEvidence(("L0",), SectionFilter(), "Reviewed"),
+            ),
+            ComposeLeg(
+                "owner-b",
+                "b",
+                "c",
+                SharedTrackEvidence(
+                    ("L1",), SectionFilter(), "Reviewed", n02_operator="B"
+                ),
+            ),
+        )
+    )
+    nested = replace(
+        nested,
+        definition=replace(nested.definition, n02_operator="A"),
+        line_ranges=(replace(nested.line_ranges[0], compose=inner),),
+    )
+    consumer = replace(
+        overrides.service("rapid"),
+        definition=replace(overrides.service("rapid").definition, n02_operator="A"),
+    )
+    outer = ComposeRecipe(
+        (
+            ComposeLeg(
+                "nested",
+                "a",
+                "c",
+                SharedTrackEvidence(("L0", "L1"), SectionFilter(), "Reviewed"),
+            ),
+        )
+    )
+    overrides = replace(
+        overrides,
+        services=tuple(
+            owner_a
+            if item.id == owner_a.id
+            else owner_b
+            if item.id == owner_b.id
+            else nested
+            if item.id == nested.id
+            else consumer
+            if item.id == consumer.id
+            else item
+            for item in overrides.services
+        ),
+    )
+
+    with pytest.raises(OverrideError, match="spans multiple N02 operators"):
+        flatten_recipe(overrides, outer, consumer)
+
+
+def test_nested_compose_uses_nested_consumer_operator(
+    committed_overrides: Overrides,
+) -> None:
+    overrides = composition_overrides(committed_overrides)
+    owner = overrides.service("owner-a")
+    owner = replace(
+        owner,
+        definition=replace(owner.definition, n02_operator="Owner"),
+        line_ranges=(
+            replace(
+                owner.line_ranges[0],
+                n02_operator="Nested",
+                source_reason="Reviewed nested track owner",
+            ),
+            *owner.line_ranges[1:],
+        ),
+    )
+    nested = overrides.service("nested")
+    nested = replace(
+        nested,
+        definition=replace(nested.definition, n02_operator="Nested"),
+    )
+    owner_b = overrides.service("owner-b")
+    owner_b = replace(
+        owner_b,
+        line_ranges=(
+            replace(
+                owner_b.line_ranges[0],
+                n02_operator="Nested",
+                source_reason="Reviewed nested track owner",
+            ),
+            *owner_b.line_ranges[1:],
+        ),
+    )
+    top = replace(
+        overrides.service("rapid"),
+        definition=replace(overrides.service("rapid").definition, n02_operator="Top"),
+    )
+    inner = recipe(
+        ("owner-a", "a", "b", ("L0",)),
+        ("owner-b", "b", "c", ("L1",)),
+    )
+    nested = replace(
+        nested,
+        line_ranges=(replace(nested.line_ranges[0], compose=inner),),
+    )
+    outer = ComposeRecipe(
+        (
+            ComposeLeg(
+                "nested",
+                "a",
+                "c",
+                SharedTrackEvidence(
+                    ("L0", "L1"),
+                    SectionFilter(),
+                    "Reviewed top-level sharing",
+                    n02_operator="Nested",
+                ),
+            ),
+        )
+    )
+    overrides = replace(
+        overrides,
+        services=tuple(
+            owner
+            if item.id == owner.id
+            else owner_b
+            if item.id == owner_b.id
+            else nested
+            if item.id == nested.id
+            else top
+            if item.id == top.id
+            else item
+            for item in overrides.services
+        ),
+    )
+
+    assert flatten_recipe(overrides, outer, top) == (
+        ("owner-a", "a", "b", False),
+        ("owner-b", "b", "c", False),
+    )
+
+
+def test_neighbour_route_rejects_inherited_anchor_from_another_operator(
+    committed_overrides: Overrides,
+) -> None:
+    overrides = composition_overrides(committed_overrides)
+    _, builds = synthetic_build(overrides)
+    consumer = overrides.service("rapid")
+    ranges = (
+        consumer.line_ranges[0],
+        replace(
+            consumer.line_ranges[1],
+            n02_operator="Other operator",
+            source_reason="Reviewed source boundary",
+        ),
+    )
+    consumer = replace(consumer, line_ranges=ranges)
+    overrides = replace(
+        overrides,
+        services=tuple(
+            consumer if item.id == consumer.id else item for item in overrides.services
+        ),
+    )
+
+    with pytest.raises(RoutingError, match="no track path"):
+        route_service(
+            SyntheticSource(), consumer, overrides.registry, overrides, builds
+        )
+
+
+def test_inherited_anchor_rejects_a_neighbouring_operator_mismatch() -> None:
+    anchor = replace(candidate("Hub", 0, 0), n02_line="L", operator="Operator A")
+
+    with pytest.raises(OverrideError, match="wrong-source anchor"):
+        check_inherited_route_sources(
+            {(0, "from"): ("L", "Operator B")},
+            {},
+            {0: anchor},
+            (),
+            2,
         )
 
 
@@ -388,14 +664,15 @@ def test_shared_evidence_supports_different_filters_on_each_n02_line(
     }
     composed = parse_compose(json.dumps(raw))
     assert composed is not None
-    assert flatten_recipe(overrides, composed) == (
+    consumer = overrides.service("nested")
+    assert flatten_recipe(overrides, composed, consumer) == (
         ("owner-a", "a", "b", False),
         ("owner-a", "b", "c", False),
     )
     raw["legs"][0].update({"from": "c", "to": "a"})
     reversed_recipe = parse_compose(json.dumps(raw))
     assert reversed_recipe is not None
-    assert flatten_recipe(overrides, reversed_recipe) == (
+    assert flatten_recipe(overrides, reversed_recipe, consumer) == (
         ("owner-a", "b", "c", True),
         ("owner-a", "a", "b", True),
     )
@@ -404,7 +681,7 @@ def test_shared_evidence_supports_different_filters_on_each_n02_line(
     invalid = parse_compose(json.dumps(raw))
     assert invalid is not None
     with pytest.raises(OverrideError, match="section filter differs"):
-        flatten_recipe(overrides, invalid)
+        flatten_recipe(overrides, invalid, consumer)
     raw["shared_track_evidence"][0]["line_filters"] = {
         "other-line": {"allow": [], "deny": []}
     }

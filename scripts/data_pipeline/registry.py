@@ -8,6 +8,7 @@ to a registry row by (normalised) name *and* the service's mapped N02 lines.
 from __future__ import annotations
 
 import csv
+import json
 import re
 import unicodedata
 from collections.abc import Iterable, Mapping
@@ -54,6 +55,8 @@ class RegistryStation:
     municipality: str
     representative_service_id: str
     n02_selector: PlatformSelector = ANY_PLATFORM
+    aliases: tuple[str, ...] = ()
+    n02_operator: str = ""
 
     @property
     def match_name(self) -> str:
@@ -207,6 +210,22 @@ def parse_registry(rows: Iterable[Mapping[str, str]]) -> Registry:
             selector = parse_platform_selector(row.get("n02_selector", ""))
         except ConstraintError as error:
             raise OverrideError(f"station {row['id']}: {error}") from error
+        aliases_raw = row.get("aliases", "")
+        try:
+            aliases_value = json.loads(aliases_raw) if aliases_raw else []
+        except json.JSONDecodeError as error:
+            raise OverrideError(
+                f"station {row['id']}: aliases must be a JSON string array"
+            ) from error
+        if not isinstance(aliases_value, list) or not all(
+            isinstance(value, str) and value.strip() for value in aliases_value
+        ):
+            raise OverrideError(
+                f"station {row['id']}: aliases must be a JSON string array"
+            )
+        aliases = tuple(aliases_value)
+        if len(set(aliases)) != len(aliases):
+            raise OverrideError(f"station {row['id']}: aliases must be unique")
         stations.append(
             RegistryStation(
                 id=row["id"],
@@ -216,6 +235,8 @@ def parse_registry(rows: Iterable[Mapping[str, str]]) -> Registry:
                 municipality=row["municipality"],
                 representative_service_id=row["representative_service_id"],
                 n02_selector=selector,
+                aliases=aliases,
+                n02_operator=row.get("n02_operator", ""),
             )
         )
     validate_registry(tuple(stations))
@@ -242,8 +263,23 @@ def validate_registry(stations: tuple[RegistryStation, ...]) -> None:
                 f"spelling (use {normalize_station_name(station.name)!r}; put the "
                 "N02 spelling in n02_name)"
             )
+        if station.n02_operator and not station.n02_operator.strip():
+            raise OverrideError(f"station {station.id} has blank n02_operator")
+        for alias in station.aliases:
+            if not alias.strip() or normalize_station_name(alias) != alias:
+                raise OverrideError(f"station {station.id} has invalid alias {alias!r}")
         key = station.match_name
         for previous in seen_names.get(key, []):
+            # An omitted operator is resolved from each row's representative
+            # service after services.json has loaded. Defer those homonyms to
+            # check_consistency, where effective operators and stop selectors
+            # are available.
+            if (
+                not station.n02_operator
+                or not previous.n02_operator
+                or station.n02_operator != previous.n02_operator
+            ):
+                continue
             left, right = station.n02_selector, previous.n02_selector
             disjoint = any(
                 a and b and a.isdisjoint(b)
@@ -259,10 +295,9 @@ def validate_registry(stations: tuple[RegistryStation, ...]) -> None:
                     "disjoint N02 selectors"
                 )
         seen_names.setdefault(key, []).append(station)
-        if station.prefecture not in config.CAPITAL_REGION_PREFECTURES:
+        if station.prefecture not in config.ALLOWED_RAILWAY_PREFECTURES:
             raise OverrideError(
-                f"station {station.id} prefecture {station.prefecture!r} is outside "
-                "the capital region"
+                f"station {station.id} prefecture {station.prefecture!r} is unsupported"
             )
         if not station.municipality:
             raise OverrideError(f"station {station.id} has no municipality")

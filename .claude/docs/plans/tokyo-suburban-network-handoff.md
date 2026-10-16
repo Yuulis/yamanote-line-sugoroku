@@ -17,8 +17,10 @@
 | Step | Status | Evidence |
 |---|---|---|
 | S0 freeze baseline | DONE, lead-verified 2026-10-16; uncommitted (awaiting user) | Luna run `20261016T023600Z-s0` (180 s). New: `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (24 input hashes, counts 135/1,586/2,142/3,988, ruleset `tokyo-suburban-1` from case `target-two-thirds` 55/146/261/max 446, Oedo `toei-oedo-loop`+`toei-oedo-radial` → UI group `toei-oedo` 大江戸線, D4 presentation) and `tokyo-suburban-r2-tools/check_freeze.py` (ruleset/stats read from r2-results, not hard-coded; `--write` regenerates). Lead reran: check_freeze/check_catalog/verify_results/ruff exit 0; tampered catalog (renamed 中野) and truncated services both exit 2; `verify_delegation.py` 0 actionable. No Sol review (record-only step). |
-| S1 pipeline multi-operator selection | NEXT — prompt not yet written | — |
-| S2–S8 | pending | — |
+| S0 commit | `ee3b376`, pushed (user-approved) | — |
+| S1 pipeline multi-operator selection | DONE, lead-verified 2026-10-16; uncommitted (awaiting user) | Plan `tokyo-suburban-s1-plan.md` (Sol low). Luna runs `s1-run12`/`s1-run34`/`s1-run56`; review 1 rejected (`.claude/docs/reviews/tokyo-suburban-s1-review-1.md`); single fix pass Luna xhigh `s1-fix` (28 min); review 2 = commit (`tokyo-suburban-s1-review-2.md`). Lead reran: ruff/ty OK, 404 pipeline tests (baseline 373), 4 raw N02 tests 0 skips, two builds byte-identical to `public/data`, validate OK, protected paths clean, check_freeze PASS. Flagged 'removed assertions' are signature updates (`consumer` arg) and a validator test whose setup moved to the new builder-rejection test; assertions unchanged. Behaviour change: builder rejects a line change at an inherited anchor unless same operator + same N02 station group + exact midpoint (Sol confirmed Kotake-mukaihara 003294 and Kannai 004691 pass). |
+| S2 JR outlying staging | NEXT — prompt not yet written | Carry-overs from S1 review 2: (a) add a success regression for same-operator line-change anchors incl. each JR boundary used; (b) extended per-service area scope failure combos (missing in-area stop, out-of-area middle, boundary neighbour) |
+| S3–S8 | pending | — |
 
 S0 note: the freeze hashes R1b/R2 research files that are still untracked; commit them together with S0 so the
 hashes refer to tracked content. Rerun `check_freeze.py` at the start of every later step.

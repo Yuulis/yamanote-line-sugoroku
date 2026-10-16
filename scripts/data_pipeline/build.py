@@ -24,12 +24,19 @@ from scripts.data_pipeline.budgets import check_file_budgets, file_size_report
 from scripts.data_pipeline.composition import dependency_order
 from scripts.data_pipeline.composition_build import (
     check_inherited_route_anchors,
+    check_inherited_route_sources,
     composed_pairs,
     inherited_candidates,
 )
 from scripts.data_pipeline.constraints import SectionFilter
-from scripts.data_pipeline.n02 import N02Source, PlatformCandidate, TrackSection
+from scripts.data_pipeline.n02 import (
+    N02Source,
+    N02SourceProvider,
+    PlatformCandidate,
+    TrackSection,
+)
 from scripts.data_pipeline.network import TrackNetwork
+from scripts.data_pipeline.override_models import StopResolution, resolve_stop_target
 from scripts.data_pipeline.overrides import (
     LineRange,
     Overrides,
@@ -99,6 +106,8 @@ def group_candidates(
     lines_per_stop: Sequence[set[str]],
     inherited: Mapping[int, Sequence[PlatformCandidate]] | None = None,
     open_stops: Collection[int] = (),
+    operators_per_stop: Sequence[str] | None = None,
+    stop_resolutions: Sequence[StopResolution] | None = None,
 ) -> list[list[PlatformCandidate]]:
     """Candidates per stop: name, line and selector match, deduplicated.
 
@@ -117,19 +126,39 @@ def group_candidates(
             grouped.append(fixed)
             continue
         station = stations[stop.station_id]
-        seen: set[tuple[str, float, float]] = set()
+        expected_operator = operators_per_stop[index] if operators_per_stop else ""
+        resolution = (
+            stop_resolutions[index]
+            if stop_resolutions is not None
+            else resolve_stop_target(
+                stop,
+                station,
+                expected_operator,
+                station.n02_operator or expected_operator,
+            )
+        )
+        seen: set[tuple[str, str, float, float]] = set()
         groups: set[str] = set()
         options: list[PlatformCandidate] = []
         for candidate in candidates:
             if (
-                candidate.match_name != station.match_name
+                candidate.match_name != resolution.match_name
+                or (
+                    resolution.source_operator
+                    and candidate.operator
+                    and candidate.operator != resolution.source_operator
+                )
                 or candidate.n02_line not in lines
                 or not stop.platform_selector.matches(candidate)
-                or not station.n02_selector.matches(candidate)
+                or (
+                    resolution.registry_selector_applies
+                    and not station.n02_selector.matches(candidate)
+                )
             ):
                 continue
             groups.add(candidate.group_code)
             key = (
+                candidate.operator,
                 candidate.n02_line,
                 round(candidate.midpoint.x, 3),
                 round(candidate.midpoint.y, 3),
@@ -143,7 +172,10 @@ def group_candidates(
                 f"no N02 platform for {station.name} ({service.id}) on {sorted(lines)}"
             )
         if len(groups) > 1 and not (
-            stop.platform_selector.pins_group or station.n02_selector.pins_group
+            stop.platform_selector.pins_group
+            or (
+                resolution.registry_selector_applies and station.n02_selector.pins_group
+            )
         ):
             raise RoutingError(
                 f"ambiguous N02 platforms for {station.name} ({service.id}): groups "
@@ -188,7 +220,7 @@ def to_metric_point(lon_lat: tuple[float, float]) -> Point:
 
 
 def route_service(
-    source: N02Source,
+    source: N02Source | N02SourceProvider,
     service: ServiceOverrides,
     registry: Registry,
     overrides: Overrides | None = None,
@@ -212,12 +244,51 @@ def route_service(
     }
     ranges = service.segment_ranges()
     segment_lines = tuple(" -> ".join(item.route_lines) for item in ranges)
-    all_lines = {line for item in ranges for line in item.route_lines}
     stations = registry.by_id()
-    candidates = source.platform_candidates(
-        [stations[station_id].match_name for station_id in service.station_ids],
-        all_lines,
+    operators = overrides.dataset if overrides else None
+    default_operator = (
+        service.effective_n02_operator(operators)
+        if operators
+        else getattr(source, "operator", "")
     )
+    stop_resolutions: list[StopResolution] = []
+    for stop in service.stops:
+        station = stations[stop.station_id]
+        if overrides is not None:
+            registry_service = overrides.service(station.representative_service_id)
+            registry_operator = (
+                station.n02_operator
+                or registry_service.effective_n02_operator(overrides.dataset)
+            )
+        else:
+            registry_operator = station.n02_operator or default_operator
+        stop_resolutions.append(
+            resolve_stop_target(
+                stop,
+                station,
+                default_operator,
+                registry_operator,
+            )
+        )
+    stop_operators = [item.source_operator for item in stop_resolutions]
+
+    def source_for(operator: str) -> N02Source:
+        if isinstance(source, N02SourceProvider):
+            return source.for_operator(operator)
+        return source
+
+    candidate_parts = []
+    for operator in sorted(set(stop_operators)):
+        indexes = [i for i, value in enumerate(stop_operators) if value == operator]
+        names = [stop_resolutions[i].match_name for i in indexes]
+        lines = {
+            line for i in indexes for line in stop_lines(ranges, service.circular)[i]
+        }
+        if lines:
+            candidate_parts.extend(
+                source_for(operator).platform_candidates(names, lines)
+            )
+    candidates = sorted(candidate_parts, key=lambda candidate: candidate.sort_key)
     grouped = group_candidates(
         service,
         registry,
@@ -225,9 +296,11 @@ def route_service(
         stop_lines(ranges, service.circular),
         inherited,
         open_stops,
+        stop_operators,
+        stop_resolutions,
     )
-    sections = source.track_sections(
-        all_lines,
+    sections: dict[tuple[str, str], list[TrackSection]] = {}
+    section_points = (
         [candidate.midpoint for options in grouped for candidate in options]
         + [
             to_metric_point(joint)
@@ -235,10 +308,24 @@ def route_service(
             if item.route
             for joint in item.route.joints
         ]
-        + [to_metric_point(via) for item in ranges for via in item.via],
+        + [to_metric_point(via) for item in ranges for via in item.via]
     )
+    lines_by_operator: dict[str, set[str]] = {}
+    for item in ranges:
+        route_operators = (
+            service.range_operators(item, operators)
+            if operators
+            else (default_operator,) * len(item.route_lines)
+        )
+        for line, operator in zip(item.route_lines, route_operators, strict=True):
+            lines_by_operator.setdefault(operator, set()).add(line)
+    for operator, lines in lines_by_operator.items():
+        operator_sections = source_for(operator).track_sections(lines, section_points)
+        sections.update(
+            {(operator, line): values for line, values in operator_sections.items()}
+        )
     # Graph cache keyed by the constraints, not just the line.
-    networks: dict[tuple[str, SectionFilter], TrackNetwork] = {}
+    networks: dict[tuple[str, str, SectionFilter], TrackNetwork] = {}
     routes: list[PairRoute] = []
     for index, item in enumerate(ranges):
         if index in composed:
@@ -246,12 +333,19 @@ def route_service(
             routes.append(PairRoute(TrackNetwork([path.geometry]), fixed_path=path))
             continue
         ordered_networks: list[TrackNetwork] = []
-        for line in item.route_lines:
-            section_filter = service.section_filter(line)
-            key = (line, section_filter)
+        route_operators = (
+            service.range_operators(item, operators)
+            if operators
+            else (default_operator,) * len(item.route_lines)
+        )
+        for line, operator in zip(item.route_lines, route_operators, strict=True):
+            section_filter = service.section_filter(line, operator)
+            key = (operator, line, section_filter)
             if key not in networks:
                 networks[key] = filtered_network(
-                    sections[line], section_filter, f"{service.id}/{line}"
+                    sections[(operator, line)],
+                    section_filter,
+                    f"{service.id}/{operator}/{line}",
                 )
             ordered_networks.append(networks[key])
         via = tuple(to_metric_point(point) for point in item.via)
@@ -264,6 +358,7 @@ def route_service(
                 if item.route
                 else (),
                 line_order=item.route.lines if item.route else (),
+                operator_order=route_operators,
             )
         )
     if service.circular:
@@ -273,10 +368,37 @@ def route_service(
     check_inherited_route_anchors(
         routed.paths, arrivals, departures, len(service.stops)
     )
+    endpoint_sources: dict[tuple[int, str], tuple[str, str]] = {}
+    for index, item in enumerate(ranges):
+        if not item.route_lines:
+            continue
+        route_operators = (
+            service.range_operators(item, operators)
+            if operators
+            else (default_operator,) * len(item.route_lines)
+        )
+        endpoint_sources[(index, "from")] = (
+            item.route_lines[0],
+            route_operators[0],
+        )
+        endpoint_sources[(index, "to")] = (
+            item.route_lines[-1],
+            route_operators[-1],
+        )
+    check_inherited_route_sources(
+        endpoint_sources,
+        arrivals,
+        departures,
+        composed,
+        len(service.stops),
+        candidates,
+    )
     return ServiceBuild(service=service, segment_lines=segment_lines, routed=routed)
 
 
-def route_network(source: N02Source, overrides: Overrides) -> dict[str, ServiceBuild]:
+def route_network(
+    source: N02Source | N02SourceProvider, overrides: Overrides
+) -> dict[str, ServiceBuild]:
     builds: dict[str, ServiceBuild] = {}
     for identifier in dependency_order(overrides.services):
         service = overrides.service(identifier)
@@ -319,7 +441,7 @@ def route_network(source: N02Source, overrides: Overrides) -> dict[str, ServiceB
             service.station_ids,
             service.scope_stops,
             overrides.registry,
-            overrides.dataset.area,
+            service.effective_area(overrides.dataset),
             (ends.first, ends.last) if ends else None,
         )
         builds[service.id] = ServiceBuild(
@@ -352,10 +474,28 @@ def representative_points(
 
 def generate_build(raw_dir: Path, overrides: Overrides) -> BuildResult:
     """Route, export and check topology without enforcing publication budgets."""
-    source = N02Source(
-        raw_dir,
-        operator=overrides.dataset.n02_operator,
-        candidate_search_bbox=overrides.dataset.candidate_search_bbox,
+    default_operator = overrides.dataset.n02_operator
+    multi_operator = any(
+        service.effective_n02_operator(overrides.dataset) != default_operator
+        or any(stop.n02_operator for stop in service.stops)
+        or any(
+            operator != default_operator
+            for item in service.segment_ranges()
+            for operator in service.range_operators(item, overrides.dataset)
+        )
+        for service in overrides.services
+    ) or any(station.n02_operator for station in overrides.registry.stations)
+    source = (
+        N02SourceProvider(
+            raw_dir,
+            candidate_search_bbox=overrides.dataset.candidate_search_bbox,
+        )
+        if multi_operator
+        else N02Source(
+            raw_dir,
+            operator=default_operator,
+            candidate_search_bbox=overrides.dataset.candidate_search_bbox,
+        )
     )
     builds = route_network(source, overrides)
     files = export.build_files(

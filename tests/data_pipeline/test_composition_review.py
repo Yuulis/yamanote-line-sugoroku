@@ -10,7 +10,7 @@ from time import perf_counter
 
 import pytest
 from pyproj import Transformer
-from shapely.geometry import LineString, Point
+from shapely.geometry import Point
 
 from scripts.data_pipeline import config, export
 from scripts.data_pipeline.build import platform_points
@@ -21,7 +21,6 @@ from scripts.data_pipeline.composition import (
     flatten_recipe,
 )
 from scripts.data_pipeline.constraints import RouteRecipe
-from scripts.data_pipeline.n02 import TrackSection
 from scripts.data_pipeline.overrides import LineRange, Overrides
 from scripts.data_pipeline.registry import OverrideError
 from scripts.data_pipeline.topology import station_pairs
@@ -68,30 +67,7 @@ def test_validator_rejects_routed_pair_switched_to_other_line_owner(
     committed_overrides: Overrides, tmp_path: Path, direction: str
 ) -> None:
     overrides = composition_overrides(committed_overrides)
-    rapid = overrides.service("rapid")
-    overrides = replace_service(
-        overrides,
-        "rapid",
-        line_ranges=(rapid.line_ranges[0], LineRange("c", "d", "L2")),
-    )
-    source = SyntheticSource()
-    source.members["L2"] = ("c", "d")
-    original = source.track_sections
-
-    def bowed_track(lines: object, around: object) -> dict:
-        sections = original(lines, around)
-        if "L2" in sections:
-            c, d = source.points["c"], source.points["d"]
-            sections["L2"] = [
-                TrackSection(
-                    "key",
-                    LineString([c.coords[0], ((c.x + d.x) / 2, c.y + 30), d.coords[0]]),
-                )
-            ]
-        return sections
-
-    source.track_sections = bowed_track
-    files, _ = synthetic_build(overrides, source)
+    files, _ = synthetic_build(overrides)
     write_bundle(files, tmp_path)
     assert validate_dataset(load_dataset(tmp_path), overrides).errors == []
     segments, geojson = (
@@ -116,6 +92,23 @@ def test_validator_rejects_routed_pair_switched_to_other_line_owner(
     assert not any(
         "stale" in error or "serialization" in error for error in report.errors
     )
+
+
+def test_builder_rejects_routed_pair_switched_to_other_line_owner(
+    committed_overrides: Overrides,
+) -> None:
+    overrides = composition_overrides(committed_overrides)
+    rapid = overrides.service("rapid")
+    overrides = replace_service(
+        overrides,
+        "rapid",
+        line_ranges=(rapid.line_ranges[0], LineRange("c", "d", "L2")),
+    )
+    source = SyntheticSource()
+    source.members["L2"] = ("c", "d")
+
+    with pytest.raises(OverrideError, match="wrong-source anchor"):
+        synthetic_build(overrides, source)
 
 
 @pytest.mark.parametrize("fault", ["missing", "extra"])
@@ -237,9 +230,24 @@ def test_configured_expansion_limit_accepts_boundary_and_rejects_next_level(
     at_limit = overrides.services[-2].line_ranges[0].compose
     beyond_limit = overrides.services[-1].line_ranges[0].compose
     assert at_limit is not None and beyond_limit is not None
-    assert len(flatten_recipe(overrides, at_limit, max_primitives=16)) == 16
+    assert (
+        len(
+            flatten_recipe(
+                overrides,
+                at_limit,
+                overrides.services[-2],
+                max_primitives=16,
+            )
+        )
+        == 16
+    )
     with pytest.raises(OverrideError, match="expansion exceeds primitive limit 16"):
-        flatten_recipe(overrides, beyond_limit, max_primitives=16)
+        flatten_recipe(
+            overrides,
+            beyond_limit,
+            overrides.services[-1],
+            max_primitives=16,
+        )
 
 
 def test_regional_size_dag_flattening_has_generous_time_bound(
@@ -277,7 +285,11 @@ def test_regional_size_dag_flattening_has_generous_time_bound(
     assert len(dependency_order(services)) == 40
     start = perf_counter()
     check_recipes(overrides)
-    flattened = flatten_recipe(overrides, recipe(("regional-38", "s0", "s16", ("L0",))))
+    flattened = flatten_recipe(
+        overrides,
+        recipe(("regional-38", "s0", "s16", ("L0",))),
+        overrides.service("regional-39"),
+    )
     check_recipe_anchors("s0", "s16", flattened)
     duration = perf_counter() - start
     record_property("flattening_seconds", duration)
@@ -298,4 +310,4 @@ def test_direct_flattening_rejects_cycle(committed_overrides: Overrides) -> None
         overrides, "nested", line_ranges=(LineRange("a", "c", "", compose=cyclic),)
     )
     with pytest.raises(OverrideError, match="dependency cycle"):
-        flatten_recipe(overrides, cyclic)
+        flatten_recipe(overrides, cyclic, overrides.service("nested"))
