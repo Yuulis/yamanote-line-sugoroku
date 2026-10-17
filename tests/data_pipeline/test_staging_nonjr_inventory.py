@@ -136,3 +136,17 @@ def test_handoff_lists_every_reviewed_exception_at_its_approved_limit() -> None:
         "80 services, 1166 stop rows, 1087 forward pairs, and 2174 directed segments"
         in readme
     )
+
+
+def test_staged_text_files_use_lf_line_endings() -> None:
+    # Override hashes are byte hashes, and .gitattributes checks text out as LF,
+    # so a CRLF file staged locally would turn its evidence hash stale on clone.
+    crlf_files = [
+        path.relative_to(STAGING).as_posix()
+        for path in sorted(STAGING.rglob("*"))
+        if path.is_file()
+        and path.suffix in {".csv", ".json", ".md"}
+        and b"\r" in path.read_bytes()
+    ]
+
+    assert crlf_files == []

@@ -36,7 +36,7 @@
           "stations.json": "2bccfce3753e607fac08a85d530e66d12bd7f79dca5ecb133c03fe056f818df0"
         }
       },
-      "evidenceSha256": "4cef5fc4f33f127fb6ce5c91d323093e4e3fcf94fe1419b6502c389052b1dc55",
+      "evidenceSha256": "d040a377f2c3275d1a9c91f58432c0d41e7ece17a424df014e24b2419ada5a14",
       "actualPairs": {
         "seibu-ikebukuro|seibu-ikebukuro|seibu-shiinamachi": {
           "service_id": "seibu-ikebukuro",
@@ -1359,7 +1359,7 @@
           "end_snap_m": "0.000"
         }
       },
-      "overrideSha256": "9cef892767406e99dca10969e5b06f01bb3bad9a1cb3204a0cc11650d7db74d0"
+      "overrideSha256": "2db3a0d1a234d3467f9bb7c0b4383a4c92abc2dff7ff3fdf556128250b783fd3"
     },
     "seibu-tamagawa": {
       "serviceIds": [
