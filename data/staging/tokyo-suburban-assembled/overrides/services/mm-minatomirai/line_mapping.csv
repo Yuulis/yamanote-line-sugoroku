@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+yokohama,mm-shintakashima,みなとみらい21線,,,
+mm-shintakashima,mm-minatomirai,みなとみらい21線,,,
+mm-minatomirai,mm-bashamichi,みなとみらい21線,,,
+mm-bashamichi,mm-nihonodori,みなとみらい21線,,,
+mm-nihonodori,mm-motomachi-chukagai,みなとみらい21線,,,

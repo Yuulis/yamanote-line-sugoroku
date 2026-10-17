@@ -76,14 +76,18 @@ def verify_freeze(freeze_path: Path, root: Path) -> None:
             raise StageError(f"frozen input hash mismatch: {name}")
 
 
-def write_baseline_hashes(region_root: Path, root: Path) -> None:
+def baseline_hashes(root: Path) -> dict[str, str]:
+    """Return the live public-data hashes used by saved staging baselines."""
     baseline = root / "public/data"
-    hashes = {
+    return {
         path.name: hashlib.sha256(path.read_bytes()).hexdigest()
         for path in sorted(baseline.iterdir())
         if path.is_file()
     }
-    write_json(region_root / "baseline-sha256.json", hashes)
+
+
+def write_baseline_hashes(region_root: Path, root: Path) -> None:
+    write_json(region_root / "baseline-sha256.json", baseline_hashes(root))
 
 
 def research_rows(root: Path, filename: str) -> list[dict[str, str]]:

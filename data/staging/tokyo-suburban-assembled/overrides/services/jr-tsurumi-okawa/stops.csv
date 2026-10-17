@@ -1,0 +1,3 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,anzen,JI06,,安善,安善,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,okawa,JI61,,大川,大川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

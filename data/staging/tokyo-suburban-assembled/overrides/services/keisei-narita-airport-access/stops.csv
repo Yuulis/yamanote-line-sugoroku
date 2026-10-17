@@ -1,0 +1,5 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,hokuso-imba-nihon-idai,HS14,line=成田空港線;code=003125,印旛日本医大,印旛日本医大,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/成田空港線, code 003125, group 003125."
+1,keisei-narita-yukawa,KS43,line=成田空港線;code=003093,成田湯川,成田湯川,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/成田空港線, code 003093, group 003093."
+2,narita-airport-terminal-2-3,KS41,line=成田空港線;code=003174,空港第2ビル,空港第2ビル,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/成田空港線, code 003174, group 003173."
+3,narita-airport-terminal-1,KS42,line=成田空港線;code=003204,成田空港,成田空港,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/成田空港線, code 003204, group 003203."

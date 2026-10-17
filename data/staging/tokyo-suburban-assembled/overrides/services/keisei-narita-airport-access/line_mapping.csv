@@ -1,0 +1,4 @@
+from_id,to_id,n02_line,via,route,compose
+hokuso-imba-nihon-idai,keisei-narita-yukawa,成田空港線,,,
+keisei-narita-yukawa,narita-airport-terminal-2-3,成田空港線,,,
+narita-airport-terminal-2-3,narita-airport-terminal-1,成田空港線,,,

@@ -1,0 +1,16 @@
+from_id,to_id,n02_line,via,route,compose
+metro-wakoshi,metro-chikatetsu-narimasu,,,,"{""legs"":[{""source_service"":""metro-yurakucho"",""from"":""metro-wakoshi"",""to"":""metro-chikatetsu-narimasu""}],""shared_track_evidence"":[{""lines"":[""8号線有楽町線""],""allow"":[],""deny"":[],""reason"":""Shared Tokyo Metro physical track; pair, operator, N02 line, filter, and platform anchors are pinned to the Yurakucho owner route."",""n02Operator"":""東京地下鉄""}]}"
+metro-chikatetsu-narimasu,metro-chikatetsu-akatsuka,,,,"{""legs"":[{""source_service"":""metro-yurakucho"",""from"":""metro-chikatetsu-narimasu"",""to"":""metro-chikatetsu-akatsuka""}],""shared_track_evidence"":[{""lines"":[""8号線有楽町線""],""allow"":[],""deny"":[],""reason"":""Shared Tokyo Metro physical track; pair, operator, N02 line, filter, and platform anchors are pinned to the Yurakucho owner route."",""n02Operator"":""東京地下鉄""}]}"
+metro-chikatetsu-akatsuka,metro-heiwadai,,,,"{""legs"":[{""source_service"":""metro-yurakucho"",""from"":""metro-chikatetsu-akatsuka"",""to"":""metro-heiwadai""}],""shared_track_evidence"":[{""lines"":[""8号線有楽町線""],""allow"":[],""deny"":[],""reason"":""Shared Tokyo Metro physical track; pair, operator, N02 line, filter, and platform anchors are pinned to the Yurakucho owner route."",""n02Operator"":""東京地下鉄""}]}"
+metro-heiwadai,metro-hikawadai,,,,"{""legs"":[{""source_service"":""metro-yurakucho"",""from"":""metro-heiwadai"",""to"":""metro-hikawadai""}],""shared_track_evidence"":[{""lines"":[""8号線有楽町線""],""allow"":[],""deny"":[],""reason"":""Shared Tokyo Metro physical track; pair, operator, N02 line, filter, and platform anchors are pinned to the Yurakucho owner route."",""n02Operator"":""東京地下鉄""}]}"
+metro-hikawadai,metro-kotake-mukaihara,,,,"{""legs"":[{""source_service"":""metro-yurakucho"",""from"":""metro-hikawadai"",""to"":""metro-kotake-mukaihara""}],""shared_track_evidence"":[{""lines"":[""8号線有楽町線""],""allow"":[],""deny"":[],""reason"":""Shared Tokyo Metro physical track; pair, operator, N02 line, filter, and platform anchors are pinned to the Yurakucho owner route."",""n02Operator"":""東京地下鉄""}]}"
+metro-kotake-mukaihara,metro-senkawa,13号線副都心線,,,
+metro-senkawa,metro-kanamecho,13号線副都心線,,,
+metro-kanamecho,ikebukuro,13号線副都心線,,,
+ikebukuro,metro-zoshigaya,13号線副都心線,,,
+metro-zoshigaya,metro-nishi-waseda,13号線副都心線,,,
+metro-nishi-waseda,metro-higashi-shinjuku,13号線副都心線,,,
+metro-higashi-shinjuku,metro-shinjuku-sanchome,13号線副都心線,,,
+metro-shinjuku-sanchome,metro-kita-sando,13号線副都心線,,,
+metro-kita-sando,harajuku,13号線副都心線,,,
+harajuku,shibuya,13号線副都心線,,,

@@ -21,7 +21,7 @@ from scripts.data_pipeline.overrides import (
     ServiceOverrides,
 )
 from scripts.data_pipeline.registry import RegistryStation
-from scripts.data_pipeline.topology import station_order, station_pairs
+from scripts.data_pipeline.topology import directed_pairs, station_order, station_pairs
 
 Coordinate = list[float]
 
@@ -119,21 +119,32 @@ def feature_id(service_id: str, from_id: str, to_id: str) -> str:
 
 
 def build_segments(
-    service_id: str, station_ids: Sequence[str], circular: bool = True
+    service_id: str,
+    station_ids: Sequence[str],
+    circular: bool,
+    target_service_id: str,
 ) -> list[dict[str, Any]]:
     segments: list[dict[str, Any]] = []
-    for a, b in station_pairs(station_ids, circular):
-        directions = [(a, b)] if circular else [(a, b), (b, a)]
-        for from_id, to_id in directions:
-            segments.append(
-                {
-                    "id": segment_id(service_id, from_id, to_id),
-                    "serviceId": service_id,
-                    "from": from_id,
-                    "to": to_id,
-                    "geometryFeatureIds": [feature_id(service_id, a, b)],
-                }
-            )
+    feature_by_direction: dict[tuple[str, str], str] = {}
+    for origin, destination in station_pairs(station_ids, circular):
+        feature = feature_id(service_id, origin, destination)
+        feature_by_direction[(origin, destination)] = feature
+        feature_by_direction[(destination, origin)] = feature
+    for from_id, to_id in directed_pairs(
+        station_ids,
+        circular,
+        service_id=service_id,
+        target_service_id=target_service_id,
+    ):
+        segments.append(
+            {
+                "id": segment_id(service_id, from_id, to_id),
+                "serviceId": service_id,
+                "from": from_id,
+                "to": to_id,
+                "geometryFeatureIds": [feature_by_direction[(from_id, to_id)]],
+            }
+        )
     return segments
 
 
@@ -263,7 +274,12 @@ def build_files(
         ):
             if item.compose:
                 continue
-            segment = build_segments(service.id, (a, b), False)[0]
+            segment = build_segments(
+                service.id,
+                (a, b),
+                False,
+                overrides.dataset.directed_segment_target_service_id,
+            )[0]
             feature = build_segment_features(
                 [segment], [line], service.definition.line_ids[0], tolerance
             )["features"][0]
@@ -272,7 +288,12 @@ def build_files(
     chains = compose_chains(overrides, owned)
     by_id = {feature["id"]: feature for feature in features}
     for service in overrides.services:
-        segments = build_segments(service.id, service.station_ids, service.circular)
+        segments = build_segments(
+            service.id,
+            service.station_ids,
+            service.circular,
+            overrides.dataset.directed_segment_target_service_id,
+        )
         for segment in segments:
             key = (service.id, segment["from"], segment["to"])
             chain = chains.get(key)

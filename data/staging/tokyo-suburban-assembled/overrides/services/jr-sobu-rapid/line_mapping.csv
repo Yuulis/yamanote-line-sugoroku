@@ -1,0 +1,10 @@
+from_id,to_id,n02_line,via,route,compose
+tokyo,shin-nihombashi,総武線,,,
+shin-nihombashi,bakurocho,総武線,,,
+bakurocho,kinshicho,総武線,,,
+kinshicho,shin-koiwa,総武線,,,
+shin-koiwa,ichikawa,総武線,,,
+ichikawa,funabashi,総武線,,,
+funabashi,tsudanuma,総武線,,,
+tsudanuma,inage,総武線,,,
+inage,chiba,総武線,,,

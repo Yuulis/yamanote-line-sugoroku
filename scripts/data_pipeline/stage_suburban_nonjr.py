@@ -7,7 +7,7 @@ import json
 import math
 import shutil
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import replace
 from pathlib import Path
 from typing import Any, cast
@@ -35,7 +35,7 @@ from scripts.data_pipeline.stage_suburban_support import (
     write_csv,
     write_json,
 )
-from scripts.data_pipeline.topology import station_pairs
+from scripts.data_pipeline.topology import directed_pairs, station_pairs
 
 ROOT = jr.ROOT
 STAGING = ROOT / "data/staging/tokyo-suburban-nonjr"
@@ -1752,9 +1752,11 @@ def audit(
     return problems
 
 
-def handoff(*, root: Path = ROOT) -> dict[str, Any]:
-    """Validate and write the complete non-JR staging handoff index."""
-    verify_freeze(root / ".claude/docs/plans/tokyo-suburban-s0-freeze.json", root)
+def build_handoff_report(*, root: Path = ROOT) -> dict[str, Any]:
+    """Validate and return the complete non-JR staging handoff index without writing."""
+    freeze_path = root / ".claude/docs/plans/tokyo-suburban-s0-freeze.json"
+    verify_freeze(freeze_path, root)
+    target_service_id = read_json(freeze_path)["ruleset"]["targetServiceId"]
     catalog = research_rows(root, "tokyo-suburban-research-catalog.csv")
     service_rows = research_rows(root, "tokyo-suburban-research-services.csv")
     statuses: dict[str, Any] = {}
@@ -1891,6 +1893,21 @@ def handoff(*, root: Path = ROOT) -> dict[str, Any]:
         for row in service_rows
         if row["service_id"] in expected_ids
     )
+    services_by_id = {row["service_id"]: row for row in service_rows}
+
+    def directed_segment_count(service_ids: Iterable[str]) -> int:
+        return sum(
+            len(
+                directed_pairs(
+                    services_by_id[service_id]["stop_ids"].split("|"),
+                    services_by_id[service_id]["circular"] == "true",
+                    service_id=service_id,
+                    target_service_id=target_service_id,
+                )
+            )
+            for service_id in service_ids
+        )
+
     actual_ids = set(covered_services)
     report = {
         "groups": statuses,
@@ -1898,13 +1915,13 @@ def handoff(*, root: Path = ROOT) -> dict[str, Any]:
             "services": len(set(covered_services)),
             "stops": covered_stops,
             "pairs": covered_pairs,
-            "directedSegments": 2 * covered_pairs,
+            "directedSegments": directed_segment_count(covered_services),
         },
         "expected": {
             "services": len(expected_ids),
             "stops": expected_stops,
             "pairs": expected_pairs,
-            "directedSegments": 2 * expected_pairs,
+            "directedSegments": directed_segment_count(expected_ids),
         },
         "duplicateServices": sorted(
             service_id
@@ -1930,6 +1947,12 @@ def handoff(*, root: Path = ROOT) -> dict[str, Any]:
             "handoff is incomplete: "
             + json.dumps(report, ensure_ascii=False, sort_keys=True)
         )
+    return report
+
+
+def handoff(*, root: Path = ROOT) -> dict[str, Any]:
+    """Validate and write the complete non-JR staging handoff index."""
+    report = build_handoff_report(root=root)
     write_json(root / "data/staging/tokyo-suburban-nonjr/handoff-index.json", report)
     write_text(
         root / "data/staging/tokyo-suburban-nonjr/README.md",

@@ -1,0 +1,27 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,kawasaki,JN01,,川崎,川崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,shitte,JN02,,尻手,尻手,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,yako,JN03,,矢向,矢向,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,kashimada,JN04,,鹿島田,鹿島田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,hirama,JN05,,平間,平間,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,mukaigawara,JN06,,向河原,向河原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,musashi-kosugi,JN07,,武蔵小杉,武蔵小杉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,musashi-nakahara,JN08,,武蔵中原,武蔵中原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,musashi-shinjo,JN09,,武蔵新城,武蔵新城,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,musashi-mizonokuchi,JN10,,武蔵溝ノ口,武蔵溝ノ口,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,tsudayama,JN11,,津田山,津田山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,kuji,JN12,,久地,久地,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,shukugawara,JN13,,宿河原,宿河原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,noborito,JN14,,登戸,登戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,nakanoshima,JN15,,中野島,中野島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,inadazutsumi,JN16,,稲田堤,稲田堤,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,yanokuchi,JN17,,矢野口,矢野口,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,inaginaganuma,JN18,,稲城長沼,稲城長沼,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,minami-tama,JN19,,南多摩,南多摩,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,fuchuhommachi,JN20,,府中本町,府中本町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,bubaigawara,JN21,,分倍河原,分倍河原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,nishifu,JN22,,西府,西府,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,yaho,JN23,,谷保,谷保,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,yagawa,JN24,,矢川,矢川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+24,nishi-kunitachi,JN25,,西国立,西国立,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+25,tachikawa,JN26,,立川,立川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

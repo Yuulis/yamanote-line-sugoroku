@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,kawasaki,KK20,line=大師線;group=004424;code=004424,京急川崎,京急川崎,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/大師線; N02_005c=004424, N02_005g=004424."
+1,keikyu-minatocho,KK21,line=大師線;group=004417;code=004417,港町,港町,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/大師線; N02_005c=004417, N02_005g=004417."
+2,keikyu-suzukicho,KK22,line=大師線;group=004415;code=004415,鈴木町,鈴木町,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/大師線; N02_005c=004415, N02_005g=004415."
+3,keikyu-kawasaki-daishi,KK23,line=大師線;group=004413;code=004413,川崎大師,川崎大師,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/大師線; N02_005c=004413, N02_005g=004413."
+4,keikyu-higashi-monzen,KK24,line=大師線;group=004408;code=004408,東門前,東門前,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/大師線; N02_005c=004408, N02_005g=004408."
+5,keikyu-daishibashi,KK25,line=大師線;group=004407;code=004407,大師橋,大師橋,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/大師線; N02_005c=004407, N02_005g=004407."
+6,keikyu-kojima-shinden,KK26,line=大師線;group=004418;code=004418,小島新田,小島新田,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/大師線; N02_005c=004418, N02_005g=004418."

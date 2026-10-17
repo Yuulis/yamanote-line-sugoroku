@@ -1,0 +1,6 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,kokubunji,SK01,,国分寺,国分寺,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,seibu-koigakubo,SK02,,恋ケ窪,恋ヶ窪,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,seibu-takanodai,SK03,,鷹の台,鷹の台,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,seibu-ogawa,SK04,,小川,小川,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,seibu-higashi-murayama,SK05,,東村山,東村山,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

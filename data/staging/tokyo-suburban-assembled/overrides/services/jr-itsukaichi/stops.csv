@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,haijima,,,拝島,拝島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kumagawa,,,熊川,熊川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,higashi-akiru,,,東秋留,東秋留,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,akigawa,,,秋川,秋川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,musashi-hikida,,,武蔵引田,武蔵引田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,musashi-masuko,,,武蔵増戸,武蔵増戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,musashi-itsukaichi,,,武蔵五日市,武蔵五日市,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

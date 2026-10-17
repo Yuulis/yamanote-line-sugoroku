@@ -97,6 +97,38 @@ that group's staging README. `length-ref-components.csv` records each mileage
 source class (`primary` or `secondary`); generated `lengthRef.source` values and
 measurement notes preserve the class used by the service breakdown.
 
+### S4 cross-operator assembly
+
+S4 assembles the frozen S2/S3 inputs under
+`data/staging/tokyo-suburban-assembled/`. The assembly uses the frozen catalog
+as its identity and expected-count oracle; do not edit the S2/S3 staging trees
+or publish the stage build. Once each evidence batch is ready, run the final
+determinism gate, preservation audit and handoff:
+
+```bash
+s4() { uv run python -m scripts.data_pipeline.stage_suburban_assembly "$@"; }
+s4batch() { s4 measure-pairs --batch "$1" && s4 check-evidence --batch "$1"; }
+s4 preflight && s4 assemble
+for batch in jr-core jr-new metro toei-yokohama tobu seibu \
+  keisei-hokuso-tx tokyu-mm keio-odakyu keikyu-sotetsu; do
+  s4batch "$batch"
+done
+uv run python -m scripts.data_pipeline.stage_suburban_assembly gate \
+  --out-dir .claude/logs/s4
+uv run python -m scripts.data_pipeline.stage_suburban_assembly audit \
+  --data-dir .claude/logs/s4
+uv run python -m scripts.data_pipeline.stage_suburban_assembly handoff \
+  --data-dir .claude/logs/s4
+```
+
+`gate` builds and validates independent A/B copies from the assembled stage,
+compares every output byte and checks all ten evidence batches. `audit` verifies
+that those outputs remain current, checks bidirectional reachability from
+`shimbashi`, validates each service's platform keys, and compares shipped JR
+geometry and platform retention. `handoff` writes the frozen inventory,
+verification record and README into the assembled stage. The stage manifest is
+not a product manifest and must not be copied to `public/data/`.
+
 N02 has known generalized-line limits: it does not distinguish the separate
 常磐線各停・快速 tracks between 綾瀬 and 金町, the separate 総武快速・緩行 tracks
 on the 江戸川 bridge, or the passenger/freight track distinction on the 赤羽–浦和

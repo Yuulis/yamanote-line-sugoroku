@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "batch": "keisei-hokuso-tx",
+  "serviceIds": [
+    "keisei-main",
+    "keisei-oshiage",
+    "keisei-kanamachi",
+    "keisei-chiba",
+    "keisei-chihara",
+    "keisei-higashi-narita",
+    "keisei-matsudo",
+    "tx",
+    "hokuso-main",
+    "keisei-narita-airport-access"
+  ],
+  "pairCount": 122,
+  "expectedPairKeysSha256": "fa99c11b9fa43666aec434bf84d9f2c0d7122613b70241029a07624177f1b3e3",
+  "pairEvidenceSha256": "7ec16253d0530c340c26870c98cfdf956e7469b9e19c2658728ada7512d35a33",
+  "sourceHashes": {
+    "assembledOverridesSha256": "635a85c32ece97c4a3e388b052ce807a19878a6cdab327bdc99ccc02b7e3f399",
+    "rawStationSha256": "908e2c3036e9c80760ae3514be3682c77f81f0bd60ab5fb1b3da1aa9352bbd94",
+    "rawSectionSha256": "4269b076c0689db13cadf0d07801418b7215b2160ebf1278c508031cd08c4da2",
+    "freezeManifestSha256": "370ebc7e17129a94b5f472031764e9db000f6cd0420c80a2d4377aac3f565e64",
+    "catalogSha256": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+    "servicesSha256": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb",
+    "assemblyInputsSha256": "0019dee59058e08a188e6becc570ce3f355f223514333b263cb7149f15bd256a",
+    "distanceSources": {
+      "keisei-main": "27cbe58e5f99ce0f01fa7f21c42e5e864102f3d8569a0597fc02b8a139a5b6f2",
+      "keisei-oshiage": "c04c53964cd3a8c1f164d6451ca70e3c969d40319954e6335f854473db345364",
+      "keisei-kanamachi": "16ac1a9336daf5d8a65fd84a2408d2fd440c582725045d87920dae1bccada81b",
+      "keisei-chiba": "24d9273346ca066b67a813503e992962da810976555d8223b37d4ea8e84f51fb",
+      "keisei-chihara": "197f7820e6210277a3603d4bb267fa8d614b2d3872e32d46aefd9d2fd9787841",
+      "keisei-higashi-narita": "74ef8d1db702dc1025d6d13d30e3b32c522df6c2c48d18e612dc89863a01ccf1",
+      "keisei-matsudo": "8cc1ac9ca931a6c418d497bd259bf8c9656b542543d13e82c8463c2b9ee649a8",
+      "tx": "565d62c0632817bd624e34fe11f137fa38dabba368e33aea8d4319f39d4c164b",
+      "hokuso-main": "722b1de570bf7dc6aaa728ad7b6b81d9271a6941e2d4065e75eaed5aef8b8d03",
+      "keisei-narita-airport-access": "81a75e50b11fe8ded52ed3a017622c436539dece2fbce7ab566afb774ca0becf"
+    }
+  }
+}

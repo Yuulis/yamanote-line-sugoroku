@@ -1,0 +1,21 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,toei-nishi-magome,A01,line=1号線浅草線,西馬込,西馬込,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,toei-magome,A02,line=1号線浅草線,馬込,馬込,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,toei-nakanobu,A03,line=1号線浅草線,中延,中延,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,toei-togoshi,A04,line=1号線浅草線,戸越,戸越,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,gotanda,A05,line=1号線浅草線,五反田,五反田,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,toei-takanawadai,A06,line=1号線浅草線,高輪台,高輪台,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,keikyu-sengakuji,A07,line=1号線浅草線,泉岳寺,泉岳寺,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tamachi,A08,line=1号線浅草線,三田,三田,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,hamamatsucho,A09,line=1号線浅草線,大門,大門,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,shimbashi,A10,line=1号線浅草線,新橋,新橋,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,metro-higashi-ginza,A11,line=1号線浅草線,東銀座,東銀座,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,toei-takaracho,A12,line=1号線浅草線,宝町,宝町,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,metro-nihombashi,A13,line=1号線浅草線,日本橋,日本橋,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+13,metro-ningyocho,A14,line=1号線浅草線,人形町,人形町,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+14,bakurocho,A15,line=1号線浅草線,東日本橋,東日本橋,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+15,asakusabashi,A16,line=1号線浅草線,浅草橋,浅草橋,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+16,toei-kuramae,A17,line=1号線浅草線,蔵前,蔵前,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+17,metro-asakusa,A18,line=1号線浅草線,浅草,浅草,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+18,toei-honjo-azumabashi,A19,line=1号線浅草線,本所吾妻橋,本所吾妻橋,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+19,keisei-oshiage,A20,line=1号線浅草線,押上,押上,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.

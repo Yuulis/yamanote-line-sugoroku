@@ -1,0 +1,19 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,oimachi,OM01,,大井町,大井町,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-shimo-shimmei,OM02,,下神明,下神明,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-togoshi-koen,OM03,,戸越公園,戸越公園,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,toei-nakanobu,OM04,,中延,中延,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tokyu-ebaramachi,OM05,,荏原町,荏原町,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tokyu-hatanodai,OM06,,旗の台,旗の台,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tokyu-kita-senzoku,OM07,,北千束,北千束,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tokyu-ookayama,OM08,,大岡山,大岡山,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,tokyu-midorigaoka,OM09,,緑が丘,緑が丘,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,tokyu-jiyugaoka,OM10,,自由が丘,自由が丘,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,tokyu-kuhombutsu,OM11,,九品仏,九品仏,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,tokyu-oyamadai,OM12,,尾山台,尾山台,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,tokyu-todoroki,OM13,,等々力,等々力,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+13,tokyu-kaminoge,OM14,,上野毛,上野毛,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+14,tokyu-futako-tamagawa,OM15,line=田園都市線;group=004177,二子玉川,二子玉川,東急電鉄,S3 plan boundary anchor: raw N02 station codes share the documented group and exact midpoint; selector pins the service stop to its continuing line.
+15,tokyu-futako-shinchi,DT08,,二子新地,二子新地,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+16,tokyu-takatsu,DT09,,高津,高津,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+17,musashi-mizonokuchi,OM16,,溝の口,溝の口,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,utsunomiya,,,宇都宮,宇都宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,tsuruta,,,鶴田,鶴田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kanuma,,,鹿沼,鹿沼,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,fubasami,,,文挾,文挟,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,shimotsuke-osawa,,,下野大沢,下野大沢,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,imaichi,,,今市,今市,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,nikko,,,日光,日光,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

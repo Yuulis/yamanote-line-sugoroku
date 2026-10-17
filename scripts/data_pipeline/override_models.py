@@ -59,6 +59,18 @@ class DatasetOverride:
             else self.start_station_id
         )
 
+    @property
+    def directed_segment_target_service_id(self) -> str:
+        """Resolve the frozen stage target when gameplay fields are omitted."""
+        if self.target_service_id:
+            return self.target_service_id
+        if (
+            self.validation_profile == "stage"
+            and config.STAGE_TARGET_SERVICE_ID in self.service_ids
+        ):
+            return config.STAGE_TARGET_SERVICE_ID
+        return ""
+
 
 @dataclass(frozen=True)
 class DirectionLabels:

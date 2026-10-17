@@ -48,7 +48,12 @@ def test_tokyo_stage_stop_lists_reach_every_station_both_ways() -> None:
         (
             pair
             for service in overrides.services
-            for pair in directed_pairs(service.station_ids, service.circular)
+            for pair in directed_pairs(
+                service.station_ids,
+                service.circular,
+                service_id=service.id,
+                target_service_id=overrides.dataset.directed_segment_target_service_id,
+            )
         ),
         overrides.dataset.start_station_id,
         report,

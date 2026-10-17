@@ -1,0 +1,10 @@
+from_id,to_id,n02_line,via,route,compose
+tokyu-sangen-jaya,tokyu-nishi-taishido,世田谷線,,,
+tokyu-nishi-taishido,tokyu-wakabayashi,世田谷線,,,
+tokyu-wakabayashi,tokyu-shoin-jinja-mae,世田谷線,,,
+tokyu-shoin-jinja-mae,tokyu-setagaya,世田谷線,,,
+tokyu-setagaya,tokyu-kamimachi,世田谷線,,,
+tokyu-kamimachi,tokyu-miyanosaka,世田谷線,,,
+tokyu-miyanosaka,odakyu-gotokuji,世田谷線,,,
+odakyu-gotokuji,tokyu-matsubara,世田谷線,,,
+tokyu-matsubara,keio-shimo-takaido,世田谷線,,,

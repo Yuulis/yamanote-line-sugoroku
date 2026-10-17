@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "batch": "keikyu-sotetsu",
+  "serviceIds": [
+    "keikyu-main",
+    "keikyu-airport",
+    "keikyu-daishi",
+    "keikyu-zushi",
+    "sotetsu-main",
+    "sotetsu-izumino",
+    "sotetsu-shin-yokohama",
+    "keikyu-kurihama"
+  ],
+  "pairCount": 98,
+  "expectedPairKeysSha256": "9a39d859d6d65530a26406d2111140dda11f51457591b2337bb2b38b8b81a67f",
+  "pairEvidenceSha256": "9e8d0c3a95f20ce7eed7c80875398959e6313f7a0cd980ca5e2a58576a1839ac",
+  "sourceHashes": {
+    "assembledOverridesSha256": "635a85c32ece97c4a3e388b052ce807a19878a6cdab327bdc99ccc02b7e3f399",
+    "rawStationSha256": "908e2c3036e9c80760ae3514be3682c77f81f0bd60ab5fb1b3da1aa9352bbd94",
+    "rawSectionSha256": "4269b076c0689db13cadf0d07801418b7215b2160ebf1278c508031cd08c4da2",
+    "freezeManifestSha256": "370ebc7e17129a94b5f472031764e9db000f6cd0420c80a2d4377aac3f565e64",
+    "catalogSha256": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+    "servicesSha256": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb",
+    "assemblyInputsSha256": "0019dee59058e08a188e6becc570ce3f355f223514333b263cb7149f15bd256a",
+    "distanceSources": {
+      "keikyu-main": "bff1144152573bb36c131ccff8014b1018caf44a253650f030072a3335b24f88",
+      "keikyu-airport": "721ab4785ca770ff3a65caed92a763fc123def7c35a81b0d5434a97ff46afdf0",
+      "keikyu-daishi": "0a6ae6a99fae9f2dc9a462d38709906f1a9986678a520b0822bc1b7136c4dac9",
+      "keikyu-zushi": "55c0584443c51689841416ff98f6b517121437ce36568da3617df7a0f2eb2be4",
+      "sotetsu-main": "0b68d4d8b6f4c565ca19dbeb909e115afe7af21227a062c28685c763b4dffd09",
+      "sotetsu-izumino": "5b3917aab15bd366b5011609050619d04fdaa28c8f2aaaa3efccb0487e58fe60",
+      "sotetsu-shin-yokohama": "06f81cbb8e1afa5f900b65f00054e4f780b8903d2db191a202c8cc1841039d8a",
+      "keikyu-kurihama": "e311f4779df1ade0007536fd7ebca461cbff61707f4239414930811c375202cd"
+    }
+  }
+}

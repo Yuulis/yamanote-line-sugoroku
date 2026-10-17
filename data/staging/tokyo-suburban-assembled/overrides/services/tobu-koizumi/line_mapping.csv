@@ -1,0 +1,7 @@
+from_id,to_id,n02_line,via,route,compose
+tobu-tatebayashi,tobu-narushima,小泉線,,,
+tobu-narushima,tobu-hon-nakano,小泉線,,,
+tobu-hon-nakano,tobu-shinozuka,小泉線,,,
+tobu-shinozuka,tobu-higashi-koizumi,小泉線,,,
+tobu-higashi-koizumi,tobu-koizumimachi,小泉線,,,
+tobu-koizumimachi,tobu-nishi-koizumi,小泉線,,,

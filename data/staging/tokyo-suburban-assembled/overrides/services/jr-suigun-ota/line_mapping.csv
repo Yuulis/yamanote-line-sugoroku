@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+kami-sugaya,minami-sakaide,水郡線,,,
+minami-sakaide,nukada,水郡線,,,
+nukada,kawai-ibaraki,水郡線,,,
+kawai-ibaraki,yagawara,水郡線,,,
+yagawara,hitachi-ota,水郡線,,,

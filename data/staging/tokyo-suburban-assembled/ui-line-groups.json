@@ -1,0 +1,10 @@
+[
+  {
+    "displayName": "大江戸線",
+    "id": "toei-oedo",
+    "serviceIds": [
+      "toei-oedo-loop",
+      "toei-oedo-radial"
+    ]
+  }
+]

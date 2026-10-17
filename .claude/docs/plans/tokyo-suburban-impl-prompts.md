@@ -301,3 +301,78 @@ Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (c
 - Detour ratio over 1.80 on the real curved track: per-pair `detour_exceptions.csv` row only after a path analysis (the
   traversed sections, not the `route_legs_json` window) shows a single-operator path and the official キロ程 matches the path
   length; limit = measured ratio rounded up to the next 0.05 (S2 烏山 1.88→1.90, S3 佐野 2.05→2.10).
+
+## s4-plan — S4 implementation plan (Codex Sol `low`, `--sandbox read-only`)
+
+Objective: produce a directly executable plan for S4 (cross-operator assembly and shared-track composition) that Codex
+Luna can implement in bounded runs without making design or product decisions.
+
+S4 per `.claude/docs/plans/tokyo-suburban-network-design.md` section 4: merge the committed JR staging (S2) and the
+non-JR staging (S3) into one staged network. Acceptance there: one approved game identity per D1 group, per-service
+platforms, no collapsed service stops, all stations reachable. The final shipped bundle, ruleset `tokyo-suburban-1` and
+save incompatibility are S5; map/legend/UI (incl. the D3 single 大江戸線 UI line) are S6 — S4 only has to carry the data
+those steps need (e.g. the frozen UI line group `toei-oedo`), and the plan must say where each such field lands.
+
+Read: the design doc (sections 1–5); `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (frozen counts: 135 services,
+1,586 station groups, 2,142 rows, 3,988 directed segments; identity map; D1 rule B 600 m official-interchange groups with
+the same-service/JR-id and walking-link exclusions); the frozen research catalog/services/identity CSVs it hashes under
+`.claude/docs/research/`; `.claude/docs/plans/tokyo-suburban-network-handoff.md` (S2 and S3 rows incl. carry-overs);
+S2 output `data/staging/tokyo-suburban-jr/**` (combined README) and `scripts/data_pipeline/stage_suburban_jr.py`;
+S3 output `data/staging/tokyo-suburban-nonjr/**` (README, `handoff-index.json`, per-group components) and
+`scripts/data_pipeline/stage_suburban_{support,nonjr}.py`; plans/reviews `tokyo-suburban-s{1,2,3}-plan.md`,
+`.claude/docs/reviews/tokyo-suburban-s{2,3}-review-1.md`; `data/README.md`; `scripts/data_pipeline/*.py` (incl.
+`composition_build.py` and the compose/route evidence contract); `tests/data_pipeline/`.
+
+Constraints:
+- `public/data/*`, live `data/overrides/**` and raw `N02-25_GML/**` stay unchanged; the live build stays byte-identical
+  (S5 replaces the bundle). S2/S3 staging may change only through their own tools, re-gated and audited, with every
+  change listed; prefer consuming them read-only.
+- Station identity comes from the frozen D1 groups only: no proximity-only merges, no new merges or splits, shipped
+  472 station ids and 40 services' contiguous stop order retained, every service keeps its own platform coordinates.
+- Shared track (cross-group as well as the known in-group cases: Tokyu Meguro/Oimachi borrowing, Fukutoshin on the
+  Yurakucho line, Keisei/Hokuso, Namboku/Mita 白金高輪–目黒, and any the S3 evidence reveals) is composed only from
+  reviewed source evidence (existing compose/route mechanisms), never by relaxing snap/joint/offset/detour/wrong-track
+  tolerances or by fabricated connectors.
+- Close the S3 carry-overs: re-check municipality/offset/pair/section/junction ids after the merge; define the `from/to`
+  meaning in `length-ref-components.csv` (成田空港線 51.4−32.3 case); component-scoped evidence replaces shared evidence;
+  and the S2 carry-overs (audit does not validate pair-evidence/length-refs content; re-measure if the live baseline changed).
+- Staged text files must be LF (override hashes are byte hashes; see the S3 LF fix `8e46eb6`).
+- Run sizing: ≤ ~30 min per Luna run; any helper/pipeline change in an early dedicated run; mark parallelizable runs.
+
+Output (markdown, ≤160 lines): `TL;DR`; `Assembly layout` (directories, inputs consumed, merged outputs, how S5 consumes
+them); `Identity merge` (how D1 groups map S2/S3 stations to game ids, collisions, expected counts); `Shared-track
+composition` (each case with its evidence and mechanism); `Carry-over closure`; `Pipeline/helper changes`; `Runs` (per
+run: files, steps, tests, exact acceptance commands; parallel marks); `Risks`; `Decisions needing the user` (only genuine
+product choices; "none" if none).
+
+## s4-run — S4 implementation runs (Codex Luna `high`; replace `<RUNS>`)
+
+Objective: implement S4 plan run(s) <RUNS> of `.claude/docs/plans/tokyo-suburban-s4-plan.md` exactly (the "Lead
+adjustments" header overrides the plan body), keeping the shipped bundle and the committed S2/S3 staging byte-identical.
+
+Read first: `.claude/docs/plans/tokyo-suburban-s4-plan.md` (the contract), `.claude/docs/plans/tokyo-suburban-s0-freeze.json`,
+`data/README.md`, `data/staging/tokyo-suburban-jr/combined/README.md`, `data/staging/tokyo-suburban-nonjr/README.md`,
+`scripts/data_pipeline/stage_suburban_{jr,support,nonjr}.py`, `.claude/rules/coding-principles.md`,
+`.claude/rules/testing.md`, `.claude/rules/dev-environment.md`. Earlier S4 runs are in the working tree or committed; build on them.
+
+Scope: in — exactly the files the plan assigns to <RUNS> (new helper `scripts/data_pipeline/stage_suburban_assembly.py`,
+its tests, `data/staging/tokyo-suburban-assembled/**`, `data/README.md` when assigned). Out — `public/data`, live
+`data/overrides/**`, `data/staging/tokyo-suburban-jr/**`, `data/staging/tokyo-suburban-nonjr/**` (except a report/save split
+in `stage_suburban_nonjr.py` that R0 is assigned, which must keep existing CLI behaviour and outputs), `src/**`, raw
+`N02-25_GML/**`, research files, docs under `.claude/`, git commits/pushes. Evidence-batch runs write only their own
+`A/evidence/<batch>/`. No relaxed tolerances, no proximity-only joins, no fabricated connectors, no cross-operator fallback.
+Never weaken, skip or delete tests. Expected values come from the frozen catalog/freeze, never from build output. Write LF
+only. Clear dirs with Python `shutil.rmtree` (`rm -rf` is blocked). Prose in English. STOP and report with evidence (do
+not guess) on anything listed in lead adjustment 4. Report only what exists on disk — re-read files before claiming them.
+
+Acceptance: the plan's acceptance for <RUNS>, plus always:
+```bash
+uv run ruff check scripts/data_pipeline tests/data_pipeline && uv run ruff format --check scripts/data_pipeline tests/data_pipeline
+uv run ty check scripts/data_pipeline
+uv run pytest tests/data_pipeline -q -rs
+uv run python .claude/docs/research/tokyo-suburban-r2-tools/check_freeze.py
+git diff --exit-code -- public/data data/overrides data/staging/tokyo-suburban-jr data/staging/tokyo-suburban-nonjr src N02-25_GML
+```
+
+Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
+`Stops for lead review` (each with evidence), `Deviations from plan`, `Open issues`.

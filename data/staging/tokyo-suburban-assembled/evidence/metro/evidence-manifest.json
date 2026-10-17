@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "batch": "metro",
+  "serviceIds": [
+    "metro-ginza",
+    "metro-marunouchi",
+    "metro-marunouchi-honancho",
+    "metro-hibiya",
+    "metro-tozai",
+    "metro-chiyoda",
+    "metro-yurakucho",
+    "metro-hanzomon",
+    "metro-namboku",
+    "metro-fukutoshin"
+  ],
+  "pairCount": 176,
+  "expectedPairKeysSha256": "d0b3e245c31b0a6385d4a8ff11c507de4964e9a6543462bba4401d625eb62bf7",
+  "pairEvidenceSha256": "f4fd2723485f9dff977bd80fdaac3ff6ae15102d01c1de9a5bc122e7ddbe7612",
+  "sourceHashes": {
+    "assembledOverridesSha256": "635a85c32ece97c4a3e388b052ce807a19878a6cdab327bdc99ccc02b7e3f399",
+    "rawStationSha256": "908e2c3036e9c80760ae3514be3682c77f81f0bd60ab5fb1b3da1aa9352bbd94",
+    "rawSectionSha256": "4269b076c0689db13cadf0d07801418b7215b2160ebf1278c508031cd08c4da2",
+    "freezeManifestSha256": "370ebc7e17129a94b5f472031764e9db000f6cd0420c80a2d4377aac3f565e64",
+    "catalogSha256": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+    "servicesSha256": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb",
+    "assemblyInputsSha256": "0019dee59058e08a188e6becc570ce3f355f223514333b263cb7149f15bd256a",
+    "distanceSources": {
+      "metro-ginza": "1afd2990d38488454ee2ee1e474f9e0541d1e99b11fef6d439a7d766f93f7609",
+      "metro-marunouchi": "4627d99d2ac6df0215a6a991e811fbdc0fba1a9cf075409e6b7cd87ef866b8e9",
+      "metro-marunouchi-honancho": "368baec5371a71a1db9446e071b9c40f785f5d54ef4990ca1eab059a7aa20e3f",
+      "metro-hibiya": "6556d44545c28ed97a234707fdc2da36fdbbf41e5d07b312d040675d0dfd829f",
+      "metro-tozai": "6e6e3c23739d6a60cd0ba7f5403746a7c836739a076f27ab09789a5db98868c4",
+      "metro-chiyoda": "77f3d374f74a9644804d89515999c7c6e9a6d63933e0b0bf5d813c33df08fbad",
+      "metro-yurakucho": "29d49750fb44fd4dcde0db01be351386d10fd1ef5328950ec33867a79361c46b",
+      "metro-hanzomon": "fb6c8d51a5463b116aa3308ee6e3afd58ce17d125b74570cef82c8d87ab97bdd",
+      "metro-namboku": "f48bbe61a4745f0b31cbbca9944e8a38dfa150773a92fe6923fd2f5297fa3388",
+      "metro-fukutoshin": "a2477cb67c733305dbe26c9a2ccf1a1aa675d2d19f3fc1dd4ad9b933ec87d23f"
+    }
+  }
+}

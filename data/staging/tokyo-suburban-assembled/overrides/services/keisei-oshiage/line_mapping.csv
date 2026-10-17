@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+keisei-oshiage,keisei-keisei-hikifune,押上線,,,
+keisei-keisei-hikifune,keisei-yahiro,押上線,,,
+keisei-yahiro,keisei-yotsugi,押上線,,,
+keisei-yotsugi,keisei-keisei-tateishi,押上線,,,
+keisei-keisei-tateishi,keisei-aoto,押上線,,,

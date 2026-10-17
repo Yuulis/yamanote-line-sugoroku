@@ -103,3 +103,7 @@ MANIFEST_SOURCE = {
     "attribution": "「国土数値情報（鉄道データ）」（国土交通省）を加工して作成",
 }
 DATA_VERSION_PREFIX = "n02-2025"
+
+# Stage datasets omit gameplay fields, but their directed-segment topology must
+# still follow the frozen S0 target when that service is present.
+STAGE_TARGET_SERVICE_ID = "jr-yamanote"

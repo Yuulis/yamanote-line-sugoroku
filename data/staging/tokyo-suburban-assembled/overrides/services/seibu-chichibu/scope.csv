@@ -1,0 +1,7 @@
+station_id,prefecture,municipality,in_area
+seibu-agano,埼玉県,飯能市,true
+seibu-nishi-agano,埼玉県,飯能市,true
+seibu-shomaru,埼玉県,飯能市,true
+seibu-ashigakubo,埼玉県,横瀬町,true
+seibu-yokoze,埼玉県,横瀬町,true
+seibu-seibu-chichibu,埼玉県,秩父市,true

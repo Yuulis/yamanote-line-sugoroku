@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,musashi-sakai,SW01,,武蔵境,武蔵境,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,seibu-shin-koganei,SW02,,新小金井,新小金井,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,seibu-tama,SW03,,多磨,多磨,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,seibu-shiraitodai,SW04,,白糸台,白糸台,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,seibu-kyoteijo-mae,SW05,,競艇場前,競艇場前,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,seibu-koremasa,SW06,,是政,是政,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

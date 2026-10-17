@@ -1,0 +1,11 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tsurumi,JI01,,鶴見,鶴見,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kokudo,JI02,,国道,国道,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,tsurumiono,JI03,,鶴見小野,鶴見小野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,bentembashi,JI04,,弁天橋,弁天橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,asano,JI05,,浅野,浅野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,anzen,JI06,,安善,安善,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,musashi-shiraishi,JI07,,武蔵白石,武蔵白石,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,hama-kawasaki,JI08,,浜川崎,浜川崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,showa,JI09,,昭和,昭和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,ogimachi,JI10,,扇町,扇町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
