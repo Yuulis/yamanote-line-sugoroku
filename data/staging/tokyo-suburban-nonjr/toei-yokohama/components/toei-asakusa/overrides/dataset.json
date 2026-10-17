@@ -1,0 +1,36 @@
+{
+  "operator": "東京都交通局",
+  "n02Operator": "東京都",
+  "updatedAt": "2026-10-15",
+  "areaName": "東京都交通局 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "千葉県"
+  ],
+  "serviceIds": [
+    "toei-asakusa",
+    "toei-mita",
+    "toei-shinjuku",
+    "toei-oedo-loop",
+    "toei-oedo-radial"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "toei-nishi-magome",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "ace3790f5040c39fd2caad498d6e46d559de9427774616bbb1bc8961b54291c0",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

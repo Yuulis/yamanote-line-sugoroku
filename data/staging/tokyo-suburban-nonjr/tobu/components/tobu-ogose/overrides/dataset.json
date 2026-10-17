@@ -1,0 +1,33 @@
+{
+  "operator": "東武鉄道",
+  "n02Operator": "東武鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "東武鉄道 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "埼玉県"
+  ],
+  "serviceIds": [
+    "tobu-tojo",
+    "tobu-ogose"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "tobu-ikebukuro",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "13a65f6bb1ba2f2f4206a0b53a6e89b8976c97d45582622cad71cc3778415163",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

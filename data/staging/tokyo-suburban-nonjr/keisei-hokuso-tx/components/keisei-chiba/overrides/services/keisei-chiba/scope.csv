@@ -1,0 +1,11 @@
+station_id,prefecture,municipality,in_area
+keisei-keisei-tsudanuma,千葉県,習志野市,true
+keisei-keisei-makuharihongo,千葉県,千葉市花見川区,true
+keisei-keisei-makuhari,千葉県,千葉市花見川区,true
+keisei-kemigawa,千葉県,千葉市花見川区,true
+keisei-keisei-inage,千葉県,千葉市稲毛区,true
+keisei-midoridai,千葉県,千葉市稲毛区,true
+keisei-nishi-noboto,千葉県,千葉市中央区,true
+keisei-shin-chiba,千葉県,千葉市中央区,true
+keisei-keisei-chiba,千葉県,千葉市中央区,true
+keisei-chiba-chuo,千葉県,千葉市中央区,true

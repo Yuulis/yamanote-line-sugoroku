@@ -1,0 +1,16 @@
+station_id,prefecture,municipality,in_area
+tokyu-gotanda,東京都,品川区,true
+tokyu-osaki-hirokoji,東京都,品川区,true
+tokyu-togoshi-ginza,東京都,品川区,true
+tokyu-ebara-nakanobu,東京都,品川区,true
+tokyu-hatanodai,東京都,品川区,true
+tokyu-nagahara,東京都,大田区,true
+tokyu-senzoku-ike,東京都,大田区,true
+tokyu-ishikawadai,東京都,大田区,true
+tokyu-yukigaya-otsuka,東京都,大田区,true
+tokyu-ontakesan,東京都,大田区,true
+tokyu-kugahara,東京都,大田区,true
+tokyu-chidoricho,東京都,大田区,true
+tokyu-ikegami,東京都,大田区,true
+tokyu-hasunuma,東京都,大田区,true
+tokyu-kamata,東京都,大田区,true

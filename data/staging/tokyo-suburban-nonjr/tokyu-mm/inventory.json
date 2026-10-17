@@ -1,0 +1,134 @@
+{
+  "group": "tokyu-mm",
+  "serviceIds": [
+    "tokyu-toyoko",
+    "tokyu-meguro",
+    "tokyu-shin-yokohama",
+    "tokyu-den-en-toshi",
+    "tokyu-oimachi",
+    "tokyu-ikegami",
+    "tokyu-tamagawa",
+    "tokyu-setagaya",
+    "tokyu-kodomonokuni",
+    "mm-minatomirai"
+  ],
+  "services": [
+    {
+      "service_id": "tokyu-toyoko",
+      "line_name": "東急東横線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shibuya|tokyu-daikan-yama|metro-naka-meguro|tokyu-yutenji|tokyu-gakugei-daigaku|tokyu-toritsu-daigaku|tokyu-jiyugaoka|tokyu-den-en-chofu|tokyu-tamagawa|tokyu-shin-maruko|musashi-kosugi|tokyu-motosumiyoshi|tokyu-hiyoshi|tokyu-tsunashima|tokyu-okurayama|kikuna|tokyu-myorenji|tokyu-hakuraku|tokyu-higashi-hakuraku|tokyu-tammachi|yokohama",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "tokyu-meguro",
+      "line_name": "東急目黒線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "meguro|tokyu-fudo-mae|tokyu-musashi-koyama|tokyu-nishi-koyama|tokyu-senzoku|tokyu-ookayama|tokyu-okusawa|tokyu-den-en-chofu|tokyu-tamagawa|tokyu-shin-maruko|musashi-kosugi|tokyu-motosumiyoshi|tokyu-hiyoshi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "tokyu-shin-yokohama",
+      "line_name": "東急新横浜線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tokyu-hiyoshi|tokyu-shin-tsunashima|shin-yokohama",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "tokyu-den-en-toshi",
+      "line_name": "東急田園都市線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shibuya|tokyu-ikejiri-ohashi|tokyu-sangen-jaya|tokyu-komazawa-daigaku|tokyu-sakura-shimmachi|tokyu-yoga|tokyu-futako-tamagawa|tokyu-futako-shinchi|tokyu-takatsu|musashi-mizonokuchi|tokyu-kajigaya|tokyu-miyazakidai|tokyu-miyamaedaira|tokyu-saginuma|tokyu-tama-plaza|tokyu-azamino|tokyu-eda|tokyu-ichigao|tokyu-fujigaoka|tokyu-aobadai|tokyu-tana|nagatsuta|tokyu-tsukushino|tokyu-suzukakedai|tokyu-minami-machida-grandberry-park|tokyu-tsukimino|odakyu-chuo-rinkan",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tokyu-oimachi",
+      "line_name": "東急大井町線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "oimachi|tokyu-shimo-shimmei|tokyu-togoshi-koen|toei-nakanobu|tokyu-ebaramachi|tokyu-hatanodai|tokyu-kita-senzoku|tokyu-ookayama|tokyu-midorigaoka|tokyu-jiyugaoka|tokyu-kuhombutsu|tokyu-oyamadai|tokyu-todoroki|tokyu-kaminoge|tokyu-futako-tamagawa|tokyu-futako-shinchi|tokyu-takatsu|musashi-mizonokuchi",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tokyu-ikegami",
+      "line_name": "東急池上線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "gotanda|tokyu-osaki-hirokoji|toei-togoshi|tokyu-ebara-nakanobu|tokyu-hatanodai|tokyu-nagahara|tokyu-senzoku-ike|tokyu-ishikawadai|tokyu-yukigaya-otsuka|tokyu-ontakesan|tokyu-kugahara|tokyu-chidoricho|tokyu-ikegami|tokyu-hasunuma|kamata",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tokyu-tamagawa",
+      "line_name": "東急多摩川線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tokyu-tamagawa|tokyu-numabe|tokyu-unoki|tokyu-shimomaruko|tokyu-musashi-nitta|tokyu-yaguchinowatashi|kamata",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tokyu-setagaya",
+      "line_name": "東急世田谷線",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tokyu-sangen-jaya|tokyu-nishi-taishido|tokyu-wakabayashi|tokyu-shoin-jinja-mae|tokyu-setagaya|tokyu-kamimachi|tokyu-miyanosaka|odakyu-gotokuji|tokyu-matsubara|keio-shimo-takaido",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tokyu-kodomonokuni",
+      "line_name": "東急こどもの国線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "nagatsuta|tokyu-onda|tokyu-kodomonokuni",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "mm-minatomirai",
+      "line_name": "みなとみらい線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "yokohama|mm-shintakashima|mm-minatomirai|mm-bashamichi|mm-nihonodori|mm-motomachi-chukagai",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "tokyu-den-en-toshi",
+      "serviceIds": [
+        "tokyu-toyoko",
+        "tokyu-meguro",
+        "tokyu-shin-yokohama",
+        "tokyu-den-en-toshi",
+        "tokyu-oimachi",
+        "tokyu-ikegami",
+        "tokyu-tamagawa",
+        "tokyu-setagaya",
+        "tokyu-kodomonokuni"
+      ]
+    },
+    {
+      "componentId": "mm-minatomirai",
+      "serviceIds": [
+        "mm-minatomirai"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 10,
+    "stops": 123,
+    "pairs": 113
+  }
+}

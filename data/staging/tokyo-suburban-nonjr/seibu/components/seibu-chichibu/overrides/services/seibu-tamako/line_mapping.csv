@@ -1,0 +1,7 @@
+from_id,to_id,n02_line,via,route,compose
+seibu-kokubunji,seibu-hitotsubashi-gakuen,多摩湖線,,,
+seibu-hitotsubashi-gakuen,seibu-ome-kaido,多摩湖線,,,
+seibu-ome-kaido,seibu-hagiyama,多摩湖線,,,
+seibu-hagiyama,seibu-yasaka,多摩湖線,,,
+seibu-yasaka,seibu-musashi-yamato,多摩湖線,,,
+seibu-musashi-yamato,seibu-tamako,多摩湖線,,,

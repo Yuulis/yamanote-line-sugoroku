@@ -1,0 +1,4 @@
+station_id,prefecture,municipality,in_area
+tokyu-hiyoshi,神奈川県,横浜市港北区,true
+tokyu-shin-tsunashima,神奈川県,横浜市港北区,true
+tokyu-shin-yokohama,神奈川県,横浜市港北区,true

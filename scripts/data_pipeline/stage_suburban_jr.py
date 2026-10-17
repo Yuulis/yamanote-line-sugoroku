@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import hashlib
 import json
 import math
@@ -30,6 +29,30 @@ from scripts.data_pipeline.override_parsing import JUNCTIONS_OVERRIDE_FILE
 from scripts.data_pipeline.overrides import Overrides, load_overrides
 from scripts.data_pipeline.registry import normalize_station_name
 from scripts.data_pipeline.routing import PairRoute, RoutingError, route_path
+from scripts.data_pipeline.stage_suburban_support import (
+    StageError,
+)
+from scripts.data_pipeline.stage_suburban_support import (
+    read_csv as _csv,
+)
+from scripts.data_pipeline.stage_suburban_support import (
+    read_json as _json,
+)
+from scripts.data_pipeline.stage_suburban_support import (
+    research_rows as _research_rows,
+)
+from scripts.data_pipeline.stage_suburban_support import (
+    verify_freeze as _verify_freeze,
+)
+from scripts.data_pipeline.stage_suburban_support import (
+    write_baseline_hashes as _write_baseline_hashes,
+)
+from scripts.data_pipeline.stage_suburban_support import (
+    write_csv as _write_csv,
+)
+from scripts.data_pipeline.stage_suburban_support import (
+    write_json as _write_json,
+)
 from scripts.data_pipeline.topology import station_order, station_pairs
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -256,37 +279,6 @@ AREA_BOUNDARY_NEIGHBORS = {
         "北安曇郡白馬村",
     ),
 }
-
-
-class StageError(ValueError):
-    """Invalid staging input or a failed preservation gate."""
-
-
-def _json(path: Path) -> Any:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _write_json(path: Path, value: Any) -> None:
-    path.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
-
-
-def _csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
-    with path.open(encoding="utf-8-sig", newline="") as source:
-        reader = csv.DictReader(source)
-        return list(reader.fieldnames or []), list(reader)
-
-
-def _write_csv(path: Path, fields: list[str], rows: list[dict[str, str]]) -> None:
-    with path.open("w", encoding="utf-8", newline="") as target:
-        writer = csv.DictWriter(target, fieldnames=fields, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
-
-
-def _research_rows(root: Path, filename: str) -> list[dict[str, str]]:
-    return _csv(root / ".claude/docs/research" / filename)[1]
 
 
 def _frozen_jr_catalog(root: Path) -> tuple[list[str], dict[str, list[dict[str, str]]]]:
@@ -535,16 +527,6 @@ def _length_ref_rows(
     return rows
 
 
-def _write_baseline_hashes(region_root: Path, root: Path) -> None:
-    baseline = root / "public/data"
-    hashes = {
-        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(baseline.iterdir())
-        if path.is_file()
-    }
-    _write_json(region_root / "baseline-sha256.json", hashes)
-
-
 def _write_stage_readme(region_root: Path, region: str) -> None:
     (region_root / "README.md").write_text(
         f"""# {region} JR staging dataset
@@ -563,16 +545,10 @@ Added pairs are measured without shipped allow rows for an extended service: tho
 
 def verify_freeze(freeze_path: Path | None = None, root: Path = ROOT) -> None:
     """Reject any staging operation if a frozen research input has drifted."""
-    freeze = _json(
-        freeze_path or root / ".claude/docs/plans/tokyo-suburban-s0-freeze.json"
+    _verify_freeze(
+        freeze_path or root / ".claude/docs/plans/tokyo-suburban-s0-freeze.json",
+        root,
     )
-    for name, expected in freeze["inputs"].items():
-        path = root / name
-        if (
-            not path.is_file()
-            or hashlib.sha256(path.read_bytes()).hexdigest() != expected
-        ):
-            raise StageError(f"frozen input hash mismatch: {name}")
 
 
 def seed(region: str, *, root: Path = ROOT) -> Path:
@@ -2271,6 +2247,15 @@ def parse_args(arguments: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(arguments: list[str] | None = None) -> int:
+    command_line = list(arguments) if arguments is not None else None
+    if command_line is None:
+        import sys
+
+        command_line = sys.argv[1:]
+    if "--operator-group" in command_line:
+        from scripts.data_pipeline.stage_suburban_nonjr import main as nonjr_main
+
+        return nonjr_main(command_line)
     args = parse_args(arguments)
     try:
         if args.command == "seed":

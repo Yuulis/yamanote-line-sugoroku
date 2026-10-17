@@ -1,0 +1,277 @@
+{
+  "groups": {
+    "metro": {
+      "status": "audited",
+      "services": 10,
+      "stops": 186,
+      "pairs": 176,
+      "serviceIds": [
+        "metro-ginza",
+        "metro-marunouchi",
+        "metro-marunouchi-honancho",
+        "metro-hibiya",
+        "metro-tozai",
+        "metro-chiyoda",
+        "metro-yurakucho",
+        "metro-hanzomon",
+        "metro-namboku",
+        "metro-fukutoshin"
+      ]
+    },
+    "toei-yokohama": {
+      "status": "audited",
+      "services": 7,
+      "stops": 149,
+      "pairs": 143,
+      "serviceIds": [
+        "toei-asakusa",
+        "toei-mita",
+        "toei-shinjuku",
+        "toei-oedo-loop",
+        "toei-oedo-radial",
+        "yokohama-blue",
+        "yokohama-green"
+      ]
+    },
+    "tobu": {
+      "status": "audited",
+      "services": 14,
+      "stops": 219,
+      "pairs": 205,
+      "serviceIds": [
+        "tobu-isesaki",
+        "tobu-nikko",
+        "tobu-kinugawa",
+        "tobu-utsunomiya",
+        "tobu-sano",
+        "tobu-kiryu",
+        "tobu-koizumi",
+        "tobu-koizumi-ota",
+        "tobu-kameido",
+        "tobu-daishi",
+        "tobu-urban-park",
+        "tobu-tojo",
+        "tobu-ogose",
+        "tobu-oshiage"
+      ]
+    },
+    "seibu": {
+      "status": "audited",
+      "services": 12,
+      "stops": 105,
+      "pairs": 93,
+      "serviceIds": [
+        "seibu-ikebukuro",
+        "seibu-chichibu",
+        "seibu-yurakucho",
+        "seibu-toshima",
+        "seibu-sayama",
+        "seibu-yamaguchi",
+        "seibu-shinjuku",
+        "seibu-haijima",
+        "seibu-tamako",
+        "seibu-kokubunji",
+        "seibu-seibuen",
+        "seibu-tamagawa"
+      ]
+    },
+    "keisei-hokuso-tx": {
+      "status": "audited",
+      "services": 10,
+      "stops": 132,
+      "pairs": 122,
+      "serviceIds": [
+        "keisei-main",
+        "keisei-oshiage",
+        "keisei-kanamachi",
+        "keisei-chiba",
+        "keisei-chihara",
+        "keisei-higashi-narita",
+        "keisei-matsudo",
+        "tx",
+        "hokuso-main",
+        "keisei-narita-airport-access"
+      ]
+    },
+    "tokyu-mm": {
+      "status": "audited",
+      "services": 10,
+      "stops": 123,
+      "pairs": 113,
+      "serviceIds": [
+        "tokyu-toyoko",
+        "tokyu-meguro",
+        "tokyu-shin-yokohama",
+        "tokyu-den-en-toshi",
+        "tokyu-oimachi",
+        "tokyu-ikegami",
+        "tokyu-tamagawa",
+        "tokyu-setagaya",
+        "tokyu-kodomonokuni",
+        "mm-minatomirai"
+      ]
+    },
+    "keio-odakyu": {
+      "status": "audited",
+      "services": 9,
+      "stops": 146,
+      "pairs": 137,
+      "serviceIds": [
+        "keio-main",
+        "keio-sagamihara",
+        "keio-takao",
+        "keio-keibajo",
+        "keio-dobutsuen",
+        "keio-inokashira",
+        "odakyu-odawara",
+        "odakyu-enoshima",
+        "odakyu-tama"
+      ]
+    },
+    "keikyu-sotetsu": {
+      "status": "audited",
+      "services": 8,
+      "stops": 106,
+      "pairs": 98,
+      "serviceIds": [
+        "keikyu-main",
+        "keikyu-airport",
+        "keikyu-daishi",
+        "keikyu-zushi",
+        "sotetsu-main",
+        "sotetsu-izumino",
+        "sotetsu-shin-yokohama",
+        "keikyu-kurihama"
+      ]
+    }
+  },
+  "counts": {
+    "services": 80,
+    "stops": 1166,
+    "pairs": 1087,
+    "directedSegments": 2174
+  },
+  "expected": {
+    "services": 80,
+    "stops": 1166,
+    "pairs": 1087,
+    "directedSegments": 2174
+  },
+  "duplicateServices": [],
+  "missingServices": [],
+  "unexpectedServices": [],
+  "identityMapFindings": [],
+  "freshnessFindings": [],
+  "exceptions": [
+    {
+      "group": "metro",
+      "componentId": "metro-chiyoda",
+      "kind": "offset",
+      "serviceId": "metro-chiyoda",
+      "fromId": "",
+      "toId": "",
+      "stationId": "metro-kokkai-gijidomae",
+      "limit": "270",
+      "reason": "N02 platform 003807; measured offset 259 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/kokkai-gijidomae/index.html"
+    },
+    {
+      "group": "metro",
+      "componentId": "metro-chiyoda",
+      "kind": "offset",
+      "serviceId": "metro-chiyoda",
+      "fromId": "",
+      "toId": "",
+      "stationId": "metro-otemachi",
+      "limit": "330",
+      "reason": "N02 platform 003730, group 003719; measured offset 320 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/otemachi/index.html"
+    },
+    {
+      "group": "metro",
+      "componentId": "metro-chiyoda",
+      "kind": "offset",
+      "serviceId": "metro-yurakucho",
+      "fromId": "",
+      "toId": "",
+      "stationId": "metro-iidabashi",
+      "limit": "310",
+      "reason": "N02 platform 003598; measured offset 299 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/iidabashi/index.html"
+    },
+    {
+      "group": "metro",
+      "componentId": "metro-chiyoda",
+      "kind": "offset",
+      "serviceId": "metro-hanzomon",
+      "fromId": "",
+      "toId": "",
+      "stationId": "metro-nagatacho",
+      "limit": "280",
+      "reason": "N02 platform 003781; measured offset 266 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/nagatacho/index.html"
+    },
+    {
+      "group": "metro",
+      "componentId": "metro-chiyoda",
+      "kind": "offset",
+      "serviceId": "metro-hanzomon",
+      "fromId": "",
+      "toId": "",
+      "stationId": "metro-mitsukoshimae",
+      "limit": "270",
+      "reason": "N02 platform 003735; measured offset 253 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/mitsukoshimae/index.html"
+    },
+    {
+      "group": "metro",
+      "componentId": "metro-chiyoda",
+      "kind": "offset",
+      "serviceId": "metro-namboku",
+      "fromId": "",
+      "toId": "",
+      "stationId": "metro-iidabashi",
+      "limit": "270",
+      "reason": "N02 platform 003595; measured offset 256 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/iidabashi/index.html"
+    },
+    {
+      "group": "metro",
+      "componentId": "metro-chiyoda",
+      "kind": "offset",
+      "serviceId": "metro-fukutoshin",
+      "fromId": "",
+      "toId": "",
+      "stationId": "metro-ikebukuro",
+      "limit": "350",
+      "reason": "N02 platform 003379; measured offset 335 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/ikebukuro/index.html"
+    },
+    {
+      "group": "toei-yokohama",
+      "componentId": "toei-asakusa",
+      "kind": "offset",
+      "serviceId": "toei-oedo-loop",
+      "fromId": "",
+      "toId": "",
+      "stationId": "toei-kuramae",
+      "limit": "310",
+      "reason": "Reviewed large-interchange offset: N02 platform codes 003571 and 003583 have a measured 291.286 m representative-point offset; Tokyo Metropolitan Bureau of Transportation identifies separate Asakusa Line and Oedo Line station buildings at Kuramae: https://www.kotsu.metro.tokyo.jp/subway/stations/kuramae.html"
+    },
+    {
+      "group": "tobu",
+      "componentId": "tobu-daishi",
+      "kind": "detour",
+      "serviceId": "tobu-sano",
+      "fromId": "tobu-sanoshi",
+      "toId": "tobu-sano",
+      "stationId": "",
+      "limit": "2.10",
+      "reason": "Raw N02 佐野線 path is 2.486 km between station platform midpoints 002416 and 002398 (single curved section entering 佐野 from the east after crossing 両毛線); straight-line distance is 1.212 km (ratio 2.05). Official Tobu 営業キロ 佐野市 9.0 / 佐野 11.5 km gives 2.5 km (https://www.tobu.co.jp/cms-pdf/news/20230308173821gOeil5pz8zABtXdhXxcI8g.pdf), supporting the routed line geometry. Limit rounded up to 0.05 per the S2 烏山 precedent."
+    },
+    {
+      "group": "tobu",
+      "componentId": "tobu-daishi",
+      "kind": "junction",
+      "serviceId": "tobu-oshiage",
+      "fromId": "",
+      "toId": "",
+      "stationId": "",
+      "limit": "139.81336,35.71012",
+      "reason": "押上 platform section: its internal source vertex 4 equals the exact start of the northbound 伊勢崎線 section (S3 tobu review, raw N02 regression)."
+    }
+  ]
+}

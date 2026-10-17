@@ -31,6 +31,9 @@ SECTION_DIGEST_CHARS = 8
 LonLat = tuple[float, float]
 BBox = tuple[float, float, float, float]
 STATION_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})(\d{2})$")
+# Explicit station-number evidence also covers non-JR operator formats
+# (G01, TS-01, Mb branch m05); the legacy ±1 rule above stays JR-only.
+STATION_NUMBER_EVIDENCE_PATTERN = re.compile(r"^[A-Za-z]{1,2}-?\d{2}$")
 
 
 class ConstraintError(ValueError):
@@ -87,6 +90,11 @@ def parse_platform_selector(text: str) -> PlatformSelector:
         options = frozenset(item.strip() for item in raw.split("|") if item.strip())
         if not options:
             raise ConstraintError(f"platform selector {key!r} has no value")
+        # "line=X|code=Y" would silently read "code=Y" as a line name.
+        if any("=" in option for option in options):
+            raise ConstraintError(
+                f"platform selector {key!r} value contains '=' (use ';'): {text!r}"
+            )
         values[key] = options
     return PlatformSelector(
         lines=values.get("line", frozenset()),

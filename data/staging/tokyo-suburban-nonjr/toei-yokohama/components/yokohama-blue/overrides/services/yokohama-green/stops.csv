@@ -1,0 +1,11 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,yokohama-nakayama,G01,line=4号線,中山,中山,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,yokohama-kawawacho,G02,line=4号線,川和町,川和町,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,yokohama-tsuzuki-fureai-no-oka,G03,line=4号線,都筑ふれあいの丘,都筑ふれあいの丘,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,yokohama-center-minami,G04,line=4号線,センター南,センター南,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,yokohama-center-kita,G05,line=4号線,センター北,センター北,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,yokohama-kita-yamata,G06,line=4号線,北山田,北山田,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,yokohama-higashi-yamata,G07,line=4号線,東山田,東山田,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,yokohama-takata,G08,line=4号線,高田,高田,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,yokohama-hiyoshi-honcho,G09,line=4号線,日吉本町,日吉本町,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,yokohama-hiyoshi,G10,line=4号線,日吉,日吉,横浜市,Hash-verified frozen S0 catalog; selector and route evidence pending.

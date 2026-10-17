@@ -1,0 +1,37 @@
+{
+  "operator": "京王電鉄",
+  "n02Operator": "京王電鉄",
+  "updatedAt": "2026-10-15",
+  "areaName": "京王電鉄 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "神奈川県"
+  ],
+  "serviceIds": [
+    "keio-main",
+    "keio-sagamihara",
+    "keio-takao",
+    "keio-keibajo",
+    "keio-dobutsuen",
+    "keio-inokashira"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "keio-shinjuku",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "1d230bc40db0a65d904ad45190320a9170650d6fe568c319544686d7479f8983",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

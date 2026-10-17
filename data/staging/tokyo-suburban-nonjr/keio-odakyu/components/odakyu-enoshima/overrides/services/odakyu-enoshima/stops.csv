@@ -1,0 +1,18 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,odakyu-sagami-ono,OH28,line=江ノ島線;group=004426;code=004426,相模大野,相模大野,小田急電鉄,Raw N02 confirms this 江ノ島線 station code 004426 and group 004426; pin the platform used by this frozen service.
+1,odakyu-higashi-rinkan,OE01,line=江ノ島線;group=004457;code=004457,東林間,東林間,小田急電鉄,Raw N02 confirms frozen station name 東林間 (N02 name 東林間) on 江ノ島線 at platform code 004457 and group 004457; pin this service stop.
+2,odakyu-chuo-rinkan,OE02,line=江ノ島線;group=004498;code=004498,中央林間,中央林間,小田急電鉄,Raw N02 confirms frozen station name 中央林間 (N02 name 中央林間) on 江ノ島線 at platform code 004498 and group 004498; pin this service stop.
+3,odakyu-minami-rinkan,OE03,line=江ノ島線;group=004537;code=004537,南林間,南林間,小田急電鉄,Raw N02 confirms frozen station name 南林間 (N02 name 南林間) on 江ノ島線 at platform code 004537 and group 004537; pin this service stop.
+4,odakyu-tsuruma,OE04,line=江ノ島線;group=004549;code=004549,鶴間,鶴間,小田急電鉄,Raw N02 confirms frozen station name 鶴間 (N02 name 鶴間) on 江ノ島線 at platform code 004549 and group 004549; pin this service stop.
+5,odakyu-yamato,OE05,line=江ノ島線;group=004617;code=004618,大和,大和,小田急電鉄,Raw N02 confirms frozen station name 大和 (N02 name 大和) on 江ノ島線 at platform code 004618 and group 004617; pin this service stop.
+6,odakyu-sakuragaoka,OE06,line=江ノ島線;group=004676;code=004676,桜ケ丘,桜ヶ丘,小田急電鉄,Raw N02 confirms frozen station name 桜ケ丘 (N02 name 桜ヶ丘) on 江ノ島線 at platform code 004676 and group 004676; pin this service stop.
+7,odakyu-koza-shibuya,OE07,line=江ノ島線;group=004729;code=004729,高座渋谷,高座渋谷,小田急電鉄,Raw N02 confirms frozen station name 高座渋谷 (N02 name 高座渋谷) on 江ノ島線 at platform code 004729 and group 004729; pin this service stop.
+8,odakyu-chogo,OE08,line=江ノ島線;group=004782;code=004782,長後,長後,小田急電鉄,Raw N02 confirms frozen station name 長後 (N02 name 長後) on 江ノ島線 at platform code 004782 and group 004782; pin this service stop.
+9,odakyu-shonandai,OE09,line=江ノ島線;group=004842;code=004840,湘南台,湘南台,小田急電鉄,Raw N02 confirms frozen station name 湘南台 (N02 name 湘南台) on 江ノ島線 at platform code 004840 and group 004842; pin this service stop.
+10,odakyu-mutsuai-nichidai-mae,OE10,line=江ノ島線;group=004878;code=004878,六会日大前,六会日大前,小田急電鉄,Raw N02 confirms frozen station name 六会日大前 (N02 name 六会日大前) on 江ノ島線 at platform code 004878 and group 004878; pin this service stop.
+11,odakyu-zengyo,OE11,line=江ノ島線;group=004937;code=004937,善行,善行,小田急電鉄,Raw N02 confirms frozen station name 善行 (N02 name 善行) on 江ノ島線 at platform code 004937 and group 004937; pin this service stop.
+12,odakyu-fujisawa-hommachi,OE12,line=江ノ島線;group=004973;code=004973,藤沢本町,藤沢本町,小田急電鉄,Raw N02 confirms frozen station name 藤沢本町 (N02 name 藤沢本町) on 江ノ島線 at platform code 004973 and group 004973; pin this service stop.
+13,odakyu-fujisawa,OE13,line=江ノ島線;group=004997;code=004997,藤沢,藤沢,小田急電鉄,Raw N02 confirms frozen station name 藤沢 (N02 name 藤沢) on 江ノ島線 at platform code 004997 and group 004997; pin this service stop.
+14,odakyu-hon-kugenuma,OE14,line=江ノ島線;group=005022;code=005022,本鵠沼,本鵠沼,小田急電鉄,Raw N02 confirms frozen station name 本鵠沼 (N02 name 本鵠沼) on 江ノ島線 at platform code 005022 and group 005022; pin this service stop.
+15,odakyu-kugenuma-kaigan,OE15,line=江ノ島線;group=005049;code=005049,鵠沼海岸,鵠沼海岸,小田急電鉄,Raw N02 confirms frozen station name 鵠沼海岸 (N02 name 鵠沼海岸) on 江ノ島線 at platform code 005049 and group 005049; pin this service stop.
+16,odakyu-katase-enoshima,OE16,line=江ノ島線;group=005090;code=005090,片瀬江ノ島,片瀬江ノ島,小田急電鉄,Raw N02 confirms frozen station name 片瀬江ノ島 (N02 name 片瀬江ノ島) on 江ノ島線 at platform code 005090 and group 005090; pin this service stop.

@@ -1,0 +1,32 @@
+{
+  "operator": "横浜市交通局",
+  "n02Operator": "横浜市",
+  "updatedAt": "2026-10-15",
+  "areaName": "横浜市交通局 non-JR staging component",
+  "areaPrefectures": [
+    "神奈川県"
+  ],
+  "serviceIds": [
+    "yokohama-blue",
+    "yokohama-green"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "yokohama-shonandai",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "eaf7ad21ccd57076e3c414eee6ec0c0a025854e0c8d459d7b21bda215702ea4e",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

@@ -206,3 +206,98 @@ and for R0–R2 and R7 the live byte-identity build from the plan (`diff -r publ
 
 Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
 `Deviations from plan`, `Open issues`.
+
+## s3-plan — S3 implementation plan (Codex Sol `low`, `--sandbox read-only`)
+
+Objective: produce a directly executable plan for S3 (subway and private-railway staging) that Codex Luna can
+implement in bounded, mostly parallel runs without making design or product decisions.
+
+S3 per `.claude/docs/plans/tokyo-suburban-network-design.md` section 4: stage every non-JR service of the frozen
+catalog in independent operator groups. Acceptance there: station count/order/endpoint/source checks; platform
+membership and actual geometry paths verified. Cross-operator station identity (D1 groups) is S4, not S3.
+
+Read: the design doc (sections 1–5); `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (frozen non-JR services, D3:
+Oedo loop + radial sharing 都庁前 with UI group `toei-oedo`, Chiyoda 北綾瀬 in the same service, Seibu Yamaguchi included,
+within-operator identities incl. Tokyu 三軒茶屋 retained); `.claude/docs/research/tokyo-suburban-r1-{sub,pe,pw,extra,exceptions}*.{md,csv}`
+and the frozen `tokyo-suburban-research-catalog.csv` / `-services.csv` (non-JR rows); S1 contract
+(`tokyo-suburban-s1-plan.md`, per-service `operator`/`n02Operator`, per-stop `original_name`/`n02_name`/`n02_operator`,
+Toei display `東京都交通局` vs N02 `東京都`); S2 precedent and tooling (`tokyo-suburban-s2-plan.md`,
+`tokyo-suburban-s2-section-filters.md`, `scripts/data_pipeline/stage_suburban_jr.py`, `data/staging/tokyo-suburban-jr/**`
+README, `.claude/docs/reviews/tokyo-suburban-s2-review-1.md` incl. its non-blocking carry-overs); `data/README.md`;
+`scripts/data_pipeline/*.py`; `tests/data_pipeline/`.
+
+Constraints:
+- Non-JR only. No change to `public/data/*`, live `data/overrides/**`, or the committed JR staging; the live build stays
+  byte-identical. Raw N02 read-only.
+- Reuse the S2 helper where it fits; prefer generalizing it (operator group parameter) over a copy. Any helper/pipeline
+  change happens in an early dedicated run, never inside parallel region runs.
+- No relaxed snap/joint/offset/detour/wrong-track tolerances; reviewed per-pair exceptions only with recorded evidence;
+  no proximity-only joins; no fabricated connectors; no cross-operator fallback; selectors are explicit.
+- Known N02 concerns to plan for explicitly: Tokyu Meguro Tamagawa–Hiyoshi borrows Toyoko coverage and Oimachi
+  Futako-Tamagawa–Mizonokuchi borrows Den-en-toshi coverage (shared/parallel tracks are NOT shared infrastructure unless
+  evidenced); Fukutoshin north of Kotake-mukaihara on the Yurakucho N02 line; Yokohama Blue across two N02 lines at Kannai;
+  Keisei airport-side track ownership (Narita Sky Access / Hokuso / Shibayama out of scope) and shared-use boundaries;
+  Oedo loop/radial; Seibu Yamaguchi AGT; lines missing or mislabeled in N02 per the R1 reports.
+- lengthRef: each service needs an independent length reference with a cited primary source (operator page or official
+  route data) and an N02 pair-sum cross-check within the tolerance; record source breakdowns (S2 carry-over).
+- Run sizing: ≤ ~30 min per Luna run; group runs by operator group (e.g. Metro, Toei+Yokohama, Tobu, Seibu,
+  Keisei+Hokuso+TX, Tokyu+Minatomirai, Keio+Odakyu, Keikyu+Sotetsu); at most two region runs in parallel.
+
+Output (markdown, ≤160 lines): `TL;DR`; `Staging layout` (directories, dataset/operator settings per group, how S4/S5
+consume them); `Service inventory` (per group: services, stops, pairs, N02 operator/line names); `Known geometry problems`
+(each with the proposed evidenced resolution); `Pipeline/helper changes` (if any, in a first run); `Runs` (per run:
+files, steps, tests, acceptance commands — exact; mark which can run in parallel); `Risks`; `Decisions needing the user`
+(only genuine product choices; "none" if none).
+
+## s3-run — S3 implementation runs (Codex Luna `high`; replace `<RUNS>`)
+
+Objective: implement S3 plan run(s) <RUNS> of `.claude/docs/plans/tokyo-suburban-s3-plan.md` exactly (with the lead
+adjustments in its header), keeping the shipped bundle and the committed JR staging byte-identical.
+
+Read first: `.claude/docs/plans/tokyo-suburban-s3-plan.md` (the contract), `.claude/docs/plans/tokyo-suburban-s0-freeze.json`,
+`data/README.md`, `data/staging/tokyo-suburban-jr/combined/README.md` (S2 precedent), `.claude/rules/coding-principles.md`,
+`.claude/rules/testing.md`, `.claude/rules/dev-environment.md`. Earlier S3 runs are in the working tree or committed; build on them.
+
+Scope: in — exactly the files the plan assigns to <RUNS>. Out — `public/data`, live `data/overrides/**`,
+`data/staging/tokyo-suburban-jr/**`, `src/**`, raw `N02-25_GML/**`, research files, docs under `.claude/`, git commits/pushes.
+Group runs must NOT modify `scripts/` or shared tests; a parallel run may own another group: never touch its files.
+No relaxed tolerances (snap 30 m, joint 1e-6 m, offset, detour, wrong-track, lengthRef 1.5 km), no proximity-only joins, no
+fabricated connectors, no cross-operator fallback. Never weaken, skip or delete tests. Expected values come from the frozen
+catalog and cited primary sources, never from build output. lengthRef: primary-source 営業キロ with a recorded breakdown;
+use your web search tool (official operator pages first; cite URLs; no curl). Clear output dirs with Python `shutil.rmtree`
+(`rm -rf` is blocked). Prose in English. STOP and report with evidence (do not guess) when a pair needs a route recipe,
+junction, detour/offset exception, or section evidence not already specified in the plan's "Known geometry problems".
+
+Acceptance: the plan's acceptance for <RUNS> (group runs: `s3e GROUP` once, then `s3gate GROUP`), plus always:
+```bash
+uv run ruff check scripts/data_pipeline tests/data_pipeline && uv run ruff format --check scripts/data_pipeline tests/data_pipeline
+uv run ty check scripts/data_pipeline
+uv run pytest tests/data_pipeline -q -rs
+uv run python .claude/docs/research/tokyo-suburban-r2-tools/check_freeze.py
+git diff --exit-code -- public/data data/overrides data/staging/tokyo-suburban-jr src N02-25_GML
+```
+and for R0 and Rfinal the live byte-identity build (`diff -r public/data .claude/logs/s3/live`).
+
+Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
+`Stops for lead review` (each with evidence), `Deviations from plan`, `Open issues`.
+
+### s3 standing lead decisions (append to every later S3 group prompt)
+
+- N02 match name = frozen `station_name_original` (seed does this); never the D1 group name `station_name_ja`.
+- Explicit station-number evidence accepts `^[A-Za-z]{1,2}-?\d{2}$` (`G01`, `A01`, `TS-01`, `m05`); never rewrite frozen numbers.
+- A within-operator station spanning municipalities: every `scope.csv` row uses the registry prefecture/municipality
+  (representative service's frozen value); record the platform-level municipality + source as evidence. A prefecture
+  difference is NOT covered — stop and report.
+- Call the non-JR CLI as `uv run python -m scripts.data_pipeline.stage_suburban_nonjr {seed,measure-pairs,gate,audit} --operator-group G`.
+- Platform offset over 250 m at a large interchange: approved only as a per-row `offset_exceptions.csv` entry with limit =
+  measured rounded up to 10 m + 10 m, citing N02 codes, measured distance and an official station page; the global limit
+  stays. Report the list to the lead.
+- A boundary station whose two N02 codes share a group and exact midpoint: pin the service stop to ONE code (the line the
+  service continues on); the other line's track reaches it via the S1 anchor rule.
+- lengthRef evidence when the operator publishes only a line total: derive each service from per-station キロ程 — official
+  first; otherwise a secondary table that cites 『鉄道要覧』 (e.g. the Wikipedia line article), marked `secondary` in
+  `length-ref-components.csv` with the arithmetic and, where possible, a check that the parts sum to the official total.
+  The N02 pair-sum must still agree within 1.5 km.
+- Detour ratio over 1.80 on the real curved track: per-pair `detour_exceptions.csv` row only after a path analysis (the
+  traversed sections, not the `route_legs_json` window) shows a single-operator path and the official キロ程 matches the path
+  length; limit = measured ratio rounded up to the next 0.05 (S2 烏山 1.88→1.90, S3 佐野 2.05→2.10).

@@ -1,0 +1,52 @@
+{
+  "lines": [
+    {
+      "id": "mm-minatomirai",
+      "name": "みなとみらい線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "mm-minatomirai",
+      "name": "みなとみらい線 各停",
+      "kind": "local",
+      "lineIds": [
+        "mm-minatomirai"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "元町・中華街方面",
+        "backward": "横浜方面"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 4.1,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 横浜–元町・中華街: 4.100 km; Yokohama Minatomirai Railway FAQ FAQ 05, route overview (https://www.mm21railway.co.jp/info/faq05.html)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "横浜高速鉄道",
+      "n02Operator": "横浜高速鉄道",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "MM01",
+          "MM02",
+          "MM03",
+          "MM04",
+          "MM05",
+          "MM06"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}

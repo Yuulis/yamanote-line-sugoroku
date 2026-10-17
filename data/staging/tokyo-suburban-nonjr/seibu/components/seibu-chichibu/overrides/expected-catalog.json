@@ -1,0 +1,246 @@
+{
+  "services": [
+    {
+      "id": "seibu-ikebukuro",
+      "stationIds": [
+        "seibu-ikebukuro",
+        "seibu-shiinamachi",
+        "seibu-higashi-nagasaki",
+        "seibu-ekoda",
+        "seibu-sakuradai",
+        "seibu-nerima",
+        "seibu-nakamurabashi",
+        "seibu-fujimidai",
+        "seibu-nerima-takanodai",
+        "seibu-shakujii-koen",
+        "seibu-oizumi-gakuen",
+        "seibu-hoya",
+        "seibu-hibarigaoka",
+        "seibu-higashi-kurume",
+        "seibu-kiyose",
+        "seibu-akitsu",
+        "seibu-tokorozawa",
+        "seibu-nishi-tokorozawa",
+        "seibu-kotesashi",
+        "seibu-sayamagaoka",
+        "seibu-musashi-fujisawa",
+        "seibu-inariyama-koen",
+        "seibu-irumashi",
+        "seibu-bushi",
+        "seibu-motokaji",
+        "seibu-hanno",
+        "seibu-higashi-hanno",
+        "seibu-koma",
+        "seibu-musashi-yokote",
+        "seibu-higashi-agano",
+        "seibu-agano"
+      ]
+    },
+    {
+      "id": "seibu-chichibu",
+      "stationIds": [
+        "seibu-agano",
+        "seibu-nishi-agano",
+        "seibu-shomaru",
+        "seibu-ashigakubo",
+        "seibu-yokoze",
+        "seibu-seibu-chichibu"
+      ]
+    },
+    {
+      "id": "seibu-yurakucho",
+      "stationIds": [
+        "seibu-nerima",
+        "seibu-shin-sakuradai",
+        "seibu-kotake-mukaihara"
+      ]
+    },
+    {
+      "id": "seibu-toshima",
+      "stationIds": [
+        "seibu-nerima",
+        "seibu-toshimaen"
+      ]
+    },
+    {
+      "id": "seibu-sayama",
+      "stationIds": [
+        "seibu-nishi-tokorozawa",
+        "seibu-shimo-yamaguchi",
+        "seibu-seibukyujo-mae"
+      ]
+    },
+    {
+      "id": "seibu-yamaguchi",
+      "stationIds": [
+        "seibu-tamako",
+        "seibu-seibuen-yuenchi",
+        "seibu-seibukyujo-mae"
+      ]
+    },
+    {
+      "id": "seibu-shinjuku",
+      "stationIds": [
+        "seibu-seibu-shinjuku",
+        "seibu-takadanobaba",
+        "seibu-shimo-ochiai",
+        "seibu-nakai",
+        "seibu-arai-yakushimae",
+        "seibu-numabukuro",
+        "seibu-nogata",
+        "seibu-toritsu-kasei",
+        "seibu-saginomiya",
+        "seibu-shimo-igusa",
+        "seibu-iogi",
+        "seibu-kami-igusa",
+        "seibu-kami-shakujii",
+        "seibu-musashi-seki",
+        "seibu-higashi-fushimi",
+        "seibu-seibu-yagisawa",
+        "seibu-tanashi",
+        "seibu-hana-koganei",
+        "seibu-kodaira",
+        "seibu-kumegawa",
+        "seibu-higashi-murayama",
+        "seibu-tokorozawa",
+        "seibu-kokukoen",
+        "seibu-shin-tokorozawa",
+        "seibu-iriso",
+        "seibu-sayamashi",
+        "seibu-shin-sayama",
+        "seibu-minami-otsuka",
+        "seibu-hon-kawagoe"
+      ]
+    },
+    {
+      "id": "seibu-haijima",
+      "stationIds": [
+        "seibu-kodaira",
+        "seibu-hagiyama",
+        "seibu-ogawa",
+        "seibu-higashi-yamatoshi",
+        "seibu-tamagawa-josui",
+        "seibu-musashi-sunagawa",
+        "seibu-seibu-tachikawa",
+        "seibu-haijima"
+      ]
+    },
+    {
+      "id": "seibu-tamako",
+      "stationIds": [
+        "seibu-kokubunji",
+        "seibu-hitotsubashi-gakuen",
+        "seibu-ome-kaido",
+        "seibu-hagiyama",
+        "seibu-yasaka",
+        "seibu-musashi-yamato",
+        "seibu-tamako"
+      ]
+    },
+    {
+      "id": "seibu-kokubunji",
+      "stationIds": [
+        "seibu-kokubunji",
+        "seibu-koigakubo",
+        "seibu-takanodai",
+        "seibu-ogawa",
+        "seibu-higashi-murayama"
+      ]
+    },
+    {
+      "id": "seibu-seibuen",
+      "stationIds": [
+        "seibu-higashi-murayama",
+        "seibu-seibuen"
+      ]
+    }
+  ],
+  "stationIds": [
+    "seibu-ikebukuro",
+    "seibu-shiinamachi",
+    "seibu-higashi-nagasaki",
+    "seibu-ekoda",
+    "seibu-sakuradai",
+    "seibu-nerima",
+    "seibu-nakamurabashi",
+    "seibu-fujimidai",
+    "seibu-nerima-takanodai",
+    "seibu-shakujii-koen",
+    "seibu-oizumi-gakuen",
+    "seibu-hoya",
+    "seibu-hibarigaoka",
+    "seibu-higashi-kurume",
+    "seibu-kiyose",
+    "seibu-akitsu",
+    "seibu-tokorozawa",
+    "seibu-nishi-tokorozawa",
+    "seibu-kotesashi",
+    "seibu-sayamagaoka",
+    "seibu-musashi-fujisawa",
+    "seibu-inariyama-koen",
+    "seibu-irumashi",
+    "seibu-bushi",
+    "seibu-motokaji",
+    "seibu-hanno",
+    "seibu-higashi-hanno",
+    "seibu-koma",
+    "seibu-musashi-yokote",
+    "seibu-higashi-agano",
+    "seibu-agano",
+    "seibu-nishi-agano",
+    "seibu-shomaru",
+    "seibu-ashigakubo",
+    "seibu-yokoze",
+    "seibu-seibu-chichibu",
+    "seibu-shin-sakuradai",
+    "seibu-kotake-mukaihara",
+    "seibu-toshimaen",
+    "seibu-shimo-yamaguchi",
+    "seibu-seibukyujo-mae",
+    "seibu-tamako",
+    "seibu-seibuen-yuenchi",
+    "seibu-seibu-shinjuku",
+    "seibu-takadanobaba",
+    "seibu-shimo-ochiai",
+    "seibu-nakai",
+    "seibu-arai-yakushimae",
+    "seibu-numabukuro",
+    "seibu-nogata",
+    "seibu-toritsu-kasei",
+    "seibu-saginomiya",
+    "seibu-shimo-igusa",
+    "seibu-iogi",
+    "seibu-kami-igusa",
+    "seibu-kami-shakujii",
+    "seibu-musashi-seki",
+    "seibu-higashi-fushimi",
+    "seibu-seibu-yagisawa",
+    "seibu-tanashi",
+    "seibu-hana-koganei",
+    "seibu-kodaira",
+    "seibu-kumegawa",
+    "seibu-higashi-murayama",
+    "seibu-kokukoen",
+    "seibu-shin-tokorozawa",
+    "seibu-iriso",
+    "seibu-sayamashi",
+    "seibu-shin-sayama",
+    "seibu-minami-otsuka",
+    "seibu-hon-kawagoe",
+    "seibu-hagiyama",
+    "seibu-ogawa",
+    "seibu-higashi-yamatoshi",
+    "seibu-tamagawa-josui",
+    "seibu-musashi-sunagawa",
+    "seibu-seibu-tachikawa",
+    "seibu-haijima",
+    "seibu-kokubunji",
+    "seibu-hitotsubashi-gakuen",
+    "seibu-ome-kaido",
+    "seibu-yasaka",
+    "seibu-musashi-yamato",
+    "seibu-koigakubo",
+    "seibu-takanodai",
+    "seibu-seibuen"
+  ]
+}

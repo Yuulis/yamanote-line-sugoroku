@@ -1,0 +1,4 @@
+station_id,prefecture,municipality,in_area
+seibu-tamako,東京都,東村山市,true
+seibu-seibuen-yuenchi,埼玉県,所沢市,true
+seibu-seibukyujo-mae,埼玉県,所沢市,true

@@ -1,0 +1,12 @@
+from_id,to_id,n02_line,via,route,compose
+keio-chofu,keio-tamagawa,相模原線,,,
+keio-tamagawa,keio-inadazutsumi,相模原線,,,
+keio-inadazutsumi,keio-yomiuri-land,相模原線,,,
+keio-yomiuri-land,keio-inagi,相模原線,,,
+keio-inagi,keio-wakabadai,相模原線,,,
+keio-wakabadai,keio-nagayama,相模原線,,,
+keio-nagayama,keio-tama-center,相模原線,,,
+keio-tama-center,keio-horinouchi,相模原線,,,
+keio-horinouchi,keio-minami-osawa,相模原線,,,
+keio-minami-osawa,keio-tamasakai,相模原線,,,
+keio-tamasakai,keio-hashimoto,相模原線,,,

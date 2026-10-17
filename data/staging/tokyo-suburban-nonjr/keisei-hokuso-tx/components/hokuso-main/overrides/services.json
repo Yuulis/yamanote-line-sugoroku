@@ -1,0 +1,62 @@
+{
+  "lines": [
+    {
+      "id": "hokuso-main",
+      "name": "北総線 普通",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "hokuso-main",
+      "name": "北総線 普通",
+      "kind": "local",
+      "lineIds": [
+        "hokuso-main"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "印旛日本医大方面",
+        "backward": "京成高砂方面"
+      },
+      "expectedStopCount": 15,
+      "lengthRef": {
+        "km": 32.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京成高砂–印旛日本医大: 32.300 km; Hokuso Railway company overview 会社概要: 営業キロ (https://www.hokuso-railway.co.jp/hokuso/outline.html)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "北総鉄道",
+      "n02Operator": "北総鉄道",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS10",
+          "HS01",
+          "HS02",
+          "HS03",
+          "HS04",
+          "HS05",
+          "HS06",
+          "HS07",
+          "HS08",
+          "HS09",
+          "HS10",
+          "HS11",
+          "HS12",
+          "HS13",
+          "HS14"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+keikyu-main,泉岳寺,浦賀,56.7,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,56.545,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keikyu-airport,京急蒲田,羽田空港第1・第2ターミナル,6.5,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,6.513,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keikyu-daishi,京急川崎,小島新田,4.5,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,4.381,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keikyu-zushi,金沢八景,逗子・葉山,5.9,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,5.935,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keikyu-kurihama,堀ノ内,三崎口,13.4,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,13.376,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+sotetsu-main,横浜,海老名,24.6,https://www.sotetsu.co.jp/about/companies/transportation/,24.482,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+sotetsu-izumino,二俣川,湘南台,11.3,https://www.sotetsu.co.jp/about/companies/transportation/,11.299,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+sotetsu-shin-yokohama,西谷,新横浜,6.3,https://www.sotetsu.co.jp/about/companies/transportation/,6.241,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.

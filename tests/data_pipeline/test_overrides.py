@@ -8,6 +8,7 @@ import pytest
 from scripts.data_pipeline import config
 from scripts.data_pipeline.constraints import (
     ANY_PLATFORM,
+    STATION_NUMBER_EVIDENCE_PATTERN,
     ConstraintError,
     parse_platform_selector,
     parse_route_recipe,
@@ -656,3 +657,22 @@ def test_load_overrides_without_updated_at_raises(overrides_copy: Path) -> None:
 
     with pytest.raises(OverrideError, match="updatedAt"):
         load_overrides(overrides_copy)
+
+
+@pytest.mark.parametrize("number", ["JY29", "G01", "TS-01", "m05", "SI01"])
+def test_station_number_evidence_pattern_accepts_frozen_operator_formats(
+    number: str,
+) -> None:
+    assert STATION_NUMBER_EVIDENCE_PATTERN.fullmatch(number)
+
+
+@pytest.mark.parametrize("number", ["G1", "ABC01", "G-1", "01", "JY029", "JY 29"])
+def test_station_number_evidence_pattern_rejects_malformed_numbers(
+    number: str,
+) -> None:
+    assert STATION_NUMBER_EVIDENCE_PATTERN.fullmatch(number) is None
+
+
+def test_platform_selector_rejects_clause_joined_with_pipe() -> None:
+    with pytest.raises(ConstraintError, match="contains '='"):
+        parse_platform_selector("line=12号線大江戸線|code=004310")

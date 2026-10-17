@@ -1,0 +1,9 @@
+station_id,prefecture,municipality,in_area
+seibu-kodaira,東京都,小平市,true
+seibu-hagiyama,東京都,東村山市,true
+seibu-ogawa,東京都,小平市,true
+seibu-higashi-yamatoshi,東京都,東大和市,true
+seibu-tamagawa-josui,東京都,立川市,true
+seibu-musashi-sunagawa,東京都,立川市,true
+seibu-seibu-tachikawa,東京都,立川市,true
+seibu-haijima,東京都,昭島市,true

@@ -1,0 +1,15 @@
+station_id,prefecture,municipality,in_area
+metro-shibuya,東京都,渋谷区,true
+metro-omote-sando,東京都,港区,true
+metro-aoyama-itchome,東京都,港区,true
+metro-nagatacho,東京都,千代田区,true
+metro-hanzomon,東京都,千代田区,true
+metro-kudanshita,東京都,千代田区,true
+metro-jimbocho,東京都,千代田区,true
+metro-otemachi,東京都,千代田区,true
+metro-mitsukoshimae,東京都,中央区,true
+metro-suitengumae,東京都,中央区,true
+metro-kiyosumi-shirakawa,東京都,江東区,true
+metro-sumiyoshi,東京都,江東区,true
+metro-kinshicho,東京都,墨田区,true
+metro-oshiage,東京都,墨田区,true

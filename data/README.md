@@ -85,6 +85,18 @@ and 武蔵小杉 on 南武線 (up to 400 m; measured 393.4 m). Two 湘南新宿�
 surrogate pairs have a reviewed detour ratio of 2.1. Full sizes, budget use and N02
 routing evidence are recorded in `.claude/docs/research/jr-east-capital-region-s6.md`.
 
+S3 non-JR operator groups are staged separately under
+`data/staging/tokyo-suburban-nonjr/`, split into operator-owned stop-connected
+components. Their seeds use the hash-verified frozen catalog and preserve
+`station_id_original` until the S4 identity merge. Source-classified mileage and
+its arithmetic breakdown live in `length-refs.csv` and
+`length-ref-components.csv`; pair evidence records the raw N02 inputs and the
+route selected by the regular build. Group verification results are reported
+only through the corresponding `.claude/logs/s3/<group>/` logs referenced by
+that group's staging README. `length-ref-components.csv` records each mileage
+source class (`primary` or `secondary`); generated `lengthRef.source` values and
+measurement notes preserve the class used by the service breakdown.
+
 N02 has known generalized-line limits: it does not distinguish the separate
 常磐線各停・快速 tracks between 綾瀬 and 金町, the separate 総武快速・緩行 tracks
 on the 江戸川 bridge, or the passenger/freight track distinction on the 赤羽–浦和

@@ -1,0 +1,11 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+metro-ginza,渋谷,浅草,14.2,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,14.192,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-marunouchi,荻窪,池袋,24.2,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,24.426,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-marunouchi-honancho,中野坂上,方南町,3.2,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,3.237,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-hibiya,中目黒,北千住,20.3,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,20.251,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-tozai,中野,西船橋,30.8,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,30.816,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-chiyoda,代々木上原,北綾瀬,24.0,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,23.969,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-yurakucho,和光市,新木場,28.3,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,28.359,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-hanzomon,渋谷,押上,16.8,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,16.790,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-namboku,目黒,赤羽岩淵,21.3,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,21.298,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+metro-fukutoshin,和光市,渋谷,20.2,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,20.237,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.

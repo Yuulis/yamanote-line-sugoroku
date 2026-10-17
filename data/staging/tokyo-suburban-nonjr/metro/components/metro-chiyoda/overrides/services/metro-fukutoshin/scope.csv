@@ -1,0 +1,17 @@
+station_id,prefecture,municipality,in_area
+metro-wakoshi,埼玉県,和光市,true
+metro-chikatetsu-narimasu,東京都,板橋区,true
+metro-chikatetsu-akatsuka,東京都,練馬区,true
+metro-heiwadai,東京都,練馬区,true
+metro-hikawadai,東京都,練馬区,true
+metro-kotake-mukaihara,東京都,練馬区,true
+metro-senkawa,東京都,豊島区,true
+metro-kanamecho,東京都,豊島区,true
+metro-ikebukuro,東京都,豊島区,true
+metro-zoshigaya,東京都,豊島区,true
+metro-nishi-waseda,東京都,新宿区,true
+metro-higashi-shinjuku,東京都,新宿区,true
+metro-shinjuku-sanchome,東京都,新宿区,true
+metro-kita-sando,東京都,渋谷区,true
+metro-meiji-jingumae,東京都,渋谷区,true
+metro-shibuya,東京都,渋谷区,true

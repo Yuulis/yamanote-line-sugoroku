@@ -1,0 +1,16 @@
+station_id,prefecture,municipality,in_area
+hokuso-keisei-takasago,東京都,葛飾区,true
+hokuso-shin-shibamata,東京都,葛飾区,true
+hokuso-yagiri,千葉県,松戸市,true
+hokuso-kita-kokubun,千葉県,市川市,true
+hokuso-akiyama,千葉県,松戸市,true
+hokuso-higashi-matsudo,千葉県,松戸市,true
+hokuso-matsuhidai,千葉県,松戸市,true
+hokuso-omachi,千葉県,市川市,true
+hokuso-shin-kamagaya,千葉県,鎌ケ谷市,true
+hokuso-nishi-shiroi,千葉県,白井市,true
+hokuso-shiroi,千葉県,白井市,true
+hokuso-komuro,千葉県,船橋市,true
+hokuso-chiba-newtown-chuo,千葉県,印西市,true
+hokuso-inzai-makinohara,千葉県,印西市,true
+hokuso-imba-nihon-idai,千葉県,印西市,true

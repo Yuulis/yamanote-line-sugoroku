@@ -1,0 +1,22 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyu-shibuya,TY01,,渋谷,渋谷,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-daikan-yama,TY02,,代官山,代官山,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-naka-meguro,TY03,,中目黒,中目黒,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tokyu-yutenji,TY04,,祐天寺,祐天寺,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tokyu-gakugei-daigaku,TY05,,学芸大学,学芸大学,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tokyu-toritsu-daigaku,TY06,,都立大学,都立大学,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tokyu-jiyugaoka,TY07,,自由が丘,自由が丘,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tokyu-den-en-chofu,TY08,line=東横線;group=004245,田園調布,田園調布,東急電鉄,S3 plan boundary anchor: raw N02 station codes share the documented group and exact midpoint; selector pins the service stop to its continuing line.
+8,tokyu-tamagawa,TY09,,多摩川,多摩川,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,tokyu-shin-maruko,TY10,,新丸子,新丸子,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,tokyu-musashi-kosugi,TY11,,武蔵小杉,武蔵小杉,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,tokyu-motosumiyoshi,TY12,,元住吉,元住吉,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,tokyu-hiyoshi,TY13,,日吉,日吉,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+13,tokyu-tsunashima,TY14,,綱島,綱島,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+14,tokyu-okurayama,TY15,,大倉山,大倉山,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+15,tokyu-kikuna,TY16,,菊名,菊名,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+16,tokyu-myorenji,TY17,,妙蓮寺,妙蓮寺,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+17,tokyu-hakuraku,TY18,,白楽,白楽,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+18,tokyu-higashi-hakuraku,TY19,,東白楽,東白楽,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+19,tokyu-tammachi,TY20,,反町,反町,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+20,tokyu-yokohama,TY21,,横浜,横浜,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keisei-keisei-takasago,KS10,line=金町線;code=003248,京成高砂,京成高砂,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/金町線, code 003248, group 003248."
+1,keisei-shibamata,KS50,line=金町線;code=003232,柴又,柴又,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/金町線, code 003232, group 003232."
+2,keisei-keisei-kanamachi,KS51,line=金町線;code=003195,京成金町,京成金町,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/金町線, code 003195, group 003195."

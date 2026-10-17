@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keisei-chiba-chuo,KS60,line=千原線;code=004194,千葉中央,千葉中央,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千原線, code 004194, group 004194."
+1,keisei-chibadera,KS61,line=千原線;code=004260,千葉寺,千葉寺,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千原線, code 004260, group 004260."
+2,keisei-omoridai,KS62,line=千原線;code=004276,大森台,大森台,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千原線, code 004276, group 004276."
+3,keisei-gakuemmae,KS63,line=千原線;code=004338,学園前,学園前,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千原線, code 004338, group 004338."
+4,keisei-oyumino,KS64,line=千原線;code=004365,おゆみ野,おゆみ野,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千原線, code 004365, group 004365."
+5,keisei-chiharadai,KS65,line=千原線;code=004423,ちはら台,ちはら台,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千原線, code 004423, group 004423."

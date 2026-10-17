@@ -1,0 +1,139 @@
+{
+  "group": "keisei-hokuso-tx",
+  "serviceIds": [
+    "keisei-main",
+    "keisei-oshiage",
+    "keisei-kanamachi",
+    "keisei-chiba",
+    "keisei-chihara",
+    "keisei-higashi-narita",
+    "keisei-matsudo",
+    "tx",
+    "hokuso-main",
+    "keisei-narita-airport-access"
+  ],
+  "services": [
+    {
+      "service_id": "keisei-main",
+      "line_name": "京成本線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "ueno|nippori|keisei-shin-mikawashima|keisei-machiya|keisei-senju-ohashi|keisei-keisei-sekiya|keisei-horikiri-shobuen|keisei-ohanajaya|keisei-aoto|hokuso-keisei-takasago|keisei-keisei-koiwa|keisei-edogawa|keisei-konodai|keisei-ichikawa-mama|keisei-sugano|moto-yawata|keisei-onigoe|keisei-keisei-nakayama|keisei-higashi-nakayama|keisei-keisei-nishifuna|keisei-kaijin|funabashi|keisei-daijingushita|keisei-funabashi-keibajo|keisei-yatsu|keisei-keisei-tsudanuma|keisei-keisei-okubo|keisei-mimomi|keisei-yachiyodai|keisei-keisei-owada|keisei-katsutadai|keisei-shizu|keisei-yukarigaoka|keisei-keisei-usui|keisei-keisei-sakura|keisei-osakura|keisei-keisei-shisui|keisei-sogo-sando|keisei-kozunomori|narita|narita-airport-terminal-2-3|narita-airport-terminal-1",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keisei-oshiage",
+      "line_name": "京成押上線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keisei-oshiage|keisei-keisei-hikifune|keisei-yahiro|keisei-yotsugi|keisei-keisei-tateishi|keisei-aoto",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "keisei-kanamachi",
+      "line_name": "京成金町線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "hokuso-keisei-takasago|keisei-shibamata|kanamachi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keisei-chiba",
+      "line_name": "京成千葉線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keisei-keisei-tsudanuma|makuharihongo|keisei-keisei-makuhari|keisei-kemigawa|keisei-keisei-inage|keisei-midoridai|keisei-nishi-noboto|keisei-shin-chiba|chiba|keisei-chiba-chuo",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "keisei-chihara",
+      "line_name": "京成千原線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keisei-chiba-chuo|keisei-chibadera|keisei-omoridai|keisei-gakuemmae|keisei-oyumino|keisei-chiharadai",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keisei-higashi-narita",
+      "line_name": "京成東成田線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "narita|keisei-higashi-narita",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "keisei-matsudo",
+      "line_name": "京成松戸線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keisei-keisei-tsudanuma|tsudanuma|keisei-maebara|keisei-yakuendai|keisei-narashino|keisei-kita-narashino|keisei-takanekido|keisei-takanekodan|keisei-takifudo|keisei-misaki|keisei-futawamukodai|keisei-kamagaya-daibutsu|keisei-hatsutomi|hokuso-shin-kamagaya|keisei-kita-hatsutomi|keisei-kunugiyama|keisei-motoyama|keisei-goko|keisei-tokiwadaira|shin-yahashira|keisei-minoridai|keisei-matsudo-shinden|keisei-kami-hongo|matsudo",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tx",
+      "line_name": "つくばエクスプレス 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "akihabara|toei-shin-okachimachi|tx-asakusa|minami-senju|kita-senju|tx-aoi|tx-rokucho|tx-yashio|tx-misato-chuo|minami-nagareyama|tx-nagareyama-centralpark|tobu-nagareyama-otakanomori|tx-kashiwanoha-campus|tx-kashiwa-tanaka|tx-moriya|tx-miraidaira|tx-midorino|tx-bampaku-kinen-koen|tx-kenkyu-gakuen|tx-tsukuba",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "hokuso-main",
+      "line_name": "北総線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "hokuso-keisei-takasago|hokuso-shin-shibamata|hokuso-yagiri|hokuso-kita-kokubun|hokuso-akiyama|higashi-matsudo|hokuso-matsuhidai|hokuso-omachi|hokuso-shin-kamagaya|hokuso-nishi-shiroi|hokuso-shiroi|hokuso-komuro|hokuso-chiba-newtown-chuo|hokuso-inzai-makinohara|hokuso-imba-nihon-idai",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keisei-narita-airport-access",
+      "line_name": "京成成田空港線 アクセス特急・実質各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "hokuso-imba-nihon-idai|keisei-narita-yukawa|narita-airport-terminal-2-3|narita-airport-terminal-1",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "keisei-chiba",
+      "serviceIds": [
+        "keisei-main",
+        "keisei-oshiage",
+        "keisei-kanamachi",
+        "keisei-chiba",
+        "keisei-chihara",
+        "keisei-higashi-narita",
+        "keisei-matsudo",
+        "keisei-narita-airport-access"
+      ]
+    },
+    {
+      "componentId": "tx",
+      "serviceIds": [
+        "tx"
+      ]
+    },
+    {
+      "componentId": "hokuso-main",
+      "serviceIds": [
+        "hokuso-main"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 10,
+    "stops": 132,
+    "pairs": 122
+  }
+}

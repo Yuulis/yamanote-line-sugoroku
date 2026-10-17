@@ -1,0 +1,284 @@
+{
+  "lines": [
+    {
+      "id": "keikyu-main",
+      "name": "京急本線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keikyu-airport",
+      "name": "京急空港線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keikyu-daishi",
+      "name": "京急大師線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keikyu-zushi",
+      "name": "京急逗子線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keikyu-kurihama",
+      "name": "京急久里浜線 普通・実質各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "keikyu-main",
+      "name": "京急本線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keikyu-main"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浦賀方面",
+        "backward": "泉岳寺方面"
+      },
+      "expectedStopCount": 50,
+      "lengthRef": {
+        "km": 56.7,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 泉岳寺–浦賀: 56.700 km; 営業キロ程表 p.1, 泉岳寺→浦賀 (https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京浜急行電鉄",
+      "n02Operator": "京浜急行電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "KK01",
+          "KK02",
+          "KK03",
+          "KK04",
+          "KK05",
+          "KK06",
+          "KK07",
+          "KK08",
+          "KK09",
+          "KK10",
+          "KK11",
+          "KK18",
+          "KK19",
+          "KK20",
+          "KK27",
+          "KK28",
+          "KK29",
+          "KK30",
+          "KK31",
+          "KK32",
+          "KK33",
+          "KK34",
+          "KK35",
+          "KK36",
+          "KK37",
+          "KK38",
+          "KK39",
+          "KK40",
+          "KK41",
+          "KK42",
+          "KK43",
+          "KK44",
+          "KK45",
+          "KK46",
+          "KK47",
+          "KK48",
+          "KK49",
+          "KK50",
+          "KK54",
+          "KK55",
+          "KK56",
+          "KK57",
+          "KK58",
+          "KK59",
+          "KK60",
+          "KK61",
+          "KK62",
+          "KK63",
+          "KK64"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keikyu-airport",
+      "name": "京急空港線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keikyu-airport"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "羽田空港第1・第2ターミナル方面",
+        "backward": "京急蒲田方面"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 6.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京急蒲田–羽田空港第1・第2ターミナル: 6.500 km; 営業キロ程表 p.1, 京急蒲田→羽田空港第1・第2ターミナル (https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京浜急行電鉄",
+      "n02Operator": "京浜急行電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KK11",
+          "KK12",
+          "KK13",
+          "KK14",
+          "KK15",
+          "KK16",
+          "KK17"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keikyu-daishi",
+      "name": "京急大師線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keikyu-daishi"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小島新田方面",
+        "backward": "京急川崎方面"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 4.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京急川崎–小島新田: 4.500 km; 営業キロ程表 p.1, 京急川崎→小島新田 (https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京浜急行電鉄",
+      "n02Operator": "京浜急行電鉄",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KK20",
+          "KK21",
+          "KK22",
+          "KK23",
+          "KK24",
+          "KK25",
+          "KK26"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keikyu-zushi",
+      "name": "京急逗子線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keikyu-zushi"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "逗子・葉山方面",
+        "backward": "金沢八景方面"
+      },
+      "expectedStopCount": 4,
+      "lengthRef": {
+        "km": 5.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 金沢八景–逗子・葉山: 5.900 km; 営業キロ程表 p.1, 金沢八景→逗子・葉山 (https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京浜急行電鉄",
+      "n02Operator": "京浜急行電鉄",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KK50",
+          "KK51",
+          "KK52",
+          "KK53"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keikyu-kurihama",
+      "name": "京急久里浜線 普通・実質各停",
+      "kind": "local",
+      "lineIds": [
+        "keikyu-kurihama"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "三崎口方面",
+        "backward": "堀ノ内方面"
+      },
+      "expectedStopCount": 9,
+      "lengthRef": {
+        "km": 13.4,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 堀ノ内–三崎口: 13.400 km; 営業キロ程表 p.1, 堀ノ内→三崎口 (https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京浜急行電鉄",
+      "n02Operator": "京浜急行電鉄",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KK61",
+          "KK65",
+          "KK66",
+          "KK67",
+          "KK68",
+          "KK69",
+          "KK70",
+          "KK71",
+          "KK72"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}

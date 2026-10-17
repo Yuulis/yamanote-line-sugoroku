@@ -1,0 +1,12 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-shin-tochigi,TN-12,,新栃木,新栃木,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tobu-yashu-hirakawa,TN-31,,野州平川,野州平川,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tobu-yashu-otsuka,TN-32,,野州大塚,野州大塚,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tobu-mibu,TN-33,,壬生,壬生,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tobu-kuniya,TN-34,,国谷,国谷,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tobu-omochanomachi,TN-35,,おもちゃのまち,おもちゃのまち,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tobu-yasuzuka,TN-36,,安塚,安塚,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tobu-nishi-kawada,TN-37,,西川田,西川田,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,tobu-esojima,TN-38,,江曽島,江曾島,東武鉄道,Raw N02 station feature 002155 is named 江曾島 on 宇都宮線; frozen registry name remains unchanged.
+9,tobu-minami-utsunomiya,TN-39,,南宇都宮,南宇都宮,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,tobu-tobu-utsunomiya,TN-40,,東武宇都宮,東武宇都宮,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

@@ -1,0 +1,9 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-sakado,TJ-26,,坂戸,坂戸,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tobu-ippommatsu,TJ-41,,一本松,一本松,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tobu-nishi-oya,TJ-42,,西大家,西大家,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tobu-kawakado,TJ-43,,川角,川角,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tobu-bushu-nagase,TJ-44,,武州長瀬,武州長瀬,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tobu-higashi-moro,TJ-45,,東毛呂,東毛呂,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tobu-bushu-karasawa,TJ-46,,武州唐沢,武州唐沢,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tobu-ogose,TJ-47,,越生,越生,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

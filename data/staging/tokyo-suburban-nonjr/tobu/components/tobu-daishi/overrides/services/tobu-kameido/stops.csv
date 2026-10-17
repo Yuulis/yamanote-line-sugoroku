@@ -1,0 +1,6 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-hikifune,TS-04,,曳舟,曳舟,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tobu-omurai,TS-41,,小村井,小村井,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tobu-higashi-azuma,TS-42,,東あずま,東あずま,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tobu-kameido-suijin,TS-43,,亀戸水神,亀戸水神,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tobu-kameido,TS-44,,亀戸,亀戸,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

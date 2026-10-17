@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,sotetsu-nishiya,SO08,line=相鉄新横浜線;group=004594;code=004594,西谷,西谷,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄新横浜線; N02_005c=004594, N02_005g=004594."
+1,sotetsu-hazawa-yokohama-kokudai,SO51,line=相鉄新横浜線;group=004581;code=004582,羽沢横浜国大,羽沢横浜国大,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄新横浜線; N02_005c=004582, N02_005g=004581."
+2,sotetsu-shin-yokohama,SO52,line=相鉄新横浜線;group=004501;code=010164,新横浜,新横浜,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄新横浜線; N02_005c=010164, N02_005g=004501."

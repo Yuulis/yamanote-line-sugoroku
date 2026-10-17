@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keio-kitano,KO33,line=高尾線;group=004007;code=004008,北野,北野,京王電鉄,Raw N02 confirms this 高尾線 station code 004008 and group 004007; pin the platform used by this frozen service.
+1,keio-katakura,KO48,line=高尾線;group=004009;code=004009,京王片倉,京王片倉,京王電鉄,Raw N02 confirms frozen station name 京王片倉 (N02 name 京王片倉) on 高尾線 at platform code 004009 and group 004009; pin this service stop.
+2,keio-yamada,KO49,line=高尾線;group=004010;code=004010,山田,山田,京王電鉄,Raw N02 confirms frozen station name 山田 (N02 name 山田) on 高尾線 at platform code 004010 and group 004010; pin this service stop.
+3,keio-mejirodai,KO50,line=高尾線;group=004019;code=004019,めじろ台,めじろ台,京王電鉄,Raw N02 confirms frozen station name めじろ台 (N02 name めじろ台) on 高尾線 at platform code 004019 and group 004019; pin this service stop.
+4,keio-hazama,KO51,line=高尾線;group=004035;code=004035,狭間,狭間,京王電鉄,Raw N02 confirms frozen station name 狭間 (N02 name 狭間) on 高尾線 at platform code 004035 and group 004035; pin this service stop.
+5,keio-takao,KO52,line=高尾線;group=004029;code=004033,高尾,高尾,京王電鉄,Raw N02 confirms frozen station name 高尾 (N02 name 高尾) on 高尾線 at platform code 004033 and group 004029; pin this service stop.
+6,keio-takaosanguchi,KO53,line=高尾線;group=004075;code=004075,高尾山口,高尾山口,京王電鉄,Raw N02 confirms frozen station name 高尾山口 (N02 name 高尾山口) on 高尾線 at platform code 004075 and group 004075; pin this service stop.

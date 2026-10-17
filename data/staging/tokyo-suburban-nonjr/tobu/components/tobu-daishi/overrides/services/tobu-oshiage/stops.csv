@@ -1,0 +1,3 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-oshiage,TS-03,line=伊勢崎線;code=003541,押上,押上,東武鉄道,Raw N02 station feature identifies 押上 as 伊勢崎線 code 003541; service continues north on this code.
+1,tobu-hikifune,TS-04,,曳舟,曳舟,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

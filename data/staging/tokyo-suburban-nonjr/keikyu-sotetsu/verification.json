@@ -1,0 +1,13 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "keikyu-airport",
+    "sotetsu-izumino"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/keikyu-sotetsu",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "16a3bd3abe75ad6d73ee71b5db3d683cd54df3d7f208ee715c9721a2eeefb5c2",
+    "length-ref-components.csv": "df7b7dcbf32598d549fa9c8f753763ba5f42cfd37e500a7faab19db5ee44ed79"
+  }
+}

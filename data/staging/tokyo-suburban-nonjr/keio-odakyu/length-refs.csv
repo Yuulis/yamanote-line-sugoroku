@@ -1,0 +1,10 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+keio-main,新宿,京王八王子,37.9,https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf,37.649,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keio-sagamihara,調布,橋本,22.6,https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf,22.584,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keio-takao,北野,高尾山口,8.6,https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf,8.593,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keio-keibajo,東府中,府中競馬正門前,0.9,https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf,0.955,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keio-dobutsuen,高幡不動,多摩動物公園,2.0,https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf,1.937,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keio-inokashira,渋谷,吉祥寺,12.7,https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf,12.767,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+odakyu-odawara,新宿,小田原,82.5,https://www.odakyu.jp/ticket/doc/passenger_operating_rules.pdf?v=20260314,82.575,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+odakyu-enoshima,相模大野,片瀬江ノ島,27.4,https://www.odakyu.jp/ticket/doc/passenger_operating_rules.pdf?v=20260314,27.410,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+odakyu-tama,新百合ヶ丘,唐木田,10.6,https://www.odakyu.jp/ticket/doc/passenger_operating_rules.pdf?v=20260314,10.654,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.

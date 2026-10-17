@@ -1,0 +1,13 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "tokyu-den-en-toshi",
+    "mm-minatomirai"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/tokyu-mm",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "ed105dbcbc8cb9260afd36009654cd7e2cad87b2670701d5161517d9618be48b",
+    "length-ref-components.csv": "fcb7eed0070b931442a02ffd70f8dd80421df9c9ac72ded2b1931ac58ddbeb60"
+  }
+}

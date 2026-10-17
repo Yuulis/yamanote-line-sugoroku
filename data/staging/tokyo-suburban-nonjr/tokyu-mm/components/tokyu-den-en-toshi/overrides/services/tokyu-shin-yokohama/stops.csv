@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyu-hiyoshi,SH03,,日吉,日吉,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-shin-tsunashima,SH02,,新綱島,新綱島,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-shin-yokohama,SH01,,新横浜,新横浜,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

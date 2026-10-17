@@ -1,0 +1,11 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyu-sangen-jaya,SG01,,三軒茶屋,三軒茶屋,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-nishi-taishido,SG02,,西太子堂,西太子堂,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-wakabayashi,SG03,,若林,若林,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tokyu-shoin-jinja-mae,SG04,,松陰神社前,松陰神社前,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tokyu-setagaya,SG05,,世田谷,世田谷,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tokyu-kamimachi,SG06,,上町,上町,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tokyu-miyanosaka,SG07,,宮の坂,宮の坂,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tokyu-yamashita,SG08,,山下,山下,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,tokyu-matsubara,SG09,,松原,松原,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,tokyu-shimo-takaido,SG10,,下高井戸,下高井戸,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

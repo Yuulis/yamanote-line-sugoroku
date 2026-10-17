@@ -12,7 +12,7 @@ from scripts.data_pipeline import config
 from scripts.data_pipeline.budgets import parse_budgets
 from scripts.data_pipeline.composition import parse_compose
 from scripts.data_pipeline.constraints import (
-    STATION_NUMBER_PATTERN,
+    STATION_NUMBER_EVIDENCE_PATTERN,
     BBox,
     ConstraintError,
     OffsetException,
@@ -280,7 +280,8 @@ def parse_service_definition(raw: Any) -> ServiceDefinition:
             not isinstance(sequence, list)
             or len(sequence) != count
             or not all(
-                isinstance(v, str) and (not v or STATION_NUMBER_PATTERN.fullmatch(v))
+                isinstance(v, str)
+                and (not v or STATION_NUMBER_EVIDENCE_PATTERN.fullmatch(v))
                 for v in sequence
             )
         ):

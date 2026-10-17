@@ -1,0 +1,200 @@
+{
+  "lines": [
+    {
+      "id": "odakyu-odawara",
+      "name": "小田急小田原線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "odakyu-enoshima",
+      "name": "小田急江ノ島線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "odakyu-tama",
+      "name": "小田急多摩線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "odakyu-odawara",
+      "name": "小田急小田原線 各停",
+      "kind": "local",
+      "lineIds": [
+        "odakyu-odawara"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小田原方面",
+        "backward": "新宿方面"
+      },
+      "expectedStopCount": 47,
+      "lengthRef": {
+        "km": 82.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 新宿–小田原: 82.500 km; 小田急電鉄 旅客営業規則 別表第1号イ 営業キロ程表 p.87, 小田原線, 新宿→小田原 (https://www.odakyu.jp/ticket/doc/passenger_operating_rules.pdf?v=20260314)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "小田急電鉄",
+      "n02Operator": "小田急電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "OH01",
+          "OH02",
+          "OH03",
+          "OH04",
+          "OH05",
+          "OH06",
+          "OH07",
+          "OH08",
+          "OH09",
+          "OH10",
+          "OH11",
+          "OH12",
+          "OH13",
+          "OH14",
+          "OH15",
+          "OH16",
+          "OH17",
+          "OH18",
+          "OH19",
+          "OH20",
+          "OH21",
+          "OH22",
+          "OH23",
+          "OH24",
+          "OH25",
+          "OH26",
+          "OH27",
+          "OH28",
+          "OH29",
+          "OH30",
+          "OH31",
+          "OH32",
+          "OH33",
+          "OH34",
+          "OH35",
+          "OH36",
+          "OH37",
+          "OH38",
+          "OH39",
+          "OH40",
+          "OH41",
+          "OH42",
+          "OH43",
+          "OH44",
+          "OH45",
+          "OH46",
+          "OH47"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "odakyu-enoshima",
+      "name": "小田急江ノ島線 各停",
+      "kind": "local",
+      "lineIds": [
+        "odakyu-enoshima"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "片瀬江ノ島方面",
+        "backward": "相模大野方面"
+      },
+      "expectedStopCount": 17,
+      "lengthRef": {
+        "km": 27.4,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 相模大野–片瀬江ノ島: 27.400 km; 小田急電鉄 旅客営業規則 別表第1号イ 営業キロ程表 p.87, 江ノ島線, 相模大野→片瀬江ノ島 (https://www.odakyu.jp/ticket/doc/passenger_operating_rules.pdf?v=20260314)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "小田急電鉄",
+      "n02Operator": "小田急電鉄",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "OH28",
+          "OE01",
+          "OE02",
+          "OE03",
+          "OE04",
+          "OE05",
+          "OE06",
+          "OE07",
+          "OE08",
+          "OE09",
+          "OE10",
+          "OE11",
+          "OE12",
+          "OE13",
+          "OE14",
+          "OE15",
+          "OE16"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "odakyu-tama",
+      "name": "小田急多摩線 各停",
+      "kind": "local",
+      "lineIds": [
+        "odakyu-tama"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "唐木田方面",
+        "backward": "新百合ヶ丘方面"
+      },
+      "expectedStopCount": 8,
+      "lengthRef": {
+        "km": 10.6,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 新百合ヶ丘–唐木田: 10.600 km; 小田急電鉄 旅客営業規則 別表第1号イ 営業キロ程表 p.87, 多摩線, 新百合ヶ丘→唐木田 (https://www.odakyu.jp/ticket/doc/passenger_operating_rules.pdf?v=20260314)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "小田急電鉄",
+      "n02Operator": "小田急電鉄",
+      "areaPrefectures": [
+        "神奈川県",
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "OH23",
+          "OT01",
+          "OT02",
+          "OT03",
+          "OT04",
+          "OT05",
+          "OT06",
+          "OT07"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}
