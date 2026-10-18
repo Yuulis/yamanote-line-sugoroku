@@ -5,12 +5,46 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any
 
 
 class StageError(ValueError):
     """Invalid staging input or a failed preservation gate."""
+
+
+HISTORICAL_BASELINE_ROOT = Path("data/baselines/jr-east-capital-region")
+HISTORICAL_BASELINE_TREES = ("public/data", "data/overrides")
+
+
+def _stable_repr(value: Any) -> str:
+    """Render nested values deterministically while preserving set-free reprs."""
+    if isinstance(value, set | frozenset):
+        if not value:
+            return repr(value)
+        members = ", ".join(sorted(_stable_repr(member) for member in value))
+        if isinstance(value, frozenset):
+            return f"frozenset({{{members}}})"
+        return f"{{{members}}}"
+    if is_dataclass(value) and not isinstance(value, type):
+        parts = ", ".join(
+            f"{field.name}={_stable_repr(getattr(value, field.name))}"
+            for field in fields(value)
+            if field.repr
+        )
+        return f"{type(value).__qualname__}({parts})"
+    if isinstance(value, tuple):
+        items = [_stable_repr(item) for item in value]
+        return f"({items[0]},)" if len(items) == 1 else f"({', '.join(items)})"
+    if isinstance(value, list):
+        return f"[{', '.join(_stable_repr(item) for item in value)}]"
+    if isinstance(value, dict):
+        entries = ", ".join(
+            f"{_stable_repr(key)}: {_stable_repr(item)}" for key, item in value.items()
+        )
+        return f"{{{entries}}}"
+    return repr(value)
 
 
 def sha256_file(path: Path) -> str:
@@ -77,13 +111,102 @@ def verify_freeze(freeze_path: Path, root: Path) -> None:
 
 
 def baseline_hashes(root: Path) -> dict[str, str]:
-    """Return the live public-data hashes used by saved staging baselines."""
-    baseline = root / "public/data"
-    return {
-        path.name: hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in sorted(baseline.iterdir())
-        if path.is_file()
-    }
+    """Return the selected historical public-data hashes for staging checks."""
+    return hash_tree(resolve_historical_baseline(root, "public/data"))
+
+
+def _baseline_hash_records(root: Path, relative: str) -> list[dict[str, str]]:
+    """Read every saved staging hash map for one historical tree."""
+    records: list[dict[str, str]] = []
+    staging_roots = (
+        root / "data/staging/tokyo-suburban-jr",
+        root / "data/staging/tokyo-suburban-nonjr",
+    )
+    for staging_root in staging_roots:
+        if not staging_root.is_dir():
+            continue
+        for path in sorted(staging_root.rglob("baseline-sha256.json")):
+            try:
+                snapshot = read_json(path)
+            except (OSError, json.JSONDecodeError) as error:
+                raise StageError(
+                    f"saved staging baseline is unreadable: {path.relative_to(root)}"
+                ) from error
+            if not isinstance(snapshot, dict):
+                continue
+            if relative == "public/data":
+                candidate = snapshot.get("publicData", snapshot)
+            else:
+                candidate = snapshot.get("liveOverrides")
+            if (
+                isinstance(candidate, dict)
+                and candidate
+                and all(
+                    isinstance(name, str) and isinstance(digest, str)
+                    for name, digest in candidate.items()
+                )
+            ):
+                records.append(candidate)
+    return records
+
+
+def _saved_baseline_hashes(root: Path, relative: str) -> dict[str, str] | None:
+    records = _baseline_hash_records(root, relative)
+    if not records:
+        return None
+    expected = records[0]
+    if any(record != expected for record in records[1:]):
+        raise StageError(f"saved staging baselines disagree for {relative}")
+    return expected
+
+
+def _is_product_cutover(root: Path) -> bool:
+    """Recognize only the S5 product identity that replaces historical live data."""
+    try:
+        dataset = read_json(root / "data/overrides/dataset.json")
+    except (OSError, json.JSONDecodeError):
+        return False
+    return (
+        isinstance(dataset, dict)
+        and dataset.get("operator") == "Tokyo suburban rail operators"
+        and dataset.get("areaName") == "Tokyo suburban rail"
+        and dataset.get("validationProfile") == "gameplay"
+        and dataset.get("startStationId") == "shimbashi"
+        and dataset.get("targetServiceId") == "jr-yamanote"
+        and "stageStartStationId" not in dataset
+    )
+
+
+def resolve_historical_baseline(root: Path, relative: str) -> Path:
+    """Resolve an old-edition tree, preferring verified live data before cutover.
+
+    The archived copy is eligible only after S5 product metadata replaces the
+    live edition and both archived trees exactly match the saved staging hashes.
+    """
+    if relative not in HISTORICAL_BASELINE_TREES:
+        raise StageError(f"unsupported historical baseline tree: {relative}")
+    expected = _saved_baseline_hashes(root, relative)
+    live = root / relative
+    if expected is None:
+        return live
+    if live.is_dir() and hash_tree(live) == expected:
+        return live
+    if not _is_product_cutover(root):
+        raise StageError(f"live historical baseline mismatch: {relative}")
+
+    archive = root / HISTORICAL_BASELINE_ROOT
+    for archived_relative in HISTORICAL_BASELINE_TREES:
+        archived_expected = _saved_baseline_hashes(root, archived_relative)
+        archived = archive / archived_relative
+        if (
+            archived_expected is None
+            or not archived.is_dir()
+            or hash_tree(archived) != archived_expected
+        ):
+            raise StageError(
+                f"historical baseline archive mismatch: {archived_relative}"
+            )
+    return archive / relative
 
 
 def write_baseline_hashes(region_root: Path, root: Path) -> None:

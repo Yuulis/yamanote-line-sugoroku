@@ -1,16 +1,35 @@
-order,station_id,station_number,platform_selector
-0,tokyo,JU01,
-1,ueno,JU02,
-2,oku,JU03,
-3,akabane,JU04,
-4,urawa,JU05,
-5,saitama-shintoshin,JU06,
-6,omiya,JU07,
-7,toro,JU08,
-8,higashi-omiya,JU09,
-9,hasuda,JU10,
-10,shiraoka,JU11,
-11,shin-shiraoka,JU12,
-12,kuki,JU13,
-13,higashi-washinomiya,JU14,
-14,kurihashi,JU15,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyo,JU01,,東京,東京,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,ueno,JU02,,上野,上野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,oku,JU03,,尾久,尾久,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,akabane,JU04,,赤羽,赤羽,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,urawa,JU05,,浦和,浦和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,saitama-shintoshin,JU06,,さいたま新都心,さいたま新都心,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,omiya,JU07,,大宮,大宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,toro,JU08,,土呂,土呂,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,higashi-omiya,JU09,,東大宮,東大宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,hasuda,JU10,,蓮田,蓮田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,shiraoka,JU11,,白岡,白岡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,shin-shiraoka,JU12,,新白岡,新白岡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,kuki,JU13,,久喜,久喜,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,higashi-washinomiya,JU14,,東鷲宮,東鷲宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,kurihashi,JU15,,栗橋,栗橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,koga,,,古河,古河,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,nogi,,,野木,野木,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,mamada,,,間々田,間々田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,oyama,,,小山,小山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,koganei,,,小金井,小金井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,jichi-medical-university,,,自治医大,自治医大,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,ishibashi,,,石橋,石橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,suzumenomiya,,,雀宮,雀宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,utsunomiya,,,宇都宮,宇都宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+24,okamoto,,,岡本,岡本,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+25,hoshakuji,,,宝積寺,宝積寺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+26,ujiie,,,氏家,氏家,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+27,kamasusaka,,,蒲須坂,蒲須坂,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+28,kataoka,,,片岡,片岡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+29,yaita,,,矢板,矢板,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+30,nozaki,,,野崎,野崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+31,nishi-nasuno,,,西那須野,西那須野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+32,nasushiobara,,,那須塩原,那須塩原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+33,kuroiso,,,黒磯,黒磯,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

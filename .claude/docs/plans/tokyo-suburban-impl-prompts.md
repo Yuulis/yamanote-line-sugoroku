@@ -376,3 +376,73 @@ git diff --exit-code -- public/data data/overrides data/staging/tokyo-suburban-j
 
 Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
 `Stops for lead review` (each with evidence), `Deviations from plan`, `Open issues`.
+
+## s5-plan — S5 implementation plan (Codex Sol `low`, `--sandbox read-only`)
+
+Objective: produce a directly executable plan for S5 (final bundle, rule configuration and incompatible-save behaviour) that
+Codex Luna can implement in bounded runs without making design or product decisions.
+
+S5 per `.claude/docs/plans/tokyo-suburban-network-design.md` section 4: acceptance "full deterministic rebuild/hash checks;
+30 Yamanote target segments; seeded replay and old-save rejection". The new edition REPLACES the shipped 1都3県 edition (no
+selector; old saves discarded through the existing incompatible-save path — no migration code, no automatic deletion). The
+map/legend/UI, the D3 single 大江戸線 UI line and the D4 title/notice change are S6, not S5 — S5 only ships the data/config
+they need and must not change UI copy.
+
+Read: the design doc (sections 1–5, esp. section 3 on dataset/ruleset versioning); `.claude/docs/plans/tokyo-suburban-s0-freeze.json`
+(`ruleset`: id `tokyo-suburban-1`, target `jr-yamanote` direction 1, service lottery target share 2/3 with kind weights 1/1,
+direction lottery toward-target weight 2, goal = all 30 jr-yamanote outer directed segments then arrive `shimbashi`, start
+`shimbashi`; `representations.uiLineGroups`; statistics median 55 / p90 146 / p99 261 from 5,000 games);
+`.claude/docs/research/tokyo-suburban-r2.md` and `tokyo-suburban-r2-tools/` (run_matrix.py, measure.test.ts, verify_results.py —
+how the chosen case was simulated); the S4 handoff `data/staging/tokyo-suburban-assembled/{README.md,REVIEW.md,verification.json}`
+and the S4 row + carry-overs in `.claude/docs/plans/tokyo-suburban-network-handoff.md`; `data/README.md`; `scripts/data_pipeline/*.py`
+(build, config, export, stage profile, `directed_segment_target_service_id`); live `data/overrides/**` and `public/data/*`;
+`src/features/game/**` (engine config, networkFromData, save/persistence and its incompatibility check, `MVP_GAME_CONFIG`),
+`src/data/**`, `src/types/**`; existing tests (`tests/data_pipeline/`, vitest specs, `npm run sim` and its config); `package.json`.
+
+Constraints:
+- Product overrides are derived reproducibly from the audited S4 overrides (no hand edits, no stage-manifest relabel); the
+  product build is deterministic (A/B identical) and validated with the product profile; every S4 check stays green.
+- Ruleset values come only from the freeze. Gameplay rules other than the freeze's ruleset do not change.
+- Old saves: decide from the actual contract diff whether a schema/save-version bump is needed; dataset/ruleset
+  incompatibility must be tested either way (old save rejected → existing discard path). No migration code.
+- Close S4 carry-overs: thread the product `targetServiceId`; `stage_suburban_nonjr.py::_filter_recipe_hash` → `_stable_repr`
+  (prove S3 outputs unchanged); verify consumed sidecars (shared-track review, UI groups, identity metadata, mileage
+  components) against frozen inputs.
+- Real-data simulation must reproduce the frozen chosen-case distribution within a stated tolerance (seeded, deterministic);
+  state the tolerance and why. Bundle raw/gzip size must be measured against the design budget.
+- No relaxed tests or tolerances; tests failing-first; LF only; run sizing ≤ ~30 min per Luna run; early dedicated run for
+  any shared helper change; mark parallelizable runs.
+
+Output (markdown, ≤160 lines): `TL;DR`; `Contract diff` (data files, types, config, save format — before/after);
+`Product build` (inputs, command, outputs, determinism/hash checks); `Ruleset` (where it lives, values, tests);
+`Save incompatibility` (mechanism, version decision with evidence, tests); `Simulation acceptance`; `Carry-over closure`;
+`Runs` (per run: files, steps, tests, exact acceptance commands; parallel marks); `Risks`; `Decisions needing the user`
+(only genuine product choices; "none" if none).
+
+## s5-run — S5 implementation runs (Codex Luna `high`/`xhigh`, fast mode allowed; replace `<RUNS>`)
+
+Objective: implement S5 plan run(s) <RUNS> of `.claude/docs/plans/tokyo-suburban-s5-plan.md` exactly (the "Lead
+adjustments" header overrides the plan body).
+
+Read first: `.claude/docs/plans/tokyo-suburban-s5-plan.md` (the contract), `.claude/docs/plans/tokyo-suburban-s0-freeze.json`,
+`data/README.md`, `data/staging/tokyo-suburban-assembled/{README.md,REVIEW.md}`, `.claude/rules/coding-principles.md`,
+`.claude/rules/testing.md`, `.claude/rules/dev-environment.md`. Earlier S5 runs are in the working tree or committed; build on them.
+
+Scope: in — exactly the files the plan assigns to <RUNS>. Out — committed S2/S3/S4 staging data (`data/staging/**`; read
+only — a run that would change it must STOP), raw `N02-25_GML/**`, research files, docs under `.claude/`, UI copy/components
+(S6), git commits/pushes. Never weaken, skip or delete tests; failing-first tests; expected values from the freeze/frozen
+CSVs/original evidence, never from new outputs. LF only. Clear dirs with Python `shutil.rmtree` (`rm -rf` is blocked).
+Prose in English. STOP and report with evidence on any lead-adjustment-3 condition. Report only what exists on disk.
+
+Acceptance: the plan's acceptance for <RUNS>, plus always:
+```bash
+uv run ruff check scripts tests && uv run ruff format --check scripts tests
+uv run ty check scripts/data_pipeline
+uv run pytest tests/data_pipeline -q -rs
+uv run python .claude/docs/research/tokyo-suburban-r2-tools/check_freeze.py
+git diff --exit-code -- data/staging N02-25_GML
+```
+plus `npm run typecheck && npm test` whenever `src/` or TS tests change.
+
+Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
+`Stops for lead review` (each with evidence), `Deviations from plan`, `Open issues`.

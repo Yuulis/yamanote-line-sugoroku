@@ -17,12 +17,13 @@ from scripts.data_pipeline.constraints import JunctionRule, SectionFilter
 from scripts.data_pipeline.n02 import N02SourceProvider
 from scripts.data_pipeline.overrides import load_overrides
 from scripts.data_pipeline.routing import RoutingError
+from tests.data_pipeline.support import historical_baseline
 
 
 def _copy_seed_inputs(root: Path) -> Path:
     source = stage.ROOT
-    shutil.copytree(source / "data/overrides", root / "data/overrides")
-    shutil.copytree(source / "public/data", root / "public/data")
+    shutil.copytree(historical_baseline("data/overrides"), root / "data/overrides")
+    shutil.copytree(historical_baseline("public/data"), root / "public/data")
     research = root / ".claude/docs/research"
     research.mkdir(parents=True)
     input_names = (
@@ -458,16 +459,25 @@ def test_added_pair_measurement_rejects_scoped_allow_missing_from_its_window(
 def test_preservation_gate_detects_old_station_mutation(tmp_path: Path) -> None:
     baseline = tmp_path / "baseline"
     output = tmp_path / "output"
-    shutil.copytree(stage.ROOT / "public/data", baseline)
+    shutil.copytree(historical_baseline("public/data"), baseline)
     shutil.copytree(baseline, output)
     (tmp_path / "data/overrides").mkdir(parents=True)
     shutil.copytree(
-        stage.ROOT / "data/overrides/services", tmp_path / "data/overrides/services"
+        historical_baseline("data/overrides") / "services",
+        tmp_path / "data/overrides/services",
     )
     stage_dir = tmp_path / "data/staging/tokyo-suburban-jr/tohoku/overrides"
     shutil.copytree(tmp_path / "data/overrides", stage_dir)
 
-    assert stage._check_old_pair_records(stage_dir, output, baseline) == []
+    assert (
+        stage._check_old_pair_records(
+            stage_dir,
+            output,
+            baseline,
+            live_overrides=historical_baseline("data/overrides"),
+        )
+        == []
+    )
 
     stations = json.loads((output / "stations.json").read_text(encoding="utf-8"))
     stations[0]["name"] = "changed"
@@ -526,7 +536,12 @@ def test_preservation_gate_accepts_added_but_rejects_changed_or_missing_platform
         "added-platform",
         lambda platforms: platforms.update({"new-stage-stop": [139.0, 36.0]}),
     )
-    assert stage._check_old_pair_records(stage_dir, added, baseline) == []
+    assert (
+        stage._check_old_pair_records(
+            stage_dir, added, baseline, live_overrides=root / "data/overrides"
+        )
+        == []
+    )
 
     changed = updated_output(
         "changed-platform",
@@ -534,7 +549,12 @@ def test_preservation_gate_accepts_added_but_rejects_changed_or_missing_platform
     )
     assert (
         f"shipped platform coordinates changed: {shipped_service_id}"
-        in stage._check_old_pair_records(stage_dir, changed, baseline)
+        in stage._check_old_pair_records(
+            stage_dir,
+            changed,
+            baseline,
+            live_overrides=root / "data/overrides",
+        )
     )
 
     missing = updated_output(
@@ -543,7 +563,12 @@ def test_preservation_gate_accepts_added_but_rejects_changed_or_missing_platform
     )
     assert (
         f"shipped platform coordinates changed: {shipped_service_id}"
-        in stage._check_old_pair_records(stage_dir, missing, baseline)
+        in stage._check_old_pair_records(
+            stage_dir,
+            missing,
+            baseline,
+            live_overrides=root / "data/overrides",
+        )
     )
 
 

@@ -42,6 +42,9 @@ from scripts.data_pipeline.stage_suburban_support import (
     research_rows as _research_rows,
 )
 from scripts.data_pipeline.stage_suburban_support import (
+    resolve_historical_baseline as _resolve_historical_baseline,
+)
+from scripts.data_pipeline.stage_suburban_support import (
     verify_freeze as _verify_freeze,
 )
 from scripts.data_pipeline.stage_suburban_support import (
@@ -2000,7 +2003,8 @@ def audit(
     stage_dir = root / "data/staging/tokyo-suburban-jr" / region / "overrides"
     if not stage_dir.is_dir():
         raise StageError(f"region staging directory is missing: {stage_dir}")
-    baseline_dir = baseline_dir or root / "public/data"
+    baseline_dir = baseline_dir or _resolve_historical_baseline(root, "public/data")
+    baseline_overrides_dir = _resolve_historical_baseline(root, "data/overrides")
     errors: list[str] = []
     assigned_ids = (
         set(ALL_ASSIGNED_SERVICES)
@@ -2009,7 +2013,7 @@ def audit(
     )
     services = _json(stage_dir / "services.json")["services"]
     service_ids = {row["id"] for row in services}
-    shipped_services = _json(root / "data/overrides/services.json")["services"]
+    shipped_services = _json(baseline_overrides_dir / "services.json")["services"]
     shipped_by_id = {row["id"]: row for row in shipped_services}
     shipped_ids = set(shipped_by_id)
     expected_service_ids = shipped_ids | assigned_ids
@@ -2046,7 +2050,7 @@ def audit(
                 shipped_stop_ids = {
                     row["station_id"]
                     for row in _csv(
-                        root / "data/overrides/services" / service_id / "stops.csv"
+                        baseline_overrides_dir / "services" / service_id / "stops.csv"
                     )[1]
                 }
                 frozen_ids = [
@@ -2131,7 +2135,7 @@ def audit(
                 if service != expected_definition:
                     errors.append(f"non-assigned service definition changed: {sid}")
             for filename in ("stops.csv", "line_mapping.csv"):
-                live_path = root / "data/overrides/services" / sid / filename
+                live_path = baseline_overrides_dir / "services" / sid / filename
                 staged_path = stage_dir / "services" / sid / filename
                 if not live_path.is_file() or not staged_path.is_file():
                     errors.append(
@@ -2186,7 +2190,7 @@ def audit(
                     f"N02 source override lacks identity evidence: {sid}:{stop['station_id']}"
                 )
     baseline_registry = {
-        row["id"]: row for row in _csv(root / "data/overrides/stations.csv")[1]
+        row["id"]: row for row in _csv(baseline_overrides_dir / "stations.csv")[1]
     }
     for station_id, old in baseline_registry.items():
         if station_id not in registry:
@@ -2194,7 +2198,7 @@ def audit(
         elif registry[station_id] != old:
             errors.append(f"shipped registry station record changed: {station_id}")
     for filename, key_fields in DATASET_LEVEL_FILES.items():
-        live_fields, live_rows = _csv(root / "data/overrides" / filename)
+        live_fields, live_rows = _csv(baseline_overrides_dir / filename)
         staged_path = stage_dir / filename
         if not staged_path.is_file():
             errors.append(f"dataset-level exception file missing: {filename}")
@@ -2220,7 +2224,7 @@ def audit(
     try:
         errors.extend(
             _check_old_pair_records(
-                stage_dir, data_dir, baseline_dir, root / "data/overrides"
+                stage_dir, data_dir, baseline_dir, baseline_overrides_dir
             )
         )
     except (OSError, KeyError, TypeError, json.JSONDecodeError) as error:

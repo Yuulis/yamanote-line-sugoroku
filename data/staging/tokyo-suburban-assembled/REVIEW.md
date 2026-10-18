@@ -28,3 +28,13 @@ Open carry-overs to S5/S6 from `.claude/docs/plans/tokyo-suburban-network-handof
 - Change `stage_suburban_nonjr.py::_filter_recipe_hash` from `repr` to `_stable_repr`, and prove S3 outputs stay unchanged.
 - Verify consumed sidecars against frozen inputs: shared-track review, UI groups, identity metadata, and mileage components.
 - Decide how to display the 22 private-railway names containing large ケ as an S6 display choice.
+
+## S5 provenance refresh (2026-10-18)
+
+S5 changed hashed S4 helpers (`_stable_repr` moved to `stage_suburban_support.py`; `_distance_reference` now resolves the
+historical baseline after the product cutover). The lead re-ran preflight, assemble, offsets, review-shared, all ten evidence
+batches, gate, audit and handoff. Only provenance hashes changed (16 lines in `README.md`, `verification.json`,
+`assembly-report.json`, `inputs-sha256.json` and the evidence manifests); catalogue, pair measurements, sidecars and the
+five-file build hashes are unchanged. The current gate report SHA-256 is
+`b324a5d69deff266a4348ea827bdb4b94750ad074eb14f0815f571bbbb0a4ee0` (S4 commit value: `dc3085f9…`). The S5 carry-overs listed
+above are closed in S5 (see `.claude/docs/plans/tokyo-suburban-network-handoff.md`), except the large-ケ display choice (S6).

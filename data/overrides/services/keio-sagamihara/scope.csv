@@ -1,0 +1,13 @@
+station_id,prefecture,municipality,in_area
+keio-chofu,東京都,調布市,true
+keio-tamagawa,東京都,調布市,true
+inadazutsumi,神奈川県,川崎市多摩区,true
+keio-yomiuri-land,東京都,稲城市,true
+keio-inagi,東京都,稲城市,true
+keio-wakabadai,神奈川県,川崎市麻生区,true
+keio-nagayama,東京都,多摩市,true
+keio-tama-center,東京都,多摩市,true
+keio-horinouchi,東京都,八王子市,true
+keio-minami-osawa,東京都,八王子市,true
+keio-tamasakai,東京都,町田市,true
+hashimoto,神奈川県,相模原市緑区,true

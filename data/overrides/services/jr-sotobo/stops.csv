@@ -1,28 +1,28 @@
-order,station_id,station_number,platform_selector
-0,chiba,,
-1,hon-chiba,,
-2,soga,,
-3,kamatori,,
-4,honda,,
-5,toke,,
-6,oami,,
-7,nagata,,
-8,honno,,
-9,shim-mobara,,
-10,mobara,,
-11,yatsumi,,
-12,kazusa-ichinomiya,,
-13,torami,,
-14,taito,,
-15,chojamachi,,
-16,mikado,,
-17,ohara,,
-18,namihana,,
-19,onjuku,,
-20,katsuura,,
-21,ubara,,
-22,kazusa-okitsu,,
-23,namegawa-island,,
-24,awa-kominato,,
-25,awa-amatsu,,
-26,awa-kamogawa,,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,chiba,,,千葉,千葉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,hon-chiba,,,本千葉,本千葉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,soga,,,蘇我,蘇我,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,kamatori,,,鎌取,鎌取,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,honda,,,誉田,誉田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,toke,,,土気,土気,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,oami,,,大網,大網,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,nagata,,,永田,永田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,honno,,,本納,本納,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,shim-mobara,,,新茂原,新茂原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,mobara,,,茂原,茂原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,yatsumi,,,八積,八積,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,kazusa-ichinomiya,,,上総一ノ宮,上総一ノ宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,torami,,,東浪見,東浪見,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,taito,,,太東,太東,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,chojamachi,,,長者町,長者町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,mikado,,,三門,三門,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,ohara,,,大原,大原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,namihana,,,浪花,浪花,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,onjuku,,,御宿,御宿,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,katsuura,,,勝浦,勝浦,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,ubara,,,鵜原,鵜原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,kazusa-okitsu,,,上総興津,上総興津,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,namegawa-island,,,行川アイランド,行川アイランド,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+24,awa-kominato,,,安房小湊,安房小湊,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+25,awa-amatsu,,,安房天津,安房天津,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+26,awa-kamogawa,,,安房鴨川,安房鴨川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

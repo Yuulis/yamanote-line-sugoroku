@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import { createGame, playTurn, serializeGame } from "../../src/features/game/engine";
 import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { expect, test } from "./fixtures";
+import { PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { diceButton, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
@@ -30,14 +31,18 @@ async function expectPlatformsInView(page: Page, points: [number, number][]): Pr
 }
 
 
-test("the shipped capital-region network starts, moves and restores without console errors", async ({ page, railwayBundle }, testInfo) => {
-  // One smoke over the full 472-station bundle with several reloads under
+test("the shipped Tokyo suburban product network starts, moves and restores without console errors", async ({ page, railwayBundle }, testInfo) => {
+  // One smoke over the full 1,586-station bundle with several reloads under
   // software WebGL; it measures 22-33 s locally, at the default 30 s limit.
   test.slow();
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
-  expect(railwayBundle.network.stationsById.size).toBe(472);
+  expect(railwayBundle.network.stationsById.size).toBe(1_586);
+  expect(railwayBundle.network.servicesById.size).toBe(135);
+  expect(railwayBundle.network.segmentsById.size).toBe(3_988);
+  if (!railwayBundle.data.services.ok) throw new Error("The shipped service catalogue did not load");
+  expect(railwayBundle.data.services.value.services.reduce((sum, service) => sum + service.stationIds.length, 0)).toBe(2_142);
   await openTitle(page);
   await expect(page.getByText("JR東日本 1都3県版", { exact: true })).toBeVisible();
   await page.evaluate(() => performance.mark("jrcr-s6-app-start"));
@@ -76,7 +81,7 @@ test("the shipped capital-region network starts, moves and restores without cons
   await expectPlatformsInView(page, yamanotePoints);
   const allPlatforms = [...railwayBundle.network.servicesById.values()]
     .flatMap((service) => Object.values(service.platformCoordinates));
-  expect(railwayBundle.network.servicesById.size).toBe(40);
+  expect(railwayBundle.network.servicesById.size).toBe(135);
   await page.getByRole("button", { name: "全体", exact: true }).click();
   await expectPlatformsInView(page, allPlatforms);
   await page.screenshot({ path: testInfo.outputPath("network-overview.png") });
@@ -129,7 +134,7 @@ test("the shipped capital-region network starts, moves and restores without cons
   await expectPlatformsInView(page, yamanotePoints);
   await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
   if (testInfo.project.name === "desktop-chromium") {
-    let transferGame = createGame(MVP_GAME_CONFIG, "jrcr-s6-ueno-transfer", railwayBundle.network);
+    let transferGame = createGame(MVP_GAME_CONFIG, PRODUCT_UENO_TRANSFER_SEED, railwayBundle.network);
     while (
       transferGame.status === "playing" &&
       transferGame.turn < 5_000 &&

@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+seibu-agano,seibu-nishi-agano,西武秩父線,,,
+seibu-nishi-agano,seibu-shomaru,西武秩父線,,,
+seibu-shomaru,seibu-ashigakubo,西武秩父線,,,
+seibu-ashigakubo,seibu-yokoze,西武秩父線,,,
+seibu-yokoze,seibu-seibu-chichibu,西武秩父線,,,

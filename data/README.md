@@ -129,6 +129,39 @@ geometry and platform retention. `handoff` writes the frozen inventory,
 verification record and README into the assembled stage. The stage manifest is
 not a product manifest and must not be copied to `public/data/`.
 
+### S5 Tokyo suburban product preparation
+
+Run `verify-history` to confirm the old edition still resolves to its hash-verified live or archived trees. Then
+`verify-inputs` checks the frozen S0 inputs, all ten accepted S4 evidence batches, identity and UI sidecars, shared-track
+review, and source mileage arithmetic. `prepare` copies the audited S4 overrides under `.claude/logs/s5/` and changes
+only the gameplay profile, start and target IDs, operator, and area name. It records each transformed field and source
+hash in `prepare-provenance.json` beside the generated overrides.
+
+Build fresh A and B outputs independently, validate both against those prepared overrides, then compare all five files:
+
+```bash
+uv run python -m scripts.data_pipeline.product_suburban verify-history
+uv run python -m scripts.data_pipeline.product_suburban verify-inputs
+uv run python -m scripts.data_pipeline.product_suburban prepare \
+  --out-dir .claude/logs/s5/overrides
+PYTHONHASHSEED=1 uv run python -m scripts.data_pipeline.build \
+  --overrides-dir .claude/logs/s5/overrides --out-dir .claude/logs/s5/a
+PYTHONHASHSEED=777 uv run python -m scripts.data_pipeline.build \
+  --overrides-dir .claude/logs/s5/overrides --out-dir .claude/logs/s5/b
+uv run python -m scripts.data_pipeline.validate \
+  --overrides-dir .claude/logs/s5/overrides --data-dir .claude/logs/s5/a
+uv run python -m scripts.data_pipeline.validate \
+  --overrides-dir .claude/logs/s5/overrides --data-dir .claude/logs/s5/b
+uv run python -m scripts.data_pipeline.product_suburban compare \
+  --a .claude/logs/s5/a --b .claude/logs/s5/b
+```
+
+`compare` checks byte identity, the manifest's content-derived version, and all four payload hashes against S4's accepted
+build. `verify` checks installed product overrides and files, frozen catalogue order, the 30 one-way Yamanote segments,
+two-way reachability, schema, geometry references, and the unchanged product budgets. Cut over only from those verified
+generated paths with `product_suburban install`; afterward run `product_suburban verify` again. S5 retains schema 3 and
+the existing save format.
+
 N02 has known generalized-line limits: it does not distinguish the separate
 常磐線各停・快速 tracks between 綾瀬 and 金町, the separate 総武快速・緩行 tracks
 on the 江戸川 bridge, or the passenger/freight track distinction on the 赤羽–浦和

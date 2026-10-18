@@ -1,0 +1,2 @@
+service_id,station_id,max_transfer_m,reason
+jr-joban-rapid,ueno,150,"N02 東北線 at 上野: 上野東京ライン component and the component joining 常磐線 are disconnected (17 m); arrive on the former, depart from the latter"

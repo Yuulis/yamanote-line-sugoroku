@@ -15,11 +15,12 @@ from scripts.data_pipeline.override_parsing import parse_scoped_section_filters
 from scripts.data_pipeline.overrides import LineRange
 from scripts.data_pipeline.registry import OverrideError
 from tests.data_pipeline.composition_support import composition_overrides
+from tests.data_pipeline.support import historical_baseline
 
 
 def _copy_overrides(root: Path) -> Path:
     target = root / "overrides"
-    shutil.copytree(Path("data/overrides"), target)
+    shutil.copytree(historical_baseline("data/overrides"), target)
     return target
 
 
@@ -172,12 +173,12 @@ def test_staging_audit_rejects_old_pair_filter_change_with_identical_artifacts(
     from scripts.data_pipeline import stage_suburban_jr as stage
 
     live = tmp_path / "data/overrides"
-    shutil.copytree(Path("data/overrides"), live)
+    shutil.copytree(historical_baseline("data/overrides"), live)
     stage_dir = tmp_path / "data/staging/tokyo-suburban-jr/tohoku/overrides"
     shutil.copytree(live, stage_dir)
     baseline = tmp_path / "baseline"
     output = tmp_path / "output"
-    shutil.copytree(Path("public/data"), baseline)
+    shutil.copytree(historical_baseline("public/data"), baseline)
     shutil.copytree(baseline, output)
 
     sections_path = stage_dir / "services/jr-yokohama/sections.csv"

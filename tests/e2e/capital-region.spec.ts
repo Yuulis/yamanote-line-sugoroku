@@ -1,12 +1,72 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { CAPITAL_BRANCH_SEED, CAPITAL_GAME_SEED, CAPITAL_SCENARIO_TURNS } from "./fixtures/capital-region/seeds";
+import { CAPITAL_BRANCH_SEED, CAPITAL_GAME_SEED } from "./fixtures/capital-region/seeds";
 import { createGame, playTurn, serializeGame } from "../../src/features/game/engine";
+import type { GameState } from "../../src/types/network";
 import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { buildGeometryIndex, buildMovePlan } from "../../src/features/game/animation/movePath";
+import { hopDurationMs } from "../../src/features/game/animation/timeline";
+import type { MoveResult } from "../../src/features/game/engine";
 import type { RailwayBundle } from "./fixtures/bundle";
+import {
+  PRODUCT_COMPOSED_GAME_SEED,
+  PRODUCT_COMPOSED_SCENARIO_TURNS,
+  PRODUCT_HISTORY_GAME_SEED,
+  PRODUCT_HISTORY_SCENARIO_TURNS,
+  PRODUCT_HUB_GAME_SEED,
+} from "./fixtures/seeds";
 import { diceButton, freezeClock, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
-const RAPID_FEATURES = ["capital-owner-a:shinagawa~capital-joint", "capital-owner-b:capital-joint~capital-south"];
+const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
+const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
+const DEFAULT_STEP_MS = 450;
+
+interface ComposedTiming {
+  beforeTargetMs: number;
+  targetDurationMs: number;
+  totalMs: number;
+}
+
+function gameBeforeTurn(network: RailwayBundle["network"], seed: string, turn: number): GameState {
+  let game = createGame(MVP_GAME_CONFIG, seed, network);
+  while (game.status === "playing" && game.turn < turn) game = playTurn(game, network).state;
+  if (game.turn !== turn || game.status !== "playing") throw new Error(`Seed ${seed} did not reach turn ${turn}`);
+  return game;
+}
+
+function composedTiming(bundle: RailwayBundle, result: MoveResult, segmentId: string): ComposedTiming {
+  if (!bundle.data.geometry.ok) throw new Error("Product geometry is required for the composed-hop reveal");
+  const plan = buildMovePlan(result.events, bundle.network, buildGeometryIndex(bundle.data.geometry.value));
+  const targetIndex = plan.findIndex((step) => step.segmentId === segmentId);
+  if (targetIndex < 0) throw new Error(`Move does not contain composed segment ${segmentId}`);
+  const beforeTargetMs = plan.slice(0, targetIndex).reduce((sum, step) => sum + hopDurationMs(step, DEFAULT_STEP_MS), 0);
+  return {
+    beforeTargetMs,
+    targetDurationMs: hopDurationMs(plan[targetIndex]!, DEFAULT_STEP_MS),
+    totalMs: plan.reduce((sum, step) => sum + hopDurationMs(step, DEFAULT_STEP_MS), 0),
+  };
+}
+
+function serviceFeatureIds(bundle: RailwayBundle, serviceId: string): string[] {
+  if (!bundle.data.segments.ok) throw new Error("Product segments are required for the landing highlight");
+  return [...new Set(bundle.data.segments.value.filter((segment) => segment.serviceId === serviceId).flatMap((segment) => segment.geometryFeatureIds))];
+}
+
+async function focusMapOnYokohama(page: Page, bundle: RailwayBundle): Promise<void> {
+  const center = bundle.network.stationsById.get("yokohama")!.coordinates;
+  await page.getByRole("button", { name: "全体", exact: true }).click();
+  await page.evaluate((coordinates) => {
+    const map = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E.map;
+    map.jumpTo({ center: coordinates, zoom: 10.5 });
+  }, center);
+}
+
+async function resumeSavedGame(page: Page, game: GameState): Promise<void> {
+  await openTitle(page);
+  await writeSaveText(page, serializeGame(game));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+}
 
 test.use({ dataset: "capital-region", gameSeed: CAPITAL_GAME_SEED });
 
@@ -59,154 +119,188 @@ test("regional target view and full overview fit outside the panel; line groups 
   await expect(diceButton(page)).toBeInViewport();
 });
 
-test("hub summary expands every candidate outside aria-live; reduced motion, reverse hop and reload are deterministic", async ({ page, railwayBundle }) => {
-  await openTitle(page);
-  await startNewGame(page);
-  await rollOnce(page);
-  const result = gamePanel(page).locator(".game-panel__lottery");
-  await expect(result).toContainText("品川：7系統から抽選 → 広域直通快速");
-  const candidates = gamePanel(page).locator(".game-panel__candidates");
-  await expect(candidates).not.toHaveAttribute("aria-live");
-  await candidates.locator("summary").click();
-  const names = (await readSave(page))!.movementHistory[0]!.landing;
-  expect(names?.serviceId).toBe("capital-rapid");
-  const expectedCandidates = railwayBundle.network.servicesByStation.get("shinagawa")!;
-  await expect(candidates.getByRole("listitem")).toHaveCount(expectedCandidates.length);
-  for (const id of expectedCandidates) await expect(candidates.getByRole("listitem").filter({ hasText: railwayBundle.network.servicesById.get(id)!.name })).toBeVisible();
-  await candidates.locator("summary").click();
-  await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(RAPID_FEATURES);
-  await expect.poll(async () => (await readMap(page))?.highlightedColor).toBe("#EE2222");
-  await rollOnce(page);
-  expect((await readSave(page))!.movementHistory.at(-1)!.traversedSegmentIds).toEqual(["capital-rapid:shinagawa:capital-south"]);
-  await expect(panelStat(page, "現在駅")).toHaveText("南端駅");
-  await expect(panelStat(page, "進行方向")).toHaveText("北・西方面");
-  await rollOnce(page);
-  const committed = (await readSave(page))!;
-  expect(committed.movementHistory.at(-1)!.traversedSegmentIds).toEqual(["capital-rapid:capital-south:shinagawa"]);
-  await expect(panelStat(page, "乗車中")).toHaveText("幹線A 各駅停車");
-  await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual([RAPID_FEATURES[0]]);
-  await page.reload();
-  await page.getByRole("button", { name: /^つづきから（3ターン目・/ }).click();
-  expect(await readSave(page)).toEqual(committed);
-  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, committed));
-  await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual([RAPID_FEATURES[0]]);
-});
+test.describe("current product scenarios", () => {
+  test.use({ dataset: "real", gameSeed: PRODUCT_HUB_GAME_SEED });
 
-test.describe("paced composed-hop reveal", () => {
-  test.use({ reducedMotion: "no-preference" });
-  test("forward and reverse animate each as one step; landing highlight follows finish or skip", async ({ page, railwayBundle }) => {
-    await page.clock.install();
+  test("hub summary expands every candidate outside aria-live; selection and reload are deterministic", async ({ page, railwayBundle }) => {
     await openTitle(page);
     await startNewGame(page);
+    await rollOnce(page);
+    const result = gamePanel(page).locator(".game-panel__lottery");
+    await expect(result).toHaveText("抽選: 品川：6系統から抽選 → 山手線 ／ 外回りに固定");
+    const candidates = gamePanel(page).locator(".game-panel__candidates");
+    await expect(candidates).not.toHaveAttribute("aria-live");
+    await candidates.locator("summary").click();
+    const firstMove = (await readSave(page))!.movementHistory[0]!;
+    expect(firstMove).toMatchObject({
+      toStationId: "shinagawa",
+      landing: { serviceId: "jr-yamanote", direction: 1 },
+    });
+    const expectedCandidates = railwayBundle.network.servicesByStation.get("shinagawa")!;
+    await expect(candidates.getByRole("listitem")).toHaveCount(6);
+    for (const id of expectedCandidates) {
+      await expect(candidates.getByRole("listitem").filter({ hasText: railwayBundle.network.servicesById.get(id)!.name })).toBeVisible();
+    }
+    await candidates.locator("summary").click();
+    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+      .toContain("jr-yamanote:shinagawa~osaki");
+    const committed = (await readSave(page))!;
+    await page.reload();
+    await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
     await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
-    await page.getByRole("button", { name: "全体", exact: true }).click();
-    await freezeClock(page);
-    await diceButton(page).click();
-    await expect(panelStat(page, "乗車中")).toHaveText("山手線");
-    await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
-    await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
-    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(RAPID_FEATURES);
-    await expect.poll(async () => (await readMap(page))?.highlightedColor).toBe("#EE2222");
-    // Both owners' primitives must be drawn, not merely present in the filter.
-    await page.clock.runFor(16);
-    await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds).toEqual(expect.arrayContaining(RAPID_FEATURES));
-    await diceButton(page).click();
-    const forward = (await readSave(page))!;
-    expect(forward.movementHistory.at(-1)?.traversedSegmentIds).toHaveLength(1);
-    // Start the runner's elapsed-time origin, then sample rather than replay
-    // ~40 software-rendered WebGL frames per 650 ms (especially costly at
-    // the Pixel 7's deviceScaleFactor). Keep the same midpoint/end assertions.
-    await page.clock.runFor(16);
-    await page.clock.fastForward(634);
-    await expect(panelStat(page, "現在駅")).toHaveText("品川");
-    await expect(panelStat(page, "踏破区間")).toHaveText("4/30");
-    const midway = (await readMap(page))!.marker;
-    expect(midway).not.toEqual(railwayBundle.network.servicesById.get("capital-rapid")!.platformCoordinates.shinagawa);
-    expect(midway).not.toEqual(markerPosition(railwayBundle, forward));
-    await page.clock.fastForward(650);
-    await expect(panelStat(page, "現在駅")).toHaveText("南端駅");
-    await expect(panelStat(page, "進行方向")).toHaveText("北・西方面");
-    await diceButton(page).click();
-    const reverse = (await readSave(page))!;
-    expect(reverse.currentServiceId).toBe("capital-owner-a");
-    await page.clock.runFor(16);
-    await page.clock.fastForward(634);
-    await expect(panelStat(page, "現在駅")).toHaveText("南端駅");
-    await expect(panelStat(page, "乗車中")).toHaveText("広域直通快速");
-    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(RAPID_FEATURES);
-    await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
-    await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
-    await expect(panelStat(page, "乗車中")).toHaveText("幹線A 各駅停車");
-    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual([RAPID_FEATURES[0]]);
-    expect(await readSave(page)).toEqual(reverse);
+    expect(await readSave(page)).toEqual(committed);
+    await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, committed));
   });
 
-  test("natural reverse completion switches from the ridden rapid to the landing service", async ({ page, railwayBundle }) => {
-    // The real-engine proof pins this seed's turns 1-3 and the 1,200 ms reverse hop.
-    let game = createGame(MVP_GAME_CONFIG, CAPITAL_GAME_SEED, railwayBundle.network);
-    for (let turn = 0; turn < CAPITAL_SCENARIO_TURNS.rapidForward; turn += 1) game = playTurn(game, railwayBundle.network).state;
-    await page.clock.install();
+  test.describe("paced composed-hop reveal", () => {
+    test.use({ reducedMotion: "no-preference" });
+
+    test("forward composed hop reveals the product geometry and landing highlight", async ({ page, railwayBundle }) => {
+      await page.clock.install();
+      const forwardBefore = gameBeforeTurn(railwayBundle.network, PRODUCT_COMPOSED_GAME_SEED, PRODUCT_COMPOSED_SCENARIO_TURNS.forward - 1);
+      const forwardResult = playTurn(forwardBefore, railwayBundle.network);
+      const forwardRecord = forwardResult.state.movementHistory.at(-1)!;
+      expect(forwardRecord.traversedSegmentIds).toContain(PRODUCT_COMPOSED_FORWARD);
+      const forwardTiming = composedTiming(railwayBundle, forwardResult, PRODUCT_COMPOSED_FORWARD);
+      await resumeSavedGame(page, forwardBefore);
+      await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+      await focusMapOnYokohama(page, railwayBundle);
+      await freezeClock(page);
+      await diceButton(page).click();
+      await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.forward);
+      const forwardCommitted = (await readSave(page))!;
+      expect(forwardCommitted).toEqual(forwardResult.state);
+      await page.clock.runFor(16);
+      await page.clock.fastForward(forwardTiming.beforeTargetMs + forwardTiming.targetDurationMs / 2);
+      const forwardMidpoint = (await readMap(page))!.marker;
+      expect(forwardMidpoint).not.toEqual(markerPosition(railwayBundle, forwardBefore));
+      expect(forwardMidpoint).not.toEqual(markerPosition(railwayBundle, forwardCommitted));
+      const rapidFeatureIds = serviceFeatureIds(railwayBundle, forwardRecord.serviceId);
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(rapidFeatureIds);
+      const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_FORWARD)!.geometryFeatureIds;
+      await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds)
+        .toEqual(expect.arrayContaining([...composedFeatures]));
+      await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+      const forwardLandingService = forwardRecord.landing!.serviceId;
+      await expect(panelStat(page, "乗車中")).toHaveText(railwayBundle.network.servicesById.get(forwardLandingService)!.name);
+      const forwardLandingFeatures = serviceFeatureIds(railwayBundle, forwardLandingService);
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(forwardLandingFeatures);
+
+      expect(await readSave(page)).toEqual(forwardCommitted);
+    });
+
+    test("reverse composed hop reveals reversed geometry and landing highlight", async ({ page, railwayBundle }) => {
+      await page.clock.install();
+      const before = gameBeforeTurn(railwayBundle.network, PRODUCT_COMPOSED_GAME_SEED, PRODUCT_COMPOSED_SCENARIO_TURNS.reverse - 1);
+      const result = playTurn(before, railwayBundle.network);
+      const record = result.state.movementHistory.at(-1)!;
+      expect(record.traversedSegmentIds).toContain(PRODUCT_COMPOSED_REVERSE);
+      const timing = composedTiming(railwayBundle, result, PRODUCT_COMPOSED_REVERSE);
+      await resumeSavedGame(page, before);
+      await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+      await focusMapOnYokohama(page, railwayBundle);
+      await freezeClock(page);
+      await diceButton(page).click();
+      await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
+      const committed = (await readSave(page))!;
+      expect(committed).toEqual(result.state);
+      await page.clock.runFor(16);
+      await page.clock.fastForward(timing.beforeTargetMs + timing.targetDurationMs / 2);
+      const midpoint = (await readMap(page))!.marker;
+      expect(midpoint).not.toEqual(markerPosition(railwayBundle, before));
+      expect(midpoint).not.toEqual(markerPosition(railwayBundle, committed));
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+        .toEqual(serviceFeatureIds(railwayBundle, record.serviceId));
+      const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_REVERSE)!.geometryFeatureIds;
+      await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds)
+        .toEqual(expect.arrayContaining([...composedFeatures]));
+      await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+      const landingServiceId = record.landing!.serviceId;
+      await expect(panelStat(page, "乗車中")).toHaveText(railwayBundle.network.servicesById.get(landingServiceId)!.name);
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+        .toEqual(serviceFeatureIds(railwayBundle, landingServiceId));
+      expect(await readSave(page)).toEqual(committed);
+    });
+  });
+
+  test.describe("natural reverse completion", () => {
+    test.use({ reducedMotion: "no-preference" });
+
+    test("switches from the ridden rapid to the landing service", async ({ page, railwayBundle }) => {
+      const before = gameBeforeTurn(railwayBundle.network, PRODUCT_COMPOSED_GAME_SEED, PRODUCT_COMPOSED_SCENARIO_TURNS.reverse - 1);
+      const result = playTurn(before, railwayBundle.network);
+      const record = result.state.movementHistory.at(-1)!;
+      expect(record).toMatchObject({
+        serviceId: "jr-shonan-shinjuku-rapid-takasaki",
+        direction: -1,
+        landing: { serviceId: "jr-saikyo", direction: 1 },
+      });
+      expect(record.traversedSegmentIds).toContain(PRODUCT_COMPOSED_REVERSE);
+      const timing = composedTiming(railwayBundle, result, PRODUCT_COMPOSED_REVERSE);
+      await page.clock.install();
+      await resumeSavedGame(page, before);
+      await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+      await focusMapOnYokohama(page, railwayBundle);
+      await freezeClock(page);
+      await diceButton(page).click();
+      const committed = (await readSave(page))!;
+      expect(committed).toEqual(result.state);
+      await page.clock.runFor(16);
+      await page.clock.fastForward(timing.beforeTargetMs + timing.targetDurationMs / 2);
+      const midpoint = (await readMap(page))!.marker;
+      expect(midpoint).not.toEqual(markerPosition(railwayBundle, before));
+      expect(midpoint).not.toEqual(markerPosition(railwayBundle, committed));
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+        .toEqual(serviceFeatureIds(railwayBundle, record.serviceId));
+      const remaining = Math.max(0, timing.totalMs - 16 - timing.beforeTargetMs - timing.targetDurationMs / 2);
+      await page.clock.fastForward(remaining + 50);
+      await expect(diceButton(page)).toHaveText("サイコロを振る");
+      await expect(panelStat(page, "現在駅")).toHaveText(railwayBundle.network.stationsById.get("osaki")!.name);
+      await expect(panelStat(page, "乗車中")).toHaveText(railwayBundle.network.servicesById.get("jr-saikyo")!.name);
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+        .toEqual(serviceFeatureIds(railwayBundle, "jr-saikyo"));
+      expect(await readSave(page)).toEqual(committed);
+    });
+  });
+
+  test("clear history pages retain every product record, and reopened results restore the saved history", async ({ page, railwayBundle }) => {
+    let game = createGame(MVP_GAME_CONFIG, PRODUCT_HISTORY_GAME_SEED, railwayBundle.network);
+    while (game.status === "playing" && game.turn < 100) game = playTurn(game, railwayBundle.network).state;
+    expect(game).toMatchObject({ status: "completed", turn: PRODUCT_HISTORY_SCENARIO_TURNS.completed, currentStationId: "shimbashi" });
     await openTitle(page);
     await writeSaveText(page, serializeGame(game));
     await page.reload();
-    await page.getByRole("button", { name: /^つづきから（2ターン目・/ }).click();
-    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
-    await page.getByRole("button", { name: "全体", exact: true }).click();
-    await freezeClock(page);
-    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(RAPID_FEATURES);
-    await diceButton(page).click();
-    const committed = (await readSave(page))!;
-    expect(committed).toEqual(playTurn(game, railwayBundle.network).state);
-    expect(committed).toMatchObject({ turn: CAPITAL_SCENARIO_TURNS.rapidReverse, currentStationId: "shinagawa", currentServiceId: "capital-owner-a" });
-    await page.clock.runFor(16);
-    await page.clock.fastForward(634);
-    await expect(panelStat(page, "現在駅")).toHaveText("南端駅");
-    await expect(panelStat(page, "乗車中")).toHaveText("広域直通快速");
-    await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
-    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(RAPID_FEATURES);
-    await expect.poll(async () => (await readMap(page))?.highlightedColor).toBe("#EE2222");
-    await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds).toEqual(expect.arrayContaining(RAPID_FEATURES));
-    await page.clock.fastForward(650);
-    await expect(diceButton(page)).toHaveText("サイコロを振る");
-    await expect(panelStat(page, "現在駅")).toHaveText("品川");
-    await expect(panelStat(page, "乗車中")).toHaveText("幹線A 各駅停車");
-    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual([RAPID_FEATURES[0]]);
-    await expect.poll(async () => (await readMap(page))?.highlightedColor).toBe("#0055AA");
-    expect(await readSave(page)).toEqual(committed);
+    await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
+    const clear = page.getByRole("region", { name: "クリア！" });
+    const items = clear.locator(".clear-screen__history li");
+    const history = clear.locator(".clear-screen__history");
+    await expect(items).toHaveCount(20);
+    await expect(items.first()).toContainText("1ターン目");
+    await expect(clear.getByRole("button", { name: "前のページ" })).toBeDisabled();
+    await history.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await expect(items.first()).not.toBeInViewport();
+    await clear.getByRole("button", { name: "次のページ" }).click();
+    await expect(items).toHaveCount(20);
+    await expect(items.first()).toContainText("21ターン目");
+    await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBe(0);
+    await expect(items.first()).toBeInViewport({ ratio: 1 });
+    await clear.getByRole("button", { name: "次のページ" }).click();
+    await expect(items).toHaveCount(2);
+    await expect(items.first()).toContainText("41ターン目");
+    await expect(items.last()).toContainText("42ターン目");
+    await expect(clear.getByRole("button", { name: "次のページ" })).toBeDisabled();
+    await clear.getByRole("button", { name: "前のページ" }).click();
+    await expect(items.first()).toContainText("21ターン目");
+    await clear.getByRole("button", { name: "前のページ" }).click();
+    await expect(items).toHaveCount(20);
+    await expect(items.first()).toContainText("1ターン目");
+    expect((await readSave(page))?.movementHistory).toEqual(game.movementHistory);
+    await page.reload();
+    await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
+    await expect(items).toHaveCount(20);
+    expect(await readSave(page)).toEqual(game);
   });
-});
-
-test("clear history pages without losing records, and reopened results retain full saved history", async ({ page, railwayBundle }) => {
-  let game = createGame(MVP_GAME_CONFIG, CAPITAL_GAME_SEED, railwayBundle.network);
-  while (game.status === "playing" && game.turn < 100) game = playTurn(game, railwayBundle.network).state;
-  expect(game).toMatchObject({ status: "completed", turn: CAPITAL_SCENARIO_TURNS.completed });
-  await openTitle(page);
-  await writeSaveText(page, serializeGame(game));
-  await page.reload();
-  await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
-  const clear = page.getByRole("region", { name: "クリア！" });
-  const items = clear.locator(".clear-screen__history li");
-  await expect(items).toHaveCount(Math.min(20, game.turn));
-  await expect(items.first()).toContainText("1ターン目");
-  await expect(clear.getByRole("button", { name: "前のページ" })).toBeDisabled();
-  const history = clear.locator(".clear-screen__history");
-  await history.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-  await expect(items.first()).not.toBeInViewport();
-  await clear.getByRole("button", { name: "次のページ" }).click();
-  await expect(items).toHaveCount(game.turn - 20);
-  await expect(items.first()).toContainText("21ターン目");
-  await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBe(0);
-  await expect(items.first()).toBeInViewport({ ratio: 1 });
-  await expect(items.last()).toContainText(`${game.turn}ターン目`);
-  await expect(clear.getByRole("button", { name: "次のページ" })).toBeDisabled();
-  await clear.getByRole("button", { name: "前のページ" }).click();
-  await expect(items).toHaveCount(Math.min(20, game.turn));
-  expect((await readSave(page))?.movementHistory).toEqual(game.movementHistory);
-  await page.reload();
-  await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
-  await expect(items).toHaveCount(Math.min(20, game.turn));
-  expect(await readSave(page)).toEqual(game);
 });
 
 test.describe("branch", () => {

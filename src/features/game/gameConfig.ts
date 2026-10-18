@@ -6,20 +6,20 @@ export const EXPECTED_STATION_COUNTS: Readonly<Partial<Record<ServiceId, number>
 };
 
 /**
- * Game rules (spec 3.3, 4.1): outer loop from 新橋, truncate on arrival when
- * complete; landing lotteries per the JR East capital-region ruleset. The
+ * Frozen Tokyo suburban rules: complete all 30 outer Yamanote segments, then
+ * arrive at 新橋; truncate when the target service reaches the goal. The
  * ruleset version names the seeded semantics, so saves made under other
  * rules are rejected (`CONFIG_MISMATCH`).
  */
 export const MVP_GAME_CONFIG: GameConfig = {
-  rulesetVersion: "jr-east-capital-1",
+  rulesetVersion: "tokyo-suburban-1",
   targetServiceId: "jr-yamanote",
   startStationId: "shimbashi",
   targetDirection: 1,
   goalArrivalPolicy: "truncate-on-target-service",
   serviceLottery: {
     kindWeights: { local: 1, rapid: 1 },
-    target: { kind: "share", numerator: 1, denominator: 2 },
+    target: { kind: "share", numerator: 2, denominator: 3 },
   },
   directionLottery: { towardTargetWeight: 2 },
 };

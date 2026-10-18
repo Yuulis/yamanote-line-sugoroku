@@ -19,6 +19,7 @@ from scripts.data_pipeline.n02 import PlatformCandidate
 from scripts.data_pipeline.override_models import LineRange, Stop, StopResolution
 from scripts.data_pipeline.routing import RoutingError
 from scripts.data_pipeline.stage_suburban_support import StageError
+from tests.data_pipeline.support import historical_baseline
 
 
 def test_component_assignments_keep_operators_and_disconnected_services_separate() -> (
@@ -57,7 +58,7 @@ def test_nonjr_seed_refuses_overwrite_and_uses_frozen_original_ids(
 ) -> None:
     source = stage.ROOT
     for relative in ("data/overrides", "public/data"):
-        shutil.copytree(source / relative, tmp_path / relative)
+        shutil.copytree(historical_baseline(relative), tmp_path / relative)
     shutil.copytree(
         source / ".claude/docs/research", tmp_path / ".claude/docs/research"
     )
@@ -482,8 +483,7 @@ def test_gate_measurement_comparison_rejects_platform_code_mismatch(
 
 
 def test_audit_baseline_check_rejects_stale_public_bundle(tmp_path: Path) -> None:
-    source = stage.ROOT
-    shutil.copytree(source / "public/data", tmp_path / "public/data")
+    shutil.copytree(historical_baseline("public/data"), tmp_path / "public/data")
     snapshot = stage._baseline_snapshot(tmp_path)
     (tmp_path / "public/data/manifest.json").write_text("tampered\n", encoding="utf-8")
 
@@ -572,7 +572,7 @@ def test_handoff_marks_group_stale_when_only_a_mileage_csv_changes(
 def _copy_seed_inputs(root: Path) -> None:
     source = stage.ROOT
     for relative in ("data/overrides", "public/data"):
-        shutil.copytree(source / relative, root / relative)
+        shutil.copytree(historical_baseline(relative), root / relative)
     shutil.copytree(source / ".claude/docs/research", root / ".claude/docs/research")
     (root / ".claude/docs/plans").mkdir(parents=True)
     shutil.copy2(

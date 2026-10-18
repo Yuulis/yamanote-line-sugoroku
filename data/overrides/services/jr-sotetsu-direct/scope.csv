@@ -1,8 +1,8 @@
-station_id,prefecture,municipality
-shinjuku,東京都,新宿区
-shibuya,東京都,渋谷区
-ebisu,東京都,渋谷区
-osaki,東京都,品川区
-nishi-oi,東京都,品川区
-musashi-kosugi,神奈川県,川崎市中原区
-hazawa-yokohama-kokudai,神奈川県,横浜市神奈川区
+station_id,prefecture,municipality,in_area
+shinjuku,東京都,新宿区,true
+shibuya,東京都,渋谷区,true
+ebisu,東京都,渋谷区,true
+osaki,東京都,品川区,true
+nishi-oi,東京都,品川区,true
+musashi-kosugi,神奈川県,川崎市中原区,true
+hazawa-yokohama-kokudai,神奈川県,横浜市神奈川区,true

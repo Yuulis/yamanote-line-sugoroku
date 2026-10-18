@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { createGame, playTurn, restoreGame, serializeGame, type MoveResult } from "../../src/features/game/engine";
 import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { buildGeometryIndex, buildMovePlan, positionAlong } from "../../src/features/game/animation/movePath";
 import { frameAt, hopDurationMs, HOP_TIMING } from "../../src/features/game/animation/timeline";
 import { displayedProgress } from "../../src/features/game/animation/displayedProgress";
@@ -20,6 +21,8 @@ import { CAPITAL_BRANCH_SEED, CAPITAL_GAME_SEED, CAPITAL_SCENARIO_TURNS } from "
 
 const bundle = await loadBundle("capital-region");
 const { network, data } = bundle;
+// Seeded journeys and fixture-specific presentation below retain the archived
+// JR East rules. The live overview assertion uses current production rules.
 if (!data.geometry.ok || !data.services.ok || !data.segments.ok || !data.stations.ok) throw new Error("Fixture must be complete");
 const geometry = buildGeometryIndex(data.geometry.value);
 const services = data.services.value;
@@ -28,7 +31,7 @@ const stations = data.stations.value;
 const expectedServiceIdsAt = (stationId: string): string[] => services.services
   .filter((service) => service.stationIds.includes(stationId))
   .map((service) => service.id);
-const fresh = createGame(MVP_GAME_CONFIG, CAPITAL_GAME_SEED, network);
+const fresh = createGame(LEGACY_CAPITAL_REGION_CONFIG, CAPITAL_GAME_SEED, network);
 const turns: MoveResult[] = [];
 let game = fresh;
 while (game.status === "playing" && game.turn < 100) {
@@ -37,7 +40,7 @@ while (game.status === "playing" && game.turn < 100) {
   game = result.state;
 }
 
-describe("capital-region fixture and pinned seeds", () => {
+describe("legacy capital-region fixture and pinned seeds", () => {
   it("contains eight services, a seven-way hub, shared multi-line rapid geometry and a branch", () => {
     expect(services.services).toHaveLength(8);
     expect(network.servicesByStation.get("shinagawa")).toHaveLength(7);
@@ -62,10 +65,10 @@ describe("capital-region fixture and pinned seeds", () => {
     expect(game.movementHistory.at(-1)?.landing).toBeNull();
   });
 
-  it("proves the resumed natural-completion browser input rides rapid and lands on owner A", () => {
+  it("proves the legacy resumed completion input rides rapid and lands on owner A", () => {
     const saved = turns[CAPITAL_SCENARIO_TURNS.rapidForward - 1]!.state;
     expect(saved).toMatchObject({ turn: 2, currentStationId: "capital-south", currentServiceId: "capital-rapid", direction: -1 });
-    const restored = restoreGame(serializeGame(saved), network, { expectedConfig: MVP_GAME_CONFIG, requireSeededRolls: true });
+    const restored = restoreGame(serializeGame(saved), network, { expectedConfig: LEGACY_CAPITAL_REGION_CONFIG, requireSeededRolls: true });
     const result = playTurn(restored, network);
     expect(result).toEqual(turns[CAPITAL_SCENARIO_TURNS.rapidReverse - 1]);
     expect(result.state.movementHistory.at(-1)).toMatchObject({
@@ -84,7 +87,7 @@ describe("capital-region fixture and pinned seeds", () => {
   });
 
   it("proves the independent branch seed uses a service-boundary then crosses the fork", () => {
-    let state = createGame(MVP_GAME_CONFIG, CAPITAL_BRANCH_SEED, network);
+    let state = createGame(LEGACY_CAPITAL_REGION_CONFIG, CAPITAL_BRANCH_SEED, network);
     const results: MoveResult[] = [];
     for (let index = 0; index < 5; index += 1) {
       const result = playTurn(state, network);
@@ -99,7 +102,7 @@ describe("capital-region fixture and pinned seeds", () => {
 
   it("restores every pinned save without redrawing any lottery", () => {
     for (const state of [fresh, ...turns.map((turn) => turn.state)]) {
-      const restored = restoreGame(serializeGame(state), network, { expectedConfig: MVP_GAME_CONFIG, requireSeededRolls: true });
+      const restored = restoreGame(serializeGame(state), network, { expectedConfig: LEGACY_CAPITAL_REGION_CONFIG, requireSeededRolls: true });
       expect(restored).toEqual(state);
       if (state.status === "playing") expect(playTurn(restored, network)).toEqual(playTurn(state, network));
     }
@@ -108,7 +111,7 @@ describe("capital-region fixture and pinned seeds", () => {
 
 describe("scaled map and presentation", () => {
   const legendMarkup = (): string => renderToStaticMarkup(createElement(GamePanel, {
-    session: startSession(MVP_GAME_CONFIG, CAPITAL_GAME_SEED, network, 1),
+    session: startSession(LEGACY_CAPITAL_REGION_CONFIG, CAPITAL_GAME_SEED, network, 1),
     network,
     lines: services.lines,
     displayedStationId: fresh.currentStationId,
@@ -165,8 +168,8 @@ describe("scaled map and presentation", () => {
     expect(paints[`${LAYER_IDS.currentService}:line-color`]).toBe("#EE2222");
   });
 
-  it("keeps the compact fixture overview and starts the live regional map on the target", async () => {
-    expect(initialOverviewServices(services.services, MVP_GAME_CONFIG.targetServiceId).map((s) => s.id)).toEqual([MVP_GAME_CONFIG.targetServiceId]);
+  it("keeps the legacy fixture overview and starts the live product map on the target", async () => {
+    expect(initialOverviewServices(services.services, LEGACY_CAPITAL_REGION_CONFIG.targetServiceId).map((s) => s.id)).toEqual([LEGACY_CAPITAL_REGION_CONFIG.targetServiceId]);
     const live = await loadBundle("real");
     if (!live.data.services.ok) throw new Error("Missing services");
     expect(initialOverviewServices(live.data.services.value.services, MVP_GAME_CONFIG.targetServiceId).map((s) => s.id)).toEqual([MVP_GAME_CONFIG.targetServiceId]);
@@ -180,12 +183,12 @@ describe("scaled map and presentation", () => {
   });
 
   it("reveals the highlight only on the accepted completion, ignoring stale callbacks", () => {
-    const session = startSession(MVP_GAME_CONFIG, CAPITAL_GAME_SEED, network, 1);
-    const rolled = reduceGameSession(session, { type: "roll", sessionId: 1, rngSeed: CAPITAL_GAME_SEED, turn: 0 }, MVP_GAME_CONFIG, network);
+    const session = startSession(LEGACY_CAPITAL_REGION_CONFIG, CAPITAL_GAME_SEED, network, 1);
+    const rolled = reduceGameSession(session, { type: "roll", sessionId: 1, rngSeed: CAPITAL_GAME_SEED, turn: 0 }, LEGACY_CAPITAL_REGION_CONFIG, network);
     expect(displayedRide(rolled).serviceId).toBe("jr-yamanote");
-    const stale = reduceGameSession(rolled, { type: "animation-finished", sessionId: 2, turn: 1 }, MVP_GAME_CONFIG, network);
+    const stale = reduceGameSession(rolled, { type: "animation-finished", sessionId: 2, turn: 1 }, LEGACY_CAPITAL_REGION_CONFIG, network);
     expect(stale).toBe(rolled);
-    const finished = reduceGameSession(rolled, { type: "animation-finished", sessionId: 1, turn: 1 }, MVP_GAME_CONFIG, network);
+    const finished = reduceGameSession(rolled, { type: "animation-finished", sessionId: 1, turn: 1 }, LEGACY_CAPITAL_REGION_CONFIG, network);
     expect(displayedRide(finished).serviceId).toBe("capital-rapid");
     expect(finished.game).toBe(rolled.game);
   });

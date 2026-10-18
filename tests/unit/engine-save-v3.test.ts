@@ -8,6 +8,7 @@ import { deleteSave, readSave, SAVE_STORAGE_KEY, type StorageLike } from "../../
 import { kindInput, lotteryConfig } from "./fixtures/lottery";
 import { M_LINE, multiServiceInput } from "./fixtures/multiService";
 import { yamanoteInput } from "./fixtures/yamanote";
+import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 
 const network = buildRailwayNetwork(kindInput());
 const yamanoteNetwork = buildRailwayNetwork(yamanoteInput());
@@ -32,11 +33,9 @@ function seededStates(config: GameConfig, seed: string): GameState[] {
 
 describe("save v3 lottery policies", () => {
   it("rejects a save made under the previously shipped ruleset", () => {
-    const oldConfig = structuredClone(MVP_GAME_CONFIG);
-    oldConfig.rulesetVersion = "jr-east-23ku-1";
-    oldConfig.serviceLottery.target = { kind: "weight", weight: 1 };
-    oldConfig.directionLottery.towardTargetWeight = 1;
-    const oldSave = serializeGame(createGame(oldConfig, "previous-ruleset", yamanoteNetwork));
+    // Legacy config creates the archived save; the current production config
+    // is the expected restore target for this compatibility rejection proof.
+    const oldSave = serializeGame(createGame(LEGACY_CAPITAL_REGION_CONFIG, "previous-ruleset", yamanoteNetwork));
 
     expect(() => restoreGame(oldSave, yamanoteNetwork, { expectedConfig: MVP_GAME_CONFIG }))
       .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
@@ -107,7 +106,12 @@ describe("save v3 lottery policies", () => {
 
   it.each<[string, (config: GameConfig) => void]>([
     ["ruleset version", (config) => { config.rulesetVersion = "jr-east-23ku-1"; }],
-    ["kind base", (config) => { (config.serviceLottery.kindWeights as Record<string, number>).rapid = 4; }],
+    ["target service", (config) => { config.targetServiceId = "other-target"; }],
+    ["start station", (config) => { config.startStationId = "tokyo"; }],
+    ["target direction", (config) => { config.targetDirection = -1; }],
+    ["goal arrival policy", (config) => { config.goalArrivalPolicy = "exact-stop"; }],
+    ["local kind base", (config) => { (config.serviceLottery.kindWeights as Record<string, number>).local = 99; }],
+    ["rapid kind base", (config) => { (config.serviceLottery.kindWeights as Record<string, number>).rapid = 99; }],
     ["share numerator", (config) => { config.serviceLottery.target = { kind: "share", numerator: 1, denominator: 5 }; }],
     ["share denominator", (config) => { config.serviceLottery.target = { kind: "share", numerator: 2, denominator: 6 }; }],
     ["target mode", (config) => { config.serviceLottery.target = { kind: "weight", weight: 2 }; }],

@@ -1,0 +1,5 @@
+from_id,to_id,n02_line,via,route,compose
+tobu-hikifune,tobu-omurai,亀戸線,,,
+tobu-omurai,tobu-higashi-azuma,亀戸線,,,
+tobu-higashi-azuma,tobu-kameido-suijin,亀戸線,,,
+tobu-kameido-suijin,kameido,亀戸線,,,

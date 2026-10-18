@@ -1,26 +1,26 @@
-order,station_id,station_number,platform_selector
-0,tachikawa,,
-1,nishi-tachikawa,,
-2,higashi-nakagami,,
-3,nakagami,,
-4,akishima,,
-5,haijima,,
-6,ushihama,,
-7,fussa,,
-8,hamura,,
-9,ozaku,,
-10,kabe,,
-11,higashi-ome,,
-12,ome,,
-13,miyanohira,,
-14,hinatawada,,
-15,ishigamimae,,
-16,futamatao,,
-17,ikusabata,,
-18,sawai,,
-19,mitake,,
-20,kawai,,
-21,kori,,
-22,hatonosu,,
-23,shiromaru,,
-24,oku-tama,,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tachikawa,,,立川,立川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,nishi-tachikawa,,,西立川,西立川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,higashi-nakagami,,,東中神,東中神,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,nakagami,,,中神,中神,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,akishima,,,昭島,昭島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,haijima,,,拝島,拝島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,ushihama,,,牛浜,牛浜,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,fussa,,,福生,福生,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,hamura,,,羽村,羽村,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,ozaku,,,小作,小作,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,kabe,,,河辺,河辺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,higashi-ome,,,東青梅,東青梅,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,ome,,,青梅,青梅,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,miyanohira,,,宮ノ平,宮ノ平,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,hinatawada,,,日向和田,日向和田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,ishigamimae,,,石神前,石神前,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,futamatao,,,二俣尾,二俣尾,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,ikusabata,,,軍畑,軍畑,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,sawai,,,沢井,沢井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,mitake,,,御嶽,御嶽,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,kawai,,,川井,川井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,kori,,,古里,古里,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,hatonosu,,,鳩ノ巣,鳩ノ巣,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,shiromaru,,,白丸,白丸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+24,oku-tama,,,奥多摩,奥多摩,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

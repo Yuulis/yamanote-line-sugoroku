@@ -1,0 +1,75 @@
+n02_line,action,section_key,reason
+東北線,allow,139.62360 35.90764~139.63154 35.93067#782db249,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.62477 35.90472~139.62668 35.90163#050f34bf,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.62668 35.90163~139.63308 35.89478#8d8c886b,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63285 35.93316~139.63982 35.94696#506d29f0,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63472 35.89241~139.63864 35.88514#c4198f4d,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63864 35.88514~139.63934 35.88361#354b42a8,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.63934 35.88361~139.64498 35.87290#8e6d5297,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.64070 35.94976~139.65226 35.97992#2d5ce764,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.64652 35.87150~139.65666 35.85936#85d2ff01,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.65367 35.98241~139.66680 36.01633#80404b17,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.66696 36.01923~139.67168 36.03683#acfd4c54,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67210 36.03967~139.67670 36.06452#f7ef5cc3,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67805 36.06710~139.67991 36.08020#94a3f212,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67875 36.09798~139.69376 36.13422#4b43db5f,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.67978 36.08859~139.67991 36.08020#9641f391,N02 RailroadSection key used by the raw-built Utsunomiya stage route; pins the owner geometry consumed by the Shonan local service.
+東北線,allow,139.62360 35.90764~139.62477 35.90472#45a9a795,N02 RailroadSection East-line approach from the Utsunomiya-owned Omiya route; raw key observed in the routed Utsunomiya approach.
+東北線,allow,139.62491 35.90505~139.62668 35.90163#11e266f9,N02 RailroadSection East-line section shared by the Utsunomiya route and the Takasaki-tagged approach in the raw source.
+東北線,allow,139.63154 35.93067~139.63285 35.93316#e3f8b59a,N02 RailroadSection East-line connector into the Omiya boundary approach.
+東北線,allow,139.63308 35.89478~139.63472 35.89241#698b3d4f,N02 RailroadSection East-line connector at Saitama-Shintoshin.
+東北線,allow,139.64498 35.87290~139.64652 35.87150#442cd3cc,N02 RailroadSection East-line connector in the Urawa approach.
+東北線,allow,139.65666 35.85936~139.65763 35.85777#c6264b2e,N02 RailroadSection East-line connector at Urawa.
+東北線,allow,139.63982 35.94696~139.64070 35.94976#14faf829,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.65226 35.97992~139.65367 35.98241#249e98a6,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.66680 36.01633~139.66696 36.01923#eb51f7ab,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67168 36.03683~139.67210 36.03967#cc17c27b,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67670 36.06452~139.67805 36.06710#fc9d5243,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67875 36.09798~139.67961 36.09068#36e30057,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67875 36.09798~139.67991 36.08020#8e971203,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.67961 36.09068~139.67978 36.08859#b9c6a4d5,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.69376 36.13422~139.69431 36.13721#86c68209,N02 RailroadSection key observed on the raw-built Utsunomiya route; included to preserve the connected passenger-track path and its junction sections.
+東北線,allow,139.65763 35.85777~139.66635 35.85033#ac00f850,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.68335 35.83490~139.68967 35.82865#6f8acc47,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.68967 35.82865~139.69116 35.82721#187ea946,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.69116 35.82721~139.70375 35.81613#20bb3306,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.70375 35.81613~139.70497 35.81490#7582026e,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.70497 35.81490~139.71698 35.80267#ed85b8b4,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.71698 35.80267~139.71793 35.80093#bd6060f9,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.71793 35.80093~139.71799 35.79618#75356c83,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.71799 35.79618~139.71835 35.78162#f896fb55,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.71799 35.79618~139.72046 35.77867#70b0274d,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.72046 35.77867~139.72187 35.77650#359198f0,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.72187 35.77650~139.72603 35.76487#ac1c3fae,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.72603 35.76487~139.72748 35.76284#77d6b0e2,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.72748 35.76284~139.73325 35.75844#b4f37b87,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.73325 35.75844~139.73751 35.75302#8135226f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.73325 35.75844~139.75145 35.74781#96f13aa9,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.73891 35.75163~139.74475 35.74773#d50920cd,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.75145 35.74781~139.75265 35.74732#e5f745d8,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.75145 35.74781~139.76087 35.74278#051915af,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.75265 35.74732~139.75509 35.74627#958f673b,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.75509 35.74627~139.76087 35.74278#4acf4c18,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.76087 35.74278~139.77309 35.72595#95f28c13,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.76663 35.67955~139.76778 35.68294#6061e6b8,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.76708 35.67945~139.76778 35.68294#eda88355,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.76716 35.68228~139.76764 35.68359#a65980df,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.76764 35.68359~139.76778 35.68294#c916a108,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.76764 35.68359~139.77054 35.69096#b2e23073,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77054 35.69096~139.77121 35.69258#b8473bf2,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77121 35.69258~139.77159 35.69345#598cdf1c,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77159 35.69345~139.77280 35.69635#2ebe1fe9,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77188 35.72667~139.77309 35.72595#0c1fab86,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77280 35.69635~139.77292 35.69772#5ca24388,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77280 35.69635~139.77313 35.69743#5e8d7eea,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77309 35.72595~139.77741 35.72206#e1f5489b,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77313 35.69743~139.77335 35.69872#dde0f17d,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77335 35.69872~139.77573 35.71239#b81476ca,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77507 35.71205~139.77664 35.71439#f32d3b24,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77573 35.71239~139.77664 35.71439#6d9373da,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77664 35.71439~139.77865 35.72085#f7d73f91,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.77741 35.72206~139.77865 35.72085#c36f1a27,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東北線,allow,139.66635 35.85033~139.68335 35.83490#bd4cd661,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
+東北線,deny,139.66635 35.85033~139.66760 35.84922#fb84d894,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
+東北線,deny,139.66760 35.84922~139.66963 35.84745#a6459c6d,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
+東北線,deny,139.66963 35.84745~139.68335 35.83490#5a0729ea,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.

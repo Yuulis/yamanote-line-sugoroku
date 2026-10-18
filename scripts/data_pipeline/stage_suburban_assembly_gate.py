@@ -20,6 +20,7 @@ from scripts.data_pipeline.stage_suburban_support import (
     hash_tree,
     hash_value,
     read_json,
+    resolve_historical_baseline,
     sha256_file,
     write_json,
 )
@@ -275,7 +276,8 @@ def _audit_built_preservation(
 ) -> list[str]:
     findings: list[str] = []
     stage_overrides = root / assembly.ASSEMBLED_PATH / "overrides"
-    baseline = root / SHIPPED_DATA_DIR
+    baseline = resolve_historical_baseline(root, SHIPPED_DATA_DIR)
+    baseline_overrides = resolve_historical_baseline(root, "data/overrides")
     for label in ("a", "b"):
         output = data_dir / label
         try:
@@ -285,7 +287,7 @@ def _audit_built_preservation(
                     stage_overrides,
                     output,
                     baseline,
-                    root / "data/overrides",
+                    baseline_overrides,
                 )
             )
         except (OSError, KeyError, TypeError, ValueError) as error:

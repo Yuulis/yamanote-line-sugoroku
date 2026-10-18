@@ -1,14 +1,15 @@
-order,station_id,station_number,platform_selector
-0,ayase,JL20,
-1,kameari,JL21,
-2,kanamachi,JL22,
-3,matsudo,JL22,
-4,kita-matsudo,JL23,
-5,mabashi,JL24,
-6,shim-matsudo,JL25,
-7,kita-kogane,JL26,
-8,minami-kashiwa,JL27,
-9,kashiwa,JL28,
-10,kita-kashiwa,JL29,
-11,abiko,JL30,
-12,tennodai,JL31,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,ayase,JL20,,綾瀬,綾瀬,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kameari,JL21,,亀有,亀有,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kanamachi,JL22,,金町,金町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,matsudo,JL22,,松戸,松戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,kita-matsudo,JL23,,北松戸,北松戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,mabashi,JL24,,馬橋,馬橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,shim-matsudo,JL25,,新松戸,新松戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,kita-kogane,JL26,,北小金,北小金,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,minami-kashiwa,JL27,,南柏,南柏,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,kashiwa,JL28,,柏,柏,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,kita-kashiwa,JL29,,北柏,北柏,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,abiko,JL30,,我孫子,我孫子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,tennodai,JL31,,天王台,天王台,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,toride,,,取手,取手,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

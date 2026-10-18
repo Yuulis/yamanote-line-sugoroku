@@ -1,0 +1,9 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,takasaki,,,高崎,高崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kita-takasaki,,,北高崎,北高崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,gumma-yawata,,,群馬八幡,群馬八幡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,annaka,,,安中,安中,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,isobe,,,磯部,磯部,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,matsuida,,,松井田,松井田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,nishi-matsuida,,,西松井田,西松井田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,yokokawa,,,横川,横川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

@@ -15,6 +15,7 @@ from scripts.data_pipeline import stage_suburban_jr as stage
 from scripts.data_pipeline.build import build, route_service
 from scripts.data_pipeline.n02 import N02SourceProvider
 from scripts.data_pipeline.overrides import load_overrides
+from tests.data_pipeline.support import historical_baseline
 
 pytestmark = pytest.mark.skipif(
     not (stage.ROOT / "N02-25_GML/UTF-8" / config.RAW_SECTION_FILE).is_file(),
@@ -46,8 +47,8 @@ FORMER_FAILURES = {
 
 def _seed_root(root: Path) -> Path:
     source = stage.ROOT
-    shutil.copytree(source / "data/overrides", root / "data/overrides")
-    shutil.copytree(source / "public/data", root / "public/data")
+    shutil.copytree(historical_baseline("data/overrides"), root / "data/overrides")
+    shutil.copytree(historical_baseline("public/data"), root / "public/data")
     (root / "N02-25_GML").symlink_to(source / "N02-25_GML")
     inputs: dict[str, str] = {}
     for name in (

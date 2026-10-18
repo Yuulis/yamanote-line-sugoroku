@@ -12,9 +12,11 @@ from scripts.data_pipeline import config
 from scripts.data_pipeline.build import generate_build
 from scripts.data_pipeline.overrides import load_overrides
 from scripts.data_pipeline.stage_suburban_jr import _frozen_jr_catalog, audit
+from tests.data_pipeline.support import historical_baseline
 
 STAGE_DIR = config.REPO_ROOT / "data/staging/tokyo-suburban-jr/combined/overrides"
-LIVE_DIR = config.REPO_ROOT / "data/overrides"
+LIVE_DIR = historical_baseline("data/overrides")
+HISTORICAL_DATA_DIR = historical_baseline("public/data")
 
 pytestmark = pytest.mark.skipif(
     not (config.DEFAULT_RAW_DIR / config.RAW_SECTION_FILE).is_file(),
@@ -80,18 +82,16 @@ def test_combined_stage_matches_frozen_catalog_and_preserves_shipped_bundle(
     assert _reachable(backward, "shimbashi") == station_ids
 
     baseline_services = json.loads(
-        (config.REPO_ROOT / "public/data/services.json").read_bytes()
+        (HISTORICAL_DATA_DIR / "services.json").read_bytes()
     )["services"]
     baseline_segments = {
         row["id"]: row
-        for row in json.loads(
-            (config.REPO_ROOT / "public/data/segments.json").read_bytes()
-        )
+        for row in json.loads((HISTORICAL_DATA_DIR / "segments.json").read_bytes())
     }
     baseline_geometry = {
         feature["id"]: feature
         for feature in json.loads(
-            (config.REPO_ROOT / "public/data/segments.geojson").read_bytes()
+            (HISTORICAL_DATA_DIR / "segments.geojson").read_bytes()
         )["features"]
     }
     staged_services = {row["id"]: row for row in service_rows}

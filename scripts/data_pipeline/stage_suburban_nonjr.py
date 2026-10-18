@@ -25,11 +25,13 @@ from scripts.data_pipeline.registry import (
 )
 from scripts.data_pipeline.stage_suburban_support import (
     StageError,
+    _stable_repr,
     hash_tree,
     hash_value,
     read_csv,
     read_json,
     research_rows,
+    resolve_historical_baseline,
     sha256_file,
     verify_freeze,
     write_csv,
@@ -177,8 +179,10 @@ def _baseline_snapshot(root: Path) -> dict[str, Any]:
     freeze_path = root / ".claude/docs/plans/tokyo-suburban-s0-freeze.json"
     return {
         "schemaVersion": 1,
-        "publicData": _tree_hashes(root / "public/data"),
-        "liveOverrides": _tree_hashes(root / "data/overrides"),
+        "publicData": _tree_hashes(resolve_historical_baseline(root, "public/data")),
+        "liveOverrides": _tree_hashes(
+            resolve_historical_baseline(root, "data/overrides")
+        ),
         "jrStaging": _tree_hashes(root / "data/staging/tokyo-suburban-jr"),
         "freezeManifestSha256": sha256_file(freeze_path)
         if freeze_path.is_file()
@@ -956,13 +960,14 @@ def _filter_recipe_hash(
         "operators": operators,
         "lines": item.route_lines,
         "via": item.via,
-        "route": repr(item.route),
-        "compose": repr(item.compose),
+        "route": _stable_repr(item.route),
+        "compose": _stable_repr(item.compose),
         "filters": sorted(
-            (str(key), repr(value)) for key, value in service.section_filters.items()
+            (str(key), _stable_repr(value))
+            for key, value in service.section_filters.items()
         ),
         "scopedFilters": scoped,
-        "junctions": [repr(rule) for rule in service.junction_rules],
+        "junctions": [_stable_repr(rule) for rule in service.junction_rules],
     }
     return hash_value(payload)
 

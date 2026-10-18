@@ -1,0 +1,9 @@
+from_id,to_id,n02_line,via,route,compose
+keikyu-horinouchi,keikyu-shin-otsu,久里浜線,,,
+keikyu-shin-otsu,keikyu-kitakurihama,久里浜線,,,
+keikyu-kitakurihama,kurihama,久里浜線,,,
+kurihama,keikyu-yrp-nobi,久里浜線,,,
+keikyu-yrp-nobi,keikyu-nagasawa,久里浜線,,,
+keikyu-nagasawa,keikyu-tsukuihama,久里浜線,,,
+keikyu-tsukuihama,keikyu-miurakaigan,久里浜線,,,
+keikyu-miurakaigan,keikyu-misakiguchi,久里浜線,,,

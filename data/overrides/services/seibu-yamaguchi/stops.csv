@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,seibu-tamako,SY01,code=003202,多摩湖,多摩湖,西武鉄道,Pinned to official Seibu Yamaguchi Line platform code 003202; raw N02 station feature confirms frozen station name and line.
+1,seibu-seibuen-yuenchi,SY02,,西武園ゆうえんち,西武園ゆうえんち,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,seibu-seibukyujo-mae,SY03,code=003182,西武球場前,西武球場前,西武鉄道,Pinned to official Seibu Yamaguchi Line platform code 003182; raw N02 station feature confirms frozen station name and line.

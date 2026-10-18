@@ -7,7 +7,7 @@ This handoff contains the frozen S4 cross-operator stage. Its expected catalogue
 - Service stop rows: 2142
 - Service route pairs: 2009
 - Directed segments: 3988
-- Gate report SHA-256: dc3085f9d630922f0dc7d2a93f1877f5b9905c1c0f3084256c39685d5ee7438f
+- Gate report SHA-256: b324a5d69deff266a4348ea827bdb4b94750ad074eb14f0815f571bbbb0a4ee0
 
 ## Verification commands
 

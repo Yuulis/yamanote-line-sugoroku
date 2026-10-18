@@ -1,21 +1,21 @@
-order,station_id,station_number,platform_selector
-0,higashi-kanagawa,JH13,
-1,oguchi,JH14,
-2,kikuna,JH15,
-3,shin-yokohama,JH16,
-4,kozukue,JH17,
-5,kamoi,JH18,
-6,nakayama,JH19,
-7,tokaichiba,JH20,
-8,nagatsuta,JH21,
-9,naruse,JH22,
-10,machida,JH23,
-11,kobuchi,JH24,
-12,fuchinobe,JH25,
-13,yabe,JH26,
-14,sagamihara,JH27,
-15,hashimoto,,
-16,aihara,JH29,
-17,hachiojiminamino,JH30,
-18,katakura,JH31,
-19,hachioji,JH32,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,higashi-kanagawa,JH13,,東神奈川,東神奈川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,oguchi,JH14,,大口,大口,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kikuna,JH15,,菊名,菊名,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,shin-yokohama,JH16,,新横浜,新横浜,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,kozukue,JH17,,小机,小机,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,kamoi,JH18,,鴨居,鴨居,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,nakayama,JH19,,中山,中山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,tokaichiba,JH20,,十日市場,十日市場,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,nagatsuta,JH21,,長津田,長津田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,naruse,JH22,,成瀬,成瀬,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,machida,JH23,,町田,町田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,kobuchi,JH24,,古淵,古淵,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,fuchinobe,JH25,,淵野辺,淵野辺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,yabe,JH26,,矢部,矢部,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,sagamihara,JH27,,相模原,相模原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,hashimoto,,,橋本,橋本,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,aihara,JH29,,相原,相原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,hachiojiminamino,JH30,,八王子みなみ野,八王子みなみ野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,katakura,JH31,,片倉,片倉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,hachioji,JH32,,八王子,八王子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

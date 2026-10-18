@@ -1,12 +1,12 @@
-order,station_id,station_number,platform_selector
-0,kisarazu,,
-1,gion,,
-2,kazusa-kiyokawa,,
-3,higashi-kiyokawa,,
-4,yokota,,
-5,higashi-yokota,,
-6,makuta,,
-7,shimogori,,
-8,obitsu,,
-9,tawarada,,
-10,kururi,,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,kisarazu,,,木更津,木更津,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,gion,,,祇園,祇園,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kazusa-kiyokawa,,,上総清川,上総清川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,higashi-kiyokawa,,,東清川,東清川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,yokota,,,横田,横田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,higashi-yokota,,,東横田,東横田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,makuta,,,馬来田,馬来田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,shimogori,,,下郡,下郡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,obitsu,,,小櫃,小櫃,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,tawarada,,,俵田,俵田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,kururi,,,久留里,久留里,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

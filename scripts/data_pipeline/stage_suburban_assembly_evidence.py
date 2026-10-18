@@ -6,7 +6,6 @@ import hashlib
 import json
 import shutil
 from collections import defaultdict
-from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any, cast
 
@@ -30,9 +29,11 @@ from scripts.data_pipeline.stage_suburban_assembly import (
 )
 from scripts.data_pipeline.stage_suburban_support import (
     StageError,
+    _stable_repr,
     hash_value,
     read_csv,
     read_json,
+    resolve_historical_baseline,
     sha256_file,
     write_csv,
     write_json,
@@ -203,40 +204,6 @@ def _pair_route_spec(
     return tuple(lines), tuple(operators)
 
 
-def _stable_repr(value: Any) -> str:
-    """Return repr(value) with set members in sorted order.
-
-    A raw repr() of a frozenset follows the per-process string hash seed, so a
-    fingerprint built from it differs between the measure and check processes.
-    Set-free values render exactly as repr() does, keeping existing hashes.
-    """
-    if isinstance(value, set | frozenset):
-        if not value:
-            return repr(value)
-        members = ", ".join(sorted(_stable_repr(member) for member in value))
-        if isinstance(value, frozenset):
-            return f"frozenset({{{members}}})"
-        return f"{{{members}}}"
-    if is_dataclass(value) and not isinstance(value, type):
-        parts = ", ".join(
-            f"{field.name}={_stable_repr(getattr(value, field.name))}"
-            for field in fields(value)
-            if field.repr
-        )
-        return f"{type(value).__qualname__}({parts})"
-    if isinstance(value, tuple):
-        items = [_stable_repr(item) for item in value]
-        return f"({items[0]},)" if len(items) == 1 else f"({', '.join(items)})"
-    if isinstance(value, list):
-        return f"[{', '.join(_stable_repr(item) for item in value)}]"
-    if isinstance(value, dict):
-        entries = ", ".join(
-            f"{_stable_repr(key)}: {_stable_repr(item)}" for key, item in value.items()
-        )
-        return f"{{{entries}}}"
-    return repr(value)
-
-
 def _pair_fingerprints(
     overrides: Overrides,
     consumer: Any,
@@ -381,7 +348,11 @@ def _distance_reference(
         }
     if artifact_root.name != "combined":
         raise StageError(f"distance reference is missing for {service_id}")
-    live_services_path = root / "data/overrides/services.json"
+    # The old-edition services.json is a historical input: after the S5 product
+    # install replaces live overrides, read the verified archived copy instead.
+    live_services_path = (
+        resolve_historical_baseline(root, "data/overrides") / "services.json"
+    )
     live_services = read_json(live_services_path)
     matches = [row for row in live_services["services"] if row.get("id") == service_id]
     if len(matches) != 1:

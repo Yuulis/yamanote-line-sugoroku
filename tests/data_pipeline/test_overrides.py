@@ -31,7 +31,12 @@ from scripts.data_pipeline.overrides import (
     parse_line_ranges,
 )
 from scripts.data_pipeline.registry import parse_registry
-from tests.data_pipeline.support import CORE_FIXTURE_DIR, append_line, rewrite
+from tests.data_pipeline.support import (
+    CORE_FIXTURE_DIR,
+    append_line,
+    historical_baseline,
+    rewrite,
+)
 
 EXPECTED_OUTER_LOOP = (
     "新橋 浜松町 田町 高輪ゲートウェイ 品川 大崎 五反田 目黒 恵比寿 渋谷 原宿 代々木 "
@@ -39,12 +44,11 @@ EXPECTED_OUTER_LOOP = (
     "御徒町 秋葉原 神田 東京 有楽町"
 ).split()
 
-YAMANOTE_DIR = Path(config.SERVICES_OVERRIDE_DIR) / "jr-yamanote"
-KEIYO_DIR = Path(config.SERVICES_OVERRIDE_DIR) / "jr-keiyo"
+HISTORICAL_OVERRIDES_DIR = historical_baseline("data/overrides")
+YAMANOTE_DIR = Path("services/jr-yamanote")
+KEIYO_DIR = Path("services/jr-keiyo")
 EXPECTED_CATALOG = json.loads(
-    (Path(config.DEFAULT_OVERRIDES_DIR) / "expected-catalog.json").read_text(
-        encoding="utf-8"
-    )
+    (HISTORICAL_OVERRIDES_DIR / "expected-catalog.json").read_text(encoding="utf-8")
 )
 
 

@@ -84,7 +84,13 @@ def _check_saved_handoff(root: Path, report: dict[str, Any]) -> None:
 def _check_jr_baselines(root: Path) -> list[str]:
     """Compare every S2 saved baseline against current live public data."""
     staging = root / "data/staging/tokyo-suburban-jr"
-    expected = baseline_hashes(root)
+    try:
+        expected = baseline_hashes(root)
+    except StageError as error:
+        raise StageError(
+            "S2 baseline mismatch: "
+            "data/staging/tokyo-suburban-jr/combined/baseline-sha256.json"
+        ) from error
     checked: list[str] = []
     locations = [staging / "combined"] + [
         path
