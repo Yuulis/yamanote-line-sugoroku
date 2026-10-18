@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Any
 
 from scripts.data_pipeline import config
 from scripts.data_pipeline.composition import ComposeRecipe
@@ -49,6 +50,9 @@ class DatasetOverride:
     simplify_tolerance_m: float = config.SIMPLIFY_TOLERANCE_M
     validation_profile: str = "gameplay"
     stage_start_station_id: str = ""
+    ui_presentation_file: str | None = None
+    ui_presentation_sha256: str | None = None
+    ui_presentation: Mapping[str, Any] | None = None
 
     @property
     def validation_start_station_id(self) -> str:

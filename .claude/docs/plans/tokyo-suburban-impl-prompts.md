@@ -446,3 +446,73 @@ plus `npm run typecheck && npm test` whenever `src/` or TS tests change.
 
 Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
 `Stops for lead review` (each with evidence), `Deviations from plan`, `Open issues`.
+
+## s6-plan — S6 implementation plan (Codex Sol `low`, `--sandbox read-only`)
+
+Objective: produce a directly executable plan for S6 (larger-network map, legend, alias labels, overview camera, title and
+copy) that Codex Luna can implement in bounded runs without making product decisions.
+
+S6 per `.claude/docs/plans/tokyo-suburban-network-design.md` sections 3–4: acceptance "mobile/desktop interaction and
+label-density checks; final bundle/raw/gzip/reference budgets measured". User decisions (DESIGN.md Key Decisions, freeze
+`presentation` / `representations`): D3 — `toei-oedo-loop` and `toei-oedo-radial` stay two engine services but appear as ONE
+line 「大江戸線」 everywhere in the UI (`ui-line-groups.json`, freeze `uiLineGroups`); D4 — title 「山手線すごろく」, subtitle
+「東京近郊版」, and remove BOTH notice sentences in `TitleScreen.tsx` (the 「オリジナルゲーム」 and 「非公式のファンメイド作品」 lines).
+
+Read: the design doc; `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (`presentation`, `representations`); `.claude/docs/DESIGN.md`
+Key Decisions; S5 row and S6 carry-overs in `.claude/docs/plans/tokyo-suburban-network-handoff.md`; `.claude/docs/reviews/tokyo-suburban-s5-review-1.md`;
+`data/staging/tokyo-suburban-assembled/{REVIEW.md,station-groups.json,ui-line-groups.json,service-stop-metadata.csv}`;
+`public/data/*` and `src/data/**`, `src/types/**` (bundle contract and guards); `src/features/**` (map/MapLibre layers,
+legend, labels, camera, TitleScreen, game panel, presentation); `scripts/data_pipeline/export.py` and `product_suburban.py`
+(how the bundle is produced — any new field must come from the reproducible product build, never hand edits);
+`tests/e2e/**`, `tests/unit/**`, `playwright.config.*`, `package.json`.
+
+Must cover:
+- Bundle contract for UI-only data (line groups, station aliases/original names, operator/line legend metadata): which
+  fields are added, where they are produced (pipeline/export from audited sidecars), guards/types, and the impact on
+  `dataVersion`, budgets and save compatibility (S5 rule: no migration; decide from the diff whether anything changes).
+- Map: bounded MapLibre layer count, primitive geometry reuse, grouped/filterable operator/line legend, zoom-gated labels
+  and label density for 1,586 stations, an initial view useful for play plus a network overview; mobile and desktop.
+- 大江戸線 as one UI line (legend, panel, lottery text, history) while the engine keeps two services.
+- Title/subtitle/notice change; TitleScreen intro copy still says 40 JR services, the old area and 1/2 probability — update it
+  from the freeze ruleset (state the exact new Japanese copy in the plan for the lead to check).
+- The 22 private-railway names that display large ケ under the registry convention (e.g. 新百合ケ丘 vs official 新百合ヶ丘):
+  propose options; this is a USER decision — list it under "Decisions needing the user" with a recommendation.
+- Restore the six real-bundle panel checks dropped in S5 (`capital-region.spec.ts`: 「抽選: 移動中…」, 「進行方向」, 「踏破区間」
+  during composed-hop scenarios) — user instruction.
+- Production compression of `segments.geojson` (1.29 MB uncompressed from the dev server): how the deploy target serves it.
+- Performance acceptance with the real bundle (load metrics already printed by `real-data.spec.ts`), label-density checks,
+  and the design budgets.
+
+Constraints: no gameplay/rule change; no edits to `data/staging/**`, `data/baselines/**`, raw N02; product data changes only
+via the reproducible product build (re-run S5 verify); never weaken tests; LF only; Luna runs ≤ ~30 min; mark parallel runs.
+
+Output (markdown, ≤170 lines, English): `TL;DR`; `Bundle/UI contract`; `Map & legend`; `Oedo single line`; `Copy changes`
+(exact strings); `Runs` (files, steps, tests, exact acceptance commands; parallel marks); `Risks`; `Decisions needing the user`.
+
+## s6-run — S6 implementation runs (Codex Luna `high`/`xhigh`, fast mode allowed; replace `<RUNS>`)
+
+Objective: implement S6 plan run(s) <RUNS> of `.claude/docs/plans/tokyo-suburban-s6-plan.md` exactly (the "Lead adjustments"
+header overrides the plan body).
+
+Read first: the S6 plan, `.claude/docs/plans/tokyo-suburban-s0-freeze.json`, `data/README.md`,
+`data/staging/tokyo-suburban-assembled/REVIEW.md`, `.claude/rules/{coding-principles,testing,dev-environment}.md`. Earlier S6
+runs are in the working tree; build on them.
+
+Scope: exactly the files the plan assigns to <RUNS>. Out — `data/staging/**`, `data/baselines/**`, raw `N02-25_GML/**`,
+research files, docs under `.claude/`, git commits/pushes, any gameplay/rule change. Product data changes only through the
+reproducible product build. Never weaken, skip or delete tests; failing-first tests; LF only; `shutil.rmtree` not `rm -rf`;
+English prose. STOP with evidence on any S5 payload-hash change, budget overrun, or simulation difference. Report only what
+exists on disk.
+
+Acceptance: the plan's acceptance for <RUNS>, plus always:
+```bash
+uv run ruff check scripts tests && uv run ruff format --check scripts tests
+uv run ty check scripts/data_pipeline
+uv run pytest tests/data_pipeline -q -rs
+uv run python .claude/docs/research/tokyo-suburban-r2-tools/check_freeze.py
+git diff --exit-code -- data/staging data/baselines N02-25_GML
+```
+plus `npm run typecheck && npm test` whenever `src/` or TS tests change.
+
+Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
+`Stops for lead review`, `Deviations from plan`, `Open issues`.

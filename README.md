@@ -45,6 +45,24 @@ npx playwright test --project=desktop-chromium  # 1 プロジェクトだけ
   GitHub Actions では自動で有効になります。手元で試すときは `E2E_WEBKIT=1` を付けます。
 - Vercel へのデプロイ確認（8.3 の該当項目）は手動で行います。
 
+For S6, the local real-data Playwright smoke records cold-load metrics for
+desktop Chromium and Pixel 7-sized phone Chromium. It runs in WSL2 with
+software WebGL, local `vite preview`, and stubbed basemap/style/tile/glyph
+responses; it is browser-emulation evidence and does not establish physical
+device performance or Vercel delivery behavior. No authorized S6 preview URL
+was supplied, so the live compression and response-header check remains open.
+
+The repository has no versioned `vercel.json` or `vercel.ts`. Vercel documents
+automatic CDN compression in its [CDN request flow](https://vercel.com/docs/how-vercel-cdn-works)
+and static assets served through its Edge CDN in [Vercel Primitives](https://vercel.com/docs/build-output-api/primitives).
+Its [Build Output configuration](https://vercel.com/docs/build-output-api/configuration)
+allows a static asset's `Content-Type` to be overridden. These pages do not
+specify the default `.geojson` MIME type or promise a particular negotiated
+encoding for each asset. Before release, run the documented-header check on an
+authorized preview URL for `segments.geojson` and the JSON assets, then decode
+each response and compare its SHA-256 with the generated file. R6 evidence and
+the live-check gap are recorded in `.claude/logs/s6/s6-evidence.md`.
+
 ## CI（GitHub Actions）
 
 `.github/workflows/ci.yml` が、`master` / `develop` / `feature/**` への push、

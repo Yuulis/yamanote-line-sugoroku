@@ -172,5 +172,7 @@
   "simplifyToleranceM": 1,
   "validationProfile": "gameplay",
   "startStationId": "shimbashi",
-  "targetServiceId": "jr-yamanote"
+  "targetServiceId": "jr-yamanote",
+  "uiPresentationFile": "ui-presentation.json",
+  "uiPresentationSha256": "96eb97529be4eb6d70e66a4a02cdd6981ca7a7b08ee3a2f76794d0be059ba751"
 }

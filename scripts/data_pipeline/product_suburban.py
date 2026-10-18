@@ -36,6 +36,12 @@ from scripts.data_pipeline.product_suburban_inputs import (
     verify_history,
     verify_inputs,
 )
+from scripts.data_pipeline.product_suburban_presentation import (
+    PRESENTATION_FILE,
+    build_ui_presentation,
+    compact_json,
+    require_same_presentation,
+)
 from scripts.data_pipeline.rules import Report, check_two_way_reachability
 from scripts.data_pipeline.stage_suburban_support import (
     StageError,
@@ -136,6 +142,28 @@ def _require_s5_log_path(root: Path, out_dir: Path) -> Path:
     return destination
 
 
+def _presentation_sources(overrides: Any) -> tuple[list[dict[str, Any]], ...]:
+    """Project loaded override records into the exported UI metadata shape."""
+    lines = [
+        {"id": line.id, "name": line.name, "color": line.color}
+        for line in overrides.lines
+    ]
+    services = [
+        {
+            "id": service.id,
+            "operator": service.effective_operator(overrides.dataset),
+            "lineIds": list(service.definition.line_ids),
+            "stationIds": list(service.station_ids),
+        }
+        for service in overrides.services
+    ]
+    stations = [
+        {"id": station.id, "name": station.name}
+        for station in overrides.registry.stations
+    ]
+    return lines, services, stations
+
+
 def prepare(*, root: Path = ROOT, out_dir: Path) -> dict[str, Any]:
     """Verify and copy the S4 overrides, then restore frozen product settings."""
     inputs_report = verify_inputs(root=root)
@@ -155,6 +183,21 @@ def prepare(*, root: Path = ROOT, out_dir: Path) -> dict[str, Any]:
     shutil.copytree(source_dir, destination)
     write_json(destination / "dataset.json", dataset)
     prepared = load_overrides(destination)
+    lines, services, stations = _presentation_sources(prepared)
+    presentation = build_ui_presentation(
+        root=root, lines=lines, services=services, stations=stations
+    )
+    presentation_payload = compact_json(presentation)
+    (destination / PRESENTATION_FILE).write_bytes(presentation_payload.encode("utf-8"))
+    dataset = {
+        **dataset,
+        "uiPresentationFile": PRESENTATION_FILE,
+        "uiPresentationSha256": hashlib.sha256(
+            presentation_payload.encode("utf-8")
+        ).hexdigest(),
+    }
+    write_json(destination / "dataset.json", dataset)
+    prepared = load_overrides(destination)
     freeze = read_json(root / FREEZE_PATH)
     if (
         prepared.dataset.validation_profile != "gameplay"
@@ -169,12 +212,22 @@ def prepare(*, root: Path = ROOT, out_dir: Path) -> dict[str, Any]:
     for path in sorted(destination.rglob("*")):
         if path.is_file() and b"\r" in path.read_bytes():
             raise StageError(f"prepared product override is not LF-only: {path}")
+    derived = _check_derived_override_tree(root, destination)
     report = {
         "status": "prepared",
         "source": ASSEMBLED_PATH + "/overrides",
         "sourceDatasetSha256": sha256_file(source_dataset_path),
         "preparedOverridesSha256": hash_tree(destination),
         "transformedFields": changes,
+        "presentation": {
+            "file": PRESENTATION_FILE,
+            "sha256": dataset["uiPresentationSha256"],
+            "operators": len(presentation["operators"]),
+            "lineGroups": len(presentation["lineGroups"]),
+            "stationsWithAliases": len(presentation["stations"]),
+            "serviceStopNames": len(presentation["serviceStopNames"]),
+        },
+        "derivedOverrideTree": derived["status"],
         "frozenCounts": inputs_report["counts"],
     }
     report_path = destination.parent / "prepare-provenance.json"
@@ -222,6 +275,21 @@ def compare_builds(a: Path, b: Path, *, root: Path = ROOT) -> dict[str, Any]:
         raise StageError("product manifest schema or content hash is invalid")
     if "validationProfile" in manifest or "stageStartStationId" in manifest:
         raise StageError("product manifest contains stage-only fields")
+    verify_inputs(root=root)
+    services_document = json.loads(first[config.SERVICES_FILE])
+    stations_document = json.loads(first[config.STATIONS_FILE])
+    expected_presentation = build_ui_presentation(
+        root=root,
+        lines=services_document.get("lines", []),
+        services=services_document.get("services", []),
+        stations=stations_document,
+    )
+    try:
+        require_same_presentation(manifest.get("uiPresentation"), expected_presentation)
+    except ValueError as error:
+        raise StageError(
+            "product manifest UI presentation differs from audited source expectations"
+        ) from error
     s4_hashes = _check_s4_payload_hashes(root)
     for name in PAYLOAD_FILES:
         if hashes["a"][name] != s4_hashes[name]:
@@ -236,13 +304,16 @@ def compare_builds(a: Path, b: Path, *, root: Path = ROOT) -> dict[str, Any]:
 
 
 def _check_derived_override_tree(root: Path, overrides_dir: Path) -> dict[str, Any]:
-    """Require generated overrides to differ from S4 only in frozen dataset fields."""
+    """Require derived S6 metadata and frozen S5 settings over the S4 inputs."""
     source = root / ASSEMBLED_PATH / "overrides"
     if not overrides_dir.is_dir():
         raise StageError(f"prepared product overrides are missing: {overrides_dir}")
     source_hashes, product_hashes = hash_tree(source), hash_tree(overrides_dir)
-    if set(source_hashes) != set(product_hashes):
-        raise StageError("prepared product override files differ from S4 inventory")
+    expected_files = {*source_hashes, PRESENTATION_FILE}
+    if set(expected_files) != set(product_hashes):
+        raise StageError(
+            "prepared product override files differ from S4 plus UI metadata"
+        )
     for relative, digest in source_hashes.items():
         if relative != "dataset.json" and product_hashes[relative] != digest:
             raise StageError(
@@ -252,9 +323,32 @@ def _check_derived_override_tree(root: Path, overrides_dir: Path) -> dict[str, A
     expected_dataset, changes = product_dataset(
         read_json(source / "dataset.json"), freeze
     )
+    prepared = load_overrides(overrides_dir)
+    lines, services, stations = _presentation_sources(prepared)
+    expected_presentation = build_ui_presentation(
+        root=root, lines=lines, services=services, stations=stations
+    )
+    expected_presentation_payload = compact_json(expected_presentation)
+    expected_dataset.update(
+        uiPresentationFile=PRESENTATION_FILE,
+        uiPresentationSha256=hashlib.sha256(
+            expected_presentation_payload.encode("utf-8")
+        ).hexdigest(),
+    )
     if read_json(overrides_dir / "dataset.json") != expected_dataset:
-        raise StageError("prepared product dataset differs from frozen S5 settings")
-    return {"dataset": expected_dataset, "transformedFields": changes}
+        raise StageError("prepared product dataset differs from frozen S5/S6 settings")
+    if (overrides_dir / PRESENTATION_FILE).read_text(
+        encoding="utf-8"
+    ) != expected_presentation_payload:
+        raise StageError(
+            "prepared UI presentation differs from audited source expectations"
+        )
+    return {
+        "dataset": expected_dataset,
+        "transformedFields": changes,
+        "presentation": expected_presentation,
+        "status": "verified",
+    }
 
 
 def _check_product_artifact(
@@ -266,6 +360,20 @@ def _check_product_artifact(
     findings = validate.validate_dataset(dataset, overrides)
     if not findings.ok:
         raise StageError("product validation failed: " + "; ".join(findings.errors))
+    expected_presentation = build_ui_presentation(
+        root=root,
+        lines=dataset.services.get("lines", []),
+        services=dataset.service_patterns,
+        stations=dataset.stations,
+    )
+    try:
+        require_same_presentation(
+            dataset.manifest.get("uiPresentation"), expected_presentation
+        )
+    except ValueError as error:
+        raise StageError(
+            "product manifest UI presentation differs from audited source expectations"
+        ) from error
     freeze, catalog, services = assembly._load_frozen_catalog(root)
     oracle = assembly._oracle(freeze, catalog, services)
     station_ids = [row.get("id") for row in dataset.stations]

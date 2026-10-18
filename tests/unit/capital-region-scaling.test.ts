@@ -129,17 +129,18 @@ describe("scaled map and presentation", () => {
     onShowTitle: () => {},
   }));
 
-  it("renders a single-service line as a flat service-name legend item", () => {
+  it("renders a single-service UI group as one checkbox legend row", () => {
     const markup = legendMarkup();
-    expect(markup).toMatch(/<li><span class="legend-swatch legend-swatch--service"[^>]*><\/span>広域支線<\/li>/);
-    expect(markup).not.toContain("テスト支線");
+    expect(markup).toContain('aria-label="広域支線を表示"');
+    expect(markup).toContain("Fixture railway");
     expect(markup).not.toContain("（1系統）");
   });
 
-  it("renders multiple services under a collapsible line header with all service names", () => {
+  it("renders a multi-service UI group once under its operator", () => {
     const markup = legendMarkup();
-    expect(markup).toMatch(/<details><summary>.*?テスト広域線（3系統）<\/summary><ul><li>広域北系統<\/li><li>広域東系統<\/li><li>広域海岸系統<\/li><\/ul><\/details>/);
-    expect(markup).not.toContain("<details open");
+    expect(markup).toContain('aria-label="テスト広域線を表示"');
+    expect(markup).toContain("Fixture railway（4路線）");
+    expect(markup).not.toContain("広域北系統");
   });
 
   it("indexes rapid primitives by the ridden service regardless of owner, with no direction duplicates", () => {

@@ -1,0 +1,1057 @@
+{
+  "version": 1,
+  "lineGroups": [
+    {
+      "id": "jr-yamanote",
+      "color": "#9ACD32",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-keihin-tohoku",
+      "color": "#00B2E5",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-chuo-sobu-local",
+      "color": "#FFD400",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-chuo-rapid",
+      "color": "#F15A22",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-chuo-takao-fujino",
+      "color": "#00843D",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-ome",
+      "color": "#F15A22",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-chuo-rapid"
+      ]
+    },
+    {
+      "id": "jr-itsukaichi",
+      "color": "#F15A22",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-chuo-rapid"
+      ]
+    },
+    {
+      "id": "jr-hachiko",
+      "color": "#A8A39D",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "color": "#00AC9A",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-saikyo"
+      ]
+    },
+    {
+      "id": "jr-saikyo",
+      "color": "#00AC9A",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-sotetsu-direct",
+      "color": "#00AC9A",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-saikyo"
+      ]
+    },
+    {
+      "id": "jr-keiyo",
+      "color": "#C9242F",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-musashino",
+      "color": "#F15A22",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-musashino-takaya",
+      "color": "#F15A22",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-musashino"
+      ]
+    },
+    {
+      "id": "jr-musashino-futamata",
+      "color": "#F15A22",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-musashino"
+      ]
+    },
+    {
+      "id": "jr-nambu",
+      "color": "#FFD400",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-nambu-branch",
+      "color": "#FFD400",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-nambu"
+      ]
+    },
+    {
+      "id": "jr-tsurumi",
+      "color": "#FFD400",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-tsurumi-umishibaura",
+      "color": "#FFD400",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-tsurumi"
+      ]
+    },
+    {
+      "id": "jr-tsurumi-okawa",
+      "color": "#FFD400",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-tsurumi"
+      ]
+    },
+    {
+      "id": "jr-yokohama",
+      "color": "#80C241",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-sagami",
+      "color": "#009793",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-tokaido",
+      "color": "#F68B1E",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-yokosuka",
+      "color": "#0067C0",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-sobu-rapid",
+      "color": "#0067C0",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-utsunomiya",
+      "color": "#F68B1E",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-takasaki",
+      "color": "#F68B1E",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "color": "#E21F26",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "color": "#E21F26",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-shonan-shinjuku-local"
+      ]
+    },
+    {
+      "id": "jr-joban-rapid",
+      "color": "#00B261",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-joban-local",
+      "color": "#00B2E5",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-narita-abiko",
+      "color": "#00B261",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-narita"
+      ]
+    },
+    {
+      "id": "jr-narita",
+      "color": "#00B261",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-narita-airport-branch",
+      "color": "#00B261",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-narita"
+      ]
+    },
+    {
+      "id": "jr-kashima",
+      "color": "#9F7BB5",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-sobu-main",
+      "color": "#FFC20D",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-sotobo",
+      "color": "#E83F3F",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-uchibo",
+      "color": "#00B2E5",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-kururi",
+      "color": "#00B261",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-togane",
+      "color": "#B38D4D",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged."
+    },
+    {
+      "id": "jr-ito",
+      "color": "#F68B1E",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-tokaido"
+      ]
+    },
+    {
+      "id": "jr-chuo-tatsuno",
+      "color": "#F15A22",
+      "status": "official",
+      "source": "https://www.jreast.co.jp/e/downloads/pdf/numbering_e.pdf",
+      "method": "Retained the published JR East line colour unchanged.",
+      "sharedWith": [
+        "jr-chuo-rapid"
+      ]
+    },
+    {
+      "id": "jr-koumi",
+      "color": "#C72C53",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-shinonoi",
+      "color": "#2C81C7",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-shinetsu-nagano",
+      "color": "#AEC72C",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-oito",
+      "color": "#B32CC7",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-shinetsu-yokokawa",
+      "color": "#2CC785",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-joetsu",
+      "color": "#C7582C",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-agatsuma",
+      "color": "#2C2DC7",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-ryomo",
+      "color": "#5AC72C",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-mito",
+      "color": "#C72C87",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-nikko",
+      "color": "#2CB5C7",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-karasuyama",
+      "color": "#C7AC2C",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-suigun",
+      "color": "#7F2CC7",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "jr-suigun-ota",
+      "color": "#2CC751",
+      "status": "unofficial",
+      "source": "https://www.jreast.co.jp/map/pdf/kanto.pdf",
+      "evidence": "Searched JR East station-numbering and Kanto/Koshinetsu route-map PDFs, plus route-specific station/line pages. No named line-identity swatch or published HEX/RGB/CMYK/Pantone value was found for this route; the route map shows geography but does not key a distinct identity colour. The current UI hue is provisional, generated, and distinct from neighbouring groups."
+    },
+    {
+      "id": "metro-ginza",
+      "color": "#F39700",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-marunouchi",
+      "color": "#E60012",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-marunouchi-honancho",
+      "color": "#E60012",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-hibiya",
+      "color": "#9CAEB7",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-tozai",
+      "color": "#00A7DB",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-chiyoda",
+      "color": "#00A650",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-yurakucho",
+      "color": "#C1A470",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-hanzomon",
+      "color": "#8F76D6",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-namboku",
+      "color": "#00ADA9",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "metro-fukutoshin",
+      "color": "#9C5E31",
+      "status": "official",
+      "source": "https://www.tokyometro.jp/support/trademark/pdf/guideline.pdf",
+      "method": "Retained the official Tokyo Metro line-colour value; source is its direct color standard."
+    },
+    {
+      "id": "toei-asakusa",
+      "color": "#E85298",
+      "status": "official",
+      "source": "https://www.kotsu.metro.tokyo.jp/other/kanren/ad/pdf/media_guide_2022_06.pdf",
+      "method": "Retained the published Toei line-colour value; source is the operator media guide with line-colour map."
+    },
+    {
+      "id": "toei-mita",
+      "color": "#0079C2",
+      "status": "official",
+      "source": "https://www.kotsu.metro.tokyo.jp/other/kanren/ad/pdf/media_guide_2022_06.pdf",
+      "method": "Retained the published Toei line-colour value; source is the operator media guide with line-colour map."
+    },
+    {
+      "id": "toei-shinjuku",
+      "color": "#6CBB5A",
+      "status": "official",
+      "source": "https://www.kotsu.metro.tokyo.jp/other/kanren/ad/pdf/media_guide_2022_06.pdf",
+      "method": "Retained the published Toei line-colour value; source is the operator media guide with line-colour map."
+    },
+    {
+      "id": "toei-oedo",
+      "color": "#B6007A",
+      "status": "official",
+      "source": "https://www.kotsu.metro.tokyo.jp/other/kanren/ad/pdf/media_guide_2022_06.pdf",
+      "method": "Retained the published Toei line-colour value; source is the operator media guide with line-colour map."
+    },
+    {
+      "id": "yokohama-blue",
+      "color": "#0072BC",
+      "status": "official",
+      "source": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf?lang=zh",
+      "method": "Retained the published Yokohama City Subway line-colour value; source is the direct route-map PDF."
+    },
+    {
+      "id": "yokohama-green",
+      "color": "#00A650",
+      "status": "official",
+      "source": "https://www.city.yokohama.lg.jp/kotsu/kigyo/anzen/sonotataisaku.files/0003_20210330.pdf?lang=zh",
+      "method": "Retained the published Yokohama City Subway line-colour value; source is the direct route-map PDF."
+    },
+    {
+      "id": "tobu-isesaki",
+      "color": "#B00B36",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-nikko",
+      "color": "#F57215",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-kinugawa",
+      "color": "#4372C2",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-utsunomiya",
+      "color": "#CF9E34",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-sano",
+      "color": "#9E50AE",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-kiryu",
+      "color": "#3D90D5",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-koizumi",
+      "color": "#D1B502",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-koizumi-ota",
+      "color": "#D1B502",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB.",
+      "sharedWith": [
+        "tobu-koizumi"
+      ]
+    },
+    {
+      "id": "tobu-kameido",
+      "color": "#B4A543",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-daishi",
+      "color": "#73659D",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-urban-park",
+      "color": "#00ADEF",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-tojo",
+      "color": "#244AA5",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "tobu-ogose",
+      "color": "#F89D0E",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-ikebukuro",
+      "color": "#F46917",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-chichibu",
+      "color": "#F46917",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB.",
+      "sharedWith": [
+        "seibu-ikebukuro"
+      ]
+    },
+    {
+      "id": "seibu-yurakucho",
+      "color": "#EF6B9A",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-toshima",
+      "color": "#F46917",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB.",
+      "sharedWith": [
+        "seibu-ikebukuro"
+      ]
+    },
+    {
+      "id": "seibu-sayama",
+      "color": "#40BA4E",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-yamaguchi",
+      "color": "#E6333F",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-shinjuku",
+      "color": "#A35328",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-haijima",
+      "color": "#19B3C3",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-tamako",
+      "color": "#F89D0E",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-kokubunji",
+      "color": "#40BA4E",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "seibu-seibuen",
+      "color": "#40BA4E",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB.",
+      "sharedWith": [
+        "seibu-kokubunji"
+      ]
+    },
+    {
+      "id": "seibu-tamagawa",
+      "color": "#305294",
+      "status": "official",
+      "source": "https://www.seiburailway.jp/railway/zensen_rosenzu.pdf",
+      "method": "Sampled the official route-map line swatch rendered by MuPDF to sRGB and recorded as #RRGGBB."
+    },
+    {
+      "id": "keisei-main",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups."
+    },
+    {
+      "id": "keisei-oshiage",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups.",
+      "sharedWith": [
+        "keisei-main"
+      ]
+    },
+    {
+      "id": "keisei-kanamachi",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups.",
+      "sharedWith": [
+        "keisei-main"
+      ]
+    },
+    {
+      "id": "keisei-chiba",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups.",
+      "sharedWith": [
+        "keisei-main"
+      ]
+    },
+    {
+      "id": "keisei-chihara",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups.",
+      "sharedWith": [
+        "keisei-main"
+      ]
+    },
+    {
+      "id": "keisei-higashi-narita",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups.",
+      "sharedWith": [
+        "keisei-main"
+      ]
+    },
+    {
+      "id": "keisei-matsudo",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups.",
+      "sharedWith": [
+        "keisei-main"
+      ]
+    },
+    {
+      "id": "tx",
+      "color": "#0036B3",
+      "status": "official",
+      "source": "https://www.mir.co.jp/company/ci.html",
+      "method": "Published CMYK C100 M70 Y0 K30 converted with R=255×(1−C)×(1−K), G=255×(1−M)×(1−K), and B=255×(1−Y)×(1−K); rounded to nearest integer: #0036B3."
+    },
+    {
+      "id": "keikyu-main",
+      "color": "#0096E0",
+      "status": "official",
+      "source": "https://www.keikyu.co.jp/ride/kakueki/KK01.html",
+      "method": "Official Keikyu station pages render the KK station-numbering symbol with the operator-published #0096E0 border colour; the same KK symbol colour is used across the line groups."
+    },
+    {
+      "id": "keikyu-airport",
+      "color": "#0096E0",
+      "status": "official",
+      "source": "https://www.keikyu.co.jp/ride/kakueki/KK01.html",
+      "method": "Official Keikyu station pages render the KK station-numbering symbol with the operator-published #0096E0 border colour; the same KK symbol colour is used across the line groups.",
+      "sharedWith": [
+        "keikyu-main"
+      ]
+    },
+    {
+      "id": "keikyu-daishi",
+      "color": "#0096E0",
+      "status": "official",
+      "source": "https://www.keikyu.co.jp/ride/kakueki/KK01.html",
+      "method": "Official Keikyu station pages render the KK station-numbering symbol with the operator-published #0096E0 border colour; the same KK symbol colour is used across the line groups.",
+      "sharedWith": [
+        "keikyu-main"
+      ]
+    },
+    {
+      "id": "keikyu-zushi",
+      "color": "#0096E0",
+      "status": "official",
+      "source": "https://www.keikyu.co.jp/ride/kakueki/KK01.html",
+      "method": "Official Keikyu station pages render the KK station-numbering symbol with the operator-published #0096E0 border colour; the same KK symbol colour is used across the line groups.",
+      "sharedWith": [
+        "keikyu-main"
+      ]
+    },
+    {
+      "id": "keio-main",
+      "color": "#CA0C7E",
+      "status": "official",
+      "source": "https://www.keio.co.jp/assets/pdf/train/station/rosenzu.pdf",
+      "method": "Sampled official station-numbering line-symbol colours rendered by MuPDF to sRGB; KO branch groups share KO, while Inokashira uses IN."
+    },
+    {
+      "id": "keio-sagamihara",
+      "color": "#CA0C7E",
+      "status": "official",
+      "source": "https://www.keio.co.jp/assets/pdf/train/station/rosenzu.pdf",
+      "method": "Sampled official station-numbering line-symbol colours rendered by MuPDF to sRGB; KO branch groups share KO, while Inokashira uses IN.",
+      "sharedWith": [
+        "keio-main"
+      ]
+    },
+    {
+      "id": "keio-takao",
+      "color": "#CA0C7E",
+      "status": "official",
+      "source": "https://www.keio.co.jp/assets/pdf/train/station/rosenzu.pdf",
+      "method": "Sampled official station-numbering line-symbol colours rendered by MuPDF to sRGB; KO branch groups share KO, while Inokashira uses IN.",
+      "sharedWith": [
+        "keio-main"
+      ]
+    },
+    {
+      "id": "keio-keibajo",
+      "color": "#CA0C7E",
+      "status": "official",
+      "source": "https://www.keio.co.jp/assets/pdf/train/station/rosenzu.pdf",
+      "method": "Sampled official station-numbering line-symbol colours rendered by MuPDF to sRGB; KO branch groups share KO, while Inokashira uses IN.",
+      "sharedWith": [
+        "keio-main"
+      ]
+    },
+    {
+      "id": "keio-dobutsuen",
+      "color": "#CA0C7E",
+      "status": "official",
+      "source": "https://www.keio.co.jp/assets/pdf/train/station/rosenzu.pdf",
+      "method": "Sampled official station-numbering line-symbol colours rendered by MuPDF to sRGB; KO branch groups share KO, while Inokashira uses IN.",
+      "sharedWith": [
+        "keio-main"
+      ]
+    },
+    {
+      "id": "keio-inokashira",
+      "color": "#305294",
+      "status": "official",
+      "source": "https://www.keio.co.jp/assets/pdf/train/station/rosenzu.pdf",
+      "method": "Sampled official station-numbering line-symbol colours rendered by MuPDF to sRGB; KO branch groups share KO, while Inokashira uses IN."
+    },
+    {
+      "id": "odakyu-odawara",
+      "color": "#008DD1",
+      "status": "official",
+      "source": "https://www.odakyu.jp/program/info/data.info/8052_1284200_.pdf",
+      "method": "Official numbering guide says Odakyu lines are blue and Hakone lines brown; blue station-numbering swatch sampled from the PDF at #008DD1."
+    },
+    {
+      "id": "odakyu-enoshima",
+      "color": "#008DD1",
+      "status": "official",
+      "source": "https://www.odakyu.jp/program/info/data.info/8052_1284200_.pdf",
+      "method": "Official numbering guide says Odakyu lines are blue and Hakone lines brown; blue station-numbering swatch sampled from the PDF at #008DD1.",
+      "sharedWith": [
+        "odakyu-odawara"
+      ]
+    },
+    {
+      "id": "odakyu-tama",
+      "color": "#008DD1",
+      "status": "official",
+      "source": "https://www.odakyu.jp/program/info/data.info/8052_1284200_.pdf",
+      "method": "Official numbering guide says Odakyu lines are blue and Hakone lines brown; blue station-numbering swatch sampled from the PDF at #008DD1.",
+      "sharedWith": [
+        "odakyu-odawara"
+      ]
+    },
+    {
+      "id": "tokyu-toyoko",
+      "color": "#DD1C4E",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-meguro",
+      "color": "#00A2D2",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-shin-yokohama",
+      "color": "#803695",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-den-en-toshi",
+      "color": "#00B395",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-oimachi",
+      "color": "#F46F21",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-ikegami",
+      "color": "#F386A7",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-tamagawa",
+      "color": "#AD2081",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-setagaya",
+      "color": "#FEC322",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "tokyu-kodomonokuni",
+      "color": "#0063B1",
+      "status": "official",
+      "source": "https://www.tokyu.co.jp/railway/map/pdf/rosen-japanese.pdf",
+      "method": "Sampled official line-symbol swatches from the operator route-map PDF rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "sotetsu-main",
+      "color": "#0075BC",
+      "status": "official",
+      "source": "https://www.sotetsu.co.jp/media/2019/pressrelease/pdf/140225_01.pdf",
+      "method": "Sampled the official SO station-numbering symbol rendered by MuPDF to sRGB; shared across Sotetsu lines."
+    },
+    {
+      "id": "sotetsu-izumino",
+      "color": "#0075BC",
+      "status": "official",
+      "source": "https://www.sotetsu.co.jp/media/2019/pressrelease/pdf/140225_01.pdf",
+      "method": "Sampled the official SO station-numbering symbol rendered by MuPDF to sRGB; shared across Sotetsu lines.",
+      "sharedWith": [
+        "sotetsu-main"
+      ]
+    },
+    {
+      "id": "sotetsu-shin-yokohama",
+      "color": "#0075BC",
+      "status": "official",
+      "source": "https://www.sotetsu.co.jp/media/2019/pressrelease/pdf/140225_01.pdf",
+      "method": "Sampled the official SO station-numbering symbol rendered by MuPDF to sRGB; shared across Sotetsu lines.",
+      "sharedWith": [
+        "sotetsu-main"
+      ]
+    },
+    {
+      "id": "mm-minatomirai",
+      "color": "#4761B6",
+      "status": "official",
+      "source": "https://www.mm21railway.co.jp/global/english/info/pdf/map.pdf?202403=",
+      "method": "Official MM station-numbering badge sampled from the direct route-map PDF rendered by MuPDF to sRGB: #4761B6."
+    },
+    {
+      "id": "hokuso-main",
+      "color": "#005BAC",
+      "status": "official",
+      "source": "https://www.hokuso-railway.co.jp/docs/railway/route_map.pdf",
+      "method": "Sampled the solid official route-map stroke rendered by MuPDF to sRGB."
+    },
+    {
+      "id": "keikyu-kurihama",
+      "color": "#0096E0",
+      "status": "official",
+      "source": "https://www.keikyu.co.jp/ride/kakueki/KK01.html",
+      "method": "Official Keikyu station pages render the KK station-numbering symbol with the operator-published #0096E0 border colour; the same KK symbol colour is used across the line groups.",
+      "sharedWith": [
+        "keikyu-main"
+      ]
+    },
+    {
+      "id": "tobu-oshiage",
+      "color": "#B00B36",
+      "status": "official",
+      "source": "https://www.tobu.co.jp/pdf/guide/tobumap.pdf?20251030=",
+      "method": "Sampled the official route-map legend swatch rendered by MuPDF to sRGB and recorded as #RRGGBB.",
+      "sharedWith": [
+        "tobu-isesaki"
+      ]
+    },
+    {
+      "id": "keisei-narita-airport-access",
+      "color": "#1C0076",
+      "status": "official",
+      "source": "https://www.keisei.co.jp/keisei/kouhou/news/22-034.pdf",
+      "method": "Sampled the official Keisei station-numbering symbol rendered by MuPDF to sRGB; shared by the operator line groups.",
+      "sharedWith": [
+        "keisei-main"
+      ]
+    }
+  ]
+}

@@ -74,9 +74,12 @@ it.skipIf(!process.env.SIM_BUNDLE)("S5 product shard preserves frozen gameplay a
   const outputPath = resolve(
     process.env.S5_OUTPUT ?? `.claude/logs/s5/sim-${offset}.json`,
   );
-  const outputDirectory = `${resolve(".claude/logs/s5")}/`;
-  if (!outputPath.startsWith(outputDirectory)) {
-    throw new Error("S5_OUTPUT must be below .claude/logs/s5");
+  const outputDirectories = [
+    resolve(".claude/logs/s5"),
+    resolve(".claude/logs/s6/simulation"),
+  ];
+  if (!outputDirectories.some((directory) => outputPath.startsWith(`${directory}/`))) {
+    throw new Error("S5_OUTPUT must be below .claude/logs/s5 or .claude/logs/s6/simulation");
   }
   validateRunOptions({ baseSeed: BASE_SEED, games, turnCap: TURN_CAP });
 

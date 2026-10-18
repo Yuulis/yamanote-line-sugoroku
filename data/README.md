@@ -1,16 +1,17 @@
-# JR East capital-region game data pipeline
+# Tokyo suburban game data pipeline
 
 `public/data/*` is generated deterministically from MLIT N02 2025 and reviewed
-`data/overrides` tables. The live S6/S5 edition contains 40 services and 472
-shared stations across 東京都・千葉県・神奈川県・埼玉県, with 1,224 directed
-gameplay segments, 568 owned geometry features and 1,230 geometry references.
-The product stop order is pinned by `data/overrides/expected-catalog.json`
+`data/overrides` tables. The live S6 edition contains 135 services and 1,586
+station groups across 11 prefectures, with 3,988 directed gameplay segments,
+2,142 service-stop rows, 3,994 geometry references and a maximum chain length
+of 3. Its five public files total 2,577,364 raw bytes and 413,592 gzip bytes
+(level 9, mtime 0), within the `capital-region` profile caps of 3,145,728 raw
+and 921,600 gzip bytes. GeoJSON is 1,288,259 raw / 265,508 gzip bytes. These
+totals include the S6 UI presentation catalogue in `manifest.json`. The product
+stop order is pinned by `data/overrides/expected-catalog.json`
 (SHA-256 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`);
 there is no live timetable lookup. Gameplay starts at 新橋 and uses the adopted
-weighted lotteries (`jr-east-capital-1`). The five public files total 744,720 raw
-bytes and 125,322 gzip bytes (level 9, mtime 0), within the `capital-region`
-profile caps of 3,145,728 raw and 921,600 gzip bytes. GeoJSON is 398,311 raw / 83,972
-gzip bytes; the maximum feature chain is 3 references.
+weighted lotteries (`jr-east-capital-1`).
 
 Optional service `scope.csv` files can add an `in_area` column containing exactly
 `true` or `false` on every row. This pins the contiguous served run when a
@@ -64,21 +65,21 @@ uv run pytest -q
 
 Build options: `--raw-dir`, `--overrides-dir`, `--out-dir`, `--quiet`.
 
-## Live edition (S6 data + S5 rules; 2026-10-15)
+## Live edition (S6 presentation + S5 data and rules; 2026-10-18)
 
-The shipped catalogue is the approved JR East capital-region product catalogue:
-40 services and 472 stations in product order. All four prefectures are included;
+The shipped catalogue is the approved Tokyo suburban product catalogue:
+135 services and 1,586 station groups in product order across 11 prefectures;
 `data/overrides/dataset.json` pins `expected-catalog.json` with SHA-256
-`42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`. The 67
-previously shipped station IDs and five service IDs are retained. The game starts
-at `shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile,
+`42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`. The
+previously shipped station and service IDs remain retained. The game starts at
+`shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile,
 and simplifies geometry by 1 m. S5 sets the ruleset to `jr-east-capital-1`:
 Yamanote has a 1/2 share when it is a candidate, remaining services share the
 other half uniformly, local and rapid bases have equal weight, and the direction
 toward Yamanote is weighted 2:1 when both directions can move.
 
-The output has 1,224 directed segments, 568 primitive features and 1,230 geometry
-references; the maximum chain is 3 primitives. One reviewed platform transfer is
+The output has 3,988 directed segments and 3,994 geometry references; the maximum
+chain is 3 primitives. One reviewed platform transfer is
 at 上野 for 常磐線快速 (maximum transfer 150 m; the maximum measured endpoint jump
 is 130.956 m). Reviewed platform-offset exceptions are 東京 on 京葉線 (up to 500 m)
 and 武蔵小杉 on 南武線 (up to 400 m; measured 393.4 m). Two 湘南新宿ライン freight-corridor
@@ -161,6 +162,11 @@ build. `verify` checks installed product overrides and files, frozen catalogue o
 two-way reachability, schema, geometry references, and the unchanged product budgets. Cut over only from those verified
 generated paths with `product_suburban install`; afterward run `product_suburban verify` again. S5 retains schema 3 and
 the existing save format.
+
+S6 adds optional UI presentation metadata to the schema 3 manifest. It leaves
+the four S5 gameplay payload files, `dataVersion`, rules and save format
+unchanged. Current sizes and the R6/R7 performance, compression and simulation
+evidence are recorded in `.claude/logs/s6/s6-evidence.md`.
 
 N02 has known generalized-line limits: it does not distinguish the separate
 常磐線各停・快速 tracks between 綾瀬 and 金町, the separate 総武快速・緩行 tracks

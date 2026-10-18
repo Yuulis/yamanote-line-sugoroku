@@ -1,6 +1,7 @@
 import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
 import type { Position, SegmentFeatureCollection } from "../../types/data";
 import type { LineMetadata, ServicePattern, Station } from "../../types/network";
+import type { PresentationResolver } from "../game/presentationResolver";
 import { MVP_GAME_CONFIG } from "../game/gameConfig";
 import { buildLineColorExpression, buildTrackColorExpression } from "./lineColor";
 import {
@@ -11,10 +12,11 @@ import {
   CURRENT_SERVICE_LINE_WIDTH,
   KEY_STATION_RADIUS_STOPS,
   KEY_STATION_STROKE_STOPS,
+  LABEL_MIN_ZOOM,
+  LABEL_ORDINARY_MIN_ZOOM,
   LABEL_FONT,
   LABEL_HALO_COLOR,
   LABEL_HALO_WIDTH,
-  LABEL_MIN_ZOOM,
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
@@ -38,6 +40,7 @@ import {
 } from "./progressStyle";
 import { buildStationCollection } from "./stationCollection";
 import { classifyStations, keyStationIds, zoomInterpolation } from "./stationMarkers";
+import type { MapPresentationIndex } from "./mapPresentation";
 
 /** Game progress drawn on the map. */
 export interface MapProgress {
@@ -52,12 +55,25 @@ export interface RailwayLayerInput {
   geometry?: SegmentFeatureCollection;
   lines?: readonly LineMetadata[];
   targetServiceId?: string;
+  presentation?: Pick<
+    PresentationResolver,
+    "stationName" | "serviceStationName" | "serviceName" | "lineGroupId" | "lineGroupColor"
+  >;
+  presentationIndex?: MapPresentationIndex;
 }
 
 /** Add whichever railway layers the available data allows. */
 export function addRailwayLayers(
   map: MapLibreMap,
-  { stations, services = [], lines = [], geometry, targetServiceId = MVP_GAME_CONFIG.targetServiceId }: RailwayLayerInput,
+  {
+    stations,
+    services = [],
+    lines = [],
+    geometry,
+    targetServiceId = MVP_GAME_CONFIG.targetServiceId,
+    presentation,
+    presentationIndex,
+  }: RailwayLayerInput,
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
@@ -66,7 +82,7 @@ export function addRailwayLayers(
       type: "line",
       source: SOURCE_IDS.segments,
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": buildTrackColorExpression(lines), "line-width": 2, "line-opacity": 0.5 },
+      paint: { "line-color": buildTrackColorExpression(lines, services, presentation), "line-width": 2, "line-opacity": 0.5 },
     });
     map.addLayer({
       id: LAYER_IDS.services,
@@ -75,7 +91,7 @@ export function addRailwayLayers(
       filter: ["!=", ["get", "serviceId"], targetServiceId],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": buildTrackColorExpression(lines),
+        "line-color": buildTrackColorExpression(lines, services, presentation),
         "line-width": OTHER_SERVICE_LINE_WIDTH,
         "line-opacity": OTHER_SERVICE_LINE_OPACITY,
       },
@@ -108,7 +124,7 @@ export function addRailwayLayers(
       filter: completedSegmentFilter([], targetServiceId),
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
-        "line-color": buildLineColorExpression(services),
+        "line-color": buildLineColorExpression(services, presentation),
         "line-width": SEGMENT_LINE_WIDTH,
       },
     });
@@ -116,12 +132,23 @@ export function addRailwayLayers(
   if (stations) {
     map.addSource(SOURCE_IDS.stations, {
       type: "geojson",
-      data: buildStationCollection(stations, services),
+      data: buildStationCollection(
+        stations,
+        services,
+        presentation,
+        presentationIndex?.serviceIdsByStation,
+        targetServiceId,
+      ),
     });
     const isKeyStation: ExpressionSpecification = [
       "in",
       ["get", "id"],
-      ["literal", keyStationIds(classifyStations(stations, services, targetServiceId))],
+      ["literal", keyStationIds(classifyStations(
+        stations,
+        services,
+        targetServiceId,
+        presentationIndex?.serviceIdsByStation,
+      ))],
     ];
     // Ordinary stations first so the always-visible markers are drawn on top.
     map.addLayer({
@@ -157,9 +184,20 @@ export function addRailwayLayers(
       layout: {
         "text-field": ["get", "name"],
         "text-font": LABEL_FONT,
-        "text-size": LABEL_SIZE,
         "text-offset": [0, LABEL_OFFSET_EM],
         "text-anchor": "top",
+        "text-size": [
+          "step",
+          ["zoom"],
+          0,
+          LABEL_MIN_ZOOM,
+          ["case", ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM], LABEL_SIZE, 0],
+          LABEL_ORDINARY_MIN_ZOOM,
+          LABEL_SIZE,
+        ],
+        "symbol-sort-key": ["get", "labelPriority"],
+        "text-allow-overlap": false,
+        "text-ignore-placement": false,
       },
       paint: {
         "text-color": STATION_STROKE_COLOR,

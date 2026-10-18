@@ -327,6 +327,8 @@ def build_files(
         ),
     }
     manifest = build_manifest(manifest_inputs(files), overrides.dataset.updated_at)
+    if overrides.dataset.ui_presentation is not None:
+        manifest["uiPresentation"] = dict(overrides.dataset.ui_presentation)
     if overrides.dataset.validation_profile == "stage":
         # The existing browser contract rejects this schema, even if copied by hand.
         manifest.update(

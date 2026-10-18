@@ -6,6 +6,7 @@ import math
 import re
 from collections.abc import Mapping, Sequence
 from datetime import date
+from pathlib import Path
 from typing import Any, TypeGuard
 
 from scripts.data_pipeline import config
@@ -42,6 +43,7 @@ from scripts.data_pipeline.registry import (
 )
 
 ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 ENDPOINT_KINDS = ("terminus", "area-boundary", "service-boundary")
 SERVICE_KINDS = ("local", "rapid")
 MIN_LOOP_STOPS = 3
@@ -156,6 +158,26 @@ def parse_dataset(raw: Any) -> DatasetOverride:
     for key in ("expectedCatalogFile", "expectedCatalogSha256"):
         if key in raw and (not isinstance(raw[key], str) or not raw[key]):
             raise OverrideError(f"{key} must be a non-empty string")
+    ui_presentation_file = raw.get("uiPresentationFile")
+    ui_presentation_sha256 = raw.get("uiPresentationSha256")
+    if (ui_presentation_file is None) != (ui_presentation_sha256 is None):
+        raise OverrideError(
+            "uiPresentationFile and uiPresentationSha256 must be set together"
+        )
+    if ui_presentation_file is not None:
+        if (
+            not isinstance(ui_presentation_file, str)
+            or not ui_presentation_file.strip()
+            or Path(ui_presentation_file).is_absolute()
+            or ".." in Path(ui_presentation_file).parts
+        ):
+            raise OverrideError("uiPresentationFile must be a safe relative path")
+        if not isinstance(ui_presentation_sha256, str) or not SHA256_PATTERN.fullmatch(
+            ui_presentation_sha256
+        ):
+            raise OverrideError(
+                "uiPresentationSha256 must be a lowercase SHA-256 digest"
+            )
     validation_profile = raw.get("validationProfile", "gameplay")
     if validation_profile not in ("gameplay", "stage"):
         raise OverrideError("validationProfile must be 'gameplay' or 'stage'")
@@ -194,6 +216,8 @@ def parse_dataset(raw: Any) -> DatasetOverride:
         simplify_tolerance_m=float(simplify),
         validation_profile=validation_profile,
         stage_start_station_id=stage_start,
+        ui_presentation_file=ui_presentation_file,
+        ui_presentation_sha256=ui_presentation_sha256,
     )
 
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,9 @@ from scripts.data_pipeline.override_parsing import (
     parse_scoped_section_filters,
     parse_service_definition,
     parse_stops,
+)
+from scripts.data_pipeline.product_suburban_presentation import (
+    load_ui_presentation,
 )
 from scripts.data_pipeline.registry import (
     OverrideError,
@@ -196,14 +200,43 @@ def load_overrides(overrides_dir: Path) -> Overrides:
         raise OverrideError("services.json must be a non-empty JSON array")
     definitions = [parse_service_definition(raw) for raw in raw_services]
     services_dir = overrides_dir / config.SERVICES_OVERRIDE_DIR
+    loaded_services = tuple(
+        load_service(services_dir, item, dataset, dataset.candidate_search_bbox)
+        for item in definitions
+    )
+    if dataset.ui_presentation_file is not None:
+        presentation_services = [
+            {
+                "id": service.id,
+                "operator": service.effective_operator(dataset),
+                "lineIds": list(service.definition.line_ids),
+                "stationIds": list(service.station_ids),
+            }
+            for service in loaded_services
+        ]
+        presentation_lines = [
+            {"id": line.id, "name": line.name, "color": line.color} for line in lines
+        ]
+        presentation_stations = [
+            {"id": station.id, "name": station.name} for station in registry.stations
+        ]
+        try:
+            presentation = load_ui_presentation(
+                overrides_dir,
+                dataset.ui_presentation_file,
+                dataset.ui_presentation_sha256 or "",
+                lines=presentation_lines,
+                services=presentation_services,
+                stations=presentation_stations,
+            )
+        except ValueError as error:
+            raise OverrideError(str(error)) from error
+        dataset = replace(dataset, ui_presentation=presentation)
     overrides = Overrides(
         dataset=dataset,
         registry=registry,
         lines=lines,
-        services=tuple(
-            load_service(services_dir, item, dataset, dataset.candidate_search_bbox)
-            for item in definitions
-        ),
+        services=loaded_services,
         offset_exceptions=parse_offset_exceptions(
             read_csv(
                 overrides_dir / config.OFFSET_EXCEPTIONS_OVERRIDE_FILE, OFFSET_COLUMNS

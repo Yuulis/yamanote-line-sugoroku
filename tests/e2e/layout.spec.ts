@@ -67,6 +67,11 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   const source = await loadManifestSource(railwayBundle);
   await openTitle(page);
   const credits = page.getByRole("region", { name: "出典・ライセンス" });
+  await expect(titleScreen(page).getByText("東京近郊版", { exact: true })).toBeVisible();
+  await expect(titleScreen(page).getByText(
+    "新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。山手線と他の路線がある駅では、3分の2の確率で山手線を選び、残りの確率を他の運行系統に均等に割り当てます。他の路線で方向を抽選するときは、山手線に近づく方向の抽選重みが反対方向の2倍になります。",
+    { exact: true },
+  )).toBeVisible();
   await expect(credits).toContainText(source.attribution);
   await expect(credits).toContainText(source.license);
   await expect(credits.getByRole("link", { name: source.attribution })).toHaveAttribute(
@@ -81,7 +86,8 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
     "href",
     /third-party-licenses\.txt$/,
   );
-  await expect(credits).toContainText("非公式のファンメイド作品");
+  await expect(credits).not.toContainText("本作品は既存作品から着想を得た独立したオリジナルゲームです。");
+  await expect(credits).not.toContainText("本作は東日本旅客鉄道株式会社および国土交通省とは関係のない、非公式のファンメイド作品です。");
   await expect(credits.getByRole("link", { name: "OpenFreeMap" })).toHaveAttribute(
     "href",
     "https://openfreemap.org/",

@@ -1,4 +1,6 @@
 import type { BrowserContext, Route } from "@playwright/test";
+import { readFileSync } from "node:fs";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
 // Hermetic stand-in for the background map (src/features/map/mapConfig.ts
 // MAP_STYLE_URL). The app's own railway layers come from public/data/ and are
@@ -8,6 +10,7 @@ export const MAP_HOST = "https://tiles.openfreemap.org";
 const STYLE_PATH = "/styles/";
 const TILE_PATH = "/e2e-tiles/";
 const GLYPH_PATH = "/fonts/";
+const GLYPH_FIXTURE_DIR = resolve("tests/e2e/fixtures/glyphs");
 
 const OPENFREEMAP_ATTRIBUTION =
   '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> ' +
@@ -78,7 +81,19 @@ async function fulfilStub(route: Route, stub: MapStub): Promise<void> {
   }
   if (pathname.startsWith(GLYPH_PATH)) {
     stub.counts.glyphs += 1;
-    return route.fulfill({ status: 200, contentType: "application/x-protobuf", body: "" });
+    const relativePath = decodeURIComponent(pathname.slice(GLYPH_PATH.length));
+    const glyphPath = resolve(GLYPH_FIXTURE_DIR, relativePath);
+    const fixtureRelativePath = relative(GLYPH_FIXTURE_DIR, glyphPath);
+    if (fixtureRelativePath === ".." || fixtureRelativePath.startsWith(`..${sep}`) || isAbsolute(fixtureRelativePath)) {
+      throw new Error(`Invalid glyph fixture path: ${relativePath}`);
+    }
+    let body: Buffer;
+    try {
+      body = readFileSync(glyphPath);
+    } catch {
+      throw new Error(`Missing local Japanese glyph fixture: ${relativePath}`);
+    }
+    return route.fulfill({ status: 200, contentType: "application/x-protobuf", body });
   }
   stub.counts.blocked.push(route.request().url());
   return route.abort("blockedbyclient");

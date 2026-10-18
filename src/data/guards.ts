@@ -4,6 +4,7 @@ import type {
   Position,
   SegmentFeature,
   SegmentFeatureCollection,
+  UiPresentation,
 } from "../types/data";
 import { SERVICE_KINDS, type LineMetadata, type ServicesData, type Segment, type ServicePattern, type Station } from "../types/network";
 
@@ -139,8 +140,102 @@ export function isManifest(value: unknown): value is Manifest {
     value.schemaVersion === 3 &&
     isNonEmptyString(value.dataVersion) &&
     isIsoDate(value.updatedAt) &&
-    isDataSource(value.source)
+    isDataSource(value.source) &&
+    (!Object.hasOwn(value, "uiPresentation") || isUiPresentation(value.uiPresentation))
   );
+}
+
+const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
+
+function isUniqueRecordList<T extends { id: string }>(
+  value: unknown,
+  guard: (item: unknown) => item is T,
+): value is T[] {
+  if (!Array.isArray(value) || !value.every(guard)) return false;
+  return new Set(value.map((item) => item.id)).size === value.length;
+}
+
+function isUiOperator(value: unknown): value is UiPresentation["operators"][number] {
+  return isRecord(value) && isNonEmptyString(value.id) && isNonEmptyString(value.name);
+}
+
+function isUiLineGroup(value: unknown): value is UiPresentation["lineGroups"][number] {
+  if (!isRecord(value) || !isNonEmptyString(value.id) || !isNonEmptyString(value.name)) return false;
+  if (!isNonEmptyString(value.operatorId) || typeof value.color !== "string" || !HEX_COLOR_PATTERN.test(value.color)) return false;
+  if (!isNonEmptyArray(value.serviceIds) || !value.serviceIds.every(isNonEmptyString)) return false;
+  return new Set(value.serviceIds).size === value.serviceIds.length;
+}
+
+function isUiStationPresentation(value: unknown): value is UiPresentation["stations"][number] {
+  if (!isRecord(value) || !isNonEmptyString(value.id) || !Array.isArray(value.aliases)) return false;
+  if (!isNonEmptyArray(value.aliases) || !value.aliases.every(isNonEmptyString)) return false;
+  return new Set(value.aliases).size === value.aliases.length;
+}
+
+function isUiServiceStopName(value: unknown): value is UiPresentation["serviceStopNames"][number] {
+  return isRecord(value) &&
+    isNonEmptyString(value.serviceId) &&
+    isNonEmptyString(value.stationId) &&
+    isNonEmptyString(value.name);
+}
+
+/** Structural validation for presentation-only manifest data. */
+export function isUiPresentation(value: unknown): value is UiPresentation {
+  if (!isRecord(value) || value.version !== 1) return false;
+  if (!isNonEmptyArray(value.operators) || !isNonEmptyArray(value.lineGroups)) return false;
+  if (!isUniqueRecordList(value.operators, isUiOperator)) return false;
+  if (!isUniqueRecordList(value.lineGroups, isUiLineGroup)) return false;
+  if (!isUniqueRecordList(value.stations, isUiStationPresentation)) return false;
+  if (!Array.isArray(value.serviceStopNames) || !value.serviceStopNames.every(isUiServiceStopName)) return false;
+
+  const operatorIds = new Set(value.operators.map((operator) => operator.id));
+  if (!value.lineGroups.every((group) => operatorIds.has(group.operatorId))) return false;
+
+  const groupedServiceIds = value.lineGroups.flatMap((group) => group.serviceIds);
+  if (new Set(groupedServiceIds).size !== groupedServiceIds.length) return false;
+
+  const stopKeys = value.serviceStopNames.map((stop) => JSON.stringify([stop.serviceId, stop.stationId]));
+  return new Set(stopKeys).size === stopKeys.length;
+}
+
+/** Cross-check presentation IDs against the separately loaded gameplay data. */
+export function hasValidUiPresentationReferences(
+  presentation: UiPresentation,
+  stations: readonly Station[],
+  services: ServicesData,
+): boolean {
+  const stationById = new Map(stations.map((station) => [station.id, station]));
+  const serviceById = new Map(services.services.map((service) => [service.id, service]));
+  const operatorIds = new Set(presentation.operators.map((operator) => operator.id));
+  const groupedServiceIds = presentation.lineGroups.flatMap((group) => group.serviceIds);
+  const groupedServiceIdSet = new Set(groupedServiceIds);
+  if (groupedServiceIdSet.size !== groupedServiceIds.length || groupedServiceIdSet.size !== serviceById.size) {
+    return false;
+  }
+  if (services.services.some((service) => !groupedServiceIdSet.has(service.id))) return false;
+
+  for (const station of presentation.stations) {
+    const canonical = stationById.get(station.id);
+    if (!canonical || station.aliases.some((alias) => alias === canonical.name)) return false;
+  }
+
+  for (const group of presentation.lineGroups) {
+    if (!operatorIds.has(group.operatorId)) return false;
+    for (const serviceId of group.serviceIds) {
+      const service = serviceById.get(serviceId);
+      if (!service || service.operator !== group.operatorId) return false;
+    }
+  }
+
+  for (const stop of presentation.serviceStopNames) {
+    const station = stationById.get(stop.stationId);
+    const service = serviceById.get(stop.serviceId);
+    if (!station || !service || !service.stationIds.includes(stop.stationId) || stop.name === station.name) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 function isSegmentGeometry(value: unknown): boolean {

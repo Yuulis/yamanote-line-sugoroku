@@ -2,15 +2,26 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import shutil
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import pytest
 
 from scripts.data_pipeline import export
 from scripts.data_pipeline import product_suburban as product
+from scripts.data_pipeline.overrides import OverrideError, parse_dataset
+from scripts.data_pipeline.product_suburban_presentation import (
+    build_ui_presentation,
+    compact_json,
+    load_line_colors,
+    load_ui_presentation,
+    require_same_presentation,
+    validate_ui_presentation,
+)
 from scripts.data_pipeline.stage_suburban_support import (
     StageError,
     hash_tree,
@@ -154,6 +165,30 @@ def test_product_dataset_changes_only_frozen_gameplay_fields() -> None:
     }
 
 
+def test_dataset_parses_optional_ui_presentation_file_settings() -> None:
+    source = product.read_json(ASSEMBLED / "overrides/dataset.json")
+    source["uiPresentationFile"] = "ui-presentation.json"
+    source["uiPresentationSha256"] = "a" * 64
+
+    parsed = parse_dataset(source)
+
+    assert parsed.ui_presentation_file == "ui-presentation.json"
+    assert parsed.ui_presentation_sha256 == "a" * 64
+    assert parsed.ui_presentation is None
+
+
+def test_dataset_rejects_incomplete_or_unsafe_ui_presentation_settings() -> None:
+    source = product.read_json(ASSEMBLED / "overrides/dataset.json")
+    source["uiPresentationFile"] = "ui-presentation.json"
+    with pytest.raises(OverrideError, match="must be set together"):
+        parse_dataset(source)
+
+    source["uiPresentationSha256"] = "a" * 64
+    source["uiPresentationFile"] = "../outside.json"
+    with pytest.raises(OverrideError, match="safe relative path"):
+        parse_dataset(source)
+
+
 def _copy_product_files(source: Path, destination: Path) -> None:
     destination.mkdir()
     for name in product.PRODUCT_FILES:
@@ -171,6 +206,18 @@ def test_compare_requires_identical_five_file_builds(tmp_path: Path) -> None:
     }
     updated_at = product.read_json(ASSEMBLED / "overrides/dataset.json")["updatedAt"]
     manifest = export.build_manifest(export.manifest_inputs(payloads), updated_at)
+    services_document = json.loads(
+        (first / "services.json").read_text(encoding="utf-8")
+    )
+    stations_document = json.loads(
+        (first / "stations.json").read_text(encoding="utf-8")
+    )
+    manifest["uiPresentation"] = build_ui_presentation(
+        root=ROOT,
+        lines=services_document["lines"],
+        services=services_document["services"],
+        stations=stations_document,
+    )
     _write_json(first / "manifest.json", manifest)
     shutil.copy2(first / "manifest.json", second / "manifest.json")
 
@@ -184,6 +231,201 @@ def test_compare_requires_identical_five_file_builds(tmp_path: Path) -> None:
             for name in sorted(export.GAME_DATA_FILES)
         ]
     )
+
+
+def _presentation_fixture() -> tuple[
+    dict[str, object],
+    list[dict[str, str]],
+    list[dict[str, object]],
+    list[dict[str, str]],
+]:
+    lines = [
+        {"id": "line-a", "name": "Line A", "color": "#112233"},
+        {"id": "line-b", "name": "Line B", "color": "#445566"},
+    ]
+    services = [
+        {
+            "id": "service-a",
+            "operator": "Operator A",
+            "lineIds": ["line-a"],
+            "stationIds": ["station-a"],
+        },
+        {
+            "id": "service-b",
+            "operator": "Operator B",
+            "lineIds": ["line-b"],
+            "stationIds": ["station-b"],
+        },
+    ]
+    stations = [
+        {"id": "station-a", "name": "Canonical A"},
+        {"id": "station-b", "name": "Canonical B"},
+    ]
+    presentation: dict[str, object] = {
+        "version": 1,
+        "operators": [
+            {"id": "Operator A", "name": "Operator A"},
+            {"id": "Operator B", "name": "Operator B"},
+        ],
+        "lineGroups": [
+            {
+                "id": "line-a",
+                "name": "Line A",
+                "operatorId": "Operator A",
+                "color": "#112233",
+                "serviceIds": ["service-a"],
+            },
+            {
+                "id": "line-b",
+                "name": "Line B",
+                "operatorId": "Operator B",
+                "color": "#445566",
+                "serviceIds": ["service-b"],
+            },
+        ],
+        "stations": [{"id": "station-a", "aliases": ["Alias A"]}],
+        "serviceStopNames": [
+            {"serviceId": "service-a", "stationId": "station-a", "name": "Alias A"}
+        ],
+    }
+    return presentation, lines, services, stations
+
+
+def test_ui_presentation_uses_verified_aliases_and_oedo_grouping() -> None:
+    services_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/services.json")
+    stations_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/stations.json")
+
+    presentation = build_ui_presentation(
+        root=ROOT,
+        lines=services_document["lines"],
+        services=services_document["services"],
+        stations=stations_document,
+    )
+
+    assert presentation["version"] == 1
+    assert len(presentation["operators"]) == 15
+    oedo = next(
+        group for group in presentation["lineGroups"] if group["id"] == "toei-oedo"
+    )
+    assert oedo["name"] == "大江戸線"
+    assert oedo["serviceIds"] == ["toei-oedo-loop", "toei-oedo-radial"]
+    hamamatsucho = next(
+        station
+        for station in presentation["stations"]
+        if station["id"] == "hamamatsucho"
+    )
+    assert hamamatsucho["aliases"] == ["大門"]
+    assert compact_json(presentation).endswith("\n")
+    assert "source_url" not in compact_json(presentation)
+    assert all(group["color"] != "#808080" for group in presentation["lineGroups"])
+    assert all(
+        set(entry) == {"id", "color", "status", "source"}
+        for entry in load_line_colors(ROOT / "data/presentation/line-colors.json")
+    )
+
+
+def test_ui_presentation_rejects_unknown_service_id() -> None:
+    presentation, lines, services, stations = _presentation_fixture()
+    presentation["serviceStopNames"][0]["serviceId"] = "unknown-service"
+
+    with pytest.raises(ValueError, match="unknown service"):
+        validate_ui_presentation(
+            presentation, lines=lines, services=services, stations=stations
+        )
+
+
+def test_ui_presentation_rejects_duplicate_service_group_membership() -> None:
+    presentation, lines, services, stations = _presentation_fixture()
+    presentation["lineGroups"][1]["serviceIds"].append("service-a")
+
+    with pytest.raises(ValueError, match="multiple UI groups"):
+        validate_ui_presentation(
+            presentation, lines=lines, services=services, stations=stations
+        )
+
+
+def test_ui_presentation_rejects_checksum_mismatch(tmp_path: Path) -> None:
+    presentation, lines, services, stations = _presentation_fixture()
+    path = tmp_path / "ui-presentation.json"
+    path.write_text(compact_json(presentation), encoding="utf-8")
+    expected_hash = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    with pytest.raises(ValueError, match="does not match"):
+        load_ui_presentation(
+            tmp_path,
+            path.name,
+            "0" * 64 if expected_hash != "0" * 64 else "1" * 64,
+            lines=lines,
+            services=services,
+            stations=stations,
+        )
+
+
+def test_ui_presentation_rejects_altered_aliases() -> None:
+    presentation, _, _, _ = _presentation_fixture()
+    altered = json.loads(json.dumps(presentation))
+    altered["stations"][0]["aliases"] = ["Unreviewed alias"]
+
+    with pytest.raises(ValueError, match="differs from audited"):
+        require_same_presentation(altered, presentation)
+
+
+def test_line_color_table_rejects_checksum_tampering(tmp_path: Path) -> None:
+    source = ROOT / "data/presentation/line-colors.json"
+    altered = tmp_path / source.name
+    altered.write_bytes(source.read_bytes() + b" ")
+
+    with pytest.raises(ValueError, match="checksum"):
+        load_line_colors(altered)
+
+
+def test_line_color_rows_have_direct_sources_or_absence_evidence() -> None:
+    document = json.loads(
+        (ROOT / "data/presentation/line-colors.json").read_text(encoding="utf-8")
+    )
+    rows = document["lineGroups"]
+    by_id = {row["id"]: row for row in rows}
+
+    assert len(by_id) == len(rows)
+    for row in rows:
+        source = urlsplit(row["source"])
+        assert source.scheme == "https"
+        assert source.netloc
+        assert source.path.rstrip("/").rsplit("/", maxsplit=1)[-1].lower() not in {
+            "index",
+            "index.html",
+            "index.php",
+        }
+        if row["status"] == "official":
+            assert row.get("method")
+            assert not source.path.endswith("/")
+        else:
+            assert row["status"] == "unofficial"
+            assert row.get("evidence")
+        for parent_id in row.get("sharedWith", []):
+            assert parent_id in by_id
+            assert by_id[parent_id]["color"] == row["color"]
+
+
+def test_ui_presentation_preserves_non_grey_jr_colors() -> None:
+    services_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/services.json")
+    stations_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/stations.json")
+    original_colors = {
+        line["id"]: line["color"]
+        for line in services_document["lines"]
+        if line["id"].startswith("jr-") and line["color"] != "#808080"
+    }
+    presentation = build_ui_presentation(
+        root=ROOT,
+        lines=services_document["lines"],
+        services=services_document["services"],
+        stations=stations_document,
+    )
+    actual_colors = {
+        group["id"]: group["color"] for group in presentation["lineGroups"]
+    }
+
+    assert {key: actual_colors[key] for key in original_colors} == original_colors
 
 
 def test_history_resolver_selects_live_before_cutover_and_archive_after(

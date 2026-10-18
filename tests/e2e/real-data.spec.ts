@@ -2,14 +2,46 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { createGame, playTurn, serializeGame } from "../../src/features/game/engine";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import type { UiLineGroup } from "../../src/types/data";
 import { expect, test } from "./fixtures";
-import { PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
+import type { RailwayBundle } from "./fixtures/bundle";
+import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { diceButton, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 test.use({ dataset: "real" });
-const SCREENSHOT_DIR = resolve(".claude/logs/jrcr-s6/screenshots");
+const SCREENSHOT_DIR = resolve(".claude/logs/s6/screenshots");
+const OEDO_LOTTERY_SEED = PRODUCT_HISTORY_GAME_SEED;
+const OEDO_LOTTERY_TURN = 16;
+
+function productLineGroups(bundle: RailwayBundle): UiLineGroup[] {
+  if (!bundle.data.manifest.ok || !bundle.data.manifest.value.uiPresentation) {
+    throw new Error("The shipped product presentation metadata did not load");
+  }
+  return bundle.data.manifest.value.uiPresentation.lineGroups;
+}
+
+function gameAfterTurn(bundle: RailwayBundle, seed: string, turn: number) {
+  let game = createGame(MVP_GAME_CONFIG, seed, bundle.network);
+  while (game.status === "playing" && game.turn < turn) game = playTurn(game, bundle.network).state;
+  if (game.turn !== turn || game.status !== "playing") throw new Error(`Seed ${seed} did not reach turn ${turn}`);
+  return game;
+}
+
+async function filteredPrimitiveIds(page: Page): Promise<string[] | null> {
+  return page.evaluate((layerId) => {
+    const map = (window as unknown as { __sugorokuE2E: { map: { getFilter(id: string): unknown } } }).__sugorokuE2E.map;
+    const filter = map.getFilter(layerId);
+    if (filter == null) return null;
+    if (
+      Array.isArray(filter) && filter[0] === "in" && Array.isArray(filter[2]) &&
+      filter[2][0] === "literal" && Array.isArray(filter[2][1])
+    ) return filter[2][1] as string[];
+    throw new Error(`Unexpected primitive visibility filter: ${JSON.stringify(filter)}`);
+  }, LAYER_IDS.base);
+}
 
 async function expectPlatformsInView(page: Page, points: [number, number][]): Promise<void> {
   const projected = await page.evaluate((coordinates) => {
@@ -30,6 +62,123 @@ async function expectPlatformsInView(page: Page, points: [number, number][]): Pr
   }
 }
 
+test("the Oedo legend checkbox groups both services and works by keyboard and phone touch", async ({ page, railwayBundle }) => {
+  const oedo = productLineGroups(railwayBundle).find((group) => group.id === "toei-oedo");
+  expect(oedo).toMatchObject({
+    name: "大江戸線",
+    serviceIds: ["toei-oedo-loop", "toei-oedo-radial"],
+  });
+  if (!oedo) throw new Error("The grouped Oedo line is missing from product presentation metadata");
+
+  const otherFeatureIds = new Set(
+    productLineGroups(railwayBundle)
+      .filter((group) => group.id !== oedo.id)
+      .flatMap((group) => group.serviceIds)
+      .flatMap((serviceId) => [...railwayBundle.network.segmentsById.values()]
+        .filter((segment) => segment.serviceId === serviceId)
+        .flatMap((segment) => segment.geometryFeatureIds)),
+  );
+  const oedoFeatureIdsByService = new Map(oedo.serviceIds.map((serviceId) => [
+    serviceId,
+    [...new Set([...railwayBundle.network.segmentsById.values()]
+      .filter((segment) => segment.serviceId === serviceId)
+      .flatMap((segment) => segment.geometryFeatureIds))]
+      .filter((featureId) => !otherFeatureIds.has(featureId)),
+  ]));
+  for (const featureIds of oedoFeatureIdsByService.values()) expect(featureIds.length).toBeGreaterThan(0);
+
+  await openTitle(page);
+  await startNewGame(page);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  const panel = gamePanel(page);
+  const legendToggle = panel.getByRole("button", { name: /路線の凡例/ });
+  await legendToggle.focus();
+  await page.keyboard.press("Enter");
+  await expect(legendToggle).toHaveAttribute("aria-expanded", "true");
+
+  const toei = panel.locator(".game-panel__legend-operator").filter({ hasText: "東京都交通局" });
+  const toeiSummary = toei.locator("summary");
+  await toeiSummary.focus();
+  await page.keyboard.press("Enter");
+  await expect(toei).toHaveAttribute("open");
+  const oedoToggle = toei.getByRole("checkbox", { name: "大江戸線を表示" });
+  await expect(oedoToggle).toHaveCount(1);
+  await oedoToggle.focus();
+  await page.keyboard.press("Space");
+  await expect(oedoToggle).not.toBeChecked();
+  const hiddenIds = await filteredPrimitiveIds(page);
+  if (!hiddenIds) throw new Error("Unchecking Oedo must produce an explicit primitive filter");
+  for (const featureIds of oedoFeatureIdsByService.values()) {
+    for (const featureId of featureIds) expect(hiddenIds).not.toContain(featureId);
+  }
+
+  await page.keyboard.press("Space");
+  await expect(oedoToggle).toBeChecked();
+  await expect.poll(() => filteredPrimitiveIds(page)).toBeNull();
+  if ((page.viewportSize()?.width ?? 0) <= 600) {
+    await oedoToggle.tap();
+    await expect(oedoToggle).not.toBeChecked();
+    await oedoToggle.tap();
+    await expect(oedoToggle).toBeChecked();
+    await expect.poll(() => filteredPrimitiveIds(page)).toBeNull();
+  }
+});
+
+test("Oedo candidates at 都庁前 display one row with two lottery slots", async ({ page, railwayBundle }) => {
+  const before = gameAfterTurn(railwayBundle, OEDO_LOTTERY_SEED, OEDO_LOTTERY_TURN - 1);
+  const result = playTurn(before, railwayBundle.network);
+  const game = result.state;
+  const record = game.movementHistory.at(-1)!;
+  expect(record).toMatchObject({ turn: OEDO_LOTTERY_TURN, toStationId: "toei-tochomae" });
+  expect(result.events.find((event) => event.type === "landing-resolved")).toMatchObject({
+    type: "landing-resolved",
+    stationId: "toei-tochomae",
+    serviceCandidates: ["toei-oedo-loop", "toei-oedo-radial"],
+  });
+
+  await openTitle(page);
+  await writeSaveText(page, serializeGame(game));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(panelStat(page, "現在駅")).toHaveText("都庁前");
+  await expect(gamePanel(page).locator(".game-panel__lottery"))
+    .toContainText("都庁前：大江戸線（抽選枠2）から抽選 → 大江戸線");
+});
+
+test("operator and line filters hide, restore, and resolve a Fukutoshin shared primitive", async ({ page, railwayBundle }) => {
+  const uiLineGroups = productLineGroups(railwayBundle);
+  const fukutoshin = uiLineGroups.find((group) => group.id === "metro-fukutoshin");
+  if (!fukutoshin) throw new Error("The Fukutoshin line group is missing from product presentation metadata");
+  const sharedFeatureId = "metro-yurakucho:metro-wakoshi~metro-chikatetsu-narimasu";
+  const sharedSegments = [...railwayBundle.network.segmentsById.values()]
+    .filter((segment) => segment.geometryFeatureIds.includes(sharedFeatureId));
+  expect(sharedSegments.map((segment) => segment.serviceId)).toContain("metro-fukutoshin");
+  expect(sharedSegments.map((segment) => segment.serviceId)).toContain("metro-yurakucho");
+
+  await openTitle(page);
+  await startNewGame(page);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  const panel = gamePanel(page);
+  await panel.getByRole("button", { name: /路線の凡例/ }).click();
+  const metro = panel.locator(".game-panel__legend-operator").filter({ hasText: "東京地下鉄" });
+  await metro.locator("summary").click();
+  const selectMetro = metro.getByRole("checkbox", { name: "東京地下鉄の路線をすべて表示" });
+  await selectMetro.uncheck();
+  const hiddenByOperator = await filteredPrimitiveIds(page);
+  if (!hiddenByOperator) throw new Error("Unchecking the operator must produce an explicit primitive filter");
+  expect(hiddenByOperator).not.toContain(sharedFeatureId);
+
+  const fukutoshinToggle = metro.getByRole("checkbox", { name: `${fukutoshin.name}を表示` });
+  await fukutoshinToggle.check();
+  expect(await filteredPrimitiveIds(page)).toContain(sharedFeatureId);
+  await fukutoshinToggle.uncheck();
+  const hiddenByLine = await filteredPrimitiveIds(page);
+  if (!hiddenByLine) throw new Error("Unchecking Fukutoshin must produce an explicit primitive filter");
+  expect(hiddenByLine).not.toContain(sharedFeatureId);
+  await fukutoshinToggle.check();
+  expect(await filteredPrimitiveIds(page)).toContain(sharedFeatureId);
+});
+
 
 test("the shipped Tokyo suburban product network starts, moves and restores without console errors", async ({ page, railwayBundle }, testInfo) => {
   // One smoke over the full 1,586-station bundle with several reloads under
@@ -44,17 +193,25 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   if (!railwayBundle.data.services.ok) throw new Error("The shipped service catalogue did not load");
   expect(railwayBundle.data.services.value.services.reduce((sum, service) => sum + service.stationIds.length, 0)).toBe(2_142);
   await openTitle(page);
-  await expect(page.getByText("JR東日本 1都3県版", { exact: true })).toBeVisible();
+  await expect(page.getByText("東京近郊版", { exact: true })).toBeVisible();
   await page.evaluate(() => performance.mark("jrcr-s6-app-start"));
   await startNewGame(page);
+  const panelSubtitle = gamePanel(page).getByText("東京近郊版", { exact: true });
+  if ((page.viewportSize()?.width ?? 0) <= 600) {
+    await expect(panelSubtitle).toBeHidden();
+  } else {
+    await expect(panelSubtitle).toBeVisible();
+  }
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   await page.evaluate(() => performance.mark("jrcr-s6-map-style-ready"));
-  if (testInfo.project.name === "desktop-chromium") {
+  if (testInfo.project.name === "desktop-chromium" || testInfo.project.name === "phone-chromium") {
     const loadMetrics = await page.evaluate(() => {
       const navigation = performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming;
       const dataResources = performance.getEntriesByType("resource")
         .filter((entry) => entry.name.includes("/data/")) as PerformanceResourceTiming[];
       return {
+        userAgent: navigator.userAgent,
+        viewport: { width: window.innerWidth, height: window.innerHeight },
         domInteractiveMs: navigation.domInteractive,
         loadEventEndMs: navigation.loadEventEnd,
         appStartToMapStyleReadyMs: performance.measure(
@@ -70,18 +227,58 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
         })),
       };
     });
-    console.info(`JRCR_S6_LOAD_METRICS ${JSON.stringify(loadMetrics)}`);
+    console.info(`JRCR_S6_LOAD_METRICS ${JSON.stringify({
+      project: testInfo.project.name,
+      coldRepeat: testInfo.repeatEachIndex + 1,
+      ...loadMetrics,
+    })}`);
   }
-  const legend = gamePanel(page).getByRole("list", { name: "凡例" });
-  await expect(legend).toContainText("京浜東北線");
-  await expect(legend).toContainText("中央・総武線各駅停車");
-  await expect(legend).toContainText("埼京線");
-  await expect(legend).toContainText("京葉線");
+  const panel = gamePanel(page);
+  const lineToggle = panel.getByRole("button", { name: /路線の凡例/ });
+  await expect(lineToggle).toHaveAttribute("aria-expanded", "false");
+  await lineToggle.click();
+  const jrOperator = panel.locator(".game-panel__legend-operator").filter({ hasText: "東日本旅客鉄道" });
+  await expect(jrOperator).toHaveCount(1);
+  await jrOperator.locator("summary").click();
+  await expect(panel.getByRole("checkbox", { name: "京浜東北線を表示" })).toBeVisible();
+  await expect(panel.getByRole("checkbox", { name: "中央・総武線各駅停車を表示" })).toBeVisible();
+  await expect(panel.getByRole("checkbox", { name: "埼京線を表示" })).toBeVisible();
+  await expect(panel.getByRole("checkbox", { name: "京葉線を表示" })).toBeVisible();
+  await expect(diceButton(page)).toBeInViewport();
+  await page.getByRole("button", { name: "目標路線", exact: true }).click();
   const yamanotePoints = Object.values(railwayBundle.network.servicesById.get("jr-yamanote")!.platformCoordinates);
   await expectPlatformsInView(page, yamanotePoints);
   const allPlatforms = [...railwayBundle.network.servicesById.values()]
     .flatMap((service) => Object.values(service.platformCoordinates));
   expect(railwayBundle.network.servicesById.size).toBe(135);
+  await page.getByRole("button", { name: "全体", exact: true }).click();
+  await expectPlatformsInView(page, allPlatforms);
+  const canvas = page.locator("canvas.maplibregl-canvas");
+  const canvasBounds = (await canvas.boundingBox())!;
+  const panelBounds = (await gamePanel(page).boundingBox())!;
+  const panPoint = {
+    x: Math.min(
+      canvasBounds.x + canvasBounds.width - 24,
+      Math.max(canvasBounds.x + canvasBounds.width * 0.8, panelBounds.x + panelBounds.width + 24),
+    ),
+    y: Math.max(canvasBounds.y + 24, Math.min(canvasBounds.y + canvasBounds.height * 0.2, panelBounds.y - 24)),
+  };
+  if (testInfo.project.name === "desktop-chromium") {
+    const centerBeforePan = await page.evaluate(() => {
+      const hook = (window as unknown as { __sugorokuE2E: { map: { getCenter(): { lng: number; lat: number } } } }).__sugorokuE2E;
+      const center = hook.map.getCenter();
+      return [center.lng, center.lat];
+    });
+    await page.mouse.move(panPoint.x, panPoint.y);
+    await page.mouse.down();
+    await page.mouse.move(panPoint.x - 96, panPoint.y + 48, { steps: 6 });
+    await page.mouse.up();
+    await expect.poll(() => page.evaluate(() => {
+      const hook = (window as unknown as { __sugorokuE2E: { map: { getCenter(): { lng: number; lat: number } } } }).__sugorokuE2E;
+      const center = hook.map.getCenter();
+      return [center.lng, center.lat];
+    })).not.toEqual(centerBeforePan);
+  }
   await page.getByRole("button", { name: "全体", exact: true }).click();
   await expectPlatformsInView(page, allPlatforms);
   await page.screenshot({ path: testInfo.outputPath("network-overview.png") });
@@ -113,7 +310,11 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   for (let turn = 0; turn < 3; turn += 1) await rollOnce(page);
   const saved = (await readSave(page))!;
   expect(saved.turn).toBe(3);
-  await expect(panelStat(page, "乗車中")).toHaveText(railwayBundle.network.servicesById.get(saved.currentServiceId)!.name);
+  const presentation = createPresentationResolver(
+    railwayBundle.network,
+    railwayBundle.data.manifest.ok ? railwayBundle.data.manifest.value.uiPresentation : undefined,
+  );
+  await expect(panelStat(page, "乗車中")).toHaveText(presentation.serviceName(saved.currentServiceId));
   await expect(panelStat(page, "進行方向")).not.toBeEmpty();
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, saved));
   await expect(diceButton(page)).toBeInViewport();

@@ -526,12 +526,19 @@ def check_manifest(
     updated_at: str | None = None,
     validation_profile: str = "gameplay",
     stage_start_station_id: str = "",
+    ui_presentation: Any = None,
 ) -> None:
     if not isinstance(manifest, dict):
         report.errors.append("manifest.json must be an object")
         return
     stage = validation_profile == "stage"
     keys = {"schemaVersion", "dataVersion", "updatedAt", "source"}
+    if ui_presentation is not None:
+        keys.add("uiPresentation")
+        if manifest.get("uiPresentation") != ui_presentation:
+            report.errors.append(
+                "manifest.uiPresentation differs from the hash-verified override"
+            )
     if stage:
         keys |= {"validationProfile", "stageStartStationId"}
         if manifest.get("validationProfile") != "stage":
@@ -645,6 +652,7 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         overrides.dataset.updated_at,
         overrides.dataset.validation_profile,
         overrides.dataset.stage_start_station_id,
+        overrides.dataset.ui_presentation,
     )
     documents = {
         config.STATIONS_FILE: dataset.stations,
