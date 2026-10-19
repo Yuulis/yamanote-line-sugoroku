@@ -1,0 +1,10 @@
+from_id,to_id,n02_line,via,route,compose
+keisei-keisei-tsudanuma,keisei-keisei-makuharihongo,千葉線,,,
+keisei-keisei-makuharihongo,keisei-keisei-makuhari,千葉線,,,
+keisei-keisei-makuhari,keisei-kemigawa,千葉線,,,
+keisei-kemigawa,keisei-keisei-inage,千葉線,,,
+keisei-keisei-inage,keisei-midoridai,千葉線,,,
+keisei-midoridai,keisei-nishi-noboto,千葉線,,,
+keisei-nishi-noboto,keisei-shin-chiba,千葉線,,,
+keisei-shin-chiba,keisei-keisei-chiba,千葉線,,,
+keisei-keisei-chiba,keisei-chiba-chuo,千葉線,,,

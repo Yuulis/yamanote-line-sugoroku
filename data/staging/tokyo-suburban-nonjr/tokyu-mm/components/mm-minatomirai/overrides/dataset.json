@@ -1,0 +1,31 @@
+{
+  "operator": "横浜高速鉄道",
+  "n02Operator": "横浜高速鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "横浜高速鉄道 non-JR staging component",
+  "areaPrefectures": [
+    "神奈川県"
+  ],
+  "serviceIds": [
+    "mm-minatomirai"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "mm-yokohama",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "c72ed3596c4d0510ed8063a1eaeee6d176aae9b2a7dc921734729abfba9010b2",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

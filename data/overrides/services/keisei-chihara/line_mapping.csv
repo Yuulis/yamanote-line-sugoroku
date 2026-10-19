@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+keisei-chiba-chuo,keisei-chibadera,千原線,,,
+keisei-chibadera,keisei-omoridai,千原線,,,
+keisei-omoridai,keisei-gakuemmae,千原線,,,
+keisei-gakuemmae,keisei-oyumino,千原線,,,
+keisei-oyumino,keisei-chiharadai,千原線,,,

@@ -1,0 +1,27 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-tobu-dobutsu-koen,TS-30,,東武動物公園,東武動物公園,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tobu-sugito-takanodai,TN-01,,杉戸高野台,杉戸高野台,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tobu-satte,TN-02,,幸手,幸手,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tobu-minami-kurihashi,TN-03,,南栗橋,南栗橋,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tobu-kurihashi,TN-04,,栗橋,栗橋,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tobu-shin-koga,TN-05,,新古河,新古河,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tobu-yagyu,TN-06,,柳生,柳生,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tobu-itakura-toyodaimae,TN-07,,板倉東洋大前,板倉東洋大前,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,tobu-fujioka,TN-08,,藤岡,藤岡,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,tobu-shizuwa,TN-09,,静和,静和,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,tobu-shin-ohirashita,TN-10,,新大平下,新大平下,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,tobu-tochigi,TN-11,,栃木,栃木,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,tobu-shin-tochigi,TN-12,,新栃木,新栃木,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+13,tobu-kassemba,TN-13,,合戦場,合戦場,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+14,tobu-ienaka,TN-14,,家中,家中,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+15,tobu-tobu-kanasaki,TN-15,,東武金崎,東武金崎,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+16,tobu-niregi,TN-16,,楡木,楡木,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+17,tobu-momiyama,TN-17,,樅山,樅山,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+18,tobu-shin-kanuma,TN-18,,新鹿沼,新鹿沼,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+19,tobu-kita-kanuma,TN-19,,北鹿沼,北鹿沼,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+20,tobu-itaga,TN-20,,板荷,板荷,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+21,tobu-shimo-goshiro,TN-21,,下小代,下小代,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+22,tobu-myojin,TN-22,,明神,明神,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+23,tobu-shimo-imaichi,TN-23,,下今市,下今市,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+24,tobu-kami-imaichi,TN-24,,上今市,上今市,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+25,tobu-tobu-nikko,TN-25,,東武日光,東武日光,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

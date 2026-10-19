@@ -1,25 +1,25 @@
-order,station_id,station_number,platform_selector
-0,tokyo,JC01,
-1,kanda,JC02,
-2,ochanomizu,JC03,
-3,yotsuya,JC04,
-4,shinjuku,JC05,
-5,nakano,JC06,
-6,koenji,JC07,
-7,asagaya,JC08,
-8,ogikubo,JC09,
-9,nishi-ogikubo,JC10,
-10,kichijoji,JC11,
-11,mitaka,JC12,
-12,musashi-sakai,JC13,
-13,higashi-koganei,JC14,
-14,musashi-koganei,JC15,
-15,kokubunji,JC16,
-16,nishi-kokubunji,JC17,
-17,kunitachi,JC18,
-18,tachikawa,JC19,
-19,hino,JC20,
-20,toyoda,JC21,
-21,hachioji,JC22,
-22,nishi-hachioji,JC23,
-23,takao,JC24,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyo,JC01,,東京,東京,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kanda,JC02,,神田,神田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,ochanomizu,JC03,,御茶ノ水,御茶ノ水,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,yotsuya,JC04,,四ツ谷,四ツ谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,shinjuku,JC05,,新宿,新宿,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,nakano,JC06,,中野,中野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,koenji,JC07,,高円寺,高円寺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,asagaya,JC08,,阿佐ケ谷,阿佐ケ谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,ogikubo,JC09,,荻窪,荻窪,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,nishi-ogikubo,JC10,,西荻窪,西荻窪,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,kichijoji,JC11,,吉祥寺,吉祥寺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,mitaka,JC12,,三鷹,三鷹,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,musashi-sakai,JC13,,武蔵境,武蔵境,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,higashi-koganei,JC14,,東小金井,東小金井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,musashi-koganei,JC15,,武蔵小金井,武蔵小金井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,kokubunji,JC16,,国分寺,国分寺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,nishi-kokubunji,JC17,,西国分寺,西国分寺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,kunitachi,JC18,,国立,国立,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,tachikawa,JC19,,立川,立川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,hino,JC20,,日野,日野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,toyoda,JC21,,豊田,豊田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,hachioji,JC22,,八王子,八王子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,nishi-hachioji,JC23,,西八王子,西八王子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,takao,JC24,,高尾,高尾,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

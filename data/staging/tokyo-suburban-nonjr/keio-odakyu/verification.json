@@ -1,0 +1,13 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "keio-dobutsuen",
+    "odakyu-enoshima"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/keio-odakyu",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "d692db3d261249d54c205819e98defb3f53e386a71ebde63ff89dbacc471f60f",
+    "length-ref-components.csv": "5c5621adc74257710469bc6e58fc3e5640b45a07d8d4e6d6c0294eff9553c170"
+  }
+}

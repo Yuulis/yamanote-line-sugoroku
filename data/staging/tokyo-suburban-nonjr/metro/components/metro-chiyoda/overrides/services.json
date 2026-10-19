@@ -1,0 +1,595 @@
+{
+  "lines": [
+    {
+      "id": "metro-ginza",
+      "name": "東京メトロ銀座線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-marunouchi",
+      "name": "東京メトロ丸ノ内線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-marunouchi-honancho",
+      "name": "東京メトロ丸ノ内線 方南町支線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-hibiya",
+      "name": "東京メトロ日比谷線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-tozai",
+      "name": "東京メトロ東西線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-chiyoda",
+      "name": "東京メトロ千代田線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-yurakucho",
+      "name": "東京メトロ有楽町線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-hanzomon",
+      "name": "東京メトロ半蔵門線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-namboku",
+      "name": "東京メトロ南北線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "metro-fukutoshin",
+      "name": "東京メトロ副都心線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "metro-ginza",
+      "name": "東京メトロ銀座線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-ginza"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浅草方面",
+        "backward": "渋谷方面"
+      },
+      "expectedStopCount": 19,
+      "lengthRef": {
+        "km": 14.2,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 渋谷–浅草: 14.200 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "G01",
+          "G02",
+          "G03",
+          "G04",
+          "G05",
+          "G06",
+          "G07",
+          "G08",
+          "G09",
+          "G10",
+          "G11",
+          "G12",
+          "G13",
+          "G14",
+          "G15",
+          "G16",
+          "G17",
+          "G18",
+          "G19"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "metro-marunouchi",
+      "name": "東京メトロ丸ノ内線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-marunouchi"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "池袋方面",
+        "backward": "荻窪方面"
+      },
+      "expectedStopCount": 25,
+      "lengthRef": {
+        "km": 24.2,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 荻窪–池袋: 24.200 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "M01",
+          "M02",
+          "M03",
+          "M04",
+          "M05",
+          "M06",
+          "M07",
+          "M08",
+          "M09",
+          "M10",
+          "M11",
+          "M12",
+          "M13",
+          "M14",
+          "M15",
+          "M16",
+          "M17",
+          "M18",
+          "M19",
+          "M20",
+          "M21",
+          "M22",
+          "M23",
+          "M24",
+          "M25"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "metro-marunouchi-honancho",
+      "name": "東京メトロ丸ノ内線 方南町支線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-marunouchi-honancho"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "方南町方面",
+        "backward": "中野坂上方面"
+      },
+      "expectedStopCount": 4,
+      "lengthRef": {
+        "km": 3.2,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 中野坂上–方南町: 3.200 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "M06",
+          "m05",
+          "m04",
+          "m03"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "metro-hibiya",
+      "name": "東京メトロ日比谷線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-hibiya"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "北千住方面",
+        "backward": "中目黒方面"
+      },
+      "expectedStopCount": 22,
+      "lengthRef": {
+        "km": 20.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 中目黒–北千住: 20.300 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "H01",
+          "H02",
+          "H03",
+          "H04",
+          "H05",
+          "H06",
+          "H07",
+          "H08",
+          "H09",
+          "H10",
+          "H11",
+          "H12",
+          "H13",
+          "H14",
+          "H15",
+          "H16",
+          "H17",
+          "H18",
+          "H19",
+          "H20",
+          "H21",
+          "H22"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "metro-tozai",
+      "name": "東京メトロ東西線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-tozai"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西船橋方面",
+        "backward": "中野方面"
+      },
+      "expectedStopCount": 23,
+      "lengthRef": {
+        "km": 30.8,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 中野–西船橋: 30.800 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "T01",
+          "T02",
+          "T03",
+          "T04",
+          "T05",
+          "T06",
+          "T07",
+          "T08",
+          "T09",
+          "T10",
+          "T11",
+          "T12",
+          "T13",
+          "T14",
+          "T15",
+          "T16",
+          "T17",
+          "T18",
+          "T19",
+          "T20",
+          "T21",
+          "T22",
+          "T23"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "metro-chiyoda",
+      "name": "東京メトロ千代田線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-chiyoda"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "北綾瀬方面",
+        "backward": "代々木上原方面"
+      },
+      "expectedStopCount": 20,
+      "lengthRef": {
+        "km": 24.0,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 代々木上原–北綾瀬: 24.000 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "C01",
+          "C02",
+          "C03",
+          "C04",
+          "C05",
+          "C06",
+          "C07",
+          "C08",
+          "C09",
+          "C10",
+          "C11",
+          "C12",
+          "C13",
+          "C14",
+          "C15",
+          "C16",
+          "C17",
+          "C18",
+          "C19",
+          "C20"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "metro-yurakucho",
+      "name": "東京メトロ有楽町線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-yurakucho"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "新木場方面",
+        "backward": "和光市方面"
+      },
+      "expectedStopCount": 24,
+      "lengthRef": {
+        "km": 28.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 和光市–新木場: 28.300 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "埼玉県",
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "Y01",
+          "Y02",
+          "Y03",
+          "Y04",
+          "Y05",
+          "Y06",
+          "Y07",
+          "Y08",
+          "Y09",
+          "Y10",
+          "Y11",
+          "Y12",
+          "Y13",
+          "Y14",
+          "Y15",
+          "Y16",
+          "Y17",
+          "Y18",
+          "Y19",
+          "Y20",
+          "Y21",
+          "Y22",
+          "Y23",
+          "Y24"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "metro-hanzomon",
+      "name": "東京メトロ半蔵門線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-hanzomon"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "押上方面",
+        "backward": "渋谷方面"
+      },
+      "expectedStopCount": 14,
+      "lengthRef": {
+        "km": 16.8,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 渋谷–押上: 16.800 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "Z01",
+          "Z02",
+          "Z03",
+          "Z04",
+          "Z05",
+          "Z06",
+          "Z07",
+          "Z08",
+          "Z09",
+          "Z10",
+          "Z11",
+          "Z12",
+          "Z13",
+          "Z14"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "metro-namboku",
+      "name": "東京メトロ南北線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-namboku"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "赤羽岩淵方面",
+        "backward": "目黒方面"
+      },
+      "expectedStopCount": 19,
+      "lengthRef": {
+        "km": 21.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 目黒–赤羽岩淵: 21.300 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "N01",
+          "N02",
+          "N03",
+          "N04",
+          "N05",
+          "N06",
+          "N07",
+          "N08",
+          "N09",
+          "N10",
+          "N11",
+          "N12",
+          "N13",
+          "N14",
+          "N15",
+          "N16",
+          "N17",
+          "N18",
+          "N19"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "metro-fukutoshin",
+      "name": "東京メトロ副都心線 各停",
+      "kind": "local",
+      "lineIds": [
+        "metro-fukutoshin"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "渋谷方面",
+        "backward": "和光市方面"
+      },
+      "expectedStopCount": 16,
+      "lengthRef": {
+        "km": 20.2,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 和光市–渋谷: 20.200 km; Tokyo Metro Operating Guide (2025-03-15) guide table 1 note (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf); Tokyo Metro Operating Guide (2025-03-15) guide table 1 (https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京地下鉄",
+      "n02Operator": "東京地下鉄",
+      "areaPrefectures": [
+        "埼玉県",
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "F01",
+          "F02",
+          "F03",
+          "F04",
+          "F05",
+          "F06",
+          "F07",
+          "F08",
+          "F09",
+          "F10",
+          "F11",
+          "F12",
+          "F13",
+          "F14",
+          "F15",
+          "F16"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    }
+  ]
+}

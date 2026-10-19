@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-from scripts.data_pipeline import config
 from scripts.data_pipeline.budgets import (
     BUDGET_PROFILES,
     budget_errors,
@@ -21,12 +20,15 @@ from scripts.data_pipeline.overrides import Overrides, load_overrides, parse_dat
 from scripts.data_pipeline.registry import OverrideError
 from scripts.data_pipeline.rules import Report, check_two_way_reachability
 from scripts.data_pipeline.validate import Dataset, validate_dataset
+from tests.data_pipeline.support import historical_baseline
+
+HISTORICAL_OVERRIDES_DIR = historical_baseline("data/overrides")
 
 
 def test_expected_catalogue_pins_exact_order_and_station_union(
     committed_overrides: Overrides,
 ) -> None:
-    check_expected_catalogue(committed_overrides, config.DEFAULT_OVERRIDES_DIR)
+    check_expected_catalogue(committed_overrides, HISTORICAL_OVERRIDES_DIR)
     # Dropping a service from both the configured and built catalogue cannot pass.
     dropped = replace(
         committed_overrides,
@@ -37,12 +39,12 @@ def test_expected_catalogue_pins_exact_order_and_station_union(
         services=committed_overrides.services[:-1],
     )
     with pytest.raises(OverrideError, match="expected catalogue mismatch"):
-        check_expected_catalogue(dropped, config.DEFAULT_OVERRIDES_DIR)
+        check_expected_catalogue(dropped, HISTORICAL_OVERRIDES_DIR)
     reversed_order = replace(
         committed_overrides, services=tuple(reversed(committed_overrides.services))
     )
     with pytest.raises(OverrideError, match="expected catalogue mismatch"):
-        check_expected_catalogue(reversed_order, config.DEFAULT_OVERRIDES_DIR)
+        check_expected_catalogue(reversed_order, HISTORICAL_OVERRIDES_DIR)
 
 
 def test_hash_pinned_oracle_and_exact_stop_list(overrides_copy: Path) -> None:
@@ -134,7 +136,7 @@ def test_size_report_includes_all_five_files_gzip_and_flattened_references(
 def test_regional_profile_and_configured_simplification(
     committed_overrides: Overrides,
 ) -> None:
-    raw = json.loads((config.DEFAULT_OVERRIDES_DIR / "dataset.json").read_text())
+    raw = json.loads((HISTORICAL_OVERRIDES_DIR / "dataset.json").read_text())
     parsed = parse_dataset(
         {
             **raw,
@@ -170,7 +172,7 @@ def test_regional_profile_and_configured_simplification(
 def test_invalid_budget_or_simplification_config_is_rejected(
     change: dict[str, object],
 ) -> None:
-    raw = json.loads((config.DEFAULT_OVERRIDES_DIR / "dataset.json").read_text())
+    raw = json.loads((HISTORICAL_OVERRIDES_DIR / "dataset.json").read_text())
     with pytest.raises(OverrideError):
         parse_dataset({**raw, **change})
 

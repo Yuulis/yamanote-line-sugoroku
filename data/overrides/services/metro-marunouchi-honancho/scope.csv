@@ -1,0 +1,5 @@
+station_id,prefecture,municipality,in_area
+metro-nakano-sakaue,東京都,中野区,true
+metro-nakano-shimbashi,東京都,中野区,true
+metro-nakano-fujimicho,東京都,中野区,true
+metro-honancho,東京都,杉並区,true

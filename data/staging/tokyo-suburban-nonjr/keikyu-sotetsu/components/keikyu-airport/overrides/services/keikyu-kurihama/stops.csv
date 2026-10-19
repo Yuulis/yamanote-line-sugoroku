@@ -1,0 +1,10 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keikyu-horinouchi,KK61,line=久里浜線;group=005199;code=005199,堀ノ内,堀ノ内,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005199, N02_005g=005199."
+1,keikyu-shin-otsu,KK65,line=久里浜線;group=005211;code=005211,新大津,新大津,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005211, N02_005g=005211."
+2,keikyu-kitakurihama,KK66,line=久里浜線;group=005241;code=005241,北久里浜,北久里浜,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005241, N02_005g=005241."
+3,keikyu-kurihama,KK67,line=久里浜線;group=005277;code=005277,京急久里浜,京急久里浜,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005277, N02_005g=005277."
+4,keikyu-yrp-nobi,KK68,line=久里浜線;group=005320;code=005320,YRP野比,YRP野比,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005320, N02_005g=005320."
+5,keikyu-nagasawa,KK69,line=久里浜線;group=005333;code=005333,京急長沢,京急長沢,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005333, N02_005g=005333."
+6,keikyu-tsukuihama,KK70,line=久里浜線;group=005356;code=005356,津久井浜,津久井浜,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005356, N02_005g=005356."
+7,keikyu-miurakaigan,KK71,line=久里浜線;group=005401;code=005401,三浦海岸,三浦海岸,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005401, N02_005g=005401."
+8,keikyu-misakiguchi,KK72,line=久里浜線;group=005419;code=005419,三崎口,三崎口,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/久里浜線; N02_005c=005419, N02_005g=005419."

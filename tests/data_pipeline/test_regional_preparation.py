@@ -265,6 +265,7 @@ def test_homonyms_with_disjoint_registry_selectors_keep_distinct_ids() -> None:
             "prefecture": prefecture,
             "municipality": "市",
             "representative_service_id": "service",
+            "n02_operator": "Operator A",
             "n02_selector": f"group={identifier}",
         }
         for identifier, prefecture in [("tokyo", "東京都"), ("chiba", "千葉県")]

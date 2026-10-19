@@ -1,0 +1,69 @@
+{
+  "lines": [
+    {
+      "id": "tx",
+      "name": "つくばエクスプレス 普通",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "tx",
+      "name": "つくばエクスプレス 普通",
+      "kind": "local",
+      "lineIds": [
+        "tx"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "つくば方面",
+        "backward": "秋葉原方面"
+      },
+      "expectedStopCount": 20,
+      "lengthRef": {
+        "km": 58.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 秋葉原–つくば: 58.300 km; MIR TX overview 路線概要: 営業キロ (https://mir1.mir.co.jp/feature/about_tx/)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "首都圏新都市鉄道",
+      "n02Operator": "首都圏新都市鉄道",
+      "areaPrefectures": [
+        "東京都",
+        "埼玉県",
+        "千葉県",
+        "茨城県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "TX01",
+          "TX02",
+          "TX03",
+          "TX04",
+          "TX05",
+          "TX06",
+          "TX07",
+          "TX08",
+          "TX09",
+          "TX10",
+          "TX11",
+          "TX12",
+          "TX13",
+          "TX14",
+          "TX15",
+          "TX16",
+          "TX17",
+          "TX18",
+          "TX19",
+          "TX20"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+toei-asakusa,西馬込,押上,18.3,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,18.335,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+toei-mita,目黒,西高島平,26.5,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,26.540,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+toei-shinjuku,新宿,本八幡,23.5,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,23.630,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+toei-oedo-loop,都庁前,新宿,28.6,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,28.560,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+toei-oedo-radial,都庁前,光が丘,12.1,https://www.kotsu.metro.tokyo.jp/subway/fare/regular/oedo_kiro.html,12.038,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+yokohama-blue,湘南台,あざみ野,40.4,https://www.city.yokohama.lg.jp/kotsu/kigyo/gaiyou/subway.html,40.553,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+yokohama-green,中山,日吉,13.0,https://www.city.yokohama.lg.jp/kotsu/kigyo/gaiyou/subway.html,13.022,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.

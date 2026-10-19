@@ -6,16 +6,18 @@ import math
 import re
 from collections.abc import Mapping, Sequence
 from datetime import date
+from pathlib import Path
 from typing import Any, TypeGuard
 
 from scripts.data_pipeline import config
 from scripts.data_pipeline.budgets import parse_budgets
 from scripts.data_pipeline.composition import parse_compose
 from scripts.data_pipeline.constraints import (
-    STATION_NUMBER_PATTERN,
+    STATION_NUMBER_EVIDENCE_PATTERN,
     BBox,
     ConstraintError,
     OffsetException,
+    ScopedSectionFilter,
     SectionFilter,
     build_section_filter,
     parse_bbox,
@@ -41,6 +43,7 @@ from scripts.data_pipeline.registry import (
 )
 
 ISO_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 ENDPOINT_KINDS = ("terminus", "area-boundary", "service-boundary")
 SERVICE_KINDS = ("local", "rapid")
 MIN_LOOP_STOPS = 3
@@ -51,6 +54,16 @@ LINE_MAPPING_COLUMNS = ("from_id", "to_id", "n02_line", "via")
 SECTION_COLUMNS = ("n02_line", "action", "section_key", "reason")
 OFFSET_COLUMNS = ("service_id", "station_id", "max_platform_offset_m", "reason")
 SCOPE_COLUMNS = ("station_id", "prefecture", "municipality")
+JUNCTIONS_OVERRIDE_FILE = "junctions.csv"
+JUNCTION_COLUMNS = (
+    "n02_operator",
+    "n02_line",
+    "section_key",
+    "peer_section_key",
+    "lon",
+    "lat",
+    "reason",
+)
 DETOUR_COLUMNS = ("service_id", "from_id", "to_id", "max_detour_ratio", "reason")
 TRANSFER_COLUMNS = ("service_id", "station_id", "max_transfer_m", "reason")
 
@@ -106,10 +119,10 @@ def parse_dataset(raw: Any) -> DatasetOverride:
         else config.CAPITAL_REGION_PREFECTURES
     )
     if not prefectures or not set(prefectures) <= set(
-        config.CAPITAL_REGION_PREFECTURES
+        config.ALLOWED_RAILWAY_PREFECTURES
     ):
         raise OverrideError(
-            "dataset areaPrefectures must select capital-region prefectures"
+            "dataset areaPrefectures must select supported railway prefectures"
         )
     municipalities = (
         _id_list(raw, "areaMunicipalities", where)
@@ -145,6 +158,26 @@ def parse_dataset(raw: Any) -> DatasetOverride:
     for key in ("expectedCatalogFile", "expectedCatalogSha256"):
         if key in raw and (not isinstance(raw[key], str) or not raw[key]):
             raise OverrideError(f"{key} must be a non-empty string")
+    ui_presentation_file = raw.get("uiPresentationFile")
+    ui_presentation_sha256 = raw.get("uiPresentationSha256")
+    if (ui_presentation_file is None) != (ui_presentation_sha256 is None):
+        raise OverrideError(
+            "uiPresentationFile and uiPresentationSha256 must be set together"
+        )
+    if ui_presentation_file is not None:
+        if (
+            not isinstance(ui_presentation_file, str)
+            or not ui_presentation_file.strip()
+            or Path(ui_presentation_file).is_absolute()
+            or ".." in Path(ui_presentation_file).parts
+        ):
+            raise OverrideError("uiPresentationFile must be a safe relative path")
+        if not isinstance(ui_presentation_sha256, str) or not SHA256_PATTERN.fullmatch(
+            ui_presentation_sha256
+        ):
+            raise OverrideError(
+                "uiPresentationSha256 must be a lowercase SHA-256 digest"
+            )
     validation_profile = raw.get("validationProfile", "gameplay")
     if validation_profile not in ("gameplay", "stage"):
         raise OverrideError("validationProfile must be 'gameplay' or 'stage'")
@@ -183,6 +216,8 @@ def parse_dataset(raw: Any) -> DatasetOverride:
         simplify_tolerance_m=float(simplify),
         validation_profile=validation_profile,
         stage_start_station_id=stage_start,
+        ui_presentation_file=ui_presentation_file,
+        ui_presentation_sha256=ui_presentation_sha256,
     )
 
 
@@ -269,12 +304,23 @@ def parse_service_definition(raw: Any) -> ServiceDefinition:
             not isinstance(sequence, list)
             or len(sequence) != count
             or not all(
-                isinstance(v, str) and (not v or STATION_NUMBER_PATTERN.fullmatch(v))
+                isinstance(v, str)
+                and (not v or STATION_NUMBER_EVIDENCE_PATTERN.fullmatch(v))
                 for v in sequence
             )
         ):
             raise OverrideError(f"{where}: invalid station-number evidence sequence")
         number_sequence = tuple(sequence)
+    operator = _optional_json_text(raw, "operator", where)
+    n02_operator = _optional_json_text(raw, "n02Operator", where)
+    area_prefectures = None
+    if "areaPrefectures" in raw:
+        values = _id_list(raw, "areaPrefectures", where)
+        if not values or not set(values) <= set(config.ALLOWED_RAILWAY_PREFECTURES):
+            raise OverrideError(
+                f"{where}: areaPrefectures must be a non-empty supported subset"
+            )
+        area_prefectures = values
     return ServiceDefinition(
         id=service_id,
         kind=kind,
@@ -288,7 +334,21 @@ def parse_service_definition(raw: Any) -> ServiceDefinition:
         length_ref=_parse_length_ref(raw.get("lengthRef"), where),
         station_number_sequence=number_sequence,
         scope_source=_text(raw, "scopeSource", where),
+        operator=operator,
+        n02_operator=n02_operator,
+        area_prefectures=area_prefectures,
     )
+
+
+def _optional_json_text(raw: Mapping[str, Any], key: str, where: str) -> str | None:
+    if key not in raw:
+        return None
+    value = raw[key]
+    if not isinstance(value, str) or not value.strip():
+        raise OverrideError(
+            f"{where}: '{key}' must be a non-empty string when specified"
+        )
+    return value
 
 
 def parse_stops(rows: Sequence[Mapping[str, str]], service_id: str) -> tuple[Stop, ...]:
@@ -299,12 +359,37 @@ def parse_stops(rows: Sequence[Mapping[str, str]], service_id: str) -> tuple[Sto
             selector = parse_platform_selector(row["platform_selector"])
         except (ValueError, ConstraintError) as error:
             raise OverrideError(f"{service_id} stops row {index}: {error}") from error
+        original_name = row.get("original_name", "")
+        n02_name = row.get("n02_name", "")
+        n02_operator = row.get("n02_operator", "")
+        source_reason = row.get("source_reason", "")
+        for key, value in (
+            ("original_name", original_name),
+            ("n02_name", n02_name),
+            ("n02_operator", n02_operator),
+        ):
+            if value and not value.strip():
+                raise OverrideError(
+                    f"{service_id} stops row {index}: {key} must not be blank"
+                )
+        if n02_operator and not source_reason:
+            raise OverrideError(
+                f"{service_id} stops row {index}: source_reason required for n02_operator"
+            )
+        if source_reason and not n02_operator:
+            raise OverrideError(
+                f"{service_id} stops row {index}: source_reason requires n02_operator"
+            )
         stops.append(
             Stop(
                 order=order,
                 station_id=row["station_id"],
                 station_number=row["station_number"],
                 platform_selector=selector,
+                original_name=original_name,
+                n02_name=n02_name,
+                n02_operator=n02_operator,
+                source_reason=source_reason,
             )
         )
     return tuple(stops)
@@ -328,7 +413,21 @@ def parse_line_ranges(
         except ConstraintError as error:
             raise OverrideError(f"{service_id} route row {index}: {error}") from error
         compose = parse_compose(row.get("compose", ""))
-        if compose and (route or row["n02_line"] or via):
+        n02_operator = row.get("n02_operator", "")
+        source_reason = row.get("source_reason", "")
+        if n02_operator and not source_reason:
+            raise OverrideError(
+                f"{service_id} line mapping row {index}: source_reason required for n02_operator"
+            )
+        if source_reason and not n02_operator:
+            raise OverrideError(
+                f"{service_id} line mapping row {index}: source_reason requires n02_operator"
+            )
+        if route and n02_operator:
+            raise OverrideError(
+                f"{service_id} line mapping row {index}: route.operators cannot be combined with row-level n02_operator"
+            )
+        if compose and (route or row["n02_line"] or via or n02_operator):
             raise OverrideError("compose cannot also specify route, n02_line or via")
         if route and (row["n02_line"] or via):
             raise OverrideError(
@@ -344,25 +443,90 @@ def parse_line_ranges(
                 via=via,
                 route=route,
                 compose=compose,
+                n02_operator=n02_operator,
+                source_reason=source_reason,
             )
         )
     return tuple(ranges)
 
 
 def parse_section_filters(
-    rows: Sequence[Mapping[str, str]], service_id: str
-) -> dict[str, SectionFilter]:
-    by_line: dict[str, list[tuple[str, str]]] = {}
+    rows: Sequence[Mapping[str, str]], service_id: str, default_operator: str = ""
+) -> dict[tuple[str, str], SectionFilter]:
+    by_line: dict[tuple[str, str], list[tuple[str, str]]] = {}
     for index, row in enumerate(rows):
         if not row["reason"]:
             raise OverrideError(f"{service_id} sections row {index}: reason required")
-        by_line.setdefault(row["n02_line"], []).append(
+        operator = row.get("n02_operator", "") or default_operator
+        if row.get("source_reason"):
+            raise OverrideError(
+                f"{service_id} sections row {index}: source_reason is unsupported; use reason"
+            )
+        by_line.setdefault((operator, row["n02_line"]), []).append(
             (row["action"], row["section_key"])
         )
     try:
-        return {line: build_section_filter(rules) for line, rules in by_line.items()}
+        return {key: build_section_filter(rules) for key, rules in by_line.items()}
     except ConstraintError as error:
         raise OverrideError(f"{service_id} sections: {error}") from error
+
+
+def parse_scoped_section_filters(
+    rows: Sequence[Mapping[str, str]], service_id: str, default_operator: str = ""
+) -> tuple[dict[tuple[str, str], SectionFilter], tuple[ScopedSectionFilter, ...]]:
+    """Parse legacy service-wide and optional stop-range section rules."""
+    has_from = any("from_id" in row for row in rows)
+    has_to = any("to_id" in row for row in rows)
+    if has_from != has_to:
+        raise OverrideError(
+            f"{service_id} sections.csv needs both from_id and to_id columns"
+        )
+    global_rows: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    scoped: list[ScopedSectionFilter] = []
+    seen_scoped: set[tuple[str, str, str, str, str]] = set()
+    for index, row in enumerate(rows):
+        if not row.get("reason", ""):
+            raise OverrideError(f"{service_id} sections row {index}: reason required")
+        if row.get("source_reason"):
+            raise OverrideError(
+                f"{service_id} sections row {index}: source_reason is unsupported; use reason"
+            )
+        operator = row.get("n02_operator", "") or default_operator
+        line = row.get("n02_line", "")
+        action = row.get("action", "")
+        key = row.get("section_key", "")
+        if not line or not key:
+            raise OverrideError(
+                f"{service_id} sections row {index}: line and key required"
+            )
+        from_id = row.get("from_id", "")
+        to_id = row.get("to_id", "")
+        if not from_id and not to_id:
+            global_rows.setdefault((operator, line), []).append((action, key))
+            continue
+        if not from_id or not to_id:
+            raise OverrideError(
+                f"{service_id} sections row {index}: from_id and to_id must both be set"
+            )
+        if action not in {"allow", "deny"}:
+            raise OverrideError(
+                f"{service_id} sections row {index}: action must be allow or deny"
+            )
+        identity = (operator, line, from_id, to_id, key)
+        if identity in seen_scoped:
+            raise OverrideError(
+                f"{service_id} sections row {index}: duplicate scoped key"
+            )
+        seen_scoped.add(identity)
+        scoped.append(ScopedSectionFilter(operator, line, from_id, to_id, action, key))
+    try:
+        filters = {
+            identity: build_section_filter(rules)
+            for identity, rules in global_rows.items()
+        }
+    except ConstraintError as error:
+        raise OverrideError(f"{service_id} sections: {error}") from error
+    return filters, tuple(scoped)
 
 
 def parse_offset_exceptions(

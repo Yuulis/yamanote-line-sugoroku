@@ -1,0 +1,7 @@
+from_id,to_id,n02_line,via,route,compose
+keikyu-kamata,keikyu-kojiya,空港線,,,
+keikyu-kojiya,keikyu-otorii,空港線,,,
+keikyu-otorii,keikyu-anamori-inari,空港線,,,
+keikyu-anamori-inari,keikyu-tenkubashi,空港線,,,
+keikyu-tenkubashi,keikyu-haneda-airport-terminal-3,空港線,,,
+keikyu-haneda-airport-terminal-3,keikyu-haneda-airport-terminal-1-2,空港線,,,

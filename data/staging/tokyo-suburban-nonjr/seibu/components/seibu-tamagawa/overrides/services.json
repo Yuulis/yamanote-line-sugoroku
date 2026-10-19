@@ -1,0 +1,52 @@
+{
+  "lines": [
+    {
+      "id": "seibu-tamagawa",
+      "name": "西武多摩川線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "seibu-tamagawa",
+      "name": "西武多摩川線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-tamagawa"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "是政方面",
+        "backward": "武蔵境方面"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 8.0,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 武蔵境–是政: 8.000 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SW01",
+          "SW02",
+          "SW03",
+          "SW04",
+          "SW05",
+          "SW06"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    }
+  ]
+}

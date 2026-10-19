@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+seibu-musashi-sakai,seibu-shin-koganei,多摩川線,,,
+seibu-shin-koganei,seibu-tama,多摩川線,,,
+seibu-tama,seibu-shiraitodai,多摩川線,,,
+seibu-shiraitodai,seibu-kyoteijo-mae,多摩川線,,,
+seibu-kyoteijo-mae,seibu-koremasa,多摩川線,,,

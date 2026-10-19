@@ -1,4 +1,4 @@
-order,station_id,station_number,platform_selector
-0,asano,JI05,
-1,shin-shibaura,JI51,
-2,umi-shibaura,JI52,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,asano,JI05,,浅野,浅野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,shin-shibaura,JI51,,新芝浦,新芝浦,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,umi-shibaura,JI52,,海芝浦,海芝浦,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

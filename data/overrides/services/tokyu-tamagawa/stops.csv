@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyu-tamagawa,TM01,,多摩川,多摩川,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-numabe,TM02,,沼部,沼部,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-unoki,TM03,,鵜の木,鵜の木,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tokyu-shimomaruko,TM04,,下丸子,下丸子,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tokyu-musashi-nitta,TM05,,武蔵新田,武蔵新田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tokyu-yaguchinowatashi,TM06,,矢口渡,矢口渡,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,kamata,TM07,,蒲田,蒲田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

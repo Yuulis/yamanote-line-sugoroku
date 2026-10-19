@@ -1,0 +1,3 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keio-higashi-fuchu,KO23,line=競馬場線;group=003850;code=003851,東府中,東府中,京王電鉄,Raw N02 confirms this 競馬場線 station code 003851 and group 003850; pin the platform used by this frozen service.
+1,keio-fuchukeiba-seimommae,KO46,line=競馬場線;group=003856;code=003856,府中競馬正門前,府中競馬正門前,京王電鉄,Raw N02 confirms frozen station name 府中競馬正門前 (N02 name 府中競馬正門前) on 競馬場線 at platform code 003856 and group 003856; pin this service stop.

@@ -1,16 +1,31 @@
-# JR East capital-region game data pipeline
+# Tokyo suburban game data pipeline
 
 `public/data/*` is generated deterministically from MLIT N02 2025 and reviewed
-`data/overrides` tables. The live S6/S5 edition contains 40 services and 472
-shared stations across 東京都・千葉県・神奈川県・埼玉県, with 1,224 directed
-gameplay segments, 568 owned geometry features and 1,230 geometry references.
-The product stop order is pinned by `data/overrides/expected-catalog.json`
-(SHA-256 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`);
-there is no live timetable lookup. Gameplay starts at 新橋 and uses the adopted
-weighted lotteries (`jr-east-capital-1`). The five public files total 744,720 raw
-bytes and 125,322 gzip bytes (level 9, mtime 0), within the `capital-region`
-profile caps of 3,145,728 raw and 921,600 gzip bytes. GeoJSON is 398,311 raw / 83,972
-gzip bytes; the maximum feature chain is 3 references.
+`data/overrides` tables. The current Tokyo suburban bundle contains 135 engine
+services, 1,586 station identities and 3,988 directed gameplay segments across
+11 prefectures. It has 2,142 service-stop rows, 3,994 geometry references and a
+maximum chain length of 3. The manifest groups services into 134 UI line groups
+across 15 operators; 大江戸線 is one UI line backed by two engine services. The
+five public files total 2,577,364 raw bytes and 413,592 gzip bytes (level 9,
+mtime 0), within the `capital-region` profile caps of 3,145,728 raw and 921,600
+gzip bytes. GeoJSON is 1,288,259 raw / 265,508 gzip bytes. Totals include
+`uiPresentation` in `manifest.json`. The product stop order is pinned by the reviewed
+`data/overrides/expected-catalog.json` (SHA-256
+`42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`); there
+is no live timetable lookup. Gameplay starts at 新橋 and uses ruleset `tokyo-suburban-1`.
+
+Optional service `scope.csv` files can add an `in_area` column containing exactly
+`true` or `false` on every row. This pins the contiguous served run when a
+geographic prefecture boundary does not match a service boundary; the first
+out-of-area neighbour at each `area-boundary` endpoint remains required. Files
+without `in_area` keep the legacy prefecture and municipality scope rule.
+
+An optional service `junctions.csv` records narrowly reviewed graph splits with
+`n02_operator,n02_line,section_key,peer_section_key,lon,lat,reason`. The target
+coordinate must exactly match one existing internal source vertex, and the peer
+section must end at that same coordinate. The section filter runs first. A rule
+only divides the named section into its existing pieces; it adds no geometry or
+nearby connection.
 
 ## Source and licences
 
@@ -51,26 +66,114 @@ uv run pytest -q
 
 Build options: `--raw-dir`, `--overrides-dir`, `--out-dir`, `--quiet`.
 
-## Live edition (S6 data + S5 rules; 2026-10-15)
+## Current Tokyo suburban edition (S7 docs; bundle `n02-2025-8a0970069659`)
 
-The shipped catalogue is the approved JR East capital-region product catalogue:
-40 services and 472 stations in product order. All four prefectures are included;
-`data/overrides/dataset.json` pins `expected-catalog.json` with SHA-256
-`42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`. The 67
-previously shipped station IDs and five service IDs are retained. The game starts
-at `shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile,
-and simplifies geometry by 1 m. S5 sets the ruleset to `jr-east-capital-1`:
-Yamanote has a 1/2 share when it is a candidate, remaining services share the
-other half uniformly, local and rapid bases have equal weight, and the direction
-toward Yamanote is weighted 2:1 when both directions can move.
+The shipped catalogue has 135 services and 1,586 station identities in product
+order across 11 prefectures, with 3,988 directed segments and 30 target
+segments. `data/overrides/dataset.json` pins its reviewed expected catalogue;
+the live bundle is identified by `dataVersion` `n02-2025-8a0970069659`. It starts
+at `shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile
+and simplifies geometry by 1 m. The ruleset is `tokyo-suburban-1`: when Yamanote
+is among at least two service candidates it receives 2/3 of the draw; the
+remaining probability is split equally among other services. `local` and
+`rapid` services have equal base weights. On a non-target service with two
+available directions, the direction closer to Yamanote has twice the weight.
+The UI presentation catalogue has 15 operators and 134 line groups; 46 station
+aliases and 90 service stop-name overrides preserve reviewed identities and
+labels (including 22 small-ヶ originals).
 
-The output has 1,224 directed segments, 568 primitive features and 1,230 geometry
-references; the maximum chain is 3 primitives. One reviewed platform transfer is
+The output has 3,988 directed segments and 3,994 geometry references; the maximum
+chain is 3 primitives. One reviewed platform transfer is
 at 上野 for 常磐線快速 (maximum transfer 150 m; the maximum measured endpoint jump
 is 130.956 m). Reviewed platform-offset exceptions are 東京 on 京葉線 (up to 500 m)
 and 武蔵小杉 on 南武線 (up to 400 m; measured 393.4 m). Two 湘南新宿ライン freight-corridor
 surrogate pairs have a reviewed detour ratio of 2.1. Full sizes, budget use and N02
 routing evidence are recorded in `.claude/docs/research/jr-east-capital-region-s6.md`.
+
+S3 non-JR operator groups are staged separately under
+`data/staging/tokyo-suburban-nonjr/`, split into operator-owned stop-connected
+components. Their seeds use the hash-verified frozen catalog and preserve
+`station_id_original` until the S4 identity merge. Source-classified mileage and
+its arithmetic breakdown live in `length-refs.csv` and
+`length-ref-components.csv`; pair evidence records the raw N02 inputs and the
+route selected by the regular build. Group verification results are reported
+only through the corresponding `.claude/logs/s3/<group>/` logs referenced by
+that group's staging README. `length-ref-components.csv` records each mileage
+source class (`primary` or `secondary`); generated `lengthRef.source` values and
+measurement notes preserve the class used by the service breakdown.
+
+### S4 cross-operator assembly
+
+S4 assembles the frozen S2/S3 inputs under
+`data/staging/tokyo-suburban-assembled/`. The assembly uses the frozen catalog
+as its identity and expected-count oracle; do not edit the S2/S3 staging trees
+or publish the stage build. Once each evidence batch is ready, run the final
+determinism gate, preservation audit and handoff:
+
+```bash
+s4() { uv run python -m scripts.data_pipeline.stage_suburban_assembly "$@"; }
+s4batch() { s4 measure-pairs --batch "$1" && s4 check-evidence --batch "$1"; }
+s4 preflight && s4 assemble
+for batch in jr-core jr-new metro toei-yokohama tobu seibu \
+  keisei-hokuso-tx tokyu-mm keio-odakyu keikyu-sotetsu; do
+  s4batch "$batch"
+done
+uv run python -m scripts.data_pipeline.stage_suburban_assembly gate \
+  --out-dir .claude/logs/s4
+uv run python -m scripts.data_pipeline.stage_suburban_assembly audit \
+  --data-dir .claude/logs/s4
+uv run python -m scripts.data_pipeline.stage_suburban_assembly handoff \
+  --data-dir .claude/logs/s4
+```
+
+`gate` builds and validates independent A/B copies from the assembled stage,
+compares every output byte and checks all ten evidence batches. `audit` verifies
+that those outputs remain current, checks bidirectional reachability from
+`shimbashi`, validates each service's platform keys, and compares shipped JR
+geometry and platform retention. `handoff` writes the frozen inventory,
+verification record and README into the assembled stage. The stage manifest is
+not a product manifest and must not be copied to `public/data/`.
+
+### S5 Tokyo suburban product preparation
+
+Run `verify-history` to confirm the old edition still resolves to its hash-verified live or archived trees. Then
+`verify-inputs` checks the frozen S0 inputs, all ten accepted S4 evidence batches, identity and UI sidecars, shared-track
+review, and source mileage arithmetic. `prepare` copies the audited S4 overrides under `.claude/logs/s5/` and changes
+only the gameplay profile, start and target IDs, operator, and area name. It records each transformed field and source
+hash in `prepare-provenance.json` beside the generated overrides.
+
+Build fresh A and B outputs independently, validate both against those prepared overrides, then compare all five files:
+
+```bash
+uv run python -m scripts.data_pipeline.product_suburban verify-history
+uv run python -m scripts.data_pipeline.product_suburban verify-inputs
+uv run python -m scripts.data_pipeline.product_suburban prepare \
+  --out-dir .claude/logs/s5/overrides
+PYTHONHASHSEED=1 uv run python -m scripts.data_pipeline.build \
+  --overrides-dir .claude/logs/s5/overrides --out-dir .claude/logs/s5/a
+PYTHONHASHSEED=777 uv run python -m scripts.data_pipeline.build \
+  --overrides-dir .claude/logs/s5/overrides --out-dir .claude/logs/s5/b
+uv run python -m scripts.data_pipeline.validate \
+  --overrides-dir .claude/logs/s5/overrides --data-dir .claude/logs/s5/a
+uv run python -m scripts.data_pipeline.validate \
+  --overrides-dir .claude/logs/s5/overrides --data-dir .claude/logs/s5/b
+uv run python -m scripts.data_pipeline.product_suburban compare \
+  --a .claude/logs/s5/a --b .claude/logs/s5/b
+```
+
+`compare` checks byte identity, the manifest's content-derived version, and all four payload hashes against S4's accepted
+build. `verify` checks installed product overrides and files, frozen catalogue order, the 30 one-way Yamanote segments,
+two-way reachability, schema, geometry references, and the unchanged product budgets. Cut over only from those verified
+generated paths with `product_suburban install`; afterward run `product_suburban verify` again. S5 retains schema 3 and
+the existing save format.
+
+S6 added UI presentation metadata to the schema 3 manifest while leaving the
+four gameplay payloads unchanged from S5. S7 keeps save format v3. Local delivery
+showed decoded assets equal to `public/data`; JSON assets were gzip-compressed by
+Vite preview, while `segments.geojson` was served uncompressed as
+`application/geo+json` (1,288,259 B). Vercel behavior remains an S8 live check.
+S7 simulation and browser evidence is summarized in
+[the current implementation status](../docs/manual/tokyo-suburban/implementation-status.md).
 
 N02 has known generalized-line limits: it does not distinguish the separate
 常磐線各停・快速 tracks between 綾瀬 and 金町, the separate 総武快速・緩行 tracks
@@ -166,10 +269,10 @@ The initial 2026-10-12 23-ward release listed Yamanote, Keihin-Tohoku
 (Akabane–Kamata), Chuo-Sobu local (Nishi-Ogikubo–Koiwa), Saikyo
 (Osaki–Ukima-Funado), and Keiyo (Tokyo–Kasai-Rinkai-Koen). That historical
 catalogue excluded Joban local, Joban rapid, Yokosuka/Sobu rapid and other
-rapid/through services. S6 supersedes its live scope with the approved 40-service
-regional catalogue described above.
+rapid/through services. The current 135-service Tokyo suburban product catalogue described above
+supersedes that historical release scope.
 
-### Historical regional preparation (S3a; superseded by the live S6 dataset)
+### Historical regional preparation (S3a; superseded by the current Tokyo suburban product)
 
 The registry header is
 `id,name,n02_name,prefecture,municipality,representative_service_id[,n02_selector]`.
@@ -189,7 +292,7 @@ reviewed prefecture/municipality fields, rather than a rectangle or N03 input.
 The candidate box must enclose the output box. The then-shipped 23-ward dataset explicitly
 restricted membership to Tokyo's municipalities while using wider regional
 search/output bounds. Artifact coordinates and route/via points use each dataset's
-configured bounds. This historical description was superseded by the S6 live dataset.
+configured bounds. This historical preparation note is superseded by the current Tokyo suburban product edition.
 
 Every service needs `scopeSource` in `services.json` and `scope.csv` with columns
 `station_id,prefecture,municipality`. Record the independently reviewed served-stop
@@ -260,7 +363,7 @@ Composition DAGs, primitive anchors, shared owners and dataset budgets follow in
 
 A directed segment id is `<service>:<from>:<to>`. Linear services have both directions;
 Yamanote has outer only. Segments carry a non-empty `geometryFeatureIds` chain in travel order. Reverse
-segments carry the reversed list. The historical 23-ward bundle used one-element chains; the current 1都3県 bundle
+segments carry the reversed list. The historical 23-ward bundle used one-element chains; the current Tokyo suburban bundle
 uses chains of up to 3 primitives. Features are service-owned primitives with
 `{featureId, serviceId, lineId, from, to}`; future rapid/through consumers may compose
 primitives from multiple owners without changing ownership or gameplay progress.
@@ -271,7 +374,7 @@ services require `kind` (`local | rapid`) and non-empty `lineIds`, plus
 `directionLabels`, `platformCoordinates`, and (if linear) `endpoints.first/last`
 (`terminus`, `area-boundary`, or `service-boundary`, displayed as 「系統の端」).
 Legacy v2 bundles are rejected by the runtime guards. `segments.json` is compact,
-with one object per line. The current live bundle uses the approved 40-service stop order and the S5 weighted gameplay rules.
+with one object per line. The current live bundle uses the approved 135-service stop order and the `tokyo-suburban-1` gameplay rules.
 
 The validator checks the strict five-file schema, registry/area/catalogue,
 metadata/stop order, pair coverage and walks, platforms/representatives and reviewed
@@ -332,7 +435,7 @@ reviewed JSON object with `services: [{ id, stationIds }]` in output order and
 `stationIds` in first-appearance order. Both override services and their exact
 stop lists must match it; built artifacts are checked against those overrides.
 The shipped and core-fixture oracles are separate frozen inputs. Staging needs
-its own reviewed oracle; S6 needs the complete approved product catalogue.
+its own reviewed oracle; the Tokyo suburban product needs the complete approved product catalogue.
 Do not regenerate the oracle as part of a build to hide a coverage difference.
 Every station must be reachable from the start and back over actual directed
 segments, regardless of `reviewedDisconnectedServiceIds`.
@@ -389,7 +492,7 @@ file compressed separately with level 9 and `mtime=0`; gzip artifacts are not
 shipped. Build rejects overruns before writing files; validation reports raw,
 gzip, total reference count and maximum chain length. The regional payload
 limits come from the S3b handoff; reference/chain caps and additional 23ku caps
-are conservative configuration defaults. S6 measured and accepted them for the live regional dataset.
+are conservative configuration defaults. They were measured and accepted for the live Tokyo suburban dataset.
 
 `dataset.json` can set `simplifyToleranceM` (finite and positive, default 1 m).
 Keep 1 m for the shipped edition. Compare alternatives without writing game data:
@@ -403,3 +506,64 @@ The report compares 1/3/5 m against the routed geometry, including coordinate
 count, Hausdorff deviation, all size/reference metrics and budget errors. The
 current measured report is
 `.claude/docs/research/jr-east-capital-region-s3b-simplification.json`.
+
+## Multi-operator override fields (S1)
+
+The override parser accepts optional operator and naming fields while preserving
+the existing files when they are omitted. `services.json` may set `operator`
+(the published display operator) and `n02Operator` (the exact N02 `N02_004`
+source value). Each defaults to the corresponding dataset value. A service may
+also set `areaPrefectures`, which must be a non-empty subset of the dataset's
+allowed prefectures.
+
+`stations.csv` may add an `aliases` cell containing a JSON string array and an
+`n02_operator` cell. Aliases are retained as reviewed identity evidence; they
+are not expanded into candidate searches and do not merge station IDs. The
+station source operator defaults to its representative service's effective
+N02 operator. For example, a curated display station can be named `後楽園・春日`
+while its `aliases` cell contains `後楽園` and `春日`.
+
+`services/<id>/stops.csv` may add `original_name`, `n02_name`, `n02_operator`,
+and `source_reason`. Defaults are the registry N02 name and the service's
+effective N02 operator. When a stop overrides the registry spelling or source,
+it must state both the original and matching N02 names, and the original must
+be the registry name or one of its aliases. A non-empty reason is required to
+set a stop source override. An omitted stop source uses the service's effective
+N02 operator; the registry source only determines whether the registry selector
+applies. The registry selector is ANDed with the stop selector only when the
+resolved `(operator, normalized n02_name)` equals the registry target. An
+alternate explicit match uses the stop selector alone.
+
+`line_mapping.csv` may add `n02_operator` and `source_reason`; the operator
+defaults to the service source, and a row-level operator needs a non-empty
+`source_reason`. A route row can include an `operators` JSON array parallel to
+`lines`, allowing an explicitly reviewed source ownership transition. Rows with
+a route cannot also set row-level `n02_operator`; `source_reason` without a
+row-level operator is rejected.
+`sections.csv` can qualify section filters by `(n02_operator, n02_line)`; its
+existing `reason` column records the review reason. `shared_track_evidence` may
+set `n02Operator`; otherwise it uses the immediate consumer service's effective
+source, including for nested recipes. Every primitive in one compose leg must
+resolve to that same source operator, so split a composed leg if its source
+changes.
+
+`sections.csv` may also include both optional columns `from_id,to_id`. When
+both cells are blank, the row keeps its service-wide meaning. When both are
+set, the row applies to the adjacent forward pairs from `from_id` up to but not
+including `to_id` in the service's ordered stop list. Scoped filters are only
+allowed on linear services and must cover at least one direct route on the
+specified operator and line. Effective filters combine matching service-wide
+rows with rows whose interval covers that pair; duplicate keys and allow/deny
+conflicts in that effective set are errors. To extend an allow-listed service,
+limit the old allow rows to the shipped interval and add any new-range rules in
+their own interval. Compose evidence is checked against each owner's effective
+pair filter, including reverse and nested use; one compose leg cannot span
+pairs with different effective filters.
+
+Operator selection is exact at every stop and track leg. It never falls back to
+another operator when a source has no candidates. This supports boundary cases
+such as JR/Metro 綾瀬 platforms and differently named operator platforms at
+後楽園・春日 or 浜松町・大門 without proximity-only joins. Extended prefecture
+scope still requires a complete, independently reviewed `scope.csv` and the
+hash-pinned expected catalogue; allowing a prefecture does not automatically
+add stations to the product.

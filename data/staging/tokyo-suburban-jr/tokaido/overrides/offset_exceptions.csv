@@ -1,0 +1,3 @@
+service_id,station_id,max_platform_offset_m,reason
+jr-keiyo,tokyo,500,京葉線 platforms lie ~450 m from the main 東京 platforms (N02 group 003785 vs 003766); same JR station per the timetable
+jr-nambu,musashi-kosugi,400.0,"The N02 南武線 platform at 武蔵小杉 is on the separate Nambu-line station facility, 393.4 m from the representative platform point selected for this shared JR station id; allow the measured cross-platform offset."

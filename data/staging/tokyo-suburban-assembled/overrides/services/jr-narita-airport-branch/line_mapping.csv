@@ -1,0 +1,3 @@
+from_id,to_id,n02_line,via,route,compose
+narita,narita-airport-terminal-2-3,成田線,140.31684 35.79727,,
+narita-airport-terminal-2-3,narita-airport-terminal-1,成田線,,,

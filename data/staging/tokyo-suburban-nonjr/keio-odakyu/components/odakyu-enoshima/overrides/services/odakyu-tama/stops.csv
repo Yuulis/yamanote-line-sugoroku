@@ -1,0 +1,9 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,odakyu-shin-yurigaoka,OH23,line=多摩線;group=004227;code=004228,新百合ケ丘,新百合ヶ丘,小田急電鉄,Raw N02 confirms this 多摩線 station code 004228 and group 004227; pin the platform used by this frozen service.
+1,odakyu-satsukidai,OT01,line=多摩線;group=004237;code=004237,五月台,五月台,小田急電鉄,Raw N02 confirms frozen station name 五月台 (N02 name 五月台) on 多摩線 at platform code 004237 and group 004237; pin this service stop.
+2,odakyu-kurihira,OT02,line=多摩線;group=004214;code=004214,栗平,栗平,小田急電鉄,Raw N02 confirms frozen station name 栗平 (N02 name 栗平) on 多摩線 at platform code 004214 and group 004214; pin this service stop.
+3,odakyu-kurokawa,OT03,line=多摩線;group=004168;code=004168,黒川,黒川,小田急電鉄,Raw N02 confirms frozen station name 黒川 (N02 name 黒川) on 多摩線 at platform code 004168 and group 004168; pin this service stop.
+4,odakyu-haruhino,OT04,line=多摩線;group=004141;code=004141,はるひ野,はるひ野,小田急電鉄,Raw N02 confirms frozen station name はるひ野 (N02 name はるひ野) on 多摩線 at platform code 004141 and group 004141; pin this service stop.
+5,odakyu-nagayama,OT05,line=多摩線;group=004090;code=004090,小田急永山,小田急永山,小田急電鉄,Raw N02 confirms frozen station name 小田急永山 (N02 name 小田急永山) on 多摩線 at platform code 004090 and group 004090; pin this service stop.
+6,odakyu-tama-center,OT06,line=多摩線;group=004118;code=004118,小田急多摩センター,小田急多摩センター,小田急電鉄,Raw N02 confirms frozen station name 小田急多摩センター (N02 name 小田急多摩センター) on 多摩線 at platform code 004118 and group 004118; pin this service stop.
+7,odakyu-karakida,OT07,line=多摩線;group=004154;code=004154,唐木田,唐木田,小田急電鉄,Raw N02 confirms frozen station name 唐木田 (N02 name 唐木田) on 多摩線 at platform code 004154 and group 004154; pin this service stop.

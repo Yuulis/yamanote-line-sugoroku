@@ -1,8 +1,8 @@
 """Pure stop-list topology shared by export and validation (no geometry).
 
-A service is an ordered stop list plus ``circular``. Loops are ridden in the
-+1 direction only (the target loop's goal direction); open chains are ridden
-both ways. These helpers fix the deterministic orders of the data contract.
+A service is an ordered stop list plus ``circular``. Only the target loop is
+restricted to +1; non-target loops and open chains are ridden in both
+directions. These helpers fix the deterministic orders of the data contract.
 """
 
 from __future__ import annotations
@@ -21,10 +21,16 @@ def station_pairs(station_ids: Sequence[str], circular: bool) -> list[Pair]:
     ]
 
 
-def directed_pairs(station_ids: Sequence[str], circular: bool) -> list[Pair]:
-    """Ridable directed pairs: loops +1 only; chains forward then reverse per pair."""
+def directed_pairs(
+    station_ids: Sequence[str],
+    circular: bool,
+    *,
+    service_id: str,
+    target_service_id: str,
+) -> list[Pair]:
+    """Ridable pairs; only the target loop runs +1, otherwise both ways per pair."""
     pairs = station_pairs(station_ids, circular)
-    if circular:
+    if circular and service_id == target_service_id:
         return pairs
     return [directed for a, b in pairs for directed in ((a, b), (b, a))]
 

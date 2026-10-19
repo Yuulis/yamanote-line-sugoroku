@@ -1,0 +1,40 @@
+{
+  "formatVersion": 1,
+  "batch": "tokyu-mm",
+  "serviceIds": [
+    "tokyu-toyoko",
+    "tokyu-meguro",
+    "tokyu-shin-yokohama",
+    "tokyu-den-en-toshi",
+    "tokyu-oimachi",
+    "tokyu-ikegami",
+    "tokyu-tamagawa",
+    "tokyu-setagaya",
+    "tokyu-kodomonokuni",
+    "mm-minatomirai"
+  ],
+  "pairCount": 113,
+  "expectedPairKeysSha256": "6ca79708715bbbf5e9294b305f843d10068e1516e8e43f3e1b1604aaff737d05",
+  "pairEvidenceSha256": "3aea992d9f288169e938bac792c2d5700023a71dc0043e4df2eb337dc1709021",
+  "sourceHashes": {
+    "assembledOverridesSha256": "635a85c32ece97c4a3e388b052ce807a19878a6cdab327bdc99ccc02b7e3f399",
+    "rawStationSha256": "908e2c3036e9c80760ae3514be3682c77f81f0bd60ab5fb1b3da1aa9352bbd94",
+    "rawSectionSha256": "4269b076c0689db13cadf0d07801418b7215b2160ebf1278c508031cd08c4da2",
+    "freezeManifestSha256": "370ebc7e17129a94b5f472031764e9db000f6cd0420c80a2d4377aac3f565e64",
+    "catalogSha256": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+    "servicesSha256": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb",
+    "assemblyInputsSha256": "0e0b2b3d078bd716b1b8caa4e2c647d90a0a33311be985577f5f12dca93c1a86",
+    "distanceSources": {
+      "tokyu-toyoko": "c00a2c68e66df65d8038a549ca78fb134f494aa5f795fbbe81914f31187a6b42",
+      "tokyu-meguro": "f3140df19bf47373962ccdcf1fe11ff69baa3a77f7f9b3e9c47d16fbbf935ec0",
+      "tokyu-shin-yokohama": "687eea71e377f1a8d7bb164abc9a1aa2f76964bff3a2eb3b3c80197d6ac4ec24",
+      "tokyu-den-en-toshi": "308d490f3534932ee0d4d571e9776eab05c567a48ec2699053b6696da6643279",
+      "tokyu-oimachi": "f80d58e17d1ac7de1cdbeeb168f4b3c6d521338e958bab8f44f3a1ae1a9e0d4a",
+      "tokyu-ikegami": "dc990f3641c119e8b82b97c26a016b8b40644ea17e02f530054096c9347553e7",
+      "tokyu-tamagawa": "e0f49f50ca769a4e60086a47976668e7ef870d33c89a2c9a2b4232702497b35e",
+      "tokyu-setagaya": "832bffe4c577a3e5a4976d97299d4cb9c2c162bdeb562c012b1946a75ca20174",
+      "tokyu-kodomonokuni": "d790fe98669de7ff098f6fbbcbaa5a9b88553b3c7a2d3ee7edd77bd1befdb7bc",
+      "mm-minatomirai": "2ddada50c5b9735f116785890dd8799fbb4ef38cb05941325ff03306bd7d2f3a"
+    }
+  }
+}

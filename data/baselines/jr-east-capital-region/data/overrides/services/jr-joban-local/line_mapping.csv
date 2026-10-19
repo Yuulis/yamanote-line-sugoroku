@@ -1,0 +1,13 @@
+from_id,to_id,n02_line,via,route,compose
+ayase,kameari,常磐線,,,
+kameari,kanamachi,常磐線,,,
+kanamachi,matsudo,常磐線,,,
+matsudo,kita-matsudo,常磐線,,,
+kita-matsudo,mabashi,常磐線,,,
+mabashi,shim-matsudo,常磐線,,,
+shim-matsudo,kita-kogane,常磐線,,,
+kita-kogane,minami-kashiwa,常磐線,,,
+minami-kashiwa,kashiwa,常磐線,,,
+kashiwa,kita-kashiwa,常磐線,,,
+kita-kashiwa,abiko,常磐線,,,
+abiko,tennodai,常磐線,,,

@@ -18,7 +18,7 @@ test("arrival lottery, both endpoint kinds and a direction-only draw are visible
   await expect(lottery).toContainText("エリア端のため折り返し");
   await expect(panelStat(page, "踏破区間")).toHaveText("4/30");
   await rollOnce(page);
-  await expect(panelStat(page, "出目")).toHaveText("6（品川で停止〔終点〕、残り4は使わず）");
+  await expect(panelStat(page, "出目")).toHaveText("3（品川で停止〔終点〕、残り1は使わず）");
   await expect(lottery).toContainText("終点のため折り返し");
   for (let turn = FIXTURE_SCENARIO_TURNS.terminus; turn < FIXTURE_SCENARIO_TURNS.direction; turn += 1) await rollOnce(page);
   await expect(lottery).toHaveText("抽選: テスト南線のみ ／ 方向抽選 → 品川方面");

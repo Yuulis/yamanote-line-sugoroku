@@ -1,27 +1,27 @@
-order,station_id,station_number,platform_selector
-0,fuchuhommachi,,
-1,kita-fuchu,,
-2,nishi-kokubunji,,
-3,shin-kodaira,,
-4,shin-akitsu,,
-5,higashi-tokorozawa,JM30,
-6,niiza,JM29,
-7,kita-asaka,JM28,
-8,nishi-urawa,JM27,
-9,musashi-urawa,JM26,
-10,minami-urawa,JM25,
-11,higashi-urawa,JM24,
-12,higashi-kawaguchi,JM23,
-13,minami-koshigaya,JM22,
-14,koshigaya-laketown,JM21,
-15,yoshikawa,JM20,
-16,yoshikawaminami,JM19,
-17,shim-misato,JM18,
-18,misato,JM17,
-19,minami-nagareyama,JM16,
-20,shim-matsudo,JM15,
-21,shin-yahashira,JM14,
-22,higashi-matsudo,JM13,
-23,ichikawaono,JM12,
-24,funabashihoten,JM11,
-25,nishi-funabashi,JM10,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,fuchuhommachi,,,府中本町,府中本町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kita-fuchu,,,北府中,北府中,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,nishi-kokubunji,,,西国分寺,西国分寺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,shin-kodaira,,,新小平,新小平,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,shin-akitsu,,,新秋津,新秋津,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,higashi-tokorozawa,JM30,,東所沢,東所沢,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,niiza,JM29,,新座,新座,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,kita-asaka,JM28,,北朝霞,北朝霞,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,nishi-urawa,JM27,,西浦和,西浦和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,musashi-urawa,JM26,,武蔵浦和,武蔵浦和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,minami-urawa,JM25,,南浦和,南浦和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,higashi-urawa,JM24,,東浦和,東浦和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,higashi-kawaguchi,JM23,,東川口,東川口,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,minami-koshigaya,JM22,,南越谷,南越谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,koshigaya-laketown,JM21,,越谷レイクタウン,越谷レイクタウン,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,yoshikawa,JM20,,吉川,吉川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,yoshikawaminami,JM19,,吉川美南,吉川美南,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,shim-misato,JM18,,新三郷,新三郷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,misato,JM17,,三郷,三郷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,minami-nagareyama,JM16,,南流山,南流山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,shim-matsudo,JM15,,新松戸,新松戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,shin-yahashira,JM14,,新八柱,新八柱,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,higashi-matsudo,JM13,,東松戸,東松戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,ichikawaono,JM12,,市川大野,市川大野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+24,funabashihoten,JM11,,船橋法典,船橋法典,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+25,nishi-funabashi,JM10,,西船橋,西船橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

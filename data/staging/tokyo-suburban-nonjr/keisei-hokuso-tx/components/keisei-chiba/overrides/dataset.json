@@ -1,0 +1,39 @@
+{
+  "operator": "京成電鉄",
+  "n02Operator": "京成電鉄",
+  "updatedAt": "2026-10-15",
+  "areaName": "京成電鉄 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "千葉県"
+  ],
+  "serviceIds": [
+    "keisei-main",
+    "keisei-oshiage",
+    "keisei-kanamachi",
+    "keisei-chiba",
+    "keisei-chihara",
+    "keisei-higashi-narita",
+    "keisei-matsudo",
+    "keisei-narita-airport-access"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "keisei-keisei-ueno",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "af25052a4e2c002930997f542b97deaaff34cacf2677b21d7e45ea4c0a805efb",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

@@ -1,0 +1,72 @@
+n02_line,action,section_key,reason
+東海道線,allow,139.62170 35.46467~139.62335 35.46681#a8287d35,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.62335 35.46681~139.63240 35.47706#f525bf3e,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.63240 35.47706~139.63393 35.47869#ce57e37e,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.63393 35.47869~139.64568 35.48515#ccdde0f3,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.64568 35.48515~139.65298 35.48629#bb5d8342,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.65298 35.48629~139.65507 35.48734#0c59f991,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.65507 35.48734~139.66112 35.49077#0e684075,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.66112 35.49077~139.66353 35.49326#1db58c69,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.66353 35.49326~139.66723 35.49607#93d04b54,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.66723 35.49607~139.67600 35.50740#7f094849,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.67600 35.50740~139.67649 35.50958#1ed078de,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.67649 35.50958~139.67710 35.51197#560516da,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.67710 35.51197~139.69246 35.52757#e999e4f1,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.69246 35.52757~139.69604 35.53073#d7ac88a5,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.69604 35.53073~139.69758 35.53200#9a992e11,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.53102 35.35260~139.53200 35.35561#6168c5b5,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.53200 35.35561~139.54903 35.36760#8d6f48b9,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.54903 35.36760~139.55120 35.36811#61fe95a7,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.55120 35.36811~139.57538 35.37497#df24c03d,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.57538 35.37497~139.57710 35.37534#7d47528e,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.57710 35.37534~139.59620 35.37859#1bd938d3,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.59620 35.37859~139.59747 35.37897#30321673,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.59747 35.37897~139.62003 35.38606#d31e7a6a,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.61785 35.39966~139.61884 35.38754#ef572be0,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.61785 35.39966~139.61909 35.40149#0c2f4038,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.61884 35.38754~139.62003 35.38606#9fb868d8,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.61909 35.40149~139.63494 35.41557#1e887cf1,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.62170 35.46467~139.62335 35.46681#a8287d35,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.62170 35.46467~139.63005 35.45186#1488ad71,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.63005 35.45186~139.63171 35.45034#0a652ddf,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.63171 35.45034~139.63526 35.44481#bc9b6ac5,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.63494 35.41557~139.63725 35.41615#1fd15569,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.63526 35.44481~139.63686 35.44357#04e3974c,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.63686 35.44357~139.64263 35.43952#b7d36f01,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.63725 35.41615~139.64685 35.42591#75af0c93,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.64263 35.43952~139.64336 35.43795#dc2ddca9,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.64336 35.43795~139.64609 35.42769#f1ca2b30,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+根岸線,allow,139.64609 35.42769~139.64685 35.42591#ad86e030,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+東海道線,allow,139.69758 35.53200~139.70160 35.53518#c0b85442,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.70837 35.54412~139.71569 35.56162#de0dd57a,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.71569 35.56162~139.71637 35.56335#b6b04326,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.71637 35.56335~139.72770 35.58823#b12fb6f0,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.72770 35.58823~139.72860 35.58960#f4f2f130,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.72860 35.58960~139.73491 35.60590#d2154798,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73280 35.61677~139.73762 35.62049#67df2d8f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73491 35.60590~139.73507 35.60772#99c28973,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73507 35.60772~139.73762 35.62049#2a2d1c8a,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73762 35.62049~139.73881 35.62549#d4d53e0e,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73844 35.62927~139.73863 35.62700#6ec81c09,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73844 35.62927~139.74024 35.63443#59715551,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73863 35.62700~139.73881 35.62549#21e72365,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73881 35.62549~139.73903 35.62650#0f36108f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.73898 35.62986~139.74331 35.64251#3cad4071,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.74024 35.63443~139.74105 35.63633#ec704aa4,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.74105 35.63633~139.74331 35.64251#2d89f0a9,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.74331 35.64251~139.74697 35.64537#9bca719f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.74697 35.64537~139.74824 35.64611#89f868b1,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.74824 35.64611~139.75697 35.65468#06640db3,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.75697 35.65468~139.75728 35.65614#cd02d9b6,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.75728 35.65614~139.75826 35.66558#f257fd51,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.75814 35.66720~139.75826 35.66558#023ae804,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.75814 35.66720~139.76254 35.67448#a25e4fa8,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.75866 35.66702~139.76491 35.68098#a7efbe07,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.76254 35.67448~139.76398 35.67560#4ef608fd,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.76398 35.67560~139.76523 35.67711#b7e86bc7,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.76523 35.67711~139.76586 35.67790#2922f736,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.76523 35.67711~139.76621 35.67965#dce44bc1,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.76621 35.67965~139.76716 35.68228#d03ee2b7,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+東海道線,allow,139.70160 35.53518~139.70837 35.54412#61967b18,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
+東海道線,deny,139.70160 35.53518~139.70837 35.54412#a88144bb,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
+東北線,deny,139.66635 35.85033~139.68335 35.83490#bd4cd661,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.

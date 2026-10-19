@@ -1,19 +1,19 @@
-order,station_id,station_number,platform_selector
-0,chigasaki,JT10,
-1,kita-chigasaki,,
-2,kagawa,,
-3,samukawa,,
-4,miyayama,,
-5,kurami,,
-6,kadosawabashi,,
-7,shake,,
-8,atsugi,,
-9,ebina,,
-10,iriya,,
-11,sobudaishita,,
-12,shimomizo,,
-13,harataima,,
-14,banda,,
-15,kamimizo,,
-16,minami-hashimoto,,
-17,hashimoto,JH28,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,chigasaki,JT10,,茅ケ崎,茅ケ崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kita-chigasaki,,,北茅ケ崎,北茅ケ崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kagawa,,,香川,香川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,samukawa,,,寒川,寒川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,miyayama,,,宮山,宮山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,kurami,,,倉見,倉見,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,kadosawabashi,,,門沢橋,門沢橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,shake,,,社家,社家,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,atsugi,,,厚木,厚木,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,ebina,,,海老名,海老名,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,iriya,,,入谷,入谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,sobudaishita,,,相武台下,相武台下,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,shimomizo,,,下溝,下溝,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,harataima,,,原当麻,原当麻,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,banda,,,番田,番田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,kamimizo,,,上溝,上溝,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,minami-hashimoto,,,南橋本,南橋本,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,hashimoto,JH28,,橋本,橋本,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

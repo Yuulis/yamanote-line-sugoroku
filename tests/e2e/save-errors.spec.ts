@@ -1,13 +1,21 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
   openTitle,
+  readSave,
   readSaveText,
   rollOnce,
   startNewGame,
   titleScreen,
   writeSaveText,
 } from "./support/app";
+
+const OLD_CAPITAL_REGION_SAVE = readFileSync(
+  fileURLToPath(new URL("./fixtures/old-capital-region-save.json", import.meta.url)),
+  "utf8",
+).trimEnd();
 
 // Spec 8.3 item covered here (with spec 11, invalid saves):
 //   [8.3-4] Reload recovery: a save that cannot be trusted is reported in
@@ -106,16 +114,56 @@ for (const { name, message, tamper } of CASES) {
   });
 }
 
-test.use({ dataset: "fixture" });
+test.describe("captured pre-S5 save against the live product bundle", () => {
+  test.use({ dataset: "real" });
 
-test("[8.3-4] cancelling the discard keeps the invalid save untouched", async ({ page }) => {
-  const tampered = await storeTamperedSave(page, (valid) => withField(valid, "saveVersion", 999));
+  test("reports a data update, survives cancellation and reload, then can be discarded", async ({ page }) => {
+    await openTitle(page);
+    await writeSaveText(page, OLD_CAPITAL_REGION_SAVE);
+    await page.reload();
 
-  await page.getByRole("button", { name: "セーブデータを破棄" }).click();
-  const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });
-  await dialog.getByRole("button", { name: "キャンセル" }).click();
-  await expect(dialog).toBeHidden();
+    const alert = titleScreen(page).getByRole("alert");
+    await expect(alert).toHaveText(/路線データが更新されたため/);
+    expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
+    await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /クリア結果を見る/ })).toHaveCount(0);
+    await alert.getByRole("button", { name: "セーブデータを破棄" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });
+    await dialog.getByRole("button", { name: "キャンセル" }).click();
+    await expect(dialog).toBeHidden();
+    expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
 
-  await expect(titleScreen(page).getByRole("alert")).toBeVisible();
-  expect(await readSaveText(page)).toBe(tampered);
+    await page.reload();
+    const reloadedAlert = titleScreen(page).getByRole("alert");
+    await expect(reloadedAlert).toHaveText(/路線データが更新されたため/);
+    expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
+    await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /クリア結果を見る/ })).toHaveCount(0);
+    await reloadedAlert.getByRole("button", { name: "セーブデータを破棄" }).click();
+    const confirm = page.getByRole("alertdialog", { name: "セーブデータの削除" });
+    await confirm.getByRole("button", { name: "削除する" }).click();
+    await expect(confirm).toBeHidden();
+    expect(await readSaveText(page)).toBeNull();
+    await page.reload();
+    await expect(titleScreen(page).getByRole("alert")).toHaveCount(0);
+    await startNewGame(page);
+    await rollOnce(page);
+    expect((await readSave(page))?.turn).toBe(1);
+  });
+});
+
+test.describe("fixture save discard cancellation", () => {
+  test.use({ dataset: "fixture" });
+
+  test("[8.3-4] cancelling the discard keeps the invalid save untouched", async ({ page }) => {
+    const tampered = await storeTamperedSave(page, (valid) => withField(valid, "saveVersion", 999));
+
+    await page.getByRole("button", { name: "セーブデータを破棄" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });
+    await dialog.getByRole("button", { name: "キャンセル" }).click();
+    await expect(dialog).toBeHidden();
+
+    await expect(titleScreen(page).getByRole("alert")).toBeVisible();
+    expect(await readSaveText(page)).toBe(tampered);
+  });
 });

@@ -18,3 +18,7 @@ yorii,yodo,八高線,,,
 yodo,matsuhisa,八高線,,,
 matsuhisa,kodama,八高線,,,
 kodama,tansho,八高線,,,
+tansho,gumma-fujioka,八高線,,,
+gumma-fujioka,kita-fujioka,八高線,,,
+kita-fujioka,kuragano,八高線,,,
+kuragano,takasaki,,,,"{""legs"":[{""source_service"":""jr-takasaki"",""from"":""kuragano"",""to"":""takasaki""}],""shared_track_evidence"":[{""lines"":[""高崎線""],""allow"":[],""deny"":[],""reason"":""Shared JR East 高崎線 track: the owner and consumer use the same N02 operator, adjacent platform groups, and matching measured raw path length; forward travel over the owner’s 倉賀野→高崎 primitive. Reviewed from pair-evidence.csv for this stage.""}]}"

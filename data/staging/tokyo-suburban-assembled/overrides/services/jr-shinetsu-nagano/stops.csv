@@ -1,0 +1,6 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,shinonoi,,,篠ノ井,篠ノ井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,imai,,,今井,今井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kawanakajima,,,川中島,川中島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,amori,,,安茂里,安茂里,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,nagano,,,長野,長野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

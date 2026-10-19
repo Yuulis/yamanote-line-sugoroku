@@ -95,6 +95,40 @@ async function renderedStationIds(page: Page): Promise<string[]> {
   }, [LAYER_IDS.stationCircles, LAYER_IDS.stationCirclesOrdinary]);
 }
 
+interface RenderedStationLabel {
+  id: string;
+  name: string;
+  labelTier: "target" | "transfer" | "ordinary";
+}
+
+async function renderedStationLabels(page: Page): Promise<RenderedStationLabel[]> {
+  return page.evaluate((layer) => {
+    const hook = (window as unknown as {
+      __sugorokuE2E: {
+        map: {
+          queryRenderedFeatures(options: { layers: string[] }): {
+            properties: RenderedStationLabel;
+          }[];
+        };
+      };
+    }).__sugorokuE2E;
+    return hook.map.queryRenderedFeatures({ layers: [layer] }).map((feature) => ({
+      id: feature.properties.id,
+      name: feature.properties.name,
+      labelTier: feature.properties.labelTier,
+    }));
+  }, LAYER_IDS.stationLabels);
+}
+
+async function stationLabelTextSizeExpression(page: Page): Promise<unknown> {
+  return page.evaluate((layer) => {
+    const hook = (window as unknown as {
+      __sugorokuE2E: { map: { getLayoutProperty(id: string, name: string): unknown } };
+    }).__sugorokuE2E;
+    return hook.map.getLayoutProperty(layer, "text-size");
+  }, LAYER_IDS.stationLabels);
+}
+
 async function startReadyGame(page: Page): Promise<void> {
   await openTitle(page);
   await startNewGame(page);
@@ -110,6 +144,10 @@ test("the target line starts centred in the free map area and 全体 shows every
   const targetPoints = Object.values(railwayBundle.network.servicesById.get(TARGET_SERVICE_ID)!.platformCoordinates);
   const allPoints = services.flatMap((service) => Object.values(service.platformCoordinates));
   expect(services).toHaveLength(railwayBundle.network.servicesById.size);
+  for (const stationId of ["hakuba", "nagano", "namie", "ito"]) {
+    expect(railwayBundle.network.stationsById.has(stationId), `missing overview extreme ${stationId}`).toBe(true);
+    expect(services.some((service) => stationId in service.platformCoordinates), `no platform for overview extreme ${stationId}`).toBe(true);
+  }
   await startReadyGame(page);
   const device = deviceName(page);
 
@@ -128,6 +166,10 @@ test("phone 全体 fits the collapsed-legend map area and remains clear when exp
   test.skip(!isPhone(page), "Phone-specific overview fit assertion");
   const allPoints = [...railwayBundle.network.servicesById.values()]
     .flatMap((service) => Object.values(service.platformCoordinates));
+  for (const stationId of ["hakuba", "nagano", "namie", "ito"]) {
+    expect(railwayBundle.network.stationsById.has(stationId), `missing overview extreme ${stationId}`).toBe(true);
+    expect([...railwayBundle.network.servicesById.values()].some((service) => stationId in service.platformCoordinates), `no platform for overview extreme ${stationId}`).toBe(true);
+  }
   await startReadyGame(page);
   await page.getByRole("button", { name: "全体", exact: true }).click();
   await expect(async () => { await expectInFreeArea(page, allPoints); }).toPass();
@@ -189,33 +231,91 @@ test("at overview zoom only transfer and target stations are marked; close zoom 
   if (!isPhone(page)) await screenshot(page, "desktop-ueno-zoom");
 });
 
+test("real Japanese labels follow overview and zoom density at station hubs on desktop and phone", async ({ page, railwayBundle }, testInfo) => {
+  await startReadyGame(page);
+  await page.getByRole("button", { name: "全体", exact: true }).click();
+  await expect.poll(async () => (await renderedStationLabels(page)).length).toBe(0);
+
+  const tokyo = railwayBundle.network.stationsById.get("tokyo")!;
+  await page.evaluate((center) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+    hook.map.jumpTo({ center, zoom: 11.5 });
+  }, tokyo.coordinates);
+  await expect.poll(async () => (await renderedStationLabels(page)).length).toBeGreaterThan(0);
+  expect(await stationLabelTextSizeExpression(page)).toEqual([
+    "step",
+    ["zoom"],
+    0,
+    11,
+    ["case", ["==", ["get", "labelEligibleAt"], 11], 12, 0],
+    13,
+    12,
+  ]);
+
+  const shinjuku = railwayBundle.network.stationsById.get("shinjuku")!;
+  await page.evaluate((center) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+    hook.map.jumpTo({ center, zoom: 13.5 });
+  }, shinjuku.coordinates);
+  await expect.poll(async () => (await renderedStationLabels(page)).some((label) => label.labelTier === "ordinary")).toBe(true);
+
+  for (const stationId of ["shinjuku", "tokyo", "yokohama", "omiya"]) {
+    const station = railwayBundle.network.stationsById.get(stationId)!;
+    await page.evaluate((center) => {
+      const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+      hook.map.jumpTo({ center, zoom: 13.5 });
+    }, station.coordinates);
+    await expect.poll(async () => (await renderedStationLabels(page)).some((label) => label.id === stationId)).toBe(true);
+    const labels = await renderedStationLabels(page);
+    expect(new Set(labels.map((label) => label.id)).size).toBe(labels.length);
+    await page.screenshot({ path: testInfo.outputPath(`labels-${stationId}.png`) });
+  }
+
+  const expectedLabels = [
+    ["hamamatsucho", "浜松町・大門"],
+    ["metro-korakuen", "後楽園・春日"],
+    ["odakyu-shin-yurigaoka", "新百合ヶ丘・新百合ケ丘"],
+  ] as const;
+  for (const [stationId, expectedName] of expectedLabels) {
+    const station = railwayBundle.network.stationsById.get(stationId)!;
+    await page.evaluate((center) => {
+      const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+      hook.map.jumpTo({ center, zoom: 13.5 });
+    }, station.coordinates);
+    await expect.poll(async () => (await renderedStationLabels(page)).some((label) => label.id === stationId && label.name === expectedName)).toBe(true);
+  }
+});
+
 test("the service legend collapses; 山手線 progress and 現在地 stay visible", async ({ page }) => {
   await startReadyGame(page);
   const panel = gamePanel(page);
   const legend = panel.getByRole("list", { name: "凡例" });
   const toggle = panel.getByRole("button", { name: /路線の凡例/ });
-  const serviceRow = legend.getByRole("listitem").filter({ hasText: "京浜東北線" });
+  const serviceRow = panel.getByRole("checkbox", { name: "京浜東北線を表示" });
+  const jrOperator = panel.locator(".game-panel__legend-operator").filter({ hasText: "東日本旅客鉄道" });
   await expect(legend.getByRole("listitem").filter({ hasText: "山手線 踏破済み" })).toBeVisible();
   await expect(legend.getByRole("listitem").filter({ hasText: "山手線 未踏破" })).toBeVisible();
-  await expect(legend.getByRole("listitem").filter({ hasText: "現在地" })).toBeVisible();
+  await expect(legend.getByRole("listitem").filter({ hasText: /^現在地$/ })).toBeVisible();
+  await expect(legend).toContainText("現在地・乗車中の路線・山手線の進捗は常に表示します。");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(serviceRow).toBeHidden();
+  await expect(panel.getByRole("button", { name: "サイコロを振る" })).toBeInViewport();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await jrOperator.locator("summary").click();
+  await expect(serviceRow).toBeVisible();
   if (isPhone(page)) {
-    await expect(toggle).toHaveAttribute("aria-expanded", "false");
-    await expect(serviceRow).toBeHidden();
-    await expect(panel.getByRole("button", { name: "サイコロを振る" })).toBeInViewport();
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await expect(serviceRow).toBeVisible();
     await screenshot(page, "phone-legend-expanded");
-    await toggle.click();
-    await expect(serviceRow).toBeHidden();
-  } else {
-    await expect(toggle).toHaveAttribute("aria-expanded", "true");
-    await expect(serviceRow).toBeVisible();
-    await toggle.click();
-    await expect(serviceRow).toBeHidden();
-    await toggle.click();
-    await expect(serviceRow).toBeVisible();
   }
+  await toggle.click();
+  await expect(serviceRow).toBeHidden();
+  await expect(legend.getByRole("listitem").filter({ hasText: "山手線 踏破済み" })).toBeVisible();
+  await toggle.click();
+  await expect(serviceRow).toBeVisible();
+  await toggle.click();
+  await expect(serviceRow).toBeHidden();
+  await toggle.click();
+  await expect(serviceRow).toBeVisible();
 });
 
 test("clicking an ordinary station opens exactly one popup naming it", async ({ page, railwayBundle }) => {

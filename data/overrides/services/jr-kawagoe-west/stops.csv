@@ -1,7 +1,7 @@
-order,station_id,station_number,platform_selector
-0,kawagoe,JA31,
-1,nishi-kawagoe,,
-2,matoba,,
-3,kasahata,,
-4,musashi-takahagi,,
-5,komagawa,,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,kawagoe,JA31,,川越,川越,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,nishi-kawagoe,,,西川越,西川越,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,matoba,,,的場,的場,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,kasahata,,,笠幡,笠幡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,musashi-takahagi,,,武蔵高萩,武蔵高萩,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,komagawa,,,高麗川,高麗川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

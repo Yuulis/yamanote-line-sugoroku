@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-ota,TI-18,,太田,太田,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tobu-ryumai,TI-47,,竜舞,竜舞,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tobu-higashi-koizumi,TI-44,,東小泉,東小泉,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

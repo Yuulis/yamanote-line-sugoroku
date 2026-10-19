@@ -1,0 +1,10 @@
+from_id,to_id,n02_line,via,route,compose
+tobu-tatebayashi,tobu-watarase,佐野線,,,
+tobu-watarase,tobu-tajima,佐野線,,,
+tobu-tajima,tobu-sanoshi,佐野線,,,
+tobu-sanoshi,sano,佐野線,,,
+sano,tobu-horigome,佐野線,,,
+tobu-horigome,tobu-yoshimizu,佐野線,,,
+tobu-yoshimizu,tobu-tanuma,佐野線,,,
+tobu-tanuma,tobu-tada,佐野線,,,
+tobu-tada,tobu-kuzu,佐野線,,,

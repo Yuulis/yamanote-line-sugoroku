@@ -1,0 +1,18 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keio-shibuya,IN01,line=井の頭線;group=003922;code=003930,渋谷,渋谷,京王電鉄,Raw N02 confirms frozen station name 渋谷 (N02 name 渋谷) on 井の頭線 at platform code 003930 and group 003922; pin this service stop.
+1,keio-shinsen,IN02,line=井の頭線;group=003938;code=003938,神泉,神泉,京王電鉄,Raw N02 confirms frozen station name 神泉 (N02 name 神泉) on 井の頭線 at platform code 003938 and group 003938; pin this service stop.
+2,keio-komaba-todaimae,IN03,line=井の頭線;group=003929;code=003929,駒場東大前,駒場東大前,京王電鉄,Raw N02 confirms frozen station name 駒場東大前 (N02 name 駒場東大前) on 井の頭線 at platform code 003929 and group 003929; pin this service stop.
+3,keio-ikenoue,IN04,line=井の頭線;group=003914;code=003914,池ノ上,池ノ上,京王電鉄,Raw N02 confirms frozen station name 池ノ上 (N02 name 池ノ上) on 井の頭線 at platform code 003914 and group 003914; pin this service stop.
+4,keio-shimo-kitazawa,IN05,line=井の頭線;group=003908;code=003908,下北沢,下北沢,京王電鉄,Raw N02 confirms frozen station name 下北沢 (N02 name 下北沢) on 井の頭線 at platform code 003908 and group 003908; pin this service stop.
+5,keio-shindaita,IN06,line=井の頭線;group=003901;code=003901,新代田,新代田,京王電鉄,Raw N02 confirms frozen station name 新代田 (N02 name 新代田) on 井の頭線 at platform code 003901 and group 003901; pin this service stop.
+6,keio-higashi-matsubara,IN07,line=井の頭線;group=003899;code=003899,東松原,東松原,京王電鉄,Raw N02 confirms frozen station name 東松原 (N02 name 東松原) on 井の頭線 at platform code 003899 and group 003899; pin this service stop.
+7,keio-meidaimae,IN08,line=井の頭線;group=003846;code=003846,明大前,明大前,京王電鉄,Raw N02 confirms this 井の頭線 station code 003846 and group 003846; pin the platform used by this frozen service.
+8,keio-eifukucho,IN09,line=井の頭線;group=003794;code=003794,永福町,永福町,京王電鉄,Raw N02 confirms frozen station name 永福町 (N02 name 永福町) on 井の頭線 at platform code 003794 and group 003794; pin this service stop.
+9,keio-nishi-eifuku,IN10,line=井の頭線;group=003777;code=003777,西永福,西永福,京王電鉄,Raw N02 confirms frozen station name 西永福 (N02 name 西永福) on 井の頭線 at platform code 003777 and group 003777; pin this service stop.
+10,keio-hamadayama,IN11,line=井の頭線;group=003763;code=003763,浜田山,浜田山,京王電鉄,Raw N02 confirms frozen station name 浜田山 (N02 name 浜田山) on 井の頭線 at platform code 003763 and group 003763; pin this service stop.
+11,keio-takaido,IN12,line=井の頭線;group=003752;code=003752,高井戸,高井戸,京王電鉄,Raw N02 confirms frozen station name 高井戸 (N02 name 高井戸) on 井の頭線 at platform code 003752 and group 003752; pin this service stop.
+12,keio-fujimigaoka,IN13,line=井の頭線;group=003736;code=003736,富士見ケ丘,富士見ヶ丘,京王電鉄,Raw N02 confirms frozen station name 富士見ケ丘 (N02 name 富士見ヶ丘) on 井の頭線 at platform code 003736 and group 003736; pin this service stop.
+13,keio-kugayama,IN14,line=井の頭線;group=003710;code=003710,久我山,久我山,京王電鉄,Raw N02 confirms frozen station name 久我山 (N02 name 久我山) on 井の頭線 at platform code 003710 and group 003710; pin this service stop.
+14,keio-mitakadai,IN15,line=井の頭線;group=003674;code=003674,三鷹台,三鷹台,京王電鉄,Raw N02 confirms frozen station name 三鷹台 (N02 name 三鷹台) on 井の頭線 at platform code 003674 and group 003674; pin this service stop.
+15,keio-inokashira-koen,IN16,line=井の頭線;group=003642;code=003642,井の頭公園,井の頭公園,京王電鉄,Raw N02 confirms frozen station name 井の頭公園 (N02 name 井の頭公園) on 井の頭線 at platform code 003642 and group 003642; pin this service stop.
+16,keio-kichijoji,IN17,line=井の頭線;group=003584;code=003588,吉祥寺,吉祥寺,京王電鉄,Raw N02 confirms frozen station name 吉祥寺 (N02 name 吉祥寺) on 井の頭線 at platform code 003588 and group 003584; pin this service stop.

@@ -12,6 +12,7 @@ import {
   validSegment,
   validService,
   validStation,
+  validUiPresentation,
 } from "./fixtures/railway";
 
 const BASE = "/data/";
@@ -63,6 +64,61 @@ describe("loadRailwayData", () => {
   it("loads all files when every file is valid", async () => {
     const data = await loadRailwayData(BASE, fetcherFor(allFiles));
     expect(listFailures(data)).toEqual([]);
+  });
+
+  it("loads optional presentation metadata and keeps old bundles valid", async () => {
+    const oldBundle = await loadRailwayData(BASE, fetcherFor(allFiles));
+    const newBundle = await loadRailwayData(BASE, fetcherFor({
+      ...allFiles,
+      "/data/manifest.json": { ...validManifest, uiPresentation: validUiPresentation },
+    }));
+    expect(oldBundle.manifest.ok).toBe(true);
+    expect(newBundle.manifest).toMatchObject({ ok: true, value: { uiPresentation: validUiPresentation } });
+    expect(listFailures(newBundle)).toEqual([]);
+  });
+
+  it("rejects presentation references to unknown services", async () => {
+    const uiPresentation = {
+      ...validUiPresentation,
+      lineGroups: [{ ...validUiPresentation.lineGroups[0], serviceIds: ["unknown-service"] }],
+    };
+    const data = await loadRailwayData(BASE, fetcherFor({
+      ...allFiles,
+      "/data/manifest.json": { ...validManifest, uiPresentation },
+    }));
+    expect(data.manifest).toEqual({
+      ok: false,
+      file: "manifest.json",
+      reason: "invalid uiPresentation references",
+    });
+  });
+
+  it("rejects a service-stop name for a station the service does not serve", async () => {
+    const uiPresentation = {
+      ...validUiPresentation,
+      serviceStopNames: [{ serviceId: "jr-yamanote", stationId: "unknown-station", name: "不明駅" }],
+    };
+    const data = await loadRailwayData(BASE, fetcherFor({
+      ...allFiles,
+      "/data/manifest.json": { ...validManifest, uiPresentation },
+    }));
+    expect(data.manifest.ok).toBe(false);
+  });
+
+  it("rejects aliases altered to duplicate the canonical station name", async () => {
+    const uiPresentation = {
+      ...validUiPresentation,
+      stations: [{ id: "st-tokyo", aliases: ["東京"] }],
+    };
+    const data = await loadRailwayData(BASE, fetcherFor({
+      ...allFiles,
+      "/data/manifest.json": { ...validManifest, uiPresentation },
+    }));
+    expect(data.manifest).toEqual({
+      ok: false,
+      file: "manifest.json",
+      reason: "invalid uiPresentation references",
+    });
   });
 
   it("reports a missing file without failing the others", async () => {

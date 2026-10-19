@@ -1,0 +1,25 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,hachioji,,,八王子,八王子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kita-hachioji,,,北八王子,北八王子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,komiya,,,小宮,小宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,haijima,,,拝島,拝島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,higashi-fussa,,,東福生,東福生,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,hakonegasaki,,,箱根ケ崎,箱根ケ崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,kaneko,,,金子,金子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,higashi-hanno,,,東飯能,東飯能,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,komagawa,,,高麗川,高麗川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,moro,,,毛呂,毛呂,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,ogose,,,越生,越生,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,myokaku,,,明覚,明覚,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,ogawamachi,,,小川町,小川町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,takezawa,,,竹沢,竹沢,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,orihara,,,折原,折原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,yorii,,,寄居,寄居,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,yodo,,,用土,用土,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,matsuhisa,,,松久,松久,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,kodama,,,児玉,児玉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,tansho,,,丹荘,丹荘,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,gumma-fujioka,,,群馬藤岡,群馬藤岡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,kita-fujioka,,,北藤岡,北藤岡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,kuragano,,,倉賀野,倉賀野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,takasaki,,,高崎,高崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

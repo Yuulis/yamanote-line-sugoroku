@@ -1,0 +1,11 @@
+from_id,to_id,n02_line,via,route,compose
+tobu-shin-tochigi,tobu-yashu-hirakawa,宇都宮線,,,
+tobu-yashu-hirakawa,tobu-yashu-otsuka,宇都宮線,,,
+tobu-yashu-otsuka,tobu-mibu,宇都宮線,,,
+tobu-mibu,tobu-kuniya,宇都宮線,,,
+tobu-kuniya,tobu-omochanomachi,宇都宮線,,,
+tobu-omochanomachi,tobu-yasuzuka,宇都宮線,,,
+tobu-yasuzuka,tobu-nishi-kawada,宇都宮線,,,
+tobu-nishi-kawada,tobu-esojima,宇都宮線,,,
+tobu-esojima,tobu-minami-utsunomiya,宇都宮線,,,
+tobu-minami-utsunomiya,tobu-tobu-utsunomiya,宇都宮線,,,

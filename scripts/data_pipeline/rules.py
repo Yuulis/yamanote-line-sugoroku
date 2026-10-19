@@ -189,10 +189,18 @@ def check_contiguity(
 
 
 def check_directed_pairs(
-    service: ServiceStops, pairs: Sequence[Pair], report: Report
+    service: ServiceStops,
+    pairs: Sequence[Pair],
+    target_service_id: str,
+    report: Report,
 ) -> None:
-    """Exactly the ridable directed pairs: loops +1 only, chains both ways."""
-    expected = directed_pairs(service.station_ids, service.circular)
+    """Check the target loop +1-only and every other service in both directions."""
+    expected = directed_pairs(
+        service.station_ids,
+        service.circular,
+        service_id=service.id,
+        target_service_id=target_service_id,
+    )
     if len(set(pairs)) != len(pairs):
         report.errors.append(f"{service.id} has duplicate directed segments")
     missing = [pair for pair in expected if pair not in set(pairs)]
@@ -201,7 +209,13 @@ def check_directed_pairs(
         report.errors.append(f"{service.id} is missing directed segments {missing}")
     if extra:
         report.errors.append(f"{service.id} has unexpected directed segments {extra}")
-    shape = "n" if service.circular else "2(n-1)"
+    shape = (
+        "n"
+        if service.circular and service.id == target_service_id
+        else "2n"
+        if service.circular
+        else "2(n-1)"
+    )
     if len(pairs) != len(expected):
         report.errors.append(
             f"{service.id} must have {len(expected)} segments ({shape}), "
@@ -209,10 +223,16 @@ def check_directed_pairs(
         )
 
 
-def check_walks(service: ServiceStops, pairs: Sequence[Pair], report: Report) -> None:
+def check_walks(
+    service: ServiceStops,
+    pairs: Sequence[Pair],
+    target_service_id: str,
+    report: Report,
+) -> None:
     """Walk each supported direction end to end over the published pairs.
 
-    Loop: n steps from the first stop return to it and use every segment once.
+    Loops walk forward; non-target loops also walk backward. Each walk returns
+    to its start and uses every segment in that direction once.
     Chain: forward from the first stop and backward from the last stop each
     reach the other end in n - 1 steps, with no outward segment at the end.
     """
@@ -234,13 +254,19 @@ def check_walks(service: ServiceStops, pairs: Sequence[Pair], report: Report) ->
         elif step == -1:
             backward[from_id] = to_id
     if service.circular:
-        visited = walk(ids[0], forward, count)
-        if len(visited) != count + 1 or visited[-1] != ids[0]:
-            report.errors.append(
-                f"{service.id} {count}-step walk does not return to {ids[0]}"
-            )
-        elif len(set(visited[:-1])) != count:
-            report.errors.append(f"{service.id} walk does not visit every stop once")
+        directions = [("forward", forward)]
+        if service.id != target_service_id:
+            directions.append(("backward", backward))
+        for label, successor in directions:
+            visited = walk(ids[0], successor, count)
+            if len(visited) != count + 1 or visited[-1] != ids[0]:
+                report.errors.append(
+                    f"{service.id} {label} {count}-step walk does not return to {ids[0]}"
+                )
+            elif len(set(visited[:-1])) != count:
+                report.errors.append(
+                    f"{service.id} {label} walk does not visit every stop once"
+                )
         return
     for label, start, end, successor in (
         ("forward", ids[0], ids[-1], forward),
@@ -365,11 +391,18 @@ def check_service_length(
 # --- reachability (rules 15, 16) -------------------------------------------
 
 
-def reachable_stations(services: Sequence[ServiceStops], start: str) -> set[str]:
+def reachable_stations(
+    services: Sequence[ServiceStops], start: str, target_service_id: str
+) -> set[str]:
     """Stations reachable from ``start`` by riding any service's directed pairs."""
     successors: dict[str, set[str]] = {}
     for service in services:
-        for from_id, to_id in directed_pairs(service.station_ids, service.circular):
+        for from_id, to_id in directed_pairs(
+            service.station_ids,
+            service.circular,
+            service_id=service.id,
+            target_service_id=target_service_id,
+        ):
             successors.setdefault(from_id, set()).add(to_id)
     reached = {start}
     queue = deque([start])
@@ -390,7 +423,7 @@ def check_connectivity(
     report: Report,
 ) -> None:
     """Every target segment is reachable; disconnected services are reviewed."""
-    reached = reachable_stations(services, start)
+    reached = reachable_stations(services, start, target_id)
     disconnected = sorted(
         service.id for service in services if not set(service.station_ids) & reached
     )

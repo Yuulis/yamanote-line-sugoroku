@@ -1,0 +1,2 @@
+service_id,from_id,to_id,max_detour_ratio,reason
+tobu-sano,tobu-sanoshi,tobu-sano,2.10,"Raw N02 佐野線 path is 2.486 km between station platform midpoints 002416 and 002398 (single curved section entering 佐野 from the east after crossing 両毛線); straight-line distance is 1.212 km (ratio 2.05). Official Tobu 営業キロ 佐野市 9.0 / 佐野 11.5 km gives 2.5 km (https://www.tobu.co.jp/cms-pdf/news/20230308173821gOeil5pz8zABtXdhXxcI8g.pdf), supporting the routed line geometry. Limit rounded up to 0.05 per the S2 烏山 precedent."

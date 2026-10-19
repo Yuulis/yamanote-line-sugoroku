@@ -1,0 +1,46 @@
+{
+  "operator": "東武鉄道",
+  "n02Operator": "東武鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "東武鉄道 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "埼玉県",
+    "群馬県",
+    "栃木県",
+    "千葉県"
+  ],
+  "serviceIds": [
+    "tobu-isesaki",
+    "tobu-nikko",
+    "tobu-kinugawa",
+    "tobu-utsunomiya",
+    "tobu-sano",
+    "tobu-kiryu",
+    "tobu-koizumi",
+    "tobu-koizumi-ota",
+    "tobu-kameido",
+    "tobu-daishi",
+    "tobu-urban-park",
+    "tobu-oshiage"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "tobu-asakusa",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "77e01818aefba1162b108b8355c8144743b6e20f7ec96c9467c4dfee177f3f79",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

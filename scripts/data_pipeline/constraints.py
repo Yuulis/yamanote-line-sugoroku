@@ -31,6 +31,9 @@ SECTION_DIGEST_CHARS = 8
 LonLat = tuple[float, float]
 BBox = tuple[float, float, float, float]
 STATION_NUMBER_PATTERN = re.compile(r"^([A-Z]{2})(\d{2})$")
+# Explicit station-number evidence also covers non-JR operator formats
+# (G01, TS-01, Mb branch m05); the legacy ±1 rule above stays JR-only.
+STATION_NUMBER_EVIDENCE_PATTERN = re.compile(r"^[A-Za-z]{1,2}-?\d{2}$")
 
 
 class ConstraintError(ValueError):
@@ -87,6 +90,11 @@ def parse_platform_selector(text: str) -> PlatformSelector:
         options = frozenset(item.strip() for item in raw.split("|") if item.strip())
         if not options:
             raise ConstraintError(f"platform selector {key!r} has no value")
+        # "line=X|code=Y" would silently read "code=Y" as a line name.
+        if any("=" in option for option in options):
+            raise ConstraintError(
+                f"platform selector {key!r} value contains '=' (use ';'): {text!r}"
+            )
         values[key] = options
     return PlatformSelector(
         lines=values.get("line", frozenset()),
@@ -135,6 +143,66 @@ class SectionFilter:
         return not self.allow and not self.deny
 
 
+@dataclass(frozen=True)
+class ScopedSectionFilter:
+    """One reviewed section rule limited to a forward stop-pair interval."""
+
+    n02_operator: str
+    n02_line: str
+    from_id: str
+    to_id: str
+    action: str
+    section_key: str
+
+
+@dataclass(frozen=True)
+class JunctionRule:
+    """Explicitly split one section at an existing peer section endpoint."""
+
+    n02_operator: str
+    n02_line: str
+    section_key: str
+    peer_section_key: str
+    lon: float
+    lat: float
+    reason: str
+
+
+def parse_junction_rows(rows: Iterable[Mapping[str, str]]) -> tuple[JunctionRule, ...]:
+    rules: list[JunctionRule] = []
+    seen: set[tuple[str, str, str, str, float, float]] = set()
+    for row in rows:
+        try:
+            lon, lat = float(row["lon"]), float(row["lat"])
+        except (KeyError, ValueError) as error:
+            raise ConstraintError("junction coordinates must be numeric") from error
+        if not math.isfinite(lon) or not math.isfinite(lat):
+            raise ConstraintError("junction coordinates must be finite")
+        if not (-180 <= lon <= 180 and -90 <= lat <= 90):
+            raise ConstraintError("junction coordinates must be valid lon/lat")
+        values = (
+            row.get("n02_operator", ""),
+            row.get("n02_line", ""),
+            row.get("section_key", ""),
+            row.get("peer_section_key", ""),
+            lon,
+            lat,
+        )
+        if not all(values[:4]) or not row.get("reason", ""):
+            raise ConstraintError(
+                "junction rules need operator, line, section keys and reason"
+            )
+        if values[2] == values[3]:
+            raise ConstraintError("junction target and peer sections must differ")
+        if values in seen:
+            raise ConstraintError("duplicate junction rule")
+        seen.add(values)
+        rules.append(JunctionRule(*values, row["reason"]))
+    if not rules:
+        raise ConstraintError("junctions.csv must contain at least one rule")
+    return tuple(rules)
+
+
 OPEN_SECTIONS = SectionFilter()
 
 
@@ -178,6 +246,7 @@ class RouteRecipe:
     lines: tuple[str, ...]
     joints: tuple[LonLat, ...]
     reason: str
+    operators: tuple[str, ...] = ()
 
 
 def parse_bbox(raw: Any, where: str) -> BBox:
@@ -203,7 +272,11 @@ def parse_route_recipe(text: str, bbox: BBox) -> RouteRecipe | None:
         raw = json.loads(text)
     except json.JSONDecodeError as error:
         raise ConstraintError(f"route is not valid JSON: {error}") from error
-    if not isinstance(raw, dict) or set(raw) != {"lines", "joints", "reason"}:
+    if (
+        not isinstance(raw, dict)
+        or not {"lines", "joints", "reason"} <= set(raw)
+        or set(raw) - {"lines", "joints", "reason", "operators"}
+    ):
         raise ConstraintError("route needs lines, joints and reason")
     lines = raw["lines"]
     joints = raw["joints"]
@@ -232,7 +305,14 @@ def parse_route_recipe(text: str, bbox: BBox) -> RouteRecipe | None:
     reason = raw["reason"]
     if not isinstance(reason, str) or not reason.strip():
         raise ConstraintError("route needs a non-empty reason")
-    return RouteRecipe(tuple(lines), tuple(points), reason)
+    operators = raw.get("operators", [])
+    if "operators" in raw and (
+        not isinstance(operators, list)
+        or len(operators) != len(lines)
+        or not all(isinstance(value, str) and value.strip() for value in operators)
+    ):
+        raise ConstraintError("route operators must match lines with non-empty names")
+    return RouteRecipe(tuple(lines), tuple(points), reason, tuple(operators))
 
 
 def check_station_number_order(

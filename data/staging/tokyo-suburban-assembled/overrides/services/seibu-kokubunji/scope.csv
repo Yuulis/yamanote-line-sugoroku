@@ -1,0 +1,6 @@
+station_id,prefecture,municipality,in_area
+kokubunji,東京都,国分寺市,true
+seibu-koigakubo,東京都,国分寺市,true
+seibu-takanodai,東京都,小平市,true
+seibu-ogawa,東京都,小平市,true
+seibu-higashi-murayama,東京都,東村山市,true

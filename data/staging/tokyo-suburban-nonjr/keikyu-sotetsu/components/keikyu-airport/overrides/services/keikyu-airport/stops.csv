@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keikyu-kamata,KK11,line=空港線;group=004331;code=004331,京急蒲田,京急蒲田,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/空港線; N02_005c=004331, N02_005g=004331."
+1,keikyu-kojiya,KK12,line=空港線;group=004349;code=004349,糀谷,糀谷,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/空港線; N02_005c=004349, N02_005g=004349."
+2,keikyu-otorii,KK13,line=空港線;group=004356;code=004356,大鳥居,大鳥居,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/空港線; N02_005c=004356, N02_005g=004356."
+3,keikyu-anamori-inari,KK14,line=空港線;group=004364;code=004364,穴守稲荷,穴守稲荷,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/空港線; N02_005c=004364, N02_005g=004364."
+4,keikyu-tenkubashi,KK15,line=空港線;group=004373;code=004374,天空橋,天空橋,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/空港線; N02_005c=004374, N02_005g=004373."
+5,keikyu-haneda-airport-terminal-3,KK16,line=空港線;group=004382;code=004382,羽田空港第3ターミナル,羽田空港第3ターミナル,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/空港線; N02_005c=004382, N02_005g=004382."
+6,keikyu-haneda-airport-terminal-1-2,KK17,line=空港線;group=004368;code=004368,羽田空港第1・第2ターミナル,羽田空港第1・第2ターミナル,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/空港線; N02_005c=004368, N02_005g=004368."

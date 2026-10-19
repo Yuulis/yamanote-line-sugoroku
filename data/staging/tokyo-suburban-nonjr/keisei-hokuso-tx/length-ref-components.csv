@@ -1,0 +1,12 @@
+service_id,from,to,km,source_url,document,page_or_table,operation,source_class,notes
+keisei-main,京成上野,成田空港,69.3,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程 table,+,primary,"京成グループ要覧2025 p.20, 営業キロ程 table: 京成本線 京成上野–成田空港 69.3 km."
+keisei-oshiage,押上,青砥,5.7,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程 table,+,primary,"京成グループ要覧2025 p.20, 営業キロ程 table: 押上線 押上–青砥 5.7 km."
+keisei-kanamachi,京成高砂,京成金町,2.5,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程 table,+,primary,"京成グループ要覧2025 p.20, 営業キロ程 table: 金町線 京成高砂–京成金町 2.5 km."
+keisei-chiba,京成津田沼,千葉中央,12.9,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程 table,+,primary,"京成グループ要覧2025 p.20, 営業キロ程 table: 千葉線 京成津田沼–千葉中央 12.9 km."
+keisei-chihara,千葉中央,ちはら台,10.9,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程 table,+,primary,"京成グループ要覧2025 p.20, 営業キロ程 table: 千原線 千葉中央–ちはら台 10.9 km."
+keisei-higashi-narita,京成成田,東成田,7.1,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程 table,+,primary,"京成グループ要覧2025 p.20, 営業キロ程 table: 東成田線 京成成田–東成田 7.1 km."
+keisei-matsudo,京成津田沼,松戸,26.5,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程 table,+,primary,"京成グループ要覧2025 p.20, 営業キロ程 table: 松戸線 京成津田沼–松戸 26.5 km."
+tx,秋葉原,つくば,58.3,https://mir1.mir.co.jp/feature/about_tx/,MIR TX overview,路線概要: 営業キロ,+,primary,"MIR TX overview, 路線概要: 秋葉原–つくば 58.3 km; company describes 20 stations."
+hokuso-main,京成高砂,印旛日本医大,32.3,https://www.hokuso-railway.co.jp/hokuso/outline.html,Hokuso Railway company overview,会社概要: 営業キロ,+,primary,Hokuso Railway company overview: first-class 19.8 km 京成高砂–小室 plus second-class 12.5 km 小室–印旛日本医大; total 32.3 km.
+keisei-narita-airport-access,印旛日本医大,成田空港,51.4,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,Keisei Group Handbook 2025,p.20 営業キロ程; 京成高砂–成田空港 成田スカイアクセス線 total,+,primary,Official line total used as minuend for the station-range derivation.
+keisei-narita-airport-access,京成高砂,成田空港,32.3,https://www.hokuso-railway.co.jp/hokuso/outline.html,Hokuso Railway company overview,営業キロ; 京成高砂–印旛日本医大 total,-,primary,"Subtract the official shared 京成高砂–印旛日本医大 range; result 51.4 - 32.3 = 19.1 km, matching Narita City official new-line statement."

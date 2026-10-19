@@ -1,0 +1,23 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,chiba,,,千葉,千葉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,higashi-chiba,,,東千葉,東千葉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,tsuga,,,都賀,都賀,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,yotsukaido,,,四街道,四街道,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,monoi,,,物井,物井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,sakura,,,佐倉,佐倉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,minami-shisui,,,南酒々井,南酒々井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,enokido,,,榎戸,榎戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,yachimata,,,八街,八街,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,hyuga,,,日向,日向,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,naruto,,,成東,成東,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,matsuo,,,松尾,松尾,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,yokoshiba,,,横芝,横芝,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,iigura,,,飯倉,飯倉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,yokaichiba,,,八日市場,八日市場,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,higata,,,干潟,干潟,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,asahi,,,旭,旭,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,iioka,,,飯岡,飯岡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,kurahashi,,,倉橋,倉橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,saruda,,,猿田,猿田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,matsugishi,,,松岸,松岸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,choshi,,,銚子,銚子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

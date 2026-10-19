@@ -1,0 +1,31 @@
+{
+  "operator": "西武鉄道",
+  "n02Operator": "西武鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "西武鉄道 non-JR staging component",
+  "areaPrefectures": [
+    "東京都"
+  ],
+  "serviceIds": [
+    "seibu-tamagawa"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "seibu-musashi-sakai",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "297b9aa1cdd7d163d370cbc5e20ab583395be81caaa100cd3144183d1deecc57",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

@@ -1,0 +1,107 @@
+{
+  "status": "assembled",
+  "counts": {
+    "services": 135,
+    "stationGroups": 1586,
+    "serviceStopRows": 2142,
+    "serviceRoutePairRows": 2009,
+    "directedSegments": 3988
+  },
+  "compositions": [
+    {
+      "consumerServiceId": "metro-fukutoshin",
+      "ownerServiceId": "metro-yurakucho",
+      "pairs": [
+        {
+          "from": "metro-wakoshi",
+          "to": "metro-chikatetsu-narimasu"
+        },
+        {
+          "from": "metro-chikatetsu-narimasu",
+          "to": "metro-chikatetsu-akatsuka"
+        },
+        {
+          "from": "metro-chikatetsu-akatsuka",
+          "to": "metro-heiwadai"
+        },
+        {
+          "from": "metro-heiwadai",
+          "to": "metro-hikawadai"
+        },
+        {
+          "from": "metro-hikawadai",
+          "to": "metro-kotake-mukaihara"
+        }
+      ],
+      "anchorChecks": [
+        {
+          "stationId": "metro-wakoshi",
+          "consumerCode": "003123",
+          "ownerCode": "003123",
+          "groupCode": "003123",
+          "metricCoordinate": [
+            -19929.23968508994,
+            -23459.28603765765
+          ]
+        },
+        {
+          "stationId": "metro-chikatetsu-narimasu",
+          "consumerCode": "003163",
+          "ownerCode": "003163",
+          "groupCode": "003163",
+          "metricCoordinate": [
+            -18277.21321770433,
+            -24750.915465812046
+          ]
+        },
+        {
+          "stationId": "metro-chikatetsu-akatsuka",
+          "consumerCode": "003186",
+          "ownerCode": "003186",
+          "groupCode": "003186",
+          "metricCoordinate": [
+            -17118.679512820603,
+            -25503.151588213357
+          ]
+        },
+        {
+          "stationId": "metro-heiwadai",
+          "consumerCode": "003228",
+          "ownerCode": "003228",
+          "groupCode": "003228",
+          "metricCoordinate": [
+            -16189.958150087183,
+            -26883.439027485307
+          ]
+        },
+        {
+          "stationId": "metro-hikawadai",
+          "consumerCode": "003261",
+          "ownerCode": "003261",
+          "groupCode": "003261",
+          "metricCoordinate": [
+            -15181.362874112554,
+            -27765.56253111737
+          ]
+        },
+        {
+          "stationId": "metro-kotake-mukaihara",
+          "consumerCode": "003294",
+          "ownerCode": "003295",
+          "groupCode": "003294",
+          "metricCoordinate": [
+            -13911.77932810818,
+            -28458.268766334873
+          ]
+        }
+      ]
+    }
+  ],
+  "identity": {
+    "originalIds": 1794,
+    "proposedIds": 1586,
+    "mergedOriginalIds": 208
+  },
+  "inputHashesSha256": "0e0b2b3d078bd716b1b8caa4e2c647d90a0a33311be985577f5f12dca93c1a86",
+  "overrideFiles": 513
+}

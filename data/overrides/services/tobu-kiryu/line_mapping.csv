@@ -1,0 +1,8 @@
+from_id,to_id,n02_line,via,route,compose
+tobu-ota,tobu-sammaibashi,桐生線,,,
+tobu-sammaibashi,tobu-jiromombashi,桐生線,,,
+tobu-jiromombashi,tobu-yabuzuka,桐生線,,,
+tobu-yabuzuka,tobu-azami,桐生線,,,
+tobu-azami,tobu-shin-kiryu,桐生線,,,
+tobu-shin-kiryu,tobu-aioi,桐生線,,,
+tobu-aioi,tobu-akagi,桐生線,,,

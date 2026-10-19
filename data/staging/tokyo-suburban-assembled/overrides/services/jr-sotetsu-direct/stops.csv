@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,shinjuku,,,新宿,新宿,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,shibuya,,,渋谷,渋谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,ebisu,,,恵比寿,恵比寿,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,osaki,,,大崎,大崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,nishi-oi,,,西大井,西大井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,musashi-kosugi,JS15,,武蔵小杉,武蔵小杉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,hazawa-yokohama-kokudai,,,羽沢横浜国大,羽沢横浜国大,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

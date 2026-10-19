@@ -1,0 +1,3 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,narita,KS40,line=東成田線;code=003166,京成成田,京成成田,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/東成田線, code 003166, group 003166."
+1,keisei-higashi-narita,KS44,line=東成田線;code=003189,東成田,東成田,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/東成田線, code 003189, group 003189."

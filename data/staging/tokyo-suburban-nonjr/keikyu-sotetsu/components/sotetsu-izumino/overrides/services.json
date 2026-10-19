@@ -1,0 +1,155 @@
+{
+  "lines": [
+    {
+      "id": "sotetsu-main",
+      "name": "相鉄本線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "sotetsu-izumino",
+      "name": "相鉄いずみ野線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "sotetsu-shin-yokohama",
+      "name": "相鉄新横浜線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "sotetsu-main",
+      "name": "相鉄本線 各停",
+      "kind": "local",
+      "lineIds": [
+        "sotetsu-main"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "海老名方面",
+        "backward": "横浜方面"
+      },
+      "expectedStopCount": 18,
+      "lengthRef": {
+        "km": 24.6,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 横浜–海老名: 24.600 km; 運輸業 相鉄線の営業区間 (https://www.sotetsu.co.jp/about/companies/transportation/)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "相模鉄道",
+      "n02Operator": "相模鉄道",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SO01",
+          "SO02",
+          "SO03",
+          "SO04",
+          "SO05",
+          "SO06",
+          "SO07",
+          "SO08",
+          "SO09",
+          "SO10",
+          "SO11",
+          "SO12",
+          "SO13",
+          "SO14",
+          "SO15",
+          "SO16",
+          "SO17",
+          "SO18"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "sotetsu-izumino",
+      "name": "相鉄いずみ野線 各停",
+      "kind": "local",
+      "lineIds": [
+        "sotetsu-izumino"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "湘南台方面",
+        "backward": "二俣川方面"
+      },
+      "expectedStopCount": 8,
+      "lengthRef": {
+        "km": 11.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 二俣川–湘南台: 11.300 km; 運輸業 相鉄線の営業区間 (https://www.sotetsu.co.jp/about/companies/transportation/)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "相模鉄道",
+      "n02Operator": "相模鉄道",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SO10",
+          "SO31",
+          "SO32",
+          "SO33",
+          "SO34",
+          "SO35",
+          "SO36",
+          "SO37"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "sotetsu-shin-yokohama",
+      "name": "相鉄新横浜線 各停",
+      "kind": "local",
+      "lineIds": [
+        "sotetsu-shin-yokohama"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "新横浜方面",
+        "backward": "西谷方面"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 6.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 西谷–新横浜: 6.300 km; 運輸業 相鉄線の営業区間 (https://www.sotetsu.co.jp/about/companies/transportation/)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "相模鉄道",
+      "n02Operator": "相模鉄道",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SO08",
+          "SO51",
+          "SO52"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    }
+  ]
+}

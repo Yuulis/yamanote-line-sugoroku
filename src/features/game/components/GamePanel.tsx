@@ -1,6 +1,7 @@
 import type { LineMetadata } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
+import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
 import {
   directionLabel,
   displayedRide,
@@ -11,11 +12,18 @@ import {
   stationName,
 } from "../presentation";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
+import { buildMapPresentationGroups } from "../../map/mapPresentation";
+import {
+  setVisibleLineGroupIds,
+  updateLineGroupSelection,
+  useVisibleLineGroupIds,
+} from "../../map/lineVisibilityStore";
 import { GameLegend } from "./GameLegend";
 
 export interface GamePanelProps {
   session: GameSession;
   network: RailwayNetwork;
+  presentation?: PresentationResolver;
   lines: readonly LineMetadata[];
   /** Station the marker has reached (follows the animation). */
   displayedStationId: string;
@@ -33,34 +41,44 @@ export interface GamePanelProps {
   onShowTitle: () => void;
 }
 
-export { stationName } from "../presentation";
-
 export function GamePanel(props: GamePanelProps) {
   const { session, network, saveStatus, follow, reducedMotion } = props;
+  const presentation = props.presentation ?? createPresentationResolver(network);
   const { game, phase } = session;
   const animating = phase === "animating";
   const canRoll = game.status === "playing" && phase === "idle";
   const ride = displayedRide(session);
   const currentService = network.servicesById.get(ride.serviceId);
-  const lineColor = network.servicesById.get(game.config.targetServiceId)?.color;
+  const presentationGroups = presentation.lineGroups();
+  const selectedGroupIds = useVisibleLineGroupIds();
+  const targetColor = presentation.lineGroupColor(game.config.targetServiceId)
+    ?? network.servicesById.get(game.config.targetServiceId)?.color;
   const candidates = session.lastMove?.landing?.serviceCandidates ?? [];
-  const legendGroups = props.lines.map((line) => ({
-    ...line,
-    services: [...network.servicesById.values()].filter((service) => service.id !== game.config.targetServiceId && service.lineIds.includes(line.id)),
-  })).filter((line) => line.services.length > 0);
+  const legendGroups = buildMapPresentationGroups(
+    [...network.servicesById.values()],
+    props.lines,
+    presentationGroups,
+  ).map((group) => ({
+    id: group.id,
+    name: group.name,
+    operatorId: group.operatorId,
+    color: presentation.lineGroupColor(group.serviceIds[0] ?? "") ?? group.color,
+    serviceIds: group.serviceIds,
+  }));
+  const allGroupIds = legendGroups.map((group) => group.id);
   const saveFailed = saveStatus === "failed" || saveStatus === "unavailable";
 
   return (
     <section className="game-panel" aria-label="ゲーム操作">
       <h1 className="game-panel__title">山手線すごろく</h1>
-      <p className="game-panel__subtitle">JR東日本 1都3県版</p>
+      <p className="game-panel__subtitle">東京近郊版</p>
       <dl className="game-panel__stats">
         <dt>現在駅</dt>
-        <dd>{stationName(network, props.displayedStationId)}</dd>
+        <dd>{stationName(network, props.displayedStationId, presentation)}</dd>
         <dt>乗車中</dt>
         <dd>
-          <span className="service-swatch" style={{ backgroundColor: currentService?.color }} aria-hidden="true" />
-          {serviceName(network, ride.serviceId)}
+          <span className="service-swatch" style={{ backgroundColor: presentation.lineGroupColor(ride.serviceId) ?? currentService?.color }} aria-hidden="true" />
+          {serviceName(network, ride.serviceId, presentation)}
         </dd>
         <dt>進行方向</dt>
         <dd>{directionLabel(network, ride.serviceId, ride.direction)}</dd>
@@ -71,7 +89,7 @@ export function GamePanel(props: GamePanelProps) {
           {props.displayedCompletedCount}/{props.requiredCount}
         </dd>
         <dt>出目</dt>
-        <dd aria-live="polite">{lastRollText(session.lastMove, network)}</dd>
+        <dd aria-live="polite">{lastRollText(session.lastMove, network, presentation)}</dd>
       </dl>
       <div className="game-panel__actions">
         <button type="button" className="game-panel__roll" onClick={props.onRoll} disabled={!canRoll}>
@@ -102,12 +120,12 @@ export function GamePanel(props: GamePanelProps) {
         </button>
       </div>
       <p className="game-panel__lottery" aria-live="polite" aria-atomic="true">
-        <span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network)}
+        <span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network, presentation)}
       </p>
       {!animating && candidates.length > LOTTERY_INLINE_LIMIT && (
         <details className="game-panel__candidates" key={game.turn}>
-          <summary>抽選候補をすべて表示（{candidates.length}系統）</summary>
-          <ul>{candidates.map((id) => <li key={id}>{serviceName(network, id)}</li>)}</ul>
+          <summary>抽選候補をすべて表示（{candidates.length}抽選枠）</summary>
+          <ul>{presentation.candidateRows(candidates).map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
         </details>
       )}
       <p
@@ -116,7 +134,19 @@ export function GamePanel(props: GamePanelProps) {
       >
         セーブ: {saveStatusMessage(saveStatus)}
       </p>
-      <GameLegend lines={legendGroups} targetColor={lineColor} />
+      <GameLegend
+        lines={legendGroups}
+        targetColor={targetColor}
+        selectedGroupIds={selectedGroupIds}
+        onToggleGroup={(groupId, checked) => {
+          setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, [groupId], checked));
+        }}
+        onSetOperator={(operatorId, checked) => {
+          const groupIds = legendGroups.filter((group) => group.operatorId === operatorId).map((group) => group.id);
+          setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, groupIds, checked));
+        }}
+        onShowAll={() => setVisibleLineGroupIds(null)}
+      />
     </section>
   );
 }

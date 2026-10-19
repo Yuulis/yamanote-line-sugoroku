@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,seibu-agano,SI31,,吾野,吾野,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,seibu-nishi-agano,SI32,,西吾野,西吾野,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,seibu-shomaru,SI33,,正丸,正丸,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,seibu-ashigakubo,SI34,,芦ケ久保,芦ヶ久保,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,seibu-yokoze,SI35,,横瀬,横瀬,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,seibu-seibu-chichibu,SI36,,西武秩父,西武秩父,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

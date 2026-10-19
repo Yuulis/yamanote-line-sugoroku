@@ -10,10 +10,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
+import type { PresentationResolver } from "../game/presentationResolver";
 import { buildDataAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
 import { MVP_GAME_CONFIG } from "../game/gameConfig";
 import { indexServiceGeometry } from "./serviceGeometry";
+import { buildMapPresentationIndex } from "./mapPresentation";
+import { updateLineGroupVisibility } from "./lineVisibility";
+import { useVisibleLineGroupIds } from "./lineVisibilityStore";
 import { initialOverviewServices, isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
 import {
   FOLLOW_EASE_MS,
@@ -48,6 +52,8 @@ export interface MapFollow {
 
 interface RailwayMapProps {
   data: RailwayData;
+  /** Resolver from the already-validated gameplay network, when available. */
+  presentation?: PresentationResolver;
   /** Game progress to draw; omitted when no game is running. */
   progress?: MapProgress;
   follow?: MapFollow;
@@ -130,13 +136,22 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, progress, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+  const services = data.services.ok ? data.services.value.services : [];
+  const lines = data.services.ok ? data.services.value.lines : [];
+  const segments = data.segments.ok ? data.segments.value : [];
+  const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
+  const selectedGroupIds = useVisibleLineGroupIds();
   const serviceGeometry = useMemo(
     () => indexServiceGeometry(data.segments.ok ? data.segments.value : []), [data.segments],
   );
+  const mapPresentationIndex = useMemo(
+    () => buildMapPresentationIndex(services, segments, uiPresentation, lines),
+    [services, segments, uiPresentation, lines],
+  );
   const initialServices = useMemo(
-    () => initialOverviewServices(data.services.ok ? data.services.value.services : [], targetServiceId),
-    [data.services, targetServiceId],
+    () => initialOverviewServices(services, targetServiceId),
+    [services, targetServiceId],
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
@@ -197,6 +212,8 @@ export function RailwayMap({ data, progress, follow, overviewKey, targetServiceI
         geometry: data.geometry.ok ? data.geometry.value : undefined,
         lines: data.services.ok ? data.services.value.lines : undefined,
         targetServiceId,
+        presentation,
+        presentationIndex: mapPresentationIndex,
       });
       fitNetworkOverview(map, initialServices);
       attachStationPopup(map);
@@ -217,7 +234,7 @@ export function RailwayMap({ data, progress, follow, overviewKey, targetServiceI
       setLoadedMap(null);
       map.remove();
     };
-  }, [data, attempt, targetServiceId, minZoom, initialServices]);
+  }, [data, attempt, targetServiceId, minZoom, initialServices, presentation, mapPresentationIndex]);
 
   const completedFeatureIds = progress?.completedFeatureIds;
   const position = progress?.currentPosition ?? null;
@@ -227,6 +244,9 @@ export function RailwayMap({ data, progress, follow, overviewKey, targetServiceI
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, completedKey, targetServiceId]);
+  useEffect(() => {
+    if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
+  }, [loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateCurrentPosition(loadedMap, position);
   }, [loadedMap, position]);
@@ -240,9 +260,13 @@ export function RailwayMap({ data, progress, follow, overviewKey, targetServiceI
   const highlightedServiceId = progress?.highlightedServiceId;
   useEffect(() => {
     if (!loadedMap) return;
-    const service = data.services.ok ? data.services.value.services.find((item) => item.id === highlightedServiceId) : undefined;
-    updateHighlightedService(loadedMap, serviceGeometry.get(highlightedServiceId ?? "") ?? [], service?.color ?? "#80c241");
-  }, [loadedMap, highlightedServiceId, data.services, serviceGeometry]);
+    const service = services.find((item) => item.id === highlightedServiceId);
+    updateHighlightedService(
+      loadedMap,
+      serviceGeometry.get(highlightedServiceId ?? "") ?? [],
+      presentation?.lineGroupColor(highlightedServiceId ?? "") ?? service?.color ?? "#80c241",
+    );
+  }, [loadedMap, highlightedServiceId, services, serviceGeometry, presentation]);
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;

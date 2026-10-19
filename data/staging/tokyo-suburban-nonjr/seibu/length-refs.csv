@@ -1,0 +1,13 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+seibu-ikebukuro,池袋,吾野,57.8,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,57.955,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-chichibu,吾野,西武秩父,19.0,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,18.800,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-yurakucho,練馬,小竹向原,2.6,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,2.554,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-toshima,練馬,豊島園,1.0,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,0.988,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-sayama,西所沢,西武球場前,4.2,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,4.143,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-yamaguchi,多摩湖,西武球場前,2.8,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,2.892,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-shinjuku,西武新宿,本川越,47.5,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,47.524,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-haijima,小平,拝島,14.3,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,14.543,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-tamako,国分寺,多摩湖,9.2,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,9.117,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-kokubunji,国分寺,東村山,7.8,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,7.702,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-seibuen,東村山,西武園,2.4,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,2.496,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+seibu-tamagawa,武蔵境,是政,8.0,https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf,8.013,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.

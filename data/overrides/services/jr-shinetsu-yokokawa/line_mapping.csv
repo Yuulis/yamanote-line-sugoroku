@@ -1,0 +1,8 @@
+from_id,to_id,n02_line,via,route,compose
+takasaki,kita-takasaki,信越線,,,
+kita-takasaki,gumma-yawata,信越線,,,
+gumma-yawata,annaka,信越線,,,
+annaka,isobe,信越線,,,
+isobe,matsuida,信越線,,,
+matsuida,nishi-matsuida,信越線,,,
+nishi-matsuida,yokokawa,信越線,,,

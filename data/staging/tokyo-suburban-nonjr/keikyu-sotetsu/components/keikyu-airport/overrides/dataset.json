@@ -1,0 +1,36 @@
+{
+  "operator": "京浜急行電鉄",
+  "n02Operator": "京浜急行電鉄",
+  "updatedAt": "2026-10-15",
+  "areaName": "京浜急行電鉄 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "神奈川県"
+  ],
+  "serviceIds": [
+    "keikyu-main",
+    "keikyu-airport",
+    "keikyu-daishi",
+    "keikyu-zushi",
+    "keikyu-kurihama"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "keikyu-sengakuji",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "d7cfe351dbcfe0d37b907b7030db5cb22f08986c5bcd8cadc84aaa4e6c0be80d",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

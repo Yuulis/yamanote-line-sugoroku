@@ -1,0 +1,15 @@
+station_id,prefecture,municipality,in_area
+ayase,東京都,足立区,true
+kameari,東京都,葛飾区,true
+kanamachi,東京都,葛飾区,true
+matsudo,千葉県,松戸市,true
+kita-matsudo,千葉県,松戸市,true
+mabashi,千葉県,松戸市,true
+shim-matsudo,千葉県,松戸市,true
+kita-kogane,千葉県,松戸市,true
+minami-kashiwa,千葉県,柏市,true
+kashiwa,千葉県,柏市,true
+kita-kashiwa,千葉県,柏市,true
+abiko,千葉県,我孫子市,true
+tennodai,千葉県,我孫子市,true
+toride,茨城県,取手市,false

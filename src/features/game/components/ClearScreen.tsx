@@ -3,11 +3,13 @@ import type { GameState } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
 import { earlyStopNote, endpointKindAt, summarizeGame } from "../gameSummary";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
-import { directionLabel, serviceName, stationName } from "../presentation";
+import { directionLabel, landingTransitionText, serviceName, stationName } from "../presentation";
+import type { PresentationResolver } from "../presentationResolver";
 
 interface ClearScreenProps {
   game: GameState;
   network: RailwayNetwork;
+  presentation: PresentationResolver;
   /** Result of saving the clearing turn; a failure must stay visible here. */
   saveStatus: SaveWriteResult | null;
   onPlayAgain: () => void;
@@ -17,7 +19,7 @@ interface ClearScreenProps {
 export const HISTORY_PAGE_SIZE = 20;
 
 /** Shown once the clearing move has finished animating (spec 6.1). */
-export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitle }: ClearScreenProps) {
+export function ClearScreen({ game, network, presentation, saveStatus, onPlayAgain, onShowTitle }: ClearScreenProps) {
   const [page, setPage] = useState(0);
   const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
@@ -25,8 +27,8 @@ export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitl
   useLayoutEffect(() => {
     if (historyRef.current) historyRef.current.scrollTop = 0;
   }, [currentPage]);
-  const { turns, moves, transfers } = summarizeGame(game);
-  const goalName = stationName(network, game.config.startStationId);
+  const { turns, moves, transfers } = summarizeGame(game, presentation);
+  const goalName = stationName(network, game.config.startStationId, presentation);
   return (
     <section className="clear-screen" aria-labelledby="clear-title">
       <h1 id="clear-title" className="clear-screen__title">
@@ -49,13 +51,14 @@ export function ClearScreen({ game, network, saveStatus, onPlayAgain, onShowTitl
       <h2 className="clear-screen__subtitle">移動履歴</h2>
       <ol ref={historyRef} className="clear-screen__history">
         {game.movementHistory.slice(currentPage * HISTORY_PAGE_SIZE, (currentPage + 1) * HISTORY_PAGE_SIZE).map((record) => {
-          const note = earlyStopNote(record, (id) => stationName(network, id), endpointKindAt(network, record.serviceId, record.toStationId));
+          const note = earlyStopNote(record, (id) => presentation.serviceStationName(record.serviceId, id), endpointKindAt(network, record.serviceId, record.toStationId));
+          const transition = landingTransitionText(record, network, presentation);
           return (
             <li key={record.turn}>
               <span className="clear-screen__turn">{record.turn}ターン目</span> 出目{record.roll}：
-              {stationName(network, record.fromStationId)} → {stationName(network, record.toStationId)}
-              （{serviceName(network, record.serviceId)}・{directionLabel(network, record.serviceId, record.direction)}）
-              {record.landing && record.landing.serviceId !== record.serviceId && ` → 乗換: ${serviceName(network, record.landing.serviceId)}（${directionLabel(network, record.landing.serviceId, record.landing.direction)}）`}
+              {presentation.serviceStationName(record.serviceId, record.fromStationId)} → {presentation.serviceStationName(record.serviceId, record.toStationId)}
+              （{serviceName(network, record.serviceId, presentation)}・{directionLabel(network, record.serviceId, record.direction)}）
+              {transition && ` → ${transition}`}
               {note !== null && `（${note}）`}
             </li>
           );

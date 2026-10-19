@@ -1,0 +1,7 @@
+from_id,to_id,n02_line,via,route,compose
+tokyu-tamagawa,tokyu-numabe,東急多摩川線,,,
+tokyu-numabe,tokyu-unoki,東急多摩川線,,,
+tokyu-unoki,tokyu-shimomaruko,東急多摩川線,,,
+tokyu-shimomaruko,tokyu-musashi-nitta,東急多摩川線,,,
+tokyu-musashi-nitta,tokyu-yaguchinowatashi,東急多摩川線,,,
+tokyu-yaguchinowatashi,tokyu-kamata,東急多摩川線,,,

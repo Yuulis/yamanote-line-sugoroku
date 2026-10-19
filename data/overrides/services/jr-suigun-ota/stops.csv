@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,kami-sugaya,,,上菅谷,上菅谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,minami-sakaide,,,南酒出,南酒出,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,nukada,,,額田,額田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,kawai-ibaraki,,,河合,河合,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,yagawara,,,谷河原,谷河原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,hitachi-ota,,,常陸太田,常陸太田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

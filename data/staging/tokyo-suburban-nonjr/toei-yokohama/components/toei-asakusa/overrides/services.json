@@ -1,0 +1,310 @@
+{
+  "lines": [
+    {
+      "id": "toei-asakusa",
+      "name": "都営浅草線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "toei-mita",
+      "name": "都営三田線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "toei-shinjuku",
+      "name": "都営新宿線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "toei-oedo-loop",
+      "name": "都営大江戸線 環状部 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "toei-oedo-radial",
+      "name": "都営大江戸線 放射部 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "toei-asakusa",
+      "name": "都営浅草線 各停",
+      "kind": "local",
+      "lineIds": [
+        "toei-asakusa"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "押上方面",
+        "backward": "西馬込方面"
+      },
+      "expectedStopCount": 20,
+      "lengthRef": {
+        "km": 18.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 西馬込–押上: 18.300 km; 東京都交通局「都営地下鉄」 営業線の概要／開業年次表：浅草線 (https://www.kotsu.metro.tokyo.jp/about/service/subway.html)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京都交通局",
+      "n02Operator": "東京都",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "A01",
+          "A02",
+          "A03",
+          "A04",
+          "A05",
+          "A06",
+          "A07",
+          "A08",
+          "A09",
+          "A10",
+          "A11",
+          "A12",
+          "A13",
+          "A14",
+          "A15",
+          "A16",
+          "A17",
+          "A18",
+          "A19",
+          "A20"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "toei-mita",
+      "name": "都営三田線 各停",
+      "kind": "local",
+      "lineIds": [
+        "toei-mita"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西高島平方面",
+        "backward": "目黒方面"
+      },
+      "expectedStopCount": 27,
+      "lengthRef": {
+        "km": 26.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 目黒–西高島平: 26.500 km; 東京都交通局「都営地下鉄」 営業線の概要／開業年次表：三田線 (https://www.kotsu.metro.tokyo.jp/about/service/subway.html)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京都交通局",
+      "n02Operator": "東京都",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "I01",
+          "I02",
+          "I03",
+          "I04",
+          "I05",
+          "I06",
+          "I07",
+          "I08",
+          "I09",
+          "I10",
+          "I11",
+          "I12",
+          "I13",
+          "I14",
+          "I15",
+          "I16",
+          "I17",
+          "I18",
+          "I19",
+          "I20",
+          "I21",
+          "I22",
+          "I23",
+          "I24",
+          "I25",
+          "I26",
+          "I27"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "toei-shinjuku",
+      "name": "都営新宿線 各停",
+      "kind": "local",
+      "lineIds": [
+        "toei-shinjuku"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "本八幡方面",
+        "backward": "新宿方面"
+      },
+      "expectedStopCount": 21,
+      "lengthRef": {
+        "km": 23.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 新宿–本八幡: 23.500 km; 東京都交通局「都営地下鉄」 営業線の概要／開業年次表：新宿線 (https://www.kotsu.metro.tokyo.jp/about/service/subway.html)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京都交通局",
+      "n02Operator": "東京都",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "S01",
+          "S02",
+          "S03",
+          "S04",
+          "S05",
+          "S06",
+          "S07",
+          "S08",
+          "S09",
+          "S10",
+          "S11",
+          "S12",
+          "S13",
+          "S14",
+          "S15",
+          "S16",
+          "S17",
+          "S18",
+          "S19",
+          "S20",
+          "S21"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "toei-oedo-loop",
+      "name": "都営大江戸線 環状部 各停",
+      "kind": "local",
+      "lineIds": [
+        "toei-oedo-loop"
+      ],
+      "color": "#808080",
+      "circular": true,
+      "directionLabels": {
+        "forward": "新宿方面",
+        "backward": "都庁前方面"
+      },
+      "expectedStopCount": 28,
+      "lengthRef": {
+        "km": 28.6,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 都庁前–新宿: 28.600 km; 東京都交通局「都営地下鉄」 開業年次表：大江戸線 営業キロ計 (https://www.kotsu.metro.tokyo.jp/about/service/subway.html); 東京都交通局「高速電車事業」 大江戸線 construction split; radial section (https://www.kotsu.metro.tokyo.jp/about/service/pdf/05kosoku_train.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京都交通局",
+      "n02Operator": "東京都",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "E28",
+          "E01",
+          "E02",
+          "E03",
+          "E04",
+          "E05",
+          "E06",
+          "E07",
+          "E08",
+          "E09",
+          "E10",
+          "E11",
+          "E12",
+          "E13",
+          "E14",
+          "E15",
+          "E16",
+          "E17",
+          "E18",
+          "E19",
+          "E20",
+          "E21",
+          "E22",
+          "E23",
+          "E24",
+          "E25",
+          "E26",
+          "E27"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      }
+    },
+    {
+      "id": "toei-oedo-radial",
+      "name": "都営大江戸線 放射部 各停",
+      "kind": "local",
+      "lineIds": [
+        "toei-oedo-radial"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "光が丘方面",
+        "backward": "都庁前方面"
+      },
+      "expectedStopCount": 11,
+      "lengthRef": {
+        "km": 12.1,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 都庁前–光が丘: 12.100 km; 東京都交通局「大江戸線キロ程表」 Official route kilometric chart; radial section also recorded in 東京都交通局「高速電車事業」 (https://www.kotsu.metro.tokyo.jp/subway/fare/regular/oedo_kiro.html)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東京都交通局",
+      "n02Operator": "東京都",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "E28",
+          "E29",
+          "E30",
+          "E31",
+          "E32",
+          "E33",
+          "E34",
+          "E35",
+          "E36",
+          "E37",
+          "E38"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}

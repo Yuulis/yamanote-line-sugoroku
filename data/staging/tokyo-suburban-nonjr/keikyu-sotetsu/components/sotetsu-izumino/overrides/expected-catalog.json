@@ -1,0 +1,77 @@
+{
+  "services": [
+    {
+      "id": "sotetsu-main",
+      "stationIds": [
+        "sotetsu-yokohama",
+        "sotetsu-hiranumabashi",
+        "sotetsu-nishi-yokohama",
+        "sotetsu-tennocho",
+        "sotetsu-hoshikawa",
+        "sotetsu-wadamachi",
+        "sotetsu-kami-hoshikawa",
+        "sotetsu-nishiya",
+        "sotetsu-tsurugamine",
+        "sotetsu-futamatagawa",
+        "sotetsu-kibogaoka",
+        "sotetsu-mitsukyo",
+        "sotetsu-seya",
+        "sotetsu-yamato",
+        "sotetsu-sagami-otsuka",
+        "sotetsu-sagamino",
+        "sotetsu-kashiwadai",
+        "sotetsu-ebina"
+      ]
+    },
+    {
+      "id": "sotetsu-izumino",
+      "stationIds": [
+        "sotetsu-futamatagawa",
+        "sotetsu-minami-makigahara",
+        "sotetsu-ryokuentoshi",
+        "sotetsu-yayoidai",
+        "sotetsu-izumino",
+        "sotetsu-izumi-chuo",
+        "sotetsu-yumegaoka",
+        "sotetsu-shonandai"
+      ]
+    },
+    {
+      "id": "sotetsu-shin-yokohama",
+      "stationIds": [
+        "sotetsu-nishiya",
+        "sotetsu-hazawa-yokohama-kokudai",
+        "sotetsu-shin-yokohama"
+      ]
+    }
+  ],
+  "stationIds": [
+    "sotetsu-yokohama",
+    "sotetsu-hiranumabashi",
+    "sotetsu-nishi-yokohama",
+    "sotetsu-tennocho",
+    "sotetsu-hoshikawa",
+    "sotetsu-wadamachi",
+    "sotetsu-kami-hoshikawa",
+    "sotetsu-nishiya",
+    "sotetsu-tsurugamine",
+    "sotetsu-futamatagawa",
+    "sotetsu-kibogaoka",
+    "sotetsu-mitsukyo",
+    "sotetsu-seya",
+    "sotetsu-yamato",
+    "sotetsu-sagami-otsuka",
+    "sotetsu-sagamino",
+    "sotetsu-kashiwadai",
+    "sotetsu-ebina",
+    "sotetsu-minami-makigahara",
+    "sotetsu-ryokuentoshi",
+    "sotetsu-yayoidai",
+    "sotetsu-izumino",
+    "sotetsu-izumi-chuo",
+    "sotetsu-yumegaoka",
+    "sotetsu-shonandai",
+    "sotetsu-hazawa-yokohama-kokudai",
+    "sotetsu-shin-yokohama"
+  ]
+}

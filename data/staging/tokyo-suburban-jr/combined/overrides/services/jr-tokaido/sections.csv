@@ -1,0 +1,85 @@
+n02_line,action,section_key,reason,from_id,to_id
+東海道線,allow,139.10054 35.14535~139.10386 35.14690#efcf8430,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.10386 35.14690~139.13102 35.15599#ee60d505,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.13102 35.15599~139.13348 35.15786#1cddb533,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.13348 35.15786~139.13779 35.20129#ebed338a,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.13779 35.20129~139.13947 35.20386#80df5c97,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.13947 35.20386~139.14442 35.23738#3433ab32,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.14442 35.23738~139.14558 35.24005#677dfcbc,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.14558 35.24005~139.15489 35.25486#1db14388,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.15489 35.25486~139.15665 35.25733#d661bf9f,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.15665 35.25733~139.17833 35.27543#c99152c6,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.17833 35.27543~139.18200 35.27603#eb7ff17b,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.18200 35.27603~139.21078 35.28084#44c5e1f4,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.21078 35.28084~139.21271 35.28101#79f4ee04,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.21271 35.28101~139.21290 35.28106#3e604cdf,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.21290 35.28106~139.21701 35.28173#14aeecfb,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.21701 35.28173~139.25550 35.29817#ed3597d3,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.25550 35.29817~139.25800 35.29917#5572a4c0,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.25800 35.29917~139.31184 35.31055#575f6d3b,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.31184 35.31055~139.31471 35.31237#afd44d75,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.31471 35.31237~139.34058 35.32591#df146ecb,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.34058 35.32591~139.34724 35.32713#6c76d30e,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.34724 35.32713~139.35076 35.32775#73513214,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.35076 35.32775~139.37642 35.33127#4d50e5eb,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.37642 35.33127~139.40640 35.33007#c70c01eb,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.40640 35.33007~139.40960 35.33122#16a8b595,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.40960 35.33122~139.44401 35.33674#b97d778d,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.44401 35.33674~139.44778 35.33695#3327703e,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.44778 35.33695~139.48473 35.33876#e2957a59,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.48473 35.33876~139.48811 35.33890#8d28db18,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.48811 35.33890~139.53069 35.35289#daea09cf,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.53069 35.35289~139.53164 35.35542#41ba2b37,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.53164 35.35542~139.53470 35.39917#5100ea0f,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.53392 35.40170~139.53470 35.39917#30bf9182,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.53392 35.40170~139.53605 35.41219#41e70bbc,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.53605 35.41219~139.57961 35.44699#27374fd3,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.57961 35.44699~139.59907 35.44598#2352e574,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.59907 35.44598~139.60167 35.44846#ec9cd0f6,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.60167 35.44846~139.62133 35.46475#45ddf1c8,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.62133 35.46475~139.62320 35.46692#7e373bde,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.62320 35.46692~139.64568 35.48515#be7c8fdc,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.64568 35.48515~139.65298 35.48629#bb5d8342,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.65298 35.48629~139.65507 35.48734#0c59f991,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.65507 35.48734~139.66112 35.49077#0e684075,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.66112 35.49077~139.66353 35.49326#1db58c69,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.66353 35.49326~139.66723 35.49607#93d04b54,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.66723 35.49607~139.67600 35.50740#7f094849,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.67600 35.50740~139.67649 35.50958#1ed078de,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.67649 35.50958~139.67710 35.51197#560516da,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.67710 35.51197~139.69246 35.52757#e999e4f1,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.69246 35.52757~139.69604 35.53073#d7ac88a5,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.69604 35.53073~139.69758 35.53200#9a992e11,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv,tokyo,yugawara
+東海道線,allow,139.69758 35.53200~139.70160 35.53518#c0b85442,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.70837 35.54412~139.71569 35.56162#de0dd57a,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.71569 35.56162~139.71637 35.56335#b6b04326,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.71637 35.56335~139.72770 35.58823#b12fb6f0,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.72770 35.58823~139.72860 35.58960#f4f2f130,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.72860 35.58960~139.73491 35.60590#d2154798,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73280 35.61677~139.73762 35.62049#67df2d8f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73491 35.60590~139.73507 35.60772#99c28973,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73507 35.60772~139.73762 35.62049#2a2d1c8a,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73762 35.62049~139.73881 35.62549#d4d53e0e,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73863 35.62700~139.73881 35.62549#21e72365,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73881 35.62549~139.73903 35.62650#0f36108f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73898 35.62986~139.73910 35.62713#4c35f351,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73903 35.62650~139.73910 35.62713#7b0d29a8,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73903 35.62650~139.73936 35.62764#8c9edb32,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73898 35.62986~139.74331 35.64251#3cad4071,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.73983 35.63039~139.75880 35.66539#99014a65,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.74105 35.63633~139.74331 35.64251#2d89f0a9,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.74331 35.64251~139.74697 35.64537#9bca719f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.74697 35.64537~139.74824 35.64611#89f868b1,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.74824 35.64611~139.75697 35.65468#06640db3,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.75697 35.65468~139.75728 35.65614#cd02d9b6,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.75728 35.65614~139.75826 35.66558#f257fd51,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.75814 35.66720~139.75826 35.66558#023ae804,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.75814 35.66720~139.76254 35.67448#a25e4fa8,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.75866 35.66702~139.76491 35.68098#a7efbe07,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.76254 35.67448~139.76398 35.67560#4ef608fd,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.76398 35.67560~139.76523 35.67711#b7e86bc7,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.76523 35.67711~139.76586 35.67790#2922f736,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.76523 35.67711~139.76621 35.67965#dce44bc1,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.76621 35.67965~139.76716 35.68228#d03ee2b7,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,tokyo,yugawara
+東海道線,allow,139.70160 35.53518~139.70837 35.54412#a88144bb,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,tokyo,yugawara
+東海道線,deny,139.70160 35.53518~139.70837 35.54412#61967b18,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,,

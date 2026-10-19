@@ -1,0 +1,11 @@
+from_id,to_id,n02_line,via,route,compose
+kisarazu,gion,久留里線,,,
+gion,kazusa-kiyokawa,久留里線,,,
+kazusa-kiyokawa,higashi-kiyokawa,久留里線,,,
+higashi-kiyokawa,yokota,久留里線,,,
+yokota,higashi-yokota,久留里線,,,
+higashi-yokota,makuta,久留里線,,,
+makuta,shimogori,久留里線,,,
+shimogori,obitsu,久留里線,,,
+obitsu,tawarada,久留里線,,,
+tawarada,kururi,久留里線,,,

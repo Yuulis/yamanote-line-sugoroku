@@ -1,0 +1,6 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,oami,,,大網,大網,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,fukutawara,,,福俵,福俵,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,togane,,,東金,東金,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,gumyo,,,求名,求名,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,naruto,,,成東,成東,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

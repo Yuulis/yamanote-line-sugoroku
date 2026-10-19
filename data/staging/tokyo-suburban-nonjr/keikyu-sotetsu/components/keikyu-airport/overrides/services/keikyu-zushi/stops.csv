@@ -1,0 +1,5 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keikyu-kanazawa-hakkei,KK50,line=逗子線;group=005020;code=005020,金沢八景,金沢八景,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/逗子線; N02_005c=005020, N02_005g=005020."
+1,keikyu-mutsuura,KK51,line=逗子線;group=005043;code=005043,六浦,六浦,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/逗子線; N02_005c=005043, N02_005g=005043."
+2,keikyu-jimmuji,KK52,line=逗子線;group=005098;code=005098,神武寺,神武寺,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/逗子線; N02_005c=005098, N02_005g=005098."
+3,keikyu-zushi-hayama,KK53,line=逗子線;group=005130;code=005130,逗子・葉山,逗子・葉山,京浜急行電鉄,"Frozen station_name_original matched N02-25_Station.geojson 京浜急行電鉄/逗子線; N02_005c=005130, N02_005g=005130."

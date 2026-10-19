@@ -44,6 +44,7 @@ class PairRoute:
     networks: tuple[TrackNetwork, ...] = ()  # explicit multi-line order
     joints: tuple[Point, ...] = ()
     line_order: tuple[str, ...] = ()
+    operator_order: tuple[str, ...] = ()
     fixed_path: TrackPath | None = None
 
 
@@ -187,6 +188,18 @@ def _pair_paths(
                 reject(
                     f"endpoint lines {origin.n02_line} -> {destination.n02_line} "
                     "differ from the declared first/last lines"
+                )
+                continue
+            if route.operator_order and (
+                (origin.operator and origin.operator != route.operator_order[0])
+                or (
+                    destination.operator
+                    and destination.operator != route.operator_order[-1]
+                )
+            ):
+                reject(
+                    f"endpoint operators {origin.operator} -> {destination.operator} "
+                    "differ from the declared first/last operators"
                 )
                 continue
             try:

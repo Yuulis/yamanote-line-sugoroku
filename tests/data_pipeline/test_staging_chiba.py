@@ -116,7 +116,12 @@ def test_chiba_stop_topology_reaches_all_stations_both_ways(overrides) -> None:
         (
             pair
             for service in overrides.services
-            for pair in directed_pairs(service.station_ids, service.circular)
+            for pair in directed_pairs(
+                service.station_ids,
+                service.circular,
+                service_id=service.id,
+                target_service_id=overrides.dataset.directed_segment_target_service_id,
+            )
         ),
         overrides.dataset.stage_start_station_id,
         report,

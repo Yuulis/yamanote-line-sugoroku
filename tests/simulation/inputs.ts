@@ -8,6 +8,26 @@ import { parseCsv, required } from "./csv";
 
 export const DEFAULT_CATALOG = ".claude/docs/research/jr-east-capital-region-catalog-v2.csv";
 export const DEFAULT_SERVICES = ".claude/docs/research/jr-east-capital-region-services-v2.csv";
+export const SIMULATION_CODE_FILES = [
+  "src/data/guards.ts",
+  "src/features/game/engine/config.ts",
+  "src/features/game/engine/errors.ts",
+  "src/features/game/engine/game.ts",
+  "src/features/game/engine/goal.ts",
+  "src/features/game/engine/index.ts",
+  "src/features/game/engine/landing.ts",
+  "src/features/game/engine/movement.ts",
+  "src/features/game/engine/network.ts",
+  "src/features/game/engine/proximity.ts",
+  "src/features/game/engine/rng.ts",
+  "src/features/game/engine/types.ts",
+  "src/features/game/gameConfig.ts",
+  "src/types/network.ts",
+  "tests/simulation/harness.ts",
+  "tests/simulation/inputs.ts",
+  "tests/simulation/measurement.test.ts",
+  "tests/simulation/suburban-product.test.ts",
+] as const;
 
 export interface SimulationInput {
   network: RailwayNetwork;

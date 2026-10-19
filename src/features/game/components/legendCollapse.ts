@@ -1,7 +1,7 @@
-/** On a phone a legend with more rows than this starts collapsed; shorter ones fit as they are. */
-export const PHONE_LEGEND_MAX_EXPANDED_ROWS = 6;
+/** A route list above this size starts collapsed on every viewport. */
+export const MAX_EXPANDED_LEGEND_GROUPS = 6;
 
-/** Initial state of the service legend: collapsed only for a long legend on a phone. */
-export function defaultLegendExpanded(rowCount: number, onPhone: boolean): boolean {
-  return !(onPhone && rowCount > PHONE_LEGEND_MAX_EXPANDED_ROWS);
+/** Keep the regional 134-group list out of the initial control-panel view. */
+export function defaultLegendExpanded(rowCount: number): boolean {
+  return rowCount <= MAX_EXPANDED_LEGEND_GROUPS;
 }

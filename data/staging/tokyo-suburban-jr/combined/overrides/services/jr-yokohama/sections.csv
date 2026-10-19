@@ -1,0 +1,44 @@
+n02_line,action,section_key,reason
+横浜線,allow,139.49429 35.53159~139.49628 35.53167#2b3c357c,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.49628 35.53167~139.51576 35.52649#8ce0a7fe,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.51576 35.52649~139.51723 35.52604#5ebf1ec4,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.51723 35.52604~139.53842 35.51519#dd2e0374,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.53842 35.51519~139.54001 35.51435#bc4ac27c,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.54001 35.51435~139.56609 35.51071#62459a63,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.56609 35.51071~139.56781 35.51099#a3805588,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.56781 35.51099~139.59878 35.50903#61f9a364,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.59878 35.50903~139.60046 35.50824#eef72cec,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.60046 35.50824~139.61636 35.50666#ded6dd5a,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.61636 35.50666~139.61849 35.50687#f5edd810,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.61849 35.50687~139.62893 35.50968#27c1e46f,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.62893 35.50968~139.63127 35.50958#e8a9aeb7,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.63127 35.50958~139.64624 35.49279#ffea636d,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.63240 35.47706~139.63393 35.47869#ce57e37e,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.63393 35.47869~139.64643 35.49180#641232e2,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.64624 35.49279~139.64643 35.49180#b11b0537,Raw N02 section used by the audited +1 route paths; see ../n02-routing-evidence.csv
+横浜線,allow,139.33162 35.60751~139.33174 35.60635#d93e94db,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33174 35.60635~139.34418 35.59532#0fc13814,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.34418 35.59532~139.34601 35.59436#c392c052,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.34601 35.59436~139.35105 35.59173#b926ee4f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.35105 35.59173~139.36966 35.58198#e86fb71e,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.36966 35.58198~139.37162 35.58097#9e9c4933,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.37162 35.58097~139.38577 35.57350#86e64d4d,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.38577 35.57350~139.38730 35.57269#c25008e2,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.38730 35.57269~139.39439 35.56897#7c5078c6,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.39439 35.56897~139.39681 35.56775#ec9b8d48,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.39681 35.56775~139.41905 35.55608#f376f81b,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.41905 35.55608~139.41943 35.55588#1017f4f4,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.41943 35.55588~139.44568 35.54203#55a69d11,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.44568 35.54203~139.44750 35.54106#dab93cac,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.44750 35.54106~139.47217 35.53584#bf9323e8,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.47217 35.53584~139.47364 35.53498#828c0f20,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.47364 35.53498~139.49429 35.53159#95a9b130,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33065 35.63057~139.33131 35.63201#0e227f39,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33065 35.63057~139.33199 35.62229#adfa5d37,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33131 35.63201~139.34041 35.63928#62e8bbe7,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33145 35.60924~139.33162 35.60751#819d2ba2,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33145 35.60924~139.33199 35.62229#6889869b,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33145 35.60924~139.33199 35.62229#9f9fa2ee,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.33939 35.65519~139.34111 35.65490#f06df173,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.34041 35.63928~139.34192 35.64007#c4909e3d,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
+横浜線,allow,139.34111 35.65490~139.34192 35.64007#e62ad807,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.

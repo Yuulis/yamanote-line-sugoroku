@@ -29,7 +29,9 @@ def test_line_to_lon_lat_keeps_endpoints_and_drops_collinear_points() -> None:
 
 
 def test_build_segments_closes_loop_with_directed_ids() -> None:
-    segments = export.build_segments("svc", ["a", "b", "c"])
+    segments = export.build_segments(
+        "svc", ["a", "b", "c"], True, target_service_id="svc"
+    )
 
     assert [segment["id"] for segment in segments] == [
         "svc:a:b",
@@ -45,8 +47,12 @@ def test_build_segments_closes_loop_with_directed_ids() -> None:
 
 def test_dumps_feature_collection_is_valid_json_without_crs() -> None:
     collection = export.build_segment_features(
-        export.build_segments("svc", ["a", "b"]),
-        [LineString([(0, 0), (10, 10)]), LineString([(10, 10), (0, 0)])],
+        export.build_segments("svc", ["a", "b", "c"], True, target_service_id="svc"),
+        [
+            LineString([(0, 0), (10, 10)]),
+            LineString([(10, 10), (20, 20)]),
+            LineString([(20, 20), (0, 0)]),
+        ],
         "line",
     )
 
@@ -102,7 +108,9 @@ def test_write_outputs_writes_manifest_last(
 
 
 def test_linear_segments_share_one_feature_per_pair() -> None:
-    segments = export.build_segments("svc", ["a", "b", "c"], circular=False)
+    segments = export.build_segments(
+        "svc", ["a", "b", "c"], False, target_service_id="jr-yamanote"
+    )
     assert [(s["from"], s["to"]) for s in segments] == [
         ("a", "b"),
         ("b", "a"),
@@ -128,3 +136,26 @@ def test_linear_segments_share_one_feature_per_pair() -> None:
         "from": "a",
         "to": "b",
     }
+
+
+def test_non_target_loop_exports_both_directions_on_shared_features() -> None:
+    segments = export.build_segments(
+        "metro-loop", ["a", "b", "c"], True, target_service_id="jr-yamanote"
+    )
+
+    assert [(item["from"], item["to"]) for item in segments] == [
+        ("a", "b"),
+        ("b", "a"),
+        ("b", "c"),
+        ("c", "b"),
+        ("c", "a"),
+        ("a", "c"),
+    ]
+    assert [item["geometryFeatureIds"] for item in segments] == [
+        ["metro-loop:a~b"],
+        ["metro-loop:a~b"],
+        ["metro-loop:b~c"],
+        ["metro-loop:b~c"],
+        ["metro-loop:c~a"],
+        ["metro-loop:c~a"],
+    ]

@@ -1,0 +1,121 @@
+station_id,operator,other_operator,other_station_name,walking_note,source_url
+keikyu-sengakuji,京浜急行電鉄,東京都交通局,泉岳寺 (浅草線),same station; through-running boundary (都営-managed station),https://www.keikyu.co.jp/ride/kakueki/
+keikyu-sengakuji,京浜急行電鉄,JR東日本,高輪ゲートウェイ (山手線・京浜東北線),"different station name; transfer via street/concourse; listed by Wikipedia, unverified on official page",https://www.keikyu.co.jp/ride/kakueki/
+keikyu-shinagawa,京浜急行電鉄,JR東日本,品川 (山手線・京浜東北線・東海道線・横須賀線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-shinagawa,京浜急行電鉄,JR東海,品川 (東海道新幹線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-kawasaki,京浜急行電鉄,JR東日本,川崎 (東海道線・京浜東北線・南武線),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-hatchonawate,京浜急行電鉄,JR東日本,八丁畷 (南武線浜川崎支線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-tsurumi,京浜急行電鉄,JR東日本,鶴見 (京浜東北線・鶴見線),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-higashi-kanagawa,京浜急行電鉄,JR東日本,東神奈川 (京浜東北線・横浜線),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-yokohama,京浜急行電鉄,JR東日本,横浜 (東海道線・横須賀線・湘南新宿ライン・京浜東北線・根岸線・横浜線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-yokohama,京浜急行電鉄,東急電鉄,横浜 (東横線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-yokohama,京浜急行電鉄,横浜高速鉄道,横浜 (みなとみらい線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-yokohama,京浜急行電鉄,相模鉄道,横浜 (相鉄本線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-yokohama,京浜急行電鉄,横浜市交通局,横浜 (ブルーライン),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-kamiooka,京浜急行電鉄,横浜市交通局,上大岡 (ブルーライン),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-sugita,京浜急行電鉄,JR東日本,新杉田 (根岸線),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-sugita,京浜急行電鉄,横浜シーサイドライン,新杉田 (金沢シーサイドライン),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-kanazawa-hakkei,京浜急行電鉄,横浜シーサイドライン,金沢八景 (金沢シーサイドライン),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-zushi-hayama,京浜急行電鉄,JR東日本,逗子 (横須賀線),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-kurihama,京浜急行電鉄,JR東日本,久里浜 (横須賀線),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-tenkubashi,京浜急行電鉄,東京モノレール,天空橋 (東京モノレール羽田空港線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-haneda-airport-terminal-3,京浜急行電鉄,東京モノレール,羽田空港第3ターミナル (東京モノレール羽田空港線),same station name; listed as connecting line,https://www.keikyu.co.jp/ride/kakueki/
+keikyu-haneda-airport-terminal-1-2,京浜急行電鉄,東京モノレール,羽田空港第1ターミナル / 羽田空港第2ターミナル (東京モノレール羽田空港線),different station name; transfer via street/concourse,https://www.keikyu.co.jp/ride/kakueki/
+keio-shinjuku,京王電鉄,JR東日本,新宿 (山手線・中央線快速・中央総武線各停・埼京線・湘南新宿ライン),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shinjuku,京王電鉄,東京地下鉄,新宿 (丸ノ内線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shinjuku,京王電鉄,東京都交通局,新宿 (新宿線・大江戸線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shinjuku,京王電鉄,東京都交通局,新宿西口 (大江戸線),different station name; transfer via street/concourse,https://www.keio.co.jp/train/station/
+keio-shinjuku,京王電鉄,西武鉄道,西武新宿 (新宿線),"different station name; transfer via street/concourse; listed by Wikipedia, unverified on official page",https://www.keio.co.jp/train/station/
+keio-shinjuku,京王電鉄,小田急電鉄,新宿 (小田原線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shimo-takaido,京王電鉄,東急電鉄,下高井戸 (世田谷線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-bubaigawara,京王電鉄,JR東日本,分倍河原 (南武線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-takahatafudo,京王電鉄,多摩都市モノレール,高幡不動 (多摩都市モノレール線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-hachioji,京王電鉄,JR東日本,八王子 (中央線・横浜線・八高線),different station name; transfer via street/concourse,https://www.keio.co.jp/train/station/
+keio-takao,京王電鉄,JR東日本,高尾 (中央線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-takaosanguchi,京王電鉄,高尾登山電鉄,清滝 (ケーブルカー),different station name; transfer via street/concourse,https://www.keio.co.jp/train/station/
+keio-inadazutsumi,京王電鉄,JR東日本,稲田堤 (南武線),different station name; transfer via street/concourse,https://www.keio.co.jp/train/station/
+keio-nagayama,京王電鉄,小田急電鉄,小田急永山 (多摩線),different station name; transfer via street/concourse,https://www.keio.co.jp/train/station/
+keio-tama-center,京王電鉄,小田急電鉄,小田急多摩センター (多摩線),different station name; transfer via street/concourse,https://www.keio.co.jp/train/station/
+keio-tama-center,京王電鉄,多摩都市モノレール,多摩センター (多摩都市モノレール線),different station name; transfer via street/concourse,https://www.keio.co.jp/train/station/
+keio-hashimoto,京王電鉄,JR東日本,橋本 (横浜線・相模線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-tama-dobutsukoen,京王電鉄,多摩都市モノレール,多摩動物公園 (多摩都市モノレール線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shibuya,京王電鉄,JR東日本,渋谷 (山手線・埼京線・湘南新宿ライン),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shibuya,京王電鉄,東急電鉄,渋谷 (東横線・田園都市線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shibuya,京王電鉄,東京地下鉄,渋谷 (銀座線・半蔵門線・副都心線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-shimo-kitazawa,京王電鉄,小田急電鉄,下北沢 (小田原線),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+keio-kichijoji,京王電鉄,JR東日本,吉祥寺 (中央線快速・中央総武線各停),same station name; listed as connecting line,https://www.keio.co.jp/train/station/
+odakyu-shinjuku,小田急電鉄,JR東日本,新宿 (山手線・中央線快速・中央総武線各停・埼京線・湘南新宿ライン),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-shinjuku,小田急電鉄,東京地下鉄,新宿 (丸ノ内線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-shinjuku,小田急電鉄,東京都交通局,新宿 (新宿線・大江戸線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-shinjuku,小田急電鉄,東京都交通局,新宿西口 (大江戸線),different station name; transfer via street/concourse,https://www.odakyu.jp/station/
+odakyu-shinjuku,小田急電鉄,西武鉄道,西武新宿 (新宿線),"different station name; transfer via street/concourse; listed by Wikipedia, unverified on official page",https://www.odakyu.jp/station/
+odakyu-shinjuku,小田急電鉄,京王電鉄,新宿 (京王線・京王新線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-yoyogi-uehara,小田急電鉄,東京地下鉄,代々木上原 (千代田線),same station; through-running boundary,https://www.odakyu.jp/station/
+odakyu-shimo-kitazawa,小田急電鉄,京王電鉄,下北沢 (井の頭線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-gotokuji,小田急電鉄,東急電鉄,山下 (世田谷線),different station name; transfer via street/concourse,https://www.odakyu.jp/station/
+odakyu-noborito,小田急電鉄,JR東日本,登戸 (南武線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-machida,小田急電鉄,JR東日本,町田 (横浜線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-chuo-rinkan,小田急電鉄,東急電鉄,中央林間 (田園都市線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-yamato,小田急電鉄,相模鉄道,大和 (相鉄本線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-shonandai,小田急電鉄,相模鉄道,湘南台 (いずみ野線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-shonandai,小田急電鉄,横浜市交通局,湘南台 (ブルーライン),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-fujisawa,小田急電鉄,JR東日本,藤沢 (東海道線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-fujisawa,小田急電鉄,江ノ島電鉄,藤沢 (江ノ島電鉄線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-ebina,小田急電鉄,JR東日本,海老名 (相模線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-ebina,小田急電鉄,相模鉄道,海老名 (相鉄本線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-atsugi,小田急電鉄,JR東日本,厚木 (相模線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-shin-matsuda,小田急電鉄,JR東海,松田 (御殿場線),different station name; transfer via street/concourse,https://www.odakyu.jp/station/
+odakyu-odawara,小田急電鉄,JR東日本,小田原 (東海道線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-odawara,小田急電鉄,JR東海,小田原 (東海道新幹線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-odawara,小田急電鉄,小田急箱根,小田原 (鉄道線・箱根登山電車),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-odawara,小田急電鉄,伊豆箱根鉄道,小田原 (大雄山線),same station name; listed as connecting line,https://www.odakyu.jp/station/
+odakyu-nagayama,小田急電鉄,京王電鉄,京王永山 (相模原線),different station name; transfer via street/concourse,https://www.odakyu.jp/station/
+odakyu-tama-center,小田急電鉄,京王電鉄,京王多摩センター (相模原線),different station name; transfer via street/concourse,https://www.odakyu.jp/station/
+odakyu-tama-center,小田急電鉄,多摩都市モノレール,多摩センター (多摩都市モノレール線),different station name; transfer via street/concourse,https://www.odakyu.jp/station/
+tokyu-shibuya,東急電鉄,JR東日本,渋谷 (山手線・埼京線・湘南新宿ライン),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-shibuya,東急電鉄,京王電鉄,渋谷 (井の頭線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-shibuya,東急電鉄,東京地下鉄,渋谷 (銀座線・半蔵門線・副都心線),"same station; through-running boundary (半蔵門線 for 田園都市線, 副都心線 for 東横線)",https://www.tokyu.co.jp/railway/station/
+tokyu-naka-meguro,東急電鉄,東京地下鉄,中目黒 (日比谷線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-musashi-kosugi,東急電鉄,JR東日本,武蔵小杉 (南武線・横須賀線・湘南新宿ライン・相鉄線直通),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-hiyoshi,東急電鉄,横浜市交通局,日吉 (グリーンライン),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-kikuna,東急電鉄,JR東日本,菊名 (横浜線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-yokohama,東急電鉄,JR東日本,横浜 (東海道線・横須賀線・湘南新宿ライン・京浜東北線・根岸線・横浜線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-yokohama,東急電鉄,京浜急行電鉄,横浜 (本線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-yokohama,東急電鉄,相模鉄道,横浜 (相鉄本線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-yokohama,東急電鉄,横浜市交通局,横浜 (ブルーライン),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-yokohama,東急電鉄,横浜高速鉄道,横浜 (みなとみらい線),same station; through-running boundary,https://www.tokyu.co.jp/railway/station/
+tokyu-meguro,東急電鉄,JR東日本,目黒 (山手線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-meguro,東急電鉄,東京地下鉄,目黒 (南北線),same station; through-running boundary,https://www.tokyu.co.jp/railway/station/
+tokyu-meguro,東急電鉄,東京都交通局,目黒 (三田線),same station; through-running boundary,https://www.tokyu.co.jp/railway/station/
+tokyu-shin-yokohama,東急電鉄,相模鉄道,新横浜 (相鉄新横浜線),same station; through-running boundary,https://www.tokyu.co.jp/railway/station/
+tokyu-shin-yokohama,東急電鉄,JR東日本,新横浜 (横浜線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-shin-yokohama,東急電鉄,JR東海,新横浜 (東海道新幹線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-shin-yokohama,東急電鉄,横浜市交通局,新横浜 (ブルーライン),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-mizonokuchi,東急電鉄,JR東日本,武蔵溝ノ口 (南武線),different station name; transfer via street/concourse,https://www.tokyu.co.jp/railway/station/
+tokyu-azamino,東急電鉄,横浜市交通局,あざみ野 (ブルーライン),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-nagatsuta,東急電鉄,JR東日本,長津田 (横浜線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-chuo-rinkan,東急電鉄,小田急電鉄,中央林間 (江ノ島線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-oimachi,東急電鉄,JR東日本,大井町 (京浜東北線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-oimachi,東急電鉄,東京臨海高速鉄道,大井町 (りんかい線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-nakanobu,東急電鉄,東京都交通局,中延 (浅草線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-gotanda,東急電鉄,JR東日本,五反田 (山手線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-gotanda,東急電鉄,東京都交通局,五反田 (浅草線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-togoshi-ginza,東急電鉄,東京都交通局,戸越 (浅草線),different station name; transfer via street/concourse,https://www.tokyu.co.jp/railway/station/
+tokyu-kamata,東急電鉄,JR東日本,蒲田 (京浜東北線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+tokyu-yamashita,東急電鉄,小田急電鉄,豪徳寺 (小田原線),different station name; transfer via street/concourse,https://www.tokyu.co.jp/railway/station/
+tokyu-shimo-takaido,東急電鉄,京王電鉄,下高井戸 (京王線),same station name; listed as connecting line,https://www.tokyu.co.jp/railway/station/
+sotetsu-yokohama,相模鉄道,JR東日本,横浜 (東海道線・横須賀線・湘南新宿ライン・京浜東北線・根岸線・横浜線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-yokohama,相模鉄道,東急電鉄,横浜 (東横線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-yokohama,相模鉄道,京浜急行電鉄,横浜 (本線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-yokohama,相模鉄道,横浜市交通局,横浜 (ブルーライン),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-yokohama,相模鉄道,横浜高速鉄道,横浜 (みなとみらい線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-hazawa-yokohama-kokudai,相模鉄道,JR東日本,羽沢横浜国大 (相鉄・JR直通線),same station; through-running boundary,https://www.sotetsu.co.jp/train/stations/
+sotetsu-shin-yokohama,相模鉄道,東急電鉄,新横浜 (東急新横浜線),same station; through-running boundary,https://www.sotetsu.co.jp/train/stations/
+sotetsu-shin-yokohama,相模鉄道,JR東日本,新横浜 (横浜線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-shin-yokohama,相模鉄道,JR東海,新横浜 (東海道新幹線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-shin-yokohama,相模鉄道,横浜市交通局,新横浜 (ブルーライン),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-yamato,相模鉄道,小田急電鉄,大和 (江ノ島線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-ebina,相模鉄道,小田急電鉄,海老名 (小田原線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-ebina,相模鉄道,JR東日本,海老名 (相模線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-shonandai,相模鉄道,小田急電鉄,湘南台 (江ノ島線),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/
+sotetsu-shonandai,相模鉄道,横浜市交通局,湘南台 (ブルーライン),same station name; listed as connecting line,https://www.sotetsu.co.jp/train/stations/

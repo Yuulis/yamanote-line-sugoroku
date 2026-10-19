@@ -1,0 +1,129 @@
+{
+  "group": "metro",
+  "serviceIds": [
+    "metro-ginza",
+    "metro-marunouchi",
+    "metro-marunouchi-honancho",
+    "metro-hibiya",
+    "metro-tozai",
+    "metro-chiyoda",
+    "metro-yurakucho",
+    "metro-hanzomon",
+    "metro-namboku",
+    "metro-fukutoshin"
+  ],
+  "services": [
+    {
+      "service_id": "metro-ginza",
+      "line_name": "東京メトロ銀座線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shibuya|metro-omote-sando|metro-gaiemmae|metro-aoyama-itchome|metro-akasaka-mitsuke|metro-kokkai-gijidomae|metro-toranomon|shimbashi|metro-ginza|metro-kyobashi|metro-nihombashi|shin-nihombashi|kanda|metro-suehirocho|okachimachi|ueno|metro-inaricho|metro-tawaramachi|metro-asakusa",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "metro-marunouchi",
+      "line_name": "東京メトロ丸ノ内線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "ogikubo|metro-minami-asagaya|metro-shin-koenji|metro-higashi-koenji|metro-shin-nakano|metro-nakano-sakaue|metro-nishi-shinjuku|shinjuku|metro-shinjuku-sanchome|metro-shinjuku-gyoemmae|metro-yotsuya-sanchome|yotsuya|metro-akasaka-mitsuke|metro-kokkai-gijidomae|metro-kasumigaseki|metro-ginza|tokyo|metro-otemachi|metro-awajicho|ochanomizu|metro-hongo-sanchome|metro-korakuen|metro-myogadani|metro-shin-otsuka|ikebukuro",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "metro-marunouchi-honancho",
+      "line_name": "東京メトロ丸ノ内線 方南町支線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "metro-nakano-sakaue|metro-nakano-shimbashi|metro-nakano-fujimicho|metro-honancho",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "metro-hibiya",
+      "line_name": "東京メトロ日比谷線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "metro-naka-meguro|ebisu|metro-hiro-o|metro-roppongi|metro-kamiyacho|metro-toranomon|metro-kasumigaseki|yurakucho|metro-ginza|metro-higashi-ginza|metro-shintomicho|hatchobori|metro-kayabacho|metro-ningyocho|metro-kodemmacho|akihabara|okachimachi|ueno|metro-iriya|metro-minowa|minami-senju|kita-senju",
+      "first_end_kind": "terminus",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "metro-tozai",
+      "line_name": "東京メトロ東西線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "nakano|metro-ochiai|takadanobaba|metro-waseda|metro-kagurazaka|iidabashi|metro-kudanshita|metro-takebashi|metro-otemachi|metro-nihombashi|metro-kayabacho|metro-monzen-nakacho|metro-kiba|metro-toyocho|metro-minami-sunamachi|metro-nishi-kasai|metro-kasai|metro-urayasu|metro-minami-gyotoku|metro-gyotoku|metro-myoden|metro-baraki-nakayama|nishi-funabashi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "metro-chiyoda",
+      "line_name": "東京メトロ千代田線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "metro-yoyogi-uehara|metro-yoyogi-koen|harajuku|metro-omote-sando|metro-nogizaka|metro-akasaka|metro-kokkai-gijidomae|metro-kasumigaseki|yurakucho|metro-nijubashimae|metro-otemachi|metro-awajicho|metro-yushima|metro-nezu|metro-sendagi|nishi-nippori|keisei-machiya|kita-senju|ayase|metro-kita-ayase",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "metro-yurakucho",
+      "line_name": "東京メトロ有楽町線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "metro-wakoshi|metro-chikatetsu-narimasu|metro-chikatetsu-akatsuka|metro-heiwadai|metro-hikawadai|metro-kotake-mukaihara|metro-senkawa|metro-kanamecho|ikebukuro|metro-higashi-ikebukuro|metro-gokokuji|metro-edogawabashi|iidabashi|ichigaya|metro-kojimachi|metro-akasaka-mitsuke|metro-sakuradamon|yurakucho|metro-ginza|metro-shintomicho|metro-tsukishima|metro-toyosu|metro-tatsumi|shin-kiba",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "metro-hanzomon",
+      "line_name": "東京メトロ半蔵門線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shibuya|metro-omote-sando|metro-aoyama-itchome|metro-akasaka-mitsuke|metro-hanzomon|metro-kudanshita|metro-jimbocho|metro-otemachi|shin-nihombashi|metro-ningyocho|metro-kiyosumi-shirakawa|metro-sumiyoshi|kinshicho|keisei-oshiage",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "metro-namboku",
+      "line_name": "東京メトロ南北線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "meguro|metro-shirokanedai|metro-shirokane-takanawa|metro-azabu-juban|metro-roppongi-itchome|metro-kokkai-gijidomae|metro-akasaka-mitsuke|yotsuya|ichigaya|iidabashi|metro-korakuen|metro-todaimae|metro-hon-komagome|komagome|metro-nishigahara|oji|metro-oji-kamiya|metro-shimo|metro-akabane-iwabuchi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "metro-fukutoshin",
+      "line_name": "東京メトロ副都心線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "metro-wakoshi|metro-chikatetsu-narimasu|metro-chikatetsu-akatsuka|metro-heiwadai|metro-hikawadai|metro-kotake-mukaihara|metro-senkawa|metro-kanamecho|ikebukuro|metro-zoshigaya|metro-nishi-waseda|metro-higashi-shinjuku|metro-shinjuku-sanchome|metro-kita-sando|harajuku|shibuya",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "metro-chiyoda",
+      "serviceIds": [
+        "metro-ginza",
+        "metro-marunouchi",
+        "metro-marunouchi-honancho",
+        "metro-hibiya",
+        "metro-tozai",
+        "metro-chiyoda",
+        "metro-yurakucho",
+        "metro-hanzomon",
+        "metro-namboku",
+        "metro-fukutoshin"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 10,
+    "stops": 186,
+    "pairs": 176
+  }
+}

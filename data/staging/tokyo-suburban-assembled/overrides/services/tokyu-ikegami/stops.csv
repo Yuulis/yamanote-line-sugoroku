@@ -1,0 +1,16 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,gotanda,IK01,,五反田,五反田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-osaki-hirokoji,IK02,,大崎広小路,大崎広小路,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,toei-togoshi,IK03,,戸越銀座,戸越銀座,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tokyu-ebara-nakanobu,IK04,,荏原中延,荏原中延,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tokyu-hatanodai,IK05,,旗の台,旗の台,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tokyu-nagahara,IK06,,長原,長原,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tokyu-senzoku-ike,IK07,,洗足池,洗足池,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tokyu-ishikawadai,IK08,,石川台,石川台,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,tokyu-yukigaya-otsuka,IK09,,雪が谷大塚,雪が谷大塚,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,tokyu-ontakesan,IK10,,御嶽山,御嶽山,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,tokyu-kugahara,IK11,,久が原,久が原,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,tokyu-chidoricho,IK12,,千鳥町,千鳥町,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,tokyu-ikegami,IK13,,池上,池上,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+13,tokyu-hasunuma,IK14,,蓮沼,蓮沼,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+14,kamata,IK15,,蒲田,蒲田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

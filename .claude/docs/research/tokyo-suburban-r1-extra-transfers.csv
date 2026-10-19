@@ -1,0 +1,9 @@
+station_id,operator,other_operator,other_station_name,walking_note,source_url
+mm-yokohama,横浜高速鉄道,東急電鉄,横浜,lines: 東横線 (through-running),https://ftp.mm21railway.co.jp/info/route_map.html
+mm-yokohama,横浜高速鉄道,京浜急行電鉄,横浜,lines: 本線,https://ftp.mm21railway.co.jp/info/route_map.html
+mm-yokohama,横浜高速鉄道,相模鉄道,横浜,lines: 本線,https://ftp.mm21railway.co.jp/info/route_map.html
+mm-yokohama,横浜高速鉄道,東日本旅客鉄道,横浜,lines: 東海道本線・横須賀線・京浜東北線・根岸線・横浜線,https://ftp.mm21railway.co.jp/info/route_map.html
+mm-yokohama,横浜高速鉄道,横浜市交通局,横浜,lines: ブルーライン,https://ftp.mm21railway.co.jp/info/route_map.html
+hokuso-keisei-takasago,北総鉄道,京成電鉄,京成高砂,lines: 京成本線・金町線・成田空港線 (共同使用駅),https://www.hokuso-railway.co.jp/hokuso/outline.html
+hokuso-higashi-matsudo,北総鉄道,東日本旅客鉄道,東松戸,lines: 武蔵野線,https://www.hokuso-railway.co.jp/railway/station/
+hokuso-shin-kamagaya,北総鉄道,東武鉄道,新鎌ヶ谷,lines: 野田線,https://www.hokuso-railway.co.jp/railway/station/

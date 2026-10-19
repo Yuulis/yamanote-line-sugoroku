@@ -1,0 +1,33 @@
+{
+  "operator": "相模鉄道",
+  "n02Operator": "相模鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "相模鉄道 non-JR staging component",
+  "areaPrefectures": [
+    "神奈川県"
+  ],
+  "serviceIds": [
+    "sotetsu-main",
+    "sotetsu-izumino",
+    "sotetsu-shin-yokohama"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "sotetsu-yokohama",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "d866febc137ac60d59b489eb200120f89da3d10428428552ccbb3ebe8203dc6e",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

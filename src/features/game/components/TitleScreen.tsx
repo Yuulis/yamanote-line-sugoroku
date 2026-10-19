@@ -4,12 +4,14 @@ import { CC_BY_LICENSE_NAME, CC_BY_URL, safeExternalUrl } from "../../map/attrib
 import { MAP_CREDITS } from "../../map/mapConfig";
 import type { RailwayNetwork } from "../engine";
 import { type SaveLookup, saveProblemMessage } from "../store/persistence";
-import { stationName } from "./GamePanel";
+import { stationName } from "../presentation";
+import type { PresentationResolver } from "../presentationResolver";
 
 interface TitleScreenProps {
   manifest: Manifest | null;
   /** Null when the game cannot start (see `unavailableReason`). */
   network: RailwayNetwork | null;
+  presentation?: PresentationResolver;
   saveLookup: SaveLookup | null;
   /** Why the game cannot start (data failed to load); blocks starting. */
   unavailableReason: string | null;
@@ -23,17 +25,18 @@ interface TitleScreenProps {
 /** Emitted by `build.license` in vite.config.ts; keep the file names in sync. */
 const THIRD_PARTY_LICENSES_URL = `${import.meta.env.BASE_URL}third-party-licenses.txt`;
 
-function resumeLabel(game: GameState, network: RailwayNetwork): string {
+function resumeLabel(game: GameState, network: RailwayNetwork, presentation?: PresentationResolver): string {
   if (game.status === "completed") return `クリア結果を見る（${game.turn}ターンでクリア）`;
-  return `つづきから（${game.turn}ターン目・${stationName(network, game.currentStationId)}）`;
+  return `つづきから（${game.turn}ターン目・${stationName(network, game.currentStationId, presentation)}）`;
 }
 
 function SaveSection({
   saveLookup,
   network,
+  presentation,
   onResume,
   onDeleteSave,
-}: Pick<TitleScreenProps, "saveLookup" | "onResume" | "onDeleteSave"> & {
+}: Pick<TitleScreenProps, "saveLookup" | "onResume" | "onDeleteSave" | "presentation"> & {
   network: RailwayNetwork;
 }) {
   if (!saveLookup || saveLookup.kind === "none") return null;
@@ -58,7 +61,7 @@ function SaveSection({
   return (
     <>
       <button type="button" className="button-primary" onClick={() => onResume(game)}>
-        {resumeLabel(game, network)}
+        {resumeLabel(game, network, presentation)}
       </button>
       <button type="button" className="title-screen__delete" onClick={onDeleteSave}>
         セーブを削除
@@ -111,25 +114,23 @@ function Credits({ manifest }: { manifest: Manifest | null }) {
           </a>
         </li>
       </ul>
-      <p>本作品は既存作品から着想を得た独立したオリジナルゲームです。</p>
-      <p>本作は東日本旅客鉄道株式会社および国土交通省とは関係のない、非公式のファンメイド作品です。</p>
     </section>
   );
 }
 
+const INTRO_COPY = "新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。山手線と他の路線がある駅では、3分の2の確率で山手線を選び、残りの確率を他の運行系統に均等に割り当てます。他の路線で方向を抽選するときは、山手線に近づく方向の抽選重みが反対方向の2倍になります。";
+
 /** Start screen (spec 6.1): title, rules, start / resume, credits. */
 export function TitleScreen(props: TitleScreenProps) {
-  const { network, saveLookup, unavailableReason, notice } = props;
+  const { network, presentation, saveLookup, unavailableReason, notice } = props;
   return (
     <main className="title-screen" aria-labelledby="game-title">
       <div className="title-screen__card">
         <h1 id="game-title" className="title-screen__title">
           山手線すごろく
         </h1>
-        <p className="title-screen__subtitle">JR東日本 1都3県版</p>
-        <p>
-          新橋から出発し、東京都・千葉県・神奈川県・埼玉県のJR東日本40サービスを乗り継ぎながら、山手線外回り全30区間の踏破を目指すすごろくです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。山手線の駅では2分の1の確率で山手線になり、残りは他の路線から均等に選びます。他の路線では、山手線に近づく方向が反対方向の2倍の確率で選ばれます。
-        </p>
+        <p className="title-screen__subtitle">東京近郊版</p>
+        <p>{INTRO_COPY}</p>
         <p>
           山手線は<strong>外回り</strong>に固定。他路線では毎回方向を抽選し、終点・エリア端で余った目は使いません。
         </p>
@@ -151,6 +152,7 @@ export function TitleScreen(props: TitleScreenProps) {
             <SaveSection
               saveLookup={saveLookup}
               network={network}
+              presentation={presentation}
               onResume={props.onResume}
               onDeleteSave={props.onDeleteSave}
             />

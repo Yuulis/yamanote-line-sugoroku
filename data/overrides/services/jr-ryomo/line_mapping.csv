@@ -1,0 +1,22 @@
+from_id,to_id,n02_line,via,route,compose
+takasaki,takasakitonyamachi,,,,"{""legs"":[{""source_service"":""jr-joetsu"",""from"":""takasaki"",""to"":""takasakitonyamachi""}],""shared_track_evidence"":[{""lines"":[""上越線""],""allow"":[],""deny"":[],""reason"":""Shared JR East 上越線 track: the owner and consumer use the same N02 operator, adjacent platform groups, and matching measured raw path length; the owner and consumer N02 paths both measure 2.759629 km. Reviewed from pair-evidence.csv for this stage.""}]}"
+takasakitonyamachi,ino,,,,"{""legs"":[{""source_service"":""jr-joetsu"",""from"":""takasakitonyamachi"",""to"":""ino""}],""shared_track_evidence"":[{""lines"":[""上越線""],""allow"":[],""deny"":[],""reason"":""Shared JR East 上越線 track: the owner and consumer use the same N02 operator, adjacent platform groups, and matching measured raw path length; the owner and consumer N02 paths both measure 1.366773 km. Reviewed from pair-evidence.csv for this stage.""}]}"
+ino,shim-maebashi,,,,"{""legs"":[{""source_service"":""jr-joetsu"",""from"":""ino"",""to"":""shim-maebashi""}],""shared_track_evidence"":[{""lines"":[""上越線""],""allow"":[],""deny"":[],""reason"":""Shared JR East 上越線 track: the owner and consumer use the same N02 operator, adjacent platform groups, and matching measured raw path length; the owner and consumer N02 paths both measure 3.246519 km. Reviewed from pair-evidence.csv for this stage.""}]}"
+shim-maebashi,maebashi,両毛線,,,
+maebashi,maebashioshima,両毛線,,,
+maebashioshima,komagata,両毛線,,,
+komagata,isesaki,両毛線,,,
+isesaki,kunisada,両毛線,,,
+kunisada,iwajuku,両毛線,,,
+iwajuku,kiryu,両毛線,,,
+kiryu,omata,両毛線,,,
+omata,yamamae,両毛線,,,
+yamamae,ashikaga,両毛線,,,
+ashikaga,ashikaga-flower-park,両毛線,,,
+ashikaga-flower-park,tomita,両毛線,,,
+tomita,sano,両毛線,,,
+sano,iwafune,両毛線,,,
+iwafune,ohirashita,両毛線,,,
+ohirashita,tochigi,両毛線,,,
+tochigi,omoigawa,両毛線,,,
+omoigawa,oyama,両毛線,,,

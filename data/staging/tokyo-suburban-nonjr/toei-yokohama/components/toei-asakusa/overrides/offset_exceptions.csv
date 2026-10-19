@@ -1,0 +1,2 @@
+service_id,station_id,max_platform_offset_m,reason
+toei-oedo-loop,toei-kuramae,310,Reviewed large-interchange offset: N02 platform codes 003571 and 003583 have a measured 291.286 m representative-point offset; Tokyo Metropolitan Bureau of Transportation identifies separate Asakusa Line and Oedo Line station buildings at Kuramae: https://www.kotsu.metro.tokyo.jp/subway/stations/kuramae.html

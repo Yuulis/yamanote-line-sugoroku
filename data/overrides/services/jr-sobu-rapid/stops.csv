@@ -1,11 +1,11 @@
-order,station_id,station_number,platform_selector
-0,tokyo,JO19,
-1,shin-nihombashi,JO20,
-2,bakurocho,JO21,
-3,kinshicho,JO22,
-4,shin-koiwa,JO23,
-5,ichikawa,JO24,
-6,funabashi,JO25,
-7,tsudanuma,JO26,
-8,inage,JO27,
-9,chiba,JO28,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyo,JO19,,東京,東京,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,shin-nihombashi,JO20,,新日本橋,新日本橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,bakurocho,JO21,,馬喰町,馬喰町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,kinshicho,JO22,,錦糸町,錦糸町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,shin-koiwa,JO23,,新小岩,新小岩,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,ichikawa,JO24,,市川,市川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,funabashi,JO25,,船橋,船橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,tsudanuma,JO26,,津田沼,津田沼,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,inage,JO27,,稲毛,稲毛,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,chiba,JO28,,千葉,千葉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

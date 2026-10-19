@@ -1,0 +1,4 @@
+from_id,to_id,n02_line,via,route,compose
+metro-nakano-sakaue,metro-nakano-shimbashi,4号線丸ノ内線分岐線,,,
+metro-nakano-shimbashi,metro-nakano-fujimicho,4号線丸ノ内線分岐線,,,
+metro-nakano-fujimicho,metro-honancho,4号線丸ノ内線分岐線,,,

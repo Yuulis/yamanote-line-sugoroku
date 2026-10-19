@@ -1,0 +1,19 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,shibukawa,,,渋川,渋川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kanashima,,,金島,金島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,ubashima,,,祖母島,祖母島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,onogami,,,小野上,小野上,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,onogami-onsen,,,小野上温泉,小野上温泉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,ichishiro,,,市城,市城,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,nakanojo,,,中之条,中之条,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,gumma-haramachi,,,群馬原町,群馬原町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,gobara,,,郷原,郷原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,yagura,,,矢倉,矢倉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,iwashima,,,岩島,岩島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,kawarayu-onsen,,,川原湯温泉,川原湯温泉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,naganoharakusatsuguchi,,,長野原草津口,長野原草津口,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,gumma-otsu,,,群馬大津,群馬大津,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,haneo,,,羽根尾,羽根尾,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,fukurogura,,,袋倉,袋倉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,manza-kazawaguchi,,,万座・鹿沢口,万座・鹿沢口,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,omae,,,大前,大前,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

@@ -2,13 +2,14 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createGame, playTurn, restoreGame, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { loadBundle } from "../e2e/fixtures/bundle";
 
-// Disk -> runtime guards -> the app's own network/config, exactly as in production.
-const { network, data } = await loadBundle("real");
+// Legacy-only regression against the archived old edition. Current production
+// bundle/config behavior is covered by product-data.test.ts.
+const { network, data } = await loadBundle("old-edition");
 const catalog = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../../data/overrides/expected-catalog.json", import.meta.url)), "utf8"),
+  readFileSync(fileURLToPath(new URL("../../data/baselines/jr-east-capital-region/data/overrides/expected-catalog.json", import.meta.url)), "utf8"),
 ) as { services: { id: string; stationIds: string[] }[]; stationIds: string[] };
 const productCatalogRows = readFileSync(
   fileURLToPath(new URL("../../.claude/docs/research/jr-east-capital-region-product-catalog.csv", import.meta.url)),
@@ -17,9 +18,9 @@ const productCatalogRows = readFileSync(
 const SEEDS = ["real-alpha", "real-beta", "real-gamma", "real-delta", "real-epsilon", "real-zeta", "real-eta", "real-theta"];
 const MAX_TURNS = 5_000;
 const EXPECTED_TURNS = [32, 41, 136, 24, 103, 31, 24, 73];
-const RESTORE_OPTIONS = { expectedConfig: MVP_GAME_CONFIG, requireSeededRolls: true } as const;
+const RESTORE_OPTIONS = { expectedConfig: LEGACY_CAPITAL_REGION_CONFIG, requireSeededRolls: true } as const;
 
-describe("shipped JR East capital-region network", () => {
+describe("archived JR East capital-region network", () => {
   it("matches the approved product catalog and complete directed geometry contract", () => {
     expect(catalog.services).toHaveLength(40);
     expect(catalog.stationIds).toHaveLength(472);
@@ -69,7 +70,7 @@ describe("shipped JR East capital-region network", () => {
   });
 
   it.each(SEEDS.map((seed, index) => [seed, EXPECTED_TURNS[index]!] as const))("plays %s to completion and restores both mid-game and completed saves", (seed, expectedTurns) => {
-    let game = createGame(MVP_GAME_CONFIG, seed, network);
+    let game = createGame(LEGACY_CAPITAL_REGION_CONFIG, seed, network);
     let checkedMidGame = false;
     while (game.status === "playing" && game.turn < MAX_TURNS) {
       game = playTurn(game, network).state;
@@ -85,7 +86,7 @@ describe("shipped JR East capital-region network", () => {
     expect(game.turn).toBe(expectedTurns);
     expect(game.status).toBe("completed");
     expect(game.currentStationId).toBe("shimbashi");
-    const target = targetSegmentIds(MVP_GAME_CONFIG, network);
+    const target = targetSegmentIds(LEGACY_CAPITAL_REGION_CONFIG, network);
     expect(target).toHaveLength(30);
     expect(target.every((id) => game.completedSegmentIds.includes(id))).toBe(true);
     const transferStations = new Set<string>();

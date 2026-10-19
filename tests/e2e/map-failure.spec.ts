@@ -20,6 +20,22 @@ const MAP_ERROR_TEXT = "地図の読み込みに失敗しました。";
 
 test.use({ dataset: "fixture" });
 
+test("inconsistent route references keep the invalid-data explanation visible", async ({ page, railwayBundle }) => {
+  await page.route("**/data/segments.json", async (route) => {
+    const segments = JSON.parse(railwayBundle.payloads["segments.json"]!) as { serviceId: string }[];
+    segments[0]!.serviceId = "nonexistent-service";
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(segments) });
+  });
+
+  await page.goto("/");
+
+  await expect(titleScreen(page)).toBeVisible();
+  await expect(titleScreen(page).getByRole("alert")).toHaveText(
+    "ゲームを開始できません: 路線データが不正です",
+  );
+  await expect(titleScreen(page).getByRole("button", { name: "はじめから" })).toBeDisabled();
+});
+
 test("[8.3-6] a failed map style keeps the game playable and retry recovers the map", async ({
   page,
   railwayBundle,

@@ -1,0 +1,12 @@
+from_id,to_id,n02_line,via,route,compose
+shinagawa,shimbashi,東海道線,,,
+shimbashi,tokyo,東海道線,,,
+tokyo,ueno,東北線,,,
+ueno,nippori,東北線,,,
+nippori,mikawashima,常磐線,,,
+mikawashima,minami-senju,常磐線,,,
+minami-senju,kita-senju,常磐線,,,
+kita-senju,matsudo,常磐線,,,
+matsudo,kashiwa,常磐線,,,
+kashiwa,abiko,常磐線,,,
+abiko,tennodai,常磐線,,,

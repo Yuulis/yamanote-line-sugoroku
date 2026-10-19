@@ -1,0 +1,134 @@
+{
+  "lines": [
+    {
+      "id": "tobu-tojo",
+      "name": "東武東上線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "tobu-ogose",
+      "name": "東武越生線 普通",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "tobu-tojo",
+      "name": "東武東上線 普通",
+      "kind": "local",
+      "lineIds": [
+        "tobu-tojo"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "寄居方面",
+        "backward": "池袋方面"
+      },
+      "expectedStopCount": 39,
+      "lengthRef": {
+        "km": 75.0,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 池袋–寄居: 75.000 km; Tobu Railway route overview Route-by-route operating mileage table (https://www.tobu.co.jp/corporation/rail/route/)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東武鉄道",
+      "n02Operator": "東武鉄道",
+      "areaPrefectures": [
+        "東京都",
+        "埼玉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "TJ-01",
+          "TJ-02",
+          "TJ-03",
+          "TJ-04",
+          "TJ-05",
+          "TJ-06",
+          "TJ-07",
+          "TJ-08",
+          "TJ-09",
+          "TJ-10",
+          "TJ-11",
+          "TJ-12",
+          "TJ-13",
+          "TJ-14",
+          "TJ-15",
+          "TJ-16",
+          "TJ-17",
+          "TJ-18",
+          "TJ-19",
+          "TJ-20",
+          "TJ-21",
+          "TJ-22",
+          "TJ-23",
+          "TJ-24",
+          "TJ-25",
+          "TJ-26",
+          "TJ-27",
+          "TJ-28",
+          "TJ-29",
+          "TJ-30",
+          "TJ-31",
+          "TJ-32",
+          "TJ-33",
+          "TJ-34",
+          "TJ-35",
+          "TJ-36",
+          "TJ-37",
+          "TJ-38",
+          "TJ-39"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "tobu-ogose",
+      "name": "東武越生線 普通",
+      "kind": "local",
+      "lineIds": [
+        "tobu-ogose"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "越生方面",
+        "backward": "坂戸方面"
+      },
+      "expectedStopCount": 8,
+      "lengthRef": {
+        "km": 10.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 坂戸–越生: 10.900 km; Tobu Railway route overview Route-by-route operating mileage table (https://www.tobu.co.jp/corporation/rail/route/)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東武鉄道",
+      "n02Operator": "東武鉄道",
+      "areaPrefectures": [
+        "埼玉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "TJ-26",
+          "TJ-41",
+          "TJ-42",
+          "TJ-43",
+          "TJ-44",
+          "TJ-45",
+          "TJ-46",
+          "TJ-47"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}

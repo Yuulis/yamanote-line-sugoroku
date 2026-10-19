@@ -1,0 +1,32 @@
+{
+  "operator": "北総鉄道",
+  "n02Operator": "北総鉄道",
+  "updatedAt": "2026-10-15",
+  "areaName": "北総鉄道 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "千葉県"
+  ],
+  "serviceIds": [
+    "hokuso-main"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "hokuso-keisei-takasago",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "24e97790063b7cec8f1ba852a6a62e817584a131190cdc24c7de4ab3ab7b3c87",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

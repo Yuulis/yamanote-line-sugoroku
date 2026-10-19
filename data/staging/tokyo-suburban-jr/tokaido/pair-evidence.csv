@@ -1,0 +1,7 @@
+service_id,from_id,to_id,n02_operator,from_platform_code,from_group_code,to_platform_code,to_group_code,n02_line,path_length_km,start_snap_m,end_snap_m,status,notes
+jr-tokaido,yugawara,atami,東日本旅客鉄道,005541,005541,005686,005685,東海道線,5.485576,0.000,0.000,pass,Raw N02 constrained single-pair route.
+jr-ito,atami,kinomiya,東日本旅客鉄道,005688,005685,005702,005702,伊東線,1.276666,0.000,0.000,pass,Raw N02 constrained single-pair route.
+jr-ito,kinomiya,izu-taga,東日本旅客鉄道,005702,005702,005803,005803,伊東線,4.639079,0.000,0.000,pass,Raw N02 constrained single-pair route.
+jr-ito,izu-taga,ajiro,東日本旅客鉄道,005803,005803,005850,005850,伊東線,2.767388,0.000,0.000,pass,Raw N02 constrained single-pair route.
+jr-ito,ajiro,usami,東日本旅客鉄道,005850,005850,005986,005986,伊東線,4.253813,0.000,0.000,pass,Raw N02 constrained single-pair route.
+jr-ito,usami,ito,東日本旅客鉄道,005986,005986,006117,006117,伊東線,3.851429,0.000,0.000,pass,Raw N02 constrained single-pair route.

@@ -1,0 +1,11 @@
+station_id,prefecture,municipality,in_area
+tokyo,東京都,千代田区,true
+shin-nihombashi,東京都,中央区,true
+bakurocho,東京都,中央区,true
+kinshicho,東京都,墨田区,true
+shin-koiwa,東京都,葛飾区,true
+ichikawa,千葉県,市川市,true
+funabashi,千葉県,船橋市,true
+tsudanuma,千葉県,習志野市,true
+inage,千葉県,千葉市稲毛区,true
+chiba,千葉県,千葉市中央区,true

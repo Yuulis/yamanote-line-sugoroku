@@ -1,4 +1,4 @@
-station_id,prefecture,municipality
-asano,神奈川県,横浜市鶴見区
-shin-shibaura,神奈川県,横浜市鶴見区
-umi-shibaura,神奈川県,横浜市鶴見区
+station_id,prefecture,municipality,in_area
+asano,神奈川県,横浜市鶴見区,true
+shin-shibaura,神奈川県,横浜市鶴見区,true
+umi-shibaura,神奈川県,横浜市鶴見区,true

@@ -1,0 +1,6 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,kobuchizawa,,,小淵沢,小淵沢,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kai-koizumi,,,甲斐小泉,甲斐小泉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kai-oizumi,,,甲斐大泉,甲斐大泉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,kiyosato,,,清里,清里,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,nobeyama,,,野辺山,野辺山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

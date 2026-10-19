@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasValidUiPresentationReferences,
   isManifest,
   isPosition,
   isSegment,
@@ -9,6 +10,7 @@ import {
   isServicePatternList,
   isStation,
   isStationList,
+  isUiPresentation,
 } from "../../src/data/guards";
 import {
   validFeature,
@@ -17,6 +19,7 @@ import {
   validSegment,
   validService,
   validStation,
+  validUiPresentation,
 } from "./fixtures/railway";
 
 describe("isStation", () => {
@@ -104,6 +107,67 @@ describe("isManifest", () => {
 
   it("rejects a manifest with empty dataVersion", () => {
     expect(isManifest({ ...validManifest, dataVersion: "" })).toBe(false);
+  });
+
+  it("accepts S5 manifests without optional presentation metadata", () => {
+    expect(isManifest(validManifest)).toBe(true);
+  });
+
+  it("accepts valid optional presentation metadata", () => {
+    expect(isManifest({ ...validManifest, uiPresentation: validUiPresentation })).toBe(true);
+  });
+
+  it("rejects malformed optional presentation metadata when present", () => {
+    expect(isManifest({ ...validManifest, uiPresentation: undefined })).toBe(false);
+    expect(isManifest({
+      ...validManifest,
+      uiPresentation: { ...validUiPresentation, version: 2 },
+    })).toBe(false);
+  });
+});
+
+describe("isUiPresentation", () => {
+  it("accepts valid UI metadata", () => {
+    expect(isUiPresentation(validUiPresentation)).toBe(true);
+  });
+
+  it.each([
+    ["empty alias list", { ...validUiPresentation, stations: [{ id: "st-tokyo", aliases: [] }] }],
+    ["empty aliases", { ...validUiPresentation, stations: [{ id: "st-tokyo", aliases: [""] }] }],
+    ["duplicate aliases", { ...validUiPresentation, stations: [{ id: "st-tokyo", aliases: ["東京駅", "東京駅"] }] }],
+    ["invalid color", { ...validUiPresentation, lineGroups: [{ ...validUiPresentation.lineGroups[0], color: "red" }] }],
+    ["duplicate service membership", {
+      ...validUiPresentation,
+      lineGroups: [
+        validUiPresentation.lineGroups[0],
+        { ...validUiPresentation.lineGroups[0], id: "duplicate", name: "重複", serviceIds: ["jr-yamanote"] },
+      ],
+    }],
+    ["empty operator catalogue", { ...validUiPresentation, operators: [] }],
+  ])("rejects malformed metadata with %s", (_label, value) => {
+    expect(isUiPresentation(value)).toBe(false);
+  });
+});
+
+describe("hasValidUiPresentationReferences", () => {
+  it("rejects metadata after a service group is removed", () => {
+    const privateService = { ...validService, id: "private-line", operator: "私鉄" };
+    const completePresentation = {
+      ...validUiPresentation,
+      operators: [...validUiPresentation.operators, { id: "私鉄", name: "私鉄" }],
+      lineGroups: [
+        ...validUiPresentation.lineGroups,
+        { id: "private-line", name: "私鉄線", operatorId: "私鉄", color: "#123456", serviceIds: [privateService.id] },
+      ],
+    };
+    const services = { lines: [], services: [validService, privateService] };
+
+    expect(hasValidUiPresentationReferences(completePresentation, [validStation], services)).toBe(true);
+    expect(hasValidUiPresentationReferences(
+      { ...completePresentation, lineGroups: completePresentation.lineGroups.slice(0, 1) },
+      [validStation],
+      services,
+    )).toBe(false);
   });
 });
 

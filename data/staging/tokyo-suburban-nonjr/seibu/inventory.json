@@ -1,0 +1,156 @@
+{
+  "group": "seibu",
+  "serviceIds": [
+    "seibu-ikebukuro",
+    "seibu-chichibu",
+    "seibu-yurakucho",
+    "seibu-toshima",
+    "seibu-sayama",
+    "seibu-yamaguchi",
+    "seibu-shinjuku",
+    "seibu-haijima",
+    "seibu-tamako",
+    "seibu-kokubunji",
+    "seibu-seibuen",
+    "seibu-tamagawa"
+  ],
+  "services": [
+    {
+      "service_id": "seibu-ikebukuro",
+      "line_name": "西武池袋線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "ikebukuro|seibu-shiinamachi|seibu-higashi-nagasaki|seibu-ekoda|seibu-sakuradai|seibu-nerima|seibu-nakamurabashi|seibu-fujimidai|seibu-nerima-takanodai|seibu-shakujii-koen|seibu-oizumi-gakuen|seibu-hoya|seibu-hibarigaoka|seibu-higashi-kurume|seibu-kiyose|shin-akitsu|seibu-tokorozawa|seibu-nishi-tokorozawa|seibu-kotesashi|seibu-sayamagaoka|seibu-musashi-fujisawa|seibu-inariyama-koen|seibu-irumashi|seibu-bushi|seibu-motokaji|seibu-hanno|higashi-hanno|seibu-koma|seibu-musashi-yokote|seibu-higashi-agano|seibu-agano",
+      "first_end_kind": "terminus",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "seibu-chichibu",
+      "line_name": "西武秩父線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-agano|seibu-nishi-agano|seibu-shomaru|seibu-ashigakubo|seibu-yokoze|seibu-seibu-chichibu",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-yurakucho",
+      "line_name": "西武有楽町線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-nerima|seibu-shin-sakuradai|metro-kotake-mukaihara",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "seibu-toshima",
+      "line_name": "西武豊島線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-nerima|seibu-toshimaen",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-sayama",
+      "line_name": "西武狭山線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-nishi-tokorozawa|seibu-shimo-yamaguchi|seibu-seibukyujo-mae",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-yamaguchi",
+      "line_name": "西武山口線 (レオライナー)",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-tamako|seibu-seibuen-yuenchi|seibu-seibukyujo-mae",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-shinjuku",
+      "line_name": "西武新宿線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-seibu-shinjuku|takadanobaba|seibu-shimo-ochiai|seibu-nakai|seibu-arai-yakushimae|seibu-numabukuro|seibu-nogata|seibu-toritsu-kasei|seibu-saginomiya|seibu-shimo-igusa|seibu-iogi|seibu-kami-igusa|seibu-kami-shakujii|seibu-musashi-seki|seibu-higashi-fushimi|seibu-seibu-yagisawa|seibu-tanashi|seibu-hana-koganei|seibu-kodaira|seibu-kumegawa|seibu-higashi-murayama|seibu-tokorozawa|seibu-kokukoen|seibu-shin-tokorozawa|seibu-iriso|seibu-sayamashi|seibu-shin-sayama|seibu-minami-otsuka|seibu-hon-kawagoe",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-haijima",
+      "line_name": "西武拝島線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-kodaira|seibu-hagiyama|seibu-ogawa|seibu-higashi-yamatoshi|seibu-tamagawa-josui|seibu-musashi-sunagawa|seibu-seibu-tachikawa|haijima",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-tamako",
+      "line_name": "西武多摩湖線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "kokubunji|seibu-hitotsubashi-gakuen|seibu-ome-kaido|seibu-hagiyama|seibu-yasaka|seibu-musashi-yamato|seibu-tamako",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-kokubunji",
+      "line_name": "西武国分寺線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "kokubunji|seibu-koigakubo|seibu-takanodai|seibu-ogawa|seibu-higashi-murayama",
+      "first_end_kind": "terminus",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "seibu-seibuen",
+      "line_name": "西武園線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "seibu-higashi-murayama|seibu-seibuen",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "seibu-tamagawa",
+      "line_name": "西武多摩川線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "musashi-sakai|seibu-shin-koganei|seibu-tama|seibu-shiraitodai|seibu-kyoteijo-mae|seibu-koremasa",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "seibu-chichibu",
+      "serviceIds": [
+        "seibu-ikebukuro",
+        "seibu-chichibu",
+        "seibu-yurakucho",
+        "seibu-toshima",
+        "seibu-sayama",
+        "seibu-yamaguchi",
+        "seibu-shinjuku",
+        "seibu-haijima",
+        "seibu-tamako",
+        "seibu-kokubunji",
+        "seibu-seibuen"
+      ]
+    },
+    {
+      "componentId": "seibu-tamagawa",
+      "serviceIds": [
+        "seibu-tamagawa"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 12,
+    "stops": 105,
+    "pairs": 93
+  }
+}

@@ -121,7 +121,12 @@ def test_saitama_stage_start_is_interior_and_reaches_every_station_both_ways() -
         (
             pair
             for service in overrides.services
-            for pair in directed_pairs(service.station_ids, service.circular)
+            for pair in directed_pairs(
+                service.station_ids,
+                service.circular,
+                service_id=service.id,
+                target_service_id=overrides.dataset.directed_segment_target_service_id,
+            )
         ),
         start,
         report,

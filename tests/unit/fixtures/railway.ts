@@ -62,3 +62,17 @@ export const validManifest = {
     attribution: "「国土数値情報（鉄道データ）」（国土交通省）を加工して作成",
   },
 };
+
+export const validUiPresentation = {
+  version: 1 as const,
+  operators: [{ id: "東日本旅客鉄道", name: "東日本旅客鉄道" }],
+  lineGroups: [{
+    id: "jr-yamanote",
+    name: "山手線",
+    operatorId: "東日本旅客鉄道",
+    color: "#80c241",
+    serviceIds: ["jr-yamanote"],
+  }],
+  stations: [{ id: "st-tokyo", aliases: ["東京駅"] }],
+  serviceStopNames: [],
+};

@@ -1,0 +1,5 @@
+from_id,to_id,n02_line,via,route,compose
+shinonoi,imai,信越線,,,
+imai,kawanakajima,信越線,,,
+kawanakajima,amori,信越線,,,
+amori,nagano,信越線,,,
