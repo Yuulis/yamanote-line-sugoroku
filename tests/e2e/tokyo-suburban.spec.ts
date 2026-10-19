@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
+import type { Page } from "@playwright/test";
 import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { createGame, playTurn, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import {
   PRODUCT_HISTORY_GAME_SEED,
@@ -55,14 +57,7 @@ test("the real Korakuen transfer shows joined station names, candidates, platfor
 
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   const korakuen = railwayBundle.network.stationsById.get("metro-korakuen")!;
-  await page.evaluate((center) => {
-    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
-    hook.map.jumpTo({ center, zoom: 15 });
-  }, korakuen.coordinates);
-  const korakuenPoint = await page.evaluate((point) => {
-    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
-    return hook.map.project(point);
-  }, korakuen.coordinates);
+  const korakuenPoint = await jumpToRenderedStation(page, korakuen.id, korakuen.coordinates);
   await page.mouse.click(korakuenPoint.x, korakuenPoint.y);
   await expect(page.locator(".maplibregl-popup")).toContainText("後楽園・春日");
 
@@ -77,14 +72,7 @@ test("the real Korakuen transfer shows joined station names, candidates, platfor
   });
 
   const smallKeStation = railwayBundle.network.stationsById.get("odakyu-shin-yurigaoka")!;
-  await page.evaluate((center) => {
-    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
-    hook.map.jumpTo({ center, zoom: 15 });
-  }, smallKeStation.coordinates);
-  const smallKePoint = await page.evaluate((point) => {
-    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
-    return hook.map.project(point);
-  }, smallKeStation.coordinates);
+  const smallKePoint = await jumpToRenderedStation(page, smallKeStation.id, smallKeStation.coordinates);
   await page.mouse.click(smallKePoint.x, smallKePoint.y);
   await expect(page.locator(".maplibregl-popup")).toContainText("新百合ヶ丘");
 });
@@ -136,3 +124,22 @@ test("the product game's actual clearing turn saves the exact result and restart
   const restarted = await readSave(page);
   expect(restarted).toMatchObject({ turn: 0, status: "playing", movementHistory: [], completedSegmentIds: [] });
 });
+
+/**
+ * Centre the map on a station and wait until its circle is actually rendered:
+ * a click sent before the new camera has drawn hits no feature and opens no popup.
+ */
+async function jumpToRenderedStation(page: Page, stationId: string, center: [number, number]): Promise<{ x: number; y: number }> {
+  await page.evaluate((target) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+    hook.map.jumpTo({ center: target, zoom: 15 });
+  }, center);
+  await expect.poll(async () => page.evaluate(({ id, layers }) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { queryRenderedFeatures(options: { layers: string[] }): { properties: { id: string } }[] } } }).__sugorokuE2E;
+    return hook.map.queryRenderedFeatures({ layers }).some((feature) => feature.properties.id === id);
+  }, { id: stationId, layers: [LAYER_IDS.stationCircles, LAYER_IDS.stationCirclesOrdinary] })).toBe(true);
+  return page.evaluate((point) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
+    return hook.map.project(point);
+  }, center);
+}
