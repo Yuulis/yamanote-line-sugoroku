@@ -44,6 +44,7 @@ test.describe("game accessibility and text navigation", () => {
     const panelHeading = gamePanel(page).getByRole("heading", { name: "山手線すごろく" });
     await expect(panelHeading).toBeFocused();
     await expect(page.getByRole("main", { name: "ゲーム操作" })).toBeVisible();
+    await expect.poll(() => page.locator(".map-container").evaluate((element) => Boolean(element.closest("[inert]")))).toBe(false);
     const mapAfterPanel = await page.evaluate(() => {
       const panel = document.querySelector(".game-panel");
       const map = document.querySelector(".map-container");
@@ -51,10 +52,30 @@ test.describe("game accessibility and text navigation", () => {
     });
     expect(mapAfterPanel).toBe(true);
 
+    await rollOnce(page);
     await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
     const titleHeading = titleScreen(page).getByRole("heading", { name: "山手線すごろく" });
     await expect(titleHeading).toBeFocused();
     await expect.poll(() => page.locator(".map-container").evaluate((element) => Boolean(element.closest("[inert]")))).toBe(true);
+
+    await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
+    await expect(panelHeading).toBeFocused();
+    await expect.poll(() => page.locator(".map-container").evaluate((element) => Boolean(element.closest("[inert]")))).toBe(false);
+  });
+
+  test("the failed map can be retried from the inert title screen", async ({ page, mapStub }) => {
+    mapStub.failStyle = true;
+    await openTitle(page);
+    const error = page.getByRole("alert").filter({ hasText: "地図の読み込みに失敗しました。" });
+    const retry = error.getByRole("button", { name: "再試行" });
+    await expect(error).toBeVisible();
+    await expect(retry).toBeEnabled();
+    expect(await retry.evaluate((element) => Boolean(element.closest("[inert]")))).toBe(false);
+
+    mapStub.failStyle = false;
+    await retry.click();
+    await expect(error).toBeHidden();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   });
 
   test("a turn summary announces the same roll again with turn, arrival and progress", async ({ page }) => {
@@ -62,7 +83,25 @@ test.describe("game accessibility and text navigation", () => {
     await page.getByRole("button", { name: "はじめから" }).click();
     const summary = gamePanel(page).locator(".visually-hidden[role=status][aria-live=polite]");
     await expect(summary).toHaveCount(1);
+    await expect(summary).toHaveText("");
     const rolls: number[] = [];
+    await page.evaluate(() => {
+      const region = document.querySelector<HTMLElement>(".visually-hidden[role=status][aria-live=polite]");
+      if (!region) throw new Error("turn announcement region is missing");
+      const changes: string[] = [];
+      let previous = region.textContent ?? "";
+      new MutationObserver(() => {
+        const current = region.textContent ?? "";
+        if (current !== previous) {
+          previous = current;
+          changes.push(current);
+        }
+      }).observe(region, { childList: true, characterData: true, subtree: true });
+      (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;
+    });
+
+    await gamePanel(page).getByRole("button", { name: "追尾: ON" }).click();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(0);
 
     for (let turn = 1; turn <= 5; turn += 1) {
       const before = (await readSave(page))?.turn ?? 0;
@@ -74,6 +113,7 @@ test.describe("game accessibility and text navigation", () => {
       const move = save.movementHistory.at(-1);
       if (!move) throw new Error("turn summary has no matching move");
       rolls.push(move.roll);
+      await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(turn);
       const arrival = panelStat(page, "現在駅");
       await expect(summary).toContainText(`${turn}ターン目：出目${move.roll}`);
       await expect(summary).toContainText(await arrival.innerText());
@@ -85,6 +125,59 @@ test.describe("game accessibility and text navigation", () => {
     expect(lastSummary).toContain("5ターン目");
     expect(lastSummary).not.toContain("4ターン目");
     await expect(gamePanel(page).locator(".game-panel__lottery")).not.toHaveAttribute("aria-live", /.+/);
+  });
+
+  test("restart clears the previous turn announcement and announces the new session", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    const summary = gamePanel(page).locator(".visually-hidden[role=status][aria-live=polite]");
+    await rollOnce(page);
+    await rollOnce(page);
+    await expect(summary).toContainText("2ターン目");
+
+    await gamePanel(page).getByRole("button", { name: "新規" }).click();
+    await page.getByRole("alertdialog", { name: "新しく始めますか？" }).getByRole("button", { name: "新しく始める" }).click();
+    await expect(panelStat(page, "ターン数")).toHaveText("0");
+    await expect(summary).toHaveText("");
+
+    await rollOnce(page);
+    await expect(summary).toContainText("1ターン目");
+    await expect(summary).not.toContainText("2ターン目");
+  });
+
+  test("restoring a game starts with an empty announcement and announces once per finished turn", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await rollOnce(page);
+    await page.reload();
+    await expect(titleScreen(page)).toBeVisible();
+    await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
+
+    const summary = gamePanel(page).locator(".visually-hidden[role=status][aria-live=polite]");
+    await expect(summary).toHaveText("");
+    await page.evaluate(() => {
+      const region = document.querySelector<HTMLElement>(".visually-hidden[role=status][aria-live=polite]");
+      if (!region) throw new Error("turn announcement region is missing");
+      const changes: string[] = [];
+      let previous = region.textContent ?? "";
+      new MutationObserver(() => {
+        const current = region.textContent ?? "";
+        if (current !== previous) {
+          previous = current;
+          changes.push(current);
+        }
+      }).observe(region, { childList: true, characterData: true, subtree: true });
+      (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;
+    });
+
+    await gamePanel(page).getByRole("button", { name: "追尾: ON" }).click();
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(0);
+    await rollOnce(page);
+    await expect(summary).toContainText("2ターン目");
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(1);
+    await rollOnce(page);
+    await expect(summary).toContainText("3ターン目");
+    await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(2);
   });
 
   test("the text route view lists remaining Yamanote sections and upcoming stations", async ({ page, railwayBundle }) => {
@@ -180,6 +273,56 @@ test.describe("compact layouts and map follow padding", () => {
 
     await page.setViewportSize({ width: 667, height: 375 });
     await rollOnce(page);
+    await expect.poll(markerAbovePanel).toBe(true);
+  });
+
+  test("resizing from phone to desktop clears follow padding while stopped", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+    await rollOnce(page);
+
+    const markerNearViewportCenter = async () => page.evaluate(async () => {
+      interface CameraMap {
+        getSource(id: string): { getData(): Promise<{ features: { geometry: { coordinates: [number, number] } }[] }> } | undefined;
+        project(position: [number, number]): { x: number; y: number };
+      }
+      const map = (window as unknown as { __sugorokuE2E?: { map?: CameraMap | null } }).__sugorokuE2E?.map;
+      const source = await map?.getSource("game-current-position")?.getData();
+      const coordinates = source?.features[0]?.geometry.coordinates;
+      if (!map || !coordinates) return false;
+      return Math.abs(map.project(coordinates).y - window.innerHeight / 2) < 32;
+    });
+
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect.poll(markerNearViewportCenter).toBe(true);
+  });
+
+  test("rotation and opening the text route keep the stopped marker above the panel", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+    await rollOnce(page);
+
+    const markerAbovePanel = async () => page.evaluate(async () => {
+      interface CameraMap {
+        getSource(id: string): { getData(): Promise<{ features: { geometry: { coordinates: [number, number] } }[] }> } | undefined;
+        project(position: [number, number]): { x: number; y: number };
+      }
+      const map = (window as unknown as { __sugorokuE2E?: { map?: CameraMap | null } }).__sugorokuE2E?.map;
+      const panel = document.querySelector<HTMLElement>(".game-panel");
+      const source = await map?.getSource("game-current-position")?.getData();
+      const coordinates = source?.features[0]?.geometry.coordinates;
+      if (!map || !panel || !coordinates) return false;
+      return map.project(coordinates).y < panel.getBoundingClientRect().top - 12;
+    });
+
+    await page.setViewportSize({ width: 812, height: 375 });
+    await expect.poll(markerAbovePanel).toBe(true);
+    await gamePanel(page).locator(".game-panel__route-summary > summary").click();
+    await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
     await expect.poll(markerAbovePanel).toBe(true);
   });
 });

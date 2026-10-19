@@ -22,6 +22,8 @@ import {
 } from "../../map/lineVisibilityStore";
 import { GameLegend } from "./GameLegend";
 
+const UPCOMING_STATION_COUNT = 5;
+
 function arrivalSummary(
   turn: number,
   lastMove: NonNullable<GameSession["lastMove"]>,
@@ -108,7 +110,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const upcomingStations = useMemo(() => {
     const ids: string[] = [];
     let current = props.displayedStationId;
-    for (let index = 0; index < 5; index += 1) {
+    for (let index = 0; index < UPCOMING_STATION_COUNT; index += 1) {
       const next = nextStationId(network, ride.serviceId, current, ride.direction);
       if (!next) break;
       ids.push(next);

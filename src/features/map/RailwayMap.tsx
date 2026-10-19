@@ -75,6 +75,7 @@ const NO_LIVE_POSITION: LivePosition = {
   get: () => null,
 };
 const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
+const ZERO_MAP_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 
 function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
   return onPhone ? "top-left" : "bottom-right";
@@ -119,16 +120,13 @@ function usesBottomPanelCameraPadding(): boolean {
 }
 
 /** Centre the camera on `position` without touching the zoom. */
-function recentre(map: MapLibreMap, position: Position, immediate: boolean): void {
+function recentre(map: MapLibreMap, position: Position, immediate: boolean, force = false): void {
   const { lng, lat } = map.getCenter();
-  if (!needsRecentre([lng, lat], position)) return;
-  const panelPadding = usesBottomPanelCameraPadding()
+  if (!force && !needsRecentre([lng, lat], position)) return;
+  const padding = usesBottomPanelCameraPadding()
     ? { top: 0, right: 0, bottom: phonePanelBottomPadding(map), left: 0 }
-    : undefined;
-  const camera = {
-    center: position,
-    ...(panelPadding ? { padding: panelPadding, retainPadding: false } : {}),
-  };
+    : ZERO_MAP_PADDING;
+  const camera = { center: position, padding };
   if (immediate) map.jumpTo(camera);
   else map.easeTo({ ...camera, duration: FOLLOW_EASE_MS });
 }
@@ -191,6 +189,7 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
   // Bumped when a replaced style forced the layers to be re-added, so the
   // progress and visibility effects below apply their state to them again.
   const [layersRevision, setLayersRevision] = useState(0);
+  const [cameraLayoutRevision, setCameraLayoutRevision] = useState(0);
   // Set synchronously by a user camera gesture, before React re-renders with
   // following off, so no queued follow update can cancel the gesture.
   const userMovedRef = useRef(false);
@@ -316,6 +315,32 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;
+  const lastCameraLayoutRevisionRef = useRef(cameraLayoutRevision);
+  useEffect(() => {
+    if (!loadedMap || !followEnabled) return;
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    const routeSummary = panel?.querySelector<HTMLElement>(".game-panel__route-summary");
+    let animationFrame = 0;
+    const requestLayoutUpdate = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = 0;
+        setCameraLayoutRevision((revision) => revision + 1);
+      });
+    };
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(requestLayoutUpdate);
+    observer?.observe(loadedMap.getContainer());
+    if (panel) observer?.observe(panel);
+    if (routeSummary) observer?.observe(routeSummary);
+    window.addEventListener("resize", requestLayoutUpdate);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", requestLayoutUpdate);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [loadedMap, followEnabled]);
   // Declared before the camera effect: re-enabling following clears the
   // gesture flag before the camera recentres.
   useEffect(() => {
@@ -323,8 +348,10 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
   }, [followEnabled]);
   useEffect(() => {
     if (!loadedMap || !followEnabled || userMovedRef.current || !position) return;
-    recentre(loadedMap, position, immediate);
-  }, [loadedMap, followEnabled, position, immediate]);
+    const layoutChanged = lastCameraLayoutRevisionRef.current !== cameraLayoutRevision;
+    lastCameraLayoutRevisionRef.current = cameraLayoutRevision;
+    recentre(loadedMap, position, immediate, layoutChanged);
+  }, [loadedMap, followEnabled, position, immediate, cameraLayoutRevision]);
 
   const retry = () => {
     setStyleFailed(false);
@@ -332,21 +359,23 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
   };
 
   return (
-    <div inert={inert}>
-      <div ref={containerRef} className="map-container" />
-      <div className="map-overview" aria-label="地図表示範囲">
-        <button type="button" disabled={!loadedMap} onClick={() => {
-          if (!loadedMap || !data.services.ok) return;
-          userMovedRef.current = true;
-          onUserCameraMoveRef.current?.();
-          fitNetworkOverview(loadedMap, data.services.value.services);
-        }}>全体</button>
-        <button type="button" disabled={!loadedMap} onClick={() => {
-          if (!loadedMap || !data.services.ok) return;
-          userMovedRef.current = true;
-          onUserCameraMoveRef.current?.();
-          fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
-        }}>目標路線</button>
+    <>
+      <div inert={inert}>
+        <div ref={containerRef} className="map-container" />
+        <div className="map-overview" aria-label="地図表示範囲">
+          <button type="button" disabled={!loadedMap} onClick={() => {
+            if (!loadedMap || !data.services.ok) return;
+            userMovedRef.current = true;
+            onUserCameraMoveRef.current?.();
+            fitNetworkOverview(loadedMap, data.services.value.services);
+          }}>全体</button>
+          <button type="button" disabled={!loadedMap} onClick={() => {
+            if (!loadedMap || !data.services.ok) return;
+            userMovedRef.current = true;
+            onUserCameraMoveRef.current?.();
+            fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
+          }}>目標路線</button>
+        </div>
       </div>
       {unsupported && (
         <div className="map-error" role="status">
@@ -364,6 +393,6 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
           </button>
         </div>
       )}
-    </div>
+    </>
   );
 }

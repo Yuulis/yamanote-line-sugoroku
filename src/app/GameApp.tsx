@@ -166,6 +166,7 @@ export function GameApp({ data, network }: GameAppProps) {
       )}
       {session && shown && !showClear && (
         <GamePanel
+          key={session.sessionId}
           session={session}
           network={network}
           presentation={presentation}
