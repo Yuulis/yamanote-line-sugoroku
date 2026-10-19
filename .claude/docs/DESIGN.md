@@ -22,6 +22,8 @@ An original browser railway board game on a real MapLibre map. The current editi
 
 Current edition (2026-10-15; supersedes the 東京23区版 paragraph above; primary source `railway_sugoroku_mvp_spec.md` v0.4.0): “山手線すごろく — JR東日本 1都3県版”, in production since 2026-10-15. 40 JR East conventional service patterns (one per track system; weekday base stop patterns) across 東京都 (excluding islands), 千葉県, 神奈川県 and 埼玉県, with 472 shared station identities. A solo player starts at Shimbashi on Yamanote outer and must traverse all 30 Yamanote outer directed segments, then arrive at Shimbashi. Arrival lotteries choose the next service (山手線 1/2 at its stations, the rest uniform) and direction (toward 山手線 2:1) under ruleset `jr-east-capital-1`.
 
+Current edition (2026-10-19, S7 on branch `feature/tokyo-suburban-network`, not yet released; supersedes the 1都3県版 paragraph above; primary source `railway_sugoroku_mvp_spec.md` Tokyo suburban addendum): “山手線すごろく — 東京近郊版”. The bundle (`dataVersion` `n02-2025-8a0970069659`) has 135 engine services (東京近郊区間 JR plus the approved subway and private railways), 1,586 station identities, 3,988 directed segments and 30 Yamanote outer target segments; the UI groups them into 15 operators and 134 line groups (大江戸線 is one UI line over two engine services). The goal is unchanged: traverse all 30 Yamanote outer segments, then arrive at Shimbashi. Ruleset `tokyo-suburban-1`: 山手線 2/3 when it is among at least two candidates (the rest uniform), and on other services the direction toward 山手線 has twice the weight. Save format v3; older saves are rejected and can be discarded. S7 5,000-game observation: median 55 / p90 146 / p99 261 turns, realised 山手線 share 0.6684 and toward-target share 0.6671 (expected 0.6667). Release (S8) is pending.
+
 ## スコープ (Scope)
 
 ### In Scope
@@ -266,3 +268,5 @@ Current status (2026-10-15): the lists above are history; these items supersede 
 - [ ] 次の開発方針をユーザーが選ぶ（案: `docs/manual/development-roadmap/proposal.md`）。
 - [ ] 既知の制限: N02 の一般化区間（常磐 綾瀬–金町、総武 江戸川橋梁、赤羽–浦和）、上野の常磐線快速ホーム移動（131 m）。
 - [ ] 保守: `data/staging/` のステージ入力はテストが参照しているため残している。退役させる場合はテスト用フィクスチャへの移行が必要。
+
+- 東京近郊版（2026-10-19）: S0–S6 は push 済み、S7（シミュレーション・E2E・文書・統合レビュー）実施中、S8（PR・CI・リリース）未着手。残る確認: Vercel 上の `segments.geojson` の圧縮とヘッダー（ローカル vite preview は非圧縮）、実機での性能・タッチパン、1.32 MB の main JS chunk 警告。経緯: `.claude/docs/plans/tokyo-suburban-network-handoff.md`。

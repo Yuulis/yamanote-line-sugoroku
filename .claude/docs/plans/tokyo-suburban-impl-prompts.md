@@ -516,3 +516,71 @@ plus `npm run typecheck && npm test` whenever `src/` or TS tests change.
 
 Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
 `Stops for lead review`, `Deviations from plan`, `Open issues`.
+
+## s7-plan — S7 implementation plan (Codex Sol `low`, `--sandbox read-only`)
+
+Objective: produce a directly executable plan for S7 (real-data simulations, fixture E2E, docs and integration review) that
+Codex Luna can implement in bounded runs and that ends in an independent whole-branch review, without making product decisions.
+
+S7 per `.claude/docs/plans/tokyo-suburban-network-design.md` section 4: acceptance "Unit/pipeline/E2E gates, chosen-rule
+distribution, no placeholders/out-of-scope edits; independent review". S8 (PR/CI evidence, release) is out of scope.
+
+Read: the design doc; `.claude/docs/plans/tokyo-suburban-s0-freeze.json` (ruleset, expected counts); `.claude/docs/DESIGN.md`
+Key Decisions; S5 and S6 rows and carry-overs in `.claude/docs/plans/tokyo-suburban-network-handoff.md`;
+`.claude/docs/reviews/tokyo-suburban-s{5,6}-review-1.md`; `.claude/logs/s6/s6-evidence.md`; `scripts/data_pipeline/product_suburban.py`
+(`verify-simulation`) and the simulation tooling it calls; `src/features/game/**` (engine, `gameConfig.ts`);
+`tests/e2e/**`, `tests/unit/**`, `playwright.config.*`, `package.json`, `.github/workflows/**`, `vercel.json` (if present);
+`README.md`, `data/README.md`, `docs/manual/**`, `railway_sugoroku_mvp_spec.md`; `git diff --stat master...HEAD`.
+
+Must cover:
+- Real-data simulation: what the chosen-rule distribution acceptance measures (share 2/3, toward-target weight 2 under
+  `tokyo-suburban-1`), sample size and seeds, the metrics and thresholds to report (completion rate, turns/hops
+  distribution, lottery share realised vs configured, direction weight realised, unreachable/stuck states), where the
+  report is written, and whether a committed summary belongs in docs. Compare against the legacy capital-region rules only
+  as context, never as a gate.
+- Fixture E2E: gaps left after S5/S6 (interchange at multi-operator stations, 大江戸線 single-line display through a real
+  hop, alias station labels, old-save discard, clear flow) — list each new or strengthened check with file and assertion.
+- Playwright 4-worker load failures under software WebGL (serial / 2 workers pass): decide root cause investigation vs. a
+  pinned worker count in config/CI, with evidence the plan requires before choosing.
+- `segments.geojson` production MIME/compression: what can be verified from repo config and a local production build
+  (`npm run build` + preview) without a deploy, and what stays an S8 live check.
+- Docs: every user-facing or contributor doc still describing the old 40-service capital-region edition, 1/2 probability or
+  old area (README, data/README, docs/manual/**, spec); propose the edits (Japanese for `docs/manual/**`, English elsewhere)
+  and a new `docs/manual/tokyo-suburban/` theme if warranted. DESIGN.md is updated by the lead only (`update_design.py`).
+- Integration review: an independent whole-branch review (`master...HEAD`) as the last run — scope, reviewer lane,
+  checklist (placeholders, weakened tests, out-of-scope edits, staging/baseline immutability, provenance hashes, LF,
+  licence notices for Noto Sans JP glyph fixtures and colour citations), and output path under `.claude/docs/reviews/`.
+- Known gaps that stay open (physical-device performance/touch-pan, 1.32 MB main chunk): record, do not fix unless trivial.
+
+Constraints: no gameplay/rule change; no edits to `data/staging/**`, `data/baselines/**`, raw N02; product data unchanged
+(four gameplay payload hashes = S5 `c76ad92`, `uiPresentation` = S6 `478e3ca`); never weaken tests; LF only; Luna runs ≤ ~30
+min; mark parallel runs.
+
+Output (markdown, ≤170 lines, English): `TL;DR`; `Simulation`; `Fixture E2E`; `Playwright workers`; `Compression`; `Docs`;
+`Integration review`; `Runs` (files, steps, tests, exact acceptance commands; parallel marks); `Risks`; `Decisions needing the user`.
+
+## s7-run — S7 implementation runs (Codex Luna `high`/`xhigh`, fast mode allowed; replace `<RUNS>`)
+
+Objective: implement S7 plan run(s) <RUNS> of `.claude/docs/plans/tokyo-suburban-s7-plan.md` exactly (the "Lead adjustments"
+header overrides the plan body).
+
+Read first: the S7 plan, `.claude/docs/plans/tokyo-suburban-s0-freeze.json`, `data/README.md`,
+`.claude/rules/{coding-principles,testing,dev-environment,manual-docs}.md`. Earlier S7 runs are in the working tree; build on them.
+
+Scope: exactly the files the plan assigns to <RUNS>. Out — `data/staging/**`, `data/baselines/**`, raw `N02-25_GML/**`,
+`public/data/**`, research files, `.claude/docs/DESIGN.md`, git commits/pushes, any gameplay/rule change. Never weaken, skip or
+delete tests; failing-first tests; LF only; `shutil.rmtree` not `rm -rf`; English prose except `docs/manual/**` (Japanese).
+STOP with evidence on any payload-hash change, budget overrun, or simulation difference. Report only what exists on disk.
+
+Acceptance: the plan's acceptance for <RUNS>, plus always:
+```bash
+uv run ruff check scripts tests && uv run ruff format --check scripts tests
+uv run ty check scripts/data_pipeline
+uv run pytest tests/data_pipeline -q -rs
+uv run python .claude/docs/research/tokyo-suburban-r2-tools/check_freeze.py
+git diff --exit-code -- data/staging data/baselines N02-25_GML public/data
+```
+plus `npm run typecheck && npm test` whenever `src/` or TS tests change.
+
+Output (≤60 lines): `Summary`, `Files changed`, `Tests added`, `Acceptance` (command → exit code + tail),
+`Stops for lead review`, `Deviations from plan`, `Open issues`.

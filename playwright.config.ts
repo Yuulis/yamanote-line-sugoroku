@@ -27,8 +27,13 @@ const withWebkit = Boolean(process.env.GITHUB_ACTIONS || process.env.E2E_WEBKIT)
  * outside dist/ so `npm run build` output is never the hook-enabled bundle.
  */
 const E2E_OUT_DIR = "node_modules/.cache/sugoroku-e2e-dist";
-/** Each test renders WebGL in software; more workers mostly add memory pressure. */
-const LOCAL_WORKERS = 4;
+/**
+ * Each test renders WebGL in software; more workers mostly add memory pressure.
+ * With the Tokyo suburban bundle, 4 workers timed out or lost browsers on a
+ * 7 GB WSL2 host while 1 and 2 passed (S7 R4, .claude/logs/s7/workers/).
+ * Pass --workers=N explicitly to diagnose higher counts.
+ */
+const LOCAL_WORKERS = 2;
 
 /** Port 9 (discard) has no listener: a request sent through it just fails. */
 const DEAD_PROXY = "http://[::1]:9";

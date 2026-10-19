@@ -1,17 +1,18 @@
 # Tokyo suburban game data pipeline
 
 `public/data/*` is generated deterministically from MLIT N02 2025 and reviewed
-`data/overrides` tables. The live S6 edition contains 135 services and 1,586
-station groups across 11 prefectures, with 3,988 directed gameplay segments,
-2,142 service-stop rows, 3,994 geometry references and a maximum chain length
-of 3. Its five public files total 2,577,364 raw bytes and 413,592 gzip bytes
-(level 9, mtime 0), within the `capital-region` profile caps of 3,145,728 raw
-and 921,600 gzip bytes. GeoJSON is 1,288,259 raw / 265,508 gzip bytes. These
-totals include the S6 UI presentation catalogue in `manifest.json`. The product
-stop order is pinned by `data/overrides/expected-catalog.json`
-(SHA-256 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`);
-there is no live timetable lookup. Gameplay starts at 新橋 and uses the adopted
-weighted lotteries (`jr-east-capital-1`).
+`data/overrides` tables. The current Tokyo suburban bundle contains 135 engine
+services, 1,586 station identities and 3,988 directed gameplay segments across
+11 prefectures. It has 2,142 service-stop rows, 3,994 geometry references and a
+maximum chain length of 3. The manifest groups services into 134 UI line groups
+across 15 operators; 大江戸線 is one UI line backed by two engine services. The
+five public files total 2,577,364 raw bytes and 413,592 gzip bytes (level 9,
+mtime 0), within the `capital-region` profile caps of 3,145,728 raw and 921,600
+gzip bytes. GeoJSON is 1,288,259 raw / 265,508 gzip bytes. Totals include
+`uiPresentation` in `manifest.json`. The product stop order is pinned by the reviewed
+`data/overrides/expected-catalog.json` (SHA-256
+`42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`); there
+is no live timetable lookup. Gameplay starts at 新橋 and uses ruleset `tokyo-suburban-1`.
 
 Optional service `scope.csv` files can add an `in_area` column containing exactly
 `true` or `false` on every row. This pins the contiguous served run when a
@@ -65,18 +66,21 @@ uv run pytest -q
 
 Build options: `--raw-dir`, `--overrides-dir`, `--out-dir`, `--quiet`.
 
-## Live edition (S6 presentation + S5 data and rules; 2026-10-18)
+## Current Tokyo suburban edition (S7 docs; bundle `n02-2025-8a0970069659`)
 
-The shipped catalogue is the approved Tokyo suburban product catalogue:
-135 services and 1,586 station groups in product order across 11 prefectures;
-`data/overrides/dataset.json` pins `expected-catalog.json` with SHA-256
-`42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`. The
-previously shipped station and service IDs remain retained. The game starts at
-`shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile,
-and simplifies geometry by 1 m. S5 sets the ruleset to `jr-east-capital-1`:
-Yamanote has a 1/2 share when it is a candidate, remaining services share the
-other half uniformly, local and rapid bases have equal weight, and the direction
-toward Yamanote is weighted 2:1 when both directions can move.
+The shipped catalogue has 135 services and 1,586 station identities in product
+order across 11 prefectures, with 3,988 directed segments and 30 target
+segments. `data/overrides/dataset.json` pins its reviewed expected catalogue;
+the live bundle is identified by `dataVersion` `n02-2025-8a0970069659`. It starts
+at `shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile
+and simplifies geometry by 1 m. The ruleset is `tokyo-suburban-1`: when Yamanote
+is among at least two service candidates it receives 2/3 of the draw; the
+remaining probability is split equally among other services. `local` and
+`rapid` services have equal base weights. On a non-target service with two
+available directions, the direction closer to Yamanote has twice the weight.
+The UI presentation catalogue has 15 operators and 134 line groups; 46 station
+aliases and 90 service stop-name overrides preserve reviewed identities and
+labels (including 22 small-ヶ originals).
 
 The output has 3,988 directed segments and 3,994 geometry references; the maximum
 chain is 3 primitives. One reviewed platform transfer is
@@ -163,10 +167,13 @@ two-way reachability, schema, geometry references, and the unchanged product bud
 generated paths with `product_suburban install`; afterward run `product_suburban verify` again. S5 retains schema 3 and
 the existing save format.
 
-S6 adds optional UI presentation metadata to the schema 3 manifest. It leaves
-the four S5 gameplay payload files, `dataVersion`, rules and save format
-unchanged. Current sizes and the R6/R7 performance, compression and simulation
-evidence are recorded in `.claude/logs/s6/s6-evidence.md`.
+S6 added UI presentation metadata to the schema 3 manifest while leaving the
+four gameplay payloads unchanged from S5. S7 keeps save format v3. Local delivery
+showed decoded assets equal to `public/data`; JSON assets were gzip-compressed by
+Vite preview, while `segments.geojson` was served uncompressed as
+`application/geo+json` (1,288,259 B). Vercel behavior remains an S8 live check.
+S7 simulation and browser evidence is summarized in
+[the current implementation status](../docs/manual/tokyo-suburban/implementation-status.md).
 
 N02 has known generalized-line limits: it does not distinguish the separate
 常磐線各停・快速 tracks between 綾瀬 and 金町, the separate 総武快速・緩行 tracks
@@ -262,10 +269,10 @@ The initial 2026-10-12 23-ward release listed Yamanote, Keihin-Tohoku
 (Akabane–Kamata), Chuo-Sobu local (Nishi-Ogikubo–Koiwa), Saikyo
 (Osaki–Ukima-Funado), and Keiyo (Tokyo–Kasai-Rinkai-Koen). That historical
 catalogue excluded Joban local, Joban rapid, Yokosuka/Sobu rapid and other
-rapid/through services. S6 supersedes its live scope with the approved 40-service
-regional catalogue described above.
+rapid/through services. The current 135-service Tokyo suburban product catalogue described above
+supersedes that historical release scope.
 
-### Historical regional preparation (S3a; superseded by the live S6 dataset)
+### Historical regional preparation (S3a; superseded by the current Tokyo suburban product)
 
 The registry header is
 `id,name,n02_name,prefecture,municipality,representative_service_id[,n02_selector]`.
@@ -285,7 +292,7 @@ reviewed prefecture/municipality fields, rather than a rectangle or N03 input.
 The candidate box must enclose the output box. The then-shipped 23-ward dataset explicitly
 restricted membership to Tokyo's municipalities while using wider regional
 search/output bounds. Artifact coordinates and route/via points use each dataset's
-configured bounds. This historical description was superseded by the S6 live dataset.
+configured bounds. This historical preparation note is superseded by the current Tokyo suburban product edition.
 
 Every service needs `scopeSource` in `services.json` and `scope.csv` with columns
 `station_id,prefecture,municipality`. Record the independently reviewed served-stop
@@ -356,7 +363,7 @@ Composition DAGs, primitive anchors, shared owners and dataset budgets follow in
 
 A directed segment id is `<service>:<from>:<to>`. Linear services have both directions;
 Yamanote has outer only. Segments carry a non-empty `geometryFeatureIds` chain in travel order. Reverse
-segments carry the reversed list. The historical 23-ward bundle used one-element chains; the current 1都3県 bundle
+segments carry the reversed list. The historical 23-ward bundle used one-element chains; the current Tokyo suburban bundle
 uses chains of up to 3 primitives. Features are service-owned primitives with
 `{featureId, serviceId, lineId, from, to}`; future rapid/through consumers may compose
 primitives from multiple owners without changing ownership or gameplay progress.
@@ -367,7 +374,7 @@ services require `kind` (`local | rapid`) and non-empty `lineIds`, plus
 `directionLabels`, `platformCoordinates`, and (if linear) `endpoints.first/last`
 (`terminus`, `area-boundary`, or `service-boundary`, displayed as 「系統の端」).
 Legacy v2 bundles are rejected by the runtime guards. `segments.json` is compact,
-with one object per line. The current live bundle uses the approved 40-service stop order and the S5 weighted gameplay rules.
+with one object per line. The current live bundle uses the approved 135-service stop order and the `tokyo-suburban-1` gameplay rules.
 
 The validator checks the strict five-file schema, registry/area/catalogue,
 metadata/stop order, pair coverage and walks, platforms/representatives and reviewed
@@ -428,7 +435,7 @@ reviewed JSON object with `services: [{ id, stationIds }]` in output order and
 `stationIds` in first-appearance order. Both override services and their exact
 stop lists must match it; built artifacts are checked against those overrides.
 The shipped and core-fixture oracles are separate frozen inputs. Staging needs
-its own reviewed oracle; S6 needs the complete approved product catalogue.
+its own reviewed oracle; the Tokyo suburban product needs the complete approved product catalogue.
 Do not regenerate the oracle as part of a build to hide a coverage difference.
 Every station must be reachable from the start and back over actual directed
 segments, regardless of `reviewedDisconnectedServiceIds`.
@@ -485,7 +492,7 @@ file compressed separately with level 9 and `mtime=0`; gzip artifacts are not
 shipped. Build rejects overruns before writing files; validation reports raw,
 gzip, total reference count and maximum chain length. The regional payload
 limits come from the S3b handoff; reference/chain caps and additional 23ku caps
-are conservative configuration defaults. S6 measured and accepted them for the live regional dataset.
+are conservative configuration defaults. They were measured and accepted for the live Tokyo suburban dataset.
 
 `dataset.json` can set `simplifyToleranceM` (finite and positive, default 1 m).
 Keep 1 m for the shipped edition. Compare alternatives without writing game data:

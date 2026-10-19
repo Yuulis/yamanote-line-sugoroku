@@ -1,4 +1,4 @@
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { createGame, playTurn, serializeGame } from "../../src/features/game/engine";
@@ -15,6 +15,10 @@ test.use({ dataset: "real" });
 const SCREENSHOT_DIR = resolve(".claude/logs/s6/screenshots");
 const OEDO_LOTTERY_SEED = PRODUCT_HISTORY_GAME_SEED;
 const OEDO_LOTTERY_TURN = 16;
+const OEDO_BEFORE_LOTTERY_SAVE = readFileSync(
+  new URL("./fixtures/tokyo-suburban-oedo-before-lottery-save.json", import.meta.url),
+  "utf8",
+).trimEnd();
 
 function productLineGroups(bundle: RailwayBundle): UiLineGroup[] {
   if (!bundle.data.manifest.ok || !bundle.data.manifest.value.uiPresentation) {
@@ -126,6 +130,7 @@ test("the Oedo legend checkbox groups both services and works by keyboard and ph
 
 test("Oedo candidates at 都庁前 display one row with two lottery slots", async ({ page, railwayBundle }) => {
   const before = gameAfterTurn(railwayBundle, OEDO_LOTTERY_SEED, OEDO_LOTTERY_TURN - 1);
+  expect(serializeGame(before)).toBe(OEDO_BEFORE_LOTTERY_SAVE);
   const result = playTurn(before, railwayBundle.network);
   const game = result.state;
   const record = game.movementHistory.at(-1)!;
@@ -137,12 +142,23 @@ test("Oedo candidates at 都庁前 display one row with two lottery slots", asyn
   });
 
   await openTitle(page);
-  await writeSaveText(page, serializeGame(game));
+  await writeSaveText(page, OEDO_BEFORE_LOTTERY_SAVE);
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(panelStat(page, "ターン数")).toHaveText("15");
+  await rollOnce(page);
+  expect(await readSave(page)).toEqual(game);
   await expect(panelStat(page, "現在駅")).toHaveText("都庁前");
   await expect(gamePanel(page).locator(".game-panel__lottery"))
     .toContainText("都庁前：大江戸線（抽選枠2）から抽選 → 大江戸線");
+  expect(["toei-oedo-loop", "toei-oedo-radial"]).toContain(game.currentServiceId);
+  await expect(panelStat(page, "乗車中")).toHaveText("大江戸線");
+  await expect(gamePanel(page)).not.toContainText("toei-oedo");
+  const next = playTurn(game, railwayBundle.network).state;
+  await rollOnce(page);
+  expect(await readSave(page)).toEqual(next);
+  expect(["toei-oedo-loop", "toei-oedo-radial"]).toContain(next.movementHistory.at(-1)!.serviceId);
+  await expect(gamePanel(page)).not.toContainText("toei-oedo");
 });
 
 test("operator and line filters hide, restore, and resolve a Fukutoshin shared primitive", async ({ page, railwayBundle }) => {

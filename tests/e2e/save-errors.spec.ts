@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
   openTitle,
+  readSave,
   readSaveText,
   rollOnce,
   startNewGame,
@@ -124,6 +125,8 @@ test.describe("captured pre-S5 save against the live product bundle", () => {
     const alert = titleScreen(page).getByRole("alert");
     await expect(alert).toHaveText(/路線データが更新されたため/);
     expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
+    await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /クリア結果を見る/ })).toHaveCount(0);
     await alert.getByRole("button", { name: "セーブデータを破棄" }).click();
     const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });
     await dialog.getByRole("button", { name: "キャンセル" }).click();
@@ -131,12 +134,21 @@ test.describe("captured pre-S5 save against the live product bundle", () => {
     expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
 
     await page.reload();
-    await expect(titleScreen(page).getByRole("alert")).toHaveText(/路線データが更新されたため/);
-    await titleScreen(page).getByRole("alert").getByRole("button", { name: "セーブデータを破棄" }).click();
+    const reloadedAlert = titleScreen(page).getByRole("alert");
+    await expect(reloadedAlert).toHaveText(/路線データが更新されたため/);
+    expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
+    await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /クリア結果を見る/ })).toHaveCount(0);
+    await reloadedAlert.getByRole("button", { name: "セーブデータを破棄" }).click();
     const confirm = page.getByRole("alertdialog", { name: "セーブデータの削除" });
     await confirm.getByRole("button", { name: "削除する" }).click();
     await expect(confirm).toBeHidden();
     expect(await readSaveText(page)).toBeNull();
+    await page.reload();
+    await expect(titleScreen(page).getByRole("alert")).toHaveCount(0);
+    await startNewGame(page);
+    await rollOnce(page);
+    expect((await readSave(page))?.turn).toBe(1);
   });
 });
 

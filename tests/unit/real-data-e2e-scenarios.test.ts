@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { buildGeometryIndex, buildMovePlan } from "../../src/features/game/animation/movePath";
 import { hopDurationMs } from "../../src/features/game/animation/timeline";
@@ -20,8 +22,14 @@ import {
   PRODUCT_HISTORY_GAME_SEED,
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
+  PRODUCT_KORAKUEN_TRANSFER_SEED,
+  PRODUCT_KORAKUEN_TRANSFER_TURN,
   PRODUCT_UENO_TRANSFER_SEED,
 } from "../e2e/fixtures/seeds";
+
+function pinnedSave(name: string): string {
+  return readFileSync(fileURLToPath(new URL(`../e2e/fixtures/${name}`, import.meta.url)), "utf8");
+}
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -106,7 +114,78 @@ function findUenoTransferSeed(maxCandidate: number): string {
   throw new Error(`No Ueno Joban Rapid state found through ${maxCandidate}`);
 }
 
+function findKorakuenTransferSeed(maxCandidate: number): { seed: string; before: GameState; result: MoveResult } {
+  for (let candidate = 0; candidate <= maxCandidate; candidate += 1) {
+    const seed = seedText(candidate);
+    let game = createGame(MVP_GAME_CONFIG, seed, network);
+    while (game.status === "playing" && game.turn < 250) {
+      const result = playTurn(game, network);
+      const landing = result.events.find((event) => event.type === "landing-resolved");
+      if (
+        landing?.type === "landing-resolved" && landing.stationId === "metro-korakuen" &&
+        landing.changedService &&
+        network.servicesById.get(landing.serviceId)?.operator !== network.servicesById.get(result.state.movementHistory.at(-1)?.serviceId ?? "")?.operator
+      ) return { seed, before: game, result };
+      game = result.state;
+    }
+  }
+  throw new Error(`No cross-operator Korakuen transfer found through ${maxCandidate}`);
+}
+
 describe("current product E2E scenarios", () => {
+  it("matches engine-generated pre-transfer, pre-lottery, and pre-clear saves", () => {
+    const fixtures = [
+      ["tokyo-suburban-korakuen-before-transfer-save.json", PRODUCT_KORAKUEN_TRANSFER_SEED, 12],
+      ["tokyo-suburban-oedo-before-lottery-save.json", PRODUCT_HISTORY_GAME_SEED, 15],
+      ["tokyo-suburban-before-clear-save.json", PRODUCT_HISTORY_GAME_SEED, 41],
+    ] as const;
+    for (const [filename, seed, turn] of fixtures) {
+      let game = createGame(MVP_GAME_CONFIG, seed, network);
+      while (game.turn < turn) game = playTurn(game, network).state;
+      expect(pinnedSave(filename)).toBe(`${serializeGame(game)}\n`);
+    }
+  });
+
+  it("finds a cross-operator Korakuen transfer seed", () => {
+    const scenario = findKorakuenTransferSeed(Number.parseInt(PRODUCT_KORAKUEN_TRANSFER_SEED, 16));
+    const next = playTurn(scenario.result.state, network);
+    expect(scenario.seed).toBe(PRODUCT_KORAKUEN_TRANSFER_SEED);
+    expect(scenario.result.state.turn).toBe(PRODUCT_KORAKUEN_TRANSFER_TURN);
+    expect(scenario.result.state.movementHistory.at(-1)).toMatchObject({
+      turn: 13,
+      roll: 6,
+      serviceId: "toei-mita",
+      fromStationId: "toei-onarimon",
+      toStationId: "metro-korakuen",
+      traversedSegmentIds: [
+        "toei-mita:toei-onarimon:toei-uchisaiwaicho",
+        "toei-mita:toei-uchisaiwaicho:yurakucho",
+        "toei-mita:yurakucho:metro-otemachi",
+        "toei-mita:metro-otemachi:metro-jimbocho",
+        "toei-mita:metro-jimbocho:suidobashi",
+        "toei-mita:suidobashi:metro-korakuen",
+      ],
+      landing: { serviceId: "metro-marunouchi", direction: 1 },
+    });
+    expect(scenario.result.events.at(-1)).toMatchObject({
+      type: "landing-resolved",
+      stationId: "metro-korakuen",
+      serviceCandidates: ["metro-marunouchi", "metro-namboku", "toei-mita", "toei-oedo-loop"],
+      serviceId: "metro-marunouchi",
+      changedService: true,
+    });
+    expect(next.state.movementHistory.at(-1)).toMatchObject({
+      turn: 14,
+      serviceId: "metro-marunouchi",
+      fromStationId: "metro-korakuen",
+      toStationId: "ikebukuro",
+      traversedSegmentIds: [
+        "metro-marunouchi:metro-korakuen:metro-myogadani",
+        "metro-marunouchi:metro-myogadani:metro-shin-otsuka",
+        "metro-marunouchi:metro-shin-otsuka:ikebukuro",
+      ],
+    });
+  });
   it("uses the frozen catalogue counts and derives the six-candidate hub scenario by ascending seed search", () => {
     expect(network.stationsById.size).toBe(1_586);
     expect(network.servicesById.size).toBe(135);

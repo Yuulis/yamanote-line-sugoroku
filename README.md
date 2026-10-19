@@ -1,10 +1,12 @@
 # 山手線すごろく
 
-Current edition: **JR東日本 1都3県版** — 40 services and 472 stations across 東京都・千葉県・神奈川県・埼玉県. 山手線の抽選確率は候補に含まれる場合1/2、他サービスの方向抽選は山手線へ近づく方向を2:1で優先します。新橋から山手線外回り30区間を踏破して新橋へ戻るとクリアです。
+現行版は **東京近郊版** です。東京近郊区間のJR線と対象の私鉄・地下鉄を収録し、新橋から山手線外回り全30区間を踏破して新橋に到着するとクリアです。サービス抽選では候補に山手線がある場合2/3を山手線に割り当て、他サービスの方向抽選では山手線に近づく方向の重みを2倍にします。
 
-[遊び方・40サービス一覧（日本語）](docs/manual/jr-east-capital-region/rules.md) · [実装状況](docs/manual/jr-east-capital-region/implementation-status.md) · [データ生成と検証](data/README.md)
+[遊び方・現行ルール](docs/manual/tokyo-suburban/rules.md) · [実装状況](docs/manual/tokyo-suburban/implementation-status.md) · [データ生成と検証](data/README.md)
 
-セーブ形式はv3です。互換性のない旧セーブは移行せず、未対応形式の案内から破棄できます。現行データを使う単体テストとE2Eに加え、固定シードによる実データの完走・復元確認があります。
+配布バンドルは1,586駅、135サービス、3,988有向区間です。画面表示は15事業者・134路線グループで、大江戸線は2つの運行サービスを1つのUI路線にまとめます。セーブ形式はv3です。旧形式・異なるルールのセーブは移行せず、案内から破棄できます。
+
+Playwrightのローカル既定は2 workersです。1・2 workersでは地図中心のテストを2回ずつ完走し、4 workersでは同じ一群で再現性のある負荷失敗がありました。全E2Eは既定設定で2回成功（各121 passed、既存の2 project skips）しています。物理端末の性能・タッチパンは未測定で、Viteの1.32 MB main JS chunk警告も残っています。
 
 ## 開発環境のセットアップ（フロントエンド）
 
@@ -45,12 +47,7 @@ npx playwright test --project=desktop-chromium  # 1 プロジェクトだけ
   GitHub Actions では自動で有効になります。手元で試すときは `E2E_WEBKIT=1` を付けます。
 - Vercel へのデプロイ確認（8.3 の該当項目）は手動で行います。
 
-For S6, the local real-data Playwright smoke records cold-load metrics for
-desktop Chromium and Pixel 7-sized phone Chromium. It runs in WSL2 with
-software WebGL, local `vite preview`, and stubbed basemap/style/tile/glyph
-responses; it is browser-emulation evidence and does not establish physical
-device performance or Vercel delivery behavior. No authorized S6 preview URL
-was supplied, so the live compression and response-header check remains open.
+S7のローカル配信確認では、5つのデータファイルをgzip/identity/brで取得し、展開後の内容が `public/data/` と一致しました。Vite previewはJSONをgzip圧縮しますが、`segments.geojson`（1,288,259 B）は `application/geo+json` のまま圧縮しません。これはローカルpreviewの結果です。Vercelの実際のヘッダー・圧縮・キャッシュと展開後ハッシュはS8で確認します。ソフトウェアWebGL下のブラウザ試験は実機性能を示しません。
 
 The repository has no versioned `vercel.json` or `vercel.ts`. Vercel documents
 automatic CDN compression in its [CDN request flow](https://vercel.com/docs/how-vercel-cdn-works)

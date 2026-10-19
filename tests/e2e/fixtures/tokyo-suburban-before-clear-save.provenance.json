@@ -1,0 +1,37 @@
+{
+  "generatedBy": "src/features/game/engine createGame/playTurn/serializeGame",
+  "source": "current public/data bundle loaded via tests/e2e/fixtures/bundle.ts",
+  "bundleDataVersion": "n02-2025-8a0970069659",
+  "bundleSha256": {
+    "stations.json": "785ce96469eb2d36949171d528ac91731a2d9e35a4269324d82ae3cdc21cff74",
+    "services.json": "40b9c12454d19802053aa1937475eb2f9bc73cf7bd35028003e606263e38a71a",
+    "segments.json": "e679d306d02fb87214e72b91fd9bf92e5d753308ce24babb7532767a191c23bb",
+    "segments.geojson": "206ac340c7a222d1981a5830e29507862c741baa01627d3268c5d4ddfe87303e",
+    "manifest.json": "aa3e49c155a4aca98db385db1bcaaa2550ef12667a0fa5fd42507f8c51e4f59a"
+  },
+  "config": {
+    "rulesetVersion": "tokyo-suburban-1",
+    "targetServiceId": "jr-yamanote",
+    "startStationId": "shimbashi",
+    "targetDirection": 1,
+    "goalArrivalPolicy": "truncate-on-target-service",
+    "serviceLottery": {
+      "kindWeights": {
+        "local": 1,
+        "rapid": 1
+      },
+      "target": {
+        "kind": "share",
+        "numerator": 2,
+        "denominator": 3
+      }
+    },
+    "directionLottery": {
+      "towardTargetWeight": 2
+    }
+  },
+  "seed": "00000000000000000000000000000000",
+  "turn": 41,
+  "generationMethod": "Advance createGame/MVP_GAME_CONFIG through 41 calls to playTurn; save the resulting playing state immediately before the turn-42 Yamanote clear.",
+  "saveSha256": "8b5e7f2796efa1b9b959147595d43228996b8ca25638e73e39df729f86d2e2f4"
+}
