@@ -135,9 +135,10 @@ test.describe("with move animation", () => {
 
     await diceButton(page).click({ clickCount: 3 });
     await expect(diceButton(page)).toHaveText("移動中…");
-    await expect(diceButton(page)).toBeDisabled();
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(diceButton(page)).toHaveJSProperty("disabled", false);
     await expect(panelStat(page, "ターン数")).toHaveText("1");
-    // More clicks on the disabled button while moving change nothing.
+    // The focused button stays available to keyboard users, but ignores clicks while moving.
     await diceButton(page).click({ force: true });
     await diceButton(page).dblclick({ force: true });
     await expect(panelStat(page, "ターン数")).toHaveText("1");

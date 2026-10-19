@@ -64,6 +64,8 @@ interface RailwayMapProps {
   follow?: MapFollow;
   /** New/resumed turn-0 session: fit the entire network even on a reused map. */
   overviewKey?: number;
+  /** Remove map controls from keyboard and assistive technology while another screen is active. */
+  inert?: boolean;
   targetServiceId?: string;
   minZoom?: number;
 }
@@ -72,6 +74,7 @@ const NO_LIVE_POSITION: LivePosition = {
   subscribe: () => () => {},
   get: () => null,
 };
+const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
 
 function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
   return onPhone ? "top-left" : "bottom-right";
@@ -107,12 +110,27 @@ function phonePanelBottomPadding(map: MapLibreMap): number {
   return Math.max(0, containerBottom - panelTop) + NETWORK_FIT_PANEL_GAP;
 }
 
+function usesBottomPanelCameraPadding(): boolean {
+  return isPhoneWidth() || (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(COMPACT_VIEWPORT_QUERY).matches
+  );
+}
+
 /** Centre the camera on `position` without touching the zoom. */
 function recentre(map: MapLibreMap, position: Position, immediate: boolean): void {
   const { lng, lat } = map.getCenter();
   if (!needsRecentre([lng, lat], position)) return;
-  if (immediate) map.jumpTo({ center: position });
-  else map.easeTo({ center: position, duration: FOLLOW_EASE_MS });
+  const panelPadding = usesBottomPanelCameraPadding()
+    ? { top: 0, right: 0, bottom: phonePanelBottomPadding(map), left: 0 }
+    : undefined;
+  const camera = {
+    center: position,
+    ...(panelPadding ? { padding: panelPadding, retainPadding: false } : {}),
+  };
+  if (immediate) map.jumpTo(camera);
+  else map.easeTo({ ...camera, duration: FOLLOW_EASE_MS });
 }
 
 function attachStationPopup(map: MapLibreMap): void {
@@ -146,7 +164,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, overviewKey, inert = false, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -314,7 +332,7 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
   };
 
   return (
-    <>
+    <div inert={inert}>
       <div ref={containerRef} className="map-container" />
       <div className="map-overview" aria-label="地図表示範囲">
         <button type="button" disabled={!loadedMap} onClick={() => {
@@ -346,6 +364,6 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
           </button>
         </div>
       )}
-    </>
+    </div>
   );
 }

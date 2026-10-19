@@ -62,7 +62,7 @@ export function titleScreen(page: Page): Locator {
 }
 
 export function gamePanel(page: Page): Locator {
-  return page.getByRole("region", { name: "ゲーム操作" });
+  return page.getByRole("main", { name: "ゲーム操作" });
 }
 
 export function diceButton(page: Page): Locator {

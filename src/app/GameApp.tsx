@@ -150,14 +150,6 @@ export function GameApp({ data, network }: GameAppProps) {
 
   return (
     <>
-      <RailwayMap
-        data={data}
-        presentation={presentation}
-        progress={progress}
-        livePosition={livePosition}
-        follow={mapFollow}
-        overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
-      />
       {app.state.screen === "title" && (
         <TitleScreen
           manifest={data.manifest.ok ? data.manifest.value : null}
@@ -166,6 +158,7 @@ export function GameApp({ data, network }: GameAppProps) {
           saveLookup={app.saveLookup}
           unavailableReason={null}
           notice={notice}
+          focusOnMount={app.state.lastSessionId > 0}
           onNewGame={requestNewGame}
           onResume={app.resume}
           onDeleteSave={() => setConfirm({ kind: "delete-save" })}
@@ -220,6 +213,15 @@ export function GameApp({ data, network }: GameAppProps) {
           onCancel={() => setConfirm(null)}
         />
       )}
+      <RailwayMap
+        data={data}
+        presentation={presentation}
+        progress={progress}
+        livePosition={livePosition}
+        follow={mapFollow}
+        overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
+        inert={app.state.screen === "title" || showClear}
+      />
     </>
   );
 }
