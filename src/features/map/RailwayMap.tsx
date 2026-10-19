@@ -119,16 +119,28 @@ function usesBottomPanelCameraPadding(): boolean {
   );
 }
 
-/** Centre the camera on `position` without touching the zoom. */
-function recentre(map: MapLibreMap, position: Position, immediate: boolean, force = false): void {
+/**
+ * The layout the follow camera depends on: the map size and the bottom padding
+ * it reserves for the panel. On desktop the panel never pads the camera, so
+ * its size changes are not part of the key.
+ */
+function cameraLayoutKey(map: MapLibreMap): string {
+  const container = map.getContainer();
+  const bottom = usesBottomPanelCameraPadding() ? phonePanelBottomPadding(map) : 0;
+  return `${container.clientWidth}x${container.clientHeight}:${bottom}`;
+}
+
+/** Centre the camera on `position` without touching the zoom; true if it moved. */
+function recentre(map: MapLibreMap, position: Position, immediate: boolean, force = false): boolean {
   const { lng, lat } = map.getCenter();
-  if (!force && !needsRecentre([lng, lat], position)) return;
+  if (!force && !needsRecentre([lng, lat], position)) return false;
   const padding = usesBottomPanelCameraPadding()
     ? { top: 0, right: 0, bottom: phonePanelBottomPadding(map), left: 0 }
     : ZERO_MAP_PADDING;
   const camera = { center: position, padding };
   if (immediate) map.jumpTo(camera);
   else map.easeTo({ ...camera, duration: FOLLOW_EASE_MS });
+  return true;
 }
 
 function attachStationPopup(map: MapLibreMap): void {
@@ -315,9 +327,13 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;
-  const lastCameraLayoutRevisionRef = useRef(cameraLayoutRevision);
+  const handledCameraLayoutRevisionRef = useRef(cameraLayoutRevision);
+  // The camera layout last applied by a follow move; null forces the next
+  // observed layout to be applied even if the marker is already centred.
+  const appliedCameraLayoutRef = useRef<string | null>(null);
   useEffect(() => {
     if (!loadedMap || !followEnabled) return;
+    appliedCameraLayoutRef.current = null;
     const panel = document.querySelector<HTMLElement>(".game-panel");
     const routeSummary = panel?.querySelector<HTMLElement>(".game-panel__route-summary");
     let animationFrame = 0;
@@ -325,6 +341,9 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
       if (animationFrame) return;
       animationFrame = window.requestAnimationFrame(() => {
         animationFrame = 0;
+        // A resize that leaves the camera layout unchanged (any panel resize
+        // on desktop) must not pull a moved camera back to the marker.
+        if (cameraLayoutKey(loadedMap) === appliedCameraLayoutRef.current) return;
         setCameraLayoutRevision((revision) => revision + 1);
       });
     };
@@ -348,9 +367,20 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
   }, [followEnabled]);
   useEffect(() => {
     if (!loadedMap || !followEnabled || userMovedRef.current || !position) return;
-    const layoutChanged = lastCameraLayoutRevisionRef.current !== cameraLayoutRevision;
-    lastCameraLayoutRevisionRef.current = cameraLayoutRevision;
-    recentre(loadedMap, position, immediate, layoutChanged);
+    if (recentre(loadedMap, position, immediate)) {
+      appliedCameraLayoutRef.current = cameraLayoutKey(loadedMap);
+    }
+  }, [loadedMap, followEnabled, position, immediate]);
+  // Layout changes only: re-checked here because a revision queued before a
+  // follow move applied the same layout is stale by the time it renders.
+  useEffect(() => {
+    if (handledCameraLayoutRevisionRef.current === cameraLayoutRevision) return;
+    if (!loadedMap || !followEnabled || userMovedRef.current || !position) return;
+    handledCameraLayoutRevisionRef.current = cameraLayoutRevision;
+    const layoutKey = cameraLayoutKey(loadedMap);
+    if (layoutKey === appliedCameraLayoutRef.current) return;
+    recentre(loadedMap, position, immediate, true);
+    appliedCameraLayoutRef.current = layoutKey;
   }, [loadedMap, followEnabled, position, immediate, cameraLayoutRevision]);
 
   const retry = () => {

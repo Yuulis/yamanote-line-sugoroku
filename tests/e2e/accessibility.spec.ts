@@ -325,4 +325,52 @@ test.describe("compact layouts and map follow padding", () => {
     await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
     await expect.poll(markerAbovePanel).toBe(true);
   });
+
+  test("a desktop panel resize leaves a camera moved off the marker where it is", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+    await rollOnce(page);
+
+    interface CameraMap {
+      isMoving(): boolean;
+      getCenter(): { lng: number; lat: number };
+      jumpTo(options: { center: [number, number] }): void;
+      getSource(id: string): { getData(): Promise<{ features: { geometry: { coordinates: [number, number] } }[] }> } | undefined;
+    }
+    // The follow camera has settled on the marker.
+    await expect.poll(() => page.evaluate(async () => {
+      const map = (window as unknown as { __sugorokuE2E?: { map?: CameraMap | null } }).__sugorokuE2E?.map;
+      const source = await map?.getSource("game-current-position")?.getData();
+      const marker = source?.features[0]?.geometry.coordinates;
+      if (!map || !marker || map.isMoving()) return false;
+      const { lng, lat } = map.getCenter();
+      return Math.abs(lng - marker[0]) < 1e-6 && Math.abs(lat - marker[1]) < 1e-6;
+    })).toBe(true);
+
+    // A programmatic move (not a user gesture) keeps following on.
+    const away = await page.evaluate(() => {
+      const map = (window as unknown as { __sugorokuE2E: { map: CameraMap } }).__sugorokuE2E.map;
+      const { lng, lat } = map.getCenter();
+      const target: [number, number] = [lng + 0.05, lat + 0.05];
+      map.jumpTo({ center: target });
+      return target;
+    });
+    // Desktop follow padding is zero, so growing the panel changes no camera layout.
+    await gamePanel(page).locator(".game-panel__route-summary > summary").click();
+    await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
+
+    // Let the resize observer, its animation frame and the React effects run.
+    const LAYOUT_SETTLE_FRAMES = 10;
+    const center = await page.evaluate(async (frames) => {
+      for (let frame = 0; frame < frames; frame += 1) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      }
+      const { lng, lat } = (window as unknown as { __sugorokuE2E: { map: CameraMap } }).__sugorokuE2E.map.getCenter();
+      return [lng, lat];
+    }, LAYOUT_SETTLE_FRAMES);
+    expect(center[0]).toBeCloseTo(away[0], 6);
+    expect(center[1]).toBeCloseTo(away[1], 6);
+  });
 });
