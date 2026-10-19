@@ -144,8 +144,9 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       const hook = (window as unknown as { __sugorokuE2E?: { map?: HookMap | null } })
         .__sugorokuE2E;
       const map = hook?.map;
-      if (!map) return null;
-      const data = (await map.getSource(markerSourceId)?.getData()) as
+      // A replaced style drops the railway layers until "style.load" re-adds them.
+      if (!map || !map.getLayer(layers.completed)) return null;
+      const data =(await map.getSource(markerSourceId)?.getData()) as
         | { features: { geometry: { coordinates: [number, number] } }[] }
         | undefined;
       const marker = data?.features[0]?.geometry.coordinates ?? null;
