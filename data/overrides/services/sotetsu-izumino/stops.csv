@@ -1,0 +1,9 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,sotetsu-futamatagawa,SO10,line=相鉄いずみ野線;group=004642;code=004642,二俣川,二俣川,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004642, N02_005g=004642."
+1,sotetsu-minami-makigahara,SO31,line=相鉄いずみ野線;group=004674;code=004674,南万騎が原,南万騎が原,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004674, N02_005g=004674."
+2,sotetsu-ryokuentoshi,SO32,line=相鉄いずみ野線;group=004714;code=004714,緑園都市,緑園都市,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004714, N02_005g=004714."
+3,sotetsu-yayoidai,SO33,line=相鉄いずみ野線;group=004742;code=004742,弥生台,弥生台,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004742, N02_005g=004742."
+4,sotetsu-izumino,SO34,line=相鉄いずみ野線;group=004745;code=004745,いずみ野,いずみ野,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004745, N02_005g=004745."
+5,sotetsu-izumi-chuo,SO35,line=相鉄いずみ野線;group=004773;code=004773,いずみ中央,いずみ中央,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004773, N02_005g=004773."
+6,sotetsu-yumegaoka,SO36,line=相鉄いずみ野線;group=004797;code=004797,ゆめが丘,ゆめが丘,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004797, N02_005g=004797."
+7,odakyu-shonandai,SO37,line=相鉄いずみ野線;group=004842;code=004843,湘南台,湘南台,相模鉄道,"Frozen station_name_original matched N02-25_Station.geojson 相模鉄道/相鉄いずみ野線; N02_005c=004843, N02_005g=004842."

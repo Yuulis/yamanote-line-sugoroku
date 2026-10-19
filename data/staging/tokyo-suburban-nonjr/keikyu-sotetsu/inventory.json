@@ -1,0 +1,112 @@
+{
+  "group": "keikyu-sotetsu",
+  "serviceIds": [
+    "keikyu-main",
+    "keikyu-airport",
+    "keikyu-daishi",
+    "keikyu-zushi",
+    "sotetsu-main",
+    "sotetsu-izumino",
+    "sotetsu-shin-yokohama",
+    "keikyu-kurihama"
+  ],
+  "services": [
+    {
+      "service_id": "keikyu-main",
+      "line_name": "京急本線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keikyu-sengakuji|shinagawa|keikyu-kita-shinagawa|keikyu-shimbamba|keikyu-aomono-yokocho|keikyu-samezu|keikyu-tachiaigawa|keikyu-omorikaigan|keikyu-heiwajima|keikyu-omorimachi|keikyu-umeyashiki|keikyu-kamata|keikyu-zoshiki|keikyu-rokugodote|kawasaki|hatchonawate|keikyu-tsurumi-ichiba|tsurumi|keikyu-kagetsu-sojiji|keikyu-namamugi|keikyu-shin-koyasu|keikyu-koyasu|keikyu-kanagawa-shimmachi|higashi-kanagawa|keikyu-kanagawa|yokohama|keikyu-tobe|keikyu-hinodecho|keikyu-koganecho|keikyu-minami-ota|keikyu-idogaya|keikyu-gumyoji|keikyu-kamiooka|keikyu-byobugaura|shin-sugita|keikyu-tomioka|keikyu-nokendai|keikyu-kanazawa-bunko|keikyu-kanazawa-hakkei|keikyu-oppama|keikyu-taura|keikyu-anjinzuka|keikyu-hemi|keikyu-shioiri|keikyu-yokosuka-chuo|keikyu-kenritsudaigaku|keikyu-horinouchi|keikyu-otsu|keikyu-maborikaigan|keikyu-uraga",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keikyu-airport",
+      "line_name": "京急空港線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keikyu-kamata|keikyu-kojiya|keikyu-otorii|keikyu-anamori-inari|keikyu-tenkubashi|keikyu-haneda-airport-terminal-3|keikyu-haneda-airport-terminal-1-2",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keikyu-daishi",
+      "line_name": "京急大師線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "kawasaki|keikyu-minatocho|keikyu-suzukicho|keikyu-kawasaki-daishi|keikyu-higashi-monzen|keikyu-daishibashi|keikyu-kojima-shinden",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keikyu-zushi",
+      "line_name": "京急逗子線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keikyu-kanazawa-hakkei|keikyu-mutsuura|keikyu-jimmuji|zushi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "sotetsu-main",
+      "line_name": "相鉄本線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "yokohama|sotetsu-hiranumabashi|sotetsu-nishi-yokohama|sotetsu-tennocho|sotetsu-hoshikawa|sotetsu-wadamachi|sotetsu-kami-hoshikawa|sotetsu-nishiya|sotetsu-tsurugamine|sotetsu-futamatagawa|sotetsu-kibogaoka|sotetsu-mitsukyo|sotetsu-seya|odakyu-yamato|sotetsu-sagami-otsuka|sotetsu-sagamino|sotetsu-kashiwadai|ebina",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "sotetsu-izumino",
+      "line_name": "相鉄いずみ野線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "sotetsu-futamatagawa|sotetsu-minami-makigahara|sotetsu-ryokuentoshi|sotetsu-yayoidai|sotetsu-izumino|sotetsu-izumi-chuo|sotetsu-yumegaoka|odakyu-shonandai",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "sotetsu-shin-yokohama",
+      "line_name": "相鉄新横浜線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "sotetsu-nishiya|hazawa-yokohama-kokudai|shin-yokohama",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "keikyu-kurihama",
+      "line_name": "京急久里浜線 普通・実質各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keikyu-horinouchi|keikyu-shin-otsu|keikyu-kitakurihama|kurihama|keikyu-yrp-nobi|keikyu-nagasawa|keikyu-tsukuihama|keikyu-miurakaigan|keikyu-misakiguchi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "keikyu-airport",
+      "serviceIds": [
+        "keikyu-main",
+        "keikyu-airport",
+        "keikyu-daishi",
+        "keikyu-zushi",
+        "keikyu-kurihama"
+      ]
+    },
+    {
+      "componentId": "sotetsu-izumino",
+      "serviceIds": [
+        "sotetsu-main",
+        "sotetsu-izumino",
+        "sotetsu-shin-yokohama"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 8,
+    "stops": 106,
+    "pairs": 98
+  }
+}

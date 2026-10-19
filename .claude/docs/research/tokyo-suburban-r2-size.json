@@ -1,0 +1,56 @@
+{
+  "simplification_m": 1,
+  "coordinate_decimals": 6,
+  "crs": "EPSG:6677",
+  "method": "N02 operator/line selection; excludes Shinkansen; whole raw sections; no routing or track deduplication",
+  "limitations": [
+    "All-matching-lines extends beyond the allowed area and includes tracks not selected by services.",
+    "Hull envelope is a planning proxy, not exact service routing; excludes some detours if outside envelope.",
+    "Feature properties and partitioning differ from export; final geometry/reference budgets remain to be measured.",
+    "No browser rendering, label-density or device timing benchmark was run."
+  ],
+  "estimates": {
+    "all-matching-lines": {
+      "raw_bytes": 1690357,
+      "gzip_bytes": 287775,
+      "features": 4923,
+      "coordinates": 44433
+    },
+    "station-hull-plus-5km": {
+      "raw_bytes": 1542594,
+      "gzip_bytes": 260537,
+      "features": 4538,
+      "coordinates": 40258
+    }
+  },
+  "shipped_files": {
+    "manifest.json": {
+      "raw_bytes": 456,
+      "gzip_bytes": 341
+    },
+    "segments.geojson": {
+      "raw_bytes": 398311,
+      "gzip_bytes": 83972
+    },
+    "segments.json": {
+      "raw_bytes": 202155,
+      "gzip_bytes": 17523
+    },
+    "services.json": {
+      "raw_bytes": 88935,
+      "gzip_bytes": 13316
+    },
+    "stations.json": {
+      "raw_bytes": 54863,
+      "gzip_bytes": 10170
+    }
+  },
+  "capital_region_geometry_budget": {
+    "raw_bytes": 1572864,
+    "gzip_bytes": 460800
+  },
+  "capital_region_total_budget": {
+    "raw_bytes": 3145728,
+    "gzip_bytes": 921600
+  }
+}

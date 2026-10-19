@@ -1,0 +1,13 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "tobu-daishi",
+    "tobu-ogose"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/tobu",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "4eb2c630eff4be2c32060a12b914cb27d31be59ced30bc98e5cbc1d4c8ff4e06",
+    "length-ref-components.csv": "054f586210baffc41a5931187cfb0ebb6270cfe5974988d10e3babce86b9fed2"
+  }
+}

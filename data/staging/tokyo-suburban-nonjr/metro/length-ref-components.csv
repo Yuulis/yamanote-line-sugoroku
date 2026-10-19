@@ -1,0 +1,12 @@
+service_id,from,to,km,source_url,document,page_or_table,operation,source_class,notes
+metro-ginza,渋谷,浅草,14.2,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Ginza Line: official full-line operating mileage.
+metro-marunouchi,荻窪,池袋,24.2,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Marunouchi Line main route; branch is separately listed.
+metro-marunouchi-honancho,中野坂上,方南町,3.2,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,"Marunouchi Honancho branch, officially listed separately."
+metro-hibiya,中目黒,北千住,20.3,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Hibiya Line: official full-line operating mileage.
+metro-tozai,中野,西船橋,30.8,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Tozai Line: official full-line operating mileage.
+metro-chiyoda,代々木上原,北綾瀬,24.0,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Chiyoda Line including Kita-Ayase branch.
+metro-yurakucho,和光市,新木場,28.3,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Yurakucho Line including Wako-shi–Kotake-mukaihara section.
+metro-hanzomon,渋谷,押上,16.8,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Hanzomon Line: official full-line operating mileage.
+metro-namboku,目黒,赤羽岩淵,21.3,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Namboku Line: official full-line operating mileage.
+metro-fukutoshin,和光市,小竹向原,8.3,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1 note,+,primary,Yurakucho Line shared track used by the service
+metro-fukutoshin,小竹向原,渋谷,11.9,https://www.tokyometro.jp/support/guide/operation/pdf/information_20250315.pdf,Tokyo Metro Operating Guide (2025-03-15),guide table 1,+,primary,Fukutoshin Line section

@@ -84,4 +84,5 @@ export const LABEL_OFFSET_EM = 1.1;
 export const LABEL_HALO_COLOR = "#ffffff";
 export const LABEL_HALO_WIDTH = 1.5;
 export const LABEL_MIN_ZOOM = 11;
+export const LABEL_ORDINARY_MIN_ZOOM = 13;
 export const LINE_NAME_SEPARATOR = "、";

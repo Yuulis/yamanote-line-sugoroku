@@ -8,6 +8,7 @@ to a registry row by (normalised) name *and* the service's mapped N02 lines.
 from __future__ import annotations
 
 import csv
+import json
 import re
 import unicodedata
 from collections.abc import Iterable, Mapping
@@ -54,6 +55,8 @@ class RegistryStation:
     municipality: str
     representative_service_id: str
     n02_selector: PlatformSelector = ANY_PLATFORM
+    aliases: tuple[str, ...] = ()
+    n02_operator: str = ""
 
     @property
     def match_name(self) -> str:
@@ -89,6 +92,7 @@ class ScopeStop:
     station_id: str
     prefecture: str
     municipality: str
+    in_area: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -99,10 +103,24 @@ class BoundaryTruncation:
 
 
 def parse_scope(rows: Iterable[Mapping[str, str]]) -> tuple[ScopeStop, ...]:
-    stops = tuple(
-        ScopeStop(row["station_id"], row["prefecture"], row["municipality"])
-        for row in rows
-    )
+    values = tuple(rows)
+    has_in_area = any("in_area" in row for row in values)
+    if has_in_area and any("in_area" not in row for row in values):
+        raise OverrideError("scope.csv in_area must be present on every row")
+    stops_list: list[ScopeStop] = []
+    for row in values:
+        in_area: bool | None = None
+        if has_in_area:
+            raw = row.get("in_area", "")
+            if raw not in ("true", "false"):
+                raise OverrideError("scope.csv in_area must be exactly true or false")
+            in_area = raw == "true"
+        stops_list.append(
+            ScopeStop(
+                row["station_id"], row["prefecture"], row["municipality"], in_area
+            )
+        )
+    stops = tuple(stops_list)
     if not stops or len({stop.station_id for stop in stops}) != len(stops):
         raise OverrideError("served stop evidence must be non-empty with unique ids")
     for stop in stops:
@@ -131,11 +149,20 @@ def check_scope(
     excluded stop at each area boundary. A filtered list alone cannot prove
     that a service did not leave and re-enter the area between playable stops.
     """
-    indices = [
-        i
-        for i, stop in enumerate(evidence)
-        if area.contains(stop.prefecture, stop.municipality)
-    ]
+    explicit = any(stop.in_area is not None for stop in evidence)
+    if explicit and any(stop.in_area is None for stop in evidence):
+        raise OverrideError(
+            f"{service_id}: scope.csv mixes explicit and implicit in_area"
+        )
+    indices = (
+        [i for i, stop in enumerate(evidence) if stop.in_area]
+        if explicit
+        else [
+            i
+            for i, stop in enumerate(evidence)
+            if area.contains(stop.prefecture, stop.municipality)
+        ]
+    )
     if not indices:
         raise OverrideError(f"{service_id}: served stop evidence has no in-area stops")
     if indices != list(range(indices[0], indices[-1] + 1)):
@@ -146,9 +173,22 @@ def check_scope(
             f"{service_id}: served stop evidence differs from stops.csv"
         )
     stations = registry.by_id()
+    for stop in evidence:
+        if (
+            explicit
+            and stop.in_area
+            and stop.prefecture not in config.ALLOWED_RAILWAY_PREFECTURES
+        ):
+            raise OverrideError(
+                f"{service_id}/{stop.station_id}: unsupported in-area prefecture {stop.prefecture!r}"
+            )
     for i in indices:
         stop = evidence[i]
-        station = stations[stop.station_id]
+        station = stations.get(stop.station_id)
+        if station is None:
+            raise OverrideError(
+                f"{service_id}/{stop.station_id}: in-area stop is missing from registry"
+            )
         if (stop.prefecture, stop.municipality) != (
             station.prefecture,
             station.municipality,
@@ -207,6 +247,22 @@ def parse_registry(rows: Iterable[Mapping[str, str]]) -> Registry:
             selector = parse_platform_selector(row.get("n02_selector", ""))
         except ConstraintError as error:
             raise OverrideError(f"station {row['id']}: {error}") from error
+        aliases_raw = row.get("aliases", "")
+        try:
+            aliases_value = json.loads(aliases_raw) if aliases_raw else []
+        except json.JSONDecodeError as error:
+            raise OverrideError(
+                f"station {row['id']}: aliases must be a JSON string array"
+            ) from error
+        if not isinstance(aliases_value, list) or not all(
+            isinstance(value, str) and value.strip() for value in aliases_value
+        ):
+            raise OverrideError(
+                f"station {row['id']}: aliases must be a JSON string array"
+            )
+        aliases = tuple(aliases_value)
+        if len(set(aliases)) != len(aliases):
+            raise OverrideError(f"station {row['id']}: aliases must be unique")
         stations.append(
             RegistryStation(
                 id=row["id"],
@@ -216,6 +272,8 @@ def parse_registry(rows: Iterable[Mapping[str, str]]) -> Registry:
                 municipality=row["municipality"],
                 representative_service_id=row["representative_service_id"],
                 n02_selector=selector,
+                aliases=aliases,
+                n02_operator=row.get("n02_operator", ""),
             )
         )
     validate_registry(tuple(stations))
@@ -242,8 +300,23 @@ def validate_registry(stations: tuple[RegistryStation, ...]) -> None:
                 f"spelling (use {normalize_station_name(station.name)!r}; put the "
                 "N02 spelling in n02_name)"
             )
+        if station.n02_operator and not station.n02_operator.strip():
+            raise OverrideError(f"station {station.id} has blank n02_operator")
+        for alias in station.aliases:
+            if not alias.strip() or normalize_station_name(alias) != alias:
+                raise OverrideError(f"station {station.id} has invalid alias {alias!r}")
         key = station.match_name
         for previous in seen_names.get(key, []):
+            # An omitted operator is resolved from each row's representative
+            # service after services.json has loaded. Defer those homonyms to
+            # check_consistency, where effective operators and stop selectors
+            # are available.
+            if (
+                not station.n02_operator
+                or not previous.n02_operator
+                or station.n02_operator != previous.n02_operator
+            ):
+                continue
             left, right = station.n02_selector, previous.n02_selector
             disjoint = any(
                 a and b and a.isdisjoint(b)
@@ -259,10 +332,9 @@ def validate_registry(stations: tuple[RegistryStation, ...]) -> None:
                     "disjoint N02 selectors"
                 )
         seen_names.setdefault(key, []).append(station)
-        if station.prefecture not in config.CAPITAL_REGION_PREFECTURES:
+        if station.prefecture not in config.ALLOWED_RAILWAY_PREFECTURES:
             raise OverrideError(
-                f"station {station.id} prefecture {station.prefecture!r} is outside "
-                "the capital region"
+                f"station {station.id} prefecture {station.prefecture!r} is unsupported"
             )
         if not station.municipality:
             raise OverrideError(f"station {station.id} has no municipality")

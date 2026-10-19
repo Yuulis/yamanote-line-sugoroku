@@ -1,0 +1,8 @@
+from_id,to_id,n02_line,via,route,compose
+odakyu-shin-yurigaoka,odakyu-satsukidai,多摩線,,,
+odakyu-satsukidai,odakyu-kurihira,多摩線,,,
+odakyu-kurihira,odakyu-kurokawa,多摩線,,,
+odakyu-kurokawa,odakyu-haruhino,多摩線,,,
+odakyu-haruhino,keio-nagayama,多摩線,,,
+keio-nagayama,keio-tama-center,多摩線,,,
+keio-tama-center,odakyu-karakida,多摩線,,,

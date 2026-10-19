@@ -1,0 +1,35 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keio-shinjuku,KO01,line=京王線;group=003700;code=003700,新宿,新宿,京王電鉄,Raw N02 confirms this 京王線 station code 003700 and group 003700; pin the platform used by this frozen service.
+1,keio-hatsudai,KO02,line=京王線;group=003764;code=003764,初台,初台,京王電鉄,Raw N02 confirms frozen station name 初台 (N02 name 初台) on 京王線 at platform code 003764 and group 003764; pin this service stop.
+2,keio-hatagaya,KO03,line=京王線;group=003791;code=003791,幡ケ谷,幡ヶ谷,京王電鉄,Raw N02 confirms frozen station name 幡ケ谷 (N02 name 幡ヶ谷) on 京王線 at platform code 003791 and group 003791; pin this service stop.
+3,keio-sasazuka,KO04,line=京王線;group=003806;code=003806,笹塚,笹塚,京王電鉄,Raw N02 confirms frozen station name 笹塚 (N02 name 笹塚) on 京王線 at platform code 003806 and group 003806; pin this service stop.
+4,keio-daitabashi,KO05,line=京王線;group=003830;code=003830,代田橋,代田橋,京王電鉄,Raw N02 confirms frozen station name 代田橋 (N02 name 代田橋) on 京王線 at platform code 003830 and group 003830; pin this service stop.
+5,keio-meidaimae,KO06,line=京王線;group=003846;code=003855,明大前,明大前,京王電鉄,Raw N02 confirms this 京王線 station code 003855 and group 003846; pin the platform used by this frozen service.
+6,keio-shimo-takaido,KO07,line=京王線;group=003874;code=003874,下高井戸,下高井戸,京王電鉄,Raw N02 confirms frozen station name 下高井戸 (N02 name 下高井戸) on 京王線 at platform code 003874 and group 003874; pin this service stop.
+7,keio-sakurajosui,KO08,line=京王線;group=003862;code=003862,桜上水,桜上水,京王電鉄,Raw N02 confirms frozen station name 桜上水 (N02 name 桜上水) on 京王線 at platform code 003862 and group 003862; pin this service stop.
+8,keio-kami-kitazawa,KO09,line=京王線;group=003849;code=003849,上北沢,上北沢,京王電鉄,Raw N02 confirms frozen station name 上北沢 (N02 name 上北沢) on 京王線 at platform code 003849 and group 003849; pin this service stop.
+9,keio-hachimanyama,KO10,line=京王線;group=003836;code=003836,八幡山,八幡山,京王電鉄,Raw N02 confirms frozen station name 八幡山 (N02 name 八幡山) on 京王線 at platform code 003836 and group 003836; pin this service stop.
+10,keio-roka-koen,KO11,line=京王線;group=003832;code=003832,芦花公園,芦花公園,京王電鉄,Raw N02 confirms frozen station name 芦花公園 (N02 name 芦花公園) on 京王線 at platform code 003832 and group 003832; pin this service stop.
+11,keio-chitose-karasuyama,KO12,line=京王線;group=003861;code=003861,千歳烏山,千歳烏山,京王電鉄,Raw N02 confirms frozen station name 千歳烏山 (N02 name 千歳烏山) on 京王線 at platform code 003861 and group 003861; pin this service stop.
+12,keio-sengawa,KO13,line=京王線;group=003903;code=003903,仙川,仙川,京王電鉄,Raw N02 confirms frozen station name 仙川 (N02 name 仙川) on 京王線 at platform code 003903 and group 003903; pin this service stop.
+13,keio-tsutsujigaoka,KO14,line=京王線;group=003933;code=003933,つつじケ丘,つつじヶ丘,京王電鉄,Raw N02 confirms frozen station name つつじケ丘 (N02 name つつじヶ丘) on 京王線 at platform code 003933 and group 003933; pin this service stop.
+14,keio-shibasaki,KO15,line=京王線;group=003959;code=003959,柴崎,柴崎,京王電鉄,Raw N02 confirms frozen station name 柴崎 (N02 name 柴崎) on 京王線 at platform code 003959 and group 003959; pin this service stop.
+15,keio-kokuryo,KO16,line=京王線;group=003973;code=003973,国領,国領,京王電鉄,Raw N02 confirms frozen station name 国領 (N02 name 国領) on 京王線 at platform code 003973 and group 003973; pin this service stop.
+16,keio-fuda,KO17,line=京王線;group=003975;code=003975,布田,布田,京王電鉄,Raw N02 confirms frozen station name 布田 (N02 name 布田) on 京王線 at platform code 003975 and group 003975; pin this service stop.
+17,keio-chofu,KO18,line=京王線;group=003966;code=003966,調布,調布,京王電鉄,Raw N02 confirms this 京王線 station code 003966 and group 003966; pin the platform used by this frozen service.
+18,keio-nishi-chofu,KO19,line=京王線;group=003937;code=003937,西調布,西調布,京王電鉄,Raw N02 confirms frozen station name 西調布 (N02 name 西調布) on 京王線 at platform code 003937 and group 003937; pin this service stop.
+19,keio-tobitakyu,KO20,line=京王線;group=003916;code=003916,飛田給,飛田給,京王電鉄,Raw N02 confirms frozen station name 飛田給 (N02 name 飛田給) on 京王線 at platform code 003916 and group 003916; pin this service stop.
+20,keio-musashinodai,KO21,line=京王線;group=003891;code=003891,武蔵野台,武蔵野台,京王電鉄,Raw N02 confirms frozen station name 武蔵野台 (N02 name 武蔵野台) on 京王線 at platform code 003891 and group 003891; pin this service stop.
+21,keio-tama-reien,KO22,line=京王線;group=003871;code=003871,多磨霊園,多磨霊園,京王電鉄,Raw N02 confirms frozen station name 多磨霊園 (N02 name 多磨霊園) on 京王線 at platform code 003871 and group 003871; pin this service stop.
+22,keio-higashi-fuchu,KO23,line=京王線;group=003850;code=003850,東府中,東府中,京王電鉄,Raw N02 confirms this 京王線 station code 003850 and group 003850; pin the platform used by this frozen service.
+23,keio-fuchu,KO24,line=京王線;group=003821;code=003821,府中,府中,京王電鉄,Raw N02 confirms frozen station name 府中 (N02 name 府中) on 京王線 at platform code 003821 and group 003821; pin this service stop.
+24,keio-bubaigawara,KO25,line=京王線;group=003853;code=003858,分倍河原,分倍河原,京王電鉄,Raw N02 confirms frozen station name 分倍河原 (N02 name 分倍河原) on 京王線 at platform code 003858 and group 003853; pin this service stop.
+25,keio-nakagawara,KO26,line=京王線;group=003920;code=003920,中河原,中河原,京王電鉄,Raw N02 confirms frozen station name 中河原 (N02 name 中河原) on 京王線 at platform code 003920 and group 003920; pin this service stop.
+26,keio-seiseki-sakuragaoka,KO27,line=京王線;group=003971;code=003971,聖蹟桜ケ丘,聖蹟桜ヶ丘,京王電鉄,Raw N02 confirms frozen station name 聖蹟桜ケ丘 (N02 name 聖蹟桜ヶ丘) on 京王線 at platform code 003971 and group 003971; pin this service stop.
+27,keio-mogusaen,KO28,line=京王線;group=003936;code=003936,百草園,百草園,京王電鉄,Raw N02 confirms frozen station name 百草園 (N02 name 百草園) on 京王線 at platform code 003936 and group 003936; pin this service stop.
+28,keio-takahatafudo,KO29,line=京王線;group=003904;code=003904,高幡不動,高幡不動,京王電鉄,Raw N02 confirms this 京王線 station code 003904 and group 003904; pin the platform used by this frozen service.
+29,keio-minamidaira,KO30,line=京王線;group=003952;code=003952,南平,南平,京王電鉄,Raw N02 confirms frozen station name 南平 (N02 name 南平) on 京王線 at platform code 003952 and group 003952; pin this service stop.
+30,keio-hirayamajoshi-koen,KO31,line=京王線;group=003990;code=003990,平山城址公園,平山城址公園,京王電鉄,Raw N02 confirms frozen station name 平山城址公園 (N02 name 平山城址公園) on 京王線 at platform code 003990 and group 003990; pin this service stop.
+31,keio-naganuma,KO32,line=京王線;group=004027;code=004027,長沼,長沼,京王電鉄,Raw N02 confirms frozen station name 長沼 (N02 name 長沼) on 京王線 at platform code 004027 and group 004027; pin this service stop.
+32,keio-kitano,KO33,line=京王線;group=004007;code=004007,北野,北野,京王電鉄,Raw N02 confirms this 京王線 station code 004007 and group 004007; pin the platform used by this frozen service.
+33,keio-hachioji,KO34,line=京王線;group=003934;code=003934,京王八王子,京王八王子,京王電鉄,Raw N02 confirms frozen station name 京王八王子 (N02 name 京王八王子) on 京王線 at platform code 003934 and group 003934; pin this service stop.

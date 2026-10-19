@@ -1,0 +1,13 @@
+from_id,to_id,n02_line,via,route,compose
+tokyu-meguro,tokyu-fudo-mae,目黒線,,,
+tokyu-fudo-mae,tokyu-musashi-koyama,目黒線,,,
+tokyu-musashi-koyama,tokyu-nishi-koyama,目黒線,,,
+tokyu-nishi-koyama,tokyu-senzoku,目黒線,,,
+tokyu-senzoku,tokyu-ookayama,目黒線,,,
+tokyu-ookayama,tokyu-okusawa,目黒線,,,
+tokyu-okusawa,tokyu-den-en-chofu,目黒線,,,
+tokyu-den-en-chofu,tokyu-tamagawa,東横線,,,
+tokyu-tamagawa,tokyu-shin-maruko,東横線,,,
+tokyu-shin-maruko,tokyu-musashi-kosugi,東横線,,,
+tokyu-musashi-kosugi,tokyu-motosumiyoshi,東横線,,,
+tokyu-motosumiyoshi,tokyu-hiyoshi,東横線,,,

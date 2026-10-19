@@ -1,17 +1,17 @@
-order,station_id,station_number,platform_selector
-0,sakura,,
-1,shisui,,
-2,narita,,
-3,kuzumi,,
-4,namegawa,,
-5,shimosa-kozaki,,
-6,oto,,
-7,sawara,,
-8,katori,,
-9,suigo,,
-10,omigawa,,
-11,sasagawa,,
-12,shimosa-tachibana,,
-13,shimosa-toyosato,,
-14,shiishiba,,
-15,matsugishi,,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,sakura,,,佐倉,佐倉,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,shisui,,,酒々井,酒々井,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,narita,,,成田,成田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,kuzumi,,,久住,久住,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,namegawa,,,滑河,滑河,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,shimosa-kozaki,,,下総神崎,下総神崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,oto,,,大戸,大戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,sawara,,,佐原,佐原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,katori,,,香取,香取,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,suigo,,,水郷,水郷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,omigawa,,,小見川,小見川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,sasagawa,,,笹川,笹川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,shimosa-tachibana,,,下総橘,下総橘,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,shimosa-toyosato,,,下総豊里,下総豊里,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,shiishiba,,,椎柴,椎柴,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,matsugishi,,,松岸,松岸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

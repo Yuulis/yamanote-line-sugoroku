@@ -1,0 +1,2593 @@
+{
+  "lines": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "color": "#9ACD32"
+    },
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "color": "#C9242F"
+    },
+    {
+      "id": "jr-chuo-rapid",
+      "name": "中央線快速",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-ome",
+      "name": "青梅線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-itsukaichi",
+      "name": "五日市線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-hachiko",
+      "name": "八高線",
+      "color": "#A8A39D"
+    },
+    {
+      "id": "jr-sotetsu-direct",
+      "name": "相鉄線直通 (JR区間)",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-nambu",
+      "name": "南武線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-yokohama",
+      "name": "横浜線",
+      "color": "#80C241"
+    },
+    {
+      "id": "jr-tokaido",
+      "name": "東海道線",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-yokosuka",
+      "name": "横須賀線",
+      "color": "#0067C0"
+    },
+    {
+      "id": "jr-sobu-rapid",
+      "name": "総武快速線",
+      "color": "#0067C0"
+    },
+    {
+      "id": "jr-utsunomiya",
+      "name": "宇都宮線 (上野東京ライン)",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-takasaki",
+      "name": "高崎線 (上野東京ライン)",
+      "color": "#F68B1E"
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "color": "#E21F26"
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "color": "#E21F26"
+    },
+    {
+      "id": "jr-joban-rapid",
+      "name": "常磐線快速 (上野東京ライン)",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-musashino-takaya",
+      "name": "武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線)",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-musashino-futamata",
+      "name": "武蔵野線直通 西船橋–南船橋 (京葉線二俣支線)",
+      "color": "#F15A22"
+    },
+    {
+      "id": "jr-joban-local",
+      "name": "常磐線各駅停車",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-narita-abiko",
+      "name": "成田線 我孫子支線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-narita",
+      "name": "成田線 (佐倉–松岸)",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-narita-airport-branch",
+      "name": "成田線 空港支線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-kashima",
+      "name": "鹿島線 (香取–十二橋)",
+      "color": "#9F7BB5"
+    },
+    {
+      "id": "jr-sobu-main",
+      "name": "総武本線 (千葉–銚子)",
+      "color": "#FFC20D"
+    },
+    {
+      "id": "jr-sotobo",
+      "name": "外房線",
+      "color": "#E83F3F"
+    },
+    {
+      "id": "jr-uchibo",
+      "name": "内房線",
+      "color": "#00B2E5"
+    },
+    {
+      "id": "jr-kururi",
+      "name": "久留里線",
+      "color": "#00B261"
+    },
+    {
+      "id": "jr-togane",
+      "name": "東金線",
+      "color": "#B38D4D"
+    },
+    {
+      "id": "jr-nambu-branch",
+      "name": "南武線 浜川崎支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi",
+      "name": "鶴見線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi-umishibaura",
+      "name": "鶴見線 海芝浦支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-tsurumi-okawa",
+      "name": "鶴見線 大川支線",
+      "color": "#FFD400"
+    },
+    {
+      "id": "jr-sagami",
+      "name": "相模線",
+      "color": "#009793"
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "name": "川越線 川越–高麗川",
+      "color": "#00AC9A"
+    },
+    {
+      "id": "jr-chuo-takao-fujino",
+      "name": "中央本線 高尾–藤野",
+      "color": "#00843D"
+    },
+    {
+      "id": "jr-shinetsu-yokokawa",
+      "name": "信越本線 高崎–横川",
+      "color": "#808080"
+    },
+    {
+      "id": "jr-joetsu",
+      "name": "上越線 (高崎–水上)",
+      "color": "#808080"
+    },
+    {
+      "id": "jr-agatsuma",
+      "name": "吾妻線",
+      "color": "#808080"
+    },
+    {
+      "id": "jr-ryomo",
+      "name": "両毛線",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "jr-yamanote",
+      "name": "山手線",
+      "color": "#9ACD32",
+      "circular": true,
+      "directionLabels": {
+        "forward": "外回り",
+        "backward": "内回り"
+      },
+      "expectedStopCount": 30,
+      "lengthRef": {
+        "km": 34.5,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 34.5 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-yamanote"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JY29",
+          "JY28",
+          "JY27",
+          "JY26",
+          "JY25",
+          "JY24",
+          "JY23",
+          "JY22",
+          "JY21",
+          "JY20",
+          "JY19",
+          "JY18",
+          "JY17",
+          "JY16",
+          "JY15",
+          "JY14",
+          "JY13",
+          "JY12",
+          "JY11",
+          "JY10",
+          "JY09",
+          "JY08",
+          "JY07",
+          "JY06",
+          "JY05",
+          "JY04",
+          "JY03",
+          "JY02",
+          "JY01",
+          "JY30"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-keihin-tohoku",
+      "name": "京浜東北線・根岸線",
+      "color": "#00B2E5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "蒲田方面",
+        "backward": "赤羽方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 47,
+      "lengthRef": {
+        "km": 81.5,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 27.6 km, kanagawa 32.7 km, saitama 14.5 km) plus 6.713 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-keihin-tohoku"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JK47",
+          "JK46",
+          "JK45",
+          "JK44",
+          "JK43",
+          "JK42",
+          "JK41",
+          "JK40",
+          "JK39",
+          "JK38",
+          "JK37",
+          "JK36",
+          "JK35",
+          "JK34",
+          "JK33",
+          "JK32",
+          "JK31",
+          "JK30",
+          "JK29",
+          "JK28",
+          "JK27",
+          "JK26",
+          "JK25",
+          "JK24",
+          "JK23",
+          "JK22",
+          "JK21",
+          "JK20",
+          "JK19",
+          "JK18",
+          "JK17",
+          "JK16",
+          "JK15",
+          "JK14",
+          "JK13",
+          "JK12",
+          "JK11",
+          "JK10",
+          "JK09",
+          "JK08",
+          "JK07",
+          "JK06",
+          "JK05",
+          "JK04",
+          "JK03",
+          "JK02",
+          "JK01"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-chuo-sobu-local",
+      "name": "中央・総武線各駅停車",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小岩方面",
+        "backward": "三鷹方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 39,
+      "lengthRef": {
+        "km": 60.2,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 33.8 km, chiba 23.8 km) plus 2.649 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-chuo-sobu-local"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JB01",
+          "JB02",
+          "JB03",
+          "JB04",
+          "JB05",
+          "JB06",
+          "JB07",
+          "JB08",
+          "JB09",
+          "JB10",
+          "JB11",
+          "JB12",
+          "JB13",
+          "JB14",
+          "JB15",
+          "JB16",
+          "JB17",
+          "JB18",
+          "JB19",
+          "JB20",
+          "JB21",
+          "JB22",
+          "JB23",
+          "JB24",
+          "JB25",
+          "JB26",
+          "JB27",
+          "JB28",
+          "JB29",
+          "JB30",
+          "JB31",
+          "JB32",
+          "JB33",
+          "JB34",
+          "JB35",
+          "JB36",
+          "JB37",
+          "JB38",
+          "JB39"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-chuo-rapid",
+      "name": "中央線快速",
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "高尾方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 24,
+      "lengthRef": {
+        "km": 53.1,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 53.1 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "rapid",
+      "lineIds": [
+        "jr-chuo-rapid"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JC01",
+          "JC02",
+          "JC03",
+          "JC04",
+          "JC05",
+          "JC06",
+          "JC07",
+          "JC08",
+          "JC09",
+          "JC10",
+          "JC11",
+          "JC12",
+          "JC13",
+          "JC14",
+          "JC15",
+          "JC16",
+          "JC17",
+          "JC18",
+          "JC19",
+          "JC20",
+          "JC21",
+          "JC22",
+          "JC23",
+          "JC24"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-chuo-takao-fujino",
+      "name": "中央本線 高尾–藤野",
+      "color": "#00843D",
+      "circular": false,
+      "directionLabels": {
+        "forward": "相模湖・藤野方面",
+        "backward": "高尾方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "lengthRef": {
+        "km": 13.3,
+        "toleranceKm": 1.5,
+        "source": "JR Chuo Main Line operating distance, Takao–Sagamiko–Fujino; N02 measured 13.331 km, see S6 pair evidence."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JC24",
+          "JC25",
+          "JC26"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "kind": "local",
+      "lineIds": [
+        "jr-chuo-takao-fujino"
+      ],
+      "expectedStopCount": 3,
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-ome",
+      "name": "青梅線",
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "奥多摩方面",
+        "backward": "立川方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 25,
+      "lengthRef": {
+        "km": 37.2,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 37.2 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-ome"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-itsukaichi",
+      "name": "五日市線",
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "武蔵五日市方面",
+        "backward": "拝島方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 11.1,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 11.1 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-itsukaichi"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-hachiko",
+      "name": "八高線",
+      "color": "#A8A39D",
+      "circular": false,
+      "directionLabels": {
+        "forward": "高崎方面",
+        "backward": "八王子方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 24,
+      "lengthRef": {
+        "km": 96.34,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 15.7 km, saitama 59.5 km) plus 4.655 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md. plus 16.440 km raw-N02 paths for 4 added pairs; see length-refs.csv."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-hachiko"
+      ],
+      "scopeSource": "Hash-verified frozen JR research catalog; boundary witnesses are pinned in R1 evidence.",
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Frozen JR stop order; shipped station numbers are retained and added stops are intentionally blank."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県",
+        "山梨県",
+        "栃木県",
+        "福島県",
+        "群馬県",
+        "茨城県",
+        "長野県",
+        "静岡県"
+      ]
+    },
+    {
+      "id": "jr-kawagoe-west",
+      "name": "川越線 川越–高麗川",
+      "color": "#00AC9A",
+      "circular": false,
+      "directionLabels": {
+        "forward": "高麗川方面",
+        "backward": "川越方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 14.5,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (saitama 14.5 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-kawagoe-west"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JA31",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-saikyo",
+      "name": "埼京線・川越線",
+      "color": "#00AC9A",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浮間舟渡方面",
+        "backward": "大崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 24,
+      "lengthRef": {
+        "km": 52.9,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 22.0 km, saitama 28.6 km) plus 2.262 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-saikyo"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JA08",
+          "JA09",
+          "JA10",
+          "JA11",
+          "JA12",
+          "JA13",
+          "JA14",
+          "JA15",
+          "JA16",
+          "JA17",
+          "JA18",
+          "JA19",
+          "JA20",
+          "JA21",
+          "JA22",
+          "JA23",
+          "JA24",
+          "JA25",
+          "JA26",
+          "JA27",
+          "JA28",
+          "JA29",
+          "JA30",
+          "JA31"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-sotetsu-direct",
+      "name": "相鉄線直通 (JR区間)",
+      "color": "#00AC9A",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西大井方面",
+        "backward": "新宿方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 33.8,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 10.8 km, kanagawa 16.6 km) plus 6.422 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-sotetsu-direct"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "JS15",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-keiyo",
+      "name": "京葉線",
+      "color": "#C9242F",
+      "circular": false,
+      "directionLabels": {
+        "forward": "葛西臨海公園方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 18,
+      "lengthRef": {
+        "km": 43.1,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 10.6 km, chiba 30.3 km) plus 2.201 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-keiyo"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JE01",
+          "JE02",
+          "JE03",
+          "JE04",
+          "JE05",
+          "JE06",
+          "JE07",
+          "JE08",
+          "JE09",
+          "JE10",
+          "JE11",
+          "JE12",
+          "JE13",
+          "JE14",
+          "JE15",
+          "JE16",
+          "JE17",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-musashino",
+      "name": "武蔵野線",
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "新秋津方面",
+        "backward": "府中本町方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 26,
+      "lengthRef": {
+        "km": 71.6,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 13.0 km, chiba 16.4 km, saitama 37.7 km) plus 4.539 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "JM30",
+          "JM29",
+          "JM28",
+          "JM27",
+          "JM26",
+          "JM25",
+          "JM24",
+          "JM23",
+          "JM22",
+          "JM21",
+          "JM20",
+          "JM19",
+          "JM18",
+          "JM17",
+          "JM16",
+          "JM15",
+          "JM14",
+          "JM13",
+          "JM12",
+          "JM11",
+          "JM10"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-musashino-takaya",
+      "name": "武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線)",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino-takaya"
+      ],
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "市川塩浜方面",
+        "backward": "西船橋方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 5.9,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 5.9 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-musashino-futamata",
+      "name": "武蔵野線直通 西船橋–南船橋 (京葉線二俣支線)",
+      "kind": "local",
+      "lineIds": [
+        "jr-musashino-futamata"
+      ],
+      "color": "#F15A22",
+      "circular": false,
+      "directionLabels": {
+        "forward": "南船橋方面",
+        "backward": "西船橋方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 5.4,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 5.4 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-nambu",
+      "name": "南武線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "立川方面",
+        "backward": "矢野口方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 26,
+      "lengthRef": {
+        "km": 35.6,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 13.1 km, kanagawa 20.8 km) plus 1.688 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-nambu"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JN01",
+          "JN02",
+          "JN03",
+          "JN04",
+          "JN05",
+          "JN06",
+          "JN07",
+          "JN08",
+          "JN09",
+          "JN10",
+          "JN11",
+          "JN12",
+          "JN13",
+          "JN14",
+          "JN15",
+          "JN16",
+          "JN17",
+          "JN18",
+          "JN19",
+          "JN20",
+          "JN21",
+          "JN22",
+          "JN23",
+          "JN24",
+          "JN25",
+          "JN26"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-nambu-branch",
+      "name": "南武線 浜川崎支線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "浜川崎方面",
+        "backward": "尻手方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 5,
+      "lengthRef": {
+        "km": 4.1,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (kanagawa 4.1 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-nambu-branch"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "JN02",
+          "JN51",
+          "JN52",
+          "JN53",
+          "JN54"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-tsurumi",
+      "name": "鶴見線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "扇町方面",
+        "backward": "鶴見方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 7.0,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (kanagawa 7.0 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "JI01",
+          "JI02",
+          "JI03",
+          "JI04",
+          "JI05",
+          "JI06",
+          "JI07",
+          "JI08",
+          "JI09",
+          "JI10"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-tsurumi-umishibaura",
+      "name": "鶴見線 海芝浦支線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "海芝浦方面",
+        "backward": "浅野方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 1.7,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (kanagawa 1.7 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi-umishibaura"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "JI05",
+          "JI51",
+          "JI52"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-tsurumi-okawa",
+      "name": "鶴見線 大川支線",
+      "color": "#FFD400",
+      "circular": false,
+      "directionLabels": {
+        "forward": "大川方面",
+        "backward": "安善方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 1.6,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (kanagawa 1.6 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tsurumi-okawa"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "JI06",
+          "JI61"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-yokohama",
+      "name": "横浜線",
+      "color": "#80C241",
+      "circular": false,
+      "directionLabels": {
+        "forward": "八王子方面",
+        "backward": "相原方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 20,
+      "lengthRef": {
+        "km": 42.4,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 6.9 km, kanagawa 17.9 km) plus 17.647 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-yokohama"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JH13",
+          "JH14",
+          "JH15",
+          "JH16",
+          "JH17",
+          "JH18",
+          "JH19",
+          "JH20",
+          "JH21",
+          "JH22",
+          "JH23",
+          "JH24",
+          "JH25",
+          "JH26",
+          "JH27",
+          "",
+          "JH29",
+          "JH30",
+          "JH31",
+          "JH32"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-sagami",
+      "name": "相模線",
+      "color": "#009793",
+      "circular": false,
+      "directionLabels": {
+        "forward": "橋本方面",
+        "backward": "茅ケ崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 18,
+      "lengthRef": {
+        "km": 33.3,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (kanagawa 33.3 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-sagami"
+      ],
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "stationNumberRules": {
+        "sequence": [
+          "JT10",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "JH28"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-tokaido",
+      "name": "東海道線",
+      "color": "#F68B1E",
+      "circular": false,
+      "directionLabels": {
+        "forward": "品川方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 20,
+      "lengthRef": {
+        "km": 99.3,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 6.8 km, kanagawa 80.9 km) plus 11.621 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-tokaido"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JT01",
+          "JT02",
+          "JT03",
+          "JT04",
+          "JT05",
+          "JT06",
+          "JT07",
+          "JT08",
+          "JT09",
+          "JT10",
+          "JT11",
+          "JT12",
+          "JT13",
+          "JT14",
+          "JT15",
+          "JT16",
+          "JT17",
+          "JT18",
+          "JT19",
+          "JT20"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-yokosuka",
+      "name": "横須賀線",
+      "color": "#0067C0",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西大井方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 19,
+      "lengthRef": {
+        "km": 73.3,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 10.4 km, kanagawa 56.5 km) plus 6.422 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-yokosuka"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JO19",
+          "JO18",
+          "JO17",
+          "JO16",
+          "JO15",
+          "JO14",
+          "JO13",
+          "JO12",
+          "JO11",
+          "JO10",
+          "JO09",
+          "JO08",
+          "JO07",
+          "JO06",
+          "JO05",
+          "JO04",
+          "JO03",
+          "JO02",
+          "JO01"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-sobu-rapid",
+      "name": "総武快速線",
+      "color": "#0067C0",
+      "circular": false,
+      "directionLabels": {
+        "forward": "新小岩方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 39.3,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 10.0 km, chiba 23.8 km) plus 5.510 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "rapid",
+      "lineIds": [
+        "jr-sobu-rapid"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JO19",
+          "JO20",
+          "JO21",
+          "JO22",
+          "JO23",
+          "JO24",
+          "JO25",
+          "JO26",
+          "JO27",
+          "JO28"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-utsunomiya",
+      "name": "宇都宮線 (上野東京ライン)",
+      "color": "#F68B1E",
+      "circular": false,
+      "directionLabels": {
+        "forward": "赤羽方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 15,
+      "lengthRef": {
+        "km": 57.5,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 13.4 km, saitama 33.0 km) plus 11.137 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-utsunomiya"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JU01",
+          "JU02",
+          "JU03",
+          "JU04",
+          "JU05",
+          "JU06",
+          "JU07",
+          "JU08",
+          "JU09",
+          "JU10",
+          "JU11",
+          "JU12",
+          "JU13",
+          "JU14",
+          "JU15"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-takasaki",
+      "name": "高崎線 (上野東京ライン)",
+      "color": "#F68B1E",
+      "circular": false,
+      "directionLabels": {
+        "forward": "高崎方面",
+        "backward": "東京方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 25,
+      "lengthRef": {
+        "km": 105.254,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 13.4 km, saitama 65.8 km) plus 11.137 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md. plus 14.954 km raw-N02 paths for 3 added pairs; see length-refs.csv."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-takasaki"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JU01",
+          "JU02",
+          "JU03",
+          "JU04",
+          "JU05",
+          "JU06",
+          "JU07",
+          "JU08",
+          "JU09",
+          "JU10",
+          "JU11",
+          "JU12",
+          "JU13",
+          "JU14",
+          "JU15",
+          "JU16",
+          "JU17",
+          "JU18",
+          "JU19",
+          "JU20",
+          "JU21",
+          "JU22",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Frozen JR stop order; shipped station numbers are retained and added stops are intentionally blank."
+      },
+      "scopeSource": "Hash-verified frozen JR research catalog; boundary witnesses are pinned in R1 evidence.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県",
+        "山梨県",
+        "栃木県",
+        "福島県",
+        "群馬県",
+        "茨城県",
+        "長野県",
+        "静岡県"
+      ]
+    },
+    {
+      "id": "jr-shonan-shinjuku-local",
+      "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+      "color": "#E21F26",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西大井方面",
+        "backward": "赤羽方面"
+      },
+      "endpoints": {
+        "first": "area-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 27,
+      "lengthRef": {
+        "km": 118.5,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 26.9 km, kanagawa 41.0 km, saitama 33.0 km) plus 17.558 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "local",
+      "lineIds": [
+        "jr-shonan-shinjuku-local"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "JU15",
+          "JU14",
+          "JU13",
+          "JU12",
+          "JU11",
+          "JU10",
+          "JU09",
+          "JU08",
+          "JS24",
+          "JS23",
+          "JS22",
+          "JS21",
+          "JS20",
+          "JS19",
+          "JS18",
+          "JS17",
+          "JS16",
+          "JS15",
+          "JS14",
+          "JS13",
+          "JS12",
+          "JS11",
+          "JS10",
+          "JS09",
+          "JS08",
+          "JS07",
+          "JS06"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-shonan-shinjuku-rapid-takasaki",
+      "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+      "color": "#E21F26",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小田原方面",
+        "backward": "高崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 39,
+      "lengthRef": {
+        "km": 195.554,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 24.7 km, kanagawa 70.0 km, saitama 65.8 km) plus 20.141 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md. plus 14.954 km raw-N02 paths for 3 added pairs; see length-refs.csv."
+      },
+      "kind": "rapid",
+      "lineIds": [
+        "jr-shonan-shinjuku-rapid-takasaki"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "JU22",
+          "JU21",
+          "JU20",
+          "JU19",
+          "JU18",
+          "JU17",
+          "JU16",
+          "JU15",
+          "JU14",
+          "JU13",
+          "JU12",
+          "JU11",
+          "JU10",
+          "JU09",
+          "JU08",
+          "JS24",
+          "JS23",
+          "JS22",
+          "JS21",
+          "JS20",
+          "JS19",
+          "JS18",
+          "JS17",
+          "JS15",
+          "JT05",
+          "JT06",
+          "JT07",
+          "JT08",
+          "JT09",
+          "JT10",
+          "JT11",
+          "JT12",
+          "JT13",
+          "JT14",
+          "JT15",
+          "JT16"
+        ],
+        "reason": "Frozen JR stop order; shipped station numbers are retained and added stops are intentionally blank."
+      },
+      "scopeSource": "Hash-verified frozen JR research catalog; boundary witnesses are pinned in R1 evidence.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県",
+        "山梨県",
+        "栃木県",
+        "福島県",
+        "群馬県",
+        "茨城県",
+        "長野県",
+        "静岡県"
+      ]
+    },
+    {
+      "id": "jr-joban-rapid",
+      "name": "常磐線快速 (上野東京ライン)",
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "北千住方面",
+        "backward": "品川方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 12,
+      "lengthRef": {
+        "km": 46.8,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (tokyo 17.8 km, chiba 18.3 km) plus 10.703 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "kind": "rapid",
+      "lineIds": [
+        "jr-joban-rapid"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "JJ01",
+          "JJ02",
+          "JJ03",
+          "JJ04",
+          "JJ05",
+          "JJ06",
+          "JJ07",
+          "JJ08",
+          "JJ09"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-joban-local",
+      "name": "常磐線各駅停車",
+      "kind": "local",
+      "lineIds": [
+        "jr-joban-local"
+      ],
+      "color": "#00B2E5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "天王台方面",
+        "backward": "松戸方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 13,
+      "lengthRef": {
+        "km": 26.4,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 18.3 km) plus 8.060 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "JL20",
+          "JL21",
+          "JL22",
+          "JL22",
+          "JL23",
+          "JL24",
+          "JL25",
+          "JL26",
+          "JL27",
+          "JL28",
+          "JL29",
+          "JL30",
+          "JL31"
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-narita-abiko",
+      "name": "成田線 我孫子支線",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita-abiko"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成田方面",
+        "backward": "我孫子方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 32.9,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 32.9 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-narita",
+      "name": "成田線 (佐倉–松岸)",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "松岸方面",
+        "backward": "佐倉方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 16,
+      "lengthRef": {
+        "km": 75.4,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 75.4 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-narita-airport-branch",
+      "name": "成田線 空港支線",
+      "kind": "local",
+      "lineIds": [
+        "jr-narita-airport-branch"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成田空港方面",
+        "backward": "成田方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 10.8,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 10.8 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-kashima",
+      "name": "鹿島線 (香取–十二橋)",
+      "kind": "local",
+      "lineIds": [
+        "jr-kashima"
+      ],
+      "color": "#9F7BB5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "十二橋方面",
+        "backward": "香取方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 3.0,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 3.0 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-sobu-main",
+      "name": "総武本線 (千葉–銚子)",
+      "kind": "local",
+      "lineIds": [
+        "jr-sobu-main"
+      ],
+      "color": "#FFC20D",
+      "circular": false,
+      "directionLabels": {
+        "forward": "銚子方面",
+        "backward": "千葉方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 22,
+      "lengthRef": {
+        "km": 81.3,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 81.3 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-sotobo",
+      "name": "外房線",
+      "kind": "local",
+      "lineIds": [
+        "jr-sotobo"
+      ],
+      "color": "#E83F3F",
+      "circular": false,
+      "directionLabels": {
+        "forward": "安房鴨川方面",
+        "backward": "千葉方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 27,
+      "lengthRef": {
+        "km": 93.3,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 93.3 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-uchibo",
+      "name": "内房線",
+      "kind": "local",
+      "lineIds": [
+        "jr-uchibo"
+      ],
+      "color": "#00B2E5",
+      "circular": false,
+      "directionLabels": {
+        "forward": "安房鴨川方面",
+        "backward": "千葉方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      },
+      "expectedStopCount": 32,
+      "lengthRef": {
+        "km": 123.2,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 123.2 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-kururi",
+      "name": "久留里線",
+      "kind": "local",
+      "lineIds": [
+        "jr-kururi"
+      ],
+      "color": "#00B261",
+      "circular": false,
+      "directionLabels": {
+        "forward": "久留里方面",
+        "backward": "木更津方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 11,
+      "lengthRef": {
+        "km": 22.6,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 22.6 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-togane",
+      "name": "東金線",
+      "kind": "local",
+      "lineIds": [
+        "jr-togane"
+      ],
+      "color": "#B38D4D",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成東方面",
+        "backward": "大網方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 5,
+      "lengthRef": {
+        "km": 13.8,
+        "toleranceKm": 1.5,
+        "source": "Integrated product run: reviewed stage mileage references (chiba 13.8 km) plus 0.000 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+      },
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Merged reviewed stage station-number evidence in the approved product stop order; deferred Yokohama/Joban/Chuo entries use the JR East numbering sequence."
+      },
+      "scopeSource": "Approved JR East capital-region product catalog v2, expanded to the full selected run; station prefectures and municipalities are in stations.csv and external endpoint witnesses are in scope.csv.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県"
+      ]
+    },
+    {
+      "id": "jr-shinetsu-yokokawa",
+      "name": "信越本線 高崎–横川",
+      "kind": "local",
+      "lineIds": [
+        "jr-shinetsu-yokokawa"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "横川方面",
+        "backward": "高崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 8,
+      "lengthRef": {
+        "km": 29.7,
+        "toleranceKm": 1.5,
+        "source": "Official operating distance 29.7 km (https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf); raw N02 single-pair paths sum to 29.012 km; see length-refs.csv."
+      },
+      "scopeSource": "Hash-verified frozen JR research catalog; boundary witnesses are pinned in R1 evidence.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県",
+        "山梨県",
+        "栃木県",
+        "福島県",
+        "群馬県",
+        "茨城県",
+        "長野県",
+        "静岡県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Frozen JR stop order; shipped station numbers are retained and added stops are intentionally blank."
+      }
+    },
+    {
+      "id": "jr-joetsu",
+      "name": "上越線 (高崎–水上)",
+      "kind": "local",
+      "lineIds": [
+        "jr-joetsu"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "水上方面",
+        "backward": "高崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "area-boundary"
+      },
+      "expectedStopCount": 14,
+      "lengthRef": {
+        "km": 59.1,
+        "toleranceKm": 1.5,
+        "source": "Official operating distance 59.1 km (https://ja.wikipedia.org/wiki/上越線); raw N02 single-pair paths sum to 59.048 km; see length-refs.csv."
+      },
+      "scopeSource": "Hash-verified frozen JR research catalog; boundary witnesses are pinned in R1 evidence.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県",
+        "山梨県",
+        "栃木県",
+        "福島県",
+        "群馬県",
+        "茨城県",
+        "長野県",
+        "静岡県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Frozen JR stop order; shipped station numbers are retained and added stops are intentionally blank."
+      }
+    },
+    {
+      "id": "jr-agatsuma",
+      "name": "吾妻線",
+      "kind": "local",
+      "lineIds": [
+        "jr-agatsuma"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "大前方面",
+        "backward": "渋川方面"
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      },
+      "expectedStopCount": 18,
+      "lengthRef": {
+        "km": 55.3,
+        "toleranceKm": 1.5,
+        "source": "Official operating distance 55.3 km (https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf); raw N02 single-pair paths sum to 55.100 km; see length-refs.csv."
+      },
+      "scopeSource": "Hash-verified frozen JR research catalog; boundary witnesses are pinned in R1 evidence.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県",
+        "山梨県",
+        "栃木県",
+        "福島県",
+        "群馬県",
+        "茨城県",
+        "長野県",
+        "静岡県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Frozen JR stop order; shipped station numbers are retained and added stops are intentionally blank."
+      }
+    },
+    {
+      "id": "jr-ryomo",
+      "name": "両毛線",
+      "kind": "local",
+      "lineIds": [
+        "jr-ryomo"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小山方面",
+        "backward": "高崎方面"
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      },
+      "expectedStopCount": 22,
+      "lengthRef": {
+        "km": 91.7,
+        "toleranceKm": 1.5,
+        "source": "Official operating distance 91.7 km (https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf https://en.wikipedia.org/wiki/J%C5%8Cetsu_Line); raw N02 single-pair paths sum to 91.934 km; see length-refs.csv."
+      },
+      "scopeSource": "Hash-verified frozen JR research catalog; boundary witnesses are pinned in R1 evidence.",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県",
+        "神奈川県",
+        "埼玉県",
+        "山梨県",
+        "栃木県",
+        "福島県",
+        "群馬県",
+        "茨城県",
+        "長野県",
+        "静岡県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "reason": "Frozen JR stop order; shipped station numbers are retained and added stops are intentionally blank."
+      }
+    }
+  ]
+}

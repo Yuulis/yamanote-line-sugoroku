@@ -1,0 +1,1547 @@
+{
+  "schemaVersion": 1,
+  "cases": {
+    "decided": {
+      "case": {
+        "name": "decided",
+        "input": "official",
+        "preset": "decided",
+        "games": 20000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/tokyo-suburban-research-catalog.csv": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+          ".claude/docs/research/tokyo-suburban-research-services.csv": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 20000,
+        "completedGames": 20000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 137,
+        "p90": 311,
+        "p99": 516,
+        "mean": 160.14225,
+        "max": 1092,
+        "over500Count": 239,
+        "totalPlayedTurns": 3202845
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-0.json",
+          "runtimeSeconds": 72.845342147,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 2500,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-2500.json",
+          "runtimeSeconds": 70.783556796,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 5000,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-5000.json",
+          "runtimeSeconds": 72.90894419600001,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 7500,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-7500.json",
+          "runtimeSeconds": 71.463840849,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 10000,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-10000.json",
+          "runtimeSeconds": 74.165168643,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 12500,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-12500.json",
+          "runtimeSeconds": 75.655509615,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 15000,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-15000.json",
+          "runtimeSeconds": 75.161658073,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 17500,
+          "games": 2500,
+          "output": ".claude/logs/r2/decided-17500.json",
+          "runtimeSeconds": 71.19806342000001,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        }
+      ]
+    },
+    "identity-shared": {
+      "case": {
+        "name": "identity-shared",
+        "input": "shared",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/shared-catalog.csv": "fdb8c79d34a1c945d86ec30ab5e69e4e43968b4a282888cbec45f22aa3766d9f",
+          ".claude/logs/r2/shared-services.csv": "a19c1a3940af0a84d87e5651f8692ea327d976c0059a1762cb173c3a7636c476"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1772,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 69,
+        "p90": 280,
+        "p99": 950,
+        "mean": 128.1672,
+        "max": 2475,
+        "over500Count": 239,
+        "totalPlayedTurns": 640836
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-shared-0.json",
+          "runtimeSeconds": 34.035915963,
+          "fingerprint": "cf0842b0dacabae7307979a41f4d9e8f4122c5d2c1969447f1d61f565de87505"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-shared-1250.json",
+          "runtimeSeconds": 35.8327487,
+          "fingerprint": "cf0842b0dacabae7307979a41f4d9e8f4122c5d2c1969447f1d61f565de87505"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-shared-2500.json",
+          "runtimeSeconds": 32.165851335,
+          "fingerprint": "cf0842b0dacabae7307979a41f4d9e8f4122c5d2c1969447f1d61f565de87505"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-shared-3750.json",
+          "runtimeSeconds": 29.131853431,
+          "fingerprint": "cf0842b0dacabae7307979a41f4d9e8f4122c5d2c1969447f1d61f565de87505"
+        }
+      ]
+    },
+    "identity-same-name": {
+      "case": {
+        "name": "identity-same-name",
+        "input": "same-name",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/same-name-catalog.csv": "ed5d978c6862998154ffc280a31e17897a438fd1fef6b4222d6faa5c588c37b5",
+          ".claude/logs/r2/same-name-services.csv": "7643cb5e5390c4638a16eddc77a25df092e861f1f3a84e76fe5575ce97c65bcb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1636,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 134,
+        "p90": 308,
+        "p99": 511,
+        "mean": 157.0482,
+        "max": 837,
+        "over500Count": 54,
+        "totalPlayedTurns": 785241
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-same-name-0.json",
+          "runtimeSeconds": 33.145870628999994,
+          "fingerprint": "939b3a18f19f93ad0c4c39816e9dc65208fdf43435ca4eb43ee13ab07c64cb51"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-same-name-1250.json",
+          "runtimeSeconds": 33.125398069,
+          "fingerprint": "939b3a18f19f93ad0c4c39816e9dc65208fdf43435ca4eb43ee13ab07c64cb51"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-same-name-2500.json",
+          "runtimeSeconds": 39.85123927899999,
+          "fingerprint": "939b3a18f19f93ad0c4c39816e9dc65208fdf43435ca4eb43ee13ab07c64cb51"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-same-name-3750.json",
+          "runtimeSeconds": 37.469375486,
+          "fingerprint": "939b3a18f19f93ad0c4c39816e9dc65208fdf43435ca4eb43ee13ab07c64cb51"
+        }
+      ]
+    },
+    "identity-300m": {
+      "case": {
+        "name": "identity-300m",
+        "input": "official-300",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/official-300-catalog.csv": "95aa60fdca5228f09fa2a3b65a82ceab4a8c31083140d3480888db7f291d3a50",
+          ".claude/logs/r2/official-300-services.csv": "78cb7eb228cad14fb90f8340b3d554c3a5ecdb3c7be812e1e83ed7c48a77e20f"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1613,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 143,
+        "p90": 321,
+        "p99": 545,
+        "mean": 167.0166,
+        "max": 886,
+        "over500Count": 73,
+        "totalPlayedTurns": 835083
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-300m-0.json",
+          "runtimeSeconds": 38.771540106,
+          "fingerprint": "52118f06921e0d2b02ac6e634d6a3e11350ecf0a3da07f0c2044b98c1e3fb7aa"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-300m-1250.json",
+          "runtimeSeconds": 41.262682659999996,
+          "fingerprint": "52118f06921e0d2b02ac6e634d6a3e11350ecf0a3da07f0c2044b98c1e3fb7aa"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-300m-2500.json",
+          "runtimeSeconds": 39.52008440699999,
+          "fingerprint": "52118f06921e0d2b02ac6e634d6a3e11350ecf0a3da07f0c2044b98c1e3fb7aa"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/identity-300m-3750.json",
+          "runtimeSeconds": 38.07924965200001,
+          "fingerprint": "52118f06921e0d2b02ac6e634d6a3e11350ecf0a3da07f0c2044b98c1e3fb7aa"
+        }
+      ]
+    },
+    "split": {
+      "case": {
+        "name": "split",
+        "input": "split",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/split-catalog.csv": "2fcf8fd97e539b92b41d3ccaa1a0a01655fc7336c01934bca10aeb71445b5518",
+          ".claude/logs/r2/split-services.csv": "413af69267f1da46f36a02b908b70122aad175fe3f7d3b84a39e4eda44136220"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 139,
+        "directedSegments": 3988,
+        "catalogRows": 2146,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 137,
+        "p90": 310,
+        "p99": 516,
+        "mean": 160.3512,
+        "max": 1007,
+        "over500Count": 63,
+        "totalPlayedTurns": 801756
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-0.json",
+          "runtimeSeconds": 36.022110182,
+          "fingerprint": "a5fe457a6a21653a613a3bc347016a2f99b3c74368e5da2ce187041d0c75cfaf"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-1250.json",
+          "runtimeSeconds": 37.166710097000006,
+          "fingerprint": "a5fe457a6a21653a613a3bc347016a2f99b3c74368e5da2ce187041d0c75cfaf"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-2500.json",
+          "runtimeSeconds": 38.179450549,
+          "fingerprint": "a5fe457a6a21653a613a3bc347016a2f99b3c74368e5da2ce187041d0c75cfaf"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-3750.json",
+          "runtimeSeconds": 38.098930923,
+          "fingerprint": "a5fe457a6a21653a613a3bc347016a2f99b3c74368e5da2ce187041d0c75cfaf"
+        }
+      ]
+    },
+    "split-joban": {
+      "case": {
+        "name": "split-joban",
+        "input": "split-joban",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/split-joban-catalog.csv": "ada0a28750015691390a0404de21b5ce8fefcc8e0be5ef0b85165ac993c05cfc",
+          ".claude/logs/r2/split-joban-services.csv": "842300e7f71df9fd0ad07b6deb368234441baa73e0ed4d0d4f7b4980b2791a93"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 137,
+        "directedSegments": 3988,
+        "catalogRows": 2144,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 137,
+        "p90": 311,
+        "p99": 512,
+        "mean": 160.1972,
+        "max": 986,
+        "over500Count": 63,
+        "totalPlayedTurns": 800986
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-joban-0.json",
+          "runtimeSeconds": 75.270642494,
+          "fingerprint": "13ba4b82db000d73fa0e6de9102c92b43594eb597e9cb7f71cf4ff07709c63ce"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-joban-1250.json",
+          "runtimeSeconds": 74.787706507,
+          "fingerprint": "13ba4b82db000d73fa0e6de9102c92b43594eb597e9cb7f71cf4ff07709c63ce"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-joban-2500.json",
+          "runtimeSeconds": 100.30619168,
+          "fingerprint": "13ba4b82db000d73fa0e6de9102c92b43594eb597e9cb7f71cf4ff07709c63ce"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-joban-3750.json",
+          "runtimeSeconds": 96.785554561,
+          "fingerprint": "13ba4b82db000d73fa0e6de9102c92b43594eb597e9cb7f71cf4ff07709c63ce"
+        }
+      ]
+    },
+    "split-chuo": {
+      "case": {
+        "name": "split-chuo",
+        "input": "split-chuo",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/split-chuo-catalog.csv": "40b8d3ce550616d97a293c2fc273770c77aee907a2388eec8d2a61790ddccfc9",
+          ".claude/logs/r2/split-chuo-services.csv": "152e55d2544240430303046e962d0c34d7662ca63600e4c2eb98dd58d7ca4bc6"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 136,
+        "directedSegments": 3988,
+        "catalogRows": 2143,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 137,
+        "p90": 309,
+        "p99": 512,
+        "mean": 159.6826,
+        "max": 1091,
+        "over500Count": 61,
+        "totalPlayedTurns": 798413
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-chuo-0.json",
+          "runtimeSeconds": 72.173400596,
+          "fingerprint": "aca23dbca47291f8d91ac61741d6555cf5865a69e7e68dd6c965c496ca684904"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-chuo-1250.json",
+          "runtimeSeconds": 78.71747737700001,
+          "fingerprint": "aca23dbca47291f8d91ac61741d6555cf5865a69e7e68dd6c965c496ca684904"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-chuo-2500.json",
+          "runtimeSeconds": 49.98190528599999,
+          "fingerprint": "aca23dbca47291f8d91ac61741d6555cf5865a69e7e68dd6c965c496ca684904"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-chuo-3750.json",
+          "runtimeSeconds": 49.80648658300001,
+          "fingerprint": "aca23dbca47291f8d91ac61741d6555cf5865a69e7e68dd6c965c496ca684904"
+        }
+      ]
+    },
+    "split-utsunomiya": {
+      "case": {
+        "name": "split-utsunomiya",
+        "input": "split-utsunomiya",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/split-utsunomiya-catalog.csv": "08da71d6da4d36ea35e2aa5ab54d93d70916dcea8e4587d70be5f7b7f1d8da2b",
+          ".claude/logs/r2/split-utsunomiya-services.csv": "057a9acf6a2bc76871285a0c25d7cf40d9c8b76ccebdc773f4c0983d4f7c6d15"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 136,
+        "directedSegments": 3988,
+        "catalogRows": 2143,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 137,
+        "p90": 307,
+        "p99": 521,
+        "mean": 159.8736,
+        "max": 1091,
+        "over500Count": 63,
+        "totalPlayedTurns": 799368
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-utsunomiya-0.json",
+          "runtimeSeconds": 51.238052614999994,
+          "fingerprint": "217f059aec3441d597f9fecb9c943b33ba573adb24bf9cff36907af3d8d017f1"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-utsunomiya-1250.json",
+          "runtimeSeconds": 47.920405151,
+          "fingerprint": "217f059aec3441d597f9fecb9c943b33ba573adb24bf9cff36907af3d8d017f1"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-utsunomiya-2500.json",
+          "runtimeSeconds": 36.703286355,
+          "fingerprint": "217f059aec3441d597f9fecb9c943b33ba573adb24bf9cff36907af3d8d017f1"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/split-utsunomiya-3750.json",
+          "runtimeSeconds": 36.029642764,
+          "fingerprint": "217f059aec3441d597f9fecb9c943b33ba573adb24bf9cff36907af3d8d017f1"
+        }
+      ]
+    },
+    "merge-shinonoi": {
+      "case": {
+        "name": "merge-shinonoi",
+        "input": "merge-shinonoi",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/merge-shinonoi-catalog.csv": "db15978e515b943d056b70a3264f61341c0512f61fba3c739593c2a52fa3d286",
+          ".claude/logs/r2/merge-shinonoi-services.csv": "82aabe11a0b063e88b9cbb13e65b82fe7fe8e13e41b55d84cd25660671cb684d"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 134,
+        "directedSegments": 3988,
+        "catalogRows": 2141,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 137,
+        "p90": 309,
+        "p99": 512,
+        "mean": 159.693,
+        "max": 1091,
+        "over500Count": 61,
+        "totalPlayedTurns": 798465
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/merge-shinonoi-0.json",
+          "runtimeSeconds": 47.004420799,
+          "fingerprint": "d951551e6c99ff1c1e63f58bd5b5a130215a6dd0716849c05a83121bc39197bf"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/merge-shinonoi-1250.json",
+          "runtimeSeconds": 47.780355173000004,
+          "fingerprint": "d951551e6c99ff1c1e63f58bd5b5a130215a6dd0716849c05a83121bc39197bf"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/merge-shinonoi-2500.json",
+          "runtimeSeconds": 77.04649479700001,
+          "fingerprint": "d951551e6c99ff1c1e63f58bd5b5a130215a6dd0716849c05a83121bc39197bf"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/merge-shinonoi-3750.json",
+          "runtimeSeconds": 76.434814763,
+          "fingerprint": "d951551e6c99ff1c1e63f58bd5b5a130215a6dd0716849c05a83121bc39197bf"
+        }
+      ]
+    },
+    "target-three-quarters": {
+      "case": {
+        "name": "target-three-quarters",
+        "input": "official",
+        "preset": "decided",
+        "games": 5000,
+        "targetShare": [
+          3,
+          4
+        ]
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 3,
+            "denominator": 4
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/tokyo-suburban-research-catalog.csv": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+          ".claude/docs/research/tokyo-suburban-research-services.csv": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 33,
+        "p90": 100,
+        "p99": 198,
+        "mean": 45.9768,
+        "max": 363,
+        "over500Count": 0,
+        "totalPlayedTurns": 229884
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-three-quarters-0.json",
+          "runtimeSeconds": 19.059853241,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-three-quarters-1250.json",
+          "runtimeSeconds": 17.507096632,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-three-quarters-2500.json",
+          "runtimeSeconds": 20.095041184000003,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-three-quarters-3750.json",
+          "runtimeSeconds": 18.586032189,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        }
+      ]
+    },
+    "direction-three": {
+      "case": {
+        "name": "direction-three",
+        "input": "official",
+        "preset": "decided",
+        "games": 5000,
+        "directionWeight": 3
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 3
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/tokyo-suburban-research-catalog.csv": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+          ".claude/docs/research/tokyo-suburban-research-services.csv": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 118,
+        "p90": 252,
+        "p99": 411,
+        "mean": 133.9908,
+        "max": 719,
+        "over500Count": 13,
+        "totalPlayedTurns": 669954
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/direction-three-0.json",
+          "runtimeSeconds": 32.020183886,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/direction-three-1250.json",
+          "runtimeSeconds": 33.259717861999995,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/direction-three-2500.json",
+          "runtimeSeconds": 34.533142152,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/direction-three-3750.json",
+          "runtimeSeconds": 33.810357993,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        }
+      ]
+    },
+    "mito-through": {
+      "case": {
+        "name": "mito-through",
+        "input": "mito-through",
+        "preset": "decided",
+        "games": 5000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/logs/r2/mito-through-catalog.csv": "182eb1ec28649f65b06a5c268230720291f091d436eb1c7f5d5a66762c75614e",
+          ".claude/logs/r2/mito-through-services.csv": "bdad82c41f794c49e05b33380194a657f2ec640ae081314da7edf926d0fd1983"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3994,
+        "catalogRows": 2145,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 137,
+        "p90": 309,
+        "p99": 515,
+        "mean": 159.9782,
+        "max": 1091,
+        "over500Count": 61,
+        "totalPlayedTurns": 799891
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/mito-through-0.json",
+          "runtimeSeconds": 53.986062035,
+          "fingerprint": "121c800b7ac9e91d4aa1ee98daa3ae078f664ba739c357b58c4d38b4a90731f1"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/mito-through-1250.json",
+          "runtimeSeconds": 52.119010964,
+          "fingerprint": "121c800b7ac9e91d4aa1ee98daa3ae078f664ba739c357b58c4d38b4a90731f1"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/mito-through-2500.json",
+          "runtimeSeconds": 52.125222252,
+          "fingerprint": "121c800b7ac9e91d4aa1ee98daa3ae078f664ba739c357b58c4d38b4a90731f1"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/mito-through-3750.json",
+          "runtimeSeconds": 48.986210968,
+          "fingerprint": "121c800b7ac9e91d4aa1ee98daa3ae078f664ba739c357b58c4d38b4a90731f1"
+        }
+      ]
+    },
+    "target-two-thirds": {
+      "case": {
+        "name": "target-two-thirds",
+        "input": "official",
+        "preset": "decided",
+        "games": 5000,
+        "targetShare": [
+          2,
+          3
+        ]
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 2,
+            "denominator": 3
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/tokyo-suburban-research-catalog.csv": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+          ".claude/docs/research/tokyo-suburban-research-services.csv": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 55,
+        "p90": 146,
+        "p99": 261,
+        "mean": 69.3858,
+        "max": 446,
+        "over500Count": 0,
+        "totalPlayedTurns": 346929
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-two-thirds-0.json",
+          "runtimeSeconds": 22.357667091,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-two-thirds-1250.json",
+          "runtimeSeconds": 24.919513610000003,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-two-thirds-2500.json",
+          "runtimeSeconds": 24.270807994,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/target-two-thirds-3750.json",
+          "runtimeSeconds": 22.092710389,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        }
+      ]
+    },
+    "pass-through": {
+      "case": {
+        "name": "pass-through",
+        "input": "official",
+        "preset": "decided",
+        "games": 5000,
+        "passThrough": true
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "pass-through",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 1,
+            "denominator": 2
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 2
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/tokyo-suburban-research-catalog.csv": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+          ".claude/docs/research/tokyo-suburban-research-services.csv": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 132,
+        "p90": 297,
+        "p99": 503,
+        "mean": 153.483,
+        "max": 976,
+        "over500Count": 52,
+        "totalPlayedTurns": 767415
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/pass-through-0.json",
+          "runtimeSeconds": 38.570387524,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/pass-through-1250.json",
+          "runtimeSeconds": 38.644249744,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/pass-through-2500.json",
+          "runtimeSeconds": 42.850371396999996,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/pass-through-3750.json",
+          "runtimeSeconds": 43.734706855,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        }
+      ]
+    },
+    "three-quarters-direction-three": {
+      "case": {
+        "name": "three-quarters-direction-three",
+        "input": "official",
+        "preset": "decided",
+        "games": 5000,
+        "targetShare": [
+          3,
+          4
+        ],
+        "directionWeight": 3
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5",
+      "config": {
+        "rulesetVersion": "simulation-s1m-decided",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "share",
+            "numerator": 3,
+            "denominator": 4
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 3
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/tokyo-suburban-research-catalog.csv": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+          ".claude/docs/research/tokyo-suburban-research-services.csv": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 5000,
+        "completedGames": 5000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 31,
+        "p90": 84,
+        "p99": 159,
+        "mean": 40.0708,
+        "max": 248,
+        "over500Count": 0,
+        "totalPlayedTurns": 200354
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 1250,
+          "output": ".claude/logs/r2/three-quarters-direction-three-0.json",
+          "runtimeSeconds": 21.121663125,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 1250,
+          "games": 1250,
+          "output": ".claude/logs/r2/three-quarters-direction-three-1250.json",
+          "runtimeSeconds": 20.774790062,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 2500,
+          "games": 1250,
+          "output": ".claude/logs/r2/three-quarters-direction-three-2500.json",
+          "runtimeSeconds": 21.024112791,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 3750,
+          "games": 1250,
+          "output": ".claude/logs/r2/three-quarters-direction-three-3750.json",
+          "runtimeSeconds": 23.060422397000004,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        }
+      ]
+    },
+    "all-equal": {
+      "case": {
+        "name": "all-equal",
+        "input": "official",
+        "preset": "all-equal",
+        "games": 20000
+      },
+      "measurementStatus": "complete",
+      "engine": "createGame/playTurn via tests/simulation/harness.runGame",
+      "baseSeed": 20261012,
+      "turnCap": 20000,
+      "seedSetSha256": "0b085fc995e2ed7f062a72a1482f03f578bca2e78dc151517b8d8bd31aa5715e",
+      "config": {
+        "rulesetVersion": "simulation-s1m-all-equal",
+        "targetServiceId": "jr-yamanote",
+        "startStationId": "shimbashi",
+        "targetDirection": 1,
+        "goalArrivalPolicy": "truncate-on-target-service",
+        "serviceLottery": {
+          "kindWeights": {
+            "local": 1,
+            "rapid": 1
+          },
+          "target": {
+            "kind": "weight",
+            "weight": 1
+          }
+        },
+        "directionLottery": {
+          "towardTargetWeight": 1
+        }
+      },
+      "input": {
+        "source": "research-csv",
+        "sha256": {
+          ".claude/docs/research/tokyo-suburban-research-catalog.csv": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+          ".claude/docs/research/tokyo-suburban-research-services.csv": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb"
+        },
+        "hashConvention": "LF-normalized UTF-8 bytes",
+        "stations": 1586,
+        "services": 135,
+        "directedSegments": 3988,
+        "catalogRows": 2142,
+        "endpointNote": "Research through-split -> service-boundary; same stop/discard-pips semantics. No geometry loaded."
+      },
+      "statistics": {
+        "games": 20000,
+        "completedGames": 20000,
+        "capHits": 0,
+        "cappedGameIndices": [],
+        "median": 1607,
+        "p90": 3144,
+        "p99": 4942,
+        "mean": 1777.682,
+        "max": 8731,
+        "over500Count": 18722,
+        "totalPlayedTurns": 35553640
+      },
+      "quantileConvention": "nearest-rank: ceil(p * games) - 1",
+      "capConvention": "unfinished games counted as cap+1; not completed",
+      "shards": [
+        {
+          "offset": 0,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-0.json",
+          "runtimeSeconds": 1650.800904698,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 2500,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-2500.json",
+          "runtimeSeconds": 1641.519342669,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 5000,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-5000.json",
+          "runtimeSeconds": 1625.406750226,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 7500,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-7500.json",
+          "runtimeSeconds": 1620.564873351,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 10000,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-10000.json",
+          "runtimeSeconds": 1628.3224753309999,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 12500,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-12500.json",
+          "runtimeSeconds": 1620.483196357,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 15000,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-15000.json",
+          "runtimeSeconds": 1593.429569989,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        },
+        {
+          "offset": 17500,
+          "games": 2500,
+          "output": ".claude/logs/r2/all-equal-17500.json",
+          "runtimeSeconds": 1582.631739572,
+          "fingerprint": "b44d657b366a5942d15188e37ec9cf4d0272e03025f2dce83e6d11dcd95b4a64"
+        }
+      ]
+    }
+  }
+}

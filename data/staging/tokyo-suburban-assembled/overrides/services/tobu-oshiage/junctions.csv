@@ -1,0 +1,2 @@
+n02_operator,n02_line,section_key,peer_section_key,lon,lat,reason
+東武鉄道,伊勢崎線,139.81335 35.71026~139.81415 35.70668#3c398c3b,139.81336 35.71012~139.81437 35.71184#e2b7d560,139.81336,35.71012,"押上 platform section: its internal source vertex 4 equals the exact start of the northbound 伊勢崎線 section (S3 tobu review, raw N02 regression)."

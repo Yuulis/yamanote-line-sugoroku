@@ -1,0 +1,12 @@
+station_id,prefecture,municipality,in_area
+toei-tochomae,東京都,新宿区,true
+toei-nishi-shinjuku-gochome,東京都,新宿区,true
+metro-nakano-sakaue,東京都,中野区,true
+higashi-nakano,東京都,中野区,true
+seibu-nakai,東京都,新宿区,true
+toei-ochiai-minami-nagasaki,東京都,新宿区,true
+toei-shin-egota,東京都,練馬区,true
+seibu-nerima,東京都,練馬区,true
+seibu-toshimaen,東京都,練馬区,true
+toei-nerima-kasugacho,東京都,練馬区,true
+toei-hikarigaoka,東京都,練馬区,true

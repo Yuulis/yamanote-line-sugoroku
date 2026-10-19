@@ -1,0 +1,34 @@
+{
+  "formatVersion": 1,
+  "batch": "toei-yokohama",
+  "serviceIds": [
+    "toei-asakusa",
+    "toei-mita",
+    "toei-shinjuku",
+    "toei-oedo-loop",
+    "toei-oedo-radial",
+    "yokohama-blue",
+    "yokohama-green"
+  ],
+  "pairCount": 143,
+  "expectedPairKeysSha256": "6cdb9b387f08410f3440be2e9b3f6d44b4795ae218854ee8fc4d8df9a4f0776b",
+  "pairEvidenceSha256": "842747746a07e3cc3c25bfcf233d213cc438b76fabcd5acfc998c898cb169046",
+  "sourceHashes": {
+    "assembledOverridesSha256": "635a85c32ece97c4a3e388b052ce807a19878a6cdab327bdc99ccc02b7e3f399",
+    "rawStationSha256": "908e2c3036e9c80760ae3514be3682c77f81f0bd60ab5fb1b3da1aa9352bbd94",
+    "rawSectionSha256": "4269b076c0689db13cadf0d07801418b7215b2160ebf1278c508031cd08c4da2",
+    "freezeManifestSha256": "370ebc7e17129a94b5f472031764e9db000f6cd0420c80a2d4377aac3f565e64",
+    "catalogSha256": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+    "servicesSha256": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb",
+    "assemblyInputsSha256": "0e0b2b3d078bd716b1b8caa4e2c647d90a0a33311be985577f5f12dca93c1a86",
+    "distanceSources": {
+      "toei-asakusa": "3b6d27e1faf29f93ed9cb180aab08937c23653667b2657bac9d3ede18e275206",
+      "toei-mita": "1f4fb9722e26d18eb340657424324a7b3f8f636b69a9097a91535ed50ed66a89",
+      "toei-shinjuku": "9df3524187af0655bf0064c1db1079d4aafc8cd252f38962fa7f914789ec814d",
+      "toei-oedo-loop": "19232907c393fb614ce1b66fc94cf75098b621171553eb7c2a710436949b5e68",
+      "toei-oedo-radial": "99cf894eb1b6ef699ca8f643b21d4bc3b305897bf844278186b760e92543dd5b",
+      "yokohama-blue": "169f00dd788a72ae097153783cf99a89dd11f27e5a63ebced6407ac871979a2e",
+      "yokohama-green": "50cebf7c1809f5c8fbf0d8063f718a28de95acaa2525b5eac1dc193b789ef8f7"
+    }
+  }
+}

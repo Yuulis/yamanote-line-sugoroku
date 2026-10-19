@@ -1,0 +1,26 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyo,JU01,,東京,東京,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,ueno,JU02,,上野,上野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,oku,JU03,,尾久,尾久,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,akabane,JU04,,赤羽,赤羽,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,urawa,JU05,,浦和,浦和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,saitama-shintoshin,JU06,,さいたま新都心,さいたま新都心,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,omiya,JU07,,大宮,大宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,miyahara,JU08,,宮原,宮原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,ageo,JU09,,上尾,上尾,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,kita-ageo,JU10,,北上尾,北上尾,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,okegawa,JU11,,桶川,桶川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,kitamoto,JU12,,北本,北本,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,konosu,JU13,,鴻巣,鴻巣,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,kita-konosu,JU14,,北鴻巣,北鴻巣,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,fukiage,JU15,,吹上,吹上,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,gyoda,JU16,,行田,行田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,kumagaya,JU17,,熊谷,熊谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,kagohara,JU18,,籠原,籠原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,fukaya,JU19,,深谷,深谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,okabe,JU20,,岡部,岡部,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,honjo,JU21,,本庄,本庄,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,jimbohara,JU22,,神保原,神保原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+22,shimmachi,,,新町,新町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+23,kuragano,,,倉賀野,倉賀野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+24,takasaki,,,高崎,高崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

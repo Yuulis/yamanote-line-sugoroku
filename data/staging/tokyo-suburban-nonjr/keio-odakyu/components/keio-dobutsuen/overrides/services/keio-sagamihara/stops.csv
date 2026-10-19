@@ -1,0 +1,13 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keio-chofu,KO18,line=相模原線;group=003966;code=003967,調布,調布,京王電鉄,Raw N02 confirms this 相模原線 station code 003967 and group 003966; pin the platform used by this frozen service.
+1,keio-tamagawa,KO35,line=相模原線;group=004013;code=004013,京王多摩川,京王多摩川,京王電鉄,Raw N02 confirms frozen station name 京王多摩川 (N02 name 京王多摩川) on 相模原線 at platform code 004013 and group 004013; pin this service stop.
+2,keio-inadazutsumi,KO36,line=相模原線;group=004066;code=004066,京王稲田堤,京王稲田堤,京王電鉄,Raw N02 confirms frozen station name 京王稲田堤 (N02 name 京王稲田堤) on 相模原線 at platform code 004066 and group 004066; pin this service stop.
+3,keio-yomiuri-land,KO37,line=相模原線;group=004070;code=004070,京王よみうりランド,京王よみうりランド,京王電鉄,Raw N02 confirms frozen station name 京王よみうりランド (N02 name 京王よみうりランド) on 相模原線 at platform code 004070 and group 004070; pin this service stop.
+4,keio-inagi,KO38,line=相模原線;group=004056;code=004056,稲城,稲城,京王電鉄,Raw N02 confirms frozen station name 稲城 (N02 name 稲城) on 相模原線 at platform code 004056 and group 004056; pin this service stop.
+5,keio-wakabadai,KO39,line=相模原線;group=004139;code=004139,若葉台,若葉台,京王電鉄,Raw N02 confirms frozen station name 若葉台 (N02 name 若葉台) on 相模原線 at platform code 004139 and group 004139; pin this service stop.
+6,keio-nagayama,KO40,line=相模原線;group=004086;code=004086,京王永山,京王永山,京王電鉄,Raw N02 confirms frozen station name 京王永山 (N02 name 京王永山) on 相模原線 at platform code 004086 and group 004086; pin this service stop.
+7,keio-tama-center,KO41,line=相模原線;group=004116;code=004116,京王多摩センター,京王多摩センター,京王電鉄,Raw N02 confirms frozen station name 京王多摩センター (N02 name 京王多摩センター) on 相模原線 at platform code 004116 and group 004116; pin this service stop.
+8,keio-horinouchi,KO42,line=相模原線;group=004120;code=004120,京王堀之内,京王堀之内,京王電鉄,Raw N02 confirms frozen station name 京王堀之内 (N02 name 京王堀之内) on 相模原線 at platform code 004120 and group 004120; pin this service stop.
+9,keio-minami-osawa,KO43,line=相模原線;group=004163;code=004163,南大沢,南大沢,京王電鉄,Raw N02 confirms frozen station name 南大沢 (N02 name 南大沢) on 相模原線 at platform code 004163 and group 004163; pin this service stop.
+10,keio-tamasakai,KO44,line=相模原線;group=004234;code=004234,多摩境,多摩境,京王電鉄,Raw N02 confirms frozen station name 多摩境 (N02 name 多摩境) on 相模原線 at platform code 004234 and group 004234; pin this service stop.
+11,keio-hashimoto,KO45,line=相模原線;group=004253;code=004250,橋本,橋本,京王電鉄,Raw N02 confirms frozen station name 橋本 (N02 name 橋本) on 相模原線 at platform code 004250 and group 004253; pin this service stop.

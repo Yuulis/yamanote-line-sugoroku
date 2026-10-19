@@ -1,0 +1,487 @@
+{
+  "lines": [
+    {
+      "id": "tokyu-toyoko",
+      "name": "東急東横線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-meguro",
+      "name": "東急目黒線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-shin-yokohama",
+      "name": "東急新横浜線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-den-en-toshi",
+      "name": "東急田園都市線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-oimachi",
+      "name": "東急大井町線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-ikegami",
+      "name": "東急池上線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-tamagawa",
+      "name": "東急多摩川線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-setagaya",
+      "name": "東急世田谷線",
+      "color": "#808080"
+    },
+    {
+      "id": "tokyu-kodomonokuni",
+      "name": "東急こどもの国線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "tokyu-toyoko",
+      "name": "東急東横線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-toyoko"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "横浜方面",
+        "backward": "渋谷方面"
+      },
+      "expectedStopCount": 21,
+      "lengthRef": {
+        "km": 24.2,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 渋谷–横浜: 24.200 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "TY01",
+          "TY02",
+          "TY03",
+          "TY04",
+          "TY05",
+          "TY06",
+          "TY07",
+          "TY08",
+          "TY09",
+          "TY10",
+          "TY11",
+          "TY12",
+          "TY13",
+          "TY14",
+          "TY15",
+          "TY16",
+          "TY17",
+          "TY18",
+          "TY19",
+          "TY20",
+          "TY21"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "tokyu-meguro",
+      "name": "東急目黒線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-meguro"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "日吉方面",
+        "backward": "目黒方面"
+      },
+      "expectedStopCount": 13,
+      "lengthRef": {
+        "km": 11.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 目黒–日吉: 11.900 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "MG01",
+          "MG02",
+          "MG03",
+          "MG04",
+          "MG05",
+          "MG06",
+          "MG07",
+          "MG08",
+          "MG09",
+          "MG10",
+          "MG11",
+          "MG12",
+          "MG13"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "tokyu-shin-yokohama",
+      "name": "東急新横浜線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-shin-yokohama"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "新横浜方面",
+        "backward": "日吉方面"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 5.8,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 日吉–新横浜: 5.800 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SH03",
+          "SH02",
+          "SH01"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "tokyu-den-en-toshi",
+      "name": "東急田園都市線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-den-en-toshi"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "中央林間方面",
+        "backward": "渋谷方面"
+      },
+      "expectedStopCount": 27,
+      "lengthRef": {
+        "km": 31.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 渋谷–中央林間: 31.500 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "DT01",
+          "DT02",
+          "DT03",
+          "DT04",
+          "DT05",
+          "DT06",
+          "DT07",
+          "DT08",
+          "DT09",
+          "DT10",
+          "DT11",
+          "DT12",
+          "DT13",
+          "DT14",
+          "DT15",
+          "DT16",
+          "DT17",
+          "DT18",
+          "DT19",
+          "DT20",
+          "DT21",
+          "DT22",
+          "DT23",
+          "DT24",
+          "DT25",
+          "DT26",
+          "DT27"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "tokyu-oimachi",
+      "name": "東急大井町線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-oimachi"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "溝の口方面",
+        "backward": "大井町方面"
+      },
+      "expectedStopCount": 18,
+      "lengthRef": {
+        "km": 12.4,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 大井町–溝の口: 12.400 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "OM01",
+          "OM02",
+          "OM03",
+          "OM04",
+          "OM05",
+          "OM06",
+          "OM07",
+          "OM08",
+          "OM09",
+          "OM10",
+          "OM11",
+          "OM12",
+          "OM13",
+          "OM14",
+          "OM15",
+          "DT08",
+          "DT09",
+          "OM16"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "tokyu-ikegami",
+      "name": "東急池上線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-ikegami"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "蒲田方面",
+        "backward": "五反田方面"
+      },
+      "expectedStopCount": 15,
+      "lengthRef": {
+        "km": 10.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 五反田–蒲田: 10.900 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "IK01",
+          "IK02",
+          "IK03",
+          "IK04",
+          "IK05",
+          "IK06",
+          "IK07",
+          "IK08",
+          "IK09",
+          "IK10",
+          "IK11",
+          "IK12",
+          "IK13",
+          "IK14",
+          "IK15"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "tokyu-tamagawa",
+      "name": "東急多摩川線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-tamagawa"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "蒲田方面",
+        "backward": "多摩川方面"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 5.6,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 多摩川–蒲田: 5.600 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "TM01",
+          "TM02",
+          "TM03",
+          "TM04",
+          "TM05",
+          "TM06",
+          "TM07"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "tokyu-setagaya",
+      "name": "東急世田谷線",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-setagaya"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "下高井戸方面",
+        "backward": "三軒茶屋方面"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 5.0,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 三軒茶屋–下高井戸: 5.000 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SG01",
+          "SG02",
+          "SG03",
+          "SG04",
+          "SG05",
+          "SG06",
+          "SG07",
+          "SG08",
+          "SG09",
+          "SG10"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "tokyu-kodomonokuni",
+      "name": "東急こどもの国線 各停",
+      "kind": "local",
+      "lineIds": [
+        "tokyu-kodomonokuni"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "こどもの国方面",
+        "backward": "長津田方面"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 3.4,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 長津田–こどもの国: 3.400 km; Tokyu Corporation FACT BOOK 2025 p. 17, route-by-route data (https://ir.tokyu.co.jp/ja/ir/main/01/teaserItems2/08/linkList/02/link/2023FACT%20BOOK_all6.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "東急電鉄",
+      "n02Operator": "東急電鉄",
+      "areaPrefectures": [
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KD01",
+          "KD02",
+          "KD03"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    }
+  ]
+}

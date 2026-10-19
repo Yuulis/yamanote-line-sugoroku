@@ -1,12 +1,12 @@
-n02_line,action,section_key,reason
-東海道線,allow,139.53164 35.35542~139.53470 35.39917#5100ea0f,N02 section used by the rapid service-owned direct Totsuka-Ofuna route; the source line label does not encode the crossover south of Totsuka
-東海道線,allow,139.53392 35.40170~139.53470 35.39917#30bf9182,N02 section used by the rapid service-owned direct Totsuka-Ofuna route; the source line label does not encode the crossover south of Totsuka
-東海道線,allow,139.53069 35.35289~139.53164 35.35542#41ba2b37,N02 section connecting the through route at Ofuna; included to reach the selected Ofuna platform anchor
-東海道線,allow,139.66332 35.57602~139.66375 35.57335#864b87ee,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
-東海道線,allow,139.66332 35.57602~139.72124 35.60085#5297ea6a,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
-東海道線,allow,139.72124 35.60085~139.72197 35.60255#128b8e07,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
-東海道線,allow,139.72197 35.60255~139.73280 35.61677#7c3c3efc,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
-東海道線,allow,139.73280 35.61677~139.73762 35.62049#67df2d8f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.
-東北線,deny,139.66635 35.85033~139.66760 35.84922#fb84d894,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
-東北線,deny,139.66760 35.84922~139.66963 35.84745#a6459c6d,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
-東北線,deny,139.66963 35.84745~139.68335 35.83490#5a0729ea,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
+n02_line,action,section_key,reason,from_id,to_id
+東海道線,allow,139.53164 35.35542~139.53470 35.39917#5100ea0f,N02 section used by the rapid service-owned direct Totsuka-Ofuna route; the source line label does not encode the crossover south of Totsuka,jimbohara,odawara
+東海道線,allow,139.53392 35.40170~139.53470 35.39917#30bf9182,N02 section used by the rapid service-owned direct Totsuka-Ofuna route; the source line label does not encode the crossover south of Totsuka,jimbohara,odawara
+東海道線,allow,139.53069 35.35289~139.53164 35.35542#41ba2b37,N02 section connecting the through route at Ofuna; included to reach the selected Ofuna platform anchor,jimbohara,odawara
+東海道線,allow,139.66332 35.57602~139.66375 35.57335#864b87ee,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,jimbohara,odawara
+東海道線,allow,139.66332 35.57602~139.72124 35.60085#5297ea6a,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,jimbohara,odawara
+東海道線,allow,139.72124 35.60085~139.72197 35.60255#128b8e07,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,jimbohara,odawara
+東海道線,allow,139.72197 35.60255~139.73280 35.61677#7c3c3efc,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,jimbohara,odawara
+東海道線,allow,139.73280 35.61677~139.73762 35.62049#67df2d8f,Raw N02 section for an added S6 boundary/deferred +1 pair; see jr-east-capital-region-s6.md pair evidence table.,jimbohara,odawara
+東北線,deny,139.66635 35.85033~139.66760 35.84922#fb84d894,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,jimbohara,odawara
+東北線,deny,139.66760 35.84922~139.66963 35.84745#a6459c6d,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,jimbohara,odawara
+東北線,deny,139.66963 35.84745~139.68335 35.83490#5a0729ea,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,jimbohara,odawara

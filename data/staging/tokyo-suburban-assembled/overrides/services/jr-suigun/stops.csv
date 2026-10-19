@@ -1,0 +1,21 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,mito,,line=水郡線;group=002319;code=002317,水戸,水戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,hitachi-aoyagi,,,常陸青柳,常陸青柳,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,hitachi-tsuda,,,常陸津田,常陸津田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,godai,,,後台,後台,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,shimo-sugaya,,,下菅谷,下菅谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,naka-sugaya,,,中菅谷,中菅谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,kami-sugaya,,,上菅谷,上菅谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,hitachi-konosu,,,常陸鴻巣,常陸鴻巣,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,urizura,,,瓜連,瓜連,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,shizu,,,静,静,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,hitachi-omiya,,,常陸大宮,常陸大宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,tamagawamura,,,玉川村,玉川村,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,nogamihara,,,野上原,野上原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,yamagatajuku,,,山方宿,山方宿,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,naka-funyu,,,中舟生,中舟生,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,shimo-ogawa,,,下小川,下小川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,saigane,,,西金,西金,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,kami-ogawa,,,上小川,上小川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,fukuroda,,,袋田,袋田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,hitachi-daigo,,,常陸大子,常陸大子,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

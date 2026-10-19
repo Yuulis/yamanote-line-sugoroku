@@ -1,0 +1,12 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "metro-chiyoda"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/metro",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "c66f6643fa7756c8a09cbf756e616900ff52481cdd79cfd18e808d6c076eeed4",
+    "length-ref-components.csv": "17da107cd3e5e9efae0d10d68cbc691ab57fd94bdb2e11d0221a2236dd180bf8"
+  }
+}

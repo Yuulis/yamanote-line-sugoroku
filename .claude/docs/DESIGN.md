@@ -20,6 +20,10 @@ MVPのゴール: 山手線のみを対象に、ソロプレイヤーが新橋か
 
 An original browser railway board game on a real MapLibre map. The current edition is “山手線すごろく — JR東日本 東京23区版”: five reviewed JR East all-stop service patterns inside Tokyo's 23 wards, 67 shared station identities and 22 transfer stations. A solo player starts at Shimbashi on Yamanote outer and must traverse all 30 Yamanote outer directed segments, then arrive at Shimbashi. Arrival lotteries may change the next service and direction. The original Yamanote-only MVP remains the historical baseline in `railway_sugoroku_mvp_spec.md`; its dated JR expansion addendum and the Key Decisions below define the current edition. No original-work characters, art or text are used.
 
+Current edition (2026-10-15; supersedes the 東京23区版 paragraph above; primary source `railway_sugoroku_mvp_spec.md` v0.4.0): “山手線すごろく — JR東日本 1都3県版”, in production since 2026-10-15. 40 JR East conventional service patterns (one per track system; weekday base stop patterns) across 東京都 (excluding islands), 千葉県, 神奈川県 and 埼玉県, with 472 shared station identities. A solo player starts at Shimbashi on Yamanote outer and must traverse all 30 Yamanote outer directed segments, then arrive at Shimbashi. Arrival lotteries choose the next service (山手線 1/2 at its stations, the rest uniform) and direction (toward 山手線 2:1) under ruleset `jr-east-capital-1`.
+
+Current edition (2026-10-19, S7 on branch `feature/tokyo-suburban-network`, not yet released; supersedes the 1都3県版 paragraph above; primary source `railway_sugoroku_mvp_spec.md` Tokyo suburban addendum): “山手線すごろく — 東京近郊版”. The bundle (`dataVersion` `n02-2025-8a0970069659`) has 135 engine services (東京近郊区間 JR plus the approved subway and private railways), 1,586 station identities, 3,988 directed segments and 30 Yamanote outer target segments; the UI groups them into 15 operators and 134 line groups (大江戸線 is one UI line over two engine services). The goal is unchanged: traverse all 30 Yamanote outer segments, then arrive at Shimbashi. Ruleset `tokyo-suburban-1`: 山手線 2/3 when it is among at least two candidates (the rest uniform), and on other services the direction toward 山手線 has twice the weight. Save format v3; older saves are rejected and can be discarded. S7 5,000-game observation: median 55 / p90 146 / p99 261 turns, realised 山手線 share 0.6684 and toward-target share 0.6671 (expected 0.6667). Release (S8) is pending.
+
 ## スコープ (Scope)
 
 ### In Scope
@@ -193,6 +197,21 @@ Static React/TypeScript application with three independent layers: generated rai
 | 1都3県版の系統一覧は catalog v2（40系統・472駅、`.claude/docs/research/jr-east-capital-region-catalog-v2.csv`）を採用する。各路線の普通36系統、快速線の基本パターン3系統（中央快速・総武快速・常磐快速）、湘南新宿ラインの高崎線⇔東海道線系統の快速（この経路には普通がないため基本種別）。湘南新宿ラインの宇都宮線系統の快速・特別快速は上位種別として除外 | 2026-10-13 のユーザー決定「線路系統ごとに基本種別、上位種別は系統にしない」と「JR命名の直通系統は一体」の適用。Codex 検証で湘南新宿の基本系統の誤除外を検出して修正。Q1(c) で中央値61・p90 148・p99 258ターン（50,000回、seed 20261012） | 39系統（湘南新宿は宇都宮⇔横須賀の普通のみ）、v1 core 51系統 | 2026-10-13 |
 | 1都3県版の線路形状: N02 に接続点がない区間（常磐線快速の上野、17 m 離れた東北線と常磐線の線路）は合成ジオメトリを作らず、パイプラインに「駅ごと・区間ごとに N02 路線の区間フィルタ／ホームを選べる」機能（G2）を追加して実在の線路だけで経路を作る。N02 に存在しない貨物線（湘南新宿ラインの駒込–田端信号場カーブ）は、田端付近で東北線から山手線へ乗り移る代替経路を『代替』と明記して使い、迂回例外 2.1 を認める | ユーザー決定（2026-10-14、S6P 東京ステージの D1(a)・D2(a)）。N02 にない形状を作らない方針を保ち、三河島・南千住・北千住を残す。代替経路は実ルートに近い距離（10.47 km / 実 11.3 km） | 17 m の合成コネクタ、常磐線快速の削除、赤羽線経路（5.5 km、別線路） | 2026-10-14 |
 | S6P の東京ステージで扱えない飛び地（横浜線 成瀬・町田、常磐線各停 綾瀬–金町、中央本線 高尾–藤野）は神奈川・千葉ステージで扱う。池袋–新宿の山手貨物線形状の重複はパイプライン修正 G1 の後に合成へ置き換える。凡例の路線グループは S6 で決める | ユーザー決定（2026-10-14、D3〜D6 は推奨どおり） | 東京ステージで都県をまたぐ結合ステージを作る、重複を S6 まで許容 | 2026-10-14 |
+| 次の版（東京近郊版、仮称）の範囲: JRは旅客営業規則の大都市近郊区間「東京近郊区間」の全域。地下鉄（東京メトロ・都営地下鉄・横浜市営地下鉄）と私鉄（東急・東武・西武・京成・京王・小田急・京急・相鉄・つくばエクスプレス）を加え、どれも東京近郊区間の範囲内で打ち切る | ユーザー決定（2026-10-15）。路線網の充実を最優先にする。範囲を1つの基準で決め、データ検証を単純に保つ | 私鉄・地下鉄は全線（日光・鬼怒川・箱根湯本など）、全事業者を1都3県で打ち切り | 2026-10-15 |
+| 私鉄・地下鉄は各路線とも各停の1系統のみ（複々線の急行線・種別は系統にしない）。JRは1都3県版の線路系統ルールを維持する | ユーザー決定（2026-10-15）。系統数とゲーム長の増加を抑え、私鉄の種別体系の違いを持ち込まない | JRと同じ線路単位（複々線は別系統）、主要種別も系統にする | 2026-10-15 |
+| 新しい版で1都3県版を置き換える（版の選択は設けない）。旧セーブは移行せず破棄の案内を出す | ユーザー決定（2026-10-15）。1都3県版と同じ単一版の方針 | タイトル画面で版を選択 | 2026-10-15 |
+| 路線網の拡充の後に、X（旧Twitter）での結果共有、一般公開前のロゴ・favicon・アクセス解析の整備を行う | ユーザー決定（2026-10-15）の優先順位 | 共有を先に実装 | 2026-10-15 |
+| 東京近郊版の範囲は、旅客営業規則の東京近郊区間（2026-03-14 改正時点の定義で固定）の全域とする。長野（松本・長野・白馬）、山梨、福島（浪江まで）、静岡（熱海・伊東）の JR も含む。私鉄・地下鉄の打ち切りは R1 推奨のルール B（1都6県内の駅、近郊区間 JR 駅の凸包で照合）を R2 で適用する | ユーザー決定（2026-10-15）。R1 調査で近郊区間が 2025・2026 年改正で大きく広がったことを示した上での選択（JR 746 駅、全体で同一駅統合前 約 1,765 駅） | 1都6県まで（約 1,650 駅）、1都3県のまま私鉄・地下鉄を追加（約 1,400 駅） | 2026-10-15 |
+| 普通が走らないが、走る全列車が全駅に停まる区間は実質各停として含める（京急 YRP野比〜三崎口、京成成田空港線の該当区間、東武 押上〜曳舟） | ユーザー決定（2026-10-15）。三崎口・成田湯川などへ到達できるようにする | 文字どおり各停のみ | 2026-10-15 |
+| 対象事業者にみなとみらい線（横浜高速鉄道）と北総線（北総鉄道）を加える。芝山鉄道などその他の直通先は対象外 | ユーザー決定（2026-10-15）。東急東横線・京成と一体で使われる路線を補う | 当初の事業者のみ | 2026-10-15 |
+| 東京近郊版の R1 以降の作業は Codex に任せる（Claude の利用上限のため）。Codex は Luna でウェブ検索を含めて実施する | ユーザー指示（2026-10-15） | Claude サブエージェントで継続 | 2026-10-15 |
+| 東京近郊版の駅の同一視（D1）は R2 案 B とする。600 m の駅点グループ内の公式乗換と共有構造を1駅にまとめ、同名駅を優先し、元の駅名は別名として残す。同一系統の2駅の統合、異なる JR 駅 ID の統合、径の大きすぎるグループは不可。駅名の異なる徒歩乗換で同一系統の2駅がつぶれるものは採用しない | ユーザー決定（2026-10-16）。新宿の主要駅をまとめつつ、西武新宿は分けたまま全駅に到達できる。共有構造だけの案では66駅に到達できない | 共有構造のみ（66駅に到達不能）、同名駅のみ、徒歩乗換を0マスの移動として扱う（エンジン・RNG・セーブの変更が必要） | 2026-10-16 |
+| 東京近郊版のゲームの長さ（D2）: 山手線の駅で山手線が当たる確率を 2/3 に、山手線方向の向きを 2:1 にし、ゴール条件は現行のままとする。新しい ruleset version を付ける | ユーザー決定（2026-10-16）。実エンジン5,000局で中央値55手・p90 146手・p99 261手、500手を超える局はなく、1都3県版（中央値61手）に近い | 現行の 1/2（中央値137手）、3/4（中央値33手）、1/2 で向き 3:1（中央値118手） | 2026-10-16 |
+| 東京近郊版の運行系統の区切り（D3）は調査時の区切りのままとする。常磐 品川〜浪江、中央本線 高尾〜塩尻、宇都宮 東京〜黒磯はそれぞれ1系統。篠ノ井線と信越線（篠ノ井〜長野）は分け、水戸線は友部止まり。千代田線の北綾瀬支線は同じ系統、西武山口線は含める。既存 ID（jr-chuo-takao-fujino など）は維持する。大江戸線は処理上は環状部と放射部の2系統（都庁前を共有）にしてよいが、UI 上は1路線（大江戸線）として表示する | ユーザー決定（2026-10-16）。分割・統合のどの案でも中央値は137手で、長さを理由に区切りを変える根拠がない。大江戸線は利用者にとって1つの路線である | 長距離系統の分割、篠ノ井線と信越線の統合、水戸線を水戸まで延長、大江戸線を UI 上も2路線に分ける | 2026-10-16 |
+| 東京近郊版のタイトル（D4）は「山手線すごろく」、サブタイトルは「東京近郊版」とする（JR を含むサブタイトルは外す）。出典・ライセンス欄から「既存作品から着想を得たオリジナルゲーム」と「非公式のファンメイド作品」の2文を削除する | ユーザー決定（2026-10-16）。私鉄・地下鉄を含むため JR に限った名称は使わない。非公式である旨の注記を外すと、多数の事業者名を表示する中で公認と誤解されるリスクが残る。この点は説明したうえで、ユーザーが承知して選択した | サブタイトルに JR を残す、非公式の一文だけ残す | 2026-10-16 |
+| 東京近郊版 S6: 公式表記が小さい「ヶ」の私鉄・地下鉄 22駅は、その路線の停車駅として各社の元の表記（例: 新百合ヶ丘）で表示する。駅 ID と正式名（registry の正規化表記）は変えず、大きい「ケ」の表記は検索用の別名に残す。JR 駅は JR 表記のまま (2026-10-18) | 利用者が見慣れた各社の公式表記を保ちつつ、凍結した駅の同一視と ID を崩さないため | 大きい「ケ」で統一 / 公式表記の対照表を別途作成 | 2026-10-18 |
+| 東京近郊版 S6: 大江戸線の環状部と放射部が両方止まる都庁前では、抽選表示を「大江戸線（抽選枠2）」として1行にまとめる。抽選の仕組み（2枠）は変えない (2026-10-18) | UI 上は1路線（D3）にしつつ、当選確率の表示を実態どおり正確に保つため | 1行のみで枠数を出さない / 抽選を1枠に変更（ルール変更） | 2026-10-18 |
+| 東京近郊版 S6: タイトル画面の説明文を Sol 案の文言（東京近郊区間の JR 線と対象の私鉄・地下鉄、山手線外回り全30区間の踏破後に新橋到着でクリア、山手線 3分の2、方向の抽選重み 2倍）に置き換える (2026-10-18) | 旧版の「JR 40系統・1都3県・2分の1」の記述が新ルールと合わないため | — | 2026-10-18 |
 
 ## TODO / Open Questions
 
@@ -241,3 +260,13 @@ Current edition (2026-10-12): the following statements supersede the historical 
 - 1都3県版（2026-10-13）: 上記 Q1〜Q11 はユーザー決定で解決済み（Key Decisions 参照）。Q3 は「上位種別は系統にしない、緩行線と快速線を別系統」と再定義。23区版は本番リリース済み（PR #4 は判断不要）。次の作業: 研究カタログを線路系統単位で作り直し、モンテカルロを再計測してから実装に入る（`.claude/docs/plans/jr-east-capital-region-handoff.md`）。
 
 - 1都3県版（2026-10-13 更新）: 上の「ユーザー確認待ち」Q1〜Q11 一覧は履歴。catalog v2（40系統）とモンテカルロ再計測は完了。次は実装計画の承認と実装（`.claude/docs/plans/jr-east-capital-region-handoff.md`）。
+
+Current status (2026-10-15): the lists above are history; these items supersede them.
+
+- JR東日本 1都3県版は 2026-10-15 に本番リリース済み（PR #26）。23区版の R1〜R7 と 1都3県版の Q1〜Q11 はすべて Key Decisions で解決済み（経緯: `.claude/docs/research/jr-east-tokyo-expansion-design.md`、`.claude/docs/research/jr-east-capital-region-expansion-design.md`、`.claude/docs/plans/jr-east-capital-region-handoff.md`）。
+- MVP 由来の暫定事項（アニメーション速度、セーブタイミング、駅アイコン表示ズーム、端点許容、状態管理、OpenFreeMap 利用条件）は実装で確定済み。
+- [ ] 次の開発方針をユーザーが選ぶ（案: `docs/manual/development-roadmap/proposal.md`）。
+- [ ] 既知の制限: N02 の一般化区間（常磐 綾瀬–金町、総武 江戸川橋梁、赤羽–浦和）、上野の常磐線快速ホーム移動（131 m）。
+- [ ] 保守: `data/staging/` のステージ入力はテストが参照しているため残している。退役させる場合はテスト用フィクスチャへの移行が必要。
+
+- 東京近郊版（2026-10-19）: S0–S6 は push 済み、S7（シミュレーション・E2E・文書・統合レビュー）実施中、S8（PR・CI・リリース）未着手。残る確認: Vercel 上の `segments.geojson` の圧縮とヘッダー（ローカル vite preview は非圧縮）、実機での性能・タッチパン、1.32 MB の main JS chunk 警告。経緯: `.claude/docs/plans/tokyo-suburban-network-handoff.md`。

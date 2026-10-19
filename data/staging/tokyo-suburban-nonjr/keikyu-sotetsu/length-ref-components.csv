@@ -1,0 +1,9 @@
+service_id,from,to,km,source_url,document,page_or_table,operation,source_class,notes
+keikyu-main,泉岳寺,浦賀,56.7,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,営業キロ程表,"p.1, 泉岳寺→浦賀",+,primary,京急本線の公式営業キロ程表。泉岳寺起点の累計値56.7 km。
+keikyu-airport,京急蒲田,羽田空港第1・第2ターミナル,6.5,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,営業キロ程表,"p.1, 京急蒲田→羽田空港第1・第2ターミナル",+,primary,空港線の公式表に記載された両駅間営業キロ。
+keikyu-daishi,京急川崎,小島新田,4.5,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,営業キロ程表,"p.1, 京急川崎→小島新田",+,primary,大師線の公式表に記載された両駅間営業キロ。
+keikyu-zushi,金沢八景,逗子・葉山,5.9,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,営業キロ程表,"p.1, 金沢八景→逗子・葉山",+,primary,逗子線の公式表に記載された両駅間営業キロ。
+keikyu-kurihama,堀ノ内,三崎口,13.4,https://www.keikyu.co.jp/ride/ticket/pdf/tetsudoueigyou_20.pdf,営業キロ程表,"p.1, 堀ノ内→三崎口",+,primary,久里浜線の公式表に記載された両駅間営業キロ。
+sotetsu-main,横浜,海老名,24.6,https://www.sotetsu.co.jp/about/companies/transportation/,運輸業,相鉄線の営業区間,+,primary,相鉄本線 横浜〜海老名の公式営業キロ。
+sotetsu-izumino,二俣川,湘南台,11.3,https://www.sotetsu.co.jp/about/companies/transportation/,運輸業,相鉄線の営業区間,+,primary,相鉄いずみ野線 二俣川〜湘南台の公式営業キロ。
+sotetsu-shin-yokohama,西谷,新横浜,6.3,https://www.sotetsu.co.jp/about/companies/transportation/,運輸業,相鉄線の営業区間,+,primary,相鉄新横浜線 西谷〜新横浜の公式営業キロ。

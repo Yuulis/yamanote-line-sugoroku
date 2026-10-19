@@ -1,0 +1,14 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,meguro,MG01,,目黒,目黒,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-fudo-mae,MG02,,不動前,不動前,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-musashi-koyama,MG03,,武蔵小山,武蔵小山,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tokyu-nishi-koyama,MG04,,西小山,西小山,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tokyu-senzoku,MG05,,洗足,洗足,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tokyu-ookayama,MG06,,大岡山,大岡山,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tokyu-okusawa,MG07,,奥沢,奥沢,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tokyu-den-en-chofu,MG08,line=目黒線;group=004245,田園調布,田園調布,東急電鉄,S3 plan boundary anchor: raw N02 station codes share the documented group and exact midpoint; selector pins the service stop to its continuing line.
+8,tokyu-tamagawa,MG09,,多摩川,多摩川,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,tokyu-shin-maruko,MG10,,新丸子,新丸子,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,musashi-kosugi,MG11,,武蔵小杉,武蔵小杉,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,tokyu-motosumiyoshi,MG12,,元住吉,元住吉,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,tokyu-hiyoshi,MG13,,日吉,日吉,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

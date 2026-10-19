@@ -1,0 +1,3 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keio-takahatafudo,KO29,line=動物園線;group=003904;code=003905,高幡不動,高幡不動,京王電鉄,Raw N02 confirms this 動物園線 station code 003905 and group 003904; pin the platform used by this frozen service.
+1,keio-tama-dobutsukoen,KO47,line=動物園線;group=003977;code=003977,多摩動物公園,多摩動物公園,京王電鉄,Raw N02 confirms frozen station name 多摩動物公園 (N02 name 多摩動物公園) on 動物園線 at platform code 003977 and group 003977; pin this service stop.

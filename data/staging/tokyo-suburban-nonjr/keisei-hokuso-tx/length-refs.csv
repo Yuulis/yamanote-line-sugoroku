@@ -1,0 +1,11 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+keisei-main,京成上野,成田空港,69.3,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,69.226,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keisei-oshiage,押上,青砥,5.7,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,5.771,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keisei-kanamachi,京成高砂,京成金町,2.5,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,2.506,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keisei-chiba,京成津田沼,千葉中央,12.9,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,12.765,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keisei-chihara,千葉中央,ちはら台,10.9,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,10.939,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keisei-higashi-narita,京成成田,東成田,7.1,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,7.099,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keisei-matsudo,京成津田沼,松戸,26.5,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,26.612,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+tx,秋葉原,つくば,58.3,https://mir1.mir.co.jp/feature/about_tx/,58.276,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+hokuso-main,京成高砂,印旛日本医大,32.3,https://www.hokuso-railway.co.jp/hokuso/outline.html,32.231,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.
+keisei-narita-airport-access,印旛日本医大,成田空港,19.1,https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf,19.184,Official primary-source mileage breakdown agrees with raw N02 pair sum within 1.5 km.

@@ -1,6 +1,7 @@
 import type { Manifest, SegmentFeatureCollection } from "../types/data";
 import type { Segment, ServicesData, Station } from "../types/network";
 import {
+  hasValidUiPresentationReferences,
   isManifest,
   isSegmentFeatureCollection,
   isSegmentList,
@@ -78,6 +79,23 @@ export async function loadRailwayData(
     loadFile(baseUrl, DATA_FILES.geometry, isSegmentFeatureCollection, fetchJson),
     loadFile(baseUrl, DATA_FILES.manifest, isManifest, fetchJson),
   ]);
+
+  if (
+    manifest.ok &&
+    manifest.value.uiPresentation &&
+    stations.ok &&
+    services.ok &&
+    !hasValidUiPresentationReferences(manifest.value.uiPresentation, stations.value, services.value)
+  ) {
+    return {
+      stations,
+      services,
+      segments,
+      geometry,
+      manifest: { ok: false, file: DATA_FILES.manifest, reason: "invalid uiPresentation references" },
+    };
+  }
+
   return { stations, services, segments, geometry, manifest };
 }
 

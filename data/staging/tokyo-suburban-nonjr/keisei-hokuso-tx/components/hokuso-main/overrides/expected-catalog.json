@@ -1,0 +1,41 @@
+{
+  "services": [
+    {
+      "id": "hokuso-main",
+      "stationIds": [
+        "hokuso-keisei-takasago",
+        "hokuso-shin-shibamata",
+        "hokuso-yagiri",
+        "hokuso-kita-kokubun",
+        "hokuso-akiyama",
+        "hokuso-higashi-matsudo",
+        "hokuso-matsuhidai",
+        "hokuso-omachi",
+        "hokuso-shin-kamagaya",
+        "hokuso-nishi-shiroi",
+        "hokuso-shiroi",
+        "hokuso-komuro",
+        "hokuso-chiba-newtown-chuo",
+        "hokuso-inzai-makinohara",
+        "hokuso-imba-nihon-idai"
+      ]
+    }
+  ],
+  "stationIds": [
+    "hokuso-keisei-takasago",
+    "hokuso-shin-shibamata",
+    "hokuso-yagiri",
+    "hokuso-kita-kokubun",
+    "hokuso-akiyama",
+    "hokuso-higashi-matsudo",
+    "hokuso-matsuhidai",
+    "hokuso-omachi",
+    "hokuso-shin-kamagaya",
+    "hokuso-nishi-shiroi",
+    "hokuso-shiroi",
+    "hokuso-komuro",
+    "hokuso-chiba-newtown-chuo",
+    "hokuso-inzai-makinohara",
+    "hokuso-imba-nihon-idai"
+  ]
+}

@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,seibu-nishi-tokorozawa,SI18,,西所沢,西所沢,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,seibu-shimo-yamaguchi,SI40,,下山口,下山口,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,seibu-seibukyujo-mae,SI41,,西武球場前,西武球場前,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

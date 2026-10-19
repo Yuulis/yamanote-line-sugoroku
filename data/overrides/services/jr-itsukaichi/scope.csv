@@ -1,8 +1,8 @@
-station_id,prefecture,municipality
-haijima,東京都,昭島市
-kumagawa,東京都,福生市
-higashi-akiru,東京都,あきる野市
-akigawa,東京都,あきる野市
-musashi-hikida,東京都,あきる野市
-musashi-masuko,東京都,あきる野市
-musashi-itsukaichi,東京都,あきる野市
+station_id,prefecture,municipality,in_area
+haijima,東京都,昭島市,true
+kumagawa,東京都,福生市,true
+higashi-akiru,東京都,あきる野市,true
+akigawa,東京都,あきる野市,true
+musashi-hikida,東京都,あきる野市,true
+musashi-masuko,東京都,あきる野市,true
+musashi-itsukaichi,東京都,あきる野市,true

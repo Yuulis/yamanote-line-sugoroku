@@ -1,0 +1,48 @@
+{
+  "formatVersion": 1,
+  "batch": "tobu",
+  "serviceIds": [
+    "tobu-isesaki",
+    "tobu-nikko",
+    "tobu-kinugawa",
+    "tobu-utsunomiya",
+    "tobu-sano",
+    "tobu-kiryu",
+    "tobu-koizumi",
+    "tobu-koizumi-ota",
+    "tobu-kameido",
+    "tobu-daishi",
+    "tobu-urban-park",
+    "tobu-tojo",
+    "tobu-ogose",
+    "tobu-oshiage"
+  ],
+  "pairCount": 205,
+  "expectedPairKeysSha256": "b169f3e6f71b8c8def3c0cf3905f2b9425f2b45d1e34c8269fc3cc3085e099f9",
+  "pairEvidenceSha256": "2b34c5674ea0c64eba438e3f9d870ccfe2e902efbe59a5fffa16fdf99b8b4aff",
+  "sourceHashes": {
+    "assembledOverridesSha256": "635a85c32ece97c4a3e388b052ce807a19878a6cdab327bdc99ccc02b7e3f399",
+    "rawStationSha256": "908e2c3036e9c80760ae3514be3682c77f81f0bd60ab5fb1b3da1aa9352bbd94",
+    "rawSectionSha256": "4269b076c0689db13cadf0d07801418b7215b2160ebf1278c508031cd08c4da2",
+    "freezeManifestSha256": "370ebc7e17129a94b5f472031764e9db000f6cd0420c80a2d4377aac3f565e64",
+    "catalogSha256": "2cd1adb7d341395e2317e5852dbf5dd1d2406355cc011aecb5ddaeb582abcb05",
+    "servicesSha256": "5fa614f7f2e9e2f98c75e2faa88ccdfdf3bd877def7d3bae20ce1270617fa4cb",
+    "assemblyInputsSha256": "0e0b2b3d078bd716b1b8caa4e2c647d90a0a33311be985577f5f12dca93c1a86",
+    "distanceSources": {
+      "tobu-isesaki": "b9c0c515e96ca9ac142f17de3a0df9a260c1b5c158f2f09ff46d9f97c08c0c0e",
+      "tobu-nikko": "8695c787a6e3ff4e9778effe6acc116f89d9bda39c314f10ada23a968cda23b3",
+      "tobu-kinugawa": "a290f525f5310e17550a5fe32c36889ddec3ca1decf63c305dbdf2de89290417",
+      "tobu-utsunomiya": "dade709e397dcf443c7085d9545a46de11562739775217948d6b8c07412f3b95",
+      "tobu-sano": "040eddb81427bc4ba8f78f2a1340cba281a319ba15bdb16d6fb5209082091d97",
+      "tobu-kiryu": "29e5c94acd7437922ade670dba7b47137aa5e187af11ec75772d93ff20a23535",
+      "tobu-koizumi": "1c73d678401985d8da0bb9e18be4e57a5af4d47774ed13652eaf7fc128692056",
+      "tobu-koizumi-ota": "f9940da9e4bcba74391156b4bd7df95cc2adc7015209bb25b6ca202db6c61469",
+      "tobu-kameido": "e428e23015c622e694e61b7aed0dfb5e61d50ec0ea3e7c336d974148bc878771",
+      "tobu-daishi": "b4f8afdd895a54f9ed0e9357d28884848890e7bbb4e0358a2db95b31ccaa68fa",
+      "tobu-urban-park": "0cb1933f7bf1d9fc56ed8fa1c44684f5327f832b453923c1ce6e77c85417492e",
+      "tobu-tojo": "1172b24b3c1909a93f699e80e26d59e802a8a2488291ae0acf0332043e3c62f7",
+      "tobu-ogose": "81ddebb0377e84b9ac93438117dd8442e09a78af41c423e99a61ec6cac313764",
+      "tobu-oshiage": "01f026a43537f1ced51ac2e36123bf7c959cf640b8b3853daba4157ed1143f17"
+    }
+  }
+}

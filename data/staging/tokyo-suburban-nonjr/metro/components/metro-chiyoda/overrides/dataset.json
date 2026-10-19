@@ -1,0 +1,42 @@
+{
+  "operator": "東京地下鉄",
+  "n02Operator": "東京地下鉄",
+  "updatedAt": "2026-10-15",
+  "areaName": "東京地下鉄 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "千葉県",
+    "埼玉県"
+  ],
+  "serviceIds": [
+    "metro-ginza",
+    "metro-marunouchi",
+    "metro-marunouchi-honancho",
+    "metro-hibiya",
+    "metro-tozai",
+    "metro-chiyoda",
+    "metro-yurakucho",
+    "metro-hanzomon",
+    "metro-namboku",
+    "metro-fukutoshin"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "metro-shibuya",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "aeb7b405fddbf3fd2af9eb834c17471e041c061bf29303705e639496df9c0f41",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

@@ -1,0 +1,22 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,shinjuku,S01,line=10号線新宿線,新宿,新宿,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,metro-shinjuku-sanchome,S02,line=10号線新宿線,新宿三丁目,新宿三丁目,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,toei-akebonobashi,S03,line=10号線新宿線,曙橋,曙橋,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,ichigaya,S04,line=10号線新宿線,市ケ谷,市ヶ谷,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,metro-kudanshita,S05,line=10号線新宿線,九段下,九段下,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,metro-jimbocho,S06,line=10号線新宿線,神保町,神保町,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,metro-awajicho,S07,line=10号線新宿線,小川町,小川町,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,akihabara,S08,line=10号線新宿線,岩本町,岩本町,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,bakurocho,S09,line=10号線新宿線,馬喰横山,馬喰横山,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,toei-hamacho,S10,line=10号線新宿線,浜町,浜町,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,toei-morishita,S11,line=10号線新宿線,森下,森下,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,toei-kikukawa,S12,line=10号線新宿線,菊川,菊川,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,metro-sumiyoshi,S13,line=10号線新宿線,住吉,住吉,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+13,toei-nishi-ojima,S14,line=10号線新宿線,西大島,西大島,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+14,toei-ojima,S15,line=10号線新宿線,大島,大島,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+15,toei-higashi-ojima,S16,line=10号線新宿線,東大島,東大島,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+16,toei-funabori,S17,line=10号線新宿線,船堀,船堀,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+17,toei-ichinoe,S18,line=10号線新宿線,一之江,一之江,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+18,toei-mizue,S19,line=10号線新宿線,瑞江,瑞江,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+19,toei-shinozaki,S20,line=10号線新宿線,篠崎,篠崎,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+20,moto-yawata,S21,line=10号線新宿線,本八幡,本八幡,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.

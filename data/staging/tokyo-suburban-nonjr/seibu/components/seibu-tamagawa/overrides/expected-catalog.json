@@ -1,0 +1,23 @@
+{
+  "services": [
+    {
+      "id": "seibu-tamagawa",
+      "stationIds": [
+        "seibu-musashi-sakai",
+        "seibu-shin-koganei",
+        "seibu-tama",
+        "seibu-shiraitodai",
+        "seibu-kyoteijo-mae",
+        "seibu-koremasa"
+      ]
+    }
+  ],
+  "stationIds": [
+    "seibu-musashi-sakai",
+    "seibu-shin-koganei",
+    "seibu-tama",
+    "seibu-shiraitodai",
+    "seibu-kyoteijo-mae",
+    "seibu-koremasa"
+  ]
+}

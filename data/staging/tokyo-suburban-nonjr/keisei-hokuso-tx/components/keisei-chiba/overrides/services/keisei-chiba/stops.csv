@@ -1,0 +1,11 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keisei-keisei-tsudanuma,KS26,line=千葉線;code=003748,京成津田沼,京成津田沼,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 003748, group 003747."
+1,keisei-keisei-makuharihongo,KS52,line=千葉線;code=003814,京成幕張本郷,京成幕張本郷,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 003814, group 003814."
+2,keisei-keisei-makuhari,KS53,line=千葉線;code=003913,京成幕張,京成幕張,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 003913, group 003913."
+3,keisei-kemigawa,KS54,line=千葉線;code=003964,検見川,検見川,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 003964, group 003964."
+4,keisei-keisei-inage,KS55,line=千葉線;code=004048,京成稲毛,京成稲毛,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 004048, group 004048."
+5,keisei-midoridai,KS56,line=千葉線;code=004115,みどり台,みどり台,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 004115, group 004115."
+6,keisei-nishi-noboto,KS57,line=千葉線;code=004145,西登戸,西登戸,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 004145, group 004145."
+7,keisei-shin-chiba,KS58,line=千葉線;code=004172,新千葉,新千葉,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 004172, group 004172."
+8,keisei-keisei-chiba,KS59,line=千葉線;code=004176,京成千葉,京成千葉,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 004176, group 004176."
+9,keisei-chiba-chuo,KS60,line=千葉線;code=004195,千葉中央,千葉中央,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/千葉線, code 004195, group 004194."

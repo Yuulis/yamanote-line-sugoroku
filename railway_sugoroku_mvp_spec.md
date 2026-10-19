@@ -5,9 +5,30 @@
 - 状態: MVP開発開始用（未確定事項は「暫定」「要確認」を付記）
 - 対象: Webブラウザで動作する、実際の鉄道地図を利用したオリジナルすごろく
 
-## Current edition addendum — JR East capital region (2026-10-15, v0.4.0)
+## Current edition addendum — Tokyo suburban (2026-10-19, ruleset `tokyo-suburban-1`)
 
-This contract supersedes the 23-ward edition addendum below and the original MVP scope and pending transfer/endpoint choices in sections 1–4 and 11. Earlier sections and dated addenda are retained as historical baselines. The title is “山手線すごろく” with subtitle “JR東日本 1都3県版”. The current user-facing manual is [docs/manual/jr-east-capital-region/rules.md](docs/manual/jr-east-capital-region/rules.md); data build and validation details are in [data/README.md](data/README.md).
+This is the current product contract. It supersedes the older JR East capital-region and Tokyo 23-ward addenda below, and resolves the original MVP scope and pending transfer/endpoint choices in sections 1–4 and 11. Earlier sections and dated addenda remain historical baselines. The title is “山手線すごろく” with subtitle “東京近郊版”. See [current rules](docs/manual/tokyo-suburban/rules.md), [implementation status](docs/manual/tokyo-suburban/implementation-status.md), and [data build and validation](data/README.md).
+
+### Scope, movement and lotteries
+
+- The shipped N02 2025 bundle (`dataVersion: n02-2025-8a0970069659`) contains 1,586 station identities, 135 engine services, 3,988 directed gameplay segments and 30 directed Yamanote target segments. Presentation groups them as 15 operators and 134 UI line groups. The catalogue includes Tokyo suburban-area JR services and reviewed private railway and subway services; this is a curated product catalogue, not a live timetable.
+- Start at 新橋 on 山手線 outer. One die pip advances one stop on the ridden service. Only the 30 outer Yamanote segments count toward the unchanged goal. Passing a station does not trigger a draw. At a service endpoint, movement stops and remaining pips are discarded.
+- Unless the move clears, draw a service at the arrival station, including the service just ridden. When 山手線 is among at least two candidates, its probability is 2/3 and the remaining probability is divided uniformly among the other services. With no 山手線 candidate, services are drawn uniformly. `local` and `rapid` have equal base weights.
+- 山手線 always proceeds outer. For another service with two movable directions, the direction whose next stop is closer to any 山手線 stop in directed service-segment distance has twice the weight of the opposite direction. Equal-distance choices are uniform. A single available service or direction is forced without a lottery draw.
+- After all 30 target segments are complete, arrival at 新橋 on 山手線 truncates and clears; on another service, clear only when the roll ends exactly at 新橋. Passing 新橋 on another service does not clear.
+- Lottery candidate order follows `services.json`. Draw order is die, service if there is a choice, then direction if the chosen non-target service has two movable directions. Movement results are committed before animation and saved; restoring does not replay the draw.
+- The interface groups Toei Oedo loop and radial engine services into one 大江戸線 UI line with two lottery slots. Official interchange identities and reviewed aliases connect stations; they do not imply that every pair of nearby platforms shares a physical track. Stop display overrides preserve the reviewed original station spelling, including small-ヶ forms.
+
+### Data and persistence
+
+- Five public files use `manifest.schemaVersion: 3`: stations, service and line metadata, directed segments, shared GeoJSON geometry, and manifest. Reverse segments reference reversed geometry chains. N02 2025 is generalized and does not fully distinguish some parallel tracks; geometry does not prove that real tracks are shared.
+- Linear endpoints are typed as terminus, area boundary, or service boundary. Movement stops at the endpoint and discards remaining pips. Product data is based on MLIT N02 2025, base date 2025-12-31; stop order is curated and pinned, and no live timetable is loaded.
+- Saves use format v3. Older or other-ruleset saves are rejected and can be discarded; there is no migration.
+- Local S7 delivery decoded all five assets to bytes matching `public/data`. Vite preview gzip-compressed JSON but served `segments.geojson` uncompressed as `application/geo+json` (1,288,259 B). Vercel delivery headers and compression remain an S8 live check. S7's 5,000-game simulation and Playwright evidence, along with known device and bundle limits, are summarized in the implementation status.
+
+## Historical edition addendum — JR East capital region (2026-10-15, v0.4.0)
+
+Superseded by the Tokyo suburban addendum above. At the time, this contract superseded the 23-ward edition addendum below and the original MVP scope and pending transfer/endpoint choices in sections 1–4 and 11. Earlier sections and dated addenda are retained as historical baselines. The title is “山手線すごろく” with subtitle “JR東日本 1都3県版”. The current user-facing manual is [docs/manual/jr-east-capital-region/rules.md](docs/manual/jr-east-capital-region/rules.md); data build and validation details are in [data/README.md](data/README.md).
 
 ### Scope, movement and lotteries
 
@@ -86,7 +107,7 @@ The title is “山手線すごろく” with subtitle “JR東日本 東京23�
   kinds and completion in 15 turns. Actual data has separate browser smoke and
   eight seeded Vitest playthrough/restore checks.
 
-Current user-facing rules: [docs/manual/jr-east-tokyo/rules.md](docs/manual/jr-east-tokyo/rules.md).
+Historical Tokyo 23-ward rules: [docs/manual/jr-east-tokyo/rules.md](docs/manual/jr-east-tokyo/rules.md). Current rules are linked above.
 Generation/validation contract: [data/README.md](data/README.md).
 
 ---

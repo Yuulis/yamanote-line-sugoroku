@@ -1,0 +1,8 @@
+from_id,to_id,n02_line,via,route,compose
+sotetsu-futamatagawa,sotetsu-minami-makigahara,相鉄いずみ野線,,,
+sotetsu-minami-makigahara,sotetsu-ryokuentoshi,相鉄いずみ野線,,,
+sotetsu-ryokuentoshi,sotetsu-yayoidai,相鉄いずみ野線,,,
+sotetsu-yayoidai,sotetsu-izumino,相鉄いずみ野線,,,
+sotetsu-izumino,sotetsu-izumi-chuo,相鉄いずみ野線,,,
+sotetsu-izumi-chuo,sotetsu-yumegaoka,相鉄いずみ野線,,,
+sotetsu-yumegaoka,odakyu-shonandai,相鉄いずみ野線,,,

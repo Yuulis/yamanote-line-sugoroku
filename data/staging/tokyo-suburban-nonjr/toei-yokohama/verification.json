@@ -1,0 +1,13 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "toei-asakusa",
+    "yokohama-blue"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/toei-yokohama",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "dfd51d99215e84a336ded83b1ea0a0bb0c7153e1edd2c1e76f10184ba795c9aa",
+    "length-ref-components.csv": "a92502760e13683b6f4c1ae49a2a3426fe63b883d24a3dc3ba7bdc0b822cf4ae"
+  }
+}

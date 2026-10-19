@@ -1,6 +1,6 @@
-order,station_id,station_number,platform_selector
-0,shitte,JN02,
-1,hatchonawate,JN51,
-2,kawasakishimmachi,JN52,
-3,odasakae,JN53,
-4,hama-kawasaki,JN54,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,shitte,JN02,,尻手,尻手,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,hatchonawate,JN51,,八丁畷,八丁畷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,kawasakishimmachi,JN52,,川崎新町,川崎新町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,odasakae,JN53,,小田栄,小田栄,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,hama-kawasaki,JN54,,浜川崎,浜川崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

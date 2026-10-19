@@ -1,0 +1,9 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,seibu-kodaira,SS19,,小平,小平,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,seibu-hagiyama,SS30,,萩山,萩山,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,seibu-ogawa,SS31,,小川,小川,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,seibu-higashi-yamatoshi,SS32,,東大和市,東大和市,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,seibu-tamagawa-josui,SS33,,玉川上水,玉川上水,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,seibu-musashi-sunagawa,SS34,,武蔵砂川,武蔵砂川,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,seibu-seibu-tachikawa,SS35,,西武立川,西武立川,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,haijima,SS36,,拝島,拝島,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

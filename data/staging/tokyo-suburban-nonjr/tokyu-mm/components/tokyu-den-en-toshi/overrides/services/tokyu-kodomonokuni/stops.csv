@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyu-nagatsuta,KD01,,長津田,長津田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-onda,KD02,,恩田,恩田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-kodomonokuni,KD03,,こどもの国,こどもの国,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

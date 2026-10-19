@@ -24,6 +24,7 @@ import {
 import type { GameState } from "../../src/types/network";
 import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { configWith, DEFAULT_CONFIG, yamanoteInput } from "./fixtures/yamanote";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 
 const network = buildRailwayNetwork(yamanoteInput());
 const PRODUCTION = { expectedConfig: DEFAULT_CONFIG, requireSeededRolls: true } as const;
@@ -175,6 +176,26 @@ describe("readSave / writeSave / deleteSave", () => {
     expect(lookup).toEqual({ kind: "valid", game: state });
     if (lookup.kind !== "valid") throw new Error("expected a valid save");
     expect(playTurn(lookup.game, network).roll).toBe(playTurn(state, network).roll);
+  });
+
+  it("restores a pre-S6 save unchanged when UI presentation metadata is available", () => {
+    const saved = seededGame(5);
+    const serializedBeforeS6 = serializeGame(saved);
+    const resolver = createPresentationResolver(network, {
+      version: 1,
+      operators: [{ id: "東日本旅客鉄道", name: "東日本旅客鉄道" }],
+      lineGroups: [{ id: "jr-yamanote", name: "山手線", operatorId: "東日本旅客鉄道", color: "#80c241", serviceIds: ["jr-yamanote"] }],
+      stations: [{ id: "shinagawa", aliases: ["品川駅"] }],
+      serviceStopNames: [],
+    });
+    const storage = memoryStorage({ [SAVE_STORAGE_KEY]: serializedBeforeS6 });
+
+    expect(resolver.stationName("shinagawa")).toBe("shinagawa・品川駅");
+    expect(network.dataVersion).toBe(saved.dataVersion);
+    expect(readSave(storage, network, DEFAULT_CONFIG)).toEqual({ kind: "valid", game: saved });
+    const restored = restoreGame(serializedBeforeS6, network, PRODUCTION);
+    expect(restored).toEqual(saved);
+    expect(playTurn(restored, network)).toEqual(playTurn(saved, network));
   });
 
   it("round-trips a multi-service seeded game with landings under production checks", () => {

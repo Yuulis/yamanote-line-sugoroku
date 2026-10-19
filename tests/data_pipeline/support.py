@@ -6,11 +6,18 @@ from pathlib import Path
 
 from shapely.geometry import LineString, Point
 
+from scripts.data_pipeline import config
 from scripts.data_pipeline.n02 import PlatformCandidate
+from scripts.data_pipeline.stage_suburban_support import resolve_historical_baseline
 
 # Draft 5-service tables (researcher's verified stop lists) in the override
 # layout. Used to exercise the multi-service code paths; not exported.
 CORE_FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "jr_east_core"
+
+
+def historical_baseline(relative: str) -> Path:
+    """Resolve an old-edition tree for historical pipeline regressions."""
+    return resolve_historical_baseline(config.REPO_ROOT, relative)
 
 
 def candidate(

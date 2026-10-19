@@ -1,0 +1,10 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-shimo-imaichi,TN-23,,下今市,下今市,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tobu-daiyamukai,TN-51,,大谷向,大谷向,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tobu-okuwa,TN-52,,大桑,大桑,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tobu-shin-takatoku,TN-53,,新高徳,新高徳,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tobu-kosagoe,TN-54,,小佐越,小佐越,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tobu-tobu-world-square,TN-55,,東武ワールドスクウェア,東武ワールドスクウェア,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tobu-kinugawa-onsen,TN-56,,鬼怒川温泉,鬼怒川温泉,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,tobu-kinugawa-koen,TN-57,,鬼怒川公園,鬼怒川公園,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,tobu-shin-fujiwara,TN-58,,新藤原,新藤原,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

@@ -1,0 +1,23 @@
+{
+  "services": [
+    {
+      "id": "mm-minatomirai",
+      "stationIds": [
+        "mm-yokohama",
+        "mm-shintakashima",
+        "mm-minatomirai",
+        "mm-bashamichi",
+        "mm-nihonodori",
+        "mm-motomachi-chukagai"
+      ]
+    }
+  ],
+  "stationIds": [
+    "mm-yokohama",
+    "mm-shintakashima",
+    "mm-minatomirai",
+    "mm-bashamichi",
+    "mm-nihonodori",
+    "mm-motomachi-chukagai"
+  ]
+}

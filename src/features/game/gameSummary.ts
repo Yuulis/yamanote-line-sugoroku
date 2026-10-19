@@ -1,5 +1,6 @@
 import type { EndpointKind, GameState, MoveRecord } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
+import type { PresentationResolver } from "./presentationResolver";
 
 /** Labels preserve the distinction between physical and catalogue endpoints. */
 export function endpointKindLabel(kind: EndpointKind | null): string {
@@ -15,13 +16,14 @@ export interface GameSummary {
   transfers: number;
 }
 
-export function summarizeGame(game: GameState): GameSummary {
+export function summarizeGame(game: GameState, presentation?: PresentationResolver): GameSummary {
   const moves = game.movementHistory.reduce(
     (total, record) => total + record.traversedSegmentIds.length,
     0,
   );
   const transfers = game.movementHistory.filter(
-    (record) => record.landing && record.landing.serviceId !== record.serviceId,
+    (record) => record.landing && record.landing.serviceId !== record.serviceId &&
+      !presentation?.sameLineGroup(record.serviceId, record.landing.serviceId),
   ).length;
   return { turns: game.turn, moves, transfers };
 }

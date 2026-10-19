@@ -9,3 +9,11 @@ scripts/update.sh text eol=lf
 .claude/** text=auto eol=lf
 .agents/** text=auto eol=lf
 .codex/** text=auto eol=lf
+
+# S0-frozen R1 research inputs: their freeze hashes cover the original CRLF bytes,
+# so keep them byte-exact (no EOL conversion) on every checkout.
+.claude/docs/research/tokyo-suburban-r1-jr-catalog.csv -text
+.claude/docs/research/tokyo-suburban-r1-pe-catalog.csv -text
+.claude/docs/research/tokyo-suburban-r1-pe-transfers.csv -text
+.claude/docs/research/tokyo-suburban-r1-sub-catalog.csv -text
+.claude/docs/research/tokyo-suburban-r1-sub-transfers.csv -text

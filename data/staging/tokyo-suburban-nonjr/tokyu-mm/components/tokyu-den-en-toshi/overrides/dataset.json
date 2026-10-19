@@ -1,0 +1,40 @@
+{
+  "operator": "東急電鉄",
+  "n02Operator": "東急電鉄",
+  "updatedAt": "2026-10-15",
+  "areaName": "東急電鉄 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "神奈川県"
+  ],
+  "serviceIds": [
+    "tokyu-toyoko",
+    "tokyu-meguro",
+    "tokyu-shin-yokohama",
+    "tokyu-den-en-toshi",
+    "tokyu-oimachi",
+    "tokyu-ikegami",
+    "tokyu-tamagawa",
+    "tokyu-setagaya",
+    "tokyu-kodomonokuni"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "tokyu-shibuya",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "45f2ad4f81b249a5c3be4e5aed9ec55ebf3ec383bb0f2363d971d2350e3eed59",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

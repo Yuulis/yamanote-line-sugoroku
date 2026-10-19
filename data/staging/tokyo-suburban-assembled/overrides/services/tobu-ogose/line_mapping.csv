@@ -1,0 +1,8 @@
+from_id,to_id,n02_line,via,route,compose
+tobu-sakado,tobu-ippommatsu,越生線,,,
+tobu-ippommatsu,tobu-nishi-oya,越生線,,,
+tobu-nishi-oya,tobu-kawakado,越生線,,,
+tobu-kawakado,tobu-bushu-nagase,越生線,,,
+tobu-bushu-nagase,tobu-higashi-moro,越生線,,,
+tobu-higashi-moro,tobu-bushu-karasawa,越生線,,,
+tobu-bushu-karasawa,ogose,越生線,,,

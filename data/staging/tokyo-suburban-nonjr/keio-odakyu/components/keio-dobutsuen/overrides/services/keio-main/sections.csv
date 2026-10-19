@@ -1,0 +1,4 @@
+n02_operator,n02_line,action,section_key,reason,from_id,to_id
+京王電鉄,京王線,allow,139.69791 35.68815~139.69932 35.68871#73bb9b54,"For the frozen 新宿→初台 pair, admit the southern 京王新線 platform track from the raw N02 point (139.69932, 35.68871) to (139.69791, 35.68815); it joins the westbound sections below.",keio-shinjuku,keio-hatsudai
+京王電鉄,京王線,allow,139.68862 35.68170~139.69791 35.68815#2e3327f6,"For the frozen 新宿→初台 pair, admit the raw N02 westbound 京王新線 section from (139.69791, 35.68815) to (139.68862, 35.68170).",keio-shinjuku,keio-hatsudai
+京王電鉄,京王線,allow,139.68792 35.68114~139.68862 35.68170#f8305d48,"For the frozen 新宿→初台 pair, admit the raw N02 京王新線 section from (139.68862, 35.68170) to 初台 platform endpoint (139.68792, 35.68114).",keio-shinjuku,keio-hatsudai

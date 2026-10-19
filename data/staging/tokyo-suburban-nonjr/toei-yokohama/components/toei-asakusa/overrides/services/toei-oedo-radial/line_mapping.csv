@@ -1,0 +1,11 @@
+from_id,to_id,n02_line,via,route,compose
+toei-tochomae,toei-nishi-shinjuku-gochome,12号線大江戸線,,,
+toei-nishi-shinjuku-gochome,toei-nakano-sakaue,12号線大江戸線,,,
+toei-nakano-sakaue,toei-higashi-nakano,12号線大江戸線,,,
+toei-higashi-nakano,toei-nakai,12号線大江戸線,,,
+toei-nakai,toei-ochiai-minami-nagasaki,12号線大江戸線,,,
+toei-ochiai-minami-nagasaki,toei-shin-egota,12号線大江戸線,,,
+toei-shin-egota,toei-nerima,12号線大江戸線,,,
+toei-nerima,toei-toshimaen,12号線大江戸線,,,
+toei-toshimaen,toei-nerima-kasugacho,12号線大江戸線,,,
+toei-nerima-kasugacho,toei-hikarigaoka,12号線大江戸線,,,

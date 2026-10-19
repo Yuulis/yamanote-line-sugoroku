@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
@@ -32,7 +32,7 @@ def composed_pairs(
     ):
         if not item.compose:
             continue
-        primitives = flatten_recipe(overrides, item.compose)
+        primitives = flatten_recipe(overrides, item.compose, service)
         check_recipe_anchors(a, b, primitives)
         coordinates = []
         anchors = []
@@ -42,11 +42,13 @@ def composed_pairs(
                 built.service.station_ids, built.service.circular
             ).index((x, y))
             points = list(built.routed.paths[pair_index].geometry.coords)
-            lines = built.service.segment_ranges()[pair_index].route_lines
+            owner_range = built.service.segment_ranges()[pair_index]
+            lines = owner_range.route_lines
+            operators = built.service.range_operators(owner_range, overrides.dataset)
             # The anchor is a point on the owner's track, so it carries the N02
             # line the primitive ends on, not the owner's chosen platform line.
-            start = (built.routed.departure(pair_index), lines[0])
-            end = (built.routed.arrival(pair_index + 1), lines[-1])
+            start = (built.routed.departure(pair_index), lines[0], operators[0])
+            end = (built.routed.arrival(pair_index + 1), lines[-1], operators[-1])
             if reverse:
                 points.reverse()
                 start, end = end, start
@@ -57,11 +59,24 @@ def composed_pairs(
             coordinates.extend(points[1:] if coordinates else points)
             anchors.append((start, end))
         geometry = LineString(coordinates)
-        (first, first_line), (last, last_line) = anchors[0][0], anchors[-1][1]
+        (first, first_line, first_operator), (last, last_line, last_operator) = (
+            anchors[0][0],
+            anchors[-1][1],
+        )
         result[index] = (
             TrackPath(geometry, geometry.length, 0.0, 0.0),
-            replace(first, n02_line=first_line, midpoint=Point(coordinates[0])),
-            replace(last, n02_line=last_line, midpoint=Point(coordinates[-1])),
+            replace(
+                first,
+                n02_line=first_line,
+                operator=first_operator,
+                midpoint=Point(coordinates[0]),
+            ),
+            replace(
+                last,
+                n02_line=last_line,
+                operator=last_operator,
+                midpoint=Point(coordinates[-1]),
+            ),
         )
     return result
 
@@ -113,3 +128,36 @@ def check_inherited_route_anchors(
                 raise OverrideError(
                     "compose platform-gap: route leaves an inherited primitive anchor"
                 )
+
+
+def check_inherited_route_sources(
+    endpoint_sources: Mapping[tuple[int, str], tuple[str, str]],
+    arrivals: Anchors,
+    departures: Anchors,
+    composed_pairs: Collection[int],
+    stop_count: int,
+    candidates: Sequence[PlatformCandidate] = (),
+) -> None:
+    """A neighbouring route must use the inherited anchor's line and operator."""
+    for (pair_index, side), expected in endpoint_sources.items():
+        if pair_index in composed_pairs:
+            continue
+        stop = pair_index if side == "from" else (pair_index + 1) % stop_count
+        anchor = departures.get(stop) if side == "from" else arrivals.get(stop)
+        if anchor is None:
+            continue
+        actual = (anchor.n02_line, anchor.operator)
+        if actual != expected:
+            same_source_feature = any(
+                candidate.operator == expected[1]
+                and candidate.n02_line == expected[0]
+                and candidate.group_code == anchor.group_code
+                and candidate.midpoint.coords[0] == anchor.midpoint.coords[0]
+                for candidate in candidates
+            )
+            if anchor.operator == expected[1] and same_source_feature:
+                continue
+            raise OverrideError(
+                "compose wrong-source anchor: neighbouring route uses "
+                f"{expected}, inherited primitive ends on {actual}"
+            )

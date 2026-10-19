@@ -1,0 +1,321 @@
+{
+  "lines": [
+    {
+      "id": "keio-main",
+      "name": "京王線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "keio-sagamihara",
+      "name": "京王相模原線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "keio-takao",
+      "name": "京王高尾線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "keio-keibajo",
+      "name": "京王競馬場線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "keio-dobutsuen",
+      "name": "京王動物園線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "keio-inokashira",
+      "name": "京王井の頭線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "keio-main",
+      "name": "京王線 各停",
+      "kind": "local",
+      "lineIds": [
+        "keio-main"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "京王八王子方面",
+        "backward": "新宿方面"
+      },
+      "expectedStopCount": 34,
+      "lengthRef": {
+        "km": 37.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 新宿–京王八王子: 37.900 km; 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 京王線 row 新宿, 新宿→笹塚 via 京王新線 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf); 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 京王線 row 笹塚, 笹塚→京王八王子 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "京王電鉄",
+      "n02Operator": "京王電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KO01",
+          "KO02",
+          "KO03",
+          "KO04",
+          "KO05",
+          "KO06",
+          "KO07",
+          "KO08",
+          "KO09",
+          "KO10",
+          "KO11",
+          "KO12",
+          "KO13",
+          "KO14",
+          "KO15",
+          "KO16",
+          "KO17",
+          "KO18",
+          "KO19",
+          "KO20",
+          "KO21",
+          "KO22",
+          "KO23",
+          "KO24",
+          "KO25",
+          "KO26",
+          "KO27",
+          "KO28",
+          "KO29",
+          "KO30",
+          "KO31",
+          "KO32",
+          "KO33",
+          "KO34"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keio-sagamihara",
+      "name": "京王相模原線 各停",
+      "kind": "local",
+      "lineIds": [
+        "keio-sagamihara"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "橋本方面",
+        "backward": "調布方面"
+      },
+      "expectedStopCount": 12,
+      "lengthRef": {
+        "km": 22.6,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 調布–橋本: 22.600 km; 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 調布 row, 調布→橋本 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop. Keio lists Wakabadai Station at 215-0035 Kawasaki City, Asao Ward, Kurokawa 609: https://www.keio.co.jp/assets/pdf/company/corporate/summary/main-offices-list.pdf.",
+      "operator": "京王電鉄",
+      "n02Operator": "京王電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "神奈川県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KO18",
+          "KO35",
+          "KO36",
+          "KO37",
+          "KO38",
+          "KO39",
+          "KO40",
+          "KO41",
+          "KO42",
+          "KO43",
+          "KO44",
+          "KO45"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keio-takao",
+      "name": "京王高尾線 各停",
+      "kind": "local",
+      "lineIds": [
+        "keio-takao"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "高尾山口方面",
+        "backward": "北野方面"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 8.6,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 北野–高尾山口: 8.600 km; 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 北野 row, 北野→高尾 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf); 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 高尾 row, 高尾→高尾山口 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "京王電鉄",
+      "n02Operator": "京王電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KO33",
+          "KO48",
+          "KO49",
+          "KO50",
+          "KO51",
+          "KO52",
+          "KO53"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keio-keibajo",
+      "name": "京王競馬場線 各停",
+      "kind": "local",
+      "lineIds": [
+        "keio-keibajo"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "府中競馬正門前方面",
+        "backward": "東府中方面"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 0.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 東府中–府中競馬正門前: 0.900 km; 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 東府中 row, 東府中→府中競馬正門前 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "京王電鉄",
+      "n02Operator": "京王電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KO23",
+          "KO46"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keio-dobutsuen",
+      "name": "京王動物園線 各停",
+      "kind": "local",
+      "lineIds": [
+        "keio-dobutsuen"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "多摩動物公園方面",
+        "backward": "高幡不動方面"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 2.0,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 高幡不動–多摩動物公園: 2.000 km; 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 高幡不動 row, 高幡不動→多摩動物公園 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "京王電鉄",
+      "n02Operator": "京王電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KO29",
+          "KO47"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keio-inokashira",
+      "name": "京王井の頭線 各停",
+      "kind": "local",
+      "lineIds": [
+        "keio-inokashira"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "吉祥寺方面",
+        "backward": "渋谷方面"
+      },
+      "expectedStopCount": 17,
+      "lengthRef": {
+        "km": 12.7,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 渋谷–吉祥寺: 12.700 km; 京王電鉄 2023年10月1日改定 営業キロ程表 p.1, 渋谷 row, 渋谷→吉祥寺 (https://www.keio.co.jp/train/ticket/fare_chart/passenger_fare.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope.csv was checked against the representative service’s frozen prefecture and municipality for each stop.",
+      "operator": "京王電鉄",
+      "n02Operator": "京王電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "IN01",
+          "IN02",
+          "IN03",
+          "IN04",
+          "IN05",
+          "IN06",
+          "IN07",
+          "IN08",
+          "IN09",
+          "IN10",
+          "IN11",
+          "IN12",
+          "IN13",
+          "IN14",
+          "IN15",
+          "IN16",
+          "IN17"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    }
+  ]
+}

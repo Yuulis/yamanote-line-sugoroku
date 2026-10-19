@@ -1,0 +1,9 @@
+from_id,to_id,n02_line,via,route,compose
+tobu-shimo-imaichi,tobu-daiyamukai,鬼怒川線,,,
+tobu-daiyamukai,tobu-okuwa,鬼怒川線,,,
+tobu-okuwa,tobu-shin-takatoku,鬼怒川線,,,
+tobu-shin-takatoku,tobu-kosagoe,鬼怒川線,,,
+tobu-kosagoe,tobu-tobu-world-square,鬼怒川線,,,
+tobu-tobu-world-square,tobu-kinugawa-onsen,鬼怒川線,,,
+tobu-kinugawa-onsen,tobu-kinugawa-koen,鬼怒川線,,,
+tobu-kinugawa-koen,tobu-shin-fujiwara,鬼怒川線,,,

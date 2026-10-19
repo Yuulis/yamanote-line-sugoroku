@@ -1,0 +1,7 @@
+station_id,prefecture,municipality,in_area
+keisei-oshiage,東京都,墨田区,true
+keisei-keisei-hikifune,東京都,墨田区,true
+keisei-yahiro,東京都,墨田区,true
+keisei-yotsugi,東京都,葛飾区,true
+keisei-keisei-tateishi,東京都,葛飾区,true
+keisei-aoto,東京都,葛飾区,true

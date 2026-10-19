@@ -1,0 +1,9 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,hoshakuji,,,宝積寺,宝積寺,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,shimotsuke-hanaoka,,,下野花岡,下野花岡,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,niita,,,仁井田,仁井田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,konoyama,,,鴻野山,鴻野山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,ogane,,,大金,大金,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,kobana,,,小塙,小塙,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,taki,,,滝,滝,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,karasuyama,,,烏山,烏山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

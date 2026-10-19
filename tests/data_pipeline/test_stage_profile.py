@@ -135,11 +135,25 @@ def test_stage_linear_service_validates_without_target(
     assert overrides.dataset.validation_profile == "stage"
     assert overrides.dataset.stage_start_station_id == "kasai-rinkai-koen"
     assert overrides.dataset.target_service_id == ""
+    assert overrides.dataset.directed_segment_target_service_id == ""
     assert not any(service.circular for service in overrides.services)
     assert validate_dataset(dataset, overrides).errors == []
     assert dataset.manifest["schemaVersion"] == "3-stage"
     assert dataset.manifest["validationProfile"] == "stage"
     assert dataset.manifest["stageStartStationId"] == "kasai-rinkai-koen"
+
+
+def test_stage_topology_resolves_frozen_target_when_present(
+    committed_overrides: Overrides,
+) -> None:
+    dataset = replace(
+        committed_overrides.dataset,
+        target_service_id="",
+        service_ids=(config.STAGE_TARGET_SERVICE_ID, "toei-oedo-loop"),
+        validation_profile="stage",
+    )
+
+    assert dataset.directed_segment_target_service_id == config.STAGE_TARGET_SERVICE_ID
 
 
 @pytest.mark.parametrize("value", [None, "", "typo", [], True])

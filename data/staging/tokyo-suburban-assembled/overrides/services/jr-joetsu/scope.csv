@@ -1,0 +1,16 @@
+station_id,prefecture,municipality,in_area
+takasaki,群馬県,高崎市,true
+takasakitonyamachi,群馬県,高崎市,true
+ino,群馬県,高崎市,true
+shim-maebashi,群馬県,前橋市,true
+gumma-soja,群馬県,前橋市,true
+yagihara,群馬県,渋川市,true
+shibukawa,群馬県,渋川市,true
+shikishima,群馬県,渋川市,true
+tsukuda,群馬県,渋川市,true
+iwamoto,群馬県,沼田市,true
+numata,群馬県,沼田市,true
+gokan,群馬県,みなかみ町,true
+kamimoku,群馬県,みなかみ町,true
+minakami,群馬県,みなかみ町,true
+yubiso,群馬県,利根郡みなかみ町,false

@@ -1,0 +1,14 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "keisei-chiba",
+    "tx",
+    "hokuso-main"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/keisei-hokuso-tx",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "b0c198fdc967ce7af3837325b530b83c1477064fe49ad35cbdbef67cc120658f",
+    "length-ref-components.csv": "5302d7de897f4df9e1fe9eab4c887cb99a3d584b65fb9d8f4834cf8b6f9b9016"
+  }
+}

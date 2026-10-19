@@ -1,0 +1,12 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,toei-tochomae,E28,line=12号線大江戸線,都庁前,都庁前,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,toei-nishi-shinjuku-gochome,E29,line=12号線大江戸線,西新宿五丁目,西新宿五丁目,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,toei-nakano-sakaue,E30,line=12号線大江戸線,中野坂上,中野坂上,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,toei-higashi-nakano,E31,line=12号線大江戸線,東中野,東中野,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,toei-nakai,E32,line=12号線大江戸線,中井,中井,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,toei-ochiai-minami-nagasaki,E33,line=12号線大江戸線,落合南長崎,落合南長崎,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,toei-shin-egota,E34,line=12号線大江戸線,新江古田,新江古田,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+7,toei-nerima,E35,line=12号線大江戸線,練馬,練馬,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,toei-toshimaen,E36,line=12号線大江戸線,豊島園,豊島園,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,toei-nerima-kasugacho,E37,line=12号線大江戸線,練馬春日町,練馬春日町,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,toei-hikarigaoka,E38,line=12号線大江戸線,光が丘,光が丘,東京都,Hash-verified frozen S0 catalog; selector and route evidence pending.

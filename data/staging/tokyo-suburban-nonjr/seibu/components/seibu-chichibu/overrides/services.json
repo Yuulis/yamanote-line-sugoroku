@@ -1,0 +1,548 @@
+{
+  "lines": [
+    {
+      "id": "seibu-ikebukuro",
+      "name": "西武池袋線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-chichibu",
+      "name": "西武秩父線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-yurakucho",
+      "name": "西武有楽町線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-toshima",
+      "name": "西武豊島線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-sayama",
+      "name": "西武狭山線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-yamaguchi",
+      "name": "西武山口線 (レオライナー)",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-shinjuku",
+      "name": "西武新宿線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-haijima",
+      "name": "西武拝島線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-tamako",
+      "name": "西武多摩湖線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-kokubunji",
+      "name": "西武国分寺線 各停",
+      "color": "#808080"
+    },
+    {
+      "id": "seibu-seibuen",
+      "name": "西武園線 各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "seibu-ikebukuro",
+      "name": "西武池袋線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-ikebukuro"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "吾野方面",
+        "backward": "池袋方面"
+      },
+      "expectedStopCount": 31,
+      "lengthRef": {
+        "km": 57.8,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 池袋–吾野: 57.800 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都",
+        "埼玉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SI01",
+          "SI02",
+          "SI03",
+          "SI04",
+          "SI05",
+          "SI06",
+          "SI07",
+          "SI08",
+          "SI09",
+          "SI10",
+          "SI11",
+          "SI12",
+          "SI13",
+          "SI14",
+          "SI15",
+          "SI16",
+          "SI17",
+          "SI18",
+          "SI19",
+          "SI20",
+          "SI21",
+          "SI22",
+          "SI23",
+          "SI24",
+          "SI25",
+          "SI26",
+          "SI27",
+          "SI28",
+          "SI29",
+          "SI30",
+          "SI31"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "seibu-chichibu",
+      "name": "西武秩父線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-chichibu"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西武秩父方面",
+        "backward": "吾野方面"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 19.0,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 吾野–西武秩父: 19.000 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "埼玉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SI31",
+          "SI32",
+          "SI33",
+          "SI34",
+          "SI35",
+          "SI36"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "seibu-yurakucho",
+      "name": "西武有楽町線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-yurakucho"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "小竹向原方面",
+        "backward": "練馬方面"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 2.6,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 練馬–小竹向原: 2.600 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SI06",
+          "SI38",
+          "SI37"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "seibu-toshima",
+      "name": "西武豊島線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-toshima"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "豊島園方面",
+        "backward": "練馬方面"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 1.0,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 練馬–豊島園: 1.000 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SI06",
+          "SI39"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "seibu-sayama",
+      "name": "西武狭山線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-sayama"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西武球場前方面",
+        "backward": "西所沢方面"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 4.2,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 西所沢–西武球場前: 4.200 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "埼玉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SI18",
+          "SI40",
+          "SI41"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "seibu-yamaguchi",
+      "name": "西武山口線 (レオライナー)",
+      "kind": "local",
+      "lineIds": [
+        "seibu-yamaguchi"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西武球場前方面",
+        "backward": "多摩湖方面"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 2.8,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 多摩湖–西武球場前: 2.800 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都",
+        "埼玉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SY01",
+          "SY02",
+          "SY03"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "seibu-shinjuku",
+      "name": "西武新宿線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-shinjuku"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "本川越方面",
+        "backward": "西武新宿方面"
+      },
+      "expectedStopCount": 29,
+      "lengthRef": {
+        "km": 47.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 西武新宿–本川越: 47.500 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都",
+        "埼玉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SS01",
+          "SS02",
+          "SS03",
+          "SS04",
+          "SS05",
+          "SS06",
+          "SS07",
+          "SS08",
+          "SS09",
+          "SS10",
+          "SS11",
+          "SS12",
+          "SS13",
+          "SS14",
+          "SS15",
+          "SS16",
+          "SS17",
+          "SS18",
+          "SS19",
+          "SS20",
+          "SS21",
+          "SS22",
+          "SS23",
+          "SS24",
+          "SS25",
+          "SS26",
+          "SS27",
+          "SS28",
+          "SS29"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "seibu-haijima",
+      "name": "西武拝島線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-haijima"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "拝島方面",
+        "backward": "小平方面"
+      },
+      "expectedStopCount": 8,
+      "lengthRef": {
+        "km": 14.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 小平–拝島: 14.300 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SS19",
+          "SS30",
+          "SS31",
+          "SS32",
+          "SS33",
+          "SS34",
+          "SS35",
+          "SS36"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "seibu-tamako",
+      "name": "西武多摩湖線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-tamako"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "多摩湖方面",
+        "backward": "国分寺方面"
+      },
+      "expectedStopCount": 7,
+      "lengthRef": {
+        "km": 9.2,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 国分寺–多摩湖: 9.200 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "ST01",
+          "ST02",
+          "ST03",
+          "ST04",
+          "ST05",
+          "ST06",
+          "ST07"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "seibu-kokubunji",
+      "name": "西武国分寺線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-kokubunji"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "東村山方面",
+        "backward": "国分寺方面"
+      },
+      "expectedStopCount": 5,
+      "lengthRef": {
+        "km": 7.8,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 国分寺–東村山: 7.800 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SK01",
+          "SK02",
+          "SK03",
+          "SK04",
+          "SK05"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "seibu-seibuen",
+      "name": "西武園線 各停",
+      "kind": "local",
+      "lineIds": [
+        "seibu-seibuen"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "西武園方面",
+        "backward": "東村山方面"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 2.4,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 東村山–西武園: 2.400 km; Seibu Railway Company Handbook 2023 線別営業キロ table (line-name, section, 営業km) (https://www.seiburailway.jp/company/youran/file/youran2023_all.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "西武鉄道",
+      "n02Operator": "西武鉄道",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "SK05",
+          "SK06"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}

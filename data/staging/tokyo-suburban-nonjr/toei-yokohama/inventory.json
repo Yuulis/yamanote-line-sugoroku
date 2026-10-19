@@ -1,0 +1,101 @@
+{
+  "group": "toei-yokohama",
+  "serviceIds": [
+    "toei-asakusa",
+    "toei-mita",
+    "toei-shinjuku",
+    "toei-oedo-loop",
+    "toei-oedo-radial",
+    "yokohama-blue",
+    "yokohama-green"
+  ],
+  "services": [
+    {
+      "service_id": "toei-asakusa",
+      "line_name": "都営浅草線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "toei-nishi-magome|toei-magome|toei-nakanobu|toei-togoshi|gotanda|toei-takanawadai|keikyu-sengakuji|tamachi|hamamatsucho|shimbashi|metro-higashi-ginza|toei-takaracho|metro-nihombashi|metro-ningyocho|bakurocho|asakusabashi|toei-kuramae|metro-asakusa|toei-honjo-azumabashi|keisei-oshiage",
+      "first_end_kind": "terminus",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "toei-mita",
+      "line_name": "都営三田線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "meguro|metro-shirokanedai|metro-shirokane-takanawa|tamachi|toei-shibakoen|toei-onarimon|toei-uchisaiwaicho|yurakucho|metro-otemachi|metro-jimbocho|suidobashi|metro-korakuen|toei-hakusan|toei-sengoku|sugamo|toei-nishi-sugamo|itabashi|toei-itabashi-kuyakushomae|toei-itabashi-honcho|toei-motohasunuma|toei-shimura-sakaue|toei-shimura-sanchome|toei-hasune|toei-nishidai|toei-takashimadaira|toei-shin-takashimadaira|toei-nishi-takashimadaira",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "toei-shinjuku",
+      "line_name": "都営新宿線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shinjuku|metro-shinjuku-sanchome|toei-akebonobashi|ichigaya|metro-kudanshita|metro-jimbocho|metro-awajicho|akihabara|bakurocho|toei-hamacho|toei-morishita|toei-kikukawa|metro-sumiyoshi|toei-nishi-ojima|toei-ojima|toei-higashi-ojima|toei-funabori|toei-ichinoe|toei-mizue|toei-shinozaki|moto-yawata",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "toei-oedo-loop",
+      "line_name": "都営大江戸線 環状部 各停",
+      "service_type": "local",
+      "circular": "true",
+      "stop_ids": "toei-tochomae|seibu-seibu-shinjuku|metro-higashi-shinjuku|toei-wakamatsu-kawada|toei-ushigome-yanagicho|toei-ushigome-kagurazaka|iidabashi|metro-korakuen|metro-hongo-sanchome|okachimachi|toei-shin-okachimachi|toei-kuramae|ryogoku|toei-morishita|metro-kiyosumi-shirakawa|metro-monzen-nakacho|metro-tsukishima|toei-kachidoki|toei-tsukijishijo|toei-shiodome|hamamatsucho|toei-akabanebashi|metro-azabu-juban|metro-roppongi|metro-aoyama-itchome|sendagaya|yoyogi|shinjuku",
+      "first_end_kind": "",
+      "last_end_kind": ""
+    },
+    {
+      "service_id": "toei-oedo-radial",
+      "line_name": "都営大江戸線 放射部 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "toei-tochomae|toei-nishi-shinjuku-gochome|metro-nakano-sakaue|higashi-nakano|seibu-nakai|toei-ochiai-minami-nagasaki|toei-shin-egota|seibu-nerima|seibu-toshimaen|toei-nerima-kasugacho|toei-hikarigaoka",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "yokohama-blue",
+      "line_name": "横浜市営地下鉄ブルーライン 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "odakyu-shonandai|yokohama-shimoiida|yokohama-tateba|yokohama-nakada|yokohama-odoriba|totsuka|yokohama-maioka|yokohama-shimonagaya|yokohama-kaminagaya|yokohama-konan-chuo|keikyu-kamiooka|yokohama-gumyoji|yokohama-maita|yokohama-yoshinocho|yokohama-bandobashi|yokohama-isezakichojamachi|kannai|sakuragicho|yokohama-takashimacho|yokohama|yokohama-mitsuzawa-shimocho|yokohama-mitsuzawa-kamicho|yokohama-katakuracho|yokohama-kishine-koen|shin-yokohama|yokohama-kita-shin-yokohama|yokohama-nippa|yokohama-nakamachidai|yokohama-center-minami|yokohama-center-kita|yokohama-nakagawa|tokyu-azamino",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "yokohama-green",
+      "line_name": "横浜市営地下鉄グリーンライン 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "nakayama|yokohama-kawawacho|yokohama-tsuzuki-fureai-no-oka|yokohama-center-minami|yokohama-center-kita|yokohama-kita-yamata|yokohama-higashi-yamata|yokohama-takata|yokohama-hiyoshi-honcho|tokyu-hiyoshi",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "toei-asakusa",
+      "serviceIds": [
+        "toei-asakusa",
+        "toei-mita",
+        "toei-shinjuku",
+        "toei-oedo-loop",
+        "toei-oedo-radial"
+      ]
+    },
+    {
+      "componentId": "yokohama-blue",
+      "serviceIds": [
+        "yokohama-blue",
+        "yokohama-green"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 7,
+    "stops": 149,
+    "pairs": 143
+  }
+}

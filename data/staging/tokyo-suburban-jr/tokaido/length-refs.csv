@@ -1,0 +1,3 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+jr-tokaido,東京,熱海,104.786,https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf,5.486,"Shipped lengthRef 99.300 km plus 5.486 km raw-N02 paths for 1 added pairs; baseline source: Integrated product run: reviewed stage mileage references (tokyo 6.8 km, kanagawa 80.9 km) plus 11.621 km raw-N02 paths for added +1 pairs; see jr-east-capital-region-s6.md."
+jr-ito,熱海,伊東,16.900,https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf,16.788,Official frozen-range mileage agrees with the raw N02 single-pair sum within 1.5 km.

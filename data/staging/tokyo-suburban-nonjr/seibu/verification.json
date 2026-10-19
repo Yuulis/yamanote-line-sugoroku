@@ -1,0 +1,13 @@
+{
+  "status": "audited",
+  "componentIds": [
+    "seibu-chichibu",
+    "seibu-tamagawa"
+  ],
+  "gateReport": "gate-report.json",
+  "dataDir": "/home/yuulis/yamanote-line-sugoroku/.claude/logs/s3/seibu",
+  "lengthReferenceHashes": {
+    "length-refs.csv": "d3c9e59476db3b7e5de23bfd9eced427bdf4a0eed2a16a00cb9299dee2b97bf0",
+    "length-ref-components.csv": "aba28800ee464ff900c2f6ff3997da0c824dafa6cf37eb1be6797a6def714637"
+  }
+}

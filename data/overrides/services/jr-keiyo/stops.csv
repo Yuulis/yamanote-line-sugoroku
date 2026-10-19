@@ -1,19 +1,19 @@
-order,station_id,station_number,platform_selector
-0,tokyo,JE01,
-1,hatchobori,JE02,
-2,etchujima,JE03,
-3,shiomi,JE04,
-4,shin-kiba,JE05,
-5,kasai-rinkai-koen,JE06,
-6,maihama,JE07,
-7,shin-urayasu,JE08,
-8,ichikawashiohama,JE09,
-9,futamatashimmachi,JE10,
-10,minami-funabashi,JE11,
-11,shin-narashino,JE12,
-12,makuhari-toyosuna,JE13,
-13,kaihimmakuhari,JE14,
-14,kemigawahama,JE15,
-15,inagekaigan,JE16,
-16,chibaminato,JE17,
-17,soga,,
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyo,JE01,,東京,東京,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,hatchobori,JE02,,八丁堀,八丁堀,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,etchujima,JE03,,越中島,越中島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,shiomi,JE04,,潮見,潮見,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,shin-kiba,JE05,,新木場,新木場,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,kasai-rinkai-koen,JE06,,葛西臨海公園,葛西臨海公園,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,maihama,JE07,,舞浜,舞浜,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,shin-urayasu,JE08,,新浦安,新浦安,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,ichikawashiohama,JE09,,市川塩浜,市川塩浜,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,futamatashimmachi,JE10,,二俣新町,二俣新町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,minami-funabashi,JE11,,南船橋,南船橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,shin-narashino,JE12,,新習志野,新習志野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,makuhari-toyosuna,JE13,,幕張豊砂,幕張豊砂,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,kaihimmakuhari,JE14,,海浜幕張,海浜幕張,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,kemigawahama,JE15,,検見川浜,検見川浜,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,inagekaigan,JE16,,稲毛海岸,稲毛海岸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,chibaminato,JE17,,千葉みなと,千葉みなと,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,soga,,,蘇我,蘇我,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

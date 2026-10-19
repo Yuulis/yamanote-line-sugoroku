@@ -1,0 +1,14 @@
+station_id,prefecture,municipality,in_area
+meguro,東京都,品川区,true
+tokyu-fudo-mae,東京都,品川区,true
+tokyu-musashi-koyama,東京都,品川区,true
+tokyu-nishi-koyama,東京都,品川区,true
+tokyu-senzoku,東京都,目黒区,true
+tokyu-ookayama,東京都,大田区,true
+tokyu-okusawa,東京都,世田谷区,true
+tokyu-den-en-chofu,東京都,大田区,true
+tokyu-tamagawa,東京都,大田区,true
+tokyu-shin-maruko,神奈川県,川崎市中原区,true
+musashi-kosugi,神奈川県,川崎市中原区,true
+tokyu-motosumiyoshi,神奈川県,川崎市中原区,true
+tokyu-hiyoshi,神奈川県,横浜市港北区,true

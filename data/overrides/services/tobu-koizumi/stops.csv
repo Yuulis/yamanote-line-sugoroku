@@ -1,0 +1,8 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tobu-tatebayashi,TI-10,,館林,館林,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tobu-narushima,TI-41,,成島,成島,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tobu-hon-nakano,TI-42,,本中野,本中野,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tobu-shinozuka,TI-43,,篠塚,篠塚,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tobu-higashi-koizumi,TI-44,,東小泉,東小泉,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tobu-koizumimachi,TI-45,,小泉町,小泉町,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tobu-nishi-koizumi,TI-46,,西小泉,西小泉,東武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

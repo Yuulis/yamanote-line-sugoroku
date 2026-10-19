@@ -80,9 +80,8 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
   await expect(legend.getByRole("listitem")).toHaveText([
     "山手線 踏破済み（実線）",
     "山手線 未踏破（点線）",
-    "テスト南線",
-    "テスト西線",
     "現在地",
+    "現在地・乗車中の路線・山手線の進捗は常に表示します。",
   ]);
   await expect.poll(async () => (await readMap(page))?.completedFilterIds).toEqual([]);
 

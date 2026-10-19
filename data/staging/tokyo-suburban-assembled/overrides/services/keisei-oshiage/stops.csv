@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,keisei-oshiage,KS45,line=押上線;code=003527,押上,押上,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/押上線, code 003527, group 003526."
+1,keisei-keisei-hikifune,KS46,line=押上線;code=003477,京成曳舟,京成曳舟,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/押上線, code 003477, group 003477."
+2,keisei-yahiro,KS47,line=押上線;code=003422,八広,八広,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/押上線, code 003422, group 003422."
+3,keisei-yotsugi,KS48,line=押上線;code=003376,四ツ木,四ツ木,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/押上線, code 003376, group 003376."
+4,keisei-keisei-tateishi,KS49,line=押上線;code=003323,京成立石,京成立石,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/押上線, code 003323, group 003323."
+5,keisei-aoto,KS09,line=押上線;code=003280,青砥,青砥,京成電鉄,"Frozen station_name_original matched raw N02 京成電鉄/押上線, code 003280, group 003280."

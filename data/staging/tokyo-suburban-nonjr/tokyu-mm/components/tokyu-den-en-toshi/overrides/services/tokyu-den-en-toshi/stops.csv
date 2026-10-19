@@ -1,0 +1,28 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,tokyu-shibuya,DT01,,渋谷,渋谷,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,tokyu-ikejiri-ohashi,DT02,,池尻大橋,池尻大橋,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,tokyu-sangen-jaya,DT03,,三軒茶屋,三軒茶屋,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,tokyu-komazawa-daigaku,DT04,,駒沢大学,駒沢大学,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,tokyu-sakura-shimmachi,DT05,,桜新町,桜新町,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,tokyu-yoga,DT06,,用賀,用賀,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+6,tokyu-futako-tamagawa,DT07,line=田園都市線;group=004177,二子玉川,二子玉川,東急電鉄,S3 plan boundary anchor: raw N02 station codes share the documented group and exact midpoint; selector pins the service stop to its continuing line.
+7,tokyu-futako-shinchi,DT08,,二子新地,二子新地,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+8,tokyu-takatsu,DT09,,高津,高津,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+9,tokyu-mizonokuchi,DT10,,溝の口,溝の口,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+10,tokyu-kajigaya,DT11,,梶が谷,梶が谷,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+11,tokyu-miyazakidai,DT12,,宮崎台,宮崎台,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+12,tokyu-miyamaedaira,DT13,,宮前平,宮前平,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+13,tokyu-saginuma,DT14,,鷺沼,鷺沼,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+14,tokyu-tama-plaza,DT15,,たまプラーザ,たまプラーザ,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+15,tokyu-azamino,DT16,,あざみ野,あざみ野,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+16,tokyu-eda,DT17,,江田,江田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+17,tokyu-ichigao,DT18,,市が尾,市が尾,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+18,tokyu-fujigaoka,DT19,,藤が丘,藤が丘,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+19,tokyu-aobadai,DT20,,青葉台,青葉台,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+20,tokyu-tana,DT21,,田奈,田奈,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+21,tokyu-nagatsuta,DT22,,長津田,長津田,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+22,tokyu-tsukushino,DT23,,つくし野,つくし野,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+23,tokyu-suzukakedai,DT24,,すずかけ台,すずかけ台,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+24,tokyu-minami-machida-grandberry-park,DT25,,南町田グランベリーパーク,南町田グランベリーパーク,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+25,tokyu-tsukimino,DT26,,つきみ野,つきみ野,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.
+26,tokyu-chuo-rinkan,DT27,,中央林間,中央林間,東急電鉄,Hash-verified frozen S0 catalog; selector and route evidence pending.

@@ -1,0 +1,15 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,takasaki,,,高崎,高崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,takasakitonyamachi,,,高崎問屋町,高崎問屋町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,ino,,,井野,井野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,shim-maebashi,,,新前橋,新前橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,gumma-soja,,,群馬総社,群馬総社,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,yagihara,,,八木原,八木原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,shibukawa,,,渋川,渋川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,shikishima,,,敷島,敷島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,tsukuda,,,津久田,津久田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,iwamoto,,,岩本,岩本,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,numata,,,沼田,沼田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,gokan,,,後閑,後閑,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,kamimoku,,,上牧,上牧,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,minakami,,,水上,水上,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

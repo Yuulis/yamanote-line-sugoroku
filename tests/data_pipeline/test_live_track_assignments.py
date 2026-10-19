@@ -8,14 +8,19 @@ See jr-east-capital-region-s6.md for sources and generalized-span limits.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 from shapely.geometry import LineString
 from shapely.ops import unary_union
 
-from scripts.data_pipeline import config
 from scripts.data_pipeline.build import to_metric_point
 from scripts.data_pipeline.overrides import load_overrides
+from scripts.data_pipeline.stage_suburban_support import resolve_historical_baseline
+
+ROOT = Path(__file__).resolve().parents[2]
+HISTORICAL_DATA_DIR = resolve_historical_baseline(ROOT, "public/data")
+HISTORICAL_OVERRIDES_DIR = resolve_historical_baseline(ROOT, "data/overrides")
 
 BRANCHES = {
     "61967b18": (139.705286906, 35.539510452),
@@ -52,7 +57,7 @@ ASSIGNMENTS = [
 def test_service_pins_and_traverses_reviewed_branch_in_both_directions(
     service_id: str, start: str, end: str, line: str, chosen: str, rejected: str
 ) -> None:
-    overrides = load_overrides(config.DEFAULT_OVERRIDES_DIR)
+    overrides = load_overrides(HISTORICAL_OVERRIDES_DIR)
     service = next(item for item in overrides.services if item.id == service_id)
     section_filter = service.section_filter(line)
     # Deny-only filters leave the intended branch open; allow lists pin it.
@@ -61,8 +66,8 @@ def test_service_pins_and_traverses_reviewed_branch_in_both_directions(
         assert any(key.endswith(chosen) for key in section_filter.allow)
     assert any(key.endswith(rejected) for key in section_filter.deny)
 
-    segments = json.loads((config.DEFAULT_OUT_DIR / "segments.json").read_text())
-    features = json.loads((config.DEFAULT_OUT_DIR / "segments.geojson").read_text())
+    segments = json.loads((HISTORICAL_DATA_DIR / "segments.json").read_text())
+    features = json.loads((HISTORICAL_DATA_DIR / "segments.geojson").read_text())
     geometries = {
         feature["id"]: LineString(
             [
@@ -84,7 +89,7 @@ def test_service_pins_and_traverses_reviewed_branch_in_both_directions(
 
 
 def test_keihin_tohoku_keeps_the_minami_urawa_platform_branch() -> None:
-    overrides = load_overrides(config.DEFAULT_OVERRIDES_DIR)
+    overrides = load_overrides(HISTORICAL_OVERRIDES_DIR)
     service = next(item for item in overrides.services if item.id == "jr-keihin-tohoku")
     section_filter = service.section_filter("東北線")
     assert "139.66635 35.85033~139.68335 35.83490#bd4cd661" in section_filter.deny

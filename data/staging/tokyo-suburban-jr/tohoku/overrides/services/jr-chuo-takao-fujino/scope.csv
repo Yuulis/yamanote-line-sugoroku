@@ -1,0 +1,5 @@
+station_id,prefecture,municipality,in_area
+takao,東京都,八王子市,true
+sagamiko,神奈川県,相模原市緑区,true
+fujino,神奈川県,相模原市緑区,true
+uenohara,山梨県,上野原市,false

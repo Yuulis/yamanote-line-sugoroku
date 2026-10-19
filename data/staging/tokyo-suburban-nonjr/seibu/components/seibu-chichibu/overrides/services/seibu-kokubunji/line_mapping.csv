@@ -1,0 +1,5 @@
+from_id,to_id,n02_line,via,route,compose
+seibu-kokubunji,seibu-koigakubo,国分寺線,,,
+seibu-koigakubo,seibu-takanodai,国分寺線,,,
+seibu-takanodai,seibu-ogawa,国分寺線,,,
+seibu-ogawa,seibu-higashi-murayama,国分寺線,,,

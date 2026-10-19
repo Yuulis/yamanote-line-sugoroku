@@ -1,0 +1,6 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,katori,,,香取,香取,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,junikyo,,,十二橋,十二橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,itako,,,潮来,潮来,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,nobukata,,,延方,延方,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,kashimajingu,,,鹿島神宮,鹿島神宮,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,atami,,line=伊東線;group=005685;code=005688,,,,
+1,kinomiya,,,,,,
+2,izu-taga,,,,,,
+3,ajiro,,,,,,
+4,usami,,,,,,
+5,ito,,,,,,

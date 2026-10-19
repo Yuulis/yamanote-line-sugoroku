@@ -1,0 +1,178 @@
+{
+  "group": "tobu",
+  "serviceIds": [
+    "tobu-isesaki",
+    "tobu-nikko",
+    "tobu-kinugawa",
+    "tobu-utsunomiya",
+    "tobu-sano",
+    "tobu-kiryu",
+    "tobu-koizumi",
+    "tobu-koizumi-ota",
+    "tobu-kameido",
+    "tobu-daishi",
+    "tobu-urban-park",
+    "tobu-tojo",
+    "tobu-ogose",
+    "tobu-oshiage"
+  ],
+  "services": [
+    {
+      "service_id": "tobu-isesaki",
+      "line_name": "東武スカイツリーライン・伊勢崎線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "metro-asakusa|tobu-tokyo-skytree|tobu-hikifune|tobu-higashi-mukojima|tobu-kanegafuchi|tobu-horikiri|keisei-keisei-sekiya|kita-senju|tobu-kosuge|tobu-gotanno|tobu-umejima|tobu-nishiarai|tobu-takenotsuka|tobu-yatsuka|tobu-soka|tobu-dokkyodaigakumae|tobu-shinden|tobu-gamo|minami-koshigaya|tobu-koshigaya|tobu-kita-koshigaya|tobu-obukuro|tobu-sengendai|tobu-takesato|tobu-ichinowari|tobu-kasukabe|tobu-kita-kasukabe|tobu-himemiya|tobu-tobu-dobutsu-koen|tobu-wado|kuki|tobu-washinomiya|tobu-hanasaki|tobu-kazo|tobu-minami-hanyu|tobu-hanyu|tobu-kawamata|tobu-morinjimae|tobu-tatebayashi|tobu-tatara|tobu-agata|tobu-fukui|tobu-tobu-izumi|tobu-ashikagashi|tobu-yashu-yamanobe|tobu-nirakawa|tobu-ota|tobu-hosoya|tobu-kizaki|tobu-serada|tobu-sakaimachi|tobu-goshi|tobu-shin-isesaki|isesaki",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-nikko",
+      "line_name": "東武日光線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-tobu-dobutsu-koen|tobu-sugito-takanodai|tobu-satte|tobu-minami-kurihashi|kurihashi|tobu-shin-koga|tobu-yagyu|tobu-itakura-toyodaimae|tobu-fujioka|tobu-shizuwa|tobu-shin-ohirashita|tochigi|tobu-shin-tochigi|tobu-kassemba|tobu-ienaka|tobu-tobu-kanasaki|tobu-niregi|tobu-momiyama|tobu-shin-kanuma|tobu-kita-kanuma|tobu-itaga|tobu-shimo-goshiro|tobu-myojin|tobu-shimo-imaichi|tobu-kami-imaichi|nikko",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-kinugawa",
+      "line_name": "東武鬼怒川線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-shimo-imaichi|tobu-daiyamukai|tobu-okuwa|tobu-shin-takatoku|tobu-kosagoe|tobu-tobu-world-square|tobu-kinugawa-onsen|tobu-kinugawa-koen|tobu-shin-fujiwara",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "tobu-utsunomiya",
+      "line_name": "東武宇都宮線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-shin-tochigi|tobu-yashu-hirakawa|tobu-yashu-otsuka|tobu-mibu|tobu-kuniya|tobu-omochanomachi|tobu-yasuzuka|tobu-nishi-kawada|tobu-esojima|tobu-minami-utsunomiya|tobu-tobu-utsunomiya",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-sano",
+      "line_name": "東武佐野線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-tatebayashi|tobu-watarase|tobu-tajima|tobu-sanoshi|sano|tobu-horigome|tobu-yoshimizu|tobu-tanuma|tobu-tada|tobu-kuzu",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-kiryu",
+      "line_name": "東武桐生線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-ota|tobu-sammaibashi|tobu-jiromombashi|tobu-yabuzuka|tobu-azami|tobu-shin-kiryu|tobu-aioi|tobu-akagi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-koizumi",
+      "line_name": "東武小泉線 普通 (館林-西小泉)",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-tatebayashi|tobu-narushima|tobu-hon-nakano|tobu-shinozuka|tobu-higashi-koizumi|tobu-koizumimachi|tobu-nishi-koizumi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-koizumi-ota",
+      "line_name": "東武小泉線 普通 (太田-東小泉)",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-ota|tobu-ryumai|tobu-higashi-koizumi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    },
+    {
+      "service_id": "tobu-kameido",
+      "line_name": "東武亀戸線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-hikifune|tobu-omurai|tobu-higashi-azuma|tobu-kameido-suijin|kameido",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-daishi",
+      "line_name": "東武大師線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-nishiarai|tobu-daishimae",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-urban-park",
+      "line_name": "東武アーバンパークライン 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "omiya|tobu-kita-omiya|tobu-omiya-koen|tobu-owada|tobu-nanasato|tobu-iwatsuki|tobu-higashi-iwatsuki|tobu-toyoharu|tobu-yagisaki|tobu-kasukabe|tobu-fujinoushijima|tobu-minami-sakurai|tobu-kawama|tobu-nanakodai|tobu-shimizu-koen|tobu-atago|tobu-nodashi|tobu-umesato|tobu-unga|tobu-edogawadai|tobu-hatsuishi|tobu-nagareyama-otakanomori|tobu-toyoshiki|kashiwa|tobu-shin-kashiwa|tobu-masuo|tobu-sakasai|tobu-takayanagi|tobu-mutsumi|hokuso-shin-kamagaya|tobu-kamagaya|tobu-magomezawa|tobu-tsukada|tobu-shin-funabashi|funabashi",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-tojo",
+      "line_name": "東武東上線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "ikebukuro|tobu-kita-ikebukuro|tobu-shimo-itabashi|tobu-oyama|tobu-naka-itabashi|tobu-tokiwadai|tobu-kami-itabashi|tobu-tobu-nerima|tobu-shimo-akatsuka|tobu-narimasu|metro-wakoshi|tobu-asaka|kita-asaka|tobu-shiki|tobu-yanasegawa|tobu-mizuhodai|tobu-tsuruse|tobu-fujimino|tobu-kami-fukuoka|tobu-shingashi|kawagoe|tobu-kawagoeshi|tobu-kasumigaseki|tobu-tsurugashima|tobu-wakaba|tobu-sakado|tobu-kita-sakado|tobu-takasaka|tobu-higashi-matsuyama|tobu-shinrin-koen|tobu-tsukinowa|tobu-musashi-ranzan|ogawamachi|tobu-tobu-takezawa|tobu-minami-yorii|tobu-obusuma|tobu-hachigata|tobu-tamayodo|yorii",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-ogose",
+      "line_name": "東武越生線 普通",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "tobu-sakado|tobu-ippommatsu|tobu-nishi-oya|tobu-kawakado|tobu-bushu-nagase|tobu-higashi-moro|tobu-bushu-karasawa|ogose",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "tobu-oshiage",
+      "line_name": "東武伊勢崎線 押上支線・実質各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keisei-oshiage|tobu-hikifune",
+      "first_end_kind": "through-split",
+      "last_end_kind": "through-split"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "tobu-daishi",
+      "serviceIds": [
+        "tobu-isesaki",
+        "tobu-nikko",
+        "tobu-kinugawa",
+        "tobu-utsunomiya",
+        "tobu-sano",
+        "tobu-kiryu",
+        "tobu-koizumi",
+        "tobu-koizumi-ota",
+        "tobu-kameido",
+        "tobu-daishi",
+        "tobu-urban-park",
+        "tobu-oshiage"
+      ]
+    },
+    {
+      "componentId": "tobu-ogose",
+      "serviceIds": [
+        "tobu-tojo",
+        "tobu-ogose"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 14,
+    "stops": 219,
+    "pairs": 205
+  }
+}

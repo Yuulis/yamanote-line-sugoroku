@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,seibu-nerima,SI06,,練馬,練馬,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,seibu-shin-sakuradai,SI38,,新桜台,新桜台,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,metro-kotake-mukaihara,SI37,,小竹向原,小竹向原,西武鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

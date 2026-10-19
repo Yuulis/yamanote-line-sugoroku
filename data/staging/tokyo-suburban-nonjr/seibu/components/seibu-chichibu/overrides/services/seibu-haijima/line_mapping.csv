@@ -1,0 +1,8 @@
+from_id,to_id,n02_line,via,route,compose
+seibu-kodaira,seibu-hagiyama,拝島線,,,
+seibu-hagiyama,seibu-ogawa,拝島線,,,
+seibu-ogawa,seibu-higashi-yamatoshi,拝島線,,,
+seibu-higashi-yamatoshi,seibu-tamagawa-josui,拝島線,,,
+seibu-tamagawa-josui,seibu-musashi-sunagawa,拝島線,,,
+seibu-musashi-sunagawa,seibu-seibu-tachikawa,拝島線,,,
+seibu-seibu-tachikawa,seibu-haijima,拝島線,,,

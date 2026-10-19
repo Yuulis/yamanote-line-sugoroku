@@ -1,0 +1,5 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,metro-nakano-sakaue,M06,line=4号線丸ノ内線分岐線;group=003643;code=003644,中野坂上,中野坂上,東京地下鉄,"Selector pins exact 東京地下鉄 N02 line, group, and station codes from N02-25_Station.geojson."
+1,metro-nakano-shimbashi,m05,line=4号線丸ノ内線分岐線;group=003679;code=003679,中野新橋,中野新橋,東京地下鉄,"Selector pins exact 東京地下鉄 N02 line, group, and station codes from N02-25_Station.geojson."
+2,metro-nakano-fujimicho,m04,line=4号線丸ノ内線分岐線;group=003688;code=003688,中野富士見町,中野富士見町,東京地下鉄,"Selector pins exact 東京地下鉄 N02 line, group, and station codes from N02-25_Station.geojson."
+3,metro-honancho,m03,line=4号線丸ノ内線分岐線;group=003751;code=003751,方南町,方南町,東京地下鉄,"Selector pins exact 東京地下鉄 N02 line, group, and station codes from N02-25_Station.geojson."

@@ -1,0 +1,7 @@
+from_id,to_id,n02_line,via,route,compose
+kawasaki,keikyu-minatocho,大師線,,,
+keikyu-minatocho,keikyu-suzukicho,大師線,,,
+keikyu-suzukicho,keikyu-kawasaki-daishi,大師線,,,
+keikyu-kawasaki-daishi,keikyu-higashi-monzen,大師線,,,
+keikyu-higashi-monzen,keikyu-daishibashi,大師線,,,
+keikyu-daishibashi,keikyu-kojima-shinden,大師線,,,

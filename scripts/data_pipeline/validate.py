@@ -221,7 +221,7 @@ def check_services(
         if type(raw.get("circular")) is not bool:
             report.errors.append(f"service {service_id} circular must be a boolean")
         rules.check_service_metadata(
-            raw, definition, overrides.dataset.operator, report
+            raw, definition, expected.effective_operator(overrides.dataset), report
         )
         if raw.get("directionLabels") != {
             "forward": definition.direction_labels.forward,
@@ -284,7 +284,10 @@ def check_services(
 
 
 def check_segments(
-    segments: Any, services: Sequence[ServiceStops], report: Report
+    segments: Any,
+    services: Sequence[ServiceStops],
+    target_service_id: str,
+    report: Report,
 ) -> None:
     """Exact directed pair set, ids, shared geometry reference and deterministic order."""
     if not _is_object_list(segments):
@@ -293,7 +296,9 @@ def check_segments(
     expected: list[dict[str, Any]] = []
     for service in services:
         expected.extend(
-            build_segments(service.id, service.station_ids, service.circular)
+            build_segments(
+                service.id, service.station_ids, service.circular, target_service_id
+            )
         )
         pairs = [
             (raw.get("from"), raw.get("to"))
@@ -303,8 +308,8 @@ def check_segments(
             and isinstance(raw.get("to"), str)
         ]
         rules.check_contiguity(service, pairs, report)
-        rules.check_directed_pairs(service, pairs, report)
-        rules.check_walks(service, pairs, report)
+        rules.check_directed_pairs(service, pairs, target_service_id, report)
+        rules.check_walks(service, pairs, target_service_id, report)
     if len(segments) != len(expected):
         report.errors.append(f"expected {len(expected)} segments, got {len(segments)}")
     seen: set[str] = set()
@@ -521,12 +526,19 @@ def check_manifest(
     updated_at: str | None = None,
     validation_profile: str = "gameplay",
     stage_start_station_id: str = "",
+    ui_presentation: Any = None,
 ) -> None:
     if not isinstance(manifest, dict):
         report.errors.append("manifest.json must be an object")
         return
     stage = validation_profile == "stage"
     keys = {"schemaVersion", "dataVersion", "updatedAt", "source"}
+    if ui_presentation is not None:
+        keys.add("uiPresentation")
+        if manifest.get("uiPresentation") != ui_presentation:
+            report.errors.append(
+                "manifest.uiPresentation differs from the hash-verified override"
+            )
     if stage:
         keys |= {"validationProfile", "stageStartStationId"}
         if manifest.get("validationProfile") != "stage":
@@ -578,7 +590,12 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         overrides.dataset.area,
     )
     services, platforms = check_services(dataset.services, positions, overrides, report)
-    check_segments(dataset.segments, services, report)
+    check_segments(
+        dataset.segments,
+        services,
+        overrides.dataset.directed_segment_target_service_id,
+        report,
+    )
     check_geometry(dataset.geojson, services, platforms, positions, overrides, report)
     if (
         _is_object_list(dataset.segments)
@@ -605,7 +622,7 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
     rules.check_connectivity(
         services,
         start,
-        overrides.dataset.target_service_id,
+        overrides.dataset.directed_segment_target_service_id,
         overrides.dataset.reviewed_disconnected_service_ids,
         report,
     )
@@ -635,6 +652,7 @@ def validate_dataset(dataset: Dataset, overrides: Overrides) -> Report:
         overrides.dataset.updated_at,
         overrides.dataset.validation_profile,
         overrides.dataset.stage_start_station_id,
+        overrides.dataset.ui_presentation,
     )
     documents = {
         config.STATIONS_FILE: dataset.stations,

@@ -1,0 +1,7 @@
+station_id,prefecture,municipality,in_area
+seibu-musashi-sakai,東京都,武蔵野市,true
+seibu-shin-koganei,東京都,小金井市,true
+seibu-tama,東京都,府中市,true
+seibu-shiraitodai,東京都,府中市,true
+seibu-kyoteijo-mae,東京都,府中市,true
+seibu-koremasa,東京都,府中市,true

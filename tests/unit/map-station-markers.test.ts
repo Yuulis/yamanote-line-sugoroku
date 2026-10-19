@@ -107,6 +107,41 @@ describe("shipped network markers", () => {
       "circle-stroke-width": zoomInterpolation(ORDINARY_STATION_STROKE_STOPS),
     });
   });
+
+  it("keeps one collision-aware label layer with per-station zoom eligibility and stable priority", () => {
+    const layers: Record<string, Record<string, unknown>> = {};
+    const sources: string[] = [];
+    const map = {
+      addSource: (id: string) => { sources.push(id); },
+      addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
+    } as unknown as MapLibreMap;
+    addRailwayLayers(map, {
+      stations,
+      services: [...network.servicesById.values()],
+      lines: bundle.data.services.ok ? bundle.data.services.value.lines : [],
+      geometry: bundle.data.geometry.ok ? bundle.data.geometry.value : undefined,
+      targetServiceId: TARGET,
+    });
+    const label = layers[LAYER_IDS.stationLabels]!;
+
+    expect(sources).toEqual(["railway-segments", "railway-stations", "game-current-position"]);
+    expect(Object.keys(layers)).toHaveLength(9);
+    expect(label.minzoom).toBe(11);
+    expect(label.layout).toMatchObject({
+      "symbol-sort-key": ["get", "labelPriority"],
+      "text-allow-overlap": false,
+      "text-ignore-placement": false,
+    });
+    expect(label.layout).toHaveProperty("text-size", [
+      "step",
+      ["zoom"],
+      0,
+      11,
+      ["case", ["==", ["get", "labelEligibleAt"], 11], 12, 0],
+      13,
+      12,
+    ]);
+  });
 });
 
 describe("bindStationInteractions", () => {

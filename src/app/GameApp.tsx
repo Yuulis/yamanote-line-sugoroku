@@ -18,6 +18,7 @@ import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { displayedRide } from "../features/game/presentation";
+import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 
@@ -42,6 +43,11 @@ function nextSpeedId(id: AnimationSpeedId): AnimationSpeedId {
 /** Title, play and clear screens over one persistent map. */
 export function GameApp({ data, network }: GameAppProps) {
   const storage = useMemo(getBrowserStorage, []);
+  const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
+  const presentation = useMemo(
+    () => createPresentationResolver(network, uiPresentation),
+    [network, uiPresentation],
+  );
   const app = useGameApp(network, storage);
   const reducedMotion = usePrefersReducedMotion();
   const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
@@ -139,6 +145,7 @@ export function GameApp({ data, network }: GameAppProps) {
     <>
       <RailwayMap
         data={data}
+        presentation={presentation}
         progress={progress}
         follow={mapFollow}
         overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
@@ -147,6 +154,7 @@ export function GameApp({ data, network }: GameAppProps) {
         <TitleScreen
           manifest={data.manifest.ok ? data.manifest.value : null}
           network={network}
+          presentation={presentation}
           saveLookup={app.saveLookup}
           unavailableReason={null}
           notice={notice}
@@ -159,6 +167,7 @@ export function GameApp({ data, network }: GameAppProps) {
         <GamePanel
           session={session}
           network={network}
+          presentation={presentation}
           lines={data.services.ok ? data.services.value.lines : []}
           displayedStationId={shown.stationId}
           displayedCompletedCount={shown.completedSegmentIds.filter((id) => requiredIds.has(id)).length}
@@ -179,6 +188,7 @@ export function GameApp({ data, network }: GameAppProps) {
         <ClearScreen
           game={session.game}
           network={network}
+          presentation={presentation}
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}

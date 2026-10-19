@@ -1,0 +1,10 @@
+from_id,to_id,n02_line,via,route,compose
+nakayama,yokohama-kawawacho,4号線,,,
+yokohama-kawawacho,yokohama-tsuzuki-fureai-no-oka,4号線,,,
+yokohama-tsuzuki-fureai-no-oka,yokohama-center-minami,4号線,,,
+yokohama-center-minami,yokohama-center-kita,4号線,,,
+yokohama-center-kita,yokohama-kita-yamata,4号線,,,
+yokohama-kita-yamata,yokohama-higashi-yamata,4号線,,,
+yokohama-higashi-yamata,yokohama-takata,4号線,,,
+yokohama-takata,yokohama-hiyoshi-honcho,4号線,,,
+yokohama-hiyoshi-honcho,tokyu-hiyoshi,4号線,,,

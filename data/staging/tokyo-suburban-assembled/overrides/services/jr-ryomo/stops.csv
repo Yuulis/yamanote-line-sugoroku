@@ -1,0 +1,23 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,takasaki,,,高崎,高崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,takasakitonyamachi,,,高崎問屋町,高崎問屋町,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,ino,,,井野,井野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,shim-maebashi,,,新前橋,新前橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,maebashi,,,前橋,前橋,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,maebashioshima,,,前橋大島,前橋大島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,komagata,,,駒形,駒形,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,isesaki,,,伊勢崎,伊勢崎,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,kunisada,,,国定,国定,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,iwajuku,,,岩宿,岩宿,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,kiryu,,,桐生,桐生,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,omata,,,小俣,小俣,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,yamamae,,,山前,山前,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,ashikaga,,,足利,足利,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,ashikaga-flower-park,,,あしかがフラワーパーク,あしかがフラワーパーク,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,tomita,,,富田,富田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+16,sano,,,佐野,佐野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+17,iwafune,,,岩舟,岩舟,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+18,ohirashita,,,大平下,大平下,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+19,tochigi,,,栃木,栃木,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+20,omoigawa,,,思川,思川,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+21,oyama,,line=両毛線;group=002407;code=002411,小山,小山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

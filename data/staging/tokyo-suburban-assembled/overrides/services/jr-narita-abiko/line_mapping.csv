@@ -1,0 +1,10 @@
+from_id,to_id,n02_line,via,route,compose
+abiko,higashi-abiko,成田線,,,
+higashi-abiko,kohoku,成田線,,,
+kohoku,araki,成田線,,,
+araki,fusa,成田線,,,
+fusa,kioroshi,成田線,,,
+kioroshi,kobayashi,成田線,,,
+kobayashi,ajiki,成田線,,,
+ajiki,shimosa-manzaki,成田線,,,
+shimosa-manzaki,narita,成田線,,,

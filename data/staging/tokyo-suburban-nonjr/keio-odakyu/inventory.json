@@ -1,0 +1,123 @@
+{
+  "group": "keio-odakyu",
+  "serviceIds": [
+    "keio-main",
+    "keio-sagamihara",
+    "keio-takao",
+    "keio-keibajo",
+    "keio-dobutsuen",
+    "keio-inokashira",
+    "odakyu-odawara",
+    "odakyu-enoshima",
+    "odakyu-tama"
+  ],
+  "services": [
+    {
+      "service_id": "keio-main",
+      "line_name": "京王線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shinjuku|keio-hatsudai|keio-hatagaya|keio-sasazuka|keio-daitabashi|keio-meidaimae|keio-shimo-takaido|keio-sakurajosui|keio-kami-kitazawa|keio-hachimanyama|keio-roka-koen|keio-chitose-karasuyama|keio-sengawa|keio-tsutsujigaoka|keio-shibasaki|keio-kokuryo|keio-fuda|keio-chofu|keio-nishi-chofu|keio-tobitakyu|keio-musashinodai|keio-tama-reien|keio-higashi-fuchu|keio-fuchu|bubaigawara|keio-nakagawara|keio-seiseki-sakuragaoka|keio-mogusaen|keio-takahatafudo|keio-minamidaira|keio-hirayamajoshi-koen|keio-naganuma|keio-kitano|hachioji",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keio-sagamihara",
+      "line_name": "京王相模原線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keio-chofu|keio-tamagawa|inadazutsumi|keio-yomiuri-land|keio-inagi|keio-wakabadai|keio-nagayama|keio-tama-center|keio-horinouchi|keio-minami-osawa|keio-tamasakai|hashimoto",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keio-takao",
+      "line_name": "京王高尾線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keio-kitano|keio-katakura|keio-yamada|keio-mejirodai|keio-hazama|takao|keio-takaosanguchi",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keio-keibajo",
+      "line_name": "京王競馬場線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keio-higashi-fuchu|keio-fuchukeiba-seimommae",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keio-dobutsuen",
+      "line_name": "京王動物園線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "keio-takahatafudo|keio-tama-dobutsukoen",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "keio-inokashira",
+      "line_name": "京王井の頭線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shibuya|keio-shinsen|keio-komaba-todaimae|keio-ikenoue|keio-shimo-kitazawa|keio-shindaita|keio-higashi-matsubara|keio-meidaimae|keio-eifukucho|keio-nishi-eifuku|keio-hamadayama|keio-takaido|keio-fujimigaoka|keio-kugayama|keio-mitakadai|keio-inokashira-koen|kichijoji",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "odakyu-odawara",
+      "line_name": "小田急小田原線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "shinjuku|odakyu-minami-shinjuku|odakyu-sangubashi|odakyu-yoyogi-hachiman|metro-yoyogi-uehara|odakyu-higashi-kitazawa|keio-shimo-kitazawa|odakyu-setagaya-daita|odakyu-umegaoka|odakyu-gotokuji|odakyu-kyodo|odakyu-chitose-funabashi|odakyu-soshigaya-okura|odakyu-seijogakuen-mae|odakyu-kitami|odakyu-komae|odakyu-izumi-tamagawa|noborito|odakyu-mukogaoka-yuen|odakyu-ikuta|odakyu-yomiuri-land-mae|odakyu-yurigaoka|odakyu-shin-yurigaoka|odakyu-kakio|odakyu-tsurukawa|odakyu-tamagawagakuen-mae|machida|odakyu-sagami-ono|odakyu-sagamihara|odakyu-sobudai-mae|odakyu-zama|ebina|atsugi|odakyu-hon-atsugi|odakyu-aiko-ishida|odakyu-isehara|odakyu-tsurumaki-onsen|odakyu-tokaidaigaku-mae|odakyu-hadano|odakyu-shibusawa|odakyu-shin-matsuda|odakyu-kaisei|odakyu-kayama|odakyu-tomizu|odakyu-hotaruda|odakyu-ashigara|odawara",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "odakyu-enoshima",
+      "line_name": "小田急江ノ島線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "odakyu-sagami-ono|odakyu-higashi-rinkan|odakyu-chuo-rinkan|odakyu-minami-rinkan|odakyu-tsuruma|odakyu-yamato|odakyu-sakuragaoka|odakyu-koza-shibuya|odakyu-chogo|odakyu-shonandai|odakyu-mutsuai-nichidai-mae|odakyu-zengyo|odakyu-fujisawa-hommachi|fujisawa|odakyu-hon-kugenuma|odakyu-kugenuma-kaigan|odakyu-katase-enoshima",
+      "first_end_kind": "terminus",
+      "last_end_kind": "terminus"
+    },
+    {
+      "service_id": "odakyu-tama",
+      "line_name": "小田急多摩線 各停",
+      "service_type": "local",
+      "circular": "false",
+      "stop_ids": "odakyu-shin-yurigaoka|odakyu-satsukidai|odakyu-kurihira|odakyu-kurokawa|odakyu-haruhino|keio-nagayama|keio-tama-center|odakyu-karakida",
+      "first_end_kind": "through-split",
+      "last_end_kind": "terminus"
+    }
+  ],
+  "components": [
+    {
+      "componentId": "keio-dobutsuen",
+      "serviceIds": [
+        "keio-main",
+        "keio-sagamihara",
+        "keio-takao",
+        "keio-keibajo",
+        "keio-dobutsuen",
+        "keio-inokashira"
+      ]
+    },
+    {
+      "componentId": "odakyu-enoshima",
+      "serviceIds": [
+        "odakyu-odawara",
+        "odakyu-enoshima",
+        "odakyu-tama"
+      ]
+    }
+  ],
+  "counts": {
+    "services": 9,
+    "stops": 146,
+    "pairs": 137
+  }
+}

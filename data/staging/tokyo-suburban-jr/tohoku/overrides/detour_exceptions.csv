@@ -1,0 +1,4 @@
+service_id,from_id,to_id,max_detour_ratio,reason
+jr-shonan-shinjuku-local,akabane,ikebukuro,2.1,"Surrogate for the 湘南新宿ライン freight-line route via 田端信号場 (11.3 km actual, Wikipedia 湘南新宿ライン; 5.3 km straight line); N02 lacks the 駒込–田端信号場 curve, route switches lines at the 田端 corridor merge vertex (lead decision pending)"
+jr-shonan-shinjuku-rapid-takasaki,akabane,ikebukuro,2.1,"Surrogate for the 湘南新宿ライン freight-line route via 田端信号場 (11.3 km actual, Wikipedia 湘南新宿ライン; 5.3 km straight line); N02 lacks the 駒込–田端信号場 curve, route switches lines at the 田端 corridor merge vertex (lead decision pending)"
+jr-karasuyama,taki,karasuyama,1.90,"Raw N02 烏山線 path is 2.851 km between station platform midpoints; straight-line distance is 1.518 km (ratio 1.88). The full service path totals 20.242 km against the official 宝積寺–烏山 distance of 20.4 km, supporting the routed line geometry."

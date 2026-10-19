@@ -1,6 +1,6 @@
-station_id,prefecture,municipality
-oami,千葉県,大網白里市
-fukutawara,千葉県,東金市
-togane,千葉県,東金市
-gumyo,千葉県,東金市
-naruto,千葉県,山武市
+station_id,prefecture,municipality,in_area
+oami,千葉県,大網白里市,true
+fukutawara,千葉県,東金市,true
+togane,千葉県,東金市,true
+gumyo,千葉県,東金市,true
+naruto,千葉県,山武市,true

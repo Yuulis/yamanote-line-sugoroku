@@ -1,0 +1,424 @@
+{
+  "lines": [
+    {
+      "id": "keisei-main",
+      "name": "京成本線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keisei-oshiage",
+      "name": "京成押上線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keisei-kanamachi",
+      "name": "京成金町線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keisei-chiba",
+      "name": "京成千葉線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keisei-chihara",
+      "name": "京成千原線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keisei-higashi-narita",
+      "name": "京成東成田線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keisei-matsudo",
+      "name": "京成松戸線 普通",
+      "color": "#808080"
+    },
+    {
+      "id": "keisei-narita-airport-access",
+      "name": "京成成田空港線 アクセス特急・実質各停",
+      "color": "#808080"
+    }
+  ],
+  "services": [
+    {
+      "id": "keisei-main",
+      "name": "京成本線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keisei-main"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成田空港方面",
+        "backward": "京成上野方面"
+      },
+      "expectedStopCount": 42,
+      "lengthRef": {
+        "km": 69.3,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京成上野–成田空港: 69.300 km; Keisei Group Handbook 2025 p.20 営業キロ程 table (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "東京都",
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS01",
+          "KS02",
+          "KS03",
+          "KS04",
+          "KS05",
+          "KS06",
+          "KS07",
+          "KS08",
+          "KS09",
+          "KS10",
+          "KS11",
+          "KS12",
+          "KS13",
+          "KS14",
+          "KS15",
+          "KS16",
+          "KS17",
+          "KS18",
+          "KS19",
+          "KS20",
+          "KS21",
+          "KS22",
+          "KS23",
+          "KS24",
+          "KS25",
+          "KS26",
+          "KS27",
+          "KS28",
+          "KS29",
+          "KS30",
+          "KS31",
+          "KS32",
+          "KS33",
+          "KS34",
+          "KS35",
+          "KS36",
+          "KS37",
+          "KS38",
+          "KS39",
+          "KS40",
+          "KS41",
+          "KS42"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "terminus",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keisei-oshiage",
+      "name": "京成押上線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keisei-oshiage"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "青砥方面",
+        "backward": "押上方面"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 5.7,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 押上–青砥: 5.700 km; Keisei Group Handbook 2025 p.20 営業キロ程 table (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS45",
+          "KS46",
+          "KS47",
+          "KS48",
+          "KS49",
+          "KS09"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "keisei-kanamachi",
+      "name": "京成金町線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keisei-kanamachi"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "京成金町方面",
+        "backward": "京成高砂方面"
+      },
+      "expectedStopCount": 3,
+      "lengthRef": {
+        "km": 2.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京成高砂–京成金町: 2.500 km; Keisei Group Handbook 2025 p.20 営業キロ程 table (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "東京都"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS10",
+          "KS50",
+          "KS51"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keisei-chiba",
+      "name": "京成千葉線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keisei-chiba"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "千葉中央方面",
+        "backward": "京成津田沼方面"
+      },
+      "expectedStopCount": 10,
+      "lengthRef": {
+        "km": 12.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京成津田沼–千葉中央: 12.900 km; Keisei Group Handbook 2025 p.20 営業キロ程 table (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS26",
+          "KS52",
+          "KS53",
+          "KS54",
+          "KS55",
+          "KS56",
+          "KS57",
+          "KS58",
+          "KS59",
+          "KS60"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "keisei-chihara",
+      "name": "京成千原線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keisei-chihara"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "ちはら台方面",
+        "backward": "千葉中央方面"
+      },
+      "expectedStopCount": 6,
+      "lengthRef": {
+        "km": 10.9,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 千葉中央–ちはら台: 10.900 km; Keisei Group Handbook 2025 p.20 営業キロ程 table (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS60",
+          "KS61",
+          "KS62",
+          "KS63",
+          "KS64",
+          "KS65"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keisei-higashi-narita",
+      "name": "京成東成田線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keisei-higashi-narita"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "東成田方面",
+        "backward": "京成成田方面"
+      },
+      "expectedStopCount": 2,
+      "lengthRef": {
+        "km": 7.1,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京成成田–東成田: 7.100 km; Keisei Group Handbook 2025 p.20 営業キロ程 table (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS40",
+          "KS44"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "service-boundary"
+      }
+    },
+    {
+      "id": "keisei-matsudo",
+      "name": "京成松戸線 普通",
+      "kind": "local",
+      "lineIds": [
+        "keisei-matsudo"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "松戸方面",
+        "backward": "京成津田沼方面"
+      },
+      "expectedStopCount": 24,
+      "lengthRef": {
+        "km": 26.5,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 京成津田沼–松戸: 26.500 km; Keisei Group Handbook 2025 p.20 営業キロ程 table (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "KS26",
+          "KS66",
+          "KS67",
+          "KS68",
+          "KS69",
+          "KS70",
+          "KS71",
+          "KS72",
+          "KS73",
+          "KS74",
+          "KS75",
+          "KS76",
+          "KS77",
+          "KS78",
+          "KS79",
+          "KS80",
+          "KS81",
+          "KS82",
+          "KS83",
+          "KS84",
+          "KS85",
+          "KS86",
+          "KS87",
+          "KS88"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    },
+    {
+      "id": "keisei-narita-airport-access",
+      "name": "京成成田空港線 アクセス特急・実質各停",
+      "kind": "local",
+      "lineIds": [
+        "keisei-narita-airport-access"
+      ],
+      "color": "#808080",
+      "circular": false,
+      "directionLabels": {
+        "forward": "成田空港方面",
+        "backward": "印旛日本医大方面"
+      },
+      "expectedStopCount": 4,
+      "lengthRef": {
+        "km": 19.1,
+        "toleranceKm": 1.5,
+        "source": "Official primary-source operating mileage 印旛日本医大–成田空港: 19.100 km; Keisei Group Handbook 2025 p.20 営業キロ程; 京成高砂–成田空港 成田スカイアクセス線 total (https://www.keisei.co.jp/keisei/quality/image/youran2025.pdf); Hokuso Railway company overview 営業キロ; 京成高砂–印旛日本医大 total (https://www.hokuso-railway.co.jp/hokuso/outline.html)."
+      },
+      "scopeSource": "Hash-verified frozen S0 catalog; scope evidence pending group review.",
+      "operator": "京成電鉄",
+      "n02Operator": "京成電鉄",
+      "areaPrefectures": [
+        "千葉県"
+      ],
+      "stationNumberRules": {
+        "sequence": [
+          "HS14",
+          "KS43",
+          "KS41",
+          "KS42"
+        ],
+        "reason": "Frozen S0 stop order and station-code sequence."
+      },
+      "endpoints": {
+        "first": "service-boundary",
+        "last": "terminus"
+      }
+    }
+  ]
+}

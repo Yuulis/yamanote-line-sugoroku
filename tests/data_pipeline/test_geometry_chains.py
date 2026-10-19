@@ -188,7 +188,12 @@ def test_multi_owner_rapid_chain_passes_whole_dataset_validation(
     segments = [
         segment
         for service in services
-        for segment in build_segments(service.id, service.station_ids, service.circular)
+        for segment in build_segments(
+            service.id,
+            service.station_ids,
+            service.circular,
+            overrides.dataset.target_service_id,
+        )
     ][:-2] + segments[-2:]
     points = {
         station: Point(to_metric(position)) for station, position in coordinates.items()

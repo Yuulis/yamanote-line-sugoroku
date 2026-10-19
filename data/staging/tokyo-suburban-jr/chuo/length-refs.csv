@@ -1,0 +1,7 @@
+service_id,from,to,km,source_url,n02_pair_sum_km,notes
+jr-chuo-takao-fujino,高尾,塩尻,164.050,https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf,150.750,"Shipped lengthRef 13.300 km plus 150.750 km raw-N02 paths for 35 added pairs; baseline source: JR Chuo Main Line operating distance, Takao–Sagamiko–Fujino; N02 measured 13.331 km, see S6 pair evidence."
+jr-chuo-tatsuno,岡谷,塩尻,27.700,https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf,27.880,Official frozen-range mileage agrees with the raw N02 single-pair sum within 1.5 km.
+jr-koumi,小淵沢,野辺山,23.400,https://www.jreast.co.jp/fr/nagano/trip/nobeyama/index.html,23.381,Official frozen-range mileage agrees with the raw N02 single-pair sum within 1.5 km.
+jr-shinonoi,塩尻,篠ノ井,66.700,https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf,66.308,Official frozen-range mileage agrees with the raw N02 single-pair sum within 1.5 km.
+jr-shinetsu-nagano,篠ノ井,長野,9.300,https://www.jreast.co.jp/youran/pdf/2017-2018/jre_youran_shogen_p86.pdf,9.305,Official frozen-range mileage agrees with the raw N02 single-pair sum within 1.5 km.
+jr-oito,松本,白馬,59.700,https://www.jreast.co.jp/th/nagano/trip/hakuba/,59.846,Official frozen-range mileage agrees with the raw N02 single-pair sum within 1.5 km.

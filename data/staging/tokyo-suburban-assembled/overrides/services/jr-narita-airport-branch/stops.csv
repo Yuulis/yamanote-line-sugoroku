@@ -1,0 +1,4 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,narita,,,成田,成田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,narita-airport-terminal-2-3,,,空港第2ビル,空港第２ビル,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,narita-airport-terminal-1,,,成田空港,成田空港,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

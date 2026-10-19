@@ -1,0 +1,9 @@
+service_id,from,to,km,source_url,document,page_or_table,operation,source_class,notes
+toei-asakusa,西馬込,押上,18.3,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,東京都交通局「都営地下鉄」,営業線の概要／開業年次表：浅草線,+,primary,18.3 km. Official operating length for 西馬込–押上.
+toei-mita,目黒,西高島平,26.5,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,東京都交通局「都営地下鉄」,営業線の概要／開業年次表：三田線,+,primary,26.5 km. Official operating length for 目黒–西高島平.
+toei-shinjuku,新宿,本八幡,23.5,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,東京都交通局「都営地下鉄」,営業線の概要／開業年次表：新宿線,+,primary,23.5 km. Official operating length for 新宿–本八幡.
+toei-oedo-radial,都庁前,光が丘,12.1,https://www.kotsu.metro.tokyo.jp/subway/fare/regular/oedo_kiro.html,東京都交通局「大江戸線キロ程表」,Official route kilometric chart; radial section also recorded in 東京都交通局「高速電車事業」,+,primary,"12.1 km. Official Tochomae–Hikarigaoka route length, corroborated by the official construction split."
+yokohama-blue,湘南台,あざみ野,40.4,https://www.city.yokohama.lg.jp/kotsu/kigyo/gaiyou/subway.html,横浜市交通局「地下鉄事業」,地下鉄事業営業現況：ブルーライン,+,primary,40.4 km. Official operating length for 湘南台–あざみ野.
+yokohama-green,中山,日吉,13.0,https://www.city.yokohama.lg.jp/kotsu/kigyo/gaiyou/subway.html,横浜市交通局「地下鉄事業」,地下鉄事業営業現況：グリーンライン,+,primary,13.0 km. Official operating length for 中山–日吉.
+toei-oedo-loop,都庁前,新宿,40.7,https://www.kotsu.metro.tokyo.jp/about/service/subway.html,東京都交通局「都営地下鉄」,開業年次表：大江戸線 営業キロ計,+,primary,Official total line operating length.
+toei-oedo-loop,都庁前,新宿,12.1,https://www.kotsu.metro.tokyo.jp/about/service/pdf/05kosoku_train.pdf,東京都交通局「高速電車事業」,大江戸線 construction split; radial section,-,primary,Subtract official radial section to isolate the circular loop: 40.7 − 12.1 = 28.6 km.

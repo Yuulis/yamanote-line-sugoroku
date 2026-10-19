@@ -1,6 +1,6 @@
 {
   "schemaVersion": 3,
-  "dataVersion": "n02-2025-82589587088b",
+  "dataVersion": "n02-2025-8a0970069659",
   "updatedAt": "2026-10-15",
   "source": {
     "name": "国土数値情報（鉄道データ）",
@@ -10,5 +10,2013 @@
     "url": "https://nlftp.mlit.go.jp/ksj/gml/datalist/KsjTmplt-N02-2025.html",
     "license": "CC BY 4.0",
     "attribution": "「国土数値情報（鉄道データ）」（国土交通省）を加工して作成"
+  },
+  "uiPresentation": {
+    "version": 1,
+    "operators": [
+      {
+        "id": "東日本旅客鉄道",
+        "name": "東日本旅客鉄道"
+      },
+      {
+        "id": "東京地下鉄",
+        "name": "東京地下鉄"
+      },
+      {
+        "id": "東京都交通局",
+        "name": "東京都交通局"
+      },
+      {
+        "id": "横浜市交通局",
+        "name": "横浜市交通局"
+      },
+      {
+        "id": "東武鉄道",
+        "name": "東武鉄道"
+      },
+      {
+        "id": "西武鉄道",
+        "name": "西武鉄道"
+      },
+      {
+        "id": "京成電鉄",
+        "name": "京成電鉄"
+      },
+      {
+        "id": "首都圏新都市鉄道",
+        "name": "首都圏新都市鉄道"
+      },
+      {
+        "id": "京浜急行電鉄",
+        "name": "京浜急行電鉄"
+      },
+      {
+        "id": "京王電鉄",
+        "name": "京王電鉄"
+      },
+      {
+        "id": "小田急電鉄",
+        "name": "小田急電鉄"
+      },
+      {
+        "id": "東急電鉄",
+        "name": "東急電鉄"
+      },
+      {
+        "id": "相模鉄道",
+        "name": "相模鉄道"
+      },
+      {
+        "id": "横浜高速鉄道",
+        "name": "横浜高速鉄道"
+      },
+      {
+        "id": "北総鉄道",
+        "name": "北総鉄道"
+      }
+    ],
+    "lineGroups": [
+      {
+        "id": "jr-yamanote",
+        "name": "山手線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#9ACD32",
+        "serviceIds": [
+          "jr-yamanote"
+        ]
+      },
+      {
+        "id": "jr-keihin-tohoku",
+        "name": "京浜東北線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B2E5",
+        "serviceIds": [
+          "jr-keihin-tohoku"
+        ]
+      },
+      {
+        "id": "jr-chuo-sobu-local",
+        "name": "中央・総武線各駅停車",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#FFD400",
+        "serviceIds": [
+          "jr-chuo-sobu-local"
+        ]
+      },
+      {
+        "id": "jr-chuo-rapid",
+        "name": "中央線快速",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F15A22",
+        "serviceIds": [
+          "jr-chuo-rapid"
+        ]
+      },
+      {
+        "id": "jr-chuo-takao-fujino",
+        "name": "中央本線 高尾–藤野",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00843D",
+        "serviceIds": [
+          "jr-chuo-takao-fujino"
+        ]
+      },
+      {
+        "id": "jr-ome",
+        "name": "青梅線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F15A22",
+        "serviceIds": [
+          "jr-ome"
+        ]
+      },
+      {
+        "id": "jr-itsukaichi",
+        "name": "五日市線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F15A22",
+        "serviceIds": [
+          "jr-itsukaichi"
+        ]
+      },
+      {
+        "id": "jr-hachiko",
+        "name": "八高線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#A8A39D",
+        "serviceIds": [
+          "jr-hachiko"
+        ]
+      },
+      {
+        "id": "jr-kawagoe-west",
+        "name": "川越線 川越–高麗川",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00AC9A",
+        "serviceIds": [
+          "jr-kawagoe-west"
+        ]
+      },
+      {
+        "id": "jr-saikyo",
+        "name": "埼京線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00AC9A",
+        "serviceIds": [
+          "jr-saikyo"
+        ]
+      },
+      {
+        "id": "jr-sotetsu-direct",
+        "name": "相鉄線直通 (JR区間)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00AC9A",
+        "serviceIds": [
+          "jr-sotetsu-direct"
+        ]
+      },
+      {
+        "id": "jr-keiyo",
+        "name": "京葉線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#C9242F",
+        "serviceIds": [
+          "jr-keiyo"
+        ]
+      },
+      {
+        "id": "jr-musashino",
+        "name": "武蔵野線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F15A22",
+        "serviceIds": [
+          "jr-musashino"
+        ]
+      },
+      {
+        "id": "jr-musashino-takaya",
+        "name": "武蔵野線直通 西船橋–市川塩浜 (京葉線高谷支線)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F15A22",
+        "serviceIds": [
+          "jr-musashino-takaya"
+        ]
+      },
+      {
+        "id": "jr-musashino-futamata",
+        "name": "武蔵野線直通 西船橋–南船橋 (京葉線二俣支線)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F15A22",
+        "serviceIds": [
+          "jr-musashino-futamata"
+        ]
+      },
+      {
+        "id": "jr-nambu",
+        "name": "南武線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#FFD400",
+        "serviceIds": [
+          "jr-nambu"
+        ]
+      },
+      {
+        "id": "jr-nambu-branch",
+        "name": "南武線 浜川崎支線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#FFD400",
+        "serviceIds": [
+          "jr-nambu-branch"
+        ]
+      },
+      {
+        "id": "jr-tsurumi",
+        "name": "鶴見線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#FFD400",
+        "serviceIds": [
+          "jr-tsurumi"
+        ]
+      },
+      {
+        "id": "jr-tsurumi-umishibaura",
+        "name": "鶴見線 海芝浦支線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#FFD400",
+        "serviceIds": [
+          "jr-tsurumi-umishibaura"
+        ]
+      },
+      {
+        "id": "jr-tsurumi-okawa",
+        "name": "鶴見線 大川支線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#FFD400",
+        "serviceIds": [
+          "jr-tsurumi-okawa"
+        ]
+      },
+      {
+        "id": "jr-yokohama",
+        "name": "横浜線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#80C241",
+        "serviceIds": [
+          "jr-yokohama"
+        ]
+      },
+      {
+        "id": "jr-sagami",
+        "name": "相模線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#009793",
+        "serviceIds": [
+          "jr-sagami"
+        ]
+      },
+      {
+        "id": "jr-tokaido",
+        "name": "東海道線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F68B1E",
+        "serviceIds": [
+          "jr-tokaido"
+        ]
+      },
+      {
+        "id": "jr-yokosuka",
+        "name": "横須賀線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#0067C0",
+        "serviceIds": [
+          "jr-yokosuka"
+        ]
+      },
+      {
+        "id": "jr-sobu-rapid",
+        "name": "総武快速線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#0067C0",
+        "serviceIds": [
+          "jr-sobu-rapid"
+        ]
+      },
+      {
+        "id": "jr-utsunomiya",
+        "name": "宇都宮線 (上野東京ライン)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F68B1E",
+        "serviceIds": [
+          "jr-utsunomiya"
+        ]
+      },
+      {
+        "id": "jr-takasaki",
+        "name": "高崎線 (上野東京ライン)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F68B1E",
+        "serviceIds": [
+          "jr-takasaki"
+        ]
+      },
+      {
+        "id": "jr-shonan-shinjuku-local",
+        "name": "湘南新宿ライン (宇都宮線・横須賀線系統 普通)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#E21F26",
+        "serviceIds": [
+          "jr-shonan-shinjuku-local"
+        ]
+      },
+      {
+        "id": "jr-shonan-shinjuku-rapid-takasaki",
+        "name": "湘南新宿ライン 快速 (高崎線・東海道線系統)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#E21F26",
+        "serviceIds": [
+          "jr-shonan-shinjuku-rapid-takasaki"
+        ]
+      },
+      {
+        "id": "jr-joban-rapid",
+        "name": "常磐線快速 (上野東京ライン)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B261",
+        "serviceIds": [
+          "jr-joban-rapid"
+        ]
+      },
+      {
+        "id": "jr-joban-local",
+        "name": "常磐線各駅停車",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B2E5",
+        "serviceIds": [
+          "jr-joban-local"
+        ]
+      },
+      {
+        "id": "jr-narita-abiko",
+        "name": "成田線 我孫子支線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B261",
+        "serviceIds": [
+          "jr-narita-abiko"
+        ]
+      },
+      {
+        "id": "jr-narita",
+        "name": "成田線 (佐倉–松岸)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B261",
+        "serviceIds": [
+          "jr-narita"
+        ]
+      },
+      {
+        "id": "jr-narita-airport-branch",
+        "name": "成田線 空港支線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B261",
+        "serviceIds": [
+          "jr-narita-airport-branch"
+        ]
+      },
+      {
+        "id": "jr-kashima",
+        "name": "鹿島線 (香取–十二橋)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#9F7BB5",
+        "serviceIds": [
+          "jr-kashima"
+        ]
+      },
+      {
+        "id": "jr-sobu-main",
+        "name": "総武本線 (千葉–銚子)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#FFC20D",
+        "serviceIds": [
+          "jr-sobu-main"
+        ]
+      },
+      {
+        "id": "jr-sotobo",
+        "name": "外房線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#E83F3F",
+        "serviceIds": [
+          "jr-sotobo"
+        ]
+      },
+      {
+        "id": "jr-uchibo",
+        "name": "内房線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B2E5",
+        "serviceIds": [
+          "jr-uchibo"
+        ]
+      },
+      {
+        "id": "jr-kururi",
+        "name": "久留里線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#00B261",
+        "serviceIds": [
+          "jr-kururi"
+        ]
+      },
+      {
+        "id": "jr-togane",
+        "name": "東金線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#B38D4D",
+        "serviceIds": [
+          "jr-togane"
+        ]
+      },
+      {
+        "id": "jr-ito",
+        "name": "伊東線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F68B1E",
+        "serviceIds": [
+          "jr-ito"
+        ]
+      },
+      {
+        "id": "jr-chuo-tatsuno",
+        "name": "中央本線 辰野支線 (岡谷–辰野–塩尻)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#F15A22",
+        "serviceIds": [
+          "jr-chuo-tatsuno"
+        ]
+      },
+      {
+        "id": "jr-koumi",
+        "name": "小海線 (小淵沢–野辺山)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#C72C53",
+        "serviceIds": [
+          "jr-koumi"
+        ]
+      },
+      {
+        "id": "jr-shinonoi",
+        "name": "篠ノ井線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#2C81C7",
+        "serviceIds": [
+          "jr-shinonoi"
+        ]
+      },
+      {
+        "id": "jr-shinetsu-nagano",
+        "name": "信越本線 篠ノ井–長野",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#AEC72C",
+        "serviceIds": [
+          "jr-shinetsu-nagano"
+        ]
+      },
+      {
+        "id": "jr-oito",
+        "name": "大糸線 (松本–白馬)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#B32CC7",
+        "serviceIds": [
+          "jr-oito"
+        ]
+      },
+      {
+        "id": "jr-shinetsu-yokokawa",
+        "name": "信越本線 高崎–横川",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#2CC785",
+        "serviceIds": [
+          "jr-shinetsu-yokokawa"
+        ]
+      },
+      {
+        "id": "jr-joetsu",
+        "name": "上越線 (高崎–水上)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#C7582C",
+        "serviceIds": [
+          "jr-joetsu"
+        ]
+      },
+      {
+        "id": "jr-agatsuma",
+        "name": "吾妻線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#2C2DC7",
+        "serviceIds": [
+          "jr-agatsuma"
+        ]
+      },
+      {
+        "id": "jr-ryomo",
+        "name": "両毛線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#5AC72C",
+        "serviceIds": [
+          "jr-ryomo"
+        ]
+      },
+      {
+        "id": "jr-mito",
+        "name": "水戸線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#C72C87",
+        "serviceIds": [
+          "jr-mito"
+        ]
+      },
+      {
+        "id": "jr-nikko",
+        "name": "日光線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#2CB5C7",
+        "serviceIds": [
+          "jr-nikko"
+        ]
+      },
+      {
+        "id": "jr-karasuyama",
+        "name": "烏山線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#C7AC2C",
+        "serviceIds": [
+          "jr-karasuyama"
+        ]
+      },
+      {
+        "id": "jr-suigun",
+        "name": "水郡線 (水戸–常陸大子)",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#7F2CC7",
+        "serviceIds": [
+          "jr-suigun"
+        ]
+      },
+      {
+        "id": "jr-suigun-ota",
+        "name": "水郡線 常陸太田支線",
+        "operatorId": "東日本旅客鉄道",
+        "color": "#2CC751",
+        "serviceIds": [
+          "jr-suigun-ota"
+        ]
+      },
+      {
+        "id": "metro-ginza",
+        "name": "東京メトロ銀座線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#F39700",
+        "serviceIds": [
+          "metro-ginza"
+        ]
+      },
+      {
+        "id": "metro-marunouchi",
+        "name": "東京メトロ丸ノ内線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#E60012",
+        "serviceIds": [
+          "metro-marunouchi"
+        ]
+      },
+      {
+        "id": "metro-marunouchi-honancho",
+        "name": "東京メトロ丸ノ内線 方南町支線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#E60012",
+        "serviceIds": [
+          "metro-marunouchi-honancho"
+        ]
+      },
+      {
+        "id": "metro-hibiya",
+        "name": "東京メトロ日比谷線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#9CAEB7",
+        "serviceIds": [
+          "metro-hibiya"
+        ]
+      },
+      {
+        "id": "metro-tozai",
+        "name": "東京メトロ東西線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#00A7DB",
+        "serviceIds": [
+          "metro-tozai"
+        ]
+      },
+      {
+        "id": "metro-chiyoda",
+        "name": "東京メトロ千代田線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#00A650",
+        "serviceIds": [
+          "metro-chiyoda"
+        ]
+      },
+      {
+        "id": "metro-yurakucho",
+        "name": "東京メトロ有楽町線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#C1A470",
+        "serviceIds": [
+          "metro-yurakucho"
+        ]
+      },
+      {
+        "id": "metro-hanzomon",
+        "name": "東京メトロ半蔵門線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#8F76D6",
+        "serviceIds": [
+          "metro-hanzomon"
+        ]
+      },
+      {
+        "id": "metro-namboku",
+        "name": "東京メトロ南北線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#00ADA9",
+        "serviceIds": [
+          "metro-namboku"
+        ]
+      },
+      {
+        "id": "metro-fukutoshin",
+        "name": "東京メトロ副都心線 各停",
+        "operatorId": "東京地下鉄",
+        "color": "#9C5E31",
+        "serviceIds": [
+          "metro-fukutoshin"
+        ]
+      },
+      {
+        "id": "toei-asakusa",
+        "name": "都営浅草線 各停",
+        "operatorId": "東京都交通局",
+        "color": "#E85298",
+        "serviceIds": [
+          "toei-asakusa"
+        ]
+      },
+      {
+        "id": "toei-mita",
+        "name": "都営三田線 各停",
+        "operatorId": "東京都交通局",
+        "color": "#0079C2",
+        "serviceIds": [
+          "toei-mita"
+        ]
+      },
+      {
+        "id": "toei-shinjuku",
+        "name": "都営新宿線 各停",
+        "operatorId": "東京都交通局",
+        "color": "#6CBB5A",
+        "serviceIds": [
+          "toei-shinjuku"
+        ]
+      },
+      {
+        "id": "toei-oedo",
+        "name": "大江戸線",
+        "operatorId": "東京都交通局",
+        "color": "#B6007A",
+        "serviceIds": [
+          "toei-oedo-loop",
+          "toei-oedo-radial"
+        ]
+      },
+      {
+        "id": "yokohama-blue",
+        "name": "横浜市営地下鉄ブルーライン 各停",
+        "operatorId": "横浜市交通局",
+        "color": "#0072BC",
+        "serviceIds": [
+          "yokohama-blue"
+        ]
+      },
+      {
+        "id": "yokohama-green",
+        "name": "横浜市営地下鉄グリーンライン 各停",
+        "operatorId": "横浜市交通局",
+        "color": "#00A650",
+        "serviceIds": [
+          "yokohama-green"
+        ]
+      },
+      {
+        "id": "tobu-isesaki",
+        "name": "東武スカイツリーライン・伊勢崎線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#B00B36",
+        "serviceIds": [
+          "tobu-isesaki"
+        ]
+      },
+      {
+        "id": "tobu-nikko",
+        "name": "東武日光線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#F57215",
+        "serviceIds": [
+          "tobu-nikko"
+        ]
+      },
+      {
+        "id": "tobu-kinugawa",
+        "name": "東武鬼怒川線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#4372C2",
+        "serviceIds": [
+          "tobu-kinugawa"
+        ]
+      },
+      {
+        "id": "tobu-utsunomiya",
+        "name": "東武宇都宮線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#CF9E34",
+        "serviceIds": [
+          "tobu-utsunomiya"
+        ]
+      },
+      {
+        "id": "tobu-sano",
+        "name": "東武佐野線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#9E50AE",
+        "serviceIds": [
+          "tobu-sano"
+        ]
+      },
+      {
+        "id": "tobu-kiryu",
+        "name": "東武桐生線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#3D90D5",
+        "serviceIds": [
+          "tobu-kiryu"
+        ]
+      },
+      {
+        "id": "tobu-koizumi",
+        "name": "東武小泉線 普通 (館林-西小泉)",
+        "operatorId": "東武鉄道",
+        "color": "#D1B502",
+        "serviceIds": [
+          "tobu-koizumi"
+        ]
+      },
+      {
+        "id": "tobu-koizumi-ota",
+        "name": "東武小泉線 普通 (太田-東小泉)",
+        "operatorId": "東武鉄道",
+        "color": "#D1B502",
+        "serviceIds": [
+          "tobu-koizumi-ota"
+        ]
+      },
+      {
+        "id": "tobu-kameido",
+        "name": "東武亀戸線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#B4A543",
+        "serviceIds": [
+          "tobu-kameido"
+        ]
+      },
+      {
+        "id": "tobu-daishi",
+        "name": "東武大師線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#73659D",
+        "serviceIds": [
+          "tobu-daishi"
+        ]
+      },
+      {
+        "id": "tobu-urban-park",
+        "name": "東武アーバンパークライン 普通",
+        "operatorId": "東武鉄道",
+        "color": "#00ADEF",
+        "serviceIds": [
+          "tobu-urban-park"
+        ]
+      },
+      {
+        "id": "tobu-tojo",
+        "name": "東武東上線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#244AA5",
+        "serviceIds": [
+          "tobu-tojo"
+        ]
+      },
+      {
+        "id": "tobu-ogose",
+        "name": "東武越生線 普通",
+        "operatorId": "東武鉄道",
+        "color": "#F89D0E",
+        "serviceIds": [
+          "tobu-ogose"
+        ]
+      },
+      {
+        "id": "seibu-ikebukuro",
+        "name": "西武池袋線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#F46917",
+        "serviceIds": [
+          "seibu-ikebukuro"
+        ]
+      },
+      {
+        "id": "seibu-chichibu",
+        "name": "西武秩父線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#F46917",
+        "serviceIds": [
+          "seibu-chichibu"
+        ]
+      },
+      {
+        "id": "seibu-yurakucho",
+        "name": "西武有楽町線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#EF6B9A",
+        "serviceIds": [
+          "seibu-yurakucho"
+        ]
+      },
+      {
+        "id": "seibu-toshima",
+        "name": "西武豊島線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#F46917",
+        "serviceIds": [
+          "seibu-toshima"
+        ]
+      },
+      {
+        "id": "seibu-sayama",
+        "name": "西武狭山線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#40BA4E",
+        "serviceIds": [
+          "seibu-sayama"
+        ]
+      },
+      {
+        "id": "seibu-yamaguchi",
+        "name": "西武山口線 (レオライナー)",
+        "operatorId": "西武鉄道",
+        "color": "#E6333F",
+        "serviceIds": [
+          "seibu-yamaguchi"
+        ]
+      },
+      {
+        "id": "seibu-shinjuku",
+        "name": "西武新宿線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#A35328",
+        "serviceIds": [
+          "seibu-shinjuku"
+        ]
+      },
+      {
+        "id": "seibu-haijima",
+        "name": "西武拝島線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#19B3C3",
+        "serviceIds": [
+          "seibu-haijima"
+        ]
+      },
+      {
+        "id": "seibu-tamako",
+        "name": "西武多摩湖線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#F89D0E",
+        "serviceIds": [
+          "seibu-tamako"
+        ]
+      },
+      {
+        "id": "seibu-kokubunji",
+        "name": "西武国分寺線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#40BA4E",
+        "serviceIds": [
+          "seibu-kokubunji"
+        ]
+      },
+      {
+        "id": "seibu-seibuen",
+        "name": "西武園線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#40BA4E",
+        "serviceIds": [
+          "seibu-seibuen"
+        ]
+      },
+      {
+        "id": "seibu-tamagawa",
+        "name": "西武多摩川線 各停",
+        "operatorId": "西武鉄道",
+        "color": "#305294",
+        "serviceIds": [
+          "seibu-tamagawa"
+        ]
+      },
+      {
+        "id": "keisei-main",
+        "name": "京成本線 普通",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-main"
+        ]
+      },
+      {
+        "id": "keisei-oshiage",
+        "name": "京成押上線 普通",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-oshiage"
+        ]
+      },
+      {
+        "id": "keisei-kanamachi",
+        "name": "京成金町線 普通",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-kanamachi"
+        ]
+      },
+      {
+        "id": "keisei-chiba",
+        "name": "京成千葉線 普通",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-chiba"
+        ]
+      },
+      {
+        "id": "keisei-chihara",
+        "name": "京成千原線 普通",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-chihara"
+        ]
+      },
+      {
+        "id": "keisei-higashi-narita",
+        "name": "京成東成田線 普通",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-higashi-narita"
+        ]
+      },
+      {
+        "id": "keisei-matsudo",
+        "name": "京成松戸線 普通",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-matsudo"
+        ]
+      },
+      {
+        "id": "tx",
+        "name": "つくばエクスプレス 普通",
+        "operatorId": "首都圏新都市鉄道",
+        "color": "#0036B3",
+        "serviceIds": [
+          "tx"
+        ]
+      },
+      {
+        "id": "keikyu-main",
+        "name": "京急本線 普通",
+        "operatorId": "京浜急行電鉄",
+        "color": "#0096E0",
+        "serviceIds": [
+          "keikyu-main"
+        ]
+      },
+      {
+        "id": "keikyu-airport",
+        "name": "京急空港線 普通",
+        "operatorId": "京浜急行電鉄",
+        "color": "#0096E0",
+        "serviceIds": [
+          "keikyu-airport"
+        ]
+      },
+      {
+        "id": "keikyu-daishi",
+        "name": "京急大師線 普通",
+        "operatorId": "京浜急行電鉄",
+        "color": "#0096E0",
+        "serviceIds": [
+          "keikyu-daishi"
+        ]
+      },
+      {
+        "id": "keikyu-zushi",
+        "name": "京急逗子線 普通",
+        "operatorId": "京浜急行電鉄",
+        "color": "#0096E0",
+        "serviceIds": [
+          "keikyu-zushi"
+        ]
+      },
+      {
+        "id": "keio-main",
+        "name": "京王線 各停",
+        "operatorId": "京王電鉄",
+        "color": "#CA0C7E",
+        "serviceIds": [
+          "keio-main"
+        ]
+      },
+      {
+        "id": "keio-sagamihara",
+        "name": "京王相模原線 各停",
+        "operatorId": "京王電鉄",
+        "color": "#CA0C7E",
+        "serviceIds": [
+          "keio-sagamihara"
+        ]
+      },
+      {
+        "id": "keio-takao",
+        "name": "京王高尾線 各停",
+        "operatorId": "京王電鉄",
+        "color": "#CA0C7E",
+        "serviceIds": [
+          "keio-takao"
+        ]
+      },
+      {
+        "id": "keio-keibajo",
+        "name": "京王競馬場線 各停",
+        "operatorId": "京王電鉄",
+        "color": "#CA0C7E",
+        "serviceIds": [
+          "keio-keibajo"
+        ]
+      },
+      {
+        "id": "keio-dobutsuen",
+        "name": "京王動物園線 各停",
+        "operatorId": "京王電鉄",
+        "color": "#CA0C7E",
+        "serviceIds": [
+          "keio-dobutsuen"
+        ]
+      },
+      {
+        "id": "keio-inokashira",
+        "name": "京王井の頭線 各停",
+        "operatorId": "京王電鉄",
+        "color": "#305294",
+        "serviceIds": [
+          "keio-inokashira"
+        ]
+      },
+      {
+        "id": "odakyu-odawara",
+        "name": "小田急小田原線 各停",
+        "operatorId": "小田急電鉄",
+        "color": "#008DD1",
+        "serviceIds": [
+          "odakyu-odawara"
+        ]
+      },
+      {
+        "id": "odakyu-enoshima",
+        "name": "小田急江ノ島線 各停",
+        "operatorId": "小田急電鉄",
+        "color": "#008DD1",
+        "serviceIds": [
+          "odakyu-enoshima"
+        ]
+      },
+      {
+        "id": "odakyu-tama",
+        "name": "小田急多摩線 各停",
+        "operatorId": "小田急電鉄",
+        "color": "#008DD1",
+        "serviceIds": [
+          "odakyu-tama"
+        ]
+      },
+      {
+        "id": "tokyu-toyoko",
+        "name": "東急東横線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#DD1C4E",
+        "serviceIds": [
+          "tokyu-toyoko"
+        ]
+      },
+      {
+        "id": "tokyu-meguro",
+        "name": "東急目黒線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#00A2D2",
+        "serviceIds": [
+          "tokyu-meguro"
+        ]
+      },
+      {
+        "id": "tokyu-shin-yokohama",
+        "name": "東急新横浜線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#803695",
+        "serviceIds": [
+          "tokyu-shin-yokohama"
+        ]
+      },
+      {
+        "id": "tokyu-den-en-toshi",
+        "name": "東急田園都市線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#00B395",
+        "serviceIds": [
+          "tokyu-den-en-toshi"
+        ]
+      },
+      {
+        "id": "tokyu-oimachi",
+        "name": "東急大井町線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#F46F21",
+        "serviceIds": [
+          "tokyu-oimachi"
+        ]
+      },
+      {
+        "id": "tokyu-ikegami",
+        "name": "東急池上線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#F386A7",
+        "serviceIds": [
+          "tokyu-ikegami"
+        ]
+      },
+      {
+        "id": "tokyu-tamagawa",
+        "name": "東急多摩川線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#AD2081",
+        "serviceIds": [
+          "tokyu-tamagawa"
+        ]
+      },
+      {
+        "id": "tokyu-setagaya",
+        "name": "東急世田谷線",
+        "operatorId": "東急電鉄",
+        "color": "#FEC322",
+        "serviceIds": [
+          "tokyu-setagaya"
+        ]
+      },
+      {
+        "id": "tokyu-kodomonokuni",
+        "name": "東急こどもの国線 各停",
+        "operatorId": "東急電鉄",
+        "color": "#0063B1",
+        "serviceIds": [
+          "tokyu-kodomonokuni"
+        ]
+      },
+      {
+        "id": "sotetsu-main",
+        "name": "相鉄本線 各停",
+        "operatorId": "相模鉄道",
+        "color": "#0075BC",
+        "serviceIds": [
+          "sotetsu-main"
+        ]
+      },
+      {
+        "id": "sotetsu-izumino",
+        "name": "相鉄いずみ野線 各停",
+        "operatorId": "相模鉄道",
+        "color": "#0075BC",
+        "serviceIds": [
+          "sotetsu-izumino"
+        ]
+      },
+      {
+        "id": "sotetsu-shin-yokohama",
+        "name": "相鉄新横浜線 各停",
+        "operatorId": "相模鉄道",
+        "color": "#0075BC",
+        "serviceIds": [
+          "sotetsu-shin-yokohama"
+        ]
+      },
+      {
+        "id": "mm-minatomirai",
+        "name": "みなとみらい線 各停",
+        "operatorId": "横浜高速鉄道",
+        "color": "#4761B6",
+        "serviceIds": [
+          "mm-minatomirai"
+        ]
+      },
+      {
+        "id": "hokuso-main",
+        "name": "北総線 普通",
+        "operatorId": "北総鉄道",
+        "color": "#005BAC",
+        "serviceIds": [
+          "hokuso-main"
+        ]
+      },
+      {
+        "id": "keikyu-kurihama",
+        "name": "京急久里浜線 普通・実質各停",
+        "operatorId": "京浜急行電鉄",
+        "color": "#0096E0",
+        "serviceIds": [
+          "keikyu-kurihama"
+        ]
+      },
+      {
+        "id": "tobu-oshiage",
+        "name": "東武伊勢崎線 押上支線・実質各停",
+        "operatorId": "東武鉄道",
+        "color": "#B00B36",
+        "serviceIds": [
+          "tobu-oshiage"
+        ]
+      },
+      {
+        "id": "keisei-narita-airport-access",
+        "name": "京成成田空港線 アクセス特急・実質各停",
+        "operatorId": "京成電鉄",
+        "color": "#1C0076",
+        "serviceIds": [
+          "keisei-narita-airport-access"
+        ]
+      }
+    ],
+    "stations": [
+      {
+        "id": "hamamatsucho",
+        "aliases": [
+          "大門"
+        ]
+      },
+      {
+        "id": "tamachi",
+        "aliases": [
+          "三田"
+        ]
+      },
+      {
+        "id": "harajuku",
+        "aliases": [
+          "明治神宮前"
+        ]
+      },
+      {
+        "id": "ueno",
+        "aliases": [
+          "京成上野"
+        ]
+      },
+      {
+        "id": "okachimachi",
+        "aliases": [
+          "上野広小路",
+          "仲御徒町",
+          "上野御徒町"
+        ]
+      },
+      {
+        "id": "akihabara",
+        "aliases": [
+          "岩本町"
+        ]
+      },
+      {
+        "id": "yurakucho",
+        "aliases": [
+          "日比谷"
+        ]
+      },
+      {
+        "id": "kawasaki",
+        "aliases": [
+          "京急川崎"
+        ]
+      },
+      {
+        "id": "tsurumi",
+        "aliases": [
+          "京急鶴見"
+        ]
+      },
+      {
+        "id": "higashi-kanagawa",
+        "aliases": [
+          "京急東神奈川"
+        ]
+      },
+      {
+        "id": "shin-sugita",
+        "aliases": [
+          "杉田"
+        ]
+      },
+      {
+        "id": "sendagaya",
+        "aliases": [
+          "国立競技場"
+        ]
+      },
+      {
+        "id": "moto-yawata",
+        "aliases": [
+          "京成八幡"
+        ]
+      },
+      {
+        "id": "funabashi",
+        "aliases": [
+          "京成船橋"
+        ]
+      },
+      {
+        "id": "tsudanuma",
+        "aliases": [
+          "新津田沼"
+        ]
+      },
+      {
+        "id": "makuharihongo",
+        "aliases": [
+          "京成幕張本郷"
+        ]
+      },
+      {
+        "id": "chiba",
+        "aliases": [
+          "京成千葉"
+        ]
+      },
+      {
+        "id": "hachioji",
+        "aliases": [
+          "京王八王子"
+        ]
+      },
+      {
+        "id": "itabashi",
+        "aliases": [
+          "新板橋"
+        ]
+      },
+      {
+        "id": "shin-akitsu",
+        "aliases": [
+          "秋津"
+        ]
+      },
+      {
+        "id": "kita-asaka",
+        "aliases": [
+          "朝霞台"
+        ]
+      },
+      {
+        "id": "minami-koshigaya",
+        "aliases": [
+          "新越谷"
+        ]
+      },
+      {
+        "id": "shin-yahashira",
+        "aliases": [
+          "八柱"
+        ]
+      },
+      {
+        "id": "musashi-mizonokuchi",
+        "aliases": [
+          "溝の口"
+        ]
+      },
+      {
+        "id": "inadazutsumi",
+        "aliases": [
+          "京王稲田堤"
+        ]
+      },
+      {
+        "id": "zushi",
+        "aliases": [
+          "逗子・葉山"
+        ]
+      },
+      {
+        "id": "kurihama",
+        "aliases": [
+          "京急久里浜"
+        ]
+      },
+      {
+        "id": "shin-nihombashi",
+        "aliases": [
+          "三越前"
+        ]
+      },
+      {
+        "id": "bakurocho",
+        "aliases": [
+          "東日本橋",
+          "馬喰横山"
+        ]
+      },
+      {
+        "id": "kanamachi",
+        "aliases": [
+          "京成金町"
+        ]
+      },
+      {
+        "id": "narita",
+        "aliases": [
+          "京成成田"
+        ]
+      },
+      {
+        "id": "nikko",
+        "aliases": [
+          "東武日光"
+        ]
+      },
+      {
+        "id": "metro-akasaka-mitsuke",
+        "aliases": [
+          "永田町"
+        ]
+      },
+      {
+        "id": "metro-kokkai-gijidomae",
+        "aliases": [
+          "溜池山王"
+        ]
+      },
+      {
+        "id": "metro-toranomon",
+        "aliases": [
+          "虎ノ門ヒルズ"
+        ]
+      },
+      {
+        "id": "metro-ginza",
+        "aliases": [
+          "銀座一丁目"
+        ]
+      },
+      {
+        "id": "metro-awajicho",
+        "aliases": [
+          "新御茶ノ水",
+          "小川町"
+        ]
+      },
+      {
+        "id": "metro-korakuen",
+        "aliases": [
+          "春日"
+        ]
+      },
+      {
+        "id": "metro-shintomicho",
+        "aliases": [
+          "築地"
+        ]
+      },
+      {
+        "id": "metro-ningyocho",
+        "aliases": [
+          "水天宮前"
+        ]
+      },
+      {
+        "id": "toei-togoshi",
+        "aliases": [
+          "戸越銀座"
+        ]
+      },
+      {
+        "id": "seibu-seibu-shinjuku",
+        "aliases": [
+          "新宿西口"
+        ]
+      },
+      {
+        "id": "keisei-keisei-sekiya",
+        "aliases": [
+          "牛田"
+        ]
+      },
+      {
+        "id": "keio-nagayama",
+        "aliases": [
+          "小田急永山"
+        ]
+      },
+      {
+        "id": "keio-tama-center",
+        "aliases": [
+          "小田急多摩センター"
+        ]
+      },
+      {
+        "id": "odakyu-gotokuji",
+        "aliases": [
+          "山下"
+        ]
+      }
+    ],
+    "serviceStopNames": [
+      {
+        "serviceId": "jr-joban-rapid",
+        "stationId": "j-village",
+        "name": "Ｊヴィレッジ"
+      },
+      {
+        "serviceId": "jr-narita-airport-branch",
+        "stationId": "narita-airport-terminal-2-3",
+        "name": "空港第２ビル"
+      },
+      {
+        "serviceId": "metro-ginza",
+        "stationId": "metro-kokkai-gijidomae",
+        "name": "溜池山王"
+      },
+      {
+        "serviceId": "metro-ginza",
+        "stationId": "shin-nihombashi",
+        "name": "三越前"
+      },
+      {
+        "serviceId": "metro-ginza",
+        "stationId": "okachimachi",
+        "name": "上野広小路"
+      },
+      {
+        "serviceId": "metro-hibiya",
+        "stationId": "metro-toranomon",
+        "name": "虎ノ門ヒルズ"
+      },
+      {
+        "serviceId": "metro-hibiya",
+        "stationId": "yurakucho",
+        "name": "日比谷"
+      },
+      {
+        "serviceId": "metro-hibiya",
+        "stationId": "metro-shintomicho",
+        "name": "築地"
+      },
+      {
+        "serviceId": "metro-hibiya",
+        "stationId": "okachimachi",
+        "name": "仲御徒町"
+      },
+      {
+        "serviceId": "metro-chiyoda",
+        "stationId": "harajuku",
+        "name": "明治神宮前"
+      },
+      {
+        "serviceId": "metro-chiyoda",
+        "stationId": "yurakucho",
+        "name": "日比谷"
+      },
+      {
+        "serviceId": "metro-chiyoda",
+        "stationId": "metro-awajicho",
+        "name": "新御茶ノ水"
+      },
+      {
+        "serviceId": "metro-yurakucho",
+        "stationId": "metro-akasaka-mitsuke",
+        "name": "永田町"
+      },
+      {
+        "serviceId": "metro-yurakucho",
+        "stationId": "metro-ginza",
+        "name": "銀座一丁目"
+      },
+      {
+        "serviceId": "metro-hanzomon",
+        "stationId": "metro-akasaka-mitsuke",
+        "name": "永田町"
+      },
+      {
+        "serviceId": "metro-hanzomon",
+        "stationId": "shin-nihombashi",
+        "name": "三越前"
+      },
+      {
+        "serviceId": "metro-hanzomon",
+        "stationId": "metro-ningyocho",
+        "name": "水天宮前"
+      },
+      {
+        "serviceId": "metro-namboku",
+        "stationId": "metro-kokkai-gijidomae",
+        "name": "溜池山王"
+      },
+      {
+        "serviceId": "metro-namboku",
+        "stationId": "metro-akasaka-mitsuke",
+        "name": "永田町"
+      },
+      {
+        "serviceId": "metro-fukutoshin",
+        "stationId": "harajuku",
+        "name": "明治神宮前"
+      },
+      {
+        "serviceId": "toei-asakusa",
+        "stationId": "tamachi",
+        "name": "三田"
+      },
+      {
+        "serviceId": "toei-asakusa",
+        "stationId": "hamamatsucho",
+        "name": "大門"
+      },
+      {
+        "serviceId": "toei-asakusa",
+        "stationId": "bakurocho",
+        "name": "東日本橋"
+      },
+      {
+        "serviceId": "toei-mita",
+        "stationId": "tamachi",
+        "name": "三田"
+      },
+      {
+        "serviceId": "toei-mita",
+        "stationId": "yurakucho",
+        "name": "日比谷"
+      },
+      {
+        "serviceId": "toei-mita",
+        "stationId": "metro-korakuen",
+        "name": "春日"
+      },
+      {
+        "serviceId": "toei-mita",
+        "stationId": "itabashi",
+        "name": "新板橋"
+      },
+      {
+        "serviceId": "toei-shinjuku",
+        "stationId": "ichigaya",
+        "name": "市ヶ谷"
+      },
+      {
+        "serviceId": "toei-shinjuku",
+        "stationId": "metro-awajicho",
+        "name": "小川町"
+      },
+      {
+        "serviceId": "toei-shinjuku",
+        "stationId": "akihabara",
+        "name": "岩本町"
+      },
+      {
+        "serviceId": "toei-shinjuku",
+        "stationId": "bakurocho",
+        "name": "馬喰横山"
+      },
+      {
+        "serviceId": "toei-oedo-loop",
+        "stationId": "seibu-seibu-shinjuku",
+        "name": "新宿西口"
+      },
+      {
+        "serviceId": "toei-oedo-loop",
+        "stationId": "metro-korakuen",
+        "name": "春日"
+      },
+      {
+        "serviceId": "toei-oedo-loop",
+        "stationId": "okachimachi",
+        "name": "上野御徒町"
+      },
+      {
+        "serviceId": "toei-oedo-loop",
+        "stationId": "hamamatsucho",
+        "name": "大門"
+      },
+      {
+        "serviceId": "toei-oedo-loop",
+        "stationId": "sendagaya",
+        "name": "国立競技場"
+      },
+      {
+        "serviceId": "tobu-isesaki",
+        "stationId": "tobu-kanegafuchi",
+        "name": "鐘ヶ淵"
+      },
+      {
+        "serviceId": "tobu-isesaki",
+        "stationId": "keisei-keisei-sekiya",
+        "name": "牛田"
+      },
+      {
+        "serviceId": "tobu-isesaki",
+        "stationId": "minami-koshigaya",
+        "name": "新越谷"
+      },
+      {
+        "serviceId": "tobu-nikko",
+        "stationId": "nikko",
+        "name": "東武日光"
+      },
+      {
+        "serviceId": "tobu-urban-park",
+        "stationId": "hokuso-shin-kamagaya",
+        "name": "新鎌ヶ谷"
+      },
+      {
+        "serviceId": "tobu-urban-park",
+        "stationId": "tobu-kamagaya",
+        "name": "鎌ヶ谷"
+      },
+      {
+        "serviceId": "tobu-tojo",
+        "stationId": "kita-asaka",
+        "name": "朝霞台"
+      },
+      {
+        "serviceId": "tobu-tojo",
+        "stationId": "tobu-kasumigaseki",
+        "name": "霞ヶ関"
+      },
+      {
+        "serviceId": "tobu-tojo",
+        "stationId": "tobu-tsurugashima",
+        "name": "鶴ヶ島"
+      },
+      {
+        "serviceId": "seibu-ikebukuro",
+        "stationId": "seibu-hibarigaoka",
+        "name": "ひばりヶ丘"
+      },
+      {
+        "serviceId": "seibu-ikebukuro",
+        "stationId": "shin-akitsu",
+        "name": "秋津"
+      },
+      {
+        "serviceId": "seibu-ikebukuro",
+        "stationId": "seibu-sayamagaoka",
+        "name": "狭山ヶ丘"
+      },
+      {
+        "serviceId": "seibu-chichibu",
+        "stationId": "seibu-ashigakubo",
+        "name": "芦ヶ久保"
+      },
+      {
+        "serviceId": "seibu-kokubunji",
+        "stationId": "seibu-koigakubo",
+        "name": "恋ヶ窪"
+      },
+      {
+        "serviceId": "keisei-main",
+        "stationId": "ueno",
+        "name": "京成上野"
+      },
+      {
+        "serviceId": "keisei-main",
+        "stationId": "moto-yawata",
+        "name": "京成八幡"
+      },
+      {
+        "serviceId": "keisei-main",
+        "stationId": "funabashi",
+        "name": "京成船橋"
+      },
+      {
+        "serviceId": "keisei-main",
+        "stationId": "narita",
+        "name": "京成成田"
+      },
+      {
+        "serviceId": "keisei-kanamachi",
+        "stationId": "kanamachi",
+        "name": "京成金町"
+      },
+      {
+        "serviceId": "keisei-chiba",
+        "stationId": "makuharihongo",
+        "name": "京成幕張本郷"
+      },
+      {
+        "serviceId": "keisei-chiba",
+        "stationId": "chiba",
+        "name": "京成千葉"
+      },
+      {
+        "serviceId": "keisei-higashi-narita",
+        "stationId": "narita",
+        "name": "京成成田"
+      },
+      {
+        "serviceId": "keisei-matsudo",
+        "stationId": "tsudanuma",
+        "name": "新津田沼"
+      },
+      {
+        "serviceId": "keisei-matsudo",
+        "stationId": "keisei-kamagaya-daibutsu",
+        "name": "鎌ヶ谷大仏"
+      },
+      {
+        "serviceId": "keisei-matsudo",
+        "stationId": "hokuso-shin-kamagaya",
+        "name": "新鎌ヶ谷"
+      },
+      {
+        "serviceId": "keisei-matsudo",
+        "stationId": "shin-yahashira",
+        "name": "八柱"
+      },
+      {
+        "serviceId": "keikyu-main",
+        "stationId": "kawasaki",
+        "name": "京急川崎"
+      },
+      {
+        "serviceId": "keikyu-main",
+        "stationId": "tsurumi",
+        "name": "京急鶴見"
+      },
+      {
+        "serviceId": "keikyu-main",
+        "stationId": "higashi-kanagawa",
+        "name": "京急東神奈川"
+      },
+      {
+        "serviceId": "keikyu-main",
+        "stationId": "keikyu-idogaya",
+        "name": "井土ヶ谷"
+      },
+      {
+        "serviceId": "keikyu-main",
+        "stationId": "shin-sugita",
+        "name": "杉田"
+      },
+      {
+        "serviceId": "keikyu-daishi",
+        "stationId": "kawasaki",
+        "name": "京急川崎"
+      },
+      {
+        "serviceId": "keikyu-zushi",
+        "stationId": "zushi",
+        "name": "逗子・葉山"
+      },
+      {
+        "serviceId": "keio-main",
+        "stationId": "keio-hatagaya",
+        "name": "幡ヶ谷"
+      },
+      {
+        "serviceId": "keio-main",
+        "stationId": "keio-tsutsujigaoka",
+        "name": "つつじヶ丘"
+      },
+      {
+        "serviceId": "keio-main",
+        "stationId": "keio-seiseki-sakuragaoka",
+        "name": "聖蹟桜ヶ丘"
+      },
+      {
+        "serviceId": "keio-main",
+        "stationId": "hachioji",
+        "name": "京王八王子"
+      },
+      {
+        "serviceId": "keio-sagamihara",
+        "stationId": "inadazutsumi",
+        "name": "京王稲田堤"
+      },
+      {
+        "serviceId": "keio-inokashira",
+        "stationId": "keio-fujimigaoka",
+        "name": "富士見ヶ丘"
+      },
+      {
+        "serviceId": "odakyu-odawara",
+        "stationId": "odakyu-umegaoka",
+        "name": "梅ヶ丘"
+      },
+      {
+        "serviceId": "odakyu-odawara",
+        "stationId": "odakyu-soshigaya-okura",
+        "name": "祖師ヶ谷大蔵"
+      },
+      {
+        "serviceId": "odakyu-odawara",
+        "stationId": "odakyu-mukogaoka-yuen",
+        "name": "向ヶ丘遊園"
+      },
+      {
+        "serviceId": "odakyu-odawara",
+        "stationId": "odakyu-yurigaoka",
+        "name": "百合ヶ丘"
+      },
+      {
+        "serviceId": "odakyu-odawara",
+        "stationId": "odakyu-shin-yurigaoka",
+        "name": "新百合ヶ丘"
+      },
+      {
+        "serviceId": "odakyu-enoshima",
+        "stationId": "odakyu-sakuragaoka",
+        "name": "桜ヶ丘"
+      },
+      {
+        "serviceId": "odakyu-tama",
+        "stationId": "odakyu-shin-yurigaoka",
+        "name": "新百合ヶ丘"
+      },
+      {
+        "serviceId": "odakyu-tama",
+        "stationId": "keio-nagayama",
+        "name": "小田急永山"
+      },
+      {
+        "serviceId": "odakyu-tama",
+        "stationId": "keio-tama-center",
+        "name": "小田急多摩センター"
+      },
+      {
+        "serviceId": "tokyu-den-en-toshi",
+        "stationId": "musashi-mizonokuchi",
+        "name": "溝の口"
+      },
+      {
+        "serviceId": "tokyu-oimachi",
+        "stationId": "musashi-mizonokuchi",
+        "name": "溝の口"
+      },
+      {
+        "serviceId": "tokyu-ikegami",
+        "stationId": "toei-togoshi",
+        "name": "戸越銀座"
+      },
+      {
+        "serviceId": "tokyu-setagaya",
+        "stationId": "odakyu-gotokuji",
+        "name": "山下"
+      },
+      {
+        "serviceId": "hokuso-main",
+        "stationId": "hokuso-shin-kamagaya",
+        "name": "新鎌ヶ谷"
+      },
+      {
+        "serviceId": "keikyu-kurihama",
+        "stationId": "kurihama",
+        "name": "京急久里浜"
+      }
+    ]
   }
 }

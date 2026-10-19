@@ -1,0 +1,17 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,oyama,,line=水戸線;group=002407;code=002410,小山,小山,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,otabayashi,,,小田林,小田林,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,yuki,,,結城,結城,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,higashi-yuki,,,東結城,東結城,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,kawashima,,,川島,川島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,tamado,,,玉戸,玉戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+6,shimodate,,,下館,下館,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+7,niihari,,,新治,新治,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+8,yamato,,,大和,大和,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+9,iwase,,,岩瀬,岩瀬,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+10,haguro,,,羽黒,羽黒,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+11,fukuhara,,,福原,福原,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+12,inada,,,稲田,稲田,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+13,kasama,,,笠間,笠間,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+14,shishido,,,宍戸,宍戸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+15,tomobe,,,友部,友部,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

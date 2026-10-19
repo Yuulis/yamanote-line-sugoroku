@@ -4,23 +4,29 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Any
 
 from scripts.data_pipeline import config
 from scripts.data_pipeline.composition import ComposeRecipe
 from scripts.data_pipeline.constraints import (
     BBox,
     DetourException,
+    JunctionRule,
     LonLat,
     OffsetException,
     PlatformSelector,
     PlatformTransfer,
     RouteRecipe,
+    ScopedSectionFilter,
     SectionFilter,
+    build_section_filter,
 )
 from scripts.data_pipeline.registry import (
     Area,
     Registry,
+    RegistryStation,
     ScopeStop,
+    normalize_station_name,
 )
 
 
@@ -44,6 +50,9 @@ class DatasetOverride:
     simplify_tolerance_m: float = config.SIMPLIFY_TOLERANCE_M
     validation_profile: str = "gameplay"
     stage_start_station_id: str = ""
+    ui_presentation_file: str | None = None
+    ui_presentation_sha256: str | None = None
+    ui_presentation: Mapping[str, Any] | None = None
 
     @property
     def validation_start_station_id(self) -> str:
@@ -53,6 +62,18 @@ class DatasetOverride:
             if self.validation_profile == "stage"
             else self.start_station_id
         )
+
+    @property
+    def directed_segment_target_service_id(self) -> str:
+        """Resolve the frozen stage target when gameplay fields are omitted."""
+        if self.target_service_id:
+            return self.target_service_id
+        if (
+            self.validation_profile == "stage"
+            and config.STAGE_TARGET_SERVICE_ID in self.service_ids
+        ):
+            return config.STAGE_TARGET_SERVICE_ID
+        return ""
 
 
 @dataclass(frozen=True)
@@ -95,6 +116,9 @@ class ServiceDefinition:
     length_ref: LengthRef
     station_number_sequence: tuple[str, ...] | None = None
     scope_source: str = ""
+    operator: str | None = None
+    n02_operator: str | None = None
+    area_prefectures: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True)
@@ -103,6 +127,40 @@ class Stop:
     station_id: str
     station_number: str  # JR East number (JY29, JK38 ...), may be empty
     platform_selector: PlatformSelector
+    original_name: str = ""
+    n02_name: str = ""
+    n02_operator: str = ""
+    source_reason: str = ""
+
+
+@dataclass(frozen=True)
+class StopResolution:
+    """Effective N02 target for one stop and its registry-selector relation."""
+
+    source_operator: str
+    match_name: str
+    original_name: str
+    registry_selector_applies: bool
+
+
+def resolve_stop_target(
+    stop: Stop,
+    station: RegistryStation,
+    service_operator: str,
+    registry_operator: str,
+) -> StopResolution:
+    """Resolve a stop independently of the registry's default source."""
+    source_operator = stop.n02_operator or service_operator
+    match_name = normalize_station_name(stop.n02_name or station.n02_name)
+    registry_selector_applies = (
+        source_operator == registry_operator and match_name == station.match_name
+    )
+    return StopResolution(
+        source_operator=source_operator,
+        match_name=match_name,
+        original_name=stop.original_name or station.name,
+        registry_selector_applies=registry_selector_applies,
+    )
 
 
 @dataclass(frozen=True)
@@ -113,6 +171,8 @@ class LineRange:
     via: tuple[LonLat, ...] = ()  # only for a range of exactly one stop pair
     route: RouteRecipe | None = None
     compose: ComposeRecipe | None = None
+    n02_operator: str = ""
+    source_reason: str = ""
 
     @property
     def route_lines(self) -> tuple[str, ...]:
@@ -128,8 +188,12 @@ class ServiceOverrides:
     definition: ServiceDefinition
     stops: tuple[Stop, ...]
     line_ranges: tuple[LineRange, ...]
-    section_filters: Mapping[str, SectionFilter]  # N02 line -> filter
+    section_filters: Mapping[
+        tuple[str, str], SectionFilter
+    ]  # (operator, N02 line) -> filter
     scope_stops: tuple[ScopeStop, ...] = ()
+    junction_rules: tuple[JunctionRule, ...] = ()
+    scoped_section_filters: tuple[ScopedSectionFilter, ...] = ()
 
     @property
     def id(self) -> str:
@@ -138,6 +202,32 @@ class ServiceOverrides:
     @property
     def circular(self) -> bool:
         return self.definition.circular
+
+    def effective_operator(self, dataset: DatasetOverride) -> str:
+        return self.definition.operator or dataset.operator
+
+    def effective_n02_operator(self, dataset: DatasetOverride) -> str:
+        return self.definition.n02_operator or dataset.n02_operator
+
+    def effective_area(self, dataset: DatasetOverride) -> Area:
+        prefectures = self.definition.area_prefectures
+        return Area(
+            prefectures or dataset.area.prefectures, dataset.area.municipalities
+        )
+
+    def resolve_stop(
+        self,
+        stop: Stop,
+        station: RegistryStation,
+        dataset: DatasetOverride,
+        registry_operator: str,
+    ) -> StopResolution:
+        return resolve_stop_target(
+            stop,
+            station,
+            self.effective_n02_operator(dataset),
+            registry_operator,
+        )
 
     @property
     def station_ids(self) -> tuple[str, ...]:
@@ -152,8 +242,62 @@ class ServiceOverrides:
     def segment_lines(self) -> tuple[str, ...]:
         return tuple(" -> ".join(item.route_lines) for item in self.segment_ranges())
 
-    def section_filter(self, n02_line: str) -> SectionFilter:
-        return self.section_filters.get(n02_line, SectionFilter())
+    def section_filter(self, n02_line: str, n02_operator: str = "") -> SectionFilter:
+        direct = self.section_filters.get(
+            (n02_operator, n02_line),
+            self.section_filters.get(
+                ("", n02_line), self.section_filters.get(n02_line, SectionFilter())
+            ),
+        )
+        if not direct.is_open or n02_operator:
+            return direct
+        matching = [
+            value
+            for key, value in self.section_filters.items()
+            if (isinstance(key, tuple) and key[1] == n02_line) or key == n02_line
+        ]
+        return matching[0] if len(matching) == 1 else direct
+
+    def section_filter_for_pair(
+        self, n02_line: str, n02_operator: str, from_id: str, to_id: str
+    ) -> SectionFilter:
+        """Resolve the filter active on one canonical forward stop pair."""
+        base = self.section_filter(n02_line, n02_operator)
+        rules = [("allow", key) for key in base.allow]
+        rules.extend(("deny", key) for key in base.deny)
+        indexes = {
+            station_id: index for index, station_id in enumerate(self.station_ids)
+        }
+        first, last = indexes.get(from_id), indexes.get(to_id)
+        pair_index = first if first is not None and last == first + 1 else None
+        rules.extend(
+            (rule.action, rule.section_key)
+            for rule in self.scoped_section_filters
+            if rule.n02_line == n02_line
+            and rule.n02_operator == n02_operator
+            and rule.from_id in indexes
+            and rule.to_id in indexes
+            and pair_index is not None
+            and indexes[rule.from_id] <= pair_index < indexes[rule.to_id]
+        )
+        try:
+            return build_section_filter(rules)
+        except ValueError as error:
+            from scripts.data_pipeline.registry import OverrideError
+
+            raise OverrideError(
+                f"{self.id} {from_id}->{to_id} {n02_line}: conflicting section filters: {error}"
+            ) from error
+
+    def range_operators(
+        self, item: LineRange, dataset: DatasetOverride
+    ) -> tuple[str, ...]:
+        default = item.n02_operator or self.effective_n02_operator(dataset)
+        return (
+            item.route.operators
+            if item.route and item.route.operators
+            else (default,) * len(item.route_lines)
+        )
 
 
 @dataclass(frozen=True)

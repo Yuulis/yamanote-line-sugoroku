@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,yokohama,MM01,,横浜,横浜,横浜高速鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+1,mm-shintakashima,MM02,,新高島,新高島,横浜高速鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+2,mm-minatomirai,MM03,,みなとみらい,みなとみらい,横浜高速鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+3,mm-bashamichi,MM04,,馬車道,馬車道,横浜高速鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+4,mm-nihonodori,MM05,,日本大通り,日本大通り,横浜高速鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.
+5,mm-motomachi-chukagai,MM06,,元町・中華街,元町・中華街,横浜高速鉄道,Hash-verified frozen S0 catalog; selector and route evidence pending.

@@ -1,0 +1,8 @@
+service_id,station_id,max_platform_offset_m,reason
+metro-chiyoda,metro-kokkai-gijidomae,270,"N02 platform 003807; measured offset 259 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/kokkai-gijidomae/index.html"
+metro-chiyoda,metro-otemachi,330,"N02 platform 003730, group 003719; measured offset 320 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/otemachi/index.html"
+metro-yurakucho,metro-iidabashi,310,"N02 platform 003598; measured offset 299 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/iidabashi/index.html"
+metro-hanzomon,metro-nagatacho,280,"N02 platform 003781; measured offset 266 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/nagatacho/index.html"
+metro-hanzomon,metro-mitsukoshimae,270,"N02 platform 003735; measured offset 253 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/mitsukoshimae/index.html"
+metro-namboku,metro-iidabashi,270,"N02 platform 003595; measured offset 256 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/iidabashi/index.html"
+metro-fukutoshin,metro-ikebukuro,350,"N02 platform 003379; measured offset 335 m; reviewed large interchange exception; Tokyo Metro station map https://www.tokyometro.jp/station/ikebukuro/index.html"

@@ -1,4 +1,4 @@
-> 現行の1都3県版の状況は[こちら](../jr-east-capital-region/implementation-status.md)です。このページは東京23区版の履歴資料です。
+> 現行の東京近郊版の状況は[こちら](../tokyo-suburban/implementation-status.md)です。このページは東京23区版の履歴資料です。
 
 # JR東日本 東京23区版の実装状況
 

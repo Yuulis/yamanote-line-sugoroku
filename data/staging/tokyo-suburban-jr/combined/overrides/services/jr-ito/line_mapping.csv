@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+atami,kinomiya,伊東線,,,
+kinomiya,izu-taga,伊東線,,,
+izu-taga,ajiro,伊東線,,,
+ajiro,usami,伊東線,,,
+usami,ito,伊東線,,,

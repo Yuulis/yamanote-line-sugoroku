@@ -1,0 +1,7 @@
+from_id,to_id,n02_line,via,route,compose
+keio-kitano,keio-katakura,高尾線,,,
+keio-katakura,keio-yamada,高尾線,,,
+keio-yamada,keio-mejirodai,高尾線,,,
+keio-mejirodai,keio-hazama,高尾線,,,
+keio-hazama,keio-takao,高尾線,,,
+keio-takao,keio-takaosanguchi,高尾線,,,

@@ -221,6 +221,12 @@ button:disabled {
   gap: 4px;
 }
 
+.game-panel__legend-note {
+  flex-basis: 100%;
+  color: #555555;
+  line-height: 1.45;
+}
+
 .legend-swatch {
   display: inline-block;
   width: 22px;
@@ -538,13 +544,9 @@ button:disabled {
   border-radius: 4px;
 }
 
-.game-panel__legend li[hidden] {
-  display: none;
-}
-
 .game-panel__legend-toggle {
   display: block;
-  width: 100%;
+  width: calc(100% - 82px);
   min-height: 32px;
   margin-top: 8px;
   padding: 2px 8px;
@@ -555,15 +557,25 @@ button:disabled {
   border-radius: 4px;
 }
 
-.game-panel__legend-toggle + .game-panel__legend {
+.game-panel__legend-reset {
+  float: right;
+  width: 76px;
+  min-height: 32px;
+  margin-top: -32px;
+  padding: 2px 4px;
+  font-size: 12px;
+  background: #ffffff;
+  border: 1px solid #aaaaaa;
+  border-radius: 4px;
+}
+
+.game-panel__legend-groups {
+  max-height: 160px;
   margin-top: 4px;
+  overflow-y: auto;
 }
 
-.game-panel__legend-group {
-  flex-basis: 100%;
-}
-
-.game-panel__legend-group details {
+.game-panel__legend-operator {
   width: 100%;
 }
 
@@ -573,11 +585,35 @@ button:disabled {
   line-height: 32px;
 }
 
-.game-panel__legend-group ul,
+.game-panel__legend-operator ul,
 .game-panel__candidates ul {
   margin: 0 0 6px;
   padding-left: 20px;
   line-height: 1.6;
+}
+
+.game-panel__legend-operator li {
+  list-style: none;
+}
+
+.game-panel__legend-operator label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  cursor: pointer;
+}
+
+.game-panel__legend-operator input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #2e7d32;
+}
+
+.game-panel__legend-select-all {
+  padding-left: 4px;
+  font-weight: bold;
 }
 
 .game-panel__candidates {
@@ -585,8 +621,7 @@ button:disabled {
 }
 
 .game-panel__legend {
-  max-height: 160px;
-  overflow-y: auto;
+  max-height: none;
 }
 
 /* Desktop: the panel itself scrolls, so every legend row stays reachable unclipped. */
@@ -594,6 +629,10 @@ button:disabled {
   .game-panel__legend {
     max-height: none;
     overflow-y: visible;
+  }
+
+  .game-panel__legend-groups {
+    max-height: 320px;
   }
 }
 

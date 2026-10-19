@@ -1,0 +1,7 @@
+order,station_id,station_number,platform_selector,original_name,n02_name,n02_operator,source_reason
+0,okaya,,,岡谷,岡谷,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+1,kawagishi,,,川岸,川岸,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+2,tatsuno,,,辰野,辰野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+3,shinano-kawashima,,,信濃川島,信濃川島,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+4,ono-nagano,,,小野,小野,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.
+5,shiojiri,,,塩尻,塩尻,東日本旅客鉄道,Frozen S0 catalog identifies the stop's N02 operator.

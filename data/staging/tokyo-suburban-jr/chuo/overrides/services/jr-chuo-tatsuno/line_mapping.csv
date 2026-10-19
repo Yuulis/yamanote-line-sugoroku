@@ -1,0 +1,6 @@
+from_id,to_id,n02_line,via,route,compose
+okaya,kawagishi,中央線,,,
+kawagishi,tatsuno,中央線,,,
+tatsuno,shinano-kawashima,中央線,,,
+shinano-kawashima,ono-nagano,中央線,,,
+ono-nagano,shiojiri,中央線,,,

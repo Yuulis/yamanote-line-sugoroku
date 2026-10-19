@@ -1,0 +1,51 @@
+{
+  "services": [
+    {
+      "id": "tx",
+      "stationIds": [
+        "tx-akihabara",
+        "tx-shin-okachimachi",
+        "tx-asakusa",
+        "tx-minami-senju",
+        "tx-kita-senju",
+        "tx-aoi",
+        "tx-rokucho",
+        "tx-yashio",
+        "tx-misato-chuo",
+        "tx-minami-nagareyama",
+        "tx-nagareyama-centralpark",
+        "tx-nagareyama-otakanomori",
+        "tx-kashiwanoha-campus",
+        "tx-kashiwa-tanaka",
+        "tx-moriya",
+        "tx-miraidaira",
+        "tx-midorino",
+        "tx-bampaku-kinen-koen",
+        "tx-kenkyu-gakuen",
+        "tx-tsukuba"
+      ]
+    }
+  ],
+  "stationIds": [
+    "tx-akihabara",
+    "tx-shin-okachimachi",
+    "tx-asakusa",
+    "tx-minami-senju",
+    "tx-kita-senju",
+    "tx-aoi",
+    "tx-rokucho",
+    "tx-yashio",
+    "tx-misato-chuo",
+    "tx-minami-nagareyama",
+    "tx-nagareyama-centralpark",
+    "tx-nagareyama-otakanomori",
+    "tx-kashiwanoha-campus",
+    "tx-kashiwa-tanaka",
+    "tx-moriya",
+    "tx-miraidaira",
+    "tx-midorino",
+    "tx-bampaku-kinen-koen",
+    "tx-kenkyu-gakuen",
+    "tx-tsukuba"
+  ]
+}

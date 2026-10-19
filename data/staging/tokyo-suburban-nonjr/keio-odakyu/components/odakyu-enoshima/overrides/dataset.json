@@ -1,0 +1,34 @@
+{
+  "operator": "小田急電鉄",
+  "n02Operator": "小田急電鉄",
+  "updatedAt": "2026-10-15",
+  "areaName": "小田急電鉄 non-JR staging component",
+  "areaPrefectures": [
+    "東京都",
+    "神奈川県"
+  ],
+  "serviceIds": [
+    "odakyu-odawara",
+    "odakyu-enoshima",
+    "odakyu-tama"
+  ],
+  "reviewedDisconnectedServiceIds": [],
+  "outputBbox": [
+    137.7,
+    34.8,
+    141.2,
+    37.7
+  ],
+  "candidateSearchBbox": [
+    137.5,
+    34.6,
+    141.4,
+    37.9
+  ],
+  "validationProfile": "stage",
+  "stageStartStationId": "odakyu-shinjuku",
+  "expectedCatalogFile": "expected-catalog.json",
+  "expectedCatalogSha256": "5b39398693a04cc5ec8df8eb1edfd2fb57b5478a78c1aae57815bfb21a52a7d8",
+  "budgetProfile": "capital-region",
+  "simplifyToleranceM": 1
+}

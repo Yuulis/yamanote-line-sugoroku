@@ -1,3 +1,3 @@
-n02_line,action,section_key,reason
-常磐線,deny,139.87591 35.76954~139.88903 35.76956#21d405a8,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
-常磐線,deny,139.88903 35.76956~139.89347 35.77090#6924bdce,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.
+n02_line,action,section_key,reason,from_id,to_id
+常磐線,deny,139.87591 35.76954~139.88903 35.76956#21d405a8,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,,
+常磐線,deny,139.88903 35.76956~139.89347 35.77090#6924bdce,S6 physical-track review; see jr-east-capital-region-s6.md track assignments and N02 representation limits.,,
