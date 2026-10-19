@@ -280,3 +280,22 @@ npm run perf:map -- --server preview --no-interaction     # compare with uncompr
   is the same code plus one tiny hook, but its main chunk is 1292.8 KB vs
   1323.7 KB for the plain `npm run build`. The cause of the 31 KB difference
   was not investigated, so use the plain build for absolute size claims.
+
+## C1 implementation result (2026-10-19)
+
+Commits `5b4dcdb` (five speed-ups), `5709bcc` (no tile preconnect in E2E
+builds), `4f3408d` (railway-source errors are not basemap failures, from Codex
+review), `0552a21` (E2E helper race). Branch CI green on `0552a21`.
+
+Live OpenFreeMap tiles, Chromium software GL, gzip-served, interleaved A/B:
+baseline copy of `cba1367` vs `4f3408d`, 3 rounds × 2 runs per profile
+(median of 6). Raw: `.claude/logs/perf/c1-ab-live.log`.
+
+| Metric | desktop before | desktop after | mobile before | mobile after |
+|--------|---------------|---------------|---------------|--------------|
+| map load (railway layers added) | 2016 ms | 547 ms (−73%) | 5502 ms | 2507 ms (−54%) |
+| map idle (fully rendered) | 4131 ms | 3030 ms (−27%) | 8470 ms | 6791 ms (−20%) |
+| TBT to idle | 1905 ms | 1454 ms (−24%) | 5001 ms | 3704 ms (−26%) |
+
+Pan/move fps with live tiles stay basemap-bound (~5–7 fps on software GL); the
+basemap style was left unchanged by user decision.

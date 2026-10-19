@@ -19,8 +19,8 @@ Branch `feature/map-performance-a11y` from `develop` (9bbda41). Prompts:
 | Step | State | Evidence |
 |------|-------|----------|
 | Investigation | done — `cba1367` | `.claude/docs/research/c1-map-performance-baseline.md`, `c3-accessibility-audit.md`; `npm run perf:map` |
-| C1 implementation | code complete, paused before final verification (see below) | WIP commit on this branch |
-| C3 implementation | not started | — |
+| C1 implementation | done — `5b4dcdb` `5709bcc` `4f3408d` `0552a21`; CI green | `c1-map-performance-baseline.md` § C1 implementation result |
+| C3 implementation | in progress (Codex Luna xhigh, fast) | — |
 | PR to develop, CI | not started (branch pushed for CI only) | — |
 
 ## C1 paused state (2026-10-19 19:10)
@@ -52,18 +52,8 @@ lead's record.
 
 ## Next step
 
-1. Check branch CI; run `env -u WAYLAND_DISPLAY npm run test:e2e` locally.
-2. Finish the live-tile A/B (`npm run perf:map -- --tiles live`, compare with
-   the baseline) and record before/after in
-   `.claude/docs/research/c1-map-performance-baseline.md`.
-3. Codex review of the C1 diff (Sol low, read-only), then launch C3 with the
-   command in the prompts file.
-
-## Baseline (Chromium, software GL, gzip-served, median of 5)
-
-| Metric | desktop stub | mobile stub | desktop live | mobile live |
-|--------|--------------|-------------|--------------|-------------|
-| map load (railway layers added) | 519 ms | 2674 ms | 2279 ms | 5400 ms |
-| map idle | 1913 ms | 5027 ms | 4749 ms | 8486 ms |
-| TBT to idle | 669 ms | 2441 ms | 2604 ms | 4717 ms |
-
+C1 resumed and finished on 2026-10-19: full local E2E (one Firefox race in the
+new style-reload spec fixed in `0552a21`), Codex Sol-low review (one Med finding
+fixed in `4f3408d`), live-tile A/B recorded in the research report (mobile map
+load 5.5 s → 2.5 s). Now: C3 via the command in the prompts file, then verify,
+Codex review, PR to develop.
