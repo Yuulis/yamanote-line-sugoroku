@@ -32,6 +32,19 @@ export const SOURCE_IDS = {
   currentPosition: "game-current-position",
 } as const;
 
+const RAILWAY_SOURCE_IDS: ReadonlySet<string> = new Set(Object.values(SOURCE_IDS));
+
+/**
+ * Whether a map "error" event means the basemap failed. Errors from the
+ * app's own railway sources are not: those are added on "style.load", before
+ * the basemap tiles finish, and must not be reported as a failed map.
+ */
+export function isBasemapError(event: object): boolean {
+  // MapLibre adds sourceId to source errors but does not type it on ErrorEvent.
+  const sourceId = (event as { sourceId?: unknown }).sourceId;
+  return typeof sourceId !== "string" || !RAILWAY_SOURCE_IDS.has(sourceId);
+}
+
 export const LAYER_IDS = {
   services: "railway-services",
   base: "railway-base",

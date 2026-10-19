@@ -20,7 +20,7 @@ import {
 } from "../../src/features/map/lineVisibility";
 import { labelSortKey, isStationLabelEligible } from "../../src/features/map/stationMarkers";
 import { updateLineGroupSelection } from "../../src/features/map/lineVisibilityStore";
-import { LAYER_IDS } from "../../src/features/map/mapConfig";
+import { LAYER_IDS, SOURCE_IDS, isBasemapError } from "../../src/features/map/mapConfig";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { RailwayMap } from "../../src/features/map/RailwayMap";
 import { loadBundle } from "../e2e/fixtures/bundle";
@@ -348,5 +348,18 @@ describe("buildDataAttribution", () => {
     expect(escapeHtml('<a href="x">&</a>')).toBe(
       "&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;",
     );
+  });
+});
+
+describe("isBasemapError", () => {
+  it("treats errors without a source or from basemap sources as basemap failures", () => {
+    expect(isBasemapError({})).toBe(true);
+    expect(isBasemapError({ sourceId: "openmaptiles" })).toBe(true);
+  });
+
+  it("ignores errors from the app's own railway sources", () => {
+    for (const sourceId of Object.values(SOURCE_IDS)) {
+      expect(isBasemapError({ sourceId })).toBe(false);
+    }
   });
 });

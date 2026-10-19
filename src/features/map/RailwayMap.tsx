@@ -32,6 +32,7 @@ import {
   NETWORK_FIT_PANEL_GAP,
   PHONE_MEDIA_QUERY,
   SOURCE_IDS,
+  isBasemapError,
   isPhoneWidth,
 } from "./mapConfig";
 import {
@@ -214,8 +215,8 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
     // Fatal until the basemap has rendered completely once ("load"): a failed
     // style, or tiles failing so that never happens. Later tile errors are tolerated.
     let basemapLoaded = false;
-    map.on("error", () => {
-      if (!basemapLoaded) setStyleFailed(true);
+    map.on("error", (event) => {
+      if (!basemapLoaded && isBasemapError(event)) setStyleFailed(true);
     });
     map.once("load", () => {
       basemapLoaded = true;
