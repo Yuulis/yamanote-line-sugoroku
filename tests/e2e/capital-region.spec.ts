@@ -229,9 +229,11 @@ test.describe("current product scenarios", () => {
       await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
       await expect(panelStat(page, "進行方向")).toHaveText(expectedMidpoint.direction);
       await expect(panelStat(page, "踏破区間")).toHaveText(expectedMidpoint.progress);
-      const forwardMidpoint = (await readMap(page))!.marker;
-      expect(forwardMidpoint).not.toEqual(markerPosition(railwayBundle, forwardBefore));
-      expect(forwardMidpoint).not.toEqual(markerPosition(railwayBundle, forwardCommitted));
+      await expectMarkerBetween(
+        page,
+        markerPosition(railwayBundle, forwardBefore),
+        markerPosition(railwayBundle, forwardCommitted),
+      );
       const rapidFeatureIds = serviceFeatureIds(railwayBundle, forwardRecord.serviceId);
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(rapidFeatureIds);
       const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_FORWARD)!.geometryFeatureIds;
@@ -267,9 +269,7 @@ test.describe("current product scenarios", () => {
       await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
       await expect(panelStat(page, "進行方向")).toHaveText(expectedMidpoint.direction);
       await expect(panelStat(page, "踏破区間")).toHaveText(expectedMidpoint.progress);
-      const midpoint = (await readMap(page))!.marker;
-      expect(midpoint).not.toEqual(markerPosition(railwayBundle, before));
-      expect(midpoint).not.toEqual(markerPosition(railwayBundle, committed));
+      await expectMarkerBetween(page, markerPosition(railwayBundle, before), markerPosition(railwayBundle, committed));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
         .toEqual(serviceFeatureIds(railwayBundle, record.serviceId));
       const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_REVERSE)!.geometryFeatureIds;
@@ -304,13 +304,12 @@ test.describe("current product scenarios", () => {
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
       await diceButton(page).click();
+      await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);
       await page.clock.runFor(16);
       await page.clock.fastForward(timing.beforeTargetMs + timing.targetDurationMs / 2);
-      const midpoint = (await readMap(page))!.marker;
-      expect(midpoint).not.toEqual(markerPosition(railwayBundle, before));
-      expect(midpoint).not.toEqual(markerPosition(railwayBundle, committed));
+      await expectMarkerBetween(page, markerPosition(railwayBundle, before), markerPosition(railwayBundle, committed));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
         .toEqual(serviceFeatureIds(railwayBundle, record.serviceId));
       const remaining = Math.max(0, timing.totalMs - 16 - timing.beforeTargetMs - timing.targetDurationMs / 2);
@@ -376,3 +375,25 @@ test.describe("branch", () => {
     expect((await readSave(page))?.movementHistory.at(-1)?.traversedSegmentIds).toEqual(["capital-branch:capital-branch-end:shinagawa", "capital-branch:shinagawa:capital-west"]);
   });
 });
+
+/**
+ * Assert the marker is strictly between `start` and `end` while the clock is
+ * paused mid-move. Advancing the clock only fires the animation frame: React
+ * commits it, and RailwayMap's effect writes the marker source, in later page
+ * tasks, and WebKit can answer the next evaluate before they run. With the
+ * clock paused no further frame fires, so polling only waits for the frame
+ * already computed; the end check runs on the same sample the poll accepted.
+ */
+async function expectMarkerBetween(page: Page, start: [number, number], end: [number, number]): Promise<void> {
+  let marker: [number, number] | null = null;
+  await expect.poll(
+    async () => {
+      marker = (await readMap(page))?.marker ?? null;
+      return marker !== null && (marker[0] !== start[0] || marker[1] !== start[1]);
+    },
+    { message: "the marker source should leave the start while the clock is paused mid-move" },
+  ).toBe(true);
+  expect(marker).not.toBeNull();
+  expect(marker).not.toEqual(start);
+  expect(marker).not.toEqual(end);
+}

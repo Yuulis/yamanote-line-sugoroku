@@ -11,6 +11,7 @@ from scripts.data_pipeline.constraints import parse_platform_selector
 from scripts.data_pipeline.n02 import PlatformCandidate
 from scripts.data_pipeline.override_models import Stop, StopResolution
 from scripts.data_pipeline.stage_suburban_jr import _candidate_options
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 ROOT = Path(__file__).parents[2] / "data/staging/tokyo-suburban-nonjr/toei-yokohama"
 
@@ -53,6 +54,7 @@ def test_toei_display_operator_and_n02_source_operator_are_distinct() -> None:
         assert service["n02Operator"] == "東京都"
 
 
+@requires_raw_n02()
 def test_yokohama_blue_pins_kannai_to_continuing_line_code_and_both_tracks() -> None:
     stops = _csv(
         ROOT / "components/yokohama-blue/overrides/services/yokohama-blue/stops.csv"

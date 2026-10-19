@@ -13,6 +13,7 @@ import pytest
 from scripts.data_pipeline import stage_suburban_assembly as assembly
 from scripts.data_pipeline.overrides import load_overrides
 from scripts.data_pipeline.stage_suburban_support import StageError, hash_tree
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 
 def _write_json(path: Path, value: Any) -> None:
@@ -656,6 +657,7 @@ def test_assemble_cli_writes_to_requested_output_directory(
     assert (output / "overrides/expected-catalog.json").is_file()
 
 
+@requires_raw_n02()
 def test_real_frozen_catalog_retains_shipped_472_stations_and_40_services(
     tmp_path: Path,
 ) -> None:

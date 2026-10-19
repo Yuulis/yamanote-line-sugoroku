@@ -10,6 +10,7 @@ from scripts.data_pipeline.stage_suburban_nonjr import (
     handoff,
 )
 from scripts.data_pipeline.stage_suburban_support import read_csv, research_rows
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 ROOT = Path(__file__).parents[2]
 STAGING = ROOT / "data/staging/tokyo-suburban-nonjr"
@@ -43,6 +44,7 @@ EXPECTED_EXCEPTIONS = {
 }
 
 
+@requires_raw_n02()
 def test_handoff_pins_frozen_coverage_identity_and_current_group_audits() -> None:
     report = handoff(root=ROOT)
     frozen_catalog = research_rows(ROOT, "tokyo-suburban-research-catalog.csv")
@@ -99,6 +101,7 @@ def test_handoff_pins_frozen_coverage_identity_and_current_group_audits() -> Non
         assert identity_rows == expected_identity
 
 
+@requires_raw_n02()
 def test_handoff_lists_every_reviewed_exception_at_its_approved_limit() -> None:
     report = handoff(root=ROOT)
     exceptions = report["exceptions"]

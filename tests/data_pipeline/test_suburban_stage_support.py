@@ -17,6 +17,7 @@ from scripts.data_pipeline.constraints import JunctionRule, SectionFilter
 from scripts.data_pipeline.n02 import N02SourceProvider
 from scripts.data_pipeline.overrides import load_overrides
 from scripts.data_pipeline.routing import RoutingError
+from tests.data_pipeline._local_inputs import requires_raw_n02
 from tests.data_pipeline.support import historical_baseline
 
 
@@ -401,6 +402,7 @@ def test_length_refs_parser_and_fixed_tolerance(tmp_path: Path) -> None:
         stage.parse_length_refs(path)
 
 
+@requires_raw_n02()
 def test_raw_pair_measurement_oyama_to_otabayashi_is_about_4_812_km(
     tmp_path: Path,
 ) -> None:
@@ -424,6 +426,7 @@ def test_raw_pair_measurement_oyama_to_otabayashi_is_about_4_812_km(
     assert float(measured["end_snap_m"]) < 0.01
 
 
+@requires_raw_n02()
 def test_added_pair_measurement_rejects_scoped_allow_missing_from_its_window(
     tmp_path: Path,
 ) -> None:
@@ -497,6 +500,7 @@ def test_audit_rejects_missing_region_stage(tmp_path: Path) -> None:
         stage.audit("tohoku", tmp_path / "output", root=tmp_path)
 
 
+@requires_raw_n02()
 def test_audit_accepts_a_fresh_region_seed_against_the_shipped_baseline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

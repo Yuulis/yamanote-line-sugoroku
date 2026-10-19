@@ -12,6 +12,7 @@ from typing import Any
 
 from scripts.data_pipeline.stage_suburban_assembly import normalize_station_name
 from scripts.data_pipeline.stage_suburban_assembly_evidence import hash_value
+from tests.data_pipeline._local_inputs import requires_local_evidence
 
 ROOT = Path(__file__).parents[2]
 ASSEMBLED = ROOT / "data/staging/tokyo-suburban-assembled"
@@ -101,6 +102,9 @@ def test_assembly_counts_and_identity_map_match_frozen_csvs() -> None:
     }
 
 
+@requires_local_evidence(
+    ".claude/logs/s4/gate/a/services.json",
+)
 def test_shipped_id_and_stop_order_retention_and_platform_keys() -> None:
     shipped_rows = _csv_rows(SHIPPED_CATALOG)
     shipped_ids = {row["station_id"] for row in shipped_rows}
@@ -161,6 +165,9 @@ def test_registry_aliases_use_frozen_names_and_normalized_spelling() -> None:
     assert json.loads(ichigaya["aliases"]) == []
 
 
+@requires_local_evidence(
+    ".claude/logs/s4/gate/a/segments.json",
+)
 def test_frozen_ui_groups_and_shared_track_review_are_complete() -> None:
     freeze, catalog, services = _frozen_inputs()
     ui_groups = _json(ASSEMBLED / "ui-line-groups.json")

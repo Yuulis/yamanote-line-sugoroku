@@ -15,6 +15,7 @@ from scripts.data_pipeline.product_suburban import (
     simulation_code_fingerprint,
     verify_simulation,
 )
+from tests.data_pipeline._local_inputs import requires_local_evidence
 
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_OFFSETS = (0, 1250, 2500, 3750)
@@ -160,6 +161,12 @@ def complete_simulation(tmp_path: Path) -> Path:
     return tmp_path
 
 
+@requires_local_evidence(
+    ".claude/logs/r2/target-two-thirds-0.json",
+    ".claude/logs/r2/target-two-thirds-1250.json",
+    ".claude/logs/r2/target-two-thirds-2500.json",
+    ".claude/logs/r2/target-two-thirds-3750.json",
+)
 def test_verify_simulation_accepts_exact_complete_shards(
     complete_simulation: Path,
 ) -> None:
@@ -183,6 +190,12 @@ def test_verify_simulation_accepts_exact_complete_shards(
     }
 
 
+@requires_local_evidence(
+    ".claude/logs/r2/target-two-thirds-0.json",
+    ".claude/logs/r2/target-two-thirds-1250.json",
+    ".claude/logs/r2/target-two-thirds-2500.json",
+    ".claude/logs/r2/target-two-thirds-3750.json",
+)
 def test_verify_simulation_rejects_missing_shard(
     complete_simulation: Path,
 ) -> None:
@@ -192,6 +205,12 @@ def test_verify_simulation_rejects_missing_shard(
         verify_simulation(root=ROOT, shard_dir=complete_simulation)
 
 
+@requires_local_evidence(
+    ".claude/logs/r2/target-two-thirds-0.json",
+    ".claude/logs/r2/target-two-thirds-1250.json",
+    ".claude/logs/r2/target-two-thirds-2500.json",
+    ".claude/logs/r2/target-two-thirds-3750.json",
+)
 def test_verify_simulation_rejects_overlap_and_stale_bundle(
     complete_simulation: Path,
 ) -> None:
@@ -210,6 +229,12 @@ def test_verify_simulation_rejects_overlap_and_stale_bundle(
         verify_simulation(root=ROOT, shard_dir=complete_simulation)
 
 
+@requires_local_evidence(
+    ".claude/logs/r2/target-two-thirds-0.json",
+    ".claude/logs/r2/target-two-thirds-1250.json",
+    ".claude/logs/r2/target-two-thirds-2500.json",
+    ".claude/logs/r2/target-two-thirds-3750.json",
+)
 def test_verify_simulation_reports_first_per_seed_differences(
     complete_simulation: Path,
 ) -> None:
@@ -237,6 +262,12 @@ def test_verify_simulation_reports_first_per_seed_differences(
     ]
 
 
+@requires_local_evidence(
+    ".claude/logs/r2/target-two-thirds-0.json",
+    ".claude/logs/r2/target-two-thirds-1250.json",
+    ".claude/logs/r2/target-two-thirds-2500.json",
+    ".claude/logs/r2/target-two-thirds-3750.json",
+)
 def test_verify_simulation_rejects_nondeterministic_repeat(
     complete_simulation: Path,
 ) -> None:
@@ -250,6 +281,12 @@ def test_verify_simulation_rejects_nondeterministic_repeat(
         verify_simulation(root=ROOT, shard_dir=complete_simulation)
 
 
+@requires_local_evidence(
+    ".claude/logs/r2/target-two-thirds-0.json",
+    ".claude/logs/r2/target-two-thirds-1250.json",
+    ".claude/logs/r2/target-two-thirds-2500.json",
+    ".claude/logs/r2/target-two-thirds-3750.json",
+)
 def test_verify_simulation_rejects_stale_implementation_fingerprint(
     complete_simulation: Path,
 ) -> None:

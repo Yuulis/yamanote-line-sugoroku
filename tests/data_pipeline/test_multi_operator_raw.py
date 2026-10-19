@@ -21,6 +21,7 @@ from scripts.data_pipeline.overrides import (
     Stop,
 )
 from scripts.data_pipeline.registry import Registry, RegistryStation
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 
 class RawServiceSpec(NamedTuple):
@@ -132,6 +133,7 @@ def _route(raw_provider: N02SourceProvider, overrides: Overrides, service_id: st
     return route_service(raw_provider, service, overrides.registry, overrides)
 
 
+@requires_raw_n02()
 def test_korakuen_kasuga_select_real_platforms(
     committed_overrides: Overrides, raw_provider: N02SourceProvider
 ) -> None:
@@ -193,6 +195,7 @@ def test_korakuen_kasuga_select_real_platforms(
     assert exported[0]["operator"] == "東京都交通局"
 
 
+@requires_raw_n02()
 def test_hamamatsucho_daimon_select_real_platforms(
     committed_overrides: Overrides, raw_provider: N02SourceProvider
 ) -> None:
@@ -240,6 +243,7 @@ def test_hamamatsucho_daimon_select_real_platforms(
     assert overrides.registry.by_id()[hub_id].name == "浜松町・大門"
 
 
+@requires_raw_n02()
 def test_oshiage_same_group_keeps_operator_membership(
     committed_overrides: Overrides, raw_provider: N02SourceProvider
 ) -> None:
@@ -347,6 +351,7 @@ def test_oshiage_same_group_keeps_operator_membership(
         assert selected.group_code == "003526"
 
 
+@requires_raw_n02()
 def test_ayase_requires_explicit_alternate_source_and_reason(
     committed_overrides: Overrides, raw_provider: N02SourceProvider
 ) -> None:

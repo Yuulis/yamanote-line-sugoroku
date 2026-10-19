@@ -22,6 +22,7 @@ from scripts.data_pipeline.stage_suburban_assembly_shared import (
     copy_length_references,
 )
 from scripts.data_pipeline.topology import station_pairs
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 
 @pytest.fixture(scope="module")
@@ -384,6 +385,7 @@ def test_review_entry_pair_facts_are_stably_ordered():
     assert entries[0]["pairs"][0]["serviceId"] == "service-a"
 
 
+@requires_raw_n02()
 def test_fukutoshin_pair_composition_has_exact_reverse_owner_anchors(
     assembled_overrides,
 ):
@@ -416,6 +418,7 @@ def test_fukutoshin_pair_composition_has_exact_reverse_owner_anchors(
     )
 
 
+@requires_raw_n02()
 def test_fukutoshin_composition_stops_at_kotake_and_checks_both_pins(
     assembled_overrides,
 ):
@@ -468,6 +471,7 @@ def test_fukutoshin_composition_stops_at_kotake_and_checks_both_pins(
         ("filter", "section filter differs"),
     ],
 )
+@requires_raw_n02()
 def test_fukutoshin_composition_rejects_other_owner_operator_line_or_filter(
     assembled_overrides, fault: str, message: str
 ):

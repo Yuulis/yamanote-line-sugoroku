@@ -29,6 +29,10 @@ from scripts.data_pipeline.stage_suburban_support import (
     write_csv,
     write_json,
 )
+from tests.data_pipeline._local_inputs import (
+    requires_local_evidence,
+    requires_raw_n02,
+)
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSEMBLED = ROOT / "data/staging/tokyo-suburban-assembled"
@@ -40,6 +44,7 @@ def _write_json(path: Path, value: Any) -> None:
     )
 
 
+@requires_raw_n02()
 def test_verify_inputs_accepts_frozen_assembly() -> None:
     report = product.verify_inputs(root=ROOT)
 
@@ -195,6 +200,18 @@ def _copy_product_files(source: Path, destination: Path) -> None:
         shutil.copy2(source / name, destination / name)
 
 
+@requires_local_evidence(
+    ".claude/logs/s4/gate/a/manifest.json",
+    ".claude/logs/s4/gate/a/stations.json",
+    ".claude/logs/s4/gate/a/services.json",
+    ".claude/logs/s4/gate/a/segments.json",
+    ".claude/logs/s4/gate/a/segments.geojson",
+    ".claude/logs/s4/gate/b/manifest.json",
+    ".claude/logs/s4/gate/b/stations.json",
+    ".claude/logs/s4/gate/b/services.json",
+    ".claude/logs/s4/gate/b/segments.json",
+    ".claude/logs/s4/gate/b/segments.geojson",
+)
 def test_compare_requires_identical_five_file_builds(tmp_path: Path) -> None:
     first = tmp_path / "a"
     second = tmp_path / "b"
@@ -291,6 +308,10 @@ def _presentation_fixture() -> tuple[
     return presentation, lines, services, stations
 
 
+@requires_local_evidence(
+    ".claude/logs/s4/gate/a/services.json",
+    ".claude/logs/s4/gate/a/stations.json",
+)
 def test_ui_presentation_uses_verified_aliases_and_oedo_grouping() -> None:
     services_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/services.json")
     stations_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/stations.json")
@@ -407,6 +428,10 @@ def test_line_color_rows_have_direct_sources_or_absence_evidence() -> None:
             assert by_id[parent_id]["color"] == row["color"]
 
 
+@requires_local_evidence(
+    ".claude/logs/s4/gate/a/services.json",
+    ".claude/logs/s4/gate/a/stations.json",
+)
 def test_ui_presentation_preserves_non_grey_jr_colors() -> None:
     services_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/services.json")
     stations_document = product.read_json(ROOT / ".claude/logs/s4/gate/a/stations.json")

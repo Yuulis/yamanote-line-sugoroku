@@ -11,6 +11,7 @@ from scripts.data_pipeline.constraints import parse_platform_selector
 from scripts.data_pipeline.n02 import PlatformCandidate
 from scripts.data_pipeline.override_models import Stop, StopResolution
 from scripts.data_pipeline.stage_suburban_jr import _candidate_options
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 ROOT = Path(__file__).parents[2] / "data/staging/tokyo-suburban-nonjr/seibu"
 
@@ -41,6 +42,7 @@ def test_yamaguchi_agt_pairs_use_the_pinned_seibu_platforms() -> None:
     assert all(row["status"] == "pass" for row in pairs)
 
 
+@requires_raw_n02()
 def test_yamaguchi_pins_match_the_frozen_names_and_raw_n02_features() -> None:
     raw_path = Path(__file__).parents[2] / "N02-25_GML/UTF-8/N02-25_Station.geojson"
     raw = json.loads(raw_path.read_text(encoding="utf-8"))

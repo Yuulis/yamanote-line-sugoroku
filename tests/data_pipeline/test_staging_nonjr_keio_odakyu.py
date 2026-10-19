@@ -18,6 +18,7 @@ from scripts.data_pipeline.override_loading import load_overrides
 from scripts.data_pipeline.override_models import Stop, StopResolution
 from scripts.data_pipeline.registry import normalize_station_name
 from scripts.data_pipeline.routing import PairRoute, route_path
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 ROOT = Path(__file__).parents[2] / "data/staging/tokyo-suburban-nonjr/keio-odakyu"
 
@@ -44,6 +45,7 @@ def _service_evidence(service_id: str) -> list[dict[str, str]]:
     ]
 
 
+@requires_raw_n02()
 def test_keio_shinjuku_hatsudai_pair_is_restricted_to_southern_new_line_sections() -> (
     None
 ):
@@ -129,6 +131,7 @@ def test_keio_sasazuka_compatible_kanji_matches_the_frozen_station() -> None:
     assert evidence["status"] == "pass"
 
 
+@requires_raw_n02()
 def test_shared_branch_stops_pin_the_raw_code_for_each_continuing_line() -> None:
     expected = {
         "keio-main": {
@@ -321,6 +324,7 @@ def test_all_services_have_primary_length_breakdowns_and_measured_pairs() -> Non
     )
 
 
+@requires_raw_n02()
 def test_every_stop_selector_matches_its_measured_raw_n02_platform() -> None:
     measured: dict[str, dict[str, tuple[str, str]]] = {}
     for row in _csv(ROOT / "pair-evidence.csv"):

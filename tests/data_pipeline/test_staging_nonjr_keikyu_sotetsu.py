@@ -12,6 +12,7 @@ from scripts.data_pipeline.n02 import PlatformCandidate
 from scripts.data_pipeline.override_models import Stop, StopResolution
 from scripts.data_pipeline.registry import normalize_station_name
 from scripts.data_pipeline.stage_suburban_jr import _candidate_options
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 ROOT = Path(__file__).parents[2] / "data/staging/tokyo-suburban-nonjr/keikyu-sotetsu"
 RAW_STATIONS = Path(__file__).parents[2] / "N02-25_GML/UTF-8/N02-25_Station.geojson"
@@ -56,6 +57,7 @@ def test_group_inventory_and_pair_evidence_cover_frozen_services() -> None:
         }
 
 
+@requires_raw_n02()
 def test_keikyu_and_sotetsu_selectors_pin_frozen_name_raw_n02_features() -> None:
     raw = json.loads(RAW_STATIONS.read_text(encoding="utf-8"))["features"]
 

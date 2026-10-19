@@ -17,6 +17,7 @@ from scripts.data_pipeline.n02 import (
 from scripts.data_pipeline.override_models import Stop, StopResolution
 from scripts.data_pipeline.overrides import load_overrides
 from scripts.data_pipeline.stage_suburban_jr import _candidate_options
+from tests.data_pipeline._local_inputs import requires_raw_n02
 
 ROOT = Path(__file__).parents[2]
 STAGE = ROOT / "data/staging/tokyo-suburban-nonjr/tobu"
@@ -28,6 +29,7 @@ def _csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(stream))
 
 
+@requires_raw_n02()
 def test_oshiage_junction_matches_raw_n02_internal_vertex_and_peer_endpoint() -> None:
     service = STAGE / "components/tobu-daishi/overrides/services/tobu-oshiage"
     stop_rows = _csv(service / "stops.csv")
@@ -56,6 +58,7 @@ def test_oshiage_junction_matches_raw_n02_internal_vertex_and_peer_endpoint() ->
     assert len(split_reviewed_junctions(sections, [rule])) == len(sections) + 1
 
 
+@requires_raw_n02()
 def test_oshiage_build_loads_junction_and_routes_both_stops() -> None:
     overrides_dir = STAGE / "components/tobu-daishi/overrides"
     overrides = load_overrides(overrides_dir)
