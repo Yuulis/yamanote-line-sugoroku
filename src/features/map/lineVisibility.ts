@@ -23,6 +23,18 @@ export function backgroundServiceFilter(
     : ["all", targetFilter, primitiveFilter] as unknown as FilterSpecification;
 }
 
+/** Limit the base track to the target's own features while applying visibility. */
+export function targetTrackFilter(
+  featureIds: readonly string[] | null,
+  targetServiceId: string,
+): FilterSpecification {
+  const targetFilter: FilterSpecification = ["==", ["get", "serviceId"], targetServiceId];
+  const primitiveFilter = primitiveFeatureFilter(featureIds);
+  return primitiveFilter === null
+    ? targetFilter
+    : ["all", targetFilter, primitiveFilter] as unknown as FilterSpecification;
+}
+
 /** Apply UI visibility only to the two background layers; progress/highlight layers remain independent. */
 export function updateLineGroupVisibility(
   map: MapLibreMap,
@@ -32,7 +44,7 @@ export function updateLineGroupVisibility(
 ): void {
   const featureIds = visiblePrimitiveFeatureIds(index, selectedGroupIds);
   if (map.getLayer(LAYER_IDS.base)) {
-    map.setFilter(LAYER_IDS.base, primitiveFeatureFilter(featureIds));
+    map.setFilter(LAYER_IDS.base, targetTrackFilter(featureIds, targetServiceId));
   }
   if (map.getLayer(LAYER_IDS.services)) {
     map.setFilter(LAYER_IDS.services, backgroundServiceFilter(featureIds, targetServiceId));

@@ -44,7 +44,10 @@ export const LAYER_IDS = {
   stationCircles: "railway-stations-circle",
   /** Every other station: marked from ORDINARY_STATION_MIN_ZOOM up. */
   stationCirclesOrdinary: "railway-stations-circle-ordinary",
+  /** Transfer and target-line station names, from LABEL_MIN_ZOOM up. */
   stationLabels: "railway-stations-label",
+  /** Every other station name, from LABEL_ORDINARY_MIN_ZOOM up. */
+  stationLabelsOrdinary: "railway-stations-label-ordinary",
   currentPosition: "game-current-position-circle",
 } as const;
 
@@ -52,7 +55,11 @@ export const FALLBACK_LINE_COLOR = "#80c241";
 export const SEGMENT_LINE_WIDTH = 5;
 /** Other services remain visible beside the target's shared N02 track shape. */
 export const OTHER_SERVICE_LINE_WIDTH = 3;
-export const OTHER_SERVICE_LINE_OPACITY = 0.65;
+/**
+ * Drawn once, over no base track: matches the former 0.65 line over a 0.5
+ * base of the same colour within 14/255 per channel (C1 pixel comparison).
+ */
+export const OTHER_SERVICE_LINE_OPACITY = 0.75;
 export const CURRENT_SERVICE_LINE_WIDTH = 7;
 export const NETWORK_FIT_PADDING_DESKTOP = { top: 60, right: 70, bottom: 50, left: 340 };
 export const NETWORK_FIT_PADDING_PHONE = { top: 100, right: 60, left: 20 };

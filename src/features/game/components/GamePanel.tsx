@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from "react";
 import type { LineMetadata } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
@@ -41,31 +42,48 @@ export interface GamePanelProps {
   onShowTitle: () => void;
 }
 
-export function GamePanel(props: GamePanelProps) {
-  const { session, network, saveStatus, follow, reducedMotion } = props;
-  const presentation = props.presentation ?? createPresentationResolver(network);
+function showAllLineGroups(): void {
+  setVisibleLineGroupIds(null);
+}
+
+/** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
+export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
+  const { session, network, saveStatus, follow, reducedMotion, lines } = props;
+  const presentation = useMemo(
+    () => props.presentation ?? createPresentationResolver(network),
+    [props.presentation, network],
+  );
   const { game, phase } = session;
   const animating = phase === "animating";
   const canRoll = game.status === "playing" && phase === "idle";
   const ride = displayedRide(session);
   const currentService = network.servicesById.get(ride.serviceId);
-  const presentationGroups = presentation.lineGroups();
   const selectedGroupIds = useVisibleLineGroupIds();
   const targetColor = presentation.lineGroupColor(game.config.targetServiceId)
     ?? network.servicesById.get(game.config.targetServiceId)?.color;
   const candidates = session.lastMove?.landing?.serviceCandidates ?? [];
-  const legendGroups = buildMapPresentationGroups(
-    [...network.servicesById.values()],
-    props.lines,
-    presentationGroups,
-  ).map((group) => ({
-    id: group.id,
-    name: group.name,
-    operatorId: group.operatorId,
-    color: presentation.lineGroupColor(group.serviceIds[0] ?? "") ?? group.color,
-    serviceIds: group.serviceIds,
-  }));
-  const allGroupIds = legendGroups.map((group) => group.id);
+  const legendGroups = useMemo(
+    () => buildMapPresentationGroups(
+      [...network.servicesById.values()],
+      lines,
+      presentation.lineGroups(),
+    ).map((group) => ({
+      id: group.id,
+      name: group.name,
+      operatorId: group.operatorId,
+      color: presentation.lineGroupColor(group.serviceIds[0] ?? "") ?? group.color,
+      serviceIds: group.serviceIds,
+    })),
+    [network, lines, presentation],
+  );
+  const allGroupIds = useMemo(() => legendGroups.map((group) => group.id), [legendGroups]);
+  const toggleGroup = useCallback((groupId: string, checked: boolean) => {
+    setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, [groupId], checked));
+  }, [selectedGroupIds, allGroupIds]);
+  const setOperator = useCallback((operatorId: string, checked: boolean) => {
+    const groupIds = legendGroups.filter((group) => group.operatorId === operatorId).map((group) => group.id);
+    setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, groupIds, checked));
+  }, [legendGroups, selectedGroupIds, allGroupIds]);
   const saveFailed = saveStatus === "failed" || saveStatus === "unavailable";
 
   return (
@@ -138,15 +156,10 @@ export function GamePanel(props: GamePanelProps) {
         lines={legendGroups}
         targetColor={targetColor}
         selectedGroupIds={selectedGroupIds}
-        onToggleGroup={(groupId, checked) => {
-          setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, [groupId], checked));
-        }}
-        onSetOperator={(operatorId, checked) => {
-          const groupIds = legendGroups.filter((group) => group.operatorId === operatorId).map((group) => group.id);
-          setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, groupIds, checked));
-        }}
-        onShowAll={() => setVisibleLineGroupIds(null)}
+        onToggleGroup={toggleGroup}
+        onSetOperator={setOperator}
+        onShowAll={showAllLineGroups}
       />
     </section>
   );
-}
+});

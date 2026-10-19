@@ -6,10 +6,11 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
+import type { LivePosition } from "../game/animation/livePosition";
 import type { PresentationResolver } from "../game/presentationResolver";
 import { buildDataAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
@@ -30,6 +31,7 @@ import {
   NETWORK_FIT_PADDING_PHONE,
   NETWORK_FIT_PANEL_GAP,
   PHONE_MEDIA_QUERY,
+  SOURCE_IDS,
   isPhoneWidth,
 } from "./mapConfig";
 import {
@@ -56,12 +58,19 @@ interface RailwayMapProps {
   presentation?: PresentationResolver;
   /** Game progress to draw; omitted when no game is running. */
   progress?: MapProgress;
+  /** Per-frame marker position of a running move; overrides the progress position once set. */
+  livePosition?: LivePosition;
   follow?: MapFollow;
   /** New/resumed turn-0 session: fit the entire network even on a reused map. */
   overviewKey?: number;
   targetServiceId?: string;
   minZoom?: number;
 }
+
+const NO_LIVE_POSITION: LivePosition = {
+  subscribe: () => () => {},
+  get: () => null,
+};
 
 function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
   return onPhone ? "top-left" : "bottom-right";
@@ -136,7 +145,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -160,6 +169,9 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
   const [attempt, setAttempt] = useState(0);
   // The map instance once its layers exist, so progress can be applied to it.
   const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
+  // Bumped when a replaced style forced the layers to be re-added, so the
+  // progress and visibility effects below apply their state to them again.
+  const [layersRevision, setLayersRevision] = useState(0);
   // Set synchronously by a user camera gesture, before React re-renders with
   // following off, so no queued follow update can cancel the gesture.
   const userMovedRef = useRef(false);
@@ -199,13 +211,21 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
     phoneQuery?.addEventListener("change", onPhoneQueryChange);
     map.addControl(new NavigationControl({ showCompass: false }));
 
-    let loaded = false;
+    // Fatal until the basemap has rendered completely once ("load"): a failed
+    // style, or tiles failing so that never happens. Later tile errors are tolerated.
+    let basemapLoaded = false;
     map.on("error", () => {
-      // Tile errors after load are tolerated; only a failed style is fatal.
-      if (!loaded) setStyleFailed(true);
+      if (!basemapLoaded) setStyleFailed(true);
     });
-    map.on("load", () => {
-      loaded = true;
+    map.once("load", () => {
+      basemapLoaded = true;
+    });
+    // The railway layers need only the parsed style, not the basemap tiles, so
+    // they are added on "style.load" while the basemap is still loading.
+    let initialised = false;
+    map.on("style.load", () => {
+      // A replaced style drops custom layers; never add them twice.
+      if (map.getSource(SOURCE_IDS.currentPosition)) return;
       addRailwayLayers(map, {
         stations: data.stations.ok ? data.stations.value : undefined,
         services: data.services.ok ? data.services.value.services : undefined,
@@ -215,6 +235,11 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
         presentation,
         presentationIndex: mapPresentationIndex,
       });
+      if (initialised) {
+        setLayersRevision((revision) => revision + 1);
+        return;
+      }
+      initialised = true;
       fitNetworkOverview(map, initialServices);
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
@@ -237,19 +262,21 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
   }, [data, attempt, targetServiceId, minZoom, initialServices, presentation, mapPresentationIndex]);
 
   const completedFeatureIds = progress?.completedFeatureIds;
-  const position = progress?.currentPosition ?? null;
-  // Keyed by content: the list is rebuilt on animation frames but only
+  // Only this component re-renders on animation frames, not the game UI.
+  const framePosition = useSyncExternalStore(livePosition.subscribe, livePosition.get, livePosition.get);
+  const position = framePosition ?? progress?.currentPosition ?? null;
+  // Keyed by content: the list is rebuilt on every hop of a move but only
   // changes when a segment is finished, so the filters are set that often.
   const completedKey = completedFeatureIds?.join("\n");
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
-  }, [loadedMap, completedKey, targetServiceId]);
+  }, [loadedMap, layersRevision, completedKey, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
-  }, [loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId]);
+  }, [loadedMap, layersRevision, mapPresentationIndex, selectedGroupIds, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateCurrentPosition(loadedMap, position);
-  }, [loadedMap, position]);
+  }, [loadedMap, layersRevision, position]);
 
   useEffect(() => {
     if (loadedMap && overviewKey !== undefined && data.services.ok) {
@@ -266,7 +293,7 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
       serviceGeometry.get(highlightedServiceId ?? "") ?? [],
       presentation?.lineGroupColor(highlightedServiceId ?? "") ?? service?.color ?? "#80c241",
     );
-  }, [loadedMap, highlightedServiceId, services, serviceGeometry, presentation]);
+  }, [loadedMap, layersRevision, highlightedServiceId, services, serviceGeometry, presentation]);
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;

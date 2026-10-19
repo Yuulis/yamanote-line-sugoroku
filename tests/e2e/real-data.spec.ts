@@ -34,15 +34,22 @@ function gameAfterTurn(bundle: RailwayBundle, seed: string, turn: number) {
   return game;
 }
 
+/** Primitive ids of the base layer's visibility clause; null while every line group is shown. */
 async function filteredPrimitiveIds(page: Page): Promise<string[] | null> {
   return page.evaluate((layerId) => {
     const map = (window as unknown as { __sugorokuE2E: { map: { getFilter(id: string): unknown } } }).__sugorokuE2E.map;
     const filter = map.getFilter(layerId);
-    if (filter == null) return null;
+    // Target-scoped: ["==", serviceId, target], or ["all", that, ["in", ["get", "featureId"], ["literal", ids]]].
+    const isTargetClause = (clause: unknown) => Array.isArray(clause) && clause[0] === "==" &&
+      Array.isArray(clause[1]) && clause[1][1] === "serviceId";
+    if (isTargetClause(filter)) return null;
+    const visibility = Array.isArray(filter) && filter[0] === "all" && filter.length === 3 && isTargetClause(filter[1])
+      ? filter[2]
+      : undefined;
     if (
-      Array.isArray(filter) && filter[0] === "in" && Array.isArray(filter[2]) &&
-      filter[2][0] === "literal" && Array.isArray(filter[2][1])
-    ) return filter[2][1] as string[];
+      Array.isArray(visibility) && visibility[0] === "in" && Array.isArray(visibility[2]) &&
+      visibility[2][0] === "literal" && Array.isArray(visibility[2][1])
+    ) return visibility[2][1] as string[];
     throw new Error(`Unexpected primitive visibility filter: ${JSON.stringify(filter)}`);
   }, LAYER_IDS.base);
 }

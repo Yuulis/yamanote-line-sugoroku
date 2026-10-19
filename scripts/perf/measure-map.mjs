@@ -14,8 +14,9 @@
 //   gzips like the Vercel host does; `preview` is `vite preview`, which sends
 //   everything uncompressed and so overstates throttled transfer times.
 // - Per run: fresh browser context (cold cache), then records navigation,
-//   FCP, data/style fetch timings, the map `load` (hook assignment) and first
-//   `idle`, long tasks, and CDP Performance metrics. Then, unless
+//   FCP, data/style fetch timings, "map load" (hook assignment, i.e. railway
+//   layers added) and the first `idle` after it, long tasks, and CDP
+//   Performance metrics. Then, unless
 //   --no-interaction: an animated pan, an animated zoom, and three dice moves
 //   (seeded), each with rAF frame intervals and long tasks.
 // - `stub` tiles replace OpenFreeMap with the E2E stub (one background + water
@@ -256,7 +257,7 @@ async function movePhase(page) {
   return records.reduce((all, r) => ({ t0: all.t0, t1: all.t1 + (r.t1 - r.t0), ts: [...all.ts, ...r.ts.map((t) => t - r.t0 + all.t1)] }), { t0: records[0].t0, t1: records[0].t0, ts: [] });
 }
 
-const APP_LAYERS = ["railway-base", "railway-services", "railway-current-service", "railway-segments-pending", "railway-segments-completed", "railway-stations-circle", "railway-stations-circle-ordinary", "railway-stations-label", "game-current-position-circle"];
+const APP_LAYERS = ["railway-base", "railway-services", "railway-current-service", "railway-segments-pending", "railway-segments-completed", "railway-stations-circle", "railway-stations-circle-ordinary", "railway-stations-label", "railway-stations-label-ordinary", "game-current-position-circle"];
 /**
  * Ablation sets: layers hidden while the camera pans. "basemap-labels" hides
  * the background style's symbol and fill-extrusion layers, "basemap" every
@@ -265,8 +266,8 @@ const APP_LAYERS = ["railway-base", "railway-services", "railway-current-service
 const ABLATIONS = {
   all: [],
   noBase: ["railway-base"],
-  noLabels: ["railway-stations-label"],
-  noStations: ["railway-stations-circle", "railway-stations-circle-ordinary", "railway-stations-label"],
+  noLabels: ["railway-stations-label", "railway-stations-label-ordinary"],
+  noStations: ["railway-stations-circle", "railway-stations-circle-ordinary", "railway-stations-label", "railway-stations-label-ordinary"],
   noRailway: APP_LAYERS,
   noBasemapLabels: ["basemap-labels"],
   noBasemap: ["basemap"],
