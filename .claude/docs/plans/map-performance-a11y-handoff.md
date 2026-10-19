@@ -20,7 +20,7 @@ Branch `feature/map-performance-a11y` from `develop` (9bbda41). Prompts:
 |------|-------|----------|
 | Investigation | done — `cba1367` | `.claude/docs/research/c1-map-performance-baseline.md`, `c3-accessibility-audit.md`; `npm run perf:map` |
 | C1 implementation | done — `5b4dcdb` `5709bcc` `4f3408d` `0552a21`; CI green | `c1-map-performance-baseline.md` § C1 implementation result |
-| C3 implementation | in progress (Codex Luna xhigh, fast) | — |
+| C3 implementation | done — `cb05a2e` (A1–A6, M1, M2) and review fixes (next commit) | `tests/e2e/accessibility.spec.ts`; local E2E 160 passed / 2 skipped |
 | PR to develop, CI | not started (branch pushed for CI only) | — |
 
 ## C1 paused state (2026-10-19 19:10)
@@ -52,8 +52,16 @@ lead's record.
 
 ## Next step
 
-C1 resumed and finished on 2026-10-19: full local E2E (one Firefox race in the
-new style-reload spec fixed in `0552a21`), Codex Sol-low review (one Med finding
-fixed in `4f3408d`), live-tile A/B recorded in the research report (mobile map
-load 5.5 s → 2.5 s). Now: C3 via the command in the prompts file, then verify,
-Codex review, PR to develop.
+C3 done on 2026-10-19: Codex Luna xhigh implemented A1–A6, M1, M2 (local E2E
+145 passed); a Codex Sol-low review found four Medium issues (stale announcement
+after 新規, retry button inside `inert`, phone follow padding lingering on
+desktop, no re-centre on resize while stopped), fixed in one re-delegation with
+regression tests (local E2E 160 passed, 2 skipped; unit 655 passed).
+
+Known Low leftovers: RailwayMap observes `.game-panel` by class and does not
+re-attach when GamePanel remounts on 新規 (viewport resize still re-centres);
+audit Low items (K1 focus-visible, S1 MapLibre locale, M3–M5, S2–S4, C1, R1)
+not in scope; real screen readers and devices not tested.
+
+Then: PR feature/map-performance-a11y → develop after CI is green; release to
+master only with explicit user approval.
