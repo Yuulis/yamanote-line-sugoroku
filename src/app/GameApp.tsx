@@ -21,6 +21,7 @@ import { displayedRide } from "../features/game/presentation";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
+import type { LineMetadata } from "../types/network";
 
 interface GameAppProps {
   data: RailwayData;
@@ -30,6 +31,7 @@ interface GameAppProps {
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
 
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
+const NO_LINES: readonly LineMetadata[] = [];
 
 function speedById(id: AnimationSpeedId) {
   return ANIMATION_SPEEDS.find((speed) => speed.id === id) ?? ANIMATION_SPEEDS[1];
@@ -67,7 +69,7 @@ export function GameApp({ data, network }: GameAppProps) {
   const game = session?.game ?? null;
   const speed = speedById(speedId);
   const stepMs = reducedMotion ? 0 : speed?.stepMs ?? 0;
-  const view = useMoveAnimation(
+  const { view, livePosition } = useMoveAnimation(
     session?.animation ?? null,
     network,
     geometry,
@@ -93,6 +95,8 @@ export function GameApp({ data, network }: GameAppProps) {
   );
 
   const stopFollowing = useCallback(() => setFollow(false), []);
+  const toggleFollow = useCallback(() => setFollow((value) => !value), []);
+  const cycleSpeed = useCallback(() => setSpeedId(nextSpeedId), []);
   const animating = session?.phase === "animating";
   const mapFollow = useMemo<MapFollow>(
     () => ({
@@ -106,14 +110,16 @@ export function GameApp({ data, network }: GameAppProps) {
     [follow, game, reducedMotion, animating, stopFollowing],
   );
 
-  const startNewGame = () => {
+  // Callbacks passed to the memoised panel keep their identity between turns.
+  const { newGame, saveLookup, finishAnimation, showTitle: showTitleScreen } = app;
+  const startNewGame = useCallback(() => {
     setConfirm(null);
     setNotice(null);
-    app.newGame();
-  };
+    newGame();
+  }, [newGame]);
 
-  const requestNewGame = () => {
-    const saved = app.saveLookup?.kind === "valid" ? app.saveLookup.game : null;
+  const requestNewGame = useCallback(() => {
+    const saved = saveLookup?.kind === "valid" ? saveLookup.game : null;
     const current = game ?? saved;
     if (current?.status === "playing" && current.turn > 0) {
       const message = game
@@ -123,33 +129,27 @@ export function GameApp({ data, network }: GameAppProps) {
       return;
     }
     startNewGame();
-  };
+  }, [saveLookup, game, startNewGame]);
 
   const deleteSaveConfirmed = () => {
     setConfirm(null);
     setNotice(app.removeSave() ? "セーブデータを削除しました。" : "セーブデータを削除できませんでした。");
   };
 
-  const skip = () => {
-    if (session?.animation) app.finishAnimation(session.animation);
-  };
+  const currentAnimation = session?.animation;
+  const skip = useCallback(() => {
+    if (currentAnimation) finishAnimation(currentAnimation);
+  }, [currentAnimation, finishAnimation]);
 
-  const showTitle = () => {
+  const showTitle = useCallback(() => {
     setNotice(null);
-    app.showTitle();
-  };
+    showTitleScreen();
+  }, [showTitleScreen]);
 
   const showClear = session?.game.status === "completed" && session.phase === "idle";
 
   return (
     <>
-      <RailwayMap
-        data={data}
-        presentation={presentation}
-        progress={progress}
-        follow={mapFollow}
-        overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
-      />
       {app.state.screen === "title" && (
         <TitleScreen
           manifest={data.manifest.ok ? data.manifest.value : null}
@@ -158,6 +158,7 @@ export function GameApp({ data, network }: GameAppProps) {
           saveLookup={app.saveLookup}
           unavailableReason={null}
           notice={notice}
+          focusOnMount={app.state.lastSessionId > 0}
           onNewGame={requestNewGame}
           onResume={app.resume}
           onDeleteSave={() => setConfirm({ kind: "delete-save" })}
@@ -165,10 +166,11 @@ export function GameApp({ data, network }: GameAppProps) {
       )}
       {session && shown && !showClear && (
         <GamePanel
+          key={session.sessionId}
           session={session}
           network={network}
           presentation={presentation}
-          lines={data.services.ok ? data.services.value.lines : []}
+          lines={data.services.ok ? data.services.value.lines : NO_LINES}
           displayedStationId={shown.stationId}
           displayedCompletedCount={shown.completedSegmentIds.filter((id) => requiredIds.has(id)).length}
           requiredCount={requiredIds.size}
@@ -178,8 +180,8 @@ export function GameApp({ data, network }: GameAppProps) {
           reducedMotion={reducedMotion}
           onRoll={app.roll}
           onSkip={skip}
-          onToggleFollow={() => setFollow((value) => !value)}
-          onCycleSpeed={() => setSpeedId(nextSpeedId)}
+          onToggleFollow={toggleFollow}
+          onCycleSpeed={cycleSpeed}
           onNewGame={requestNewGame}
           onShowTitle={showTitle}
         />
@@ -212,6 +214,15 @@ export function GameApp({ data, network }: GameAppProps) {
           onCancel={() => setConfirm(null)}
         />
       )}
+      <RailwayMap
+        data={data}
+        presentation={presentation}
+        progress={progress}
+        livePosition={livePosition}
+        follow={mapFollow}
+        overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
+        inert={app.state.screen === "title" || showClear}
+      />
     </>
   );
 }

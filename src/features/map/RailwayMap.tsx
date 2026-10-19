@@ -6,10 +6,11 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
+import type { LivePosition } from "../game/animation/livePosition";
 import type { PresentationResolver } from "../game/presentationResolver";
 import { buildDataAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
@@ -30,6 +31,8 @@ import {
   NETWORK_FIT_PADDING_PHONE,
   NETWORK_FIT_PANEL_GAP,
   PHONE_MEDIA_QUERY,
+  SOURCE_IDS,
+  isBasemapError,
   isPhoneWidth,
 } from "./mapConfig";
 import {
@@ -56,12 +59,23 @@ interface RailwayMapProps {
   presentation?: PresentationResolver;
   /** Game progress to draw; omitted when no game is running. */
   progress?: MapProgress;
+  /** Per-frame marker position of a running move; overrides the progress position once set. */
+  livePosition?: LivePosition;
   follow?: MapFollow;
   /** New/resumed turn-0 session: fit the entire network even on a reused map. */
   overviewKey?: number;
+  /** Remove map controls from keyboard and assistive technology while another screen is active. */
+  inert?: boolean;
   targetServiceId?: string;
   minZoom?: number;
 }
+
+const NO_LIVE_POSITION: LivePosition = {
+  subscribe: () => () => {},
+  get: () => null,
+};
+const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
+const ZERO_MAP_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 
 function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
   return onPhone ? "top-left" : "bottom-right";
@@ -97,12 +111,36 @@ function phonePanelBottomPadding(map: MapLibreMap): number {
   return Math.max(0, containerBottom - panelTop) + NETWORK_FIT_PANEL_GAP;
 }
 
-/** Centre the camera on `position` without touching the zoom. */
-function recentre(map: MapLibreMap, position: Position, immediate: boolean): void {
+function usesBottomPanelCameraPadding(): boolean {
+  return isPhoneWidth() || (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(COMPACT_VIEWPORT_QUERY).matches
+  );
+}
+
+/**
+ * The layout the follow camera depends on: the map size and the bottom padding
+ * it reserves for the panel. On desktop the panel never pads the camera, so
+ * its size changes are not part of the key.
+ */
+function cameraLayoutKey(map: MapLibreMap): string {
+  const container = map.getContainer();
+  const bottom = usesBottomPanelCameraPadding() ? phonePanelBottomPadding(map) : 0;
+  return `${container.clientWidth}x${container.clientHeight}:${bottom}`;
+}
+
+/** Centre the camera on `position` without touching the zoom; true if it moved. */
+function recentre(map: MapLibreMap, position: Position, immediate: boolean, force = false): boolean {
   const { lng, lat } = map.getCenter();
-  if (!needsRecentre([lng, lat], position)) return;
-  if (immediate) map.jumpTo({ center: position });
-  else map.easeTo({ center: position, duration: FOLLOW_EASE_MS });
+  if (!force && !needsRecentre([lng, lat], position)) return false;
+  const padding = usesBottomPanelCameraPadding()
+    ? { top: 0, right: 0, bottom: phonePanelBottomPadding(map), left: 0 }
+    : ZERO_MAP_PADDING;
+  const camera = { center: position, padding };
+  if (immediate) map.jumpTo(camera);
+  else map.easeTo({ ...camera, duration: FOLLOW_EASE_MS });
+  return true;
 }
 
 function attachStationPopup(map: MapLibreMap): void {
@@ -136,7 +174,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, follow, overviewKey, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, overviewKey, inert = false, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -160,6 +198,10 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
   const [attempt, setAttempt] = useState(0);
   // The map instance once its layers exist, so progress can be applied to it.
   const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
+  // Bumped when a replaced style forced the layers to be re-added, so the
+  // progress and visibility effects below apply their state to them again.
+  const [layersRevision, setLayersRevision] = useState(0);
+  const [cameraLayoutRevision, setCameraLayoutRevision] = useState(0);
   // Set synchronously by a user camera gesture, before React re-renders with
   // following off, so no queued follow update can cancel the gesture.
   const userMovedRef = useRef(false);
@@ -199,13 +241,21 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
     phoneQuery?.addEventListener("change", onPhoneQueryChange);
     map.addControl(new NavigationControl({ showCompass: false }));
 
-    let loaded = false;
-    map.on("error", () => {
-      // Tile errors after load are tolerated; only a failed style is fatal.
-      if (!loaded) setStyleFailed(true);
+    // Fatal until the basemap has rendered completely once ("load"): a failed
+    // style, or tiles failing so that never happens. Later tile errors are tolerated.
+    let basemapLoaded = false;
+    map.on("error", (event) => {
+      if (!basemapLoaded && isBasemapError(event)) setStyleFailed(true);
     });
-    map.on("load", () => {
-      loaded = true;
+    map.once("load", () => {
+      basemapLoaded = true;
+    });
+    // The railway layers need only the parsed style, not the basemap tiles, so
+    // they are added on "style.load" while the basemap is still loading.
+    let initialised = false;
+    map.on("style.load", () => {
+      // A replaced style drops custom layers; never add them twice.
+      if (map.getSource(SOURCE_IDS.currentPosition)) return;
       addRailwayLayers(map, {
         stations: data.stations.ok ? data.stations.value : undefined,
         services: data.services.ok ? data.services.value.services : undefined,
@@ -215,6 +265,11 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
         presentation,
         presentationIndex: mapPresentationIndex,
       });
+      if (initialised) {
+        setLayersRevision((revision) => revision + 1);
+        return;
+      }
+      initialised = true;
       fitNetworkOverview(map, initialServices);
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
@@ -237,19 +292,21 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
   }, [data, attempt, targetServiceId, minZoom, initialServices, presentation, mapPresentationIndex]);
 
   const completedFeatureIds = progress?.completedFeatureIds;
-  const position = progress?.currentPosition ?? null;
-  // Keyed by content: the list is rebuilt on animation frames but only
+  // Only this component re-renders on animation frames, not the game UI.
+  const framePosition = useSyncExternalStore(livePosition.subscribe, livePosition.get, livePosition.get);
+  const position = framePosition ?? progress?.currentPosition ?? null;
+  // Keyed by content: the list is rebuilt on every hop of a move but only
   // changes when a segment is finished, so the filters are set that often.
   const completedKey = completedFeatureIds?.join("\n");
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
-  }, [loadedMap, completedKey, targetServiceId]);
+  }, [loadedMap, layersRevision, completedKey, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
-  }, [loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId]);
+  }, [loadedMap, layersRevision, mapPresentationIndex, selectedGroupIds, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateCurrentPosition(loadedMap, position);
-  }, [loadedMap, position]);
+  }, [loadedMap, layersRevision, position]);
 
   useEffect(() => {
     if (loadedMap && overviewKey !== undefined && data.services.ok) {
@@ -266,10 +323,43 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
       serviceGeometry.get(highlightedServiceId ?? "") ?? [],
       presentation?.lineGroupColor(highlightedServiceId ?? "") ?? service?.color ?? "#80c241",
     );
-  }, [loadedMap, highlightedServiceId, services, serviceGeometry, presentation]);
+  }, [loadedMap, layersRevision, highlightedServiceId, services, serviceGeometry, presentation]);
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;
+  const handledCameraLayoutRevisionRef = useRef(cameraLayoutRevision);
+  // The camera layout last applied by a follow move; null forces the next
+  // observed layout to be applied even if the marker is already centred.
+  const appliedCameraLayoutRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!loadedMap || !followEnabled) return;
+    appliedCameraLayoutRef.current = null;
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    const routeSummary = panel?.querySelector<HTMLElement>(".game-panel__route-summary");
+    let animationFrame = 0;
+    const requestLayoutUpdate = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = 0;
+        // A resize that leaves the camera layout unchanged (any panel resize
+        // on desktop) must not pull a moved camera back to the marker.
+        if (cameraLayoutKey(loadedMap) === appliedCameraLayoutRef.current) return;
+        setCameraLayoutRevision((revision) => revision + 1);
+      });
+    };
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(requestLayoutUpdate);
+    observer?.observe(loadedMap.getContainer());
+    if (panel) observer?.observe(panel);
+    if (routeSummary) observer?.observe(routeSummary);
+    window.addEventListener("resize", requestLayoutUpdate);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", requestLayoutUpdate);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [loadedMap, followEnabled]);
   // Declared before the camera effect: re-enabling following clears the
   // gesture flag before the camera recentres.
   useEffect(() => {
@@ -277,8 +367,21 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
   }, [followEnabled]);
   useEffect(() => {
     if (!loadedMap || !followEnabled || userMovedRef.current || !position) return;
-    recentre(loadedMap, position, immediate);
+    if (recentre(loadedMap, position, immediate)) {
+      appliedCameraLayoutRef.current = cameraLayoutKey(loadedMap);
+    }
   }, [loadedMap, followEnabled, position, immediate]);
+  // Layout changes only: re-checked here because a revision queued before a
+  // follow move applied the same layout is stale by the time it renders.
+  useEffect(() => {
+    if (handledCameraLayoutRevisionRef.current === cameraLayoutRevision) return;
+    if (!loadedMap || !followEnabled || userMovedRef.current || !position) return;
+    handledCameraLayoutRevisionRef.current = cameraLayoutRevision;
+    const layoutKey = cameraLayoutKey(loadedMap);
+    if (layoutKey === appliedCameraLayoutRef.current) return;
+    recentre(loadedMap, position, immediate, true);
+    appliedCameraLayoutRef.current = layoutKey;
+  }, [loadedMap, followEnabled, position, immediate, cameraLayoutRevision]);
 
   const retry = () => {
     setStyleFailed(false);
@@ -287,20 +390,22 @@ export function RailwayMap({ data, presentation, progress, follow, overviewKey, 
 
   return (
     <>
-      <div ref={containerRef} className="map-container" />
-      <div className="map-overview" aria-label="地図表示範囲">
-        <button type="button" disabled={!loadedMap} onClick={() => {
-          if (!loadedMap || !data.services.ok) return;
-          userMovedRef.current = true;
-          onUserCameraMoveRef.current?.();
-          fitNetworkOverview(loadedMap, data.services.value.services);
-        }}>全体</button>
-        <button type="button" disabled={!loadedMap} onClick={() => {
-          if (!loadedMap || !data.services.ok) return;
-          userMovedRef.current = true;
-          onUserCameraMoveRef.current?.();
-          fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
-        }}>目標路線</button>
+      <div inert={inert}>
+        <div ref={containerRef} className="map-container" />
+        <div className="map-overview" aria-label="地図表示範囲">
+          <button type="button" disabled={!loadedMap} onClick={() => {
+            if (!loadedMap || !data.services.ok) return;
+            userMovedRef.current = true;
+            onUserCameraMoveRef.current?.();
+            fitNetworkOverview(loadedMap, data.services.value.services);
+          }}>全体</button>
+          <button type="button" disabled={!loadedMap} onClick={() => {
+            if (!loadedMap || !data.services.ok) return;
+            userMovedRef.current = true;
+            onUserCameraMoveRef.current?.();
+            fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
+          }}>目標路線</button>
+        </div>
       </div>
       {unsupported && (
         <div className="map-error" role="status">

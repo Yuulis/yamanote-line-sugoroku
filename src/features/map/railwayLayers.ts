@@ -1,9 +1,15 @@
-import type { ExpressionSpecification, GeoJSONSource, Map as MapLibreMap } from "maplibre-gl";
+import type {
+  ExpressionSpecification,
+  GeoJSONSource,
+  Map as MapLibreMap,
+  SymbolLayerSpecification,
+} from "maplibre-gl";
 import type { Position, SegmentFeatureCollection } from "../../types/data";
 import type { LineMetadata, ServicePattern, Station } from "../../types/network";
 import type { PresentationResolver } from "../game/presentationResolver";
 import { MVP_GAME_CONFIG } from "../game/gameConfig";
 import { buildLineColorExpression, buildTrackColorExpression } from "./lineColor";
+import { targetTrackFilter } from "./lineVisibility";
 import {
   CURRENT_POSITION_COLOR,
   CURRENT_POSITION_RADIUS,
@@ -77,10 +83,13 @@ export function addRailwayLayers(
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
+    // Track under the target's dashed pending line; every other feature is
+    // drawn by the service layer above, so drawing it here too is wasted work.
     map.addLayer({
       id: LAYER_IDS.base,
       type: "line",
       source: SOURCE_IDS.segments,
+      filter: targetTrackFilter(null, targetServiceId),
       layout: { "line-cap": "round", "line-join": "round" },
       paint: { "line-color": buildTrackColorExpression(lines, services, presentation), "line-width": 2, "line-opacity": 0.5 },
     });
@@ -150,6 +159,7 @@ export function addRailwayLayers(
         presentationIndex?.serviceIdsByStation,
       ))],
     ];
+    const isKeyLabel: ExpressionSpecification = ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM];
     // Ordinary stations first so the always-visible markers are drawn on top.
     map.addLayer({
       id: LAYER_IDS.stationCirclesOrdinary,
@@ -176,35 +186,10 @@ export function addRailwayLayers(
         "circle-stroke-width": zoomInterpolation(KEY_STATION_STROKE_STOPS),
       },
     });
-    map.addLayer({
-      id: LAYER_IDS.stationLabels,
-      type: "symbol",
-      source: SOURCE_IDS.stations,
-      minzoom: LABEL_MIN_ZOOM,
-      layout: {
-        "text-field": ["get", "name"],
-        "text-font": LABEL_FONT,
-        "text-offset": [0, LABEL_OFFSET_EM],
-        "text-anchor": "top",
-        "text-size": [
-          "step",
-          ["zoom"],
-          0,
-          LABEL_MIN_ZOOM,
-          ["case", ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM], LABEL_SIZE, 0],
-          LABEL_ORDINARY_MIN_ZOOM,
-          LABEL_SIZE,
-        ],
-        "symbol-sort-key": ["get", "labelPriority"],
-        "text-allow-overlap": false,
-        "text-ignore-placement": false,
-      },
-      paint: {
-        "text-color": STATION_STROKE_COLOR,
-        "text-halo-color": LABEL_HALO_COLOR,
-        "text-halo-width": LABEL_HALO_WIDTH,
-      },
-    });
+    // Ordinary names below key ones, so key names are placed first; separate
+    // layers (not a zero text-size) keep hidden names from being shaped at all.
+    map.addLayer(stationLabelLayer(LAYER_IDS.stationLabelsOrdinary, LABEL_ORDINARY_MIN_ZOOM, ["!", isKeyLabel]));
+    map.addLayer(stationLabelLayer(LAYER_IDS.stationLabels, LABEL_MIN_ZOOM, isKeyLabel));
   }
   map.addSource(SOURCE_IDS.currentPosition, {
     type: "geojson",
@@ -221,6 +206,36 @@ export function addRailwayLayers(
       "circle-stroke-width": CURRENT_POSITION_STROKE_WIDTH,
     },
   });
+}
+
+/** Collision-aware station names of one tier, shown from `minzoom` up. */
+function stationLabelLayer(
+  id: string,
+  minzoom: number,
+  filter: ExpressionSpecification,
+): SymbolLayerSpecification {
+  return {
+    id,
+    type: "symbol",
+    source: SOURCE_IDS.stations,
+    minzoom,
+    filter,
+    layout: {
+      "text-field": ["get", "name"],
+      "text-font": LABEL_FONT,
+      "text-offset": [0, LABEL_OFFSET_EM],
+      "text-anchor": "top",
+      "text-size": LABEL_SIZE,
+      "symbol-sort-key": ["get", "labelPriority"],
+      "text-allow-overlap": false,
+      "text-ignore-placement": false,
+    },
+    paint: {
+      "text-color": STATION_STROKE_COLOR,
+      "text-halo-color": LABEL_HALO_COLOR,
+      "text-halo-width": LABEL_HALO_WIDTH,
+    },
+  };
 }
 
 /** Restyle segments as completed / pending; skips layers that failed to load. */

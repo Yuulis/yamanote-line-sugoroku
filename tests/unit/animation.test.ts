@@ -9,7 +9,10 @@ import {
   type StepPath,
   stepPath,
 } from "../../src/features/game/animation/movePath";
+import { createLivePosition } from "../../src/features/game/animation/livePosition";
 import { type FrameScheduler, runMoveAnimation } from "../../src/features/game/animation/runner";
+import { isSameStep } from "../../src/features/game/animation/useMoveAnimation";
+import type { MoveAnimation } from "../../src/features/game/gameSession";
 import {
   type AnimationFrame,
   easeInOut,
@@ -347,6 +350,38 @@ describe("runMoveAnimation", () => {
     expect(pendingCount()).toBe(0);
   });
 
+  it("moves the live marker on every frame but changes the panel state only when a hop finishes", () => {
+    const { scheduler, tick } = manualScheduler();
+    const animation: MoveAnimation = { sessionId: 1, turn: 1, fromStationId: "s0", events: [] };
+    const live = createLivePosition();
+    const markerMoves: (Position | null)[] = [];
+    live.subscribe(() => markerMoves.push(live.get()));
+    let panelState: { animation: MoveAnimation; frame: AnimationFrame } | null = null;
+    let panelUpdates = 0;
+    runMoveAnimation(steps, 100, scheduler, (frame) => {
+      live.set(frame.position);
+      if (isSameStep(panelState, animation, frame)) return;
+      panelState = { animation, frame };
+      panelUpdates += 1;
+    }, () => {});
+    for (let now = 0; now <= 200; now += 10) tick(now);
+
+    expect(markerMoves.length).toBeGreaterThan(15);
+    expect(live.get()).toEqual(positionAlong(steps[1]!, 1));
+    // Hop 0 in progress, hop 1 in progress, then done.
+    expect(panelUpdates).toBe(3);
+  });
+
+  it("treats a frame of another move as a new panel state", () => {
+    const frame: AnimationFrame = { stepsCompleted: 1, position: [0, 0], done: false };
+    const first: MoveAnimation = { sessionId: 1, turn: 1, fromStationId: "s0", events: [] };
+    const second: MoveAnimation = { ...first, turn: 2 };
+    expect(isSameStep({ animation: first, frame }, first, { ...frame, position: [1, 1] })).toBe(true);
+    expect(isSameStep({ animation: first, frame }, second, frame)).toBe(false);
+    expect(isSameStep({ animation: first, frame }, first, { ...frame, done: true })).toBe(false);
+    expect(isSameStep(null, first, frame)).toBe(false);
+  });
+
   it("catches up after a long pause (hidden tab)", () => {
     const { scheduler, tick } = manualScheduler();
     let done = 0;
@@ -402,5 +437,26 @@ describe("runMoveAnimation", () => {
     });
     expect(done).toBe(2);
     expect(pendingCount()).toBe(0);
+  });
+});
+
+describe("createLivePosition", () => {
+  it("notifies subscribers only when the position changes and stops after unsubscribe", () => {
+    const live = createLivePosition();
+    let calls = 0;
+    const unsubscribe = live.subscribe(() => {
+      calls += 1;
+    });
+    const position: Position = [139.7, 35.6];
+
+    expect(live.get()).toBeNull();
+    live.set(position);
+    live.set(position);
+    expect(calls).toBe(1);
+    expect(live.get()).toBe(position);
+    unsubscribe();
+    live.set(null);
+    expect(calls).toBe(1);
+    expect(live.get()).toBeNull();
   });
 });

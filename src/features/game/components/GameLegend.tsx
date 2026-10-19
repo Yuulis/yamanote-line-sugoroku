@@ -1,4 +1,4 @@
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, memo, useState } from "react";
 import { defaultLegendExpanded } from "./legendCollapse";
 
 export interface LegendLine {
@@ -23,14 +23,19 @@ const LEGEND_LIST_ID = "game-legend";
 const GROUP_LIST_ID = "game-legend-groups";
 const ALWAYS_VISIBLE_NOTE = "現在地・乗車中の路線・山手線の進捗は常に表示します。";
 
-/** Grouped UI legend; progress and current-position entries stay visible while groups collapse. */
-export function GameLegend({
+function noop(): void {}
+
+/**
+ * Grouped UI legend; progress and current-position entries stay visible while
+ * groups collapse. Memoised: its 100+ rows re-render only when its props change.
+ */
+export const GameLegend = memo(function GameLegend({
   lines,
   targetColor,
   selectedGroupIds = null,
-  onToggleGroup = () => {},
-  onSetOperator = () => {},
-  onShowAll = () => {},
+  onToggleGroup = noop,
+  onSetOperator = noop,
+  onShowAll = noop,
 }: GameLegendProps) {
   const [expanded, setExpanded] = useState(() => defaultLegendExpanded(lines.length));
   const style = { "--completed-line-color": targetColor } as CSSProperties;
@@ -119,4 +124,4 @@ export function GameLegend({
       )}
     </section>
   );
-}
+});

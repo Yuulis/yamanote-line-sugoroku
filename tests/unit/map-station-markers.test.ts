@@ -3,16 +3,20 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import {
   KEY_STATION_RADIUS_STOPS,
   KEY_STATION_STROKE_STOPS,
+  LABEL_MIN_ZOOM,
+  LABEL_ORDINARY_MIN_ZOOM,
   LAYER_IDS,
   ORDINARY_STATION_MIN_ZOOM,
   ORDINARY_STATION_RADIUS_STOPS,
   ORDINARY_STATION_STROKE_STOPS,
 } from "../../src/features/map/mapConfig";
 import { addRailwayLayers } from "../../src/features/map/railwayLayers";
+import { buildStationCollection } from "../../src/features/map/stationCollection";
 import { bindStationInteractions, STATION_MARKER_LAYERS } from "../../src/features/map/stationInteraction";
 import {
   classifyStation,
   classifyStations,
+  isStationLabelEligible,
   isStationMarkerVisible,
   keyStationIds,
   zoomInterpolation,
@@ -108,12 +112,13 @@ describe("shipped network markers", () => {
     });
   });
 
-  it("keeps one collision-aware label layer with per-station zoom eligibility and stable priority", () => {
+  it("splits collision-aware labels into key names from z11 and ordinary names from z13, with stable priority", () => {
     const layers: Record<string, Record<string, unknown>> = {};
+    const order: string[] = [];
     const sources: string[] = [];
     const map = {
       addSource: (id: string) => { sources.push(id); },
-      addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
+      addLayer: (layer: { id: string }) => { layers[layer.id] = layer; order.push(layer.id); },
     } as unknown as MapLibreMap;
     addRailwayLayers(map, {
       stations,
@@ -122,25 +127,63 @@ describe("shipped network markers", () => {
       geometry: bundle.data.geometry.ok ? bundle.data.geometry.value : undefined,
       targetServiceId: TARGET,
     });
-    const label = layers[LAYER_IDS.stationLabels]!;
+    const keyLabels = layers[LAYER_IDS.stationLabels]!;
+    const ordinaryLabels = layers[LAYER_IDS.stationLabelsOrdinary]!;
+    const isKeyLabel = ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM];
 
     expect(sources).toEqual(["railway-segments", "railway-stations", "game-current-position"]);
-    expect(Object.keys(layers)).toHaveLength(9);
-    expect(label.minzoom).toBe(11);
-    expect(label.layout).toMatchObject({
-      "symbol-sort-key": ["get", "labelPriority"],
-      "text-allow-overlap": false,
-      "text-ignore-placement": false,
+    expect(order).toHaveLength(10);
+    // Placement runs top-down: key names claim their space before ordinary ones.
+    expect(order.indexOf(LAYER_IDS.stationLabelsOrdinary)).toBe(order.indexOf(LAYER_IDS.stationLabels) - 1);
+    expect(keyLabels).toMatchObject({ minzoom: 11, filter: isKeyLabel });
+    expect(ordinaryLabels).toMatchObject({ minzoom: 13, filter: ["!", isKeyLabel] });
+    for (const label of [keyLabels, ordinaryLabels]) {
+      expect(label.layout).toMatchObject({
+        "text-size": 12,
+        "symbol-sort-key": ["get", "labelPriority"],
+        "text-allow-overlap": false,
+        "text-ignore-placement": false,
+      });
+    }
+  });
+
+  it("shows every station name from the same zoom as the single zero-size layer did", () => {
+    const layers: Record<string, { minzoom: number; filter: unknown }> = {};
+    const map = {
+      addSource: vi.fn(),
+      addLayer: (layer: { id: string; minzoom: number; filter: unknown }) => { layers[layer.id] = layer; },
+    } as unknown as MapLibreMap;
+    addRailwayLayers(map, { stations, services: [...network.servicesById.values()], targetServiceId: TARGET });
+    const keyLabels = layers[LAYER_IDS.stationLabels]!;
+    const ordinaryLabels = layers[LAYER_IDS.stationLabelsOrdinary]!;
+    // The key-label filter is ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM]; the ordinary one negates it.
+    expect(keyLabels.filter).toEqual(["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM]);
+    const collection = buildStationCollection(stations, [...network.servicesById.values()], undefined, undefined, TARGET);
+
+    for (const { properties } of collection.features) {
+      const layer = properties.labelEligibleAt === LABEL_MIN_ZOOM ? keyLabels : ordinaryLabels;
+      for (const zoom of [10.9, 11, 12.9, 13, 14]) {
+        expect(zoom >= layer.minzoom).toBe(isStationLabelEligible(properties.labelTier, zoom));
+      }
+    }
+    expect(collection.features.some((feature) => feature.properties.labelEligibleAt === LABEL_ORDINARY_MIN_ZOOM)).toBe(true);
+  });
+
+  it("draws the base track only under the target's own features", () => {
+    const layers: Record<string, Record<string, unknown>> = {};
+    const map = {
+      addSource: vi.fn(),
+      addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
+    } as unknown as MapLibreMap;
+    addRailwayLayers(map, {
+      stations,
+      services: [...network.servicesById.values()],
+      geometry: bundle.data.geometry.ok ? bundle.data.geometry.value : undefined,
+      targetServiceId: TARGET,
     });
-    expect(label.layout).toHaveProperty("text-size", [
-      "step",
-      ["zoom"],
-      0,
-      11,
-      ["case", ["==", ["get", "labelEligibleAt"], 11], 12, 0],
-      13,
-      12,
-    ]);
+
+    expect(layers[LAYER_IDS.base]?.filter).toEqual(["==", ["get", "serviceId"], TARGET]);
+    expect(layers[LAYER_IDS.services]?.filter).toEqual(["!=", ["get", "serviceId"], TARGET]);
   });
 });
 

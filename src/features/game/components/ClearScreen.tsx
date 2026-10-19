@@ -24,14 +24,21 @@ export function ClearScreen({ game, network, presentation, saveStatus, onPlayAga
   const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
   const historyRef = useRef<HTMLOListElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
   useLayoutEffect(() => {
     if (historyRef.current) historyRef.current.scrollTop = 0;
   }, [currentPage]);
+  useLayoutEffect(() => {
+    const screen = headingRef.current?.closest<HTMLElement>(".clear-screen");
+    if (!headingRef.current || !screen) return;
+    screen.scrollTop = 0;
+    headingRef.current.focus({ preventScroll: true });
+  }, []);
   const { turns, moves, transfers } = summarizeGame(game, presentation);
   const goalName = stationName(network, game.config.startStationId, presentation);
   return (
     <section className="clear-screen" aria-labelledby="clear-title">
-      <h1 id="clear-title" className="clear-screen__title">
+      <h1 ref={headingRef} id="clear-title" className="clear-screen__title" tabIndex={-1}>
         クリア！
       </h1>
       <p>山手線の外回り全30区間を踏破し、{goalName}に戻りました。</p>
@@ -72,7 +79,7 @@ export function ClearScreen({ game, network, presentation, saveStatus, onPlayAga
         </nav>
       )}
       <div className="clear-screen__actions">
-        <button type="button" className="button-primary" onClick={onPlayAgain} autoFocus>
+        <button type="button" className="button-primary" onClick={onPlayAgain}>
           もう一度遊ぶ
         </button>
         <button type="button" onClick={onShowTitle}>

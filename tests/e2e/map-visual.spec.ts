@@ -102,7 +102,7 @@ interface RenderedStationLabel {
 }
 
 async function renderedStationLabels(page: Page): Promise<RenderedStationLabel[]> {
-  return page.evaluate((layer) => {
+  return page.evaluate((layers) => {
     const hook = (window as unknown as {
       __sugorokuE2E: {
         map: {
@@ -112,21 +112,22 @@ async function renderedStationLabels(page: Page): Promise<RenderedStationLabel[]
         };
       };
     }).__sugorokuE2E;
-    return hook.map.queryRenderedFeatures({ layers: [layer] }).map((feature) => ({
+    return hook.map.queryRenderedFeatures({ layers }).map((feature) => ({
       id: feature.properties.id,
       name: feature.properties.name,
       labelTier: feature.properties.labelTier,
     }));
-  }, LAYER_IDS.stationLabels);
+  }, [LAYER_IDS.stationLabels, LAYER_IDS.stationLabelsOrdinary]);
 }
 
-async function stationLabelTextSizeExpression(page: Page): Promise<unknown> {
-  return page.evaluate((layer) => {
+/** Key names from z11, ordinary names from z13: [minzoom of the key layer, of the ordinary layer]. */
+async function stationLabelMinZooms(page: Page): Promise<unknown[]> {
+  return page.evaluate((layers) => {
     const hook = (window as unknown as {
-      __sugorokuE2E: { map: { getLayoutProperty(id: string, name: string): unknown } };
+      __sugorokuE2E: { map: { getLayer(id: string): { minzoom?: number } | undefined } };
     }).__sugorokuE2E;
-    return hook.map.getLayoutProperty(layer, "text-size");
-  }, LAYER_IDS.stationLabels);
+    return layers.map((layer) => hook.map.getLayer(layer)?.minzoom);
+  }, [LAYER_IDS.stationLabels, LAYER_IDS.stationLabelsOrdinary]);
 }
 
 async function startReadyGame(page: Page): Promise<void> {
@@ -242,15 +243,8 @@ test("real Japanese labels follow overview and zoom density at station hubs on d
     hook.map.jumpTo({ center, zoom: 11.5 });
   }, tokyo.coordinates);
   await expect.poll(async () => (await renderedStationLabels(page)).length).toBeGreaterThan(0);
-  expect(await stationLabelTextSizeExpression(page)).toEqual([
-    "step",
-    ["zoom"],
-    0,
-    11,
-    ["case", ["==", ["get", "labelEligibleAt"], 11], 12, 0],
-    13,
-    12,
-  ]);
+  expect(await stationLabelMinZooms(page)).toEqual([11, 13]);
+  expect((await renderedStationLabels(page)).filter((label) => label.labelTier === "ordinary")).toEqual([]);
 
   const shinjuku = railwayBundle.network.stationsById.get("shinjuku")!;
   await page.evaluate((center) => {

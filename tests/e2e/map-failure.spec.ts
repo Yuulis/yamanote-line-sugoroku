@@ -1,3 +1,4 @@
+import { LAYER_IDS, MAP_STYLE_URL } from "../../src/features/map/mapConfig";
 import { expect, test } from "./fixtures";
 import {
   gamePanel,
@@ -138,5 +139,36 @@ test("[8.3-6] tiles failing after the map loaded are tolerated without losing th
   await rollOnce(page);
   await expect(panelStat(page, "ターン数")).toHaveText("2");
   expect((await readSave(page))?.turn).toBe(2);
+  await expect(page.getByRole("alert").filter({ hasText: MAP_ERROR_TEXT })).toHaveCount(0);
+});
+
+test("a replaced background style gets the railway layers back once, with the progress", async ({
+  page,
+  railwayBundle,
+}) => {
+  await openTitle(page);
+  await startNewGame(page);
+  await rollOnce(page);
+  const save = await readSave(page);
+  if (!save) throw new Error("no save after a roll");
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+
+  // A full reload ("style.load" again on the same map), not a diff.
+  await page.evaluate((styleUrl) => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { setStyle(style: string, options: { diff: boolean }): void } } }).__sugorokuE2E;
+    hook.map.setStyle(styleUrl, { diff: false });
+  }, MAP_STYLE_URL);
+
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, save));
+  await expect
+    .poll(async () => [...((await readMap(page))?.completedFilterIds ?? [])].sort())
+    .toEqual(targetFeatureIds(save, railwayBundle).sort());
+  const railwayLayerIds = await page.evaluate(() => {
+    const hook = (window as unknown as { __sugorokuE2E: { map: { getStyle(): { layers: { id: string }[] } } } }).__sugorokuE2E;
+    return hook.map.getStyle().layers.map((layer) => layer.id).filter((id) => id.startsWith("railway-") || id.startsWith("game-"));
+  });
+  expect(railwayLayerIds).toEqual([...new Set(railwayLayerIds)]);
+  expect(railwayLayerIds).toContain(LAYER_IDS.base);
   await expect(page.getByRole("alert").filter({ hasText: MAP_ERROR_TEXT })).toHaveCount(0);
 });
