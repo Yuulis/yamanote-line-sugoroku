@@ -1,5 +1,6 @@
 import type { Manifest } from "../../../types/data";
 import type { GameState } from "../../../types/network";
+import { useLayoutEffect, useRef } from "react";
 import { CC_BY_LICENSE_NAME, CC_BY_URL, safeExternalUrl } from "../../map/attribution";
 import { MAP_CREDITS } from "../../map/mapConfig";
 import type { RailwayNetwork } from "../engine";
@@ -17,6 +18,8 @@ interface TitleScreenProps {
   unavailableReason: string | null;
   /** One-off message, e.g. a failed deletion. */
   notice: string | null;
+  /** Focus the heading when returning from a game. */
+  focusOnMount?: boolean;
   onNewGame: () => void;
   onResume: (game: GameState) => void;
   onDeleteSave: () => void;
@@ -123,10 +126,14 @@ const INTRO_COPY = "新橋から出発し、東京近郊区間のJR線と対象�
 /** Start screen (spec 6.1): title, rules, start / resume, credits. */
 export function TitleScreen(props: TitleScreenProps) {
   const { network, presentation, saveLookup, unavailableReason, notice } = props;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => {
+    if (props.focusOnMount) headingRef.current?.focus({ preventScroll: true });
+  }, [props.focusOnMount]);
   return (
     <main className="title-screen" aria-labelledby="game-title">
       <div className="title-screen__card">
-        <h1 id="game-title" className="title-screen__title">
+        <h1 ref={headingRef} id="game-title" className="title-screen__title" tabIndex={-1}>
           山手線すごろく
         </h1>
         <p className="title-screen__subtitle">東京近郊版</p>

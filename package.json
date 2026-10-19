@@ -14,7 +14,8 @@
     "test": "vitest run",
     "sim": "vitest run --config vitest.simulation.config.ts",
     "test:e2e": "playwright test",
-    "test:e2e:install": "playwright install chromium firefox"
+    "test:e2e:install": "playwright install chromium firefox",
+    "perf:map": "node scripts/perf/measure-map.mjs"
   },
   "dependencies": {
     "maplibre-gl": "6.11.2",
