@@ -20,8 +20,8 @@ Branch `feature/map-performance-a11y` from `develop` (9bbda41). Prompts:
 |------|-------|----------|
 | Investigation | done — `cba1367` | `.claude/docs/research/c1-map-performance-baseline.md`, `c3-accessibility-audit.md`; `npm run perf:map` |
 | C1 implementation | done — `5b4dcdb` `5709bcc` `4f3408d` `0552a21`; CI green | `c1-map-performance-baseline.md` § C1 implementation result |
-| C3 implementation | done — `cb05a2e` (A1–A6, M1, M2) and review fixes (next commit) | `tests/e2e/accessibility.spec.ts`; local E2E 160 passed / 2 skipped |
-| PR to develop, CI | not started (branch pushed for CI only) | — |
+| C3 implementation | done — `cb05a2e` (A1–A6, M1, M2), `740f1a0` review fixes, `80bcb33` WebKit follow-camera fix | `tests/e2e/accessibility.spec.ts`; local E2E 160 passed / 2 skipped |
+| PR to develop, CI | branch CI green on `80bcb33` (run 39264108613); PR opened | — |
 
 ## C1 paused state (2026-10-19 19:10)
 
@@ -62,6 +62,13 @@ Known Low leftovers: RailwayMap observes `.game-panel` by class and does not
 re-attach when GamePanel remounts on 新規 (viewport resize still re-centres);
 audit Low items (K1 focus-visible, S1 MapLibre locale, M3–M5, S2–S4, C1, R1)
 not in scope; real screen readers and devices not tested.
+
+CI WebKit then failed the Korakuen spec: any panel resize force-recentred the
+follow camera, pulling a programmatically moved camera back to the marker.
+Fixed in `80bcb33` (re-centre only when map size or phone panel padding
+changes) with a frame-based regression test; analysis in
+`.claude/docs/research/c3-webkit-korakuen-failure.md`. WebKit cannot run
+locally (missing system libraries).
 
 Then: PR feature/map-performance-a11y → develop after CI is green; release to
 master only with explicit user approval.
