@@ -112,3 +112,41 @@ reducing what is verified and without touching the required status checks
 
 C2 done (after CI proves the items above) -> B1 -> A1
 (`docs/manual/development-roadmap/proposal.md`).
+
+## Firefox WebGL flake (2026-10-20)
+
+Branch `fix/firefox-webgl-flake`. `desktop-firefox` failed or was flaky in
+roughly 1 of 2-4 runs (`accessibility.spec.ts:66`, once `:252`). Two
+mechanisms, both proven on the runner with temporary diagnostics (since
+removed; logs in `.claude/logs/firefox-flake/`):
+
+1. Firefox's launch-time GL probe (`gfxtest`) has a fixed 4 s deadline but
+   took 3.8-7.7 s on a cold runner (50-115 ms warm). A browser that misses it
+   blocklists WebGL2 ("AllowWebgl2:false restricts context creation") and
+   falls back to GLX. Fix: `webgl.force-enabled` in `playwright.config.ts`,
+   plus one throwaway Firefox launch under xvfb before the suite (`ci.yml`).
+2. The runner image has no libEGL, so `gfxtest` reports `TEST_TYPE GLX` and
+   WebGL runs on GLX, where creating a WebGL2 context right after losing one
+   (the map retry) failed 51 of 800 times (`FEATURE_FAILURE_WEBGL_EXHAUSTED_DRIVERS`);
+   0 of 800 with a 30 ms gap. Fix: install `libegl1 libegl-mesa0` on the
+   Firefox leg, giving `TEST_TYPE EGL`: 0 of 800.
+
+One worker for Firefox was tried and dropped: the single launch still missed
+the deadline and the leg took 204 s.
+
+| Commit | Change | Firefox-leg attempts | Result |
+|--------|--------|----------------------|--------|
+| `2df555e` | `webgl.force-enabled` | 7 | 5 clean, 1 flaky, 1 failed (`:66`, mechanism 2) |
+| `a7908c2` | + browser stderr logging | 5 | clean; 1 probe timeout seen (t=4.5 s) |
+| `d5e00a7` | + 1 worker (reverted) | 1 | clean; probe timeout with a single launch |
+| `d4b592c` | + probe timing | 1 | cold 7.2 s, warm 65 ms; flaky `:66` without a probe timeout |
+| `a9f8424` / `459d1ed` | re-creation probes | 2 | GLX (default prefs) 72 of 1200 failed, EGL 0 of 800 |
+| `cb63f38` | EGL + warm-up | 3 | clean, no probe timeout, no WebGL failure |
+| `a2dc18e` (final) | diagnostics removed | 7 (run 39376311969, a1-a7) | all 54 passed, 0 failed, 0 flaky; other legs green on a1 (verified by the lead) |
+
+Leg duration: develop 107-169 s per job; with the fix 129-166 s (warm-up
+step 7-12 s), still below phone-chromium (~240 s).
+
+Follow-up (app, not CI): `RailwayMap` turns any failed map construction into
+a permanent "no WebGL2" state. A real browser can hit the same transient
+re-creation failure; a retryable creation failure would be more robust.

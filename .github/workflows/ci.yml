@@ -204,6 +204,20 @@ jobs:
         env:
           BROWSER: ${{ matrix.browser }}
         run: npx playwright install --with-deps "$BROWSER"
+      # Firefox WebGL2 on the runner (desktop-firefox flakes, 2026-10-20):
+      # - Without Mesa's EGL the runner image has only GLX, and Firefox's GLX
+      #   path fails ~1 in 20 times to create a WebGL2 context right after the
+      #   page lost the previous one (map retry; FEATURE_FAILURE_WEBGL_
+      #   EXHAUSTED_DRIVERS). With libegl-mesa0 Firefox uses EGL: 0 of 800.
+      # - Firefox's launch-time GL probe (gfxtest) has a fixed 4 s deadline
+      #   but took 3.8-7.7 s on a cold runner; a browser that misses it falls
+      #   back to GLX and blocklists WebGL2. One throwaway launch loads the GL
+      #   libraries so the probe then takes ~0.1 s.
+      - name: Install Mesa EGL and warm up Firefox's GL probe
+        if: matrix.browser == 'firefox'
+        run: |
+          sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0
+          xvfb-run --auto-servernum npx playwright screenshot --browser=firefox about:blank "$RUNNER_TEMP/firefox-warm-up.png"
       # Headless Firefox on Linux only gets a GL backend (and so WebGL2, which
       # MapLibre requires) through an X display; runners have none, so Firefox
       # reports "AllowWebgl2:false" and the app never renders. Every leg keeps
