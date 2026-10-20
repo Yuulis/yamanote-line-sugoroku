@@ -90,6 +90,17 @@ reducing what is verified and without touching the required status checks
 5. Push + open PR produce exactly one run per SHA.
 6. Per-browser cache keys are created and hit on the second run.
 
+## Real CI Results
+
+- Run 39348962157 (`2b2135d`, 2026-10-20): all jobs success, wall time
+  4.5 min (previously 9.75-11.97 min). Legs: desktop-chromium 54 passed +
+  1 skipped (2.6m), phone-chromium 55 passed (3.6m), desktop-firefox 54 + 1
+  (1.5m), desktop-webkit 54 + 1 (2.1m) = 217 passed + 3 skipped = 220.
+  Item 1 verified; phone-chromium is the critical leg.
+- Item 4 cannot be proven on this branch: its diff against develop includes
+  `ci.yml`, so every push here runs full E2E by design. Verify on the first
+  docs-only branch after merge.
+
 ## Residual Risks
 
 - `[skip ci]` in a commit message skips the whole workflow and leaves the
