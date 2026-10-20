@@ -213,6 +213,8 @@ jobs:
       - name: Run E2E tests
         env:
           PROJECT: ${{ matrix.project }}
+          # TEMPORARY diagnostics (fix/firefox-webgl-flake): browser stdout/stderr.
+          DEBUG: ${{ matrix.project == 'desktop-firefox' && 'pw:browser' || '' }}
         run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT"
       - name: Upload Playwright report and traces
         if: failure()
