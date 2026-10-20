@@ -27,7 +27,7 @@ where available) without changing save format or rules.
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
 | Decisions + prompt | done | — | 2026-10-20 |
-| Implementation (Luna) | pending | | |
+| Implementation (Luna) | done | 20d80928e2df42c3fbb0ffc9fee6a55291c772d8 | typecheck; unit: 35 files, 682 passed/1 skipped; build; desktop Chromium: 54 passed/1 skipped; phone Chromium: 55 passed |
 | Lead verification + CI | pending | | |
 
 ## Notes
