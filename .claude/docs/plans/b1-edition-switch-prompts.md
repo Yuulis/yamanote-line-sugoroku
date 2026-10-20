@@ -121,3 +121,57 @@ for current players.
 
 Reply with: commits (SHA + subject), acceptance command results (pass/fail
 counts), any deviation from the plan and why, anything left unrun.
+
+## P3: Implement commits 4–6 (Luna high)
+
+### Objective
+
+Implement commits 4, 5 and 6 of `.claude/docs/plans/b1-edition-switch-plan.md`
+exactly as specified there, one git commit per step, on top of the finished
+commits 1–3 (see the step table in `.claude/docs/plans/b1-edition-switch-handoff.md`).
+
+### Constraints
+
+- The plan is the spec. Where it is ambiguous, keep current single-edition
+  behaviour byte-identical and note the choice in your reply.
+- `display.documentTitle` is now `山手線すごろく — 東京近郊版` (matches
+  `index.html`; pinned by `tests/unit/edition-registry.test.ts`). When `App`
+  sets `document.title` in commit 5, the single-edition tab title must stay
+  exactly that.
+- `jsdom` is approved as a devDependency for DOM tests only: pin an exact
+  version (no `^`/`~`), install with `npm install --save-dev --save-exact`,
+  and keep existing tests in the Node environment (per-file
+  `// @vitest-environment jsdom`).
+- No fake or fixture edition in production code; two-edition behaviour is
+  tested only with fixtures under `tests/unit/fixtures/`.
+- Do not weaken, skip or delete existing tests. No engine, RNG, save payload,
+  save version, data or pipeline changes.
+- Follow `.claude/rules/coding-principles.md` and `.claude/rules/testing.md`;
+  match surrounding code style. `docs/manual/**` content is Japanese
+  (`.claude/rules/manual-docs.md`).
+- Commit messages: conventional style, each ending with a blank line and
+  `Co-Authored-By: Codex (gpt-6-luna) <noreply@openai.com>`. Do not push.
+- Do not edit files under `.claude/` except the step table in
+  `.claude/docs/plans/b1-edition-switch-handoff.md` (fill SHA and evidence for
+  steps 4–6, in a separate `docs:` commit).
+
+### Acceptance
+
+- Commit 4: `npm run typecheck`;
+  `npx vitest run tests/unit/edition-picker.test.ts tests/unit/edition-registry.test.ts`;
+  `npm run build`
+- Commit 5: `npm run typecheck`;
+  `npx vitest run tests/unit/edition-app.test.ts tests/unit/edition-loading.test.ts tests/unit/edition-runtime.test.ts tests/unit/persistence.test.ts`;
+  `npm test`; `npm run build`;
+  `npm run test:e2e -- --project=desktop-chromium`
+- Commit 6: `npm run typecheck`; `npm test`; `npm run build`;
+  `npm run test:e2e -- --project=desktop-chromium`;
+  `npm run test:e2e -- --project=phone-chromium`.
+  Firefox and WebKit run on CI only (WebKit cannot run on this WSL2 host);
+  report them as "CI only", do not try to install system packages.
+
+### Output
+
+Reply with: commits (SHA + subject), acceptance results (pass/fail counts),
+the exact `jsdom` version added, any deviation from the plan and why,
+anything left unrun.
