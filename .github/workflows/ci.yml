@@ -165,12 +165,6 @@ jobs:
   # One leg per Playwright project (decision A, 2026-10-20), each exactly the
   # old job's work for that project: same tests, 2 workers, retries, xvfb.
   # Runs in parallel with `frontend`: it builds its own e2e bundle.
-  # Exception: desktop-firefox runs 1 worker. Each Firefox launch probes the
-  # GL driver (gfxtest) under a fixed 4 s deadline; two browsers starting at
-  # once on the runner made it miss that deadline, and a browser that missed
-  # it runs WebGL in a fallback mode whose context re-creation fails
-  # intermittently (accessibility.spec.ts:66, 2026-10-20). One worker means
-  # one browser launch at a time.
   e2e-matrix:
     name: E2E leg (${{ matrix.project }})
     needs: changes
@@ -183,7 +177,7 @@ jobs:
         include:
           - { project: desktop-chromium, browser: chromium }
           - { project: phone-chromium, browser: chromium }
-          - { project: desktop-firefox, browser: firefox, workers: 1 }
+          - { project: desktop-firefox, browser: firefox }
           - { project: desktop-webkit, browser: webkit }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -219,10 +213,9 @@ jobs:
       - name: Run E2E tests
         env:
           PROJECT: ${{ matrix.project }}
-          WORKERS: ${{ matrix.workers }}
           # TEMPORARY diagnostics (fix/firefox-webgl-flake): browser stdout/stderr.
           DEBUG: ${{ matrix.project == 'desktop-firefox' && 'pw:browser' || '' }}
-        run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT" ${WORKERS:+--workers="$WORKERS"}
+        run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT"
       - name: Upload Playwright report and traces
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
