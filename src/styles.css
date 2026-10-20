@@ -464,12 +464,19 @@ button[aria-disabled="true"] {
 
 .clear-screen__actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 2fr 1fr;
   gap: 8px;
   margin-top: 12px;
 }
 
-.clear-screen__actions button:focus-visible,
+.clear-screen__share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clear-screen__share button:focus-visible,
 .clear-screen__share-fallback textarea:focus-visible {
   outline: 3px solid #1565c0;
   outline-offset: 2px;
@@ -477,6 +484,10 @@ button[aria-disabled="true"] {
 
 .clear-screen__share-status {
   margin: 8px 0 0;
+}
+
+.clear-screen__share-status:empty {
+  margin: 0;
 }
 
 .clear-screen__share-fallback {

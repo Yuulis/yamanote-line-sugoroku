@@ -83,7 +83,6 @@ describe("ClearScreen result sharing", () => {
 
   it("hides share when unavailable and shows it when supported", () => {
     const unavailable = mountClearScreen(createResultShareActions(undefined, undefined));
-    expect(unavailable.container.querySelector('button[aria-label="共有"]')).toBeNull();
     expect([...unavailable.container.querySelectorAll("button")].some((button) => button.textContent === "共有")).toBe(false);
     unavailable.cleanup();
 
@@ -106,7 +105,8 @@ describe("ClearScreen result sharing", () => {
     const share = vi.fn().mockRejectedValue(Object.assign(new Error("cancelled"), { name: "AbortError" }));
     const mounted = mountClearScreen(createResultShareActions(undefined, { share }));
     await click([...mounted.container.querySelectorAll("button")].find((button) => button.textContent === "共有")!);
-    expect(mounted.container.querySelector('[role="status"]')).toBeNull();
+    expect(share).toHaveBeenCalledWith({ text: expectedText });
+    expect(mounted.container.querySelector('[role="status"]')?.textContent).toBe("");
     expect(mounted.container.querySelector("textarea")).toBeNull();
     mounted.cleanup();
   });

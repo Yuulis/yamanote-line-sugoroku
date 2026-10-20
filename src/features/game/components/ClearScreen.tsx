@@ -102,9 +102,19 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
           <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)}>次のページ</button>
         </nav>
       )}
-      <div className="clear-screen__actions">
+      <div className="clear-screen__share">
         <button type="button" onClick={copyResult}>結果をコピー</button>
         {canShare && <button type="button" onClick={shareResult}>共有</button>}
+      </div>
+      {/* Always mounted so screen readers announce later messages. */}
+      <p className="clear-screen__share-status" role="status">{shareMessage}</p>
+      {showShareText && (
+        <div className="clear-screen__share-fallback">
+          <label htmlFor="clear-share-text">共有する結果</label>
+          <textarea id="clear-share-text" readOnly value={shareText} rows={4} />
+        </div>
+      )}
+      <div className="clear-screen__actions">
         <button type="button" className="button-primary" onClick={onPlayAgain}>
           もう一度遊ぶ
         </button>
@@ -112,13 +122,6 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
           タイトルへ
         </button>
       </div>
-      {shareMessage !== null && <p className="clear-screen__share-status" role="status">{shareMessage}</p>}
-      {showShareText && (
-        <div className="clear-screen__share-fallback">
-          <label htmlFor="clear-share-text">共有する結果</label>
-          <textarea id="clear-share-text" readOnly value={shareText} rows={4} />
-        </div>
-      )}
     </section>
   );
 }

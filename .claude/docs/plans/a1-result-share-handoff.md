@@ -27,8 +27,8 @@ where available) without changing save format or rules.
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
 | Decisions + prompt | done | — | 2026-10-20 |
-| Implementation (Luna) | done | 20d80928e2df42c3fbb0ffc9fee6a55291c772d8 | typecheck; unit: 35 files, 682 passed/1 skipped; build; desktop Chromium: 54 passed/1 skipped; phone Chromium: 55 passed |
-| Lead verification + CI | pending | | |
+| Implementation (Luna) | done | `20d8092` | typecheck; unit: 35 files, 682 passed/1 skipped; build; desktop Chromium: 54 passed/1 skipped; phone Chromium: 55 passed |
+| Lead verification + CI | in progress | see next commit | Lead fixes: share buttons in their own row (actions grid back to 2fr 1fr), status region always mounted, vacuous `aria-label` assertion removed; `npm test` 682 passed / 1 skipped; clear-screen E2E on desktop/phone Chromium 20 passed |
 
 ## Notes
 
