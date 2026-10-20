@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { MVP_GAME_CONFIG, EXPECTED_STATION_COUNTS } from "../../src/features/game/gameConfig";
 import { SAVE_STORAGE_KEY } from "../../src/features/game/store/persistence";
@@ -41,10 +43,12 @@ describe("edition registry", () => {
     expect(edition.dataBaseUrl).toBe(`${import.meta.env.BASE_URL}data/`);
     expect(edition.config).toEqual(MVP_GAME_CONFIG);
     expect(edition.expectedStationCounts).toEqual(EXPECTED_STATION_COUNTS);
+    const indexHtml = readFileSync(fileURLToPath(new URL("../../index.html", import.meta.url)), "utf8");
+    expect(indexHtml).toContain(`<title>${edition.display.documentTitle}</title>`);
     expect(edition.display).toEqual({
       title: "山手線すごろく",
       subtitle: "東京近郊版",
-      documentTitle: "山手線すごろく",
+      documentTitle: "山手線すごろく — 東京近郊版",
       ruleParagraphs: [
         ["新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。山手線と他の路線がある駅では、3分の2の確率で山手線を選び、残りの確率を他の運行系統に均等に割り当てます。他の路線で方向を抽選するときは、山手線に近づく方向の抽選重みが反対方向の2倍になります。"],
         ["山手線は", { strong: "外回り" }, "に固定。他路線では毎回方向を抽選し、終点・エリア端で余った目は使いません。"],
