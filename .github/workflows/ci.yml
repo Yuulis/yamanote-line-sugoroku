@@ -223,13 +223,17 @@ jobs:
           echo "exit=$rc ms=$(( ($(date +%s%N) - start) / 1000000 ))"; tail -2 /tmp/gfx.txt
           EOS
           for i in 1 2 3; do xvfb-run --auto-servernum bash /tmp/probe.sh "$FF"; done
+          cat /tmp/gfx.txt
+          ls -l /usr/lib/x86_64-linux-gnu/libEGL* || true
+          dpkg -l | grep -i -E 'egl|mesa' || true
           F='"webgl.force-enabled":true'
           probe() { xvfb-run --auto-servernum node .github/tmp-webgl-probe.mjs "$@"; }
+          probe glx-base "{$F}" 0 & probe glx-base "{$F}" 0 & wait
+          sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0 > /tmp/apt.log 2>&1 || tail -5 /tmp/apt.log
+          for i in 1 2; do xvfb-run --auto-servernum bash /tmp/probe.sh "$FF"; done
+          cat /tmp/gfx.txt
           for v in 1 2; do
-            probe base "{$F}" 0 & probe base "{$F}" 0 & wait
-            probe no-oop "{$F,\"webgl.out-of-process\":false}" 0 & probe no-oop "{$F,\"webgl.out-of-process\":false}" 0 & wait
-            probe glx "{$F,\"gfx.x11-egl.force-disabled\":true}" 0 & probe glx "{$F,\"gfx.x11-egl.force-disabled\":true}" 0 & wait
-            probe delay30 "{$F}" 30 & probe delay30 "{$F}" 30 & wait
+            probe egl-base "{$F}" 0 & probe egl-base "{$F}" 0 & wait
           done
       - name: Run E2E tests
         env:
