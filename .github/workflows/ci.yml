@@ -210,6 +210,19 @@ jobs:
       # the same wrapper; Chromium/WebKit stay headless under it.
       # No --pass-with-no-tests: a mistyped project must fail with
       # "No tests found".
+      # TEMPORARY diagnostics (fix/firefox-webgl-flake): how long Firefox's
+      # GL probe takes on a cold and a warm runner.
+      - name: TEMP time gfxtest
+        if: matrix.project == 'desktop-firefox'
+        run: |
+          nproc; free -m | head -2
+          FF=$(ls -d ~/.cache/ms-playwright/firefox-*/firefox)
+          cat > /tmp/probe.sh <<'EOS'
+          start=$(date +%s%N)
+          "$1/gfxtest" glx -f 1 > /tmp/gfx.txt; rc=$?
+          echo "exit=$rc ms=$(( ($(date +%s%N) - start) / 1000000 ))"; tail -2 /tmp/gfx.txt
+          EOS
+          for i in 1 2 3; do xvfb-run --auto-servernum bash /tmp/probe.sh "$FF"; done
       - name: Run E2E tests
         env:
           PROJECT: ${{ matrix.project }}
