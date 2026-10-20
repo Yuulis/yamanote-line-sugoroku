@@ -14,6 +14,7 @@ import {
   DEFAULT_ANIMATION_SPEED,
 } from "../features/game/gameConfig";
 import type { Edition } from "../features/editions/types";
+import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
@@ -27,6 +28,13 @@ interface GameAppProps {
   data: RailwayData;
   network: RailwayNetwork;
   edition: Edition;
+  picker: {
+    editions: EditionRegistry;
+    editionId: EditionId;
+    onEditionChange: (id: EditionId) => void;
+    focusPicker: boolean;
+    onPickerFocusRestored: () => void;
+  };
 }
 
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
@@ -44,7 +52,7 @@ function nextSpeedId(id: AnimationSpeedId): AnimationSpeedId {
 }
 
 /** Title, play and clear screens over one persistent map. */
-export function GameApp({ data, network, edition }: GameAppProps) {
+export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const storage = useMemo(getBrowserStorage, []);
   const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
   const presentation = useMemo(
@@ -157,6 +165,7 @@ export function GameApp({ data, network, edition }: GameAppProps) {
           network={network}
           presentation={presentation}
           display={edition.display}
+          {...picker}
           saveLookup={app.saveLookup}
           unavailableReason={null}
           notice={notice}

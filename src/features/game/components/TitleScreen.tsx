@@ -9,6 +9,8 @@ import { stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
+import type { EditionId, EditionRegistry } from "../../editions/types";
+import { EditionPicker } from "./EditionPicker";
 
 interface TitleScreenProps {
   manifest: Manifest | null;
@@ -16,6 +18,12 @@ interface TitleScreenProps {
   network: RailwayNetwork | null;
   presentation?: PresentationResolver;
   display?: EditionDisplay;
+  editions?: EditionRegistry;
+  editionId?: EditionId;
+  onEditionChange?: (id: EditionId) => void;
+  focusPicker?: boolean;
+  onPickerFocusRestored?: () => void;
+  loading?: boolean;
   saveLookup: SaveLookup | null;
   /** Why the game cannot start (data failed to load); blocks starting. */
   unavailableReason: string | null;
@@ -139,7 +147,17 @@ export function TitleScreen(props: TitleScreenProps) {
           {display.title}
         </h1>
         <p className="title-screen__subtitle">{display.subtitle}</p>
-        {display.ruleParagraphs.map((paragraph, paragraphIndex) => (
+        {props.editions && props.editionId && props.onEditionChange && (
+          <EditionPicker
+            editions={props.editions}
+            value={props.editionId}
+            onChange={props.onEditionChange}
+            focusOnMount={!props.loading && props.focusPicker}
+            onFocusRestored={props.onPickerFocusRestored}
+          />
+        )}
+        {props.loading && <p className="title-screen__loading" role="status">読み込み中…</p>}
+        {!props.loading && display.ruleParagraphs.map((paragraph, paragraphIndex) => (
           <p key={paragraphIndex}>
             {paragraph.map((part, partIndex) => typeof part === "string"
               ? <Fragment key={partIndex}>{part}</Fragment>
@@ -156,7 +174,7 @@ export function TitleScreen(props: TitleScreenProps) {
             {notice}
           </p>
         )}
-        <div className="title-screen__actions">
+        {!props.loading && <div className="title-screen__actions">
           {network && (
             <SaveSection
               saveLookup={saveLookup}
@@ -174,7 +192,7 @@ export function TitleScreen(props: TitleScreenProps) {
           >
             はじめから
           </button>
-        </div>
+        </div>}
         <Credits manifest={props.manifest} />
       </div>
     </main>

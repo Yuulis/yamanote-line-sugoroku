@@ -9,6 +9,7 @@ export interface MountedReact {
 }
 
 export function mountReact(node: ReactNode): MountedReact {
+  (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
@@ -23,4 +24,15 @@ export function mountReact(node: ReactNode): MountedReact {
       container.remove();
     },
   };
+}
+
+export async function flushReact(): Promise<void> {
+  await act(async () => {
+    await new Promise<void>((resolve) => setImmediate(resolve));
+    await new Promise<void>((resolve) => setImmediate(resolve));
+  });
+}
+
+export function dispatchReactEvent(element: Element, event: Event): void {
+  act(() => element.dispatchEvent(event));
 }

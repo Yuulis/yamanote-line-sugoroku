@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { EditionPicker } from "../../src/features/game/components/EditionPicker";
 import { FIXTURE_EDITIONS } from "./fixtures/editions";
-import { mountReact } from "./helpers/reactDom";
+import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
 
 describe("EditionPicker", () => {
   it("renders no control for one edition", () => {
@@ -23,7 +23,7 @@ describe("EditionPicker", () => {
     expect(mounted.container.querySelector(`label[for="${select.id}"]`)?.textContent).toBe("遊ぶ版");
     expect([...select.options].map((option) => option.textContent)).toEqual(["試験版A", "試験版B"]);
     select.value = "fixture-b";
-    select.dispatchEvent(new Event("change", { bubbles: true }));
+    dispatchReactEvent(select, new Event("change", { bubbles: true }));
     expect(onChange).toHaveBeenCalledWith("fixture-b");
     mounted.cleanup();
   });
