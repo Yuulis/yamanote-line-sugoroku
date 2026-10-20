@@ -1,53 +1,34 @@
-import { useEffect, useMemo, useState } from "react";
-import { listFailures, loadRailwayData, type RailwayData } from "../data/loaders";
-import { TitleScreen } from "../features/game/components/TitleScreen";
-import { networkFromData } from "../features/game/networkFromData";
-import { RailwayMap } from "../features/map/RailwayMap";
-import { DataErrorBanner } from "./DataErrorBanner";
-import { GameApp } from "./GameApp";
+import { useCallback, useEffect, useState } from "react";
+import { EDITIONS, getEdition } from "../features/editions/registry";
+import type { EditionId, EditionRegistry } from "../features/editions/types";
+import { setVisibleLineGroupIds } from "../features/map/lineVisibilityStore";
+import { EditionApp } from "./EditionApp";
 
-const DATA_BASE_URL = `${import.meta.env.BASE_URL}data/`;
+interface AppProps {
+  editions?: EditionRegistry;
+}
 
-function noop(): void {}
-
-export function App() {
-  const [data, setData] = useState<RailwayData | null>(null);
-
+export function App({ editions = EDITIONS }: AppProps) {
+  const [editionId, setEditionId] = useState<EditionId>(editions[0].id);
+  const [focusPicker, setFocusPicker] = useState(false);
+  const edition = getEdition(editionId, editions) ?? editions[0];
   useEffect(() => {
-    let cancelled = false;
-    loadRailwayData(DATA_BASE_URL).then((loaded) => {
-      if (!cancelled) setData(loaded);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    document.title = edition.display.documentTitle;
+  }, [edition]);
+  const changeEdition = useCallback((id: EditionId) => {
+    if (id === editionId || !getEdition(id, editions)) return;
+    setVisibleLineGroupIds(null);
+    setFocusPicker(true);
+    setEditionId(id);
+  }, [editionId, editions]);
+  const onPickerFocusRestored = useCallback(() => setFocusPicker(false), []);
 
-  const networkResult = useMemo(() => (data ? networkFromData(data) : null), [data]);
-
-  if (!data || !networkResult) return <div className="loading">読み込み中…</div>;
-
-  return (
-    <>
-      {networkResult.ok ? (
-        <GameApp data={data} network={networkResult.network} />
-      ) : (
-        <>
-          <RailwayMap data={data} />
-          {/* Data needed for the game is missing: explain, and block starting. */}
-          <TitleScreen
-            manifest={data.manifest.ok ? data.manifest.value : null}
-            network={null}
-            saveLookup={null}
-            unavailableReason={networkResult.reason}
-            notice={null}
-            onNewGame={noop}
-            onResume={noop}
-            onDeleteSave={noop}
-          />
-        </>
-      )}
-      <DataErrorBanner failures={listFailures(data)} />
-    </>
-  );
+  return <EditionApp
+    key={edition.id}
+    edition={edition}
+    editions={editions}
+    onEditionChange={changeEdition}
+    focusPicker={focusPicker}
+    onPickerFocusRestored={onPickerFocusRestored}
+  />;
 }

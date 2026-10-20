@@ -14,6 +14,17 @@ gzip bytes. GeoJSON is 1,288,259 raw / 265,508 gzip bytes. Totals include
 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`); there
 is no live timetable lookup. Gameplay starts at 新橋 and uses ruleset `tokyo-suburban-1`.
 
+## Edition data directories
+
+The default 東京近郊版 continues to load from `public/data/`; its URL and
+save key are registered in `src/features/editions/registry.ts`. A future
+edition that needs different railway data should provide its own directory
+under `public/` containing the same five schema-v3 files (`stations.json`,
+`services.json`, `segments.json`, `segments.geojson`, and `manifest.json`),
+then add an edition registry entry with that directory URL, its `GameConfig`,
+station-count expectations, display copy, and save key. Data generation and
+pipeline output paths are unchanged by edition switching.
+
 Optional service `scope.csv` files can add an `in_area` column containing exactly
 `true` or `false` on every row. This pins the contiguous served run when a
 geographic prefecture boundary does not match a service boundary; the first

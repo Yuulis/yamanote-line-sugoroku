@@ -315,6 +315,63 @@ describe("readSave / writeSave / deleteSave", () => {
       problem: "corrupt",
     });
   });
+
+  it("keeps two explicit edition slots independent through read, write, and delete", () => {
+    const firstKey = SAVE_STORAGE_KEY;
+    const secondKey = `${SAVE_STORAGE_KEY}:fixture-edition`;
+    const firstGame = seededGame(1, "edition-one");
+    const secondGame = seededGame(2, "edition-two");
+    const storage = memoryStorage();
+
+    expect(writeSave(storage, firstGame, firstKey)).toBe("saved");
+    expect(writeSave(storage, secondGame, secondKey)).toBe("saved");
+    const firstBytes = storage.data.get(firstKey);
+    const secondBytes = storage.data.get(secondKey);
+    expect(readSave(storage, network, DEFAULT_CONFIG, firstKey)).toEqual({ kind: "valid", game: firstGame });
+    expect(readSave(storage, network, DEFAULT_CONFIG, secondKey)).toEqual({ kind: "valid", game: secondGame });
+
+    expect(deleteSave(storage, secondKey)).toBe(true);
+    expect(storage.data.get(firstKey)).toBe(firstBytes);
+    expect(storage.data.has(secondKey)).toBe(false);
+    expect(readSave(storage, network, DEFAULT_CONFIG, firstKey)).toEqual({ kind: "valid", game: firstGame });
+    expect(secondBytes).toBeDefined();
+  });
+
+  it("leaves the other slot unchanged when the selected slot contains an invalid save", () => {
+    const selectedKey = `${SAVE_STORAGE_KEY}:invalid-edition`;
+    const otherBytes = serializeGame(seededGame(1, "other-edition"));
+    const storage = memoryStorage({ [selectedKey]: "{oops", [SAVE_STORAGE_KEY]: otherBytes });
+
+    expect(readSave(storage, network, DEFAULT_CONFIG, selectedKey)).toEqual({ kind: "invalid", problem: "corrupt" });
+    expect(storage.data.get(selectedKey)).toBe("{oops");
+    expect(storage.data.get(SAVE_STORAGE_KEY)).toBe(otherBytes);
+    expect(deleteSave(storage, selectedKey)).toBe(true);
+    expect(storage.data.get(SAVE_STORAGE_KEY)).toBe(otherBytes);
+  });
+
+  it("reports failures from an explicitly selected storage slot", () => {
+    const selectedKey = `${SAVE_STORAGE_KEY}:failing-edition`;
+    const accessedKeys: string[] = [];
+    const storage: StorageLike = {
+      getItem: (key) => {
+        accessedKeys.push(key);
+        throw new Error("SecurityError");
+      },
+      setItem: (key) => {
+        accessedKeys.push(key);
+        throw new Error("QuotaExceededError");
+      },
+      removeItem: (key) => {
+        accessedKeys.push(key);
+        throw new Error("SecurityError");
+      },
+    };
+
+    expect(readSave(storage, network, DEFAULT_CONFIG, selectedKey)).toEqual({ kind: "unavailable" });
+    expect(writeSave(storage, seededGame(1), selectedKey)).toBe("failed");
+    expect(deleteSave(storage, selectedKey)).toBe(false);
+    expect(accessedKeys).toEqual([selectedKey, selectedKey, selectedKey]);
+  });
 });
 
 describe("save messages", () => {

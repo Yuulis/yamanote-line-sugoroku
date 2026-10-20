@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
-import type { GameState } from "../../types/network";
+import type { GameConfig, GameState } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
-import { MVP_GAME_CONFIG } from "./gameConfig";
 import {
   type AppAction,
   type AppState,
@@ -42,11 +41,13 @@ export interface GameAppControls {
 export function useGameApp(
   network: RailwayNetwork,
   storage: StorageLike | null,
+  config: GameConfig,
+  saveKey: string,
 ): GameAppControls {
   const reducer = useCallback(
     (state: AppState, action: AppAction) =>
-      reduceAppState(state, action, MVP_GAME_CONFIG, network),
-    [network],
+      reduceAppState(state, action, config, network),
+    [config, network],
   );
   const [state, dispatch] = useReducer(reducer, INITIAL_APP_STATE);
   const [saveStatus, setSaveStatus] = useState<SaveWriteResult | null>(null);
@@ -56,14 +57,14 @@ export function useGameApp(
   // its animation plays) and the clearing turn (spec 11).
   const committedGame = state.screen === "game" ? state.session.game : null;
   useEffect(() => {
-    if (committedGame) setSaveStatus(writeSave(storage, committedGame));
-  }, [committedGame, storage]);
+    if (committedGame) setSaveStatus(writeSave(storage, committedGame, saveKey));
+  }, [committedGame, saveKey, storage]);
 
   const onTitle = state.screen === "title";
   // saveRevision is a dependency only: it forces a re-read after deleting.
   const saveLookup = useMemo(
-    () => (onTitle ? readSave(storage, network, MVP_GAME_CONFIG) : null),
-    [onTitle, storage, network, saveRevision],
+    () => (onTitle ? readSave(storage, network, config, saveKey) : null),
+    [onTitle, storage, network, config, saveKey, saveRevision],
   );
 
   const session = state.screen === "game" ? state.session : null;
@@ -83,10 +84,10 @@ export function useGameApp(
   );
   const showTitle = useCallback(() => dispatch({ type: "show-title" }), []);
   const removeSave = useCallback(() => {
-    const removed = deleteSave(storage);
+    const removed = deleteSave(storage, saveKey);
     setSaveRevision((revision) => revision + 1);
     return removed;
-  }, [storage]);
+  }, [saveKey, storage]);
 
   return {
     state,
