@@ -41,6 +41,10 @@ change for current players.
 
 ## Notes
 
+- B1 merged to develop via PR #36 (`36c4e1a`, 2026-10-20); develop CI
+  39366748744 green. The intermittent Firefox `accessibility.spec.ts:66`
+  failure predates B1 and is fixed on `fix/firefox-webgl-flake`
+  (see `c2-ci-speedup-handoff.md`).
 - C2 (CI) is done: a docs-only push here (run 39353441915) skipped the E2E
   legs and the required `E2E (Playwright)` check passed in 1.5 min.
 - Next after B1: A1 (result text sharing).

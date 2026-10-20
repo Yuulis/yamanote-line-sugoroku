@@ -142,6 +142,7 @@ the deadline and the leg took 204 s.
 | `d4b592c` | + probe timing | 1 | cold 7.2 s, warm 65 ms; flaky `:66` without a probe timeout |
 | `a9f8424` / `459d1ed` | re-creation probes | 2 | GLX (default prefs) 72 of 1200 failed, EGL 0 of 800 |
 | `cb63f38` | EGL + warm-up | 3 | clean, no probe timeout, no WebGL failure |
+| `a2dc18e` (final) | diagnostics removed | 7 (run 39376311969, a1-a7) | all 54 passed, 0 failed, 0 flaky; other legs green on a1 (verified by the lead) |
 
 Leg duration: develop 107-169 s per job; with the fix 129-166 s (warm-up
 step 7-12 s), still below phone-chromium (~240 s).
