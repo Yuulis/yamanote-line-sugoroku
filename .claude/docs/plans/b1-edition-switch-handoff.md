@@ -35,7 +35,7 @@ change for current players.
 | 1 Registry + compatibility pins | done | `757d3b3eed77fec5abf0907ef1e091581cb39ca1` | `npm run typecheck`; `npx vitest run tests/unit/edition-registry.test.ts tests/unit/product-data.test.ts` (13 passed; compatibility digests matched the pre-change values) |
 | 2 Persistence slots | done | `e6adddcf18d8d8759b1b1e49619ae53072c647d2` | `npm run typecheck`; `npx vitest run tests/unit/persistence.test.ts tests/unit/engine-save-v3.test.ts tests/unit/product-data.test.ts` (71 passed) |
 | 3 Runtime/presentation wiring | done | `43b353f50d1875d78f415afc8c568f8ebc229af5` | `npm run typecheck`; `npm test` (663 passed, 1 existing skipped); `npm run build`; desktop Chromium E2E (54 passed, 1 existing skipped) |
-| 4 Picker component (+ `jsdom` devDependency) | done | `5b5871716ddbf73e09fb23e4c19a2f3fe9153d9d` | `npm run typecheck`; picker + registry tests (6 passed); `npm run build`; exact `jsdom` 30.1.3 |
+| 4 Picker component (+ `jsdom` devDependency) | done | `5b5871716ddbf73e09fb23e4c19a2f3fe9153d9d` | `npm run typecheck`; picker + registry tests (6 passed); `npm run build`; exact `jsdom` 30.1.2 |
 | 5 Switching + async loading | done | `3bb8b78ce2e973f93e30ce333e1454acae96828f` | `npm run typecheck`; targeted app/loading/runtime/persistence tests (43 passed); `npm test` (673 passed, 1 existing skipped); `npm run build`; desktop Chromium (54 passed, 1 existing skipped) |
 | 6 Docs + full regression gates | done | `4b7026aea99df56dfda8c19c39ed3dce611e0c67` | `npm run typecheck`; `npm test` (673 passed, 1 existing skipped); `npm run build`; desktop Chromium (54 passed, 1 existing skipped); phone Chromium (55 passed). Firefox and WebKit: CI only. |
 
