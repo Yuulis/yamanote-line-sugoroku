@@ -210,7 +210,7 @@ jobs:
       #   page lost the previous one (map retry; FEATURE_FAILURE_WEBGL_
       #   EXHAUSTED_DRIVERS). With libegl-mesa0 Firefox uses EGL: 0 of 800.
       # - Firefox's launch-time GL probe (gfxtest) has a fixed 4 s deadline
-      #   but takes 4-8 s on a cold runner; a browser that misses it falls
+      #   but took 3.8-7.7 s on a cold runner; a browser that misses it falls
       #   back to GLX and blocklists WebGL2. One throwaway launch loads the GL
       #   libraries so the probe then takes ~0.1 s.
       - name: Install Mesa EGL and warm up Firefox's GL probe
@@ -227,8 +227,6 @@ jobs:
       - name: Run E2E tests
         env:
           PROJECT: ${{ matrix.project }}
-          # TEMPORARY diagnostics (fix/firefox-webgl-flake): browser stdout/stderr.
-          DEBUG: ${{ matrix.project == 'desktop-firefox' && 'pw:browser' || '' }}
         run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT"
       - name: Upload Playwright report and traces
         if: failure()
