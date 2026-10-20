@@ -48,6 +48,12 @@ interface OldSaveProvenance {
   saveSha256: string;
 }
 
+interface EditionSaveCompatibility {
+  sourceSha256: string;
+  resumedSaveSha256: string;
+  nextTurnSaveSha256: string;
+}
+
 const { network, data } = await loadBundle("real");
 const freeze = JSON.parse(
   readFileSync(fileURLToPath(new URL("../../.claude/docs/plans/tokyo-suburban-s0-freeze.json", import.meta.url)), "utf8"),
@@ -65,6 +71,13 @@ const oldSave = readFileSync(
 const oldSaveProvenance = JSON.parse(
   readFileSync(fileURLToPath(new URL("../e2e/fixtures/old-capital-region-save.provenance.json", import.meta.url)), "utf8"),
 ) as OldSaveProvenance;
+const editionSaveCompatibility = JSON.parse(
+  readFileSync(fileURLToPath(new URL("./fixtures/edition-save-compatibility.json", import.meta.url)), "utf8"),
+) as EditionSaveCompatibility;
+const preEditionSave = readFileSync(
+  fileURLToPath(new URL("../e2e/fixtures/tokyo-suburban-before-clear-save.json", import.meta.url)),
+  "utf8",
+).trimEnd();
 
 function memoryStorage(value: string): StorageLike & { value: string | null } {
   let stored: string | null = value;
@@ -230,5 +243,19 @@ describe("frozen Tokyo suburban runtime contract", () => {
     expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
     expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
     expect(storage.value).toBe(oldSave);
+  });
+
+  it("matches the pre-edition source, resumed, and next-turn save bytes", () => {
+    expect(createHash("sha256").update(preEditionSave).digest("hex")).toBe(editionSaveCompatibility.sourceSha256);
+
+    const resumed = restoreGame(preEditionSave, network, {
+      expectedConfig: MVP_GAME_CONFIG,
+      requireSeededRolls: true,
+    });
+    const resumedSave = serializeGame(resumed);
+    expect(createHash("sha256").update(resumedSave).digest("hex")).toBe(editionSaveCompatibility.resumedSaveSha256);
+
+    const nextTurnSave = serializeGame(playTurn(resumed, network).state);
+    expect(createHash("sha256").update(nextTurnSave).digest("hex")).toBe(editionSaveCompatibility.nextTurnSaveSha256);
   });
 });
