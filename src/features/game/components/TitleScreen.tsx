@@ -1,18 +1,21 @@
 import type { Manifest } from "../../../types/data";
 import type { GameState } from "../../../types/network";
-import { useLayoutEffect, useRef } from "react";
+import { Fragment, useLayoutEffect, useRef } from "react";
 import { CC_BY_LICENSE_NAME, CC_BY_URL, safeExternalUrl } from "../../map/attribution";
 import { MAP_CREDITS } from "../../map/mapConfig";
 import type { RailwayNetwork } from "../engine";
 import { type SaveLookup, saveProblemMessage } from "../store/persistence";
 import { stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
+import { EDITIONS } from "../../editions/registry";
+import type { EditionDisplay } from "../../editions/types";
 
 interface TitleScreenProps {
   manifest: Manifest | null;
   /** Null when the game cannot start (see `unavailableReason`). */
   network: RailwayNetwork | null;
   presentation?: PresentationResolver;
+  display?: EditionDisplay;
   saveLookup: SaveLookup | null;
   /** Why the game cannot start (data failed to load); blocks starting. */
   unavailableReason: string | null;
@@ -121,11 +124,10 @@ function Credits({ manifest }: { manifest: Manifest | null }) {
   );
 }
 
-const INTRO_COPY = "新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。山手線と他の路線がある駅では、3分の2の確率で山手線を選び、残りの確率を他の運行系統に均等に割り当てます。他の路線で方向を抽選するときは、山手線に近づく方向の抽選重みが反対方向の2倍になります。";
-
 /** Start screen (spec 6.1): title, rules, start / resume, credits. */
 export function TitleScreen(props: TitleScreenProps) {
   const { network, presentation, saveLookup, unavailableReason, notice } = props;
+  const display = props.display ?? EDITIONS[0]!.display;
   const headingRef = useRef<HTMLHeadingElement>(null);
   useLayoutEffect(() => {
     if (props.focusOnMount) headingRef.current?.focus({ preventScroll: true });
@@ -134,16 +136,16 @@ export function TitleScreen(props: TitleScreenProps) {
     <main className="title-screen" aria-labelledby="game-title">
       <div className="title-screen__card">
         <h1 ref={headingRef} id="game-title" className="title-screen__title" tabIndex={-1}>
-          山手線すごろく
+          {display.title}
         </h1>
-        <p className="title-screen__subtitle">東京近郊版</p>
-        <p>{INTRO_COPY}</p>
-        <p>
-          山手線は<strong>外回り</strong>に固定。他路線では毎回方向を抽選し、終点・エリア端で余った目は使いません。
-        </p>
-        <p>
-          山手線の外回り全30区間を踏破して新橋に戻ればクリアです。山手線では新橋に着いた時点で停止し、他路線では新橋にちょうど止まる必要があります。
-        </p>
+        <p className="title-screen__subtitle">{display.subtitle}</p>
+        {display.ruleParagraphs.map((paragraph, paragraphIndex) => (
+          <p key={paragraphIndex}>
+            {paragraph.map((part, partIndex) => typeof part === "string"
+              ? <Fragment key={partIndex}>{part}</Fragment>
+              : <strong key={partIndex}>{part.strong}</strong>)}
+          </p>
+        ))}
         {unavailableReason && (
           <p className="title-screen__notice title-screen__notice--error" role="alert">
             ゲームを開始できません: {unavailableReason}

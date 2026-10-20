@@ -1,4 +1,5 @@
 import type { RailwayData } from "../../data/loaders";
+import type { GameConfig, ServiceId } from "../../types/network";
 import {
   buildRailwayNetwork,
   GameEngineError,
@@ -13,7 +14,11 @@ export type NetworkResult =
   | { ok: false; reason: string };
 
 /** Build the engine network from loaded data, or explain why the game cannot start. */
-export function networkFromData(data: RailwayData): NetworkResult {
+export function networkFromData(
+  data: RailwayData,
+  config: GameConfig = MVP_GAME_CONFIG,
+  expectedStationCounts: Readonly<Partial<Record<ServiceId, number>>> = EXPECTED_STATION_COUNTS,
+): NetworkResult {
   const { stations, services, segments, manifest } = data;
   if (!stations.ok || !services.ok || !segments.ok || !manifest.ok) {
     return { ok: false, reason: "必要なデータを読み込めませんでした" };
@@ -26,9 +31,9 @@ export function networkFromData(data: RailwayData): NetworkResult {
         services: services.value.services,
         segments: segments.value,
       },
-      { expectedStationCounts: EXPECTED_STATION_COUNTS },
+      { expectedStationCounts },
     );
-    validateConfig(MVP_GAME_CONFIG, network);
+    validateConfig(config, network);
     if (data.geometry.ok) {
       const features = new Map(data.geometry.value.features.map((feature) => [feature.id, feature]));
       if (features.size !== data.geometry.value.features.length) {

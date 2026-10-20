@@ -5,8 +5,9 @@ import { networkFromData } from "../features/game/networkFromData";
 import { RailwayMap } from "../features/map/RailwayMap";
 import { DataErrorBanner } from "./DataErrorBanner";
 import { GameApp } from "./GameApp";
+import { EDITIONS } from "../features/editions/registry";
 
-const DATA_BASE_URL = `${import.meta.env.BASE_URL}data/`;
+const DEFAULT_EDITION = EDITIONS[0]!;
 
 function noop(): void {}
 
@@ -15,7 +16,7 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    loadRailwayData(DATA_BASE_URL).then((loaded) => {
+    loadRailwayData(DEFAULT_EDITION.dataBaseUrl).then((loaded) => {
       if (!cancelled) setData(loaded);
     });
     return () => {
@@ -23,21 +24,27 @@ export function App() {
     };
   }, []);
 
-  const networkResult = useMemo(() => (data ? networkFromData(data) : null), [data]);
+  const networkResult = useMemo(
+    () => (data
+      ? networkFromData(data, DEFAULT_EDITION.config, DEFAULT_EDITION.expectedStationCounts)
+      : null),
+    [data],
+  );
 
   if (!data || !networkResult) return <div className="loading">読み込み中…</div>;
 
   return (
     <>
       {networkResult.ok ? (
-        <GameApp data={data} network={networkResult.network} />
+        <GameApp data={data} network={networkResult.network} edition={DEFAULT_EDITION} />
       ) : (
         <>
-          <RailwayMap data={data} />
+          <RailwayMap data={data} targetServiceId={DEFAULT_EDITION.config.targetServiceId} />
           {/* Data needed for the game is missing: explain, and block starting. */}
           <TitleScreen
             manifest={data.manifest.ok ? data.manifest.value : null}
             network={null}
+            display={DEFAULT_EDITION.display}
             saveLookup={null}
             unavailableReason={networkResult.reason}
             notice={null}
