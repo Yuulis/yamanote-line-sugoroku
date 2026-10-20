@@ -21,6 +21,8 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
   page,
 }) => {
   await openTitle(page);
+  await expect(page).toHaveTitle("山手線すごろく — 東京近郊版");
+  await expect(titleScreen(page).getByRole("combobox", { name: "遊ぶ版" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "はじめから" })).toBeVisible();
 
   await startNewGame(page);
