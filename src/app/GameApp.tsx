@@ -203,6 +203,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           game={session.game}
           network={network}
           presentation={presentation}
+          display={edition.display}
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}

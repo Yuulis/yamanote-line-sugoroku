@@ -464,9 +464,31 @@ button[aria-disabled="true"] {
 
 .clear-screen__actions {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin-top: 12px;
+}
+
+.clear-screen__actions button:focus-visible,
+.clear-screen__share-fallback textarea:focus-visible {
+  outline: 3px solid #1565c0;
+  outline-offset: 2px;
+}
+
+.clear-screen__share-status {
+  margin: 8px 0 0;
+}
+
+.clear-screen__share-fallback {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.clear-screen__share-fallback textarea {
+  box-sizing: border-box;
+  width: 100%;
+  font: inherit;
 }
 
 /* In-page confirmation dialog (native modal <dialog>, top layer). */
