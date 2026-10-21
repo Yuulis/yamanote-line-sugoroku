@@ -1,19 +1,29 @@
 name: CI
 
+# One run per pushed commit (decision B, 2026-10-20). Every branch of this
+# repository runs on push, including feature branches before a PR exists, and
+# branch protection matches required checks by name on the PR head SHA
+# regardless of the event that produced them, so a PR is gated by the push run
+# of its head commit. There is deliberately no pull_request trigger: it re-ran
+# the same SHA a second time, and skipping it per job would leave same-named
+# "skipped" (= passing) check runs on the head SHA beside the real ones.
+# Consequence: PRs from forks get no CI and stay blocked until a maintainer
+# pushes the commit to a branch here.
 on:
   push:
-    branches: [master, develop, "feature/**"]
-  pull_request:
-    branches: [master, develop, "feature/**"]
+    branches: ["**"]
   workflow_dispatch:
 
 # Deployment stays with the Vercel Git integration; CI only runs quality gates.
 permissions:
   contents: read
 
+# Superseded pushes to a working branch are cancelled. Post-merge runs on
+# develop/master are never cancelled, and a manual dispatch has its own group
+# so it never cancels the push run of the same branch.
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/develop' }}
 
 env:
   # The preview server binds IPv4 loopback on runners (the ::1 default in
@@ -67,13 +77,108 @@ jobs:
       # Reads only the committed public/data/ and the override tables.
       - run: uv run python -m scripts.data_pipeline.validate
 
-  # Runs in parallel with `frontend`: it builds its own e2e bundle, so it does
-  # not need that job's output, and parallel runs shorten the critical path.
-  # Require all three jobs together in branch protection.
-  e2e:
-    name: E2E (Playwright)
+  # Decides whether the E2E legs run (decision C, 2026-10-20). Only a push to
+  # a working branch whose whole diff against its develop fork point is
+  # documentation may skip E2E; the same scope a PR base...head diff would
+  # see, so an earlier code commit on the branch is never hidden behind a
+  # later docs-only push. The fork point must itself carry a passing
+  # "E2E (Playwright)", so a skip only ever inherits a verified result (and a
+  # docs-only branch off a red develop cannot turn green). Every other case,
+  # and every doubt, runs the suite.
+  changes:
+    name: Detect docs-only change
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      checks: read
+    outputs:
+      e2e: ${{ steps.detect.outputs.e2e }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # Full history for merge-base; commits and trees only, which is all
+          # `git diff --name-only` needs.
+          fetch-depth: 0
+          filter: blob:none
+      - name: Decide whether E2E must run
+        id: detect
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          GIT_REF: ${{ github.ref }}
+          HEAD_SHA: ${{ github.sha }}
+          BASELINE_REF: origin/develop
+          REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_e2e() {
+            echo "e2e=true" >> "$GITHUB_OUTPUT"
+            echo "Full E2E: $1"
+            exit 0
+          }
+          # Documentation only. Code, data, tests and CI paths never count,
+          # even for a .md file inside them.
+          is_docs() {
+            case "$1" in
+              public/* | src/* | tests/* | data/* | scripts/* | .github/*) return 1 ;;
+              docs/*) return 0 ;;
+              *.md) return 0 ;;
+              *) return 1 ;;
+            esac
+          }
+          if [ "$EVENT_NAME" != push ]; then
+            run_e2e "event '$EVENT_NAME' always runs the full suite"
+          fi
+          case "$GIT_REF" in
+            refs/heads/master | refs/heads/develop)
+              run_e2e "post-merge run on a protected branch" ;;
+          esac
+          if ! baseline=$(git merge-base "$BASELINE_REF" "$HEAD_SHA"); then
+            run_e2e "no merge base with $BASELINE_REF"
+          fi
+          if ! changed=$(git diff --no-renames --name-only "$baseline" "$HEAD_SHA"); then
+            run_e2e "git diff against $baseline failed"
+          fi
+          if [ -z "$changed" ]; then
+            run_e2e "no change against $BASELINE_REF"
+          fi
+          while IFS= read -r path; do
+            if ! is_docs "$path"; then
+              run_e2e "non-docs change: $path"
+            fi
+          done <<< "$changed"
+          # Every GitHub Actions "E2E (Playwright)" run on the fork point must
+          # be completed and successful, and there must be at least one.
+          if ! verdicts=$(gh api "repos/$REPO/commits/$baseline/check-runs?check_name=E2E%20(Playwright)&per_page=100" \
+            --jq '[.check_runs[] | select(.app.slug == "github-actions") | .conclusion // "pending"] | unique | join(",")'); then
+            run_e2e "could not read the E2E result of $baseline"
+          fi
+          if [ "$verdicts" != success ]; then
+            run_e2e "fork point $baseline has no clean E2E pass ('$verdicts')"
+          fi
+          echo "e2e=false" >> "$GITHUB_OUTPUT"
+          echo "Docs-only change against $BASELINE_REF ($baseline); E2E legs are skipped:"
+          echo "$changed"
+
+  # One leg per Playwright project (decision A, 2026-10-20), each exactly the
+  # old job's work for that project: same tests, 2 workers, retries, xvfb.
+  # Runs in parallel with `frontend`: it builds its own e2e bundle.
+  e2e-matrix:
+    name: E2E leg (${{ matrix.project }})
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { project: desktop-chromium, browser: chromium }
+          - { project: phone-chromium, browser: chromium }
+          - { project: desktop-firefox, browser: firefox }
+          - { project: desktop-webkit, browser: webkit }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -91,24 +196,78 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
       # OS dependencies are not cached, so they are always installed; a cache
-      # hit only skips the browser downloads.
-      - name: Install browsers and OS dependencies
-        run: npx playwright install --with-deps chromium firefox webkit
+      # hit only skips the browser download. Playwright always adds its
+      # "tools" group (xvfb, CJK fonts) whichever browser is named.
+      - name: Install browser and OS dependencies
+        env:
+          BROWSER: ${{ matrix.browser }}
+        run: npx playwright install --with-deps "$BROWSER"
+      # Firefox WebGL2 on the runner (desktop-firefox flakes, 2026-10-20):
+      # - Without Mesa's EGL the runner image has only GLX, and Firefox's GLX
+      #   path fails ~1 in 20 times to create a WebGL2 context right after the
+      #   page lost the previous one (map retry; FEATURE_FAILURE_WEBGL_
+      #   EXHAUSTED_DRIVERS). With libegl-mesa0 Firefox uses EGL: 0 of 800.
+      # - Firefox's launch-time GL probe (gfxtest) has a fixed 4 s deadline
+      #   but took 3.8-7.7 s on a cold runner; a browser that misses it falls
+      #   back to GLX and blocklists WebGL2. One throwaway launch loads the GL
+      #   libraries so the probe then takes ~0.1 s.
+      - name: Install Mesa EGL and warm up Firefox's GL probe
+        if: matrix.browser == 'firefox'
+        run: |
+          sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0
+          xvfb-run --auto-servernum npx playwright screenshot --browser=firefox about:blank "$RUNNER_TEMP/firefox-warm-up.png"
       # Headless Firefox on Linux only gets a GL backend (and so WebGL2, which
       # MapLibre requires) through an X display; runners have none, so Firefox
-      # reports "AllowWebgl2:false" and the app never renders. Xvfb comes from
-      # `playwright install --with-deps`; Chromium/WebKit stay headless.
+      # reports "AllowWebgl2:false" and the app never renders. Every leg keeps
+      # the same wrapper; Chromium/WebKit stay headless under it.
+      # No --pass-with-no-tests: a mistyped project must fail with
+      # "No tests found".
       - name: Run E2E tests
-        run: xvfb-run --auto-servernum npm run test:e2e
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT"
       - name: Upload Playwright report and traces
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-artifacts
+          name: playwright-artifacts-${{ matrix.project }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
           if-no-files-found: ignore
+
+  # Keeps the required status-check context "E2E (Playwright)" (rulesets
+  # protect-develop / protect-master). Passes only when every leg succeeded,
+  # or when change detection succeeded, chose docs-only, and the legs were
+  # skipped for that reason. A failed, cancelled or otherwise skipped leg, or
+  # a failed detection job, fails it.
+  e2e:
+    name: E2E (Playwright)
+    needs: [changes, e2e-matrix]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every E2E leg to pass, or a docs-only skip
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          RUN_E2E: ${{ needs.changes.outputs.e2e }}
+          MATRIX_RESULT: ${{ needs.e2e-matrix.result }}
+        run: |
+          echo "changes=$CHANGES_RESULT e2e=$RUN_E2E legs=$MATRIX_RESULT"
+          if [ "$CHANGES_RESULT" != success ]; then
+            echo "::error::Docs-only detection did not succeed ($CHANGES_RESULT)"
+            exit 1
+          fi
+          if [ "$RUN_E2E" = true ] && [ "$MATRIX_RESULT" = success ]; then
+            exit 0
+          fi
+          if [ "$RUN_E2E" = false ] && [ "$MATRIX_RESULT" = skipped ]; then
+            echo "::notice::Docs-only change: E2E legs were skipped"
+            exit 0
+          fi
+          echo "::error::E2E legs ended '$MATRIX_RESULT' (e2e=$RUN_E2E)"
+          exit 1

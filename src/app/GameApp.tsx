@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RailwayData } from "../data/loaders";
 import { displayedProgress } from "../features/game/animation/displayedProgress";
 import { buildGeometryIndex } from "../features/game/animation/movePath";
@@ -12,8 +12,9 @@ import {
   ANIMATION_SPEEDS,
   type AnimationSpeedId,
   DEFAULT_ANIMATION_SPEED,
-  MVP_GAME_CONFIG,
 } from "../features/game/gameConfig";
+import type { Edition } from "../features/editions/types";
+import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
@@ -22,10 +23,20 @@ import { createPresentationResolver } from "../features/game/presentationResolve
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { LineMetadata } from "../types/network";
+import { trackEvent } from "../features/analytics/analytics";
+import { summarizeGame } from "../features/game/gameSummary";
 
 interface GameAppProps {
   data: RailwayData;
   network: RailwayNetwork;
+  edition: Edition;
+  picker: {
+    editions: EditionRegistry;
+    editionId: EditionId;
+    onEditionChange: (id: EditionId) => void;
+    focusPicker: boolean;
+    onPickerFocusRestored: () => void;
+  };
 }
 
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
@@ -43,14 +54,14 @@ function nextSpeedId(id: AnimationSpeedId): AnimationSpeedId {
 }
 
 /** Title, play and clear screens over one persistent map. */
-export function GameApp({ data, network }: GameAppProps) {
+export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const storage = useMemo(getBrowserStorage, []);
   const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
   const presentation = useMemo(
     () => createPresentationResolver(network, uiPresentation),
     [network, uiPresentation],
   );
-  const app = useGameApp(network, storage);
+  const app = useGameApp(network, storage, edition.config, edition.saveKey);
   const reducedMotion = usePrefersReducedMotion();
   const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
   const [follow, setFollow] = useState(true);
@@ -62,8 +73,8 @@ export function GameApp({ data, network }: GameAppProps) {
     [data],
   );
   const requiredIds = useMemo(
-    () => new Set(targetSegmentIds(MVP_GAME_CONFIG, network)),
-    [network],
+    () => new Set(targetSegmentIds(edition.config, network)),
+    [edition.config, network],
   );
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
@@ -147,6 +158,13 @@ export function GameApp({ data, network }: GameAppProps) {
   }, [showTitleScreen]);
 
   const showClear = session?.game.status === "completed" && session.phase === "idle";
+  const reportedClear = useRef(-1);
+  useEffect(() => {
+    if (!showClear || !session || reportedClear.current === session.sessionId) return;
+    reportedClear.current = session.sessionId;
+    const summary = summarizeGame(session.game, presentation);
+    trackEvent("game_clear", { turns: summary.turns, moves: summary.moves, transfers: summary.transfers });
+  }, [showClear, session, presentation]);
 
   return (
     <>
@@ -155,6 +173,8 @@ export function GameApp({ data, network }: GameAppProps) {
           manifest={data.manifest.ok ? data.manifest.value : null}
           network={network}
           presentation={presentation}
+          display={edition.display}
+          {...picker}
           saveLookup={app.saveLookup}
           unavailableReason={null}
           notice={notice}
@@ -170,6 +190,7 @@ export function GameApp({ data, network }: GameAppProps) {
           session={session}
           network={network}
           presentation={presentation}
+          display={edition.display}
           lines={data.services.ok ? data.services.value.lines : NO_LINES}
           displayedStationId={shown.stationId}
           displayedCompletedCount={shown.completedSegmentIds.filter((id) => requiredIds.has(id)).length}
@@ -191,6 +212,7 @@ export function GameApp({ data, network }: GameAppProps) {
           game={session.game}
           network={network}
           presentation={presentation}
+          display={edition.display}
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}
@@ -216,6 +238,7 @@ export function GameApp({ data, network }: GameAppProps) {
       )}
       <RailwayMap
         data={data}
+        targetServiceId={edition.config.targetServiceId}
         presentation={presentation}
         progress={progress}
         livePosition={livePosition}

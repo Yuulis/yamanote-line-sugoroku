@@ -84,8 +84,20 @@ export default defineConfig({
       use: {
         ...devices["Desktop Firefox"],
         viewport: DESKTOP_VIEWPORT,
-        // Belt and braces: never let Firefox retry a failed proxy directly.
-        launchOptions: { firefoxUserPrefs: { "network.proxy.failover_direct": false } },
+        launchOptions: {
+          firefoxUserPrefs: {
+            // Belt and braces: never let Firefox retry a failed proxy directly.
+            "network.proxy.failover_direct": false,
+            // At launch Firefox probes the GL driver in a child process
+            // (gfxtest) and, if the probe misses its fixed 4 s deadline (a cold
+            // CI runner), blocklists WebGL2 for the whole browser: every map
+            // then fails with "AllowWebgl2:false restricts context creation"
+            // and the app shows its no-WebGL2 notice. Skipping that blocklist
+            // gate makes context creation depend only on the real driver
+            // (llvmpipe under xvfb), which is what the suite means to test.
+            "webgl.force-enabled": true,
+          },
+        },
       },
     },
     ...(withWebkit

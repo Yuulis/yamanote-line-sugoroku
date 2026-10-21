@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { LineMetadata } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
-import { MVP_GAME_CONFIG } from "../gameConfig";
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
 import {
@@ -21,6 +20,8 @@ import {
   useVisibleLineGroupIds,
 } from "../../map/lineVisibilityStore";
 import { GameLegend } from "./GameLegend";
+import { EDITIONS } from "../../editions/registry";
+import type { EditionDisplay } from "../../editions/types";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -41,6 +42,7 @@ export interface GamePanelProps {
   session: GameSession;
   network: RailwayNetwork;
   presentation?: PresentationResolver;
+  display?: EditionDisplay;
   lines: readonly LineMetadata[];
   /** Station the marker has reached (follows the animation). */
   displayedStationId: string;
@@ -70,6 +72,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     [props.presentation, network],
   );
   const { game, phase } = session;
+  const display = props.display ?? EDITIONS[0]!.display;
   const animating = phase === "animating";
   const canRoll = game.status === "playing" && phase === "idle";
   const ride = displayedRide(session);
@@ -93,7 +96,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     [network, lines, presentation],
   );
   const allGroupIds = useMemo(() => legendGroups.map((group) => group.id), [legendGroups]);
-  const requiredTargetIds = useMemo(() => targetSegmentIds(MVP_GAME_CONFIG, network), [network]);
+  const requiredTargetIds = useMemo(() => targetSegmentIds(game.config, network), [game.config, network]);
   const remainingSections = useMemo(() => {
     const completed = new Set(game.completedSegmentIds);
     return requiredTargetIds.flatMap((id) => {
@@ -102,11 +105,11 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       if (!segment) return [];
       return [{
         id,
-        from: presentation.serviceStationName(MVP_GAME_CONFIG.targetServiceId, segment.from),
-        to: presentation.serviceStationName(MVP_GAME_CONFIG.targetServiceId, segment.to),
+        from: presentation.serviceStationName(game.config.targetServiceId, segment.from),
+        to: presentation.serviceStationName(game.config.targetServiceId, segment.to),
       }];
     });
-  }, [game.completedSegmentIds, network, presentation, requiredTargetIds]);
+  }, [game.completedSegmentIds, game.config, network, presentation, requiredTargetIds]);
   const upcomingStations = useMemo(() => {
     const ids: string[] = [];
     let current = props.displayedStationId;
@@ -152,8 +155,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
 
   return (
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
-      <h1 ref={headingRef} className="game-panel__title" tabIndex={-1}>山手線すごろく</h1>
-      <p className="game-panel__subtitle">東京近郊版</p>
+      <h1 ref={headingRef} className="game-panel__title" tabIndex={-1}>{display.title}</h1>
+      <p className="game-panel__subtitle">{display.subtitle}</p>
       <dl className="game-panel__stats">
         <dt>現在駅</dt>
         <dd>{stationName(network, props.displayedStationId, presentation)}</dd>

@@ -36,6 +36,7 @@ test("[8.3-2/3] play a full game to the clear screen, then play again", async ({
     await rollOnce(page);
   }
   await expect(clear).toBeVisible();
+  await expect(clear.getByRole("button", { name: "結果をコピー" })).toBeVisible();
 
   const save = await readSave(page);
   if (!save) throw new Error("the clearing turn was not saved");

@@ -97,11 +97,12 @@ export function readSave(
   storage: StorageLike | null,
   network: RailwayNetwork,
   config: GameConfig,
+  saveKey = SAVE_STORAGE_KEY,
 ): SaveLookup {
   if (!storage) return { kind: "unavailable" };
   let json: string | null;
   try {
-    json = storage.getItem(SAVE_STORAGE_KEY);
+    json = storage.getItem(saveKey);
   } catch {
     return { kind: "unavailable" };
   }
@@ -110,10 +111,14 @@ export function readSave(
 }
 
 /** Save a committed game state; failures (quota, blocked storage) are reported. */
-export function writeSave(storage: StorageLike | null, game: GameState): SaveWriteResult {
+export function writeSave(
+  storage: StorageLike | null,
+  game: GameState,
+  saveKey = SAVE_STORAGE_KEY,
+): SaveWriteResult {
   if (!storage) return "unavailable";
   try {
-    storage.setItem(SAVE_STORAGE_KEY, serializeGame(game));
+    storage.setItem(saveKey, serializeGame(game));
     return "saved";
   } catch {
     return "failed";
@@ -121,10 +126,10 @@ export function writeSave(storage: StorageLike | null, game: GameState): SaveWri
 }
 
 /** Remove the save; false when storage refused, so the UI never claims success. */
-export function deleteSave(storage: StorageLike | null): boolean {
+export function deleteSave(storage: StorageLike | null, saveKey = SAVE_STORAGE_KEY): boolean {
   if (!storage) return false;
   try {
-    storage.removeItem(SAVE_STORAGE_KEY);
+    storage.removeItem(saveKey);
     return true;
   } catch {
     return false;

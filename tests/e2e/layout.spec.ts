@@ -21,6 +21,8 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
   page,
 }) => {
   await openTitle(page);
+  await expect(page).toHaveTitle("山手線すごろく — 東京近郊版");
+  await expect(titleScreen(page).getByRole("combobox", { name: "遊ぶ版" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "はじめから" })).toBeVisible();
 
   await startNewGame(page);
@@ -66,12 +68,14 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   // The data credit comes from the shipped manifest, so the test follows the data.
   const source = await loadManifestSource(railwayBundle);
   await openTitle(page);
-  const credits = page.getByRole("region", { name: "出典・ライセンス" });
   await expect(titleScreen(page).getByText("東京近郊版", { exact: true })).toBeVisible();
+  await expect(titleScreen(page).getByRole("button", { name: "クレジット" })).toBeVisible();
   await expect(titleScreen(page).getByText(
     "新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。山手線と他の路線がある駅では、3分の2の確率で山手線を選び、残りの確率を他の運行系統に均等に割り当てます。他の路線で方向を抽選するときは、山手線に近づく方向の抽選重みが反対方向の2倍になります。",
     { exact: true },
   )).toBeVisible();
+  await titleScreen(page).getByRole("button", { name: "クレジット" }).click();
+  const credits = page.getByRole("region", { name: "出典・ライセンス" });
   await expect(credits).toContainText(source.attribution);
   await expect(credits).toContainText(source.license);
   await expect(credits.getByRole("link", { name: source.attribution })).toHaveAttribute(
@@ -96,6 +100,7 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
     credits.getByRole("link", { name: "© OpenStreetMap contributors" }),
   ).toHaveAttribute("href", "https://www.openstreetmap.org/copyright");
 
+  await page.getByRole("button", { name: "タイトルへ戻る" }).click();
   await startNewGame(page);
   // The app's own attribution control carries the data credit on the play
   // screen. The background-map credit is whatever the style's source declares
@@ -117,6 +122,7 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
 
   // The full credits stay one click away from the play screen.
   await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
+  await titleScreen(page).getByRole("button", { name: "クレジット" }).click();
   await expect(credits).toBeVisible();
   await expect(credits).toContainText(source.license);
 });
