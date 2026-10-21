@@ -3,6 +3,7 @@ import { EDITIONS, getEdition } from "../features/editions/registry";
 import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { setVisibleLineGroupIds } from "../features/map/lineVisibilityStore";
 import { EditionApp } from "./EditionApp";
+import { initAnalytics } from "../features/analytics/analytics";
 
 interface AppProps {
   editions?: EditionRegistry;
@@ -13,6 +14,7 @@ export function App({ editions = EDITIONS }: AppProps) {
   const [focusPicker, setFocusPicker] = useState(false);
   const edition = getEdition(editionId, editions) ?? editions[0];
   useEffect(() => {
+    initAnalytics();
     document.title = edition.display.documentTitle;
   }, [edition]);
   const changeEdition = useCallback((id: EditionId) => {

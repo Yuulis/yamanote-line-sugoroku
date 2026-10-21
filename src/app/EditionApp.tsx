@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { listFailures, loadRailwayData, type RailwayData } from "../data/loaders";
 import { type EditionId, type EditionRegistry, type Edition } from "../features/editions/types";
 import { TitleScreen } from "../features/game/components/TitleScreen";
@@ -6,6 +6,7 @@ import { networkFromData } from "../features/game/networkFromData";
 import { RailwayMap } from "../features/map/RailwayMap";
 import { DataErrorBanner } from "./DataErrorBanner";
 import { GameApp } from "./GameApp";
+import { trackException } from "../features/analytics/analytics";
 
 interface EditionAppProps {
   edition: Edition;
@@ -25,6 +26,7 @@ export function EditionApp({
   onPickerFocusRestored,
 }: EditionAppProps) {
   const [data, setData] = useState<RailwayData | null>(null);
+  const reportedFailures = useRef<string>("");
   useEffect(() => {
     let cancelled = false;
     setData(null);
@@ -35,6 +37,15 @@ export function EditionApp({
       cancelled = true;
     };
   }, [edition]);
+
+  useEffect(() => {
+    if (!data) return;
+    const failures = listFailures(data);
+    const key = failures.map(({ file }) => file).sort().join(",");
+    if (key === reportedFailures.current) return;
+    reportedFailures.current = key;
+    for (const failure of failures) trackException(`data_load_${failure.file}`, !data.stations.ok || !data.services.ok);
+  }, [data]);
 
   const networkResult = useMemo(
     () => (data

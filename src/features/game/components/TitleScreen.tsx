@@ -1,6 +1,6 @@
 import type { Manifest } from "../../../types/data";
 import type { GameState } from "../../../types/network";
-import { Fragment, useLayoutEffect, useRef } from "react";
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CC_BY_LICENSE_NAME, CC_BY_URL, safeExternalUrl } from "../../map/attribution";
 import { MAP_CREDITS } from "../../map/mapConfig";
 import type { RailwayNetwork } from "../engine";
@@ -11,6 +11,7 @@ import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import type { EditionId, EditionRegistry } from "../../editions/types";
 import { EditionPicker } from "./EditionPicker";
+import { isAnalyticsOptedOut, setAnalyticsOptOut } from "../../analytics/analytics";
 
 interface TitleScreenProps {
   manifest: Manifest | null;
@@ -38,6 +39,10 @@ interface TitleScreenProps {
 
 /** Emitted by `build.license` in vite.config.ts; keep the file names in sync. */
 const THIRD_PARTY_LICENSES_URL = `${import.meta.env.BASE_URL}third-party-licenses.txt`;
+const PRIVACY_POLICY_URL = `${import.meta.env.BASE_URL}privacy.html`;
+const REPOSITORY_URL = "https://github.com/Yuulis/yamanote-line-sugoroku";
+const ISSUES_URL = `${REPOSITORY_URL}/issues`;
+const FONT_LICENSE_URL = "https://github.com/Yuulis/yamanote-line-sugoroku/blob/main/brand/OFL.txt";
 
 function resumeLabel(game: GameState, network: RailwayNetwork, presentation?: PresentationResolver): string {
   if (game.status === "completed") return `クリア結果を見る（${game.turn}ターンでクリア）`;
@@ -84,11 +89,23 @@ function SaveSection({
   );
 }
 
-function Credits({ manifest }: { manifest: Manifest | null }) {
+export function formatAppVersion(version: string, commit: string, dataVersion?: string): string[] {
+  return [`アプリ v${version}（${commit}）`, ...(dataVersion ? [`路線データ ${dataVersion}`] : [])];
+}
+
+function Credits({ manifest, onBack }: { manifest: Manifest | null; onBack: () => void }) {
   const dataUrl = manifest ? safeExternalUrl(manifest.source.url) : null;
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const [analyticsAllowed, setAnalyticsAllowed] = useState(!isAnalyticsOptedOut());
+  useLayoutEffect(() => { headingRef.current?.focus({ preventScroll: true }); }, []);
   return (
-    <section className="title-screen__credits" aria-labelledby="credits-title">
-      <h2 id="credits-title">出典・ライセンス</h2>
+    <section className="title-screen__credits title-screen__credits-screen" aria-labelledby="credits-title">
+      <h1 ref={headingRef} id="credits-title" tabIndex={-1}>クレジット</h1>
+      <section aria-labelledby="credits-about"><h2 id="credits-about">このゲームについて</h2>
+        <p>本作は非公式の個人制作ゲームで、各鉄道事業者・国土交通省とは関係ありません。</p>
+        <p>無料で遊べ、すべての処理はお使いのブラウザー内で行われます。</p>
+      </section>
+      <section aria-labelledby="credits-sources"><h2 id="credits-sources">出典・ライセンス</h2>
       <ul>
         {manifest && (
           <li>
@@ -127,7 +144,24 @@ function Credits({ manifest }: { manifest: Manifest | null }) {
             使用ライブラリのライセンス
           </a>
         </li>
+        <li><a href={FONT_LICENSE_URL} target="_blank" rel="noopener noreferrer">ロゴ書体: Zen Maru Gothic（SIL Open Font License 1.1）</a></li>
       </ul>
+      </section>
+      <section aria-labelledby="credits-contact"><h2 id="credits-contact">ソースコード・お問い合わせ</h2>
+        <p><a href={REPOSITORY_URL} target="_blank" rel="noopener noreferrer">ソースコード（GitHub）</a> / <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">お問い合わせ（GitHub Issues）</a></p>
+      </section>
+      <section aria-labelledby="credits-privacy"><h2 id="credits-privacy">プライバシー</h2>
+        <p><a href={PRIVACY_POLICY_URL}>プライバシーポリシー</a></p>
+        <label><input type="checkbox" checked={analyticsAllowed} onChange={(event) => {
+          const allowed = event.currentTarget.checked;
+          setAnalyticsAllowed(allowed);
+          setAnalyticsOptOut(!allowed);
+        }} /> アクセス解析を許可する</label>
+      </section>
+      <section aria-labelledby="credits-version"><h2 id="credits-version">バージョン</h2>
+        <p>{formatAppVersion(__APP_VERSION__, __APP_COMMIT__, manifest?.dataVersion).map((line) => <span key={line}>{line}<br /></span>)}</p>
+      </section>
+      <button type="button" onClick={onBack}>タイトルへ戻る</button>
     </section>
   );
 }
@@ -137,12 +171,28 @@ export function TitleScreen(props: TitleScreenProps) {
   const { network, presentation, saveLookup, unavailableReason, notice } = props;
   const display = props.display ?? EDITIONS[0]!.display;
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const [showCredits, setShowCredits] = useState(false);
+  const creditsButtonRef = useRef<HTMLButtonElement>(null);
+  const creditsWasOpen = useRef(false);
+  useEffect(() => {
+    if (!showCredits) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setShowCredits(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showCredits]);
+  useLayoutEffect(() => {
+    if (creditsWasOpen.current && !showCredits) creditsButtonRef.current?.focus({ preventScroll: true });
+    creditsWasOpen.current = showCredits;
+  }, [showCredits]);
   useLayoutEffect(() => {
     if (props.focusOnMount) headingRef.current?.focus({ preventScroll: true });
   }, [props.focusOnMount]);
   return (
-    <main className="title-screen" aria-labelledby="game-title">
+    <main className="title-screen" aria-labelledby={showCredits ? "credits-title" : "game-title"}>
       <div className="title-screen__card">
+        {showCredits ? <Credits manifest={props.manifest} onBack={() => setShowCredits(false)} /> : <>
         <h1 ref={headingRef} id="game-title" className="title-screen__title" tabIndex={-1}>
           {display.title}
         </h1>
@@ -193,7 +243,9 @@ export function TitleScreen(props: TitleScreenProps) {
             はじめから
           </button>
         </div>}
-        <Credits manifest={props.manifest} />
+        <p className="title-screen__version">v{__APP_VERSION__}</p>
+        <button ref={creditsButtonRef} type="button" onClick={() => setShowCredits(true)}>クレジット</button>
+        </>}
       </div>
     </main>
   );

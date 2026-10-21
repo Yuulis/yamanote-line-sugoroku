@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RailwayData } from "../data/loaders";
 import { displayedProgress } from "../features/game/animation/displayedProgress";
 import { buildGeometryIndex } from "../features/game/animation/movePath";
@@ -23,6 +23,8 @@ import { createPresentationResolver } from "../features/game/presentationResolve
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { LineMetadata } from "../types/network";
+import { trackEvent } from "../features/analytics/analytics";
+import { summarizeGame } from "../features/game/gameSummary";
 
 interface GameAppProps {
   data: RailwayData;
@@ -156,6 +158,13 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   }, [showTitleScreen]);
 
   const showClear = session?.game.status === "completed" && session.phase === "idle";
+  const reportedClear = useRef(-1);
+  useEffect(() => {
+    if (!showClear || !session || reportedClear.current === session.sessionId) return;
+    reportedClear.current = session.sessionId;
+    const summary = summarizeGame(session.game, presentation);
+    trackEvent("game_clear", { turns: summary.turns, moves: summary.moves, transfers: summary.transfers });
+  }, [showClear, session, presentation]);
 
   return (
     <>

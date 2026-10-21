@@ -8,6 +8,7 @@ import { browserResultShareActions, type ResultShareActions } from "../resultSha
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
 import { directionLabel, landingTransitionText, serviceName, stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
+import { trackEvent } from "../../analytics/analytics";
 
 interface ClearScreenProps {
   game: GameState;
@@ -46,6 +47,7 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
   const canShare = shareActions.canShare(shareText);
   const copyResult = async () => {
     const copied = await shareActions.copy(shareText);
+    trackEvent("result_share", { method: "copy", outcome: copied ? "success" : "failed" });
     setShowShareText(!copied);
     setShareMessage(copied
       ? "結果をコピーしました"
@@ -53,6 +55,7 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
   };
   const shareResult = async () => {
     const result = await shareActions.share(shareText);
+    trackEvent("result_share", { method: "share", outcome: result });
     if (result === "cancelled") return;
     setShowShareText(result === "failed");
     setShareMessage(result === "failed"

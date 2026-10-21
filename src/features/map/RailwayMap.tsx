@@ -44,6 +44,7 @@ import {
 } from "./railwayLayers";
 import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
+import { trackException } from "../analytics/analytics";
 
 export interface MapFollow {
   enabled: boolean;
@@ -220,6 +221,7 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
     const map = createMap(container, minZoom);
     if (!map) {
       setUnsupported(true);
+      trackException("webgl2_unavailable", false);
       return;
     }
     setUnsupported(false);
@@ -245,7 +247,10 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
     // style, or tiles failing so that never happens. Later tile errors are tolerated.
     let basemapLoaded = false;
     map.on("error", (event) => {
-      if (!basemapLoaded && isBasemapError(event)) setStyleFailed(true);
+      if (!basemapLoaded && isBasemapError(event)) {
+        setStyleFailed(true);
+        trackException("map_style_or_tile_failure", false);
+      }
     });
     map.once("load", () => {
       basemapLoaded = true;
