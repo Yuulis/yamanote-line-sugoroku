@@ -28,6 +28,11 @@ function analytics(options: { measurementId?: string; production?: boolean; opte
   };
 }
 
+/** gtag.js commands as plain arrays; the queue itself must hold `arguments` objects. */
+function queued(): unknown[][] {
+  return (window.dataLayer ?? []).map((entry) => Array.from(entry as ArrayLike<unknown>));
+}
+
 beforeEach(() => {
   document.head.replaceChildren();
   delete (window as Window & { dataLayer?: unknown[] }).dataLayer;
@@ -56,7 +61,9 @@ describe("analytics safeguards", () => {
     instance.initAnalytics();
     expect(document.querySelectorAll("script[src='https://www.googletagmanager.com/gtag/js?id=G-ABCD1234']")).toHaveLength(1);
     expect(document.querySelector("script")?.async).toBe(true);
-    expect(window.dataLayer).toContainEqual(["config", "G-ABCD1234", {
+    // gtag.js ignores queued arrays; only `arguments` objects are processed.
+    expect((window.dataLayer ?? []).every((entry) => Object.prototype.toString.call(entry) === "[object Arguments]")).toBe(true);
+    expect(queued()).toContainEqual(["config", "G-ABCD1234", {
       allow_google_signals: false,
       allow_ad_personalization_signals: false,
       page_location: `${window.location.origin}/play`,
@@ -70,12 +77,12 @@ describe("analytics safeguards", () => {
     expect(instance.isAnalyticsOptedOut()).toBe(true);
     expect(memory.get(ANALYTICS_OPT_OUT_KEY)).toBe("true");
     instance.trackEvent("game_start", { mode: "new" });
-    expect(window.dataLayer).not.toContainEqual(["event", "game_start", { mode: "new" }]);
+    expect(queued()).not.toContainEqual(["event", "game_start", { mode: "new" }]);
     instance.setAnalyticsOptOut(false);
     expect(instance.isAnalyticsOptedOut()).toBe(false);
     instance.trackEvent("game_start", { mode: "resume", stationId: "secret" });
-    expect(window.dataLayer).not.toContainEqual(expect.arrayContaining(["event", "game_start"]));
+    expect(queued()).not.toContainEqual(expect.arrayContaining(["event", "game_start"]));
     instance.trackEvent("game_clear", { turns: 15, moves: 10, transfers: 2 });
-    expect(window.dataLayer).toContainEqual(["event", "game_clear", { turns: 15, moves: 10, transfers: 2 }]);
+    expect(queued()).toContainEqual(["event", "game_clear", { turns: 15, moves: 10, transfers: 2 }]);
   });
 });

@@ -78,11 +78,14 @@ export function createAnalytics(config: AnalyticsConfig): Analytics {
     if (readOptOut()) return;
     initialized = true;
     const existing = (browserWindow as Window & { dataLayer?: unknown[]; gtag?: Gtag }).gtag;
-    gtag = existing ?? ((...args: unknown[]) => {
+    // gtag.js only processes `arguments` objects queued on dataLayer; a
+    // spread array is silently ignored, so keep the canonical snippet form.
+    gtag = existing ?? function queueGtag() {
       const target = browserWindow as Window & { dataLayer?: unknown[] };
       target.dataLayer = target.dataLayer ?? [];
-      target.dataLayer.push(args);
-    });
+      // eslint-disable-next-line prefer-rest-params
+      target.dataLayer.push(arguments);
+    };
     (browserWindow as Window & { gtag?: Gtag }).gtag = gtag;
     gtag("js", new Date());
     gtag("config", measurementId, {
