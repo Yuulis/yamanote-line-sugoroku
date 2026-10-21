@@ -9,6 +9,7 @@ import {
   reduceAppState,
 } from "./gameSession";
 import { generateSeed } from "./seed";
+import { trackEvent } from "../analytics/analytics";
 import {
   deleteSave,
   readSave,
@@ -75,8 +76,14 @@ export function useGameApp(
     if (sessionId === undefined || rngSeed === undefined || turn === undefined) return;
     dispatch({ type: "roll", sessionId, rngSeed, turn });
   }, [sessionId, rngSeed, turn]);
-  const newGame = useCallback(() => dispatch({ type: "new-game", seed: generateSeed() }), []);
-  const resume = useCallback((game: GameState) => dispatch({ type: "resume", game }), []);
+  const newGame = useCallback(() => {
+    trackEvent("game_start", { mode: "new" });
+    dispatch({ type: "new-game", seed: generateSeed() });
+  }, []);
+  const resume = useCallback((game: GameState) => {
+    trackEvent("game_start", { mode: "resume" });
+    dispatch({ type: "resume", game });
+  }, []);
   const finishAnimation = useCallback(
     ({ sessionId, turn }: MoveAnimation) =>
       dispatch({ type: "animation-finished", sessionId, turn }),

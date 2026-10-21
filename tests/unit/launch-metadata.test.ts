@@ -175,3 +175,12 @@ describe("site.webmanifest", () => {
     }
   });
 });
+
+describe("privacy policy", () => {
+  it("exists in Japanese and links to support and the analytics opt-out add-on", () => {
+    const privacy = readFileSync(`${PUBLIC_DIR}/privacy.html`, "utf8");
+    expect(privacy).toContain('<html lang="ja">');
+    expect(privacy).toContain('href="https://github.com/Yuulis/yamanote-line-sugoroku/issues"');
+    expect(privacy).toContain('href="https://tools.google.com/dlpage/gaoptout"');
+  });
+});
