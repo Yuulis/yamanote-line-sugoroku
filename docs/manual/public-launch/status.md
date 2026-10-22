@@ -17,8 +17,7 @@
 
 ## 告知前に残っていること（提案§2・段階1）
 
-- 配信設定：`vercel.json` でハッシュ付き資産を長期キャッシュにする。
-- データ更新方針：告知後の凍結期間と、更新時の案内（D5の残り）。
+- 配信設定・データ更新方針（D5の残り）：決定済み。[方針](data-update-policy.md)。`vercel.json` は本番反映後にヘッダーを確認する。
 - 実機確認：iPhone Safari・Android での読込、長い旅、共有、ホーム画面アイコン。
 - 商標の手動確認：J-PlatPat（手順は `.claude/docs/research/launch-name-mark-check.md`）。
 
