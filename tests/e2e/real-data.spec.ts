@@ -216,7 +216,7 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   if (!railwayBundle.data.services.ok) throw new Error("The shipped service catalogue did not load");
   expect(railwayBundle.data.services.value.services.reduce((sum, service) => sum + service.stationIds.length, 0)).toBe(2_142);
   await openTitle(page);
-  await expect(page.getByText("東京近郊版", { exact: true })).toBeVisible();
+  await expect(page.getByText("東京近郊版", { exact: true })).toBeAttached();
   await page.evaluate(() => performance.mark("jrcr-s6-app-start"));
   await startNewGame(page);
   const panelSubtitle = gamePanel(page).getByText("東京近郊版", { exact: true });

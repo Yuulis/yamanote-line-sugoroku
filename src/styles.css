@@ -344,20 +344,29 @@ button[aria-disabled="true"] {
   text-align: center;
 }
 
+.title-screen__logo {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  height: auto;
+  margin: 0 auto;
+}
+
 .title-screen__actions {
   display: grid;
   gap: 8px;
   margin: 16px 0;
 }
 
-.title-screen__actions button {
+.title-screen__actions button,
+.title-screen__credits-button {
   font-size: 16px;
 }
 
-.title-screen__actions .title-screen__delete {
-  justify-self: end;
-  min-width: 120px;
-  font-size: 13px;
+/* Sits below the actions grid so it stays reachable while loading. */
+.title-screen__credits-button {
+  display: block;
+  width: 100%;
 }
 
 .title-screen__notice {

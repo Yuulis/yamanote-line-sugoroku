@@ -12,7 +12,7 @@ export const FIXTURE_EDITION_A: Edition = {
   config: multiConfig(),
   expectedStationCounts: { [M_LOOP]: 6 },
   saveKey: saveKeyForEdition("fixture-a"),
-  display: { ...base.display, title: "Fixture A", subtitle: "試験版A", documentTitle: "Fixture A" },
+  display: { ...base.display, title: "Fixture A", subtitle: "試験版A", documentTitle: "Fixture A", logoUrl: undefined },
 };
 
 export const FIXTURE_EDITION_B: Edition = {
@@ -21,7 +21,7 @@ export const FIXTURE_EDITION_B: Edition = {
   dataBaseUrl: "/fixture-b/",
   config: { ...multiConfig(), rulesetVersion: "test-multi-2", startStationId: "a" },
   saveKey: saveKeyForEdition("fixture-b"),
-  display: { ...base.display, title: "Fixture B", subtitle: "試験版B", documentTitle: "Fixture B" },
+  display: { ...base.display, title: "Fixture B", subtitle: "試験版B", documentTitle: "Fixture B", logoUrl: undefined },
 };
 
 export const FIXTURE_EDITIONS: EditionRegistry = [FIXTURE_EDITION_A, FIXTURE_EDITION_B];
