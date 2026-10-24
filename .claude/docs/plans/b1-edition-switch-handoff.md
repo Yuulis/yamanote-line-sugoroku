@@ -47,4 +47,4 @@ change for current players.
   (see `c2-ci-speedup-handoff.md`).
 - C2 (CI) is done: a docs-only push here (run 39353441915) skipped the E2E
   legs and the required `E2E (Playwright)` check passed in 1.5 min.
-- Next after B1: A1 (result text sharing).
+- Released to production in v0.9.0 (PR #42, `9d8c481`, 2026-10-22).

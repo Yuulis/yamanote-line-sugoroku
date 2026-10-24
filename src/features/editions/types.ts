@@ -12,6 +12,8 @@ export interface EditionDisplay {
   readonly title: string;
   readonly subtitle: string;
   readonly documentTitle: string;
+  /** Title-screen wordmark showing both title and subtitle; text is shown when absent. */
+  readonly logoUrl?: string;
   readonly ruleParagraphs: readonly (readonly EditionTextPart[])[];
 }
 

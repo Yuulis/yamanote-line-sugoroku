@@ -68,10 +68,11 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   // The data credit comes from the shipped manifest, so the test follows the data.
   const source = await loadManifestSource(railwayBundle);
   await openTitle(page);
-  await expect(titleScreen(page).getByText("東京近郊版", { exact: true })).toBeVisible();
+  await expect(titleScreen(page).getByRole("img", { name: "山手線すごろく" })).toBeVisible();
+  await expect(titleScreen(page).getByText("東京近郊版", { exact: true })).toBeAttached();
   await expect(titleScreen(page).getByRole("button", { name: "クレジット" })).toBeVisible();
   await expect(titleScreen(page).getByText(
-    "新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。山手線と他の路線がある駅では、3分の2の確率で山手線を選び、残りの確率を他の運行系統に均等に割り当てます。他の路線で方向を抽選するときは、山手線に近づく方向の抽選重みが反対方向の2倍になります。",
+    "新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。",
     { exact: true },
   )).toBeVisible();
   await titleScreen(page).getByRole("button", { name: "クレジット" }).click();

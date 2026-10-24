@@ -28,11 +28,12 @@ where available) without changing save format or rules.
 |---|---|---|---|
 | Decisions + prompt | done | — | 2026-10-20 |
 | Implementation (Luna) | done | `20d8092` | typecheck; unit: 35 files, 682 passed/1 skipped; build; desktop Chromium: 54 passed/1 skipped; phone Chromium: 55 passed |
-| Lead verification + CI | in progress | see next commit | Lead fixes: share buttons in their own row (actions grid back to 2fr 1fr), status region always mounted, vacuous `aria-label` assertion removed; `npm test` 682 passed / 1 skipped; clear-screen E2E on desktop/phone Chromium 20 passed |
+| Lead verification + CI | done | `ec17113`; PR #38 merged | Lead fixes: share buttons in their own row (actions grid back to 2fr 1fr), status region always mounted, vacuous `aria-label` assertion removed; `npm test` 682 passed / 1 skipped; clear-screen E2E on desktop/phone Chromium 20 passed |
 
 ## Notes
 
 - Before A1: B1 merged (PR #36) and the Firefox WebGL CI flake fixed
   (PR #37, `5553f9c`).
+- Released to production in v0.9.0 (PR #42, `9d8c481`, 2026-10-22).
 - Next after A1: per the roadmap §7 (production device check, C1 part 2,
   C3 Low items) — ask the user.

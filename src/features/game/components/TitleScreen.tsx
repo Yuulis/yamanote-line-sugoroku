@@ -82,7 +82,7 @@ function SaveSection({
       <button type="button" className="button-primary" onClick={() => onResume(game)}>
         {resumeLabel(game, network, presentation)}
       </button>
-      <button type="button" className="title-screen__delete" onClick={onDeleteSave}>
+      <button type="button" onClick={onDeleteSave}>
         セーブを削除
       </button>
     </>
@@ -194,9 +194,12 @@ export function TitleScreen(props: TitleScreenProps) {
       <div className="title-screen__card">
         {showCredits ? <Credits manifest={props.manifest} onBack={() => setShowCredits(false)} /> : <>
         <h1 ref={headingRef} id="game-title" className="title-screen__title" tabIndex={-1}>
-          {display.title}
+          {display.logoUrl
+            ? <img className="title-screen__logo" src={display.logoUrl} alt={display.title} width={1200} height={300} />
+            : display.title}
         </h1>
-        <p className="title-screen__subtitle">{display.subtitle}</p>
+        {/* A logo already shows the subtitle, so its text is kept for screen readers only. */}
+        <p className={display.logoUrl ? "visually-hidden" : "title-screen__subtitle"}>{display.subtitle}</p>
         {props.editions && props.editionId && props.onEditionChange && (
           <EditionPicker
             editions={props.editions}
@@ -243,8 +246,8 @@ export function TitleScreen(props: TitleScreenProps) {
             はじめから
           </button>
         </div>}
+        <button ref={creditsButtonRef} type="button" className="title-screen__credits-button" onClick={() => setShowCredits(true)}>クレジット</button>
         <p className="title-screen__version">v{__APP_VERSION__}</p>
-        <button ref={creditsButtonRef} type="button" onClick={() => setShowCredits(true)}>クレジット</button>
         </>}
       </div>
     </main>
