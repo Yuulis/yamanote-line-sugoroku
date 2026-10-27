@@ -1,6 +1,6 @@
 import type { ServicePattern, Station } from "../../types/network";
 import type { PresentationResolver } from "../game/presentationResolver";
-import { MVP_GAME_CONFIG } from "../game/gameConfig";
+import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import {
   LABEL_MIN_ZOOM,
   LABEL_ORDINARY_MIN_ZOOM,
@@ -39,7 +39,7 @@ export function buildStationCollection(
     "stationName" | "serviceStationName" | "serviceName" | "lineGroupId"
   >,
   serviceIdsByStation: ReadonlyMap<string, readonly string[]> = indexStationServices(services),
-  targetServiceId = MVP_GAME_CONFIG.targetServiceId,
+  targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
 ): StationFeatureCollection {
   const serviceById = new Map(services.map((service) => [service.id, service]));
   const features = stations.map((station, stationOrder): StationFeature => {

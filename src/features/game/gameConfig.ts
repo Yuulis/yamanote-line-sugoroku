@@ -39,7 +39,7 @@ const ITEM_POLICY: ItemPolicy = {
   harmfulKinds: [...HARMFUL_ITEM_KINDS],
 };
 
-/** Internal foundation for the unshipped item ruleset; S11 controls product wiring. */
+/** The sole playable Tokyo suburban ruleset. */
 export const ITEM_GAME_CONFIG: GameConfig = {
   ...CLASSIC_GAME_CONFIG,
   rulesetVersion: "tokyo-suburban-items-1",
@@ -51,8 +51,11 @@ export const ITEM_GAME_CONFIG: GameConfig = {
   itemPolicy: ITEM_POLICY,
 };
 
-/** S11 switches this alias to the shipped item configuration. */
-export const MVP_GAME_CONFIG = CLASSIC_GAME_CONFIG;
+/** Product defaults; classic remains an explicit internal engine/test config. */
+export const DEFAULT_GAME_CONFIG = ITEM_GAME_CONFIG;
+
+/** Compatibility alias for internal callers; prefer DEFAULT_GAME_CONFIG. */
+export const MVP_GAME_CONFIG = DEFAULT_GAME_CONFIG;
 
 /** Animation speeds per station hop (spec 11: 0.3-0.6 s, configurable). */
 export const ANIMATION_SPEEDS = [

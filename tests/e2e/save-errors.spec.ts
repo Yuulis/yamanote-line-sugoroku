@@ -127,6 +127,18 @@ for (const { name, message, tamper } of CASES) {
 test.describe("captured pre-S5 save against the live product bundle", () => {
   test.use({ dataset: "real" });
 
+  test("rejects the historical classic v4 save and retains it until explicit discard", async ({ page }) => {
+    const historical = readFileSync(new URL("./fixtures/historical-classic-before-clear-save.json", import.meta.url), "utf8");
+    await openTitle(page);
+    await writeSaveText(page, historical);
+    await page.reload();
+    await expect(titleScreen(page).getByRole("alert")).toContainText("ルールが異なるセーブデータのため読み込めません。");
+    await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
+    expect(await readSaveText(page)).toBe(historical);
+    await page.reload();
+    expect(await readSaveText(page)).toBe(historical);
+  });
+
   test("reports an unsupported format, survives cancellation and reload, then can be discarded", async ({ page }) => {
     await openTitle(page);
     await writeSaveText(page, OLD_CAPITAL_REGION_SAVE);

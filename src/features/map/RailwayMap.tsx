@@ -14,7 +14,7 @@ import type { LivePosition } from "../game/animation/livePosition";
 import type { PresentationResolver } from "../game/presentationResolver";
 import { buildDataAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
-import { MVP_GAME_CONFIG } from "../game/gameConfig";
+import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import { indexServiceGeometry } from "./serviceGeometry";
 import { buildMapPresentationIndex } from "./mapPresentation";
 import { updateLineGroupVisibility } from "./lineVisibility";
@@ -98,6 +98,9 @@ function fitNetworkOverview(map: MapLibreMap, services: readonly ServicePattern[
         bottom: phonePanelBottomPadding(map),
       }
     : NETWORK_FIT_PADDING_DESKTOP;
+  // Clear follow padding before solving the fit: MapLibre combines retained
+  // padding with fit padding, which can exceed the viewport on item panels.
+  map.setPadding(ZERO_MAP_PADDING);
   map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
   map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
 }
@@ -175,7 +178,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, overviewKey, inert = false, targetServiceId = MVP_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];

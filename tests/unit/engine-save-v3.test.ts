@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRailwayNetwork, createGame, createItemGame, landingOptions, moveByRoll, playTurn, restoreGame, rollDie, SAVE_VERSION, serializeGame,
 } from "../../src/features/game/engine";
-import { ITEM_GAME_CONFIG, MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { ITEM_GAME_CONFIG, CLASSIC_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { GameConfig, GameState } from "../../src/types/network";
 import { deleteSave, readSave, SAVE_STORAGE_KEY, type StorageLike } from "../../src/features/game/store/persistence";
 import { kindInput, lotteryConfig } from "./fixtures/lottery";
@@ -37,7 +37,7 @@ describe("save v3 lottery policies", () => {
     // is the expected restore target for this compatibility rejection proof.
     const oldSave = serializeGame(createGame(LEGACY_CAPITAL_REGION_CONFIG, "previous-ruleset", yamanoteNetwork));
 
-    expect(() => restoreGame(oldSave, yamanoteNetwork, { expectedConfig: MVP_GAME_CONFIG }))
+    expect(() => restoreGame(oldSave, yamanoteNetwork, { expectedConfig: CLASSIC_GAME_CONFIG }))
       .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
   });
 
@@ -124,8 +124,8 @@ describe("save v3 lottery policies", () => {
   });
 
   it("config equality distinguishes absent and present item policy", () => {
-    const state = createGame(MVP_GAME_CONFIG, "classic-config-equality", yamanoteNetwork);
-    const expected = { ...MVP_GAME_CONFIG, itemPolicy: structuredClone(ITEM_GAME_CONFIG.itemPolicy!) };
+    const state = createGame(CLASSIC_GAME_CONFIG, "classic-config-equality", yamanoteNetwork);
+    const expected = { ...CLASSIC_GAME_CONFIG, itemPolicy: structuredClone(ITEM_GAME_CONFIG.itemPolicy!) };
     expect(() => restoreGame(serializeGame(state), yamanoteNetwork, { expectedConfig: expected }))
       .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
   });
@@ -205,7 +205,7 @@ describe("save v3 lottery policies", () => {
   });
 
   it("round trips classic config without adding the optional away weight", () => {
-    const state = createGame(MVP_GAME_CONFIG, "classic-absence", yamanoteNetwork);
+    const state = createGame(CLASSIC_GAME_CONFIG, "classic-absence", yamanoteNetwork);
     expect(restoreGame(serializeGame(state), yamanoteNetwork).config.directionLottery)
       .toEqual({ towardTargetWeight: 2 });
   });

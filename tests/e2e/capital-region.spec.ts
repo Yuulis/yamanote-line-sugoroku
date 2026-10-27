@@ -1,14 +1,14 @@
+import { createGame, playTurn, type ProductTurnResult } from "./fixtures/productGame";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { CAPITAL_BRANCH_SEED, CAPITAL_GAME_SEED } from "./fixtures/capital-region/seeds";
-import { createGame, playTurn, serializeGame } from "../../src/features/game/engine";
-import type { GameState } from "../../src/types/network";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { serializeGame } from "../../src/features/game/engine";
+import type { ItemGameState } from "../../src/types/network";
+import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { buildGeometryIndex, buildMovePlan } from "../../src/features/game/animation/movePath";
 import { displayedProgress } from "../../src/features/game/animation/displayedProgress";
 import { frameAt, hopDurationMs } from "../../src/features/game/animation/timeline";
 import { directionLabel } from "../../src/features/game/presentation";
-import type { MoveResult } from "../../src/features/game/engine";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import {
@@ -18,7 +18,7 @@ import {
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
-import { diceButton, freezeClock, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
+import { diceButton, freezeClock, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, revealUnadjustedRoll, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -30,14 +30,14 @@ interface ComposedTiming {
   totalMs: number;
 }
 
-function gameBeforeTurn(network: RailwayBundle["network"], seed: string, turn: number): GameState {
-  let game = createGame(MVP_GAME_CONFIG, seed, network);
+function gameBeforeTurn(network: RailwayBundle["network"], seed: string, turn: number): ItemGameState {
+  let game = createGame(DEFAULT_GAME_CONFIG, seed, network);
   while (game.status === "playing" && game.turn < turn) game = playTurn(game, network).state;
   if (game.turn !== turn || game.status !== "playing") throw new Error(`Seed ${seed} did not reach turn ${turn}`);
   return game;
 }
 
-function composedTiming(bundle: RailwayBundle, result: MoveResult, segmentId: string): ComposedTiming {
+function composedTiming(bundle: RailwayBundle, result: ProductTurnResult, segmentId: string): ComposedTiming {
   if (!bundle.data.geometry.ok) throw new Error("Product geometry is required for the composed-hop reveal");
   const plan = buildMovePlan(result.events, bundle.network, buildGeometryIndex(bundle.data.geometry.value));
   const targetIndex = plan.findIndex((step) => step.segmentId === segmentId);
@@ -52,8 +52,8 @@ function composedTiming(bundle: RailwayBundle, result: MoveResult, segmentId: st
 
 function composedMidpointPanelState(
   bundle: RailwayBundle,
-  before: GameState,
-  result: MoveResult,
+  before: ItemGameState,
+  result: ProductTurnResult,
   segmentId: string,
 ): { direction: string; progress: string } {
   if (!bundle.data.geometry.ok) throw new Error("Product geometry is required for composed-hop progress");
@@ -66,14 +66,14 @@ function composedMidpointPanelState(
   if (frame.stepsCompleted !== targetIndex || frame.done) {
     throw new Error(`Composed-hop midpoint did not stay before the landing at step ${targetIndex}`);
   }
-  const shown = displayedProgress(result.state, bundle.network, {
+  const shown = displayedProgress({ ...result.state, movementHistory: [] }, bundle.network, {
     fromStationId: before.currentStationId,
     steps: plan,
     frame,
   });
   const completedCount = targetCompletedIds({ completedSegmentIds: [...shown.completedSegmentIds] }).length;
   return {
-    direction: directionLabel(bundle.network, record.serviceId, record.direction),
+    direction: directionLabel(bundle.network, record.resolvedRide!.serviceId, record.resolvedRide!.direction),
     progress: `${completedCount}/${REQUIRED_SEGMENTS}`,
   };
 }
@@ -99,7 +99,7 @@ async function focusMapOnYokohama(page: Page, bundle: RailwayBundle): Promise<vo
   }, center);
 }
 
-async function resumeSavedGame(page: Page, game: GameState): Promise<void> {
+async function resumeSavedGame(page: Page, game: ItemGameState): Promise<void> {
   await openTitle(page);
   await writeSaveText(page, serializeGame(game));
   await page.reload();
@@ -110,7 +110,7 @@ test.use({ dataset: "capital-region", gameSeed: CAPITAL_GAME_SEED });
 
 async function expectFit(page: Page, bundle: RailwayBundle, targetOnly: boolean): Promise<void> {
   const points = [...bundle.network.servicesById.values()]
-    .filter((service) => !targetOnly || service.id === MVP_GAME_CONFIG.targetServiceId)
+    .filter((service) => !targetOnly || service.id === DEFAULT_GAME_CONFIG.targetServiceId)
     .flatMap((service) => Object.values(service.platformCoordinates));
   const projected = await page.evaluate((coordinates) => {
     const map = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E.map;
@@ -160,7 +160,11 @@ test("regional target view and full overview fit outside the panel; operator lin
   const viewport = page.viewportSize()!;
   const panel = (await gamePanel(page).boundingBox())!;
   if (viewport.width <= 600) expect(panel.height).toBeLessThanOrEqual(viewport.height * 0.45 + 1);
+  // Item inventory makes this a scrollable panel. Return from the line settings
+  // to the roll control, then verify it is reachable without covering the map.
+  await diceButton(page).scrollIntoViewIfNeeded();
   await expect(diceButton(page)).toBeInViewport();
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
 });
 
 test.describe("current product scenarios", () => {
@@ -171,14 +175,14 @@ test.describe("current product scenarios", () => {
     await startNewGame(page);
     await rollOnce(page);
     const result = gamePanel(page).locator(".game-panel__lottery");
-    await expect(result).toHaveText("抽選: 品川：6系統から抽選 → 山手線 ／ 外回りに固定");
+    await expect(result).toHaveText("抽選: 品川：6系統から抽選 → 京急本線 普通 ／ 方向抽選 → 浦賀方面");
     const candidates = gamePanel(page).locator(".game-panel__candidates");
     await expect(candidates).not.toHaveAttribute("aria-live");
     await candidates.locator("summary").click();
     const firstMove = (await readSave(page))!.movementHistory[0]!;
     expect(firstMove).toMatchObject({
       toStationId: "shinagawa",
-      landing: { serviceId: "jr-yamanote", direction: 1 },
+      landing: { serviceId: "keikyu-main", direction: 1 },
     });
     const expectedCandidates = railwayBundle.network.servicesByStation.get("shinagawa")!;
     const presentation = createPresentationResolver(
@@ -191,7 +195,7 @@ test.describe("current product scenarios", () => {
     }
     await candidates.locator("summary").click();
     await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
-      .toContain("jr-yamanote:shinagawa~osaki");
+      .toContain("keikyu-main:shinagawa~keikyu-kita-shinagawa");
     const committed = (await readSave(page))!;
     await page.reload();
     await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
@@ -220,7 +224,7 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await diceButton(page).click();
+      await revealUnadjustedRoll(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.forward);
       const forwardCommitted = (await readSave(page))!;
       expect(forwardCommitted).toEqual(forwardResult.state);
@@ -234,7 +238,7 @@ test.describe("current product scenarios", () => {
         markerPosition(railwayBundle, forwardBefore),
         markerPosition(railwayBundle, forwardCommitted),
       );
-      const rapidFeatureIds = serviceFeatureIds(railwayBundle, forwardRecord.serviceId);
+      const rapidFeatureIds = serviceFeatureIds(railwayBundle, forwardRecord.resolvedRide!.serviceId);
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds).toEqual(rapidFeatureIds);
       const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_FORWARD)!.geometryFeatureIds;
       await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds)
@@ -260,7 +264,7 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await diceButton(page).click();
+      await revealUnadjustedRoll(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);
@@ -271,7 +275,7 @@ test.describe("current product scenarios", () => {
       await expect(panelStat(page, "踏破区間")).toHaveText(expectedMidpoint.progress);
       await expectMarkerBetween(page, markerPosition(railwayBundle, before), markerPosition(railwayBundle, committed));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
-        .toEqual(serviceFeatureIds(railwayBundle, record.serviceId));
+        .toEqual(serviceFeatureIds(railwayBundle, record.resolvedRide!.serviceId));
       const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_REVERSE)!.geometryFeatureIds;
       await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds)
         .toEqual(expect.arrayContaining([...composedFeatures]));
@@ -292,9 +296,8 @@ test.describe("current product scenarios", () => {
       const result = playTurn(before, railwayBundle.network);
       const record = result.state.movementHistory.at(-1)!;
       expect(record).toMatchObject({
-        serviceId: "jr-shonan-shinjuku-rapid-takasaki",
-        direction: -1,
-        landing: { serviceId: "jr-saikyo", direction: 1 },
+        resolvedRide: { serviceId: "jr-shonan-shinjuku-rapid-takasaki", direction: -1 },
+        landing: { serviceId: "metro-fukutoshin", direction: 1 },
       });
       expect(record.traversedSegmentIds).toContain(PRODUCT_COMPOSED_REVERSE);
       const timing = composedTiming(railwayBundle, result, PRODUCT_COMPOSED_REVERSE);
@@ -303,7 +306,7 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await diceButton(page).click();
+      await revealUnadjustedRoll(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);
@@ -311,20 +314,20 @@ test.describe("current product scenarios", () => {
       await page.clock.fastForward(timing.beforeTargetMs + timing.targetDurationMs / 2);
       await expectMarkerBetween(page, markerPosition(railwayBundle, before), markerPosition(railwayBundle, committed));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
-        .toEqual(serviceFeatureIds(railwayBundle, record.serviceId));
+        .toEqual(serviceFeatureIds(railwayBundle, record.resolvedRide!.serviceId));
       const remaining = Math.max(0, timing.totalMs - 16 - timing.beforeTargetMs - timing.targetDurationMs / 2);
       await page.clock.fastForward(remaining + 50);
       await expect(diceButton(page)).toHaveText("サイコロを振る");
-      await expect(panelStat(page, "現在駅")).toHaveText(railwayBundle.network.stationsById.get("osaki")!.name);
-      await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, "jr-saikyo"));
+      await expect(panelStat(page, "現在駅")).toHaveText(railwayBundle.network.stationsById.get("ikebukuro")!.name);
+      await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, "metro-fukutoshin"));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
-        .toEqual(serviceFeatureIds(railwayBundle, "jr-saikyo"));
+        .toEqual(serviceFeatureIds(railwayBundle, "metro-fukutoshin"));
       expect(await readSave(page)).toEqual(committed);
     });
   });
 
   test("clear history pages retain every product record, and reopened results restore the saved history", async ({ page, railwayBundle }) => {
-    let game = createGame(MVP_GAME_CONFIG, PRODUCT_HISTORY_GAME_SEED, railwayBundle.network);
+    let game = createGame(DEFAULT_GAME_CONFIG, PRODUCT_HISTORY_GAME_SEED, railwayBundle.network);
     while (game.status === "playing" && game.turn < 100) game = playTurn(game, railwayBundle.network).state;
     expect(game).toMatchObject({ status: "completed", turn: PRODUCT_HISTORY_SCENARIO_TURNS.completed, currentStationId: "shimbashi" });
     await openTitle(page);
@@ -346,10 +349,19 @@ test.describe("current product scenarios", () => {
     await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBe(0);
     await expect(items.first()).toBeInViewport({ ratio: 1 });
     await clear.getByRole("button", { name: "次のページ" }).click();
-    await expect(items).toHaveCount(2);
+    await expect(items).toHaveCount(20);
     await expect(items.first()).toContainText("41ターン目");
-    await expect(items.last()).toContainText("42ターン目");
+    await expect(items.last()).toContainText("60ターン目");
+    await clear.getByRole("button", { name: "次のページ" }).click();
+    await expect(items).toHaveCount(20);
+    await expect(items.first()).toContainText("61ターン目");
+    await clear.getByRole("button", { name: "次のページ" }).click();
+    await expect(items).toHaveCount(16);
+    await expect(items.first()).toContainText("81ターン目");
+    await expect(items.last()).toContainText("96ターン目");
     await expect(clear.getByRole("button", { name: "次のページ" })).toBeDisabled();
+    await clear.getByRole("button", { name: "前のページ" }).click();
+    await clear.getByRole("button", { name: "前のページ" }).click();
     await clear.getByRole("button", { name: "前のページ" }).click();
     await expect(items.first()).toContainText("21ターン目");
     await clear.getByRole("button", { name: "前のページ" }).click();
@@ -370,7 +382,8 @@ test.describe("branch", () => {
     await startNewGame(page);
     for (let turn = 0; turn < 4; turn += 1) await rollOnce(page);
     await expect(panelStat(page, "乗車中")).toHaveText("広域支線");
-    await expect(panelStat(page, "出目")).toContainText("系統の端");
+    await expect(panelStat(page, "出目")).toHaveText("6（6マス、2駅移動、残り4は使わず）");
+    await expect(gamePanel(page).locator(".game-panel__lottery")).toContainText("系統の端");
     await rollOnce(page);
     expect((await readSave(page))?.movementHistory.at(-1)?.traversedSegmentIds).toEqual(["capital-branch:capital-branch-end:shinagawa", "capital-branch:shinagawa:capital-west"]);
   });

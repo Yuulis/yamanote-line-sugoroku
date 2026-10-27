@@ -56,19 +56,19 @@ test("[8.3-2/3] play a full game to the clear screen, then play again", async ({
   for (const [index, record] of save.movementHistory.entries()) {
     const from = stations.get(record.fromStationId)?.name;
     const to = stations.get(record.toStationId)?.name;
-    const unused = record.roll - record.traversedSegmentIds.length;
-    const service = railwayBundle.network.servicesById.get(record.serviceId)!;
-    const direction = record.direction === 1 ? service.directionLabels.forward : service.directionLabels.backward;
-    await expect(items.nth(index)).toContainText(`${record.turn}ターン目 出目${record.roll}：${from} → ${to}`);
+    if (record.kind !== "item-ride") throw new Error("Autoplay should not use deadhead");
+    const service = railwayBundle.network.servicesById.get(record.resolvedRide.serviceId)!;
+    const direction = record.resolvedRide.direction === 1 ? service.directionLabels.forward : service.directionLabels.backward;
+    await expect(items.nth(index)).toContainText(`${record.turn}ターン目 出目${record.rawRoll}`);
+    await expect(items.nth(index)).toContainText(`${record.physicalHops}駅移動`);
+    await expect(items.nth(index)).toContainText(`${from} → ${to}`);
     await expect(items.nth(index)).toContainText(`（${service.name}・${direction}）`);
-    if (unused > 0) {
-      const kind = record.stopReason === "endpoint" && !service.circular
-        ? `〔${(record.toStationId === service.stationIds[0] ? service.endpoints.first : service.endpoints.last) === "terminus" ? "終点" : "エリア端"}〕` : "";
-      await expect(items.nth(index)).toContainText(`（${to}で停止${kind}、残り${unused}）`);
+    if (record.unusedPips > 0) {
+      await expect(items.nth(index)).toContainText(`残り${record.unusedPips}は使わず`);
     }
-    if (record.landing && record.landing.serviceId !== record.serviceId) {
+    if (record.landing && record.landing.serviceId !== record.resolvedRide.serviceId) {
       const next = railwayBundle.network.servicesById.get(record.landing.serviceId)!;
-      await expect(items.nth(index)).toContainText(`乗換: ${next.name}`);
+      await expect(items.nth(index)).toContainText(`抽選 → ${next.name}`);
     }
 
   }

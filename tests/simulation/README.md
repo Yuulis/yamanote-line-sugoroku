@@ -67,17 +67,19 @@ history growth, map geometry or device performance. The shipped loader follows
 product guards; S2's services-envelope cutover must also update its guarded input
 extraction. `runSimulation` itself accepts any built `RailwayNetwork` unchanged.
 
-## Shipped product rules and S7 observations
+## Internal classic rules and historical S7 observations
 
 The generic `SIM_PRESET=decided` harness preset is a legacy comparison preset; it
-is not the shipped game configuration. Product gameplay configuration comes
-from `MVP_GAME_CONFIG` in `src/features/game/gameConfig.ts`; the manifest carries
-bundle identity and presentation metadata. Product configuration can be selected
+is not the shipped game configuration. The internal classic measurement configuration comes
+from `CLASSIC_GAME_CONFIG` in `src/features/game/gameConfig.ts`; the manifest carries
+bundle identity and presentation metadata. This classic measurement can be selected
 with `SIM_BUNDLE=public/data SIM_CONFIG=product`. For example, run
-a 200-game product smoke with `SIM_BUNDLE=public/data SIM_CONFIG=product
+a 200-game classic smoke with `SIM_BUNDLE=public/data SIM_CONFIG=product
 SIM_GAMES=200 npm run sim`. Do not infer the Tokyo suburban 2/3 Yamanote share from the
-legacy preset. Product games use ruleset `tokyo-suburban-1` and bundle
+legacy preset. These classic games use ruleset `tokyo-suburban-1` and bundle
 `dataVersion` `n02-2025-8a0970069659`.
+The playable edition now uses `DEFAULT_GAME_CONFIG` (`ITEM_GAME_CONFIG`); see
+the item-engine runner below for its measurements.
 
 S7 observed 5,000 seeded product games (`s1m-20261012-0..4999`) with no cap hits:
 turns median 55 / p90 146 / p99 261 / mean 69.3858 / max 446; hops median 180 /

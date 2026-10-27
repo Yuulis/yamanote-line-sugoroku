@@ -1,20 +1,21 @@
+import { createGame, playTurn } from "./fixtures/productGame";
 import { mkdirSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
-import { createGame, playTurn, serializeGame } from "../../src/features/game/engine";
+import { serializeGame } from "../../src/features/game/engine";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { UiLineGroup } from "../../src/types/data";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
+import { PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { diceButton, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 test.use({ dataset: "real" });
 const SCREENSHOT_DIR = resolve(".claude/logs/s6/screenshots");
-const OEDO_LOTTERY_SEED = PRODUCT_HISTORY_GAME_SEED;
-const OEDO_LOTTERY_TURN = 16;
+const OEDO_LOTTERY_SEED = "00000000000000000000000000000004";
+const OEDO_LOTTERY_TURN = 256;
 const OEDO_BEFORE_LOTTERY_SAVE = readFileSync(
   new URL("./fixtures/tokyo-suburban-oedo-before-lottery-save.json", import.meta.url),
   "utf8",
@@ -28,7 +29,7 @@ function productLineGroups(bundle: RailwayBundle): UiLineGroup[] {
 }
 
 function gameAfterTurn(bundle: RailwayBundle, seed: string, turn: number) {
-  let game = createGame(MVP_GAME_CONFIG, seed, bundle.network);
+  let game = createGame(DEFAULT_GAME_CONFIG, seed, bundle.network);
   while (game.status === "playing" && game.turn < turn) game = playTurn(game, bundle.network).state;
   if (game.turn !== turn || game.status !== "playing") throw new Error(`Seed ${seed} did not reach turn ${turn}`);
   return game;
@@ -55,22 +56,26 @@ async function filteredPrimitiveIds(page: Page): Promise<string[] | null> {
 }
 
 async function expectPlatformsInView(page: Page, points: [number, number][]): Promise<void> {
-  const projected = await page.evaluate((coordinates) => {
-    const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
-    return coordinates.map((point) => {
-      const { x, y } = hook.map.project(point);
-      return { x, y };
-    });
-  }, points);
-  const viewport = page.viewportSize()!;
-  const panel = (await gamePanel(page).boundingBox())!;
-  for (const { x, y } of projected) {
-    expect(x).toBeGreaterThanOrEqual(0);
-    expect(x).toBeLessThanOrEqual(viewport.width);
-    expect(y).toBeGreaterThanOrEqual(0);
-    expect(y).toBeLessThanOrEqual(viewport.height);
-    expect(x < panel.x || x > panel.x + panel.width || y < panel.y || y > panel.y + panel.height).toBe(true);
-  }
+  // Camera fits follow React layout/map effects, including after a new game.
+  // Recheck the complete geometry contract until that fit has settled.
+  await expect(async () => {
+    const projected = await page.evaluate((coordinates) => {
+      const hook = (window as unknown as { __sugorokuE2E: { map: { project(point: [number, number]): { x: number; y: number } } } }).__sugorokuE2E;
+      return coordinates.map((point) => {
+        const { x, y } = hook.map.project(point);
+        return { x, y };
+      });
+    }, points);
+    const viewport = page.viewportSize()!;
+    const panel = (await gamePanel(page).boundingBox())!;
+    for (const { x, y } of projected) {
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(viewport.width);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(viewport.height);
+      expect(x < panel.x || x > panel.x + panel.width || y < panel.y || y > panel.y + panel.height).toBe(true);
+    }
+  }).toPass({ timeout: 7_000 });
 }
 
 test("the Oedo legend checkbox groups both services and works by keyboard and phone touch", async ({ page, railwayBundle }) => {
@@ -152,7 +157,7 @@ test("Oedo candidates at 都庁前 display one row with two lottery slots", asyn
   await writeSaveText(page, OEDO_BEFORE_LOTTERY_SAVE);
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
-  await expect(panelStat(page, "ターン数")).toHaveText("15");
+  await expect(panelStat(page, "ターン数")).toHaveText("255");
   await rollOnce(page);
   expect(await readSave(page)).toEqual(game);
   await expect(panelStat(page, "現在駅")).toHaveText("都庁前");
@@ -164,7 +169,7 @@ test("Oedo candidates at 都庁前 display one row with two lottery slots", asyn
   const next = playTurn(game, railwayBundle.network).state;
   await rollOnce(page);
   expect(await readSave(page)).toEqual(next);
-  expect(["toei-oedo-loop", "toei-oedo-radial"]).toContain(next.movementHistory.at(-1)!.serviceId);
+  expect(["toei-oedo-loop", "toei-oedo-radial"]).toContain(next.movementHistory.at(-1)!.resolvedRide!.serviceId);
   await expect(gamePanel(page)).not.toContainText("toei-oedo");
 });
 
@@ -267,7 +272,10 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   await expect(panel.getByRole("checkbox", { name: "中央・総武線各駅停車を表示" })).toBeVisible();
   await expect(panel.getByRole("checkbox", { name: "埼京線を表示" })).toBeVisible();
   await expect(panel.getByRole("checkbox", { name: "京葉線を表示" })).toBeVisible();
+  // Line settings sit below the item inventory in the scrollable phone panel.
+  await diceButton(page).scrollIntoViewIfNeeded();
   await expect(diceButton(page)).toBeInViewport();
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
   await page.getByRole("button", { name: "目標路線", exact: true }).click();
   const yamanotePoints = Object.values(railwayBundle.network.servicesById.get("jr-yamanote")!.platformCoordinates);
   await expectPlatformsInView(page, yamanotePoints);
@@ -310,7 +318,7 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
     return [...new Set(hook.map.queryRenderedFeatures({ layers: [layer] }).map((feature) => feature.properties.serviceId))].sort();
   }, LAYER_IDS.services);
   const expectedNonTargetServices = [...railwayBundle.network.servicesById.keys()]
-    .filter((serviceId) => serviceId !== MVP_GAME_CONFIG.targetServiceId)
+    .filter((serviceId) => serviceId !== DEFAULT_GAME_CONFIG.targetServiceId)
     .sort();
   expect(renderedServices).toEqual(expectedNonTargetServices);
   expect((await readMap(page))?.pendingRenderedIds.length).toBeGreaterThan(0);
@@ -358,7 +366,7 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   await expectPlatformsInView(page, yamanotePoints);
   await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
   if (testInfo.project.name === "desktop-chromium") {
-    let transferGame = createGame(MVP_GAME_CONFIG, PRODUCT_UENO_TRANSFER_SEED, railwayBundle.network);
+    let transferGame = createGame(DEFAULT_GAME_CONFIG, PRODUCT_UENO_TRANSFER_SEED, railwayBundle.network);
     while (
       transferGame.status === "playing" &&
       transferGame.turn < 5_000 &&

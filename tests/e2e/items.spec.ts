@@ -14,7 +14,7 @@ async function itemSave(page: Page): Promise<ItemGameState> {
 }
 
 async function restore(page: Page, game: ItemGameState): Promise<void> {
-  await page.goto("/?e2e-items=1");
+  await page.goto("/");
   await writeSaveText(page, serializeGame(game));
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
@@ -48,8 +48,8 @@ function inventoryItem(page: Page, name: string) {
   return gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name, exact: true }) });
 }
 
-test("E2E-only override starts an item game without a rules picker", async ({ page }) => {
-  await page.goto("/?e2e-items=1");
+test("the default edition starts an item game without a rules picker", async ({ page }) => {
+  await page.goto("/");
   await page.getByRole("button", { name: "はじめから" }).click();
   expect((await itemSave(page)).config.rulesetVersion).toBe("tokyo-suburban-items-1");
   await expect(page.getByRole("heading", { name: "アイテム（3枠）" })).toBeVisible();

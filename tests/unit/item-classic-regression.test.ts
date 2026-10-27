@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createGame, playTurn, rollDie, seedRng } from "../../src/features/game/engine";
-import { CLASSIC_GAME_CONFIG, MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { CLASSIC_GAME_CONFIG, ITEM_GAME_CONFIG, MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { loadBundle } from "../e2e/fixtures/bundle";
 
 const bundle = await loadBundle("real");
@@ -21,8 +21,9 @@ describe("classic ruleset regression", () => {
     });
   });
 
-  it("keeps the MVP alias on classic until S11 switches the shipped configuration", () => {
-    expect(MVP_GAME_CONFIG).toBe(CLASSIC_GAME_CONFIG);
+  it("ships item rules while retaining the frozen classic configuration", () => {
+    expect(MVP_GAME_CONFIG).toBe(ITEM_GAME_CONFIG);
+    expect(CLASSIC_GAME_CONFIG.rulesetVersion).toBe("tokyo-suburban-1");
   });
 
   it("locks the first twelve die draws for the classic seed", () => {

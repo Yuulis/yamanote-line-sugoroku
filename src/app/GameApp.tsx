@@ -27,7 +27,6 @@ import type { GameState, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
-import { configForE2E } from "../features/game/e2eRuleset";
 import { summarizeGame } from "../features/game/gameSummary";
 
 interface GameAppProps {
@@ -65,7 +64,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
     () => createPresentationResolver(network, uiPresentation),
     [network, uiPresentation],
   );
-  const config = useMemo(() => configForE2E(edition.config), [edition.config]);
+  const config = edition.config;
   const app = useGameApp(network, storage, config, edition.saveKey);
   const reducedMotion = usePrefersReducedMotion();
   const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
@@ -191,7 +190,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   useEffect(() => {
     if (!showClear || !session || !presentationGame || reportedClear.current === session.sessionId) return;
     reportedClear.current = session.sessionId;
-    const summary = summarizeGame(presentationGame, presentation);
+    const summary = summarizeGame(session.game, presentation);
     trackEvent("game_clear", { turns: summary.turns, moves: summary.moves, transfers: summary.transfers });
   }, [showClear, session, presentationGame, presentation]);
 
@@ -242,8 +241,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
       )}
       {session && showClear && presentationGame && (
         <ClearScreen
-          game={presentationGame}
-          itemRecords={isItemSave(session.game) ? session.game.movementHistory : undefined}
+          game={session.game}
           itemNotice={app.itemView ? <ItemEventNotice
             view={app.itemView} lastMove={session.lastMove} turn={session.game.turn} network={network} presentation={presentation}
             completionAnnouncement={itemTurnAnnouncement(session, app.itemView, shown?.completedSegmentIds.filter((id) => requiredIds.has(id)).length ?? 0,
