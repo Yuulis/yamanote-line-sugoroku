@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { expect, it } from "vitest";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { CLASSIC_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { gameSeed, runGame, summarizeTurns, validateRunOptions } from "./harness";
 import {
   loadResearchCatalog,
@@ -85,14 +85,14 @@ it.skipIf(!process.env.SIM_BUNDLE)("S5 product shard preserves frozen gameplay a
 
   const product = loadShippedBundle(
     bundleDirectory,
-    MVP_GAME_CONFIG.targetServiceId,
-    MVP_GAME_CONFIG.startStationId,
+    CLASSIC_GAME_CONFIG.targetServiceId,
+    CLASSIC_GAME_CONFIG.startStationId,
   );
   const research = loadResearchCatalog(
     RESEARCH_CATALOG,
     RESEARCH_SERVICES,
-    MVP_GAME_CONFIG.targetServiceId,
-    MVP_GAME_CONFIG.startStationId,
+    CLASSIC_GAME_CONFIG.targetServiceId,
+    CLASSIC_GAME_CONFIG.startStationId,
   );
   const productSignature = gameplaySignature(product.network);
   const frozenSignature = gameplaySignature(research.network);
@@ -107,7 +107,7 @@ it.skipIf(!process.env.SIM_BUNDLE)("S5 product shard preserves frozen gameplay a
   let totalPlayedTurns = 0;
   const started = performance.now();
   for (const [localIndex, seed] of seeds.entries()) {
-    const game = runGame(product.network, MVP_GAME_CONFIG, seed, TURN_CAP);
+    const game = runGame(product.network, CLASSIC_GAME_CONFIG, seed, TURN_CAP);
     const capped = game.status !== "completed";
     totalPlayedTurns += game.turn;
     if (capped) cappedGameIndices.push(localIndex);
@@ -121,7 +121,7 @@ it.skipIf(!process.env.SIM_BUNDLE)("S5 product shard preserves frozen gameplay a
     shard: { offset, games, baseSeed: BASE_SEED, turnCap: TURN_CAP },
     seeds,
     seedSetSha256: sha256(`${seeds.join("\n")}\n`),
-    config: MVP_GAME_CONFIG,
+    config: CLASSIC_GAME_CONFIG,
     input: product.provenance,
     bundleHashes: bundleHashes(),
     gameplaySignatureSha256: sha256(productSignature),

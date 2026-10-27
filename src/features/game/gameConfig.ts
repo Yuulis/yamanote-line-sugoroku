@@ -11,7 +11,7 @@ export const EXPECTED_STATION_COUNTS: Readonly<Partial<Record<ServiceId, number>
  * ruleset version names the seeded semantics, so saves made under other
  * rules are rejected (`CONFIG_MISMATCH`).
  */
-export const MVP_GAME_CONFIG: GameConfig = {
+export const CLASSIC_GAME_CONFIG: GameConfig = {
   rulesetVersion: "tokyo-suburban-1",
   targetServiceId: "jr-yamanote",
   startStationId: "shimbashi",
@@ -23,6 +23,9 @@ export const MVP_GAME_CONFIG: GameConfig = {
   },
   directionLottery: { towardTargetWeight: 2 },
 };
+
+/** S11 switches this alias to the shipped item configuration. */
+export const MVP_GAME_CONFIG = CLASSIC_GAME_CONFIG;
 
 /** Animation speeds per station hop (spec 11: 0.3-0.6 s, configurable). */
 export const ANIMATION_SPEEDS = [

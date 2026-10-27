@@ -8,7 +8,8 @@ Branch: `feature/item-system` (branched from `docs/item-system-roadmap`, which i
 |---|---|---|---|
 | Plan | Done (Codex Sol, read-only) | this commit | `.claude/docs/plans/item-system-plan.md`; prompt `item-system-plan-prompt.md` |
 | Open questions | Answered 2026-10-27 (DESIGN.md; plan addendum) | this commit | Round 3 simulation confirms targets with one-item-per-turn and choose-discard |
-| S1-S12 | Not started | — | — |
+| S1 Isolate and freeze classic | Done (Codex Luna, verified by lead) | see git log | `CLASSIC_GAME_CONFIG` + `MVP_GAME_CONFIG` alias; classic simulation tests import classic explicitly; `tests/unit/item-classic-regression.test.ts` pins config literal, 12 die draws, 5-turn real-bundle trajectory with a landing lottery. typecheck ok; `npm test` 705 passed / 1 skipped; spike smoke (100-seed engine equivalence) ok; verify_delegation 0 actionable. `suburban-product` sim skips without `SIM_BUNDLE` (full classic 5,000-game check is S7). Prompt: `item-system-s1-prompt.md` |
+| S2-S12 | Not started | — | — |
 
 ## Decisions in force
 
@@ -17,4 +18,4 @@ Branch: `feature/item-system` (branched from `docs/item-system-roadmap`, which i
 
 ## Next
 
-1. Start S1 (isolate and freeze classic). S7 parity targets the round-3 "both rules" rows.
+1. Wait for the user's go-ahead (they review after every step), then start S2 (3:2 direction policy and internal item config). S7 parity targets the round-3 "both rules" rows.

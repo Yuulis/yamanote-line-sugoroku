@@ -3,7 +3,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { expect, it } from "vitest";
-import { MVP_GAME_CONFIG } from "../../../src/features/game/gameConfig";
+import { CLASSIC_GAME_CONFIG } from "../../../src/features/game/gameConfig";
 import { gameSeed, runGame, summarizeTurns, type TurnStatistics } from "../harness";
 import { loadShippedBundle } from "../inputs";
 import * as engine from "../../../src/features/game/engine";
@@ -182,7 +182,7 @@ export function renderItemTable(rows: readonly Row[]): string {
 }
 
 function loadProduct(): ReturnType<typeof loadShippedBundle> {
-  return loadShippedBundle(resolve("public/data"), MVP_GAME_CONFIG.targetServiceId, MVP_GAME_CONFIG.startStationId);
+  return loadShippedBundle(resolve("public/data"), CLASSIC_GAME_CONFIG.targetServiceId, CLASSIC_GAME_CONFIG.startStationId);
 }
 
 // Opt-in so `npm run sim` stays fast: set ITEM_SPIKE=1 to run the grid.
@@ -191,13 +191,13 @@ it.skipIf(!process.env.ITEM_SPIKE || Boolean(process.env.ITEM_SPIKE_MERGE))("ite
   const cap = envInteger("ITEM_SPIKE_CAP", 20000);
   const filter = new RegExp(process.env.ITEM_SPIKE_FILTER ?? ".");
   const { network } = loadProduct();
-  const contexts = new Map(WEIGHTINGS.map((w) => [w.id, makeContext(network, MVP_GAME_CONFIG, w)]));
+  const contexts = new Map(WEIGHTINGS.map((w) => [w.id, makeContext(network, CLASSIC_GAME_CONFIG, w)]));
 
   // The re-implemented landing must be draw-for-draw identical to the engine without items.
   const current = contexts.get("current") as SimContext;
   for (let index = 0; index < Math.min(games, EQUIVALENCE_GAMES); index += 1) {
     const seed = gameSeed(BASE_SEED, index);
-    const engineGame = runGame(network, MVP_GAME_CONFIG, seed, cap);
+    const engineGame = runGame(network, CLASSIC_GAME_CONFIG, seed, cap);
     const spikeGame = runItemGame(current, variant("current", 0, 0, "greedy"), seed, cap);
     expect(spikeGame.turns, seed).toBe(engineGame.turn);
   }
