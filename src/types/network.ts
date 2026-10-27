@@ -119,7 +119,9 @@ export type ItemEvent =
   | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "suspension"; serviceId: ServiceId; expiresTurn: number }
   | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "detour" | "oversleep" }
   | { type: "cancelled-by-certificate"; item: HarmfulItemKind; certificate: ItemInstance }
-  | { type: "consumed"; item: ItemInstance };
+  | { type: "consumed"; item: ItemInstance }
+  | { type: "effect-activated"; effect: "delay" | "oversleep" | "detour" }
+  | { type: "effect-expired"; effect: "suspension"; serviceId: ServiceId };
 
 export interface ItemPolicy {
   dropChancePerMille: number;
@@ -157,4 +159,113 @@ export interface GameState {
   movementHistory: MoveRecord[];
   rngSeed: string;
   rngState: string;
+}
+
+/** Item turns keep classic state and records structurally separate. */
+export type PreRollItemCommand =
+  | { readonly kind: "route-ticket"; readonly instanceId: string; readonly serviceId: ServiceId }
+  | { readonly kind: "direction-ticket"; readonly instanceId: string; readonly direction: Direction }
+  | { readonly kind: "double" | "rapid" | "deadhead"; readonly instanceId: string };
+
+export interface ItemTurnCommand {
+  readonly items: readonly PreRollItemCommand[];
+}
+
+export interface ItemRollAdjustment {
+  readonly instanceId: string;
+  readonly delta: -1 | 1;
+}
+
+/** Serializable candidates after suspension and detour filtering. */
+export interface ItemLandingSnapshot {
+  stationId: StationId;
+  services: readonly {
+    serviceId: ServiceId;
+    weight: number;
+    directions: readonly Direction[];
+    directionWeights: readonly number[];
+  }[];
+  suspensionIgnored: boolean;
+  detourConsumed: boolean;
+}
+
+interface ItemRecordBase {
+  turn: number;
+  fromStationId: StationId;
+  toStationId: StationId;
+  command: ItemTurnCommand;
+  traversedSegmentIds: SegmentId[];
+  landing: LandingChoice | null;
+  landingSnapshot: ItemLandingSnapshot | null;
+  itemEvents: ItemEvent[];
+  discardedInstanceId: string | null;
+}
+
+export interface ItemRideRecord extends ItemRecordBase {
+  kind: "item-ride";
+  resolvedRide: LandingChoice;
+  rawRoll: number;
+  effectiveFace: number;
+  adjustment: ItemRollAdjustment | null;
+  movementMode: "normal" | "rapid" | "oversleep";
+  pips: number;
+  hopBudget: number;
+  physicalHops: number;
+  unusedPips: number;
+  stopReason: StopReason;
+}
+
+export interface ItemDeadheadRecord extends ItemRecordBase {
+  kind: "deadhead";
+  resolvedRide: null;
+  rawRoll: null;
+  effectiveFace: null;
+  adjustment: null;
+  movementMode: "deadhead";
+  pips: null;
+  hopBudget: null;
+  physicalHops: 0;
+  unusedPips: null;
+  stopReason: "relocation";
+  relocation: { fromStationId: StationId; toStationId: StationId; serviceId: ServiceId; direction: Direction; distance: number };
+}
+
+export type ItemTurnRecord = ItemRideRecord | ItemDeadheadRecord;
+
+export type DeepReadonly<T> = T extends (...args: never[]) => unknown ? T
+  : T extends readonly (infer U)[] ? readonly DeepReadonly<U>[]
+    : T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+export interface PendingItemRoll {
+  readonly kind: "roll";
+  readonly turn: number;
+  readonly command: DeepReadonly<ItemTurnCommand>;
+  readonly resolvedRide: DeepReadonly<LandingChoice>;
+  readonly rawRoll: number;
+  readonly rngStateAfterRoll: string;
+}
+
+export interface ItemPosition extends Omit<GameState, "movementHistory" | "config"> {
+  config: GameConfig & { itemPolicy: ItemPolicy };
+  inventory: ItemInstance[];
+  effects: ItemEffectsState;
+  itemRngState: string;
+}
+
+export interface PendingItemTurnDiscard {
+  readonly kind: "discard";
+  readonly turn: number;
+  readonly item: DeepReadonly<ItemInstance>;
+  readonly candidates: readonly DeepReadonly<ItemInstance>[];
+  readonly nextItemRngState: string;
+  readonly position: DeepReadonly<ItemPosition>;
+  readonly record: DeepReadonly<ItemTurnRecord>;
+}
+
+export type PendingItemTurn = PendingItemRoll | PendingItemTurnDiscard;
+
+export interface ItemGameState extends ItemPosition {
+  movementHistory: ItemTurnRecord[];
+  pending: PendingItemTurn | null;
 }

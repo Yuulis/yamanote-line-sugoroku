@@ -10,6 +10,18 @@ export type {
   ItemInstance,
   ItemKind,
   ItemPolicy,
+  ItemGameState,
+  ItemPosition,
+  ItemTurnCommand,
+  PreRollItemCommand,
+  ItemRollAdjustment,
+  ItemTurnRecord,
+  ItemRideRecord,
+  ItemDeadheadRecord,
+  ItemLandingSnapshot,
+  PendingItemTurn,
+  PendingItemRoll,
+  PendingItemTurnDiscard,
   LandingChoice,
   ServiceKind,
   ServiceLotteryPolicy,
@@ -32,7 +44,7 @@ export {
 } from "./itemEffects";
 export { drawItemDrop, resolvePendingItemDiscard, seedItemRng, type ItemDropResult, type PendingItemDiscard } from "./items";
 export { GameEngineError, type GameEngineErrorCode, isGameEngineError } from "./errors";
-export { createGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";
+export { createGame, createItemGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";
 export { checkGoal, stopsAtGoal, targetSegmentIds } from "./goal";
 export { nearestTargetStation, type NearestTargetStation, targetHopDistances } from "./proximity";
 export {
@@ -98,5 +110,9 @@ export type {
   LandingResolvedEvent,
   MoveEvent,
   MoveResult,
+  ItemTurnEvent,
+  ItemTurnResult,
   SegmentTraversedEvent,
 } from "./types";
+
+export { beginItemTurn, finishItemTurn, resolveItemDiscard, playItemTurn, type ItemTurnDecisions } from "./itemTurn";
