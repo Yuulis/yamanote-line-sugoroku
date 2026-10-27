@@ -1,4 +1,4 @@
-import type { EndpointKind, GameState, MoveRecord } from "../../types/network";
+import type { EndpointKind, GameState, ItemGameState, MoveRecord } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
 import type { PresentationResolver } from "./presentationResolver";
 
@@ -16,15 +16,26 @@ export interface GameSummary {
   transfers: number;
 }
 
-export function summarizeGame(game: GameState, presentation?: PresentationResolver): GameSummary {
-  const moves = game.movementHistory.reduce(
-    (total, record) => total + record.traversedSegmentIds.length,
-    0,
-  );
-  const transfers = game.movementHistory.filter(
-    (record) => record.landing && record.landing.serviceId !== record.serviceId &&
-      !presentation?.sameLineGroup(record.serviceId, record.landing.serviceId),
-  ).length;
+export function summarizeGame(game: GameState | ItemGameState, presentation?: PresentationResolver): GameSummary {
+  const changedGroup = (from: string, to: string): number =>
+    from !== to && !presentation?.sameLineGroup(from, to) ? 1 : 0;
+  let moves = 0;
+  let transfers = 0;
+  let serviceId = game.config.targetServiceId;
+  for (const record of game.movementHistory) {
+    moves += record.traversedSegmentIds.length;
+    if ("kind" in record) {
+      const rideService = record.kind === "deadhead" ? record.relocation.serviceId : record.resolvedRide.serviceId;
+      // A route ticket changes the ride before movement; deadhead changes it
+      // during relocation. Both count even without an arrival lottery.
+      transfers += changedGroup(serviceId, rideService);
+      if (record.landing) transfers += changedGroup(rideService, record.landing.serviceId);
+      serviceId = record.landing?.serviceId ?? rideService;
+    } else {
+      if (record.landing) transfers += changedGroup(record.serviceId, record.landing.serviceId);
+      serviceId = record.landing?.serviceId ?? record.serviceId;
+    }
+  }
   return { turns: game.turn, moves, transfers };
 }
 

@@ -72,13 +72,14 @@ export function useMoveAnimation(
         setFrameState((previous) => (isSameStep(previous, animation, frame) ? previous : { animation, frame }));
       },
       () => onFinishedRef.current(animation),
+      animation.maxDurationMs,
     );
   }, [animation, steps, instant, livePosition]);
 
   // A frame left over from an earlier move must never move the marker back.
   const frame = animation && frameState?.animation === animation ? frameState.frame : null;
   const view = useMemo(
-    () => (animation ? { fromStationId: animation.fromStationId, steps, frame } : null),
+    () => (animation && steps.length > 0 ? { fromStationId: animation.fromStationId, steps, frame } : null),
     [animation, steps, frame],
   );
   return { view, livePosition };

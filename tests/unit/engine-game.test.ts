@@ -51,7 +51,7 @@ describe("createGame", () => {
       movementHistory: [],
       rngSeed: SEED,
       dataVersion: network.dataVersion,
-      saveVersion: 3,
+      saveVersion: 4,
     });
   });
 

@@ -7,7 +7,7 @@ import {
   type RailwayNetwork,
   validateConfig,
 } from "./engine";
-import { EXPECTED_STATION_COUNTS, MVP_GAME_CONFIG } from "./gameConfig";
+import { EXPECTED_STATION_COUNTS, DEFAULT_GAME_CONFIG } from "./gameConfig";
 
 export type NetworkResult =
   | { ok: true; network: RailwayNetwork }
@@ -16,7 +16,7 @@ export type NetworkResult =
 /** Build the engine network from loaded data, or explain why the game cannot start. */
 export function networkFromData(
   data: RailwayData,
-  config: GameConfig = MVP_GAME_CONFIG,
+  config: GameConfig = DEFAULT_GAME_CONFIG,
   expectedStationCounts: Readonly<Partial<Record<ServiceId, number>>> = EXPECTED_STATION_COUNTS,
 ): NetworkResult {
   const { stations, services, segments, manifest } = data;

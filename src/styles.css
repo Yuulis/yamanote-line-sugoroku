@@ -587,6 +587,271 @@ button[aria-disabled="true"] {
   border-radius: 4px;
 }
 
+/* Item controls stay text-first and wrap inside the narrow game panel. */
+.item-staged-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 6px 0;
+  padding: 6px;
+  border: 1px solid #2e7d32;
+  border-radius: 4px;
+  background: #f1f8ef;
+  overflow-wrap: anywhere;
+}
+
+.item-staged-summary button {
+  min-height: 36px;
+  margin-left: auto;
+  padding: 2px 8px;
+}
+
+.item-inventory {
+  margin-top: 8px;
+  min-width: 0;
+}
+
+.item-inventory__heading {
+  margin: 0 0 4px;
+  font-size: 14px;
+}
+
+.item-inventory__slots {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-slot {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 6px;
+  border: 1px solid #c7c7c7;
+  border-radius: 5px;
+  background: #ffffff;
+}
+
+.item-slot--selected {
+  border: 2px solid #2e7d32;
+  padding: 5px;
+  background: #f1f8ef;
+}
+
+.item-slot--empty {
+  min-height: 38px;
+  align-items: center;
+  color: #666666;
+}
+
+.item-slot__number {
+  flex: 0 0 22px;
+  color: #555555;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.item-slot__body {
+  min-width: 0;
+  flex: 1;
+  overflow-wrap: anywhere;
+}
+
+.item-slot__name {
+  margin: 0;
+  font-size: 13px;
+}
+
+.item-slot__effect,
+.item-slot__timing,
+.item-slot__hint,
+.item-slot__reason,
+.item-slot__availability {
+  margin: 2px 0 0;
+  line-height: 1.45;
+}
+
+.item-slot__timing,
+.item-slot__availability {
+  color: #555555;
+  font-size: 12px;
+}
+
+.item-slot__hint {
+  color: #1b5e20;
+  font-size: 12px;
+}
+
+.item-slot__hint--caution,
+.item-slot__reason {
+  color: #8a3b00;
+  font-size: 12px;
+}
+
+.item-slot__select {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 4px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.item-dialog {
+  max-height: min(82vh, 720px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.item-dialog__hint {
+  overflow-wrap: anywhere;
+}
+
+.item-dialog__hint--target {
+  font-weight: bold;
+  color: #1b5e20;
+}
+
+.item-dialog__group {
+  min-width: 0;
+  margin: 8px 0;
+  padding: 6px;
+  border: 1px solid #bbbbbb;
+  border-radius: 4px;
+}
+
+.item-dialog__group legend {
+  padding: 0 4px;
+  font-weight: bold;
+}
+
+.item-route-option,
+.item-direction-option,
+.item-adjustment__choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 6px 4px;
+  border-top: 1px solid #eeeeee;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
+.item-route-option--target {
+  border-radius: 3px;
+  background: #eef7e8;
+}
+
+.item-route-option input,
+.item-direction-option input,
+.item-adjustment__choice input {
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  margin: 2px 0 0;
+  accent-color: #2e7d32;
+}
+
+.item-route-option__copy,
+.item-direction-option > span,
+.item-adjustment__choice > span {
+  min-width: 0;
+  flex: 1;
+}
+
+.item-route-option__name,
+.item-route-option__guidance {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.item-route-option__name {
+  font-weight: bold;
+}
+
+.item-route-option__guidance {
+  margin-top: 2px;
+  color: #444444;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.item-discard__list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item-discard__choice {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #aaaaaa;
+  border-radius: 4px;
+  background: #ffffff;
+  overflow-wrap: anywhere;
+}
+
+.item-discard__name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-weight: bold;
+}
+
+.item-discard__new {
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #e3f2e1;
+  color: #1b5e20;
+  font-size: 12px;
+}
+
+.item-discard__effect,
+.item-discard__action {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.item-discard__action {
+  font-weight: bold;
+  color: #7f0000;
+}
+
+.item-adjustment .dialog__actions button {
+  min-height: 44px;
+  width: 100%;
+}
+
+@media (max-width: 360px) {
+  .item-slot {
+    gap: 5px;
+    padding: 5px;
+  }
+
+  .item-slot__number {
+    flex-basis: 18px;
+  }
+
+  .dialog__body {
+    padding: 12px;
+  }
+}
+
 /* Phones: full-width bottom strip (the attribution moves to the top-left,
    see RailwayMap), tighter type, 44 px map buttons. */
 @media (max-width: 600px) {
@@ -869,3 +1134,11 @@ button[aria-disabled="true"] {
   margin-top: 8px;
   font-size: 12px;
 }
+
+.item-event-notice {
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.item-event-notice h2 { font-size: 1rem; margin-block: .6rem .3rem; }
+.item-event-notice ul { padding-inline-start: 1.3rem; margin-block: .3rem; }
+.item-event-notice li + li { margin-block-start: .35rem; }

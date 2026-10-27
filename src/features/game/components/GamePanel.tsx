@@ -1,9 +1,11 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { LineMetadata } from "../../../types/network";
+import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
 import {
+  arrivalSummary,
+  itemTurnAnnouncement,
   directionLabel,
   displayedRide,
   landingText,
@@ -22,21 +24,15 @@ import {
 import { GameLegend } from "./GameLegend";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
+import type { ItemSessionView } from "../itemSession";
+import { ITEM_DESCRIPTIONS } from "../itemPresentation";
+import { InventoryPanel } from "./InventoryPanel";
+import { ItemUseDialog } from "./ItemUseDialog";
+import { RollAdjustment } from "./RollAdjustment";
+import { ItemEventNotice } from "./ItemEventNotice";
+import { DiscardChoice } from "./DiscardChoice";
 
 const UPCOMING_STATION_COUNT = 5;
-
-function arrivalSummary(
-  turn: number,
-  lastMove: NonNullable<GameSession["lastMove"]>,
-  completedCount: number,
-  requiredCount: number,
-  network: RailwayNetwork,
-  presentation: PresentationResolver,
-): string {
-  const arrival = stationName(network, lastMove.stopStationId, presentation);
-  const landing = lastMove.landing ? `。${landingText(lastMove, network, presentation)}` : "。ゴールに到着しました";
-  return `${turn}ターン目：出目${lastMove.roll}、${arrival}に到着${landing}。踏破 ${completedCount}/${requiredCount}`;
-}
 
 export interface GamePanelProps {
   session: GameSession;
@@ -58,6 +54,10 @@ export interface GamePanelProps {
   onCycleSpeed: () => void;
   onNewGame: () => void;
   onShowTitle: () => void;
+  itemView?: ItemSessionView | null;
+  onEditItemDraft?: (command: ItemTurnCommand) => void;
+  onAdjustItemRoll?: (adjustment: ItemRollAdjustment | null) => void;
+  onDiscardItem?: (instanceId: string) => void;
 }
 
 function showAllLineGroups(): void {
@@ -72,6 +72,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     [props.presentation, network],
   );
   const { game, phase } = session;
+  const arrived = "pending" in game && game.pending?.kind === "discard" && phase === "awaiting-discard"
+    ? game.pending.position : game;
   const display = props.display ?? EDITIONS[0]!.display;
   const animating = phase === "animating";
   const canRoll = game.status === "playing" && phase === "idle";
@@ -98,7 +100,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const allGroupIds = useMemo(() => legendGroups.map((group) => group.id), [legendGroups]);
   const requiredTargetIds = useMemo(() => targetSegmentIds(game.config, network), [game.config, network]);
   const remainingSections = useMemo(() => {
-    const completed = new Set(game.completedSegmentIds);
+    const completed = new Set(arrived.completedSegmentIds);
     return requiredTargetIds.flatMap((id) => {
       if (completed.has(id)) return [];
       const segment = network.segmentsById.get(id);
@@ -109,7 +111,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         to: presentation.serviceStationName(game.config.targetServiceId, segment.to),
       }];
     });
-  }, [game.completedSegmentIds, game.config, network, presentation, requiredTargetIds]);
+  }, [arrived.completedSegmentIds, game.config, network, presentation, requiredTargetIds]);
   const upcomingStations = useMemo(() => {
     const ids: string[] = [];
     let current = props.displayedStationId;
@@ -133,24 +135,68 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, groupIds, checked));
   }, [legendGroups, selectedGroupIds, allGroupIds]);
   const saveFailed = saveStatus === "failed" || saveStatus === "unavailable";
+  const [itemDialog, setItemDialog] = useState<{
+    kind: "route-ticket" | "direction-ticket";
+    instanceId: string;
+  } | null>(null);
+  const rollButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreRollFocusRef = useRef(false);
+  const draftItem = props.itemView?.draft.items[0];
+
+  const selectItem = useCallback((instanceId: string, kind: ItemKind) => {
+    if (!props.itemView || props.itemView.phase !== "idle") return;
+    if (kind === "route-ticket" || kind === "direction-ticket") {
+      setItemDialog({ kind, instanceId });
+      return;
+    }
+    if (kind === "double" || kind === "rapid" || kind === "deadhead") {
+      props.onEditItemDraft?.({ items: [{ kind, instanceId }] });
+    }
+  }, [props.itemView, props.onEditItemDraft]);
+
+  const clearDraft = useCallback(() => {
+    if (props.itemView?.phase === "idle") props.onEditItemDraft?.({ items: [] });
+  }, [props.itemView?.phase, props.onEditItemDraft]);
 
   useEffect(() => {
+    if (!props.itemView || props.itemView.phase !== "idle" || !draftItem || itemDialog) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      clearDraft();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [props.itemView, draftItem, itemDialog, clearDraft]);
+
+  useEffect(() => {
+    if (props.itemView?.decision) {
+      restoreRollFocusRef.current = true;
+      return;
+    }
+    if (restoreRollFocusRef.current && props.itemView?.phase === "idle") {
+      restoreRollFocusRef.current = false;
+      rollButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, [props.itemView?.decision, props.itemView?.phase]);
+
+  useEffect(() => {
+    if (props.itemView) return;
     if (phase !== "idle" || !session.lastMove || game.turn <= knownTurn.current) return;
     knownTurn.current = game.turn;
-    setTurnSummary(arrivalSummary(
-      game.turn,
-      session.lastMove,
-      props.displayedCompletedCount,
-      props.requiredCount,
-      network,
-      presentation,
-    ));
-  }, [game.turn, network, phase, presentation, props.displayedCompletedCount, props.requiredCount, session.lastMove]);
+    setTurnSummary(arrivalSummary(game.turn, session.lastMove, props.displayedCompletedCount,
+      props.requiredCount, network, presentation));
+  }, [game.turn, network, phase, presentation, props.itemView,
+    props.displayedCompletedCount, props.requiredCount, session.lastMove]);
+
+  const announcement = props.itemView
+    ? itemTurnAnnouncement(session, props.itemView, props.displayedCompletedCount, props.requiredCount, network, presentation)
+    : turnSummary;
 
   useLayoutEffect(() => {
     if (!panelRef.current || !headingRef.current) return;
     panelRef.current.scrollTop = 0;
-    headingRef.current.focus({ preventScroll: true });
+    if (!props.itemView?.decision) headingRef.current.focus({ preventScroll: true });
   }, []);
 
   return (
@@ -168,7 +214,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         <dt>進行方向</dt>
         <dd>{directionLabel(network, ride.serviceId, ride.direction)}</dd>
         <dt>ターン数</dt>
-        <dd>{game.turn}</dd>
+        <dd>{arrived.turn}</dd>
         <dt>踏破区間</dt>
         <dd>
           {props.displayedCompletedCount}/{props.requiredCount}
@@ -178,17 +224,27 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       </dl>
       <div className="game-panel__actions">
         <button
+          ref={rollButtonRef}
           type="button"
           className="game-panel__roll"
           onClick={() => { if (canRoll) props.onRoll(); }}
           aria-disabled={!canRoll}
         >
-          {animating ? "移動中…" : "サイコロを振る"}
+          {animating ? "移動中…" : draftItem ? "この内容でサイコロを振る" : "サイコロを振る"}
         </button>
         <button type="button" onClick={props.onSkip} disabled={!animating}>
           スキップ
         </button>
       </div>
+      {draftItem && props.itemView && <div className="item-staged-summary">
+        <span className="item-staged-summary__label">選択中：</span>
+        <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
+        {draftItem.kind === "route-ticket" && <span>（{serviceName(network, draftItem.serviceId, presentation)}。向きは抽選）</span>}
+        {draftItem.kind === "direction-ticket" && <span>（{directionLabel(network, props.itemView.position.currentServiceId, draftItem.direction)}）</span>}
+        <button type="button" onClick={clearDraft} disabled={phase !== "idle"}>選択を解除</button>
+        <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
+      </div>}
+      {props.itemView && <InventoryPanel view={props.itemView} onSelect={selectItem} />}
       <div className="game-panel__options">
         <button type="button" aria-pressed={follow} onClick={props.onToggleFollow}>
           追尾: {follow ? "ON" : "OFF"}
@@ -209,10 +265,16 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           タイトル
         </button>
       </div>
+      {props.itemView && session.lastMove && phase === "idle" && <p className="item-arrival">{arrivalSummary(
+        session.lastMove.itemRecord?.turn ?? game.turn, session.lastMove, props.displayedCompletedCount,
+        props.requiredCount, network, presentation)}</p>}
+      {props.itemView && (phase === "idle" || phase === "awaiting-discard") && <ItemEventNotice
+        view={props.itemView} lastMove={session.lastMove} turn={game.turn} network={network} presentation={presentation}
+      />}
       <p className="game-panel__lottery">
         <span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network, presentation)}
       </p>
-      <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{turnSummary}</p>
+      {!props.itemView?.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
       <details className="game-panel__route-summary">
         <summary>地図なしで確認</summary>
         <section aria-label="山手線の未踏破区間">
@@ -237,7 +299,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       )}
       <p
         className={`game-panel__save${saveFailed ? " game-panel__save--warning" : ""}`}
-        role="status"
+        role={props.itemView ? undefined : "status"}
       >
         セーブ: {saveStatusMessage(saveStatus)}
       </p>
@@ -249,6 +311,30 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onSetOperator={setOperator}
         onShowAll={showAllLineGroups}
       />
+      {props.itemView && itemDialog && (
+        <ItemUseDialog
+          kind={itemDialog.kind}
+          instanceId={itemDialog.instanceId}
+          view={props.itemView}
+          network={network}
+          presentation={presentation}
+          onChoose={(command) => {
+            props.onEditItemDraft?.({ items: [command] });
+            setItemDialog(null);
+          }}
+          onClose={() => setItemDialog(null)}
+        />
+      )}
+      {props.itemView?.decision?.kind === "adjust" && <RollAdjustment
+        announcement={announcement}
+        decision={props.itemView.decision}
+        onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
+      />}
+      {props.itemView?.decision?.kind === "discard" && <DiscardChoice
+        announcement={announcement}
+        decision={props.itemView.decision}
+        onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
+      />}
     </main>
   );
 });

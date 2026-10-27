@@ -1,4 +1,5 @@
-import type { GameConfig, ServiceId } from "../../types/network";
+import type { GameConfig, ItemPolicy, ServiceId } from "../../types/network";
+import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS } from "../../types/network";
 
 /** The Yamanote line has exactly 30 stations and 30 outer-loop segments. */
 export const EXPECTED_STATION_COUNTS: Readonly<Partial<Record<ServiceId, number>>> = {
@@ -11,7 +12,7 @@ export const EXPECTED_STATION_COUNTS: Readonly<Partial<Record<ServiceId, number>
  * ruleset version names the seeded semantics, so saves made under other
  * rules are rejected (`CONFIG_MISMATCH`).
  */
-export const MVP_GAME_CONFIG: GameConfig = {
+export const CLASSIC_GAME_CONFIG: GameConfig = {
   rulesetVersion: "tokyo-suburban-1",
   targetServiceId: "jr-yamanote",
   startStationId: "shimbashi",
@@ -23,6 +24,38 @@ export const MVP_GAME_CONFIG: GameConfig = {
   },
   directionLottery: { towardTargetWeight: 2 },
 };
+
+const ITEM_POLICY: ItemPolicy = {
+  dropChancePerMille: 300,
+  harmfulChancePercent: 30,
+  inventoryCapacity: 3,
+  maxActiveItemsPerTurn: 1,
+  delayTurns: 3,
+  suspensionTurns: 5,
+  fullInventoryPolicy: "player-chooses-discard",
+  // Spike mapping: route, direction, adjust, double, rapid, deadhead, certificate.
+  beneficialKinds: [...BENEFICIAL_ITEM_KINDS],
+  // Spike names are already product ids: delay, suspension, detour, oversleep.
+  harmfulKinds: [...HARMFUL_ITEM_KINDS],
+};
+
+/** The sole playable Tokyo suburban ruleset. */
+export const ITEM_GAME_CONFIG: GameConfig = {
+  ...CLASSIC_GAME_CONFIG,
+  rulesetVersion: "tokyo-suburban-items-1",
+  serviceLottery: {
+    kindWeights: { local: 1, rapid: 1 },
+    target: { kind: "share", numerator: 1, denominator: 2 },
+  },
+  directionLottery: { towardTargetWeight: 3, awayFromTargetWeight: 2 },
+  itemPolicy: ITEM_POLICY,
+};
+
+/** Product defaults; classic remains an explicit internal engine/test config. */
+export const DEFAULT_GAME_CONFIG = ITEM_GAME_CONFIG;
+
+/** Compatibility alias for internal callers; prefer DEFAULT_GAME_CONFIG. */
+export const MVP_GAME_CONFIG = DEFAULT_GAME_CONFIG;
 
 /** Animation speeds per station hop (spec 11: 0.3-0.6 s, configurable). */
 export const ANIMATION_SPEEDS = [

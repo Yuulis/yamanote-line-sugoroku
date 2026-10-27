@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { displayedProgress } from "../../src/features/game/animation/displayedProgress";
+import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
 import {
   buildGeometryIndex,
   buildMovePlan,
@@ -458,5 +458,61 @@ describe("createLivePosition", () => {
     live.set(null);
     expect(calls).toBe(1);
     expect(live.get()).toBeNull();
+  });
+});
+
+describe("item movement presentation", () => {
+  it("uses every physical rapid hop rather than pips, and bounds long moves at six seconds", async () => {
+    const { loadBundle } = await import("../e2e/fixtures/bundle");
+    const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+    const { playItemTurn } = await import("../../src/features/game/engine");
+    const { MAX_MOVE_DURATION_MS } = await import("../../src/features/game/animation/timeline");
+    const bundle = await loadBundle("fixture");
+    const game = itemScenario("rapid", bundle.network);
+    const ticket = game.inventory.find((item) => item.kind === "rapid")!;
+    const result = playItemTurn(game, { command: { items: [{ kind: "rapid", instanceId: ticket.id }] } }, bundle.network);
+    const record = result.record!;
+    if (record.kind !== "item-ride") throw new Error("Expected ride");
+    const steps = buildMovePlan(result.events, bundle.network, new Map());
+    expect(record.physicalHops).toBeGreaterThan(record.pips);
+    expect(steps).toHaveLength(record.physicalHops);
+    const long = Array.from({ length: 300 }, () => ({ ...steps[0]!, distanceKm: 100 }));
+    expect(frameAt(long, MAX_MOVE_DURATION_MS - 1, 600, MAX_MOVE_DURATION_MS).done).toBe(false);
+    expect(frameAt(long, MAX_MOVE_DURATION_MS + 1, 600, MAX_MOVE_DURATION_MS)).toMatchObject({ done: true, stepsCompleted: 300 });
+    expect(frameAt(long, MAX_MOVE_DURATION_MS + 1, 600).done).toBe(false); // Classic pacing is unchanged.
+    expect(frameAt(long, 0, 0)).toMatchObject({ done: true, stepsCompleted: 300 });
+  });
+
+  it("does not invent a path for deadhead and immediately shows the relocated platform", async () => {
+    const { loadBundle } = await import("../e2e/fixtures/bundle");
+    const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+    const { platformPosition, serializeGame } = await import("../../src/features/game/engine");
+    const { reduceGameSession, resumeSession } = await import("../../src/features/game/gameSession");
+    const { itemActionIdentity } = await import("../../src/features/game/itemSession");
+    const { readSave } = await import("../../src/features/game/store/persistence");
+    const bundle = await loadBundle("fixture");
+    const game = itemScenario("deadhead", bundle.network);
+    const ticket = game.inventory.find((item) => item.kind === "deadhead")!;
+    const start = resumeSession(game, bundle.network);
+    const draft = reduceGameSession(start, { type: "item-draft", ...itemActionIdentity(start),
+      command: { items: [{ kind: "deadhead", instanceId: ticket.id }] } }, game.config, bundle.network);
+    const resolving = reduceGameSession(draft, { type: "item-commit", ...itemActionIdentity(draft) }, game.config, bundle.network);
+    expect(displayedProgress(sessionProgress(resolving), bundle.network, null).stationId).toBe(game.currentStationId);
+    const live = reduceGameSession(resolving, { type: "item-save-attempted", ...itemActionIdentity(resolving) }, game.config, bundle.network);
+    expect(buildMovePlan(live.animation!.events, bundle.network, new Map())).toEqual([]);
+    const lookup = readSave({ getItem: () => serializeGame(live.game), setItem: () => {}, removeItem: () => {} }, bundle.network, game.config);
+    if (lookup.kind !== "valid") throw new Error("Expected replay-validated deadhead save");
+    for (const session of [live, resumeSession(lookup.game, bundle.network)]) {
+      const progress = sessionProgress(session);
+      const record = progress.movementHistory!.at(-1)!;
+      expect(record).toBe(session.game.movementHistory.at(-1));
+      expect(record).toMatchObject({ kind: "deadhead", rawRoll: null, stopReason: "relocation", traversedSegmentIds: [] });
+      expect(record).not.toHaveProperty("roll");
+      const shown = displayedProgress(progress, bundle.network, null);
+      expect(shown.stationId).toBe(session.game.currentStationId);
+      expect(shown.stationId).not.toBe(game.currentStationId);
+      expect(shown.position).toEqual(platformPosition(bundle.network, session.game.currentServiceId, session.game.currentStationId));
+      expect(shown.completedSegmentIds).toEqual(game.completedSegmentIds);
+    }
   });
 });

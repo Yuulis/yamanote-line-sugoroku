@@ -1,6 +1,9 @@
 import type {
   Direction,
   GameState,
+  ItemEvent,
+  ItemGameState,
+  ItemTurnRecord,
   SegmentId,
   ServiceId,
   StationId,
@@ -73,4 +76,14 @@ export interface MoveResult {
   stopReason: StopReason;
   /** Pips not used because the move stopped early (goal or endpoint; 0 for `roll`). */
   unusedPips: number;
+}
+
+/** Events are incremental across the roll, movement and discard transitions. */
+export type ItemTurnEvent = MoveEvent | ItemEvent;
+
+export interface ItemTurnResult {
+  state: ItemGameState;
+  events: ItemTurnEvent[];
+  /** Null until the turn (including any discard choice) is committed. */
+  record: ItemTurnRecord | null;
 }

@@ -1,5 +1,5 @@
 import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import type { GameState, MoveRecord } from "../../../src/types/network";
+import type { ItemGameState, ItemTurnRecord } from "../../../src/types/network";
 import type { RailwayBundle } from "../fixtures/bundle";
 import { LAYER_IDS, SOURCE_IDS } from "../../../src/features/map/mapConfig";
 
@@ -16,8 +16,8 @@ export const REQUIRED_SEGMENTS = 30;
  */
 const FREEZE_AHEAD_MS = 60_000;
 
-export type SavedMove = MoveRecord;
-export type SavedGame = GameState;
+export type SavedMove = ItemTurnRecord;
+export type SavedGame = ItemGameState;
 
 export interface MapSnapshot {
   styleLoaded: boolean;
@@ -90,10 +90,29 @@ export async function startNewGame(page: Page): Promise<void> {
 /** Roll once and wait until the move has settled (idle panel or clear screen). */
 export async function rollOnce(page: Page): Promise<void> {
   const turnBefore = (await readSave(page))?.turn ?? 0;
-  await diceButton(page).click();
+  await revealUnadjustedRoll(page);
+  await expect.poll(async () => {
+    const save = await readSave(page);
+    return save?.pending?.kind === "discard" || save?.turn === turnBefore + 1;
+  }).toBe(true);
+  if ((await readSave(page))?.pending?.kind === "discard") {
+    await page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" }).getByRole("button").last().click();
+  }
   await expect.poll(async () => (await readSave(page))?.turn).toBe(turnBefore + 1);
   const clear = page.getByRole("heading", { name: "クリア！" });
   await expect(diceButton(page).filter({ hasText: "サイコロを振る" }).or(clear)).toBeVisible();
+}
+
+/** Reveal a die, explicitly declining adjustment; leave movement/discard visible. */
+export async function revealUnadjustedRoll(page: Page): Promise<void> {
+  const turnBefore = (await readSave(page))?.turn ?? 0;
+  await diceButton(page).click();
+  const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect.poll(async () => {
+    const save = await readSave(page);
+    return await adjustment.isVisible() || save?.pending?.kind === "discard" || save?.turn === turnBefore + 1;
+  }).toBe(true);
+  if (await adjustment.isVisible()) await adjustment.getByRole("button", { name: "そのまま続ける" }).click();
 }
 
 /**

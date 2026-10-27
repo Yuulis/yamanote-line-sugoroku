@@ -175,6 +175,7 @@ describe("readSave / writeSave / deleteSave", () => {
     const lookup = readSave(storage, network, DEFAULT_CONFIG);
     expect(lookup).toEqual({ kind: "valid", game: state });
     if (lookup.kind !== "valid") throw new Error("expected a valid save");
+    if ("pending" in lookup.game) throw new Error("Expected classic save");
     expect(playTurn(lookup.game, network).roll).toBe(playTurn(state, network).roll);
   });
 

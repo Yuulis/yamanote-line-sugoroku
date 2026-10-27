@@ -5,25 +5,33 @@ import type {
   Direction,
   GameConfig,
   GameState,
+  ItemGameState,
+  ItemPosition,
+  ItemPolicy,
   LandingChoice,
   MoveRecord,
   StopReason,
 } from "../../../types/network";
-import { GOAL_ARRIVAL_POLICIES, parseLotteryPolicies } from "./config";
+import { GOAL_ARRIVAL_POLICIES, parseItemPolicy, parseLotteryPolicies } from "./config";
 import { SERVICE_KINDS } from "../../../types/network";
 import { GameEngineError } from "./errors";
 import { type ComputedTurn, computeTurn, createGame, SAVE_VERSION, seededTurn } from "./game";
 import type { GamePosition } from "./movement";
 import type { RailwayNetwork } from "./network";
 import { isValidRngState } from "./rng";
+import { exactKeys, ITEM_KEYS, POSITION_KEYS, itemFieldsShape, itemRecordShape, pendingShape, sameJson } from "./saveSchema";
+import { replayItemSave } from "./saveItemReplay";
+import { deepFreeze } from "./itemTurnPreparation";
+
+export type SavedGameState = GameState | ItemGameState;
 
 const STOP_REASONS: readonly StopReason[] = ["roll", "goal", "endpoint"];
 
 type UnknownRecord = Record<string, unknown>;
 type SavedStatus = Extract<GameState["status"], "playing" | "completed">;
 
-/** Serialise a settled game state (never a mid-animation UI state). */
-export function serializeGame(state: GameState): string {
+/** Serialise a committed position, including a pending item decision (never a UI phase). */
+export function serializeGame(state: SavedGameState): string {
   return JSON.stringify(state);
 }
 
@@ -72,6 +80,7 @@ function asStatus(value: unknown): SavedStatus {
 
 function parseConfig(value: unknown): GameConfig {
   const raw = asRecord(value, "config");
+  exactKeys(raw, ["rulesetVersion", "targetServiceId", "startStationId", "targetDirection", "goalArrivalPolicy", "serviceLottery", "directionLottery"], ["itemPolicy"]);
   const policy = raw.goalArrivalPolicy;
   if (!GOAL_ARRIVAL_POLICIES.some((known) => known === policy)) {
     invalid("config.goalArrivalPolicy is unknown");
@@ -90,6 +99,13 @@ function parseConfig(value: unknown): GameConfig {
     targetDirection: asDirection(raw.targetDirection, "config.targetDirection"),
     goalArrivalPolicy: policy as GameConfig["goalArrivalPolicy"],
     ...lotteries,
+    ...(Object.hasOwn(raw, "itemPolicy") ? { itemPolicy: (() => {
+      try { return parseItemPolicy(raw.itemPolicy); }
+      catch (error) {
+        if (error instanceof GameEngineError) invalid(`config item policy is invalid: ${error.message}`);
+        throw error;
+      }
+    })() } : {}),
   };
 }
 
@@ -103,6 +119,7 @@ function asStopReason(value: unknown, path: string): StopReason {
 function asLanding(value: unknown, path: string): LandingChoice | null {
   if (value === null) return null;
   const raw = asRecord(value, path);
+  exactKeys(raw, ["serviceId", "direction"]);
   return {
     serviceId: asString(raw.serviceId, `${path}.serviceId`),
     direction: asDirection(raw.direction, `${path}.direction`),
@@ -111,6 +128,7 @@ function asLanding(value: unknown, path: string): LandingChoice | null {
 
 function parseMoveRecord(value: unknown, path: string): MoveRecord {
   const raw = asRecord(value, path);
+  exactKeys(raw, ["turn", "roll", "serviceId", "direction", "fromStationId", "toStationId", "traversedSegmentIds", "stopReason", "landing"]);
   return {
     turn: asCount(raw.turn, `${path}.turn`),
     roll: asCount(raw.roll, `${path}.roll`),
@@ -139,9 +157,8 @@ function parseSaveVersion(raw: UnknownRecord): void {
 }
 
 /** Shape-only parse into a fresh object holding just the known fields. */
-function parseState(raw: UnknownRecord): GameState {
-  const history = raw.movementHistory;
-  if (!Array.isArray(history)) invalid("movementHistory must be an array");
+function parsePosition(raw: UnknownRecord): Omit<GameState, "movementHistory"> {
+  if (raw.saveVersion !== SAVE_VERSION) invalid("Position saveVersion must match the v4 envelope");
   const rngState = raw.rngState;
   if (!isValidRngState(rngState)) invalid("rngState is malformed");
   return {
@@ -154,12 +171,59 @@ function parseState(raw: UnknownRecord): GameState {
     direction: asDirection(raw.direction, "direction"),
     turn: asCount(raw.turn, "turn"),
     completedSegmentIds: asStringList(raw.completedSegmentIds, "completedSegmentIds"),
-    movementHistory: history.map((record, index) =>
-      parseMoveRecord(record, `movementHistory[${index}]`),
-    ),
     rngSeed: asString(raw.rngSeed, "rngSeed"),
     rngState,
   };
+}
+
+function parseItemPosition(raw: UnknownRecord, network: RailwayNetwork): ItemPosition {
+  const base = parsePosition(raw);
+  if (!base.config.itemPolicy) invalid("Item position requires itemPolicy");
+  itemFieldsShape(Object.fromEntries(ITEM_KEYS.map((key) => [key, raw[key]])), "items");
+  const fields = Object.fromEntries(ITEM_KEYS.map((key) => [key, raw[key]])) as unknown as Pick<ItemPosition, typeof ITEM_KEYS[number]>;
+  const policy = base.config.itemPolicy;
+  if (fields.inventory.length > policy.inventoryCapacity ||
+      new Set(fields.inventory.map((item) => item.id)).size !== fields.inventory.length ||
+      fields.inventory.some((item) => Number(item.id.slice(5)) > base.turn || !policy.beneficialKinds.includes(item.kind as typeof policy.beneficialKinds[number]))) {
+    invalid("Inventory capacity, instance ids or kinds are invalid");
+  }
+  const { delayDueTurns, suspensions } = fields.effects;
+  if (delayDueTurns.some((due, index) => due <= base.turn || due > base.turn + policy.delayTurns ||
+      (index > 0 && delayDueTurns[index - 1]! >= due))) invalid("Delay timers are invalid");
+  if (suspensions.some((entry, index) => !network.servicesById.has(entry.serviceId) ||
+      entry.expiresTurn < base.turn || entry.expiresTurn > base.turn + policy.suspensionTurns ||
+      (index > 0 && suspensions[index - 1]!.serviceId >= entry.serviceId))) invalid("Suspension timers or services are invalid");
+  return { ...base, config: { ...base.config, itemPolicy: policy }, ...fields };
+}
+
+function parseState(raw: UnknownRecord, network: RailwayNetwork): SavedGameState {
+  const base = parsePosition(raw);
+  if (!Array.isArray(raw.movementHistory)) invalid("movementHistory must be an array");
+  if (!base.config.itemPolicy) {
+    exactKeys(raw, [...POSITION_KEYS, "movementHistory"]);
+    return { ...base, movementHistory: raw.movementHistory.map((record, index) => parseMoveRecord(record, `movementHistory[${index}]`)) };
+  }
+  exactKeys(raw, [...POSITION_KEYS, ...ITEM_KEYS, "movementHistory", "pending"]);
+  raw.movementHistory.forEach((record, index) => itemRecordShape(record, `movementHistory[${index}]`));
+  pendingShape(raw.pending, "pending");
+  const position = parseItemPosition(raw, network);
+  const state = { ...position, movementHistory: raw.movementHistory, pending: raw.pending } as ItemGameState;
+  if (state.turn !== state.movementHistory.length) invalid("turn does not match completed history");
+  if (state.pending !== null) {
+    if (state.status !== "playing" || state.pending.turn !== state.turn + 1) invalid("Illegal pending decision");
+    if (state.pending.kind === "discard") {
+      const pendingPosition = parseItemPosition(asRecord(state.pending.position, "pending.position"), network);
+      if (!sameJson(pendingPosition.config, state.config) || pendingPosition.rngSeed !== state.rngSeed ||
+          pendingPosition.dataVersion !== state.dataVersion || pendingPosition.saveVersion !== SAVE_VERSION ||
+          pendingPosition.turn !== state.pending.turn || pendingPosition.status !== "playing" ||
+          state.pending.record.discardedInstanceId !== null) invalid("Illegal pending discard position");
+    }
+  }
+  return state;
+}
+
+export function isItemSave(state: SavedGameState): state is ItemGameState {
+  return Object.hasOwn(state, "pending");
 }
 
 function sameList(left: readonly string[], right: readonly string[]): boolean {
@@ -280,6 +344,19 @@ function sameConfig(left: GameConfig, right: GameConfig): boolean {
     ? rightTarget.kind === "weight" && leftTarget.weight === rightTarget.weight
     : rightTarget.kind === "share" && leftTarget.numerator === rightTarget.numerator &&
       leftTarget.denominator === rightTarget.denominator;
+  const leftItems = left.itemPolicy;
+  const rightItems = right.itemPolicy;
+  const sameItems = leftItems === undefined || rightItems === undefined
+    ? leftItems === rightItems
+    : leftItems.dropChancePerMille === rightItems.dropChancePerMille &&
+      leftItems.harmfulChancePercent === rightItems.harmfulChancePercent &&
+      leftItems.inventoryCapacity === rightItems.inventoryCapacity &&
+      leftItems.maxActiveItemsPerTurn === rightItems.maxActiveItemsPerTurn &&
+      leftItems.delayTurns === rightItems.delayTurns &&
+      leftItems.suspensionTurns === rightItems.suspensionTurns &&
+      leftItems.fullInventoryPolicy === rightItems.fullInventoryPolicy &&
+      sameList(leftItems.beneficialKinds, rightItems.beneficialKinds) &&
+      sameList(leftItems.harmfulKinds, rightItems.harmfulKinds);
   return (
     left.rulesetVersion === right.rulesetVersion &&
     left.targetServiceId === right.targetServiceId &&
@@ -288,7 +365,9 @@ function sameConfig(left: GameConfig, right: GameConfig): boolean {
     left.goalArrivalPolicy === right.goalArrivalPolicy &&
     SERVICE_KINDS.every((kind) => left.serviceLottery.kindWeights[kind] === right.serviceLottery.kindWeights[kind]) &&
     sameTarget &&
-    left.directionLottery.towardTargetWeight === right.directionLottery.towardTargetWeight
+    left.directionLottery.towardTargetWeight === right.directionLottery.towardTargetWeight &&
+    left.directionLottery.awayFromTargetWeight === right.directionLottery.awayFromTargetWeight &&
+    sameItems
   );
 }
 
@@ -310,7 +389,11 @@ function rngMismatch(message: string): never {
  *
  * @throws GameEngineError `RNG_MISMATCH`
  */
-export function verifySeededHistory(state: GameState, network: RailwayNetwork): void {
+export function verifySeededHistory(state: SavedGameState, network: RailwayNetwork): void {
+  if (isItemSave(state)) {
+    replayItemSave(state, network, true);
+    return;
+  }
   const replayed = replayHistory(
     createGame(state.config, state.rngSeed, network),
     state.movementHistory,
@@ -327,8 +410,8 @@ export interface RestoreOptions {
   expectedConfig?: GameConfig;
   /**
    * Require every move to come from the seeded die ({@link verifySeededHistory}).
-   * The app always sets this; tests that build games with arbitrary
-   * `moveByRoll` rolls leave it off.
+   * Item saves always require both passes. The app always sets this; classic
+   * tests that build games with arbitrary `moveByRoll` rolls leave it off.
    */
   requireSeededRolls?: boolean;
 }
@@ -342,11 +425,16 @@ export interface RestoreOptions {
  *   `UNSUPPORTED_SAVE_VERSION`, `DATA_VERSION_MISMATCH`, `CONFIG_MISMATCH`,
  *   `RNG_MISMATCH`
  */
+export function restoreGame(json: string, network: RailwayNetwork, options: RestoreOptions & {
+  expectedConfig: GameConfig & { itemPolicy: ItemPolicy };
+}): ItemGameState;
+export function restoreGame(json: string, network: RailwayNetwork, options: RestoreOptions & { expectedConfig: GameConfig }): GameState;
+export function restoreGame(json: string, network: RailwayNetwork, options?: RestoreOptions): SavedGameState;
 export function restoreGame(
   json: string,
   network: RailwayNetwork,
   options: RestoreOptions = {},
-): GameState {
+): SavedGameState {
   let parsed: unknown;
   try {
     parsed = JSON.parse(json);
@@ -355,7 +443,7 @@ export function restoreGame(
   }
   const raw = asRecord(parsed, "save");
   parseSaveVersion(raw);
-  const state = parseState(raw);
+  const state = parseState(raw, network);
   if (state.dataVersion !== network.dataVersion) {
     throw new GameEngineError(
       "DATA_VERSION_MISMATCH",
@@ -368,6 +456,13 @@ export function restoreGame(
   }
   // With seeded rolls required, verifySeededHistory covers turn 0 as well and
   // reports it as RNG_MISMATCH like any other RNG inconsistency.
+  if (isItemSave(state)) {
+    replayItemSave(state, network, false);
+    verifySeededHistory(state, network);
+    // Re-freeze the parsed transcript, whose complete contents both passes verified.
+    if (state.pending) deepFreeze(state.pending);
+    return state;
+  }
   assertReplayMatches(state, network, !requireSeededRolls);
   if (requireSeededRolls) verifySeededHistory(state, network);
   return state;

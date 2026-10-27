@@ -86,6 +86,53 @@ export interface ServiceLotteryPolicy {
 
 export interface DirectionLotteryPolicy {
   towardTargetWeight: number;
+  awayFromTargetWeight?: number;
+}
+
+export const BENEFICIAL_ITEM_KINDS = [
+  "route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate",
+] as const;
+export const HARMFUL_ITEM_KINDS = ["delay", "suspension", "detour", "oversleep"] as const;
+export type BeneficialItemKind = (typeof BENEFICIAL_ITEM_KINDS)[number];
+export type HarmfulItemKind = (typeof HARMFUL_ITEM_KINDS)[number];
+export type ItemKind = BeneficialItemKind | HarmfulItemKind;
+
+/** One inventory slot. IDs are deterministic within a turn history. */
+export interface ItemInstance {
+  id: string;
+  kind: ItemKind;
+}
+
+/** JSON-safe harmful-effect state consumed by the item turn kernel. */
+export interface ItemEffectsState {
+  delayDueTurns: readonly number[];
+  suspensions: readonly { serviceId: ServiceId; expiresTurn: number }[];
+  detourPending: boolean;
+  oversleepPending: boolean;
+}
+
+export type ItemEvent =
+  | { type: "pickup-retained"; item: ItemInstance }
+  | { type: "pickup-pending-discard"; item: ItemInstance; candidates: readonly ItemInstance[] }
+  | { type: "discarded"; item: ItemInstance }
+  | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "delay"; dueTurn: number }
+  | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "suspension"; serviceId: ServiceId; expiresTurn: number }
+  | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "detour" | "oversleep" }
+  | { type: "cancelled-by-certificate"; item: HarmfulItemKind; certificate: ItemInstance }
+  | { type: "consumed"; item: ItemInstance }
+  | { type: "effect-activated"; effect: "delay" | "oversleep" | "detour" }
+  | { type: "effect-expired"; effect: "suspension"; serviceId: ServiceId };
+
+export interface ItemPolicy {
+  dropChancePerMille: number;
+  harmfulChancePercent: number;
+  inventoryCapacity: number;
+  maxActiveItemsPerTurn: number;
+  delayTurns: number;
+  suspensionTurns: number;
+  fullInventoryPolicy: "player-chooses-discard";
+  beneficialKinds: readonly BeneficialItemKind[];
+  harmfulKinds: readonly HarmfulItemKind[];
 }
 
 export interface GameConfig {
@@ -96,6 +143,7 @@ export interface GameConfig {
   goalArrivalPolicy: "truncate-on-target-service" | "exact-stop" | "pass-through";
   serviceLottery: ServiceLotteryPolicy;
   directionLottery: DirectionLotteryPolicy;
+  itemPolicy?: ItemPolicy;
 }
 
 export interface GameState {
@@ -111,4 +159,113 @@ export interface GameState {
   movementHistory: MoveRecord[];
   rngSeed: string;
   rngState: string;
+}
+
+/** Item turns keep classic state and records structurally separate. */
+export type PreRollItemCommand =
+  | { readonly kind: "route-ticket"; readonly instanceId: string; readonly serviceId: ServiceId }
+  | { readonly kind: "direction-ticket"; readonly instanceId: string; readonly direction: Direction }
+  | { readonly kind: "double" | "rapid" | "deadhead"; readonly instanceId: string };
+
+export interface ItemTurnCommand {
+  readonly items: readonly PreRollItemCommand[];
+}
+
+export interface ItemRollAdjustment {
+  readonly instanceId: string;
+  readonly delta: -1 | 1;
+}
+
+/** Serializable candidates after suspension and detour filtering. */
+export interface ItemLandingSnapshot {
+  stationId: StationId;
+  services: readonly {
+    serviceId: ServiceId;
+    weight: number;
+    directions: readonly Direction[];
+    directionWeights: readonly number[];
+  }[];
+  suspensionIgnored: boolean;
+  detourConsumed: boolean;
+}
+
+interface ItemRecordBase {
+  turn: number;
+  fromStationId: StationId;
+  toStationId: StationId;
+  command: ItemTurnCommand;
+  traversedSegmentIds: SegmentId[];
+  landing: LandingChoice | null;
+  landingSnapshot: ItemLandingSnapshot | null;
+  itemEvents: ItemEvent[];
+  discardedInstanceId: string | null;
+}
+
+export interface ItemRideRecord extends ItemRecordBase {
+  kind: "item-ride";
+  resolvedRide: LandingChoice;
+  rawRoll: number;
+  effectiveFace: number;
+  adjustment: ItemRollAdjustment | null;
+  movementMode: "normal" | "rapid" | "oversleep";
+  pips: number;
+  hopBudget: number;
+  physicalHops: number;
+  unusedPips: number;
+  stopReason: StopReason;
+}
+
+export interface ItemDeadheadRecord extends ItemRecordBase {
+  kind: "deadhead";
+  resolvedRide: null;
+  rawRoll: null;
+  effectiveFace: null;
+  adjustment: null;
+  movementMode: "deadhead";
+  pips: null;
+  hopBudget: null;
+  physicalHops: 0;
+  unusedPips: null;
+  stopReason: "relocation";
+  relocation: { fromStationId: StationId; toStationId: StationId; serviceId: ServiceId; direction: Direction; distance: number };
+}
+
+export type ItemTurnRecord = ItemRideRecord | ItemDeadheadRecord;
+
+export type DeepReadonly<T> = T extends (...args: never[]) => unknown ? T
+  : T extends readonly (infer U)[] ? readonly DeepReadonly<U>[]
+    : T extends object ? { readonly [K in keyof T]: DeepReadonly<T[K]> }
+      : T;
+
+export interface PendingItemRoll {
+  readonly kind: "roll";
+  readonly turn: number;
+  readonly command: DeepReadonly<ItemTurnCommand>;
+  readonly resolvedRide: DeepReadonly<LandingChoice>;
+  readonly rawRoll: number;
+  readonly rngStateAfterRoll: string;
+}
+
+export interface ItemPosition extends Omit<GameState, "movementHistory" | "config"> {
+  config: GameConfig & { itemPolicy: ItemPolicy };
+  inventory: ItemInstance[];
+  effects: ItemEffectsState;
+  itemRngState: string;
+}
+
+export interface PendingItemTurnDiscard {
+  readonly kind: "discard";
+  readonly turn: number;
+  readonly item: DeepReadonly<ItemInstance>;
+  readonly candidates: readonly DeepReadonly<ItemInstance>[];
+  readonly nextItemRngState: string;
+  readonly position: DeepReadonly<ItemPosition>;
+  readonly record: DeepReadonly<ItemTurnRecord>;
+}
+
+export type PendingItemTurn = PendingItemRoll | PendingItemTurnDiscard;
+
+export interface ItemGameState extends ItemPosition {
+  movementHistory: ItemTurnRecord[];
+  pending: PendingItemTurn | null;
 }

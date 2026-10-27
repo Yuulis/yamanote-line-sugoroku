@@ -1,9 +1,10 @@
+import { createGame, playTurn, type ProductTurnResult } from "../e2e/fixtures/productGame";
 import { describe, expect, it } from "vitest";
-import { createGame, type MoveResult, playTurn, restoreGame, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
-import { lastMoveOf, reduceGameSession, startSession } from "../../src/features/game/gameSession";
+import { restoreGame, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
+import { resumeSession, reduceGameSession, startSession } from "../../src/features/game/gameSession";
 import { displayedRide, landingText, lastRollText } from "../../src/features/game/presentation";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
-import type { GameState } from "../../src/types/network";
+import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import type { ItemGameState } from "../../src/types/network";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import {
   FIXTURE_GAME_SEED,
@@ -11,47 +12,48 @@ import {
   LEGACY_FIXTURE_GAME_SEED,
   LEGACY_FIXTURE_SCENARIO_TURNS,
 } from "../e2e/fixtures/seeds";
+import { isItemSave, createGame as createClassicGame, playTurn as playClassicTurn, type MoveResult } from "../../src/features/game/engine";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 
 const { network } = await loadBundle("fixture");
 
-function endpointKind(result: MoveResult): string | null {
+function endpointKind(result: ProductTurnResult | MoveResult): string | null {
   const record = result.state.movementHistory.at(-1);
   if (!record) return null;
-  const service = network.servicesById.get(record.serviceId);
+  const service = network.servicesById.get("kind" in record ? record.resolvedRide!.serviceId : record.serviceId);
   if (!service || service.circular) return null;
   return record.toStationId === service.stationIds[0] ? service.endpoints.first : service.endpoints.last;
 }
 
 interface FixtureTrajectory {
   seed: string;
-  fresh: GameState;
-  turns: MoveResult[];
-  game: GameState;
+  fresh: ItemGameState;
+  turns: ProductTurnResult[];
+  game: ItemGameState;
 }
 
 /**
  * Deterministic search: scan ascending integers, encode each as a 128-bit
  * lowercase hex seed, and keep the first trajectory with a turn-1 transfer,
  * turn-2 area boundary, turn-3 terminus, turn-5 direction draw, and completion.
- * The first match in this bounded search is 0x398 (decimal 920); browser specs
+ * The first match in this bounded search is 0x5ff (decimal 1535); browser specs
  * consume that seed.
  */
 function findProductionFixtureTrajectory(lastCandidate: number): FixtureTrajectory {
   for (let candidate = 0; candidate <= lastCandidate; candidate += 1) {
     const seed = candidate.toString(16).padStart(32, "0");
-    const fresh = createGame(MVP_GAME_CONFIG, seed, network);
+    const fresh = createGame(DEFAULT_GAME_CONFIG, seed, network);
     const first = playTurn(fresh, network);
     const firstLanding = first.events.find((event) => event.type === "landing-resolved");
-    if (firstLanding?.type !== "landing-resolved" || !firstLanding.changedService || firstLanding.serviceId !== "fixture-south") continue;
+    if (first.roll !== 4 || firstLanding?.type !== "landing-resolved" || !firstLanding.changedService || firstLanding.serviceId !== "fixture-south") continue;
 
     const second = playTurn(first.state, network);
     const secondRecord = second.state.movementHistory.at(-1);
-    if (second.stopReason !== "endpoint" || secondRecord?.toStationId !== "fixture-omori" || endpointKind(second) !== "area-boundary") continue;
+    if (second.roll !== 3 || second.stopReason !== "endpoint" || secondRecord?.toStationId !== "fixture-omori" || endpointKind(second) !== "area-boundary") continue;
 
     const third = playTurn(second.state, network);
     const thirdRecord = third.state.movementHistory.at(-1);
-    if (third.stopReason !== "endpoint" || thirdRecord?.toStationId !== "shinagawa" || endpointKind(third) !== "terminus") continue;
+    if (third.roll !== 3 || third.stopReason !== "endpoint" || thirdRecord?.toStationId !== "shinagawa" || endpointKind(third) !== "terminus") continue;
 
     const turns = [first, second, third];
     let game = third.state;
@@ -63,7 +65,7 @@ function findProductionFixtureTrajectory(lastCandidate: number): FixtureTrajecto
     const direction = turns[FIXTURE_SCENARIO_TURNS.direction - 1]?.events.find(
       (event) => event.type === "landing-resolved" && event.directionDrawRequired,
     );
-    const targetIds = targetSegmentIds(MVP_GAME_CONFIG, network);
+    const targetIds = targetSegmentIds(DEFAULT_GAME_CONFIG, network);
     const completedTarget = targetIds.every((id) => game.completedSegmentIds.includes(id));
     if (
       direction?.type !== "landing-resolved"
@@ -80,11 +82,11 @@ function findProductionFixtureTrajectory(lastCandidate: number): FixtureTrajecto
   throw new Error(`No production fixture trajectory found through candidate ${lastCandidate}`);
 }
 
-const legacyFresh = createGame(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network);
+const legacyFresh = createClassicGame(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network);
 const legacyTurns: MoveResult[] = [];
 let legacyGame = legacyFresh;
 while (legacyGame.status === "playing" && legacyGame.turn < 30) {
-  const result = playTurn(legacyGame, network);
+  const result = playClassicTurn(legacyGame, network);
   legacyTurns.push(result);
   legacyGame = result.state;
 }
@@ -147,7 +149,7 @@ describe("pinned legacy browser-fixture trajectory", () => {
     for (const state of [legacyFresh, ...legacyTurns.map((turn) => turn.state)]) {
       const restored = restoreGame(serializeGame(state), network, { expectedConfig: LEGACY_CAPITAL_REGION_CONFIG, requireSeededRolls: true });
       expect(restored).toEqual(state);
-      if (state.status === "playing") expect(playTurn(restored, network)).toEqual(playTurn(state, network));
+      if (state.status === "playing") expect(playClassicTurn(restored, network)).toEqual(playClassicTurn(state, network));
     }
   });
 });
@@ -155,7 +157,7 @@ describe("pinned legacy browser-fixture trajectory", () => {
 describe("pinned production browser-fixture trajectory", () => {
   it("selects the first ascending-search seed proved by the production engine", () => {
     expect(productionFixture.seed).toBe(FIXTURE_GAME_SEED);
-    expect(FIXTURE_GAME_SEED).toBe("00000000000000000000000000000398");
+    expect(FIXTURE_GAME_SEED).toBe("000000000000000000000000000005ff");
     expect(productionFixture.fresh).toMatchObject({ turn: 0, currentStationId: "shimbashi", currentServiceId: "jr-yamanote" });
   });
 
@@ -169,46 +171,48 @@ describe("pinned production browser-fixture trajectory", () => {
 
     const boundary = productionFixture.turns[FIXTURE_SCENARIO_TURNS.boundary - 1]!;
     expect(boundary).toMatchObject({ roll: 3, stopReason: "endpoint", unusedPips: 1 });
-    expect(boundary.state.movementHistory.at(-1)).toMatchObject({ toStationId: "fixture-omori", direction: 1 });
+    expect(boundary.state.movementHistory.at(-1)).toMatchObject({ toStationId: "fixture-omori", resolvedRide: { direction: 1 } });
     expect(endpointKind(boundary)).toBe("area-boundary");
     expect(boundary.events.some((event) => event.type === "endpoint-reached")).toBe(true);
-    expect(lastRollText(lastMoveOf(boundary.state, network), network)).toBe("3（大森で停止〔エリア端〕、残り1は使わず）");
+    expect(lastRollText(resumeSession(boundary.state, network).lastMove, network)).toBe("3（3マス、2駅移動、残り1は使わず）");
 
     const terminus = productionFixture.turns[FIXTURE_SCENARIO_TURNS.terminus - 1]!;
     expect(terminus).toMatchObject({ roll: 3, stopReason: "endpoint", unusedPips: 1 });
-    expect(terminus.state.movementHistory.at(-1)).toMatchObject({ toStationId: "shinagawa", direction: -1 });
+    expect(terminus.state.movementHistory.at(-1)).toMatchObject({ toStationId: "shinagawa", resolvedRide: { direction: -1 } });
     expect(endpointKind(terminus)).toBe("terminus");
     expect(terminus.events.some((event) => event.type === "endpoint-reached")).toBe(true);
-    expect(lastRollText(lastMoveOf(terminus.state, network), network)).toBe("3（品川で停止〔終点〕、残り1は使わず）");
+    expect(lastRollText(resumeSession(terminus.state, network).lastMove, network)).toBe("3（3マス、2駅移動、残り1は使わず）");
 
     const direction = productionFixture.turns[FIXTURE_SCENARIO_TURNS.direction - 1]!.events.at(-1);
     expect(direction).toMatchObject({
       type: "landing-resolved", stationId: "fixture-oimachi", serviceCandidates: ["fixture-south"],
       serviceDrawRequired: false, directionCandidates: [1, -1], directionDrawRequired: true, direction: -1,
     });
-    expect(landingText(lastMoveOf(productionFixture.turns[FIXTURE_SCENARIO_TURNS.direction - 1]!.state, network), network))
+    expect(landingText(resumeSession(productionFixture.turns[FIXTURE_SCENARIO_TURNS.direction - 1]!.state, network).lastMove, network))
       .toBe("テスト南線のみ ／ 方向抽選 → 品川方面");
   });
 
   it("proves the production transfer result stays hidden until animation settles", () => {
-    const started = startSession(MVP_GAME_CONFIG, FIXTURE_GAME_SEED, network, 1);
-    const moving = reduceGameSession(
+    const started = startSession(DEFAULT_GAME_CONFIG, FIXTURE_GAME_SEED, network, 1);
+    let moving = reduceGameSession(
       started,
-      { type: "roll", sessionId: 1, rngSeed: FIXTURE_GAME_SEED, turn: 0 },
-      MVP_GAME_CONFIG,
+      { type: "item-commit", sessionId: 1, turn: 0, decisionRevision: 0 },
+      DEFAULT_GAME_CONFIG,
       network,
     );
+    moving = reduceGameSession(moving, { type: "item-save-attempted", sessionId: 1, turn: moving.game.turn, decisionRevision: moving.item!.decisionRevision }, DEFAULT_GAME_CONFIG, network);
+    moving = reduceGameSession(moving, { type: "item-save-attempted", sessionId: 1, turn: moving.game.turn, decisionRevision: moving.item!.decisionRevision }, DEFAULT_GAME_CONFIG, network);
     expect(moving.game.currentServiceId).toBe("fixture-south");
     expect(displayedRide(moving)).toEqual({ serviceId: "jr-yamanote", direction: 1 });
 
-    const settled = reduceGameSession(moving, { type: "animation-finished", sessionId: 1, turn: 1 }, MVP_GAME_CONFIG, network);
+    const settled = reduceGameSession(moving, { type: "animation-finished", sessionId: 1, turn: 1, decisionRevision: moving.item!.decisionRevision }, DEFAULT_GAME_CONFIG, network);
     expect(displayedRide(settled)).toEqual({ serviceId: "fixture-south", direction: 1 });
     expect(landingText(settled.lastMove, network)).toBe("品川：山手線・テスト南線から抽選 → テスト南線 ／ 乗車方向は大森方面のみ");
-    expect(reduceGameSession(settled, { type: "animation-finished", sessionId: 1, turn: 1 }, MVP_GAME_CONFIG, network)).toBe(settled);
+    expect(reduceGameSession(settled, { type: "animation-finished", sessionId: 1, turn: 1, decisionRevision: moving.item!.decisionRevision }, DEFAULT_GAME_CONFIG, network)).toBe(settled);
   });
 
-  it("completes at turn 13 after every target segment is covered", () => {
-    const targetIds = targetSegmentIds(MVP_GAME_CONFIG, network);
+  it("completes at turn 14 after every target segment is covered", () => {
+    const targetIds = targetSegmentIds(DEFAULT_GAME_CONFIG, network);
     expect(targetIds).toHaveLength(30);
     expect(productionFixture.game).toMatchObject({
       status: "completed", turn: FIXTURE_SCENARIO_TURNS.completed, currentStationId: "shimbashi",
@@ -220,8 +224,9 @@ describe("pinned production browser-fixture trajectory", () => {
 
   it("restores each production fixture save and continues without drawing again", () => {
     for (const state of [productionFixture.fresh, ...productionFixture.turns.map((turn) => turn.state)]) {
-      const restored = restoreGame(serializeGame(state), network, { expectedConfig: MVP_GAME_CONFIG, requireSeededRolls: true });
+      const restored = restoreGame(serializeGame(state), network, { expectedConfig: DEFAULT_GAME_CONFIG, requireSeededRolls: true });
       expect(restored).toEqual(state);
+      if (!isItemSave(restored)) throw new Error("Expected item save");
       if (state.status === "playing") expect(playTurn(restored, network)).toEqual(playTurn(state, network));
     }
   });
