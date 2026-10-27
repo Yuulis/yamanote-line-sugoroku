@@ -82,16 +82,19 @@ function directionWeights(
   config: GameConfig,
   network: RailwayNetwork,
 ): number[] {
-  const weight = config.directionLottery.towardTargetWeight;
-  if (weight === 1 || directions.length < LOTTERY_MIN) return directions.map(() => 1);
+  const towardWeight = config.directionLottery.towardTargetWeight;
+  const awayWeight = config.directionLottery.awayFromTargetWeight ?? 1;
+  if ((towardWeight === 1 && awayWeight === 1) || directions.length < LOTTERY_MIN) return directions.map(() => 1);
   const distances = targetHopDistances(network, config.targetServiceId);
   const nextDistances = directions.map((direction) => {
     const next = nextStationId(network, serviceId, stationId, direction);
     return next === undefined ? Infinity : distances.get(next) ?? Infinity;
   });
-  const [forward = Infinity, backward = Infinity] = nextDistances;
-  if (forward === backward) return [1, 1];
-  return forward < backward ? [weight, 1] : [1, weight];
+  const [first = Infinity, second = Infinity] = nextDistances;
+  if (first === second) return [1, 1];
+  return nextDistances.map((distance) => distance < Math.max(first, second)
+    ? towardWeight
+    : awayWeight);
 }
 
 /**

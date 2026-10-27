@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRailwayNetwork, createGame, landingOptions, moveByRoll, playTurn, restoreGame, rollDie, SAVE_VERSION, serializeGame,
 } from "../../src/features/game/engine";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { ITEM_GAME_CONFIG, MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { GameConfig, GameState } from "../../src/types/network";
 import { deleteSave, readSave, SAVE_STORAGE_KEY, type StorageLike } from "../../src/features/game/store/persistence";
 import { kindInput, lotteryConfig } from "./fixtures/lottery";
@@ -104,6 +104,40 @@ describe("save v3 lottery policies", () => {
     expect(restoreGame(json, network, { expectedConfig: config })).toEqual(state);
   });
 
+  it("parses and round trips the internal item configuration with ordered pools", () => {
+    const state = createGame(ITEM_GAME_CONFIG, "item-config", yamanoteNetwork);
+    const restored = restoreGame(serializeGame(state), yamanoteNetwork, { expectedConfig: ITEM_GAME_CONFIG });
+    expect(restored).toEqual(state);
+    expect(restored.config.directionLottery).toEqual({ towardTargetWeight: 3, awayFromTargetWeight: 2 });
+    expect(restored.config.itemPolicy?.beneficialKinds).toEqual([
+      "route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate",
+    ]);
+    expect(restored.config.itemPolicy?.harmfulKinds).toEqual(["delay", "suspension", "detour", "oversleep"]);
+  });
+
+  it("config equality includes away direction weight", () => {
+    const config = lotteryConfig();
+    const state = createGame(config, "config-equality", network);
+    config.directionLottery.awayFromTargetWeight = 1;
+    expect(() => restoreGame(serializeGame(state), network, { expectedConfig: config }))
+      .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
+  });
+
+  it("config equality distinguishes absent and present item policy", () => {
+    const state = createGame(MVP_GAME_CONFIG, "classic-config-equality", yamanoteNetwork);
+    const expected = { ...MVP_GAME_CONFIG, itemPolicy: structuredClone(ITEM_GAME_CONFIG.itemPolicy!) };
+    expect(() => restoreGame(serializeGame(state), yamanoteNetwork, { expectedConfig: expected }))
+      .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
+  });
+
+  it("config equality compares item policy values", () => {
+    const config = structuredClone(ITEM_GAME_CONFIG);
+    const state = createGame(config, "item-config-equality", yamanoteNetwork);
+    config.itemPolicy!.delayTurns += 1;
+    expect(() => restoreGame(serializeGame(state), yamanoteNetwork, { expectedConfig: config }))
+      .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
+  });
+
   it.each<[string, (config: GameConfig) => void]>([
     ["ruleset version", (config) => { config.rulesetVersion = "jr-east-23ku-1"; }],
     ["target service", (config) => { config.targetServiceId = "other-target"; }],
@@ -142,10 +176,21 @@ describe("save v3 lottery policies", () => {
     ["unknown kind key", (raw) => { ((raw.serviceLottery as RawConfig).kindWeights as RawConfig).express = 1; }],
     ["invalid share", (raw) => { (raw.serviceLottery as RawConfig).target = { kind: "share", numerator: 0, denominator: 2 }; }],
     ["excessive integer", (raw) => { (raw.directionLottery as RawConfig).towardTargetWeight = 1001; }],
+    ["null away weight", (raw) => { (raw.directionLottery as RawConfig).awayFromTargetWeight = null; }],
   ])("v3 parse rejects malformed policies before config comparison: %s", (_label, edit) => {
     const state = createGame(lotteryConfig(), "malformed", network);
     expect(() => restoreGame(tampered(state, edit), network, { expectedConfig: lotteryConfig() }))
       .toThrowError(INVALID_SAVE);
+  });
+
+  it.each([
+    ["unknown item key", (policy: RawConfig) => { policy.unexpected = 1; }],
+    ["unknown item kind", (policy: RawConfig) => { policy.beneficialKinds = ["future-kind"]; }],
+  ])("save parser rejects %s", (_label, edit) => {
+    const state = createGame(ITEM_GAME_CONFIG, "bad-item-config", yamanoteNetwork);
+    const raw = JSON.parse(serializeGame(state)) as { config: RawConfig };
+    edit(raw.config.itemPolicy as RawConfig);
+    expect(() => restoreGame(JSON.stringify(raw), yamanoteNetwork)).toThrowError(INVALID_SAVE);
   });
 
   it("restored policies and expected config never share nested mutable objects", () => {
@@ -157,6 +202,12 @@ describe("save v3 lottery policies", () => {
     restored.config.directionLottery.towardTargetWeight = 1000;
     expect(original.config).toEqual(lotteryConfig());
     expect(config).toEqual(lotteryConfig());
+  });
+
+  it("round trips classic config without adding the optional away weight", () => {
+    const state = createGame(MVP_GAME_CONFIG, "classic-absence", yamanoteNetwork);
+    expect(restoreGame(serializeGame(state), yamanoteNetwork).config.directionLottery)
+      .toEqual({ towardTargetWeight: 2 });
   });
 
   it("v2 is rejected before checking data, config or history, through the existing discard path", () => {

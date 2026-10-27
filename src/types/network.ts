@@ -86,6 +86,27 @@ export interface ServiceLotteryPolicy {
 
 export interface DirectionLotteryPolicy {
   towardTargetWeight: number;
+  awayFromTargetWeight?: number;
+}
+
+export const BENEFICIAL_ITEM_KINDS = [
+  "route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate",
+] as const;
+export const HARMFUL_ITEM_KINDS = ["delay", "suspension", "detour", "oversleep"] as const;
+export type BeneficialItemKind = (typeof BENEFICIAL_ITEM_KINDS)[number];
+export type HarmfulItemKind = (typeof HARMFUL_ITEM_KINDS)[number];
+export type ItemKind = BeneficialItemKind | HarmfulItemKind;
+
+export interface ItemPolicy {
+  dropChancePerMille: number;
+  harmfulChancePercent: number;
+  inventoryCapacity: number;
+  maxActiveItemsPerTurn: number;
+  delayTurns: number;
+  suspensionTurns: number;
+  fullInventoryPolicy: "player-chooses-discard";
+  beneficialKinds: readonly BeneficialItemKind[];
+  harmfulKinds: readonly HarmfulItemKind[];
 }
 
 export interface GameConfig {
@@ -96,6 +117,7 @@ export interface GameConfig {
   goalArrivalPolicy: "truncate-on-target-service" | "exact-stop" | "pass-through";
   serviceLottery: ServiceLotteryPolicy;
   directionLottery: DirectionLotteryPolicy;
+  itemPolicy?: ItemPolicy;
 }
 
 export interface GameState {

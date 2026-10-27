@@ -1,8 +1,18 @@
 // Public surface of the game engine. Pure TypeScript: no React, DOM,
 // MapLibre, clock, or global randomness may be imported here.
 
-export type { DirectionLotteryPolicy, LandingChoice, ServiceKind, ServiceLotteryPolicy, StopReason } from "../../../types/network";
-export { SERVICE_KINDS } from "../../../types/network";
+export type {
+  BeneficialItemKind,
+  DirectionLotteryPolicy,
+  HarmfulItemKind,
+  ItemKind,
+  ItemPolicy,
+  LandingChoice,
+  ServiceKind,
+  ServiceLotteryPolicy,
+  StopReason,
+} from "../../../types/network";
+export { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, SERVICE_KINDS } from "../../../types/network";
 export { GOAL_ARRIVAL_POLICIES, validateConfig } from "./config";
 export { GameEngineError, type GameEngineErrorCode, isGameEngineError } from "./errors";
 export { createGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";

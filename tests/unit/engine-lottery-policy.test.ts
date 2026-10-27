@@ -154,6 +154,19 @@ describe("proximity and direction policies", () => {
     expect(reversed.directionWeightsByService.get(M_SPUR)).toEqual([2, 1]);
   });
 
+  it("expresses 3:2 toward/away weights in canonical direction order", () => {
+    const config = lotteryConfig();
+    config.directionLottery = { towardTargetWeight: 3, awayFromTargetWeight: 2 };
+    expect(optionsAt("s1", M_SPUR, config).directionWeightsByService.get(M_SPUR)).toEqual([2, 3]);
+    const input = kindInput();
+    input.services.find((service) => service.id === M_SPUR)!.stationIds.reverse();
+    const reversed = landingOptions({
+      config, currentStationId: "s1", currentServiceId: M_SPUR, direction: 1,
+    }, buildRailwayNetwork(input));
+    expect(reversed.directionsByService.get(M_SPUR)).toEqual([1, -1]);
+    expect(reversed.directionWeightsByService.get(M_SPUR)).toEqual([3, 2]);
+  });
+
   it("both unreachable next stops tie, while a reachable next stop wins", () => {
     const base = multiServiceInput();
     const disconnected = base.segments.filter((segment) => segment.serviceId !== M_SPUR ||
@@ -225,6 +238,17 @@ describe("uniform compatibility and forced choices", () => {
       });
     },
   );
+
+  it("a forced direction consumes no draw with unequal configured weights", () => {
+    const config = lotteryConfig();
+    config.directionLottery = { towardTargetWeight: 3, awayFromTargetWeight: 2 };
+    const seed = seedRng("forced-weighted-direction");
+    const options = optionsAt("s2", M_SPUR, config);
+    expect(options.directionWeightsByService.get(M_SPUR)).toEqual([1]);
+    expect(drawLanding(options, seed)).toEqual({
+      choice: { serviceId: M_SPUR, direction: -1 }, nextRngState: seed,
+    });
+  });
 
   it("a forced service with two movable directions consumes only the direction draw", () => {
     const seed = seedRng("direction-only");

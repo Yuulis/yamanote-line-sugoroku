@@ -9,7 +9,7 @@ import type {
   MoveRecord,
   StopReason,
 } from "../../../types/network";
-import { GOAL_ARRIVAL_POLICIES, parseLotteryPolicies } from "./config";
+import { GOAL_ARRIVAL_POLICIES, parseItemPolicy, parseLotteryPolicies } from "./config";
 import { SERVICE_KINDS } from "../../../types/network";
 import { GameEngineError } from "./errors";
 import { type ComputedTurn, computeTurn, createGame, SAVE_VERSION, seededTurn } from "./game";
@@ -90,6 +90,13 @@ function parseConfig(value: unknown): GameConfig {
     targetDirection: asDirection(raw.targetDirection, "config.targetDirection"),
     goalArrivalPolicy: policy as GameConfig["goalArrivalPolicy"],
     ...lotteries,
+    ...(Object.hasOwn(raw, "itemPolicy") ? { itemPolicy: (() => {
+      try { return parseItemPolicy(raw.itemPolicy); }
+      catch (error) {
+        if (error instanceof GameEngineError) invalid(`config item policy is invalid: ${error.message}`);
+        throw error;
+      }
+    })() } : {}),
   };
 }
 
@@ -280,6 +287,19 @@ function sameConfig(left: GameConfig, right: GameConfig): boolean {
     ? rightTarget.kind === "weight" && leftTarget.weight === rightTarget.weight
     : rightTarget.kind === "share" && leftTarget.numerator === rightTarget.numerator &&
       leftTarget.denominator === rightTarget.denominator;
+  const leftItems = left.itemPolicy;
+  const rightItems = right.itemPolicy;
+  const sameItems = leftItems === undefined || rightItems === undefined
+    ? leftItems === rightItems
+    : leftItems.dropChancePerMille === rightItems.dropChancePerMille &&
+      leftItems.harmfulChancePercent === rightItems.harmfulChancePercent &&
+      leftItems.inventoryCapacity === rightItems.inventoryCapacity &&
+      leftItems.maxActiveItemsPerTurn === rightItems.maxActiveItemsPerTurn &&
+      leftItems.delayTurns === rightItems.delayTurns &&
+      leftItems.suspensionTurns === rightItems.suspensionTurns &&
+      leftItems.fullInventoryPolicy === rightItems.fullInventoryPolicy &&
+      sameList(leftItems.beneficialKinds, rightItems.beneficialKinds) &&
+      sameList(leftItems.harmfulKinds, rightItems.harmfulKinds);
   return (
     left.rulesetVersion === right.rulesetVersion &&
     left.targetServiceId === right.targetServiceId &&
@@ -288,7 +308,9 @@ function sameConfig(left: GameConfig, right: GameConfig): boolean {
     left.goalArrivalPolicy === right.goalArrivalPolicy &&
     SERVICE_KINDS.every((kind) => left.serviceLottery.kindWeights[kind] === right.serviceLottery.kindWeights[kind]) &&
     sameTarget &&
-    left.directionLottery.towardTargetWeight === right.directionLottery.towardTargetWeight
+    left.directionLottery.towardTargetWeight === right.directionLottery.towardTargetWeight &&
+    left.directionLottery.awayFromTargetWeight === right.directionLottery.awayFromTargetWeight &&
+    sameItems
   );
 }
 

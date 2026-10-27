@@ -2,12 +2,20 @@ import { describe, expect, it } from "vitest";
 import { buildRailwayNetwork, createGame, moveByRoll, playTurn, validateConfig } from "../../src/features/game/engine";
 import type { GameConfig } from "../../src/types/network";
 import { kindInput, lotteryConfig } from "./fixtures/lottery";
-import { M_LOOP } from "./fixtures/multiService";
+import { M_LOOP, multiConfig } from "./fixtures/multiService";
 import { deepFreeze } from "./fixtures/yamanote";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 
 const network = buildRailwayNetwork(kindInput());
 const INVALID = expect.objectContaining({ code: "INVALID_CONFIG" });
-type RawPolicies = { serviceLottery: Record<string, unknown>; directionLottery: Record<string, unknown> };
+const itemConfig = {
+  ...multiConfig(),
+  rulesetVersion: ITEM_GAME_CONFIG.rulesetVersion,
+  serviceLottery: structuredClone(ITEM_GAME_CONFIG.serviceLottery),
+  directionLottery: structuredClone(ITEM_GAME_CONFIG.directionLottery),
+  itemPolicy: structuredClone(ITEM_GAME_CONFIG.itemPolicy!),
+};
+type RawPolicies = { serviceLottery: Record<string, unknown>; directionLottery: Record<string, unknown>; itemPolicy?: Record<string, unknown> };
 
 function edited(edit: (raw: RawPolicies) => void): GameConfig {
   const config = lotteryConfig();
@@ -21,6 +29,7 @@ describe("lottery config validation", () => {
     config.serviceLottery.kindWeights = { local: weight, rapid: weight };
     config.serviceLottery.target = { kind: "weight", weight };
     config.directionLottery.towardTargetWeight = weight;
+      config.directionLottery.awayFromTargetWeight = weight;
     expect(() => validateConfig(config, network)).not.toThrow();
   });
 
@@ -36,6 +45,7 @@ describe("lottery config validation", () => {
         edited((raw) => { (raw.serviceLottery.kindWeights as Record<string, unknown>).rapid = weight; }),
         edited((raw) => { raw.serviceLottery.target = { kind: "weight", weight }; }),
         edited((raw) => { raw.directionLottery.towardTargetWeight = weight; }),
+        edited((raw) => { raw.directionLottery.awayFromTargetWeight = weight; }),
       ]) expect(() => validateConfig(config, network)).toThrowError(INVALID);
     },
   );
@@ -62,9 +72,39 @@ describe("lottery config validation", () => {
     ["missing multiplier", (raw) => { raw.serviceLottery.target = { kind: "weight" }; }],
     ["missing direction weight", (raw) => { delete raw.directionLottery.towardTargetWeight; }],
     ["unknown direction key", (raw) => { raw.directionLottery.extra = 1; }],
+    ["undefined away direction weight", (raw) => { raw.directionLottery.awayFromTargetWeight = undefined; }],
     ["string base", (raw) => { (raw.serviceLottery.kindWeights as Record<string, unknown>).local = "2"; }],
   ])("rejects policy keys and shapes: %s", (_label, edit) => {
     expect(() => validateConfig(edited(edit), network)).toThrowError(INVALID);
+  });
+
+  it.each([0, -1, 1.5, 1001, NaN, Infinity])("rejects invalid away direction weight %s", (weight) => {
+    expect(() => validateConfig(edited((raw) => { raw.directionLottery.awayFromTargetWeight = weight; }), network))
+      .toThrowError(INVALID);
+  });
+
+  it.each<[string, (policy: Record<string, unknown>) => void]>([
+    ["unknown key", (policy) => { policy.typo = 1; }],
+    ["unknown beneficial kind", (policy) => { policy.beneficialKinds = ["unknown"]; }],
+    ["unknown harmful kind", (policy) => { policy.harmfulKinds = ["unknown"]; }],
+    ["duplicate kind", (policy) => { policy.beneficialKinds = ["double", "double"]; }],
+    ["empty beneficial pool", (policy) => { policy.beneficialKinds = []; }],
+    ["empty harmful pool", (policy) => { policy.harmfulKinds = []; }],
+    ["drop chance out of range", (policy) => { policy.dropChancePerMille = 1001; }],
+    ["harmful chance out of range", (policy) => { policy.harmfulChancePercent = -1; }],
+    ["capacity out of range", (policy) => { policy.inventoryCapacity = 0; }],
+    ["active count exceeds capacity", (policy) => { policy.maxActiveItemsPerTurn = 4; }],
+    ["delay duration out of range", (policy) => { policy.delayTurns = 0; }],
+    ["unknown discard policy", (policy) => { policy.fullInventoryPolicy = "new-item-discard"; }],
+  ])("rejects invalid item policy: %s", (_label, edit) => {
+    const config = structuredClone(itemConfig);
+    edit(config.itemPolicy as unknown as Record<string, unknown>);
+    expect(() => validateConfig(config, network)).toThrowError(INVALID);
+  });
+
+  it("accepts the item policy and leaves classic without one", () => {
+    expect(() => validateConfig(itemConfig, network)).not.toThrow();
+    expect(Object.hasOwn(lotteryConfig(), "itemPolicy")).toBe(false);
   });
 
   it("rejects an unknown explicitly supplied service kind", () => {
@@ -86,6 +126,14 @@ describe("nested config isolation", () => {
     config.directionLottery.towardTargetWeight = 999;
     expect(state.config).toEqual(snapshot);
     expect(state.config.serviceLottery).not.toBe(config.serviceLottery);
+  });
+
+  it("preserves absence of away weight and deep copies a present item policy", () => {
+    const classic = lotteryConfig();
+    expect(createGame(classic, "absent", network).config.directionLottery).toEqual({ towardTargetWeight: 2 });
+    const item = createGame(itemConfig, "items", network);
+    expect(item.config.itemPolicy).not.toBe(itemConfig.itemPolicy);
+    expect(item.config.itemPolicy?.beneficialKinds).not.toBe(itemConfig.itemPolicy?.beneficialKinds);
   });
 
   it("seeded and injected turns deep copy nested config instead of sharing earlier states", () => {
