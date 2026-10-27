@@ -120,3 +120,71 @@ compares per-seed turns with the S6 product shards in
 and the plan's diagnostic threshold characterize the draws but are not a claim
 of independent real-world play. To inspect the saved aggregate, see
 `.claude/logs/s7/simulation/summary.json`.
+
+## Item ruleset: S7 production-engine measurement
+
+The opt-in `item-engine/item-engine.test.ts` runner calls `createItemGame`,
+`beginItemTurn`, `finishItemTurn` and `resolveItemDiscard`. Policy previews use
+production movement and option queries; no spike movement, landing or drop code
+is used to drive these games. Config is explicitly `ITEM_GAME_CONFIG`; classic
+remains explicitly `CLASSIC_GAME_CONFIG` in the existing product runner.
+
+```bash
+# Default small run: 20 games per policy. Disabled unless this flag equals 1.
+ITEM_ENGINE_SIM=1 npm run sim -- tests/simulation/item-engine
+ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=100 npm run sim -- tests/simulation/item-engine
+ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=5000 npm run sim -- tests/simulation/item-engine
+
+# Optional seed-range shard; offset is a nonnegative safe integer.
+ITEM_ENGINE_SIM=1 ITEM_ENGINE_OFFSET=1250 ITEM_ENGINE_GAMES=1250 \
+  ITEM_ENGINE_OUTPUT=.claude/logs/item-engine/shard-1250.json \
+  npm run sim -- tests/simulation/item-engine
+
+# Existing classic runner restricts output to its historical allowed directories.
+SIM_BUNDLE=public/data S5_OFFSET=0 S5_GAMES=5000 \
+  S5_OUTPUT=.claude/logs/s6/simulation/a6-classic/sim-0.json \
+  npm run sim -- tests/simulation/suburban-product.test.ts
+```
+
+Both policies use seeds `s1m-20261012-${offset}..${offset+games-1}` and a
+20,000-turn cap. Random policy choices, including discards, use only
+`<seed>|policy`. Forced one-option choices consume no policy draw. Greedy
+uses the frozen round-3 priority and landing score, including rapid only on or
+toward Yamanote; discard ties remove the newest item. Random chooses uniformly
+among distinct usable held kinds, then a valid service/direction/adjustment.
+
+`ITEM_ENGINE_OUTPUT` defaults to `.claude/logs/item-engine/run-${offset}-${games}.json`
+and must stay under `.claude/logs/item-engine/`. It records config, full seed
+list/hash, all five bundle hashes, engine/policy/harness/reference source hashes,
+raw turns and per-game counters/errors, nearest-rank quantiles, save samples,
+reference traces at the first divergence, and deterministic repeat hashes.
+Counters prefixed `consumed:` count active uses; `event:cancelled-by-certificate`
+counts passive certificate uses. Beneficial drops are `event:pickup-retained`
+plus `event:pickup-pending-discard`; harmful drops are `event:harmful-scheduled`
+plus `event:cancelled-by-certificate`. `event:discarded` counts resolved discards.
+`oedoOversleepTurns` counts six-hop sleeps on `toei-oedo-loop`.
+
+The first 20 seeds per policy retain complete histories. A revealed roll after
+turn 3, the first pending discard (when reached), and the completed game are
+serialized and restored through strict v4 seeded replay, deeply compared, and
+continued from the restored state. The first 10 seeds per policy are repeated;
+all measurement fields other than timing must be identical. A unit test also
+compares retained and trimmed histories. Remaining games trim observational
+history after each committed turn to bound memory and copying costs.
+
+`reference.ts` is an isolated diagnostic: it creates a git-ignored copy of the
+frozen spike with observation hooks, leaving every policy/movement/drop decision
+unchanged. It compares greedy turn traces and reproduces the frozen aggregate;
+production policies never import that copy. The first divergent turn is saved
+for each seed. Oedo oversleep intentionally differs (spike: 2 × station count;
+production: six hops); corrected production pip metadata does not change a
+movement destination. Any new divergence class requires investigation before
+accepting distribution tolerance.
+
+The full, unsharded 5,000-game run enforces the round-3 reference tolerances:
+median ≤ max(5, 10%), p90 ≤ max(10, 10%), p99 ≤ max(20, 10%), p99 <400,
+strict >500 ≤0.5%, no caps and complete games. Small runs and shards record
+provisional verdicts but do not enforce population thresholds. Never average
+shard quantiles: concatenate raw turns and recompute nearest-rank statistics.
+See `.claude/docs/research/item-system-simulation.md`, Round 4, for the dated
+measurement, classic evidence limitation, divergence diagnosis and commands.

@@ -673,3 +673,194 @@ ITEM_SPIKE_MERGE=.claude/logs/item-spike/round3 \
 
 Runtime: 14 variants in 2 min 31 s wall on 11 processes (≈21 CPU-min).
 Shards: `.claude/logs/item-spike/round3/` (git-ignored).
+
+## Round 4 (production engine, 2026-10-27)
+
+### Verdict and measurement boundary
+
+The production item engine passes the predeclared **round-3 both-rules
+population thresholds** for both policies. Classic matches every published S7
+turn statistic exactly. The existing independent effect-level tests pass.
+Greedy per-seed identity is **not** achieved: the first divergent events are
+178 Oedo-loop oversleeps and seven singleton-target route-ticket decisions.
+The latter is a newly documented S5 eligibility difference, so the lead should
+resolve whether that restriction is intended before treating this as an exact
+reference-policy port or switching the product default in S11. No production
+code, weights, seeds, tolerances, spike files or gameplay snapshots were changed.
+
+| Policy / source | Games | Median | p90 | p99 | Mean | Max | Strict >500 | Cap hits | Completion |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Greedy, frozen round 3 | 5,000 | 65 | 143 | 241 | 75.4938 | 433 | 0 (0%) | 0 | 100% |
+| Greedy, production | 5,000 | 65 | 143 | 241 | 75.6754 | 448 | 0 (0%) | 0 | 100% |
+| Random, frozen round 3 | 5,000 | 113 | 232 | 370 | — | 565 | 6 (0.12%) | 0 | 100% |
+| Random, production | 5,000 | 113 | 234 | 373 | 126.5844 | 565 | 5 (0.10%) | 0 | 100% |
+
+Nearest-rank quantiles use sorted index `ceil(p * games) - 1`. The unchanged
+thresholds are median absolute difference ≤max(5, 10% of reference), p90
+≤max(10, 10%), p99 ≤max(20, 10%), p99 <400, strict >500 ≤0.5%, zero caps and
+100% completion. Maximum is diagnostic. Greedy's quantile differences are
+0/0/0; random's are 0/2/3. Both have zero engine/save errors and no turn using
+more than one active item. Small-run verdicts are provisional; thresholds are
+enforced only for the complete 5,000-seed population.
+
+### Inputs, production path and evidence
+
+All three measurements use the shipped `public/data` network and seeds
+`s1m-20261012-0..4999` with a 20,000-turn cap. The seed-list SHA-256 is
+`3472b901cf9c44db2a8792d2e565de89ea55ea639712bac20d4823a7cf9075f5`
+(newline joined, trailing LF). The item config is `ITEM_GAME_CONFIG`:
+`tokyo-suburban-items-1`, Yamanote share 1/2, toward/away weights 3:2, drop
+300/1000, harmful 30%, capacity 3, one active item including adjust, and
+player-selected discard. Classic explicitly uses `CLASSIC_GAME_CONFIG`.
+
+`tests/simulation/item-engine/policy.ts` ports policy decisions only. The
+runner drives the real `createItemGame` → `beginItemTurn` → `finishItemTurn`
+→ optional `resolveItemDiscard` API. Its previews use production
+`advanceWithMode`, `itemLandingOptions`, route/direction/rapid/deadhead queries
+and graph distances. Random choices use the independent `<seed>|policy`
+stream; singleton choices consume no policy draw. Greedy keeps the round-3
+priority, scoring and newest-on-tie discard rule. Random selects distinct
+usable held kinds, rather than weighting duplicate inventory slots.
+
+Raw outputs remain git-ignored:
+
+- `.claude/logs/item-engine/run-0-100.json` and `smoke.log`.
+- `.claude/logs/item-engine/run-0-5000.json` and `full.log`: full config, seed
+  list/hash, all five bundle byte hashes, engine/policy/harness/reference
+  per-file and aggregate hashes, per-seed turns, counters/errors, reference
+  first-divergence evidence, quantile convention and deterministic hashes.
+- `.claude/logs/item-engine/classic/sim-0.json`, copied without modification
+  from `.claude/logs/s6/simulation/a6-classic/sim-0.json` because the existing
+  classic runner restricts its output directories.
+- `.claude/logs/item-engine/classic/comparison.json`: explicit published-stat
+  comparison plus independent recomputation from the new raw classic turns.
+- `unit-all.log` and `default-sim.log` under `.claude/logs/item-engine/`.
+- `.claude/logs/item-engine/validation.json`: independent raw-statistic, seed-list,
+  final-source/bundle fingerprint and divergence-candidate verification; all pass.
+
+There were 115,116 greedy pickups, 55,270 active uses, 6,642 passive certificate
+cancellations and 9,407 discards. Random had 188,991 pickups, 111,902 active
+uses, 15,758 certificate cancellations and 1,339 discards. JSON counters also
+break these down by item kind, harmful effect and event type. Beneficial drops
+are retained plus pending-discard pickups; harmful drops are scheduled plus
+certificate-cancelled pickups. A passive cancellation consumes a certificate
+but does not count as an active item. The runner rejects multiple active uses.
+
+### Greedy first-divergence investigation
+
+The diagnostic module generates an ignored, instrumented copy of the frozen
+spike. It adds observations, never changes decisions or transition logic, and
+is isolated from the production runner and policy adapter. The reference's
+5,000-game aggregate is checked against frozen round 3, including mean
+75.4938 and max 433. Thus instrumentation itself is checked for drift. The
+frozen spike source and its movement helper are hashed and remain untouched.
+Each production/reference turn compares policy action, raw/effective roll,
+resolved ride and direction, physical hops, arrival/landing, both engine RNG
+streams, inventory, target segments and normalized future effects. The trace
+also records the departure service/station and eligible route candidates.
+
+**178 seeds: Oedo oversleep hop limit.** The first example is seed
+`s1m-20261012-45`, turn 45. Both sides take no active item, roll 5 and ride
+`toei-oedo-loop`. The spike moves 3,172 physical hops (`2 * 1,586` network
+stations), reaching Hamamatsucho; production moves six, reaching
+`metro-azabu-juban`. Landing then consumes a different number of main-stream
+draws. This is the intentional six-hop loop interpretation recorded at S3.
+Across these 178 paired seeds, production uses a net 764 extra turns
+(+4.2921 per affected seed; range −284..+175; 84 faster, 10 unchanged, 84
+slower). Later effects and random draws can cascade, so this is a paired
+whole-game difference, not an isolated causal estimate of one sleep.
+
+Production greedy has **189 Oedo oversleep turns across 178 games** (3.56%
+of games; 0.04995% of all 378,377 turns). Random has **256 across 240 games**
+(4.80% of games; 0.04045% of all 632,922 turns). The reference/production
+comparison measures the greedy effect; no random-policy ablation was run.
+
+**Seven seeds: singleton-target route eligibility.** Seeds 3019, 3023, 3334,
+3413, 3670, 4015 and 4954 (all prefixed `s1m-20261012-`) first diverge when
+suspension leaves Yamanote as the only eligible route while the player is
+still riding a non-target service. Spike greedy uses its route ticket to
+board Yamanote. S5's `prepareItemTurn` explicitly rejects route tickets when
+fewer than two eligible services remain; the adapter therefore keeps the
+ticket and makes the legal ordinary move. Random already requires two
+candidates, so its reference policy has no corresponding eligibility mismatch.
+The seven greedy games have a net +144 turns (+20.5714/game, range −14..+35;
+one faster, six slower). This restriction was not previously called out in
+the S3–S5 handoff. It is a compatibility discrepancy, not evidence of RNG
+corruption, and no engine fix was made in S7.
+
+A natural reproduction is greedy seed `s1m-20261012-3019`, immediately before
+turn 43: replay with the exported production policy and phased API, then query
+`routeTicketOptions(state, { turn: 43, suspensions: state.effects.suspensions }, network)`.
+It returns only `jr-yamanote`. Calling `beginItemTurn` with the held route
+instance targeting `jr-yamanote` throws `INVALID_STATE` with
+`Route ticket requires a choice of eligible services`. The new unit test
+`exposes the singleton-target route discrepancy instead of issuing an illegal command`
+constructs the same eligibility condition and checks both query and rejection.
+This needs a lead decision before S11 if exact reference-policy behavior is
+required; the measured population thresholds themselves pass.
+
+No other first-divergence class was observed. **4,815 seeds have identical
+full compared traces; 4,825 have identical final turn counts.** Ten of the
+Oedo-divergent games converge to the same turn count. Production's route
+choice draws a non-target direction on the main stream before the die, as
+the round-3 spike already does; it introduces no observed divergence class.
+Rapid/oversleep `pips`, `hopBudget`, `unusedPips` and stop metadata have the
+production interpretation tested in S3/S5; metadata differences are not
+mistaken for destination differences or used to retune this comparison.
+
+### Classic exactness, effect tests and save/determinism checks
+
+Classic's new 5,000-game statistics are median **55**, p90 **146**, p99 **261**,
+mean **69.3858**, maximum **446**, **zero caps**, **zero >500**, and 346,929
+total turns. These exactly equal the published S7 statistics in
+`tests/simulation/README.md` and the earlier research evidence. Historical S7
+observation outputs and S6 per-seed product shards are **not available in this
+checkout**. Therefore this is an exact published-statistics comparison, not
+a claim of newly demonstrated 5,000-seed identity against those missing files.
+New per-seed classic turns and their source hashes are preserved. Existing
+classic RNG/trajectory snapshots and `item-classic-regression.test.ts` pass
+unchanged in `npm test`.
+
+The existing small-network suites independently cover each active/harmful
+item, suspension fallback and inclusive expiry, detour waiting/consumption,
+delay/oversleep precedence, certificate draw order, rapid endpoint/goal and
+pip accounting, nearest-target ties, and deadhead's no-die/no-landing/no-goal
+semantics. `npm test` passes all 48 files (915 passed, one existing skip).
+The two new policy/report suites pass 14 tests, including legal singleton
+route handling and full-history versus trimmed-history equivalence.
+
+The first 20 games per policy retain complete histories and continue from
+strict save-v4 restored states. There are 40 unique completed-game checks,
+40 pending-roll checks after turn 3 and nine pending-discard checks (greedy
+six, random three), each deeply compared after seeded replay. There are no
+save/replay errors. A repeated fixed subset, seed indices 0..9 for each
+policy, reproduces every non-runtime measurement field exactly. Hashes of
+those repeat outputs are:
+
+- Greedy: `e4c8ebd19576492f51afdb2858e4c3e496ef586b74c98833912546424d5f5dcb`.
+- Random: `fd4a05cfb491f04d3be7d2af60d5f8961bc059189df7c84bfaaeb063107c037f`.
+
+### Reproduction and validation commands
+
+Runs were unsharded. Commands (Vitest duration includes startup):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/item-simulation-policy.test.ts tests/unit/item-simulation-report.test.ts
+ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=100 npm run sim -- tests/simulation/item-engine
+ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=5000 npm run sim -- tests/simulation/item-engine
+SIM_BUNDLE=public/data S5_OFFSET=0 S5_GAMES=5000 S5_OUTPUT=.claude/logs/s6/simulation/a6-classic/sim-0.json npm run sim -- tests/simulation/suburban-product.test.ts
+npm test
+npm run sim
+git diff --check
+git status --short
+```
+
+The classic run took 17.58 s (engine loop 16.9427 s), all-unit validation
+5.56 s, and default `npm run sim` 1.86 s (new item runner skipped). Final item
+smoke took 3.94 s; the full item run took 98.30 s (measurement 97.6280 s;
+greedy plus reference tracing 58.4201 s, random 39.1976 s). Typecheck took
+4.66 s; the 14 targeted tests took 0.532 s. `git diff --check` passed.
+No branch switch, commit or push was performed. An existing untracked
+`.claude/docs/plans/item-system-s7-prompt.md` belongs to the caller and was
+left untouched.
