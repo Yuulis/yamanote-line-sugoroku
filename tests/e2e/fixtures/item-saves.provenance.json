@@ -1,0 +1,32 @@
+{
+  "rulesetVersion": "tokyo-suburban-items-1",
+  "dataVersion": "n02-2025-8a0970069659",
+  "policy": "No active item use; no roll adjustment; discard the incoming ticket on overflow",
+  "bundleSha256": {
+    "stations.json": "785ce96469eb2d36949171d528ac91731a2d9e35a4269324d82ae3cdc21cff74",
+    "services.json": "40b9c12454d19802053aa1937475eb2f9bc73cf7bd35028003e606263e38a71a",
+    "segments.json": "e679d306d02fb87214e72b91fd9bf92e5d753308ce24babb7532767a191c23bb",
+    "segments.geojson": "206ac340c7a222d1981a5830e29507862c741baa01627d3268c5d4ddfe87303e",
+    "manifest.json": "aa3e49c155a4aca98db385db1bcaaa2550ef12667a0fa5fd42507f8c51e4f59a"
+  },
+  "saves": [
+    {
+      "filename": "tokyo-suburban-before-clear-save.json",
+      "seed": "00000000000000000000000000000000",
+      "turn": 95,
+      "sha256": "e1c136d3aed1384212b21caa407da3b64f8b77c8e97f3dff926637f4accf44de"
+    },
+    {
+      "filename": "tokyo-suburban-korakuen-before-transfer-save.json",
+      "seed": "00000000000000000000000000000011",
+      "turn": 12,
+      "sha256": "7b45a66d960d3d1c5ad1622039a8fef9c7aa8333684004cfec4b5e0271800093"
+    },
+    {
+      "filename": "tokyo-suburban-oedo-before-lottery-save.json",
+      "seed": "00000000000000000000000000000004",
+      "turn": 255,
+      "sha256": "a5668c1004d2719c975dcf4fd5b3b0c34f20e927de8995a7c3c3bd1a9c2f3b6f"
+    }
+  ]
+}

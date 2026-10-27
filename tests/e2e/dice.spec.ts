@@ -62,9 +62,9 @@ test("[8.3-2] a roll updates station, turn, progress and the map marker", async 
   expect(move.toStationId).toBe(save.currentStationId);
   expect(save.currentStationId).not.toBe(START_STATION_ID);
   await expect(panelStat(page, "ターン数")).toHaveText("1");
-  await expect(panelStat(page, "出目")).toHaveText(String(move.roll));
+  await expect(panelStat(page, "出目")).toHaveText(`${move.rawRoll}（${move.pips}マス、${move.physicalHops}駅移動）`);
   await expect(panelStat(page, "現在駅")).toHaveText(arrived?.name ?? "?");
-  await expect(panelStat(page, "踏破区間")).toHaveText(`${move.roll}/${REQUIRED_SEGMENTS}`);
+  await expect(panelStat(page, "踏破区間")).toHaveText(`${move.rawRoll}/${REQUIRED_SEGMENTS}`);
   // The marker on the map sits on the station the panel names, and is drawn there.
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, save));
   await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
@@ -197,11 +197,11 @@ test.describe("with move animation", () => {
     // in software ~170 times); the whole move takes at most 6 hops.
     await page.clock.resume();
     await expect(diceButton(page)).toHaveText("サイコロを振る", {
-      timeout: move.roll * STEP_MS + MOVE_SETTLE_TIMEOUT_MS,
+      timeout: move.physicalHops * STEP_MS + MOVE_SETTLE_TIMEOUT_MS,
     });
     await expect(diceButton(page)).toBeEnabled();
     await expect(panelStat(page, "現在駅")).toHaveText(end?.name ?? "?");
-    await expect(panelStat(page, "踏破区間")).toHaveText(`${move.roll}/${REQUIRED_SEGMENTS}`);
+    await expect(panelStat(page, "踏破区間")).toHaveText(`${move.rawRoll}/${REQUIRED_SEGMENTS}`);
     await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, (await readSave(page))!));
     await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
   });

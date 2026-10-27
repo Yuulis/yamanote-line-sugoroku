@@ -14,11 +14,11 @@ test("arrival lottery, both endpoint kinds and a direction-only draw are visible
   const lottery = gamePanel(page).locator(".game-panel__lottery");
   await expect(lottery).toContainText("山手線・テスト南線から抽選 → テスト南線");
   await rollOnce(page);
-  await expect(panelStat(page, "出目")).toHaveText("3（大森で停止〔エリア端〕、残り1は使わず）");
+  await expect(panelStat(page, "出目")).toHaveText("3（3マス、2駅移動、残り1は使わず）");
   await expect(lottery).toContainText("エリア端のため折り返し");
   await expect(panelStat(page, "踏破区間")).toHaveText("4/30");
   await rollOnce(page);
-  await expect(panelStat(page, "出目")).toHaveText("3（品川で停止〔終点〕、残り1は使わず）");
+  await expect(panelStat(page, "出目")).toHaveText("3（3マス、2駅移動、残り1は使わず）");
   await expect(lottery).toContainText("終点のため折り返し");
   for (let turn = FIXTURE_SCENARIO_TURNS.terminus; turn < FIXTURE_SCENARIO_TURNS.direction; turn += 1) await rollOnce(page);
   await expect(lottery).toHaveText("抽選: テスト南線のみ ／ 方向抽選 → 品川方面");
@@ -41,6 +41,9 @@ test.describe("lottery reveal after animation", () => {
     await startNewGame(page);
     await freezeClock(page);
     await diceButton(page).click();
+    // Item turns save the revealed die before the completed movement. Read the
+    // committed turn, not the intermediate pre-movement save.
+    await expect.poll(async () => (await readSave(page))?.turn).toBe(1);
     const committed = (await readSave(page))!;
     expect(committed.currentServiceId).toBe("fixture-south");
     await expect(panelStat(page, "乗車中")).toHaveText("山手線");

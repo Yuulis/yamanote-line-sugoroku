@@ -1,17 +1,17 @@
+import { createGame, playTurn } from "../e2e/fixtures/productGame";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
-  createGame,
   moveByRoll,
-  playTurn,
   restoreGame,
   serializeGame,
   targetSegmentIds,
 } from "../../src/features/game/engine";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
-import type { GameConfig, GameState } from "../../src/types/network";
+import { isItemSave, createGame as createClassicGame } from "../../src/features/game/engine";
+import { CLASSIC_GAME_CONFIG, DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import type { GameConfig, ItemGameState } from "../../src/types/network";
 import { readSave, type StorageLike } from "../../src/features/game/store/persistence";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
@@ -95,7 +95,7 @@ describe("frozen Tokyo suburban runtime contract", () => {
       id: "tokyo-suburban-1",
       goalArrivalPolicy: "all 30 jr-yamanote outer directed segments, then arrive shimbashi",
     });
-    expect(MVP_GAME_CONFIG).toEqual({
+    expect(CLASSIC_GAME_CONFIG).toEqual({
       rulesetVersion: freeze.ruleset.id,
       targetServiceId: freeze.ruleset.targetServiceId,
       startStationId: freeze.ruleset.startStationId,
@@ -104,7 +104,7 @@ describe("frozen Tokyo suburban runtime contract", () => {
       serviceLottery: freeze.ruleset.serviceLottery,
       directionLottery: freeze.ruleset.directionLottery,
     });
-    expect(MVP_GAME_CONFIG.goalArrivalPolicy).toBe("truncate-on-target-service");
+    expect(CLASSIC_GAME_CONFIG.goalArrivalPolicy).toBe("truncate-on-target-service");
   });
 
   it("matches the frozen catalogue and directed-segment formula", () => {
@@ -147,7 +147,7 @@ describe("frozen Tokyo suburban runtime contract", () => {
   it("keeps the Yamanote one-way target and both directions on the non-target Oedo loop", () => {
     const target = network.servicesById.get(freeze.ruleset.targetServiceId)!;
     expect(target.circular).toBe(true);
-    const targetIds = targetSegmentIds(MVP_GAME_CONFIG, network);
+    const targetIds = targetSegmentIds(DEFAULT_GAME_CONFIG, network);
     expect(targetIds).toHaveLength(30);
     for (let index = 0; index < target.stationIds.length; index += 1) {
       const from = target.stationIds[index]!;
@@ -167,10 +167,10 @@ describe("frozen Tokyo suburban runtime contract", () => {
   });
 
   it("requires all target segments before returning to Shimbashi and truncates remaining pips", () => {
-    const targetIds = targetSegmentIds(MVP_GAME_CONFIG, network);
-    let state = createGame(MVP_GAME_CONFIG, "product-goal-truncation", network);
+    const targetIds = targetSegmentIds(CLASSIC_GAME_CONFIG, network);
+    let state = createClassicGame(CLASSIC_GAME_CONFIG, "product-goal-truncation", network);
     for (let index = 0; index < targetIds.length - 1; index += 1) {
-      state = moveByRoll(state, 1, network, { serviceId: MVP_GAME_CONFIG.targetServiceId, direction: 1 }).state;
+      state = moveByRoll(state, 1, network, { serviceId: CLASSIC_GAME_CONFIG.targetServiceId, direction: 1 }).state;
       expect(state.status).toBe("playing");
     }
     const result = moveByRoll(state, 6, network, null);
@@ -182,14 +182,14 @@ describe("frozen Tokyo suburban runtime contract", () => {
 
   it("round trips fresh, mid-run and completed product saves with strict seeded restore", () => {
     const seed = "00000000000000000000000000000005";
-    const fresh = createGame(MVP_GAME_CONFIG, seed, network);
+    const fresh = createGame(DEFAULT_GAME_CONFIG, seed, network);
     expect(restoreGame(serializeGame(fresh), network, {
-      expectedConfig: MVP_GAME_CONFIG,
+      expectedConfig: DEFAULT_GAME_CONFIG,
       requireSeededRolls: true,
     })).toEqual(fresh);
 
     let state = fresh;
-    let midRun: GameState | undefined;
+    let midRun: ItemGameState | undefined;
     while (state.status === "playing" && state.turn < 5_000) {
       state = playTurn(state, network).state;
       if (!midRun && state.turn >= 10) midRun = state;
@@ -198,15 +198,16 @@ describe("frozen Tokyo suburban runtime contract", () => {
     expect(state.status).toBe("completed");
     for (const saved of [midRun!, state]) {
       const restored = restoreGame(serializeGame(saved), network, {
-        expectedConfig: MVP_GAME_CONFIG,
+        expectedConfig: DEFAULT_GAME_CONFIG,
         requireSeededRolls: true,
       });
       expect(restored).toEqual(saved);
+      if (!isItemSave(restored)) throw new Error("Expected item save");
       if (saved.status === "playing") expect(playTurn(restored, network)).toEqual(playTurn(saved, network));
     }
   });
 
-  it("accepts the archived save only on its source data and rejects current data plus old rules", async () => {
+  it("rejects the historical v3 save even on its source data, retaining provenance", async () => {
     expect(oldSaveProvenance.config).toEqual(LEGACY_CAPITAL_REGION_CONFIG);
     expect(oldSaveProvenance.turns).toBe(3);
     expect(createHash("sha256").update(readFileSync(
@@ -221,40 +222,52 @@ describe("frozen Tokyo suburban runtime contract", () => {
     expect(Object.fromEntries(
       Object.entries(archived.payloads).map(([file, payload]) => [file, createHash("sha256").update(payload).digest("hex")]),
     )).toEqual(oldSaveProvenance.bundleSha256);
-    expect(restoreGame(oldSave, archived.network, {
+    expect(() => restoreGame(oldSave, archived.network, {
       expectedConfig: LEGACY_CAPITAL_REGION_CONFIG,
       requireSeededRolls: true,
-    }).turn).toBe(oldSaveProvenance.turns);
+    })).toThrowError(expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }));
     if (data.manifest.ok) expect(data.manifest.value.dataVersion).not.toBe(oldSaveProvenance.bundleDataVersion);
     expect(() => restoreGame(oldSave, network, {
-      expectedConfig: MVP_GAME_CONFIG,
-    })).toThrowError(expect.objectContaining({ code: "DATA_VERSION_MISMATCH" }));
+      expectedConfig: DEFAULT_GAME_CONFIG,
+    })).toThrowError(expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }));
   });
 
   it("rejects current-data saves made under the old rules", () => {
-    const currentWithOldRules = createGame(LEGACY_CAPITAL_REGION_CONFIG, "old-rules-current-data", network);
+    const currentWithOldRules = createClassicGame(LEGACY_CAPITAL_REGION_CONFIG, "old-rules-current-data", network);
     expect(() => restoreGame(serializeGame(currentWithOldRules), network, {
-      expectedConfig: MVP_GAME_CONFIG,
+      expectedConfig: DEFAULT_GAME_CONFIG,
     })).toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
+  });
+
+  it("rejects the immutable pre-S11 classic v4 save without discarding its bytes", () => {
+    const historical = readFileSync(fileURLToPath(new URL("../e2e/fixtures/historical-classic-before-clear-save.json", import.meta.url)), "utf8");
+    expect(createHash("sha256").update(historical).digest("hex")).toBe("4017bf7c9647638fa606c20508cd511474adcda6972f519668093780544d3e6e");
+    expect(() => restoreGame(historical, network, { expectedConfig: DEFAULT_GAME_CONFIG, requireSeededRolls: true }))
+      .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
+    expect(restoreGame(historical, network, { expectedConfig: CLASSIC_GAME_CONFIG, requireSeededRolls: true }).turn).toBe(41);
+    const storage = memoryStorage(historical);
+    expect(readSave(storage, network, DEFAULT_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "rules" });
+    expect(storage.value).toBe(historical);
   });
 
   it("retains rejected old-save bytes across repeated reads", () => {
     const storage = memoryStorage(oldSave);
-    expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
-    expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
+    expect(readSave(storage, network, DEFAULT_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "unsupported-version" });
+    expect(readSave(storage, network, DEFAULT_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "unsupported-version" });
     expect(storage.value).toBe(oldSave);
   });
 
-  it("matches the pre-edition source, resumed, and next-turn save bytes", () => {
+  it("matches the regenerated v4 source, resumed, and next-turn save bytes", () => {
     expect(createHash("sha256").update(preEditionSave).digest("hex")).toBe(editionSaveCompatibility.sourceSha256);
 
     const resumed = restoreGame(preEditionSave, network, {
-      expectedConfig: MVP_GAME_CONFIG,
+      expectedConfig: DEFAULT_GAME_CONFIG,
       requireSeededRolls: true,
     });
     const resumedSave = serializeGame(resumed);
     expect(createHash("sha256").update(resumedSave).digest("hex")).toBe(editionSaveCompatibility.resumedSaveSha256);
 
+    if (!isItemSave(resumed)) throw new Error("Expected item save");
     const nextTurnSave = serializeGame(playTurn(resumed, network).state);
     expect(createHash("sha256").update(nextTurnSave).digest("hex")).toBe(editionSaveCompatibility.nextTurnSaveSha256);
   });

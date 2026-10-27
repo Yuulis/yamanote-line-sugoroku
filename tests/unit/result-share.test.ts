@@ -1,4 +1,11 @@
 // @vitest-environment jsdom
+import { summarizeGame } from "../../src/features/game/gameSummary";
+import { createItemGame } from "../../src/features/game/engine";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import type { ItemGameState, ItemRideRecord, ItemDeadheadRecord, ItemTurnRecord } from "../../src/types/network";
+import { buildRailwayNetwork } from "../../src/features/game/engine";
+import { multiConfig, multiServiceInput } from "./fixtures/multiService";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { createElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { ClearScreen } from "../../src/features/game/components/ClearScreen";
@@ -11,6 +18,9 @@ import type { RailwayNetwork } from "../../src/features/game/engine";
 import type { PresentationResolver } from "../../src/features/game/presentationResolver";
 import { act } from "react";
 import { mountReact } from "./helpers/reactDom";
+
+const accountingNetwork = buildRailwayNetwork(multiServiceInput());
+const accountingPresentation = createPresentationResolver(accountingNetwork);
 
 const display = EDITIONS[0]!.display;
 const emptyNetwork = { stationsById: new Map() } as unknown as RailwayNetwork;
@@ -119,6 +129,64 @@ describe("ClearScreen result sharing", () => {
       "共有できませんでした。下の文面を選択してコピーしてください。",
     );
     expect(mounted.container.querySelector("textarea")?.value).toBe(expectedText);
+    mounted.cleanup();
+  });
+});
+
+describe("item result accounting", () => {
+  const grouped = {
+    sameLineGroup: (a: string, b: string) => a.startsWith("toei-oedo-") && b.startsWith("toei-oedo-"),
+  } as PresentationResolver;
+  const ride = (turn: number, serviceId: string, landingId: string | null): ItemRideRecord => ({
+    kind: "item-ride", turn, fromStationId: "a", toStationId: "b",
+    command: { items: [{ kind: "route-ticket", instanceId: `ticket-${turn}`, serviceId }] },
+    resolvedRide: { serviceId, direction: 1 }, rawRoll: 2, effectiveFace: 2,
+    adjustment: null, movementMode: "normal", pips: 2, hopBudget: 2, physicalHops: 2,
+    traversedSegmentIds: [`${turn}-1`, `${turn}-2`], unusedPips: 0, stopReason: "roll",
+    landing: landingId ? { serviceId: landingId, direction: 1 } : null,
+    landingSnapshot: null, itemEvents: [], discardedInstanceId: null,
+  });
+  const deadhead = (turn: number, serviceId: string): ItemDeadheadRecord => ({
+    kind: "deadhead", turn, fromStationId: "b", toStationId: "a",
+    command: { items: [{ kind: "deadhead", instanceId: `ticket-${turn}` }] },
+    resolvedRide: null, rawRoll: null, effectiveFace: null, adjustment: null,
+    movementMode: "deadhead", pips: null, hopBudget: null, physicalHops: 0,
+    unusedPips: null, traversedSegmentIds: [], stopReason: "relocation",
+    relocation: { fromStationId: "b", toStationId: "a", serviceId, direction: 1, distance: 8 },
+    landing: null, landingSnapshot: null, itemEvents: [], discardedInstanceId: null,
+  });
+  const state = (targetServiceId: string, movementHistory: ItemTurnRecord[]): ItemGameState => ({
+    ...createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy }, "share-accounting", accountingNetwork),
+    config: { ...ITEM_GAME_CONFIG, targetServiceId, itemPolicy: ITEM_GAME_CONFIG.itemPolicy! },
+    turn: movementHistory.length, movementHistory,
+  });
+
+  it("counts ticket changes and arrival transfers separately; deadhead costs one turn and zero moves", () => {
+    const itemGame = state("jr-yamanote", [ride(1, "toei-mita", "metro-marunouchi"), deadhead(2, "jr-yamanote")]);
+    expect(summarizeGame(itemGame, grouped)).toEqual({ turns: 2, moves: 2, transfers: 3 });
+    expect(buildShareText(display, summarizeGame(itemGame, grouped))).toBe(
+      "山手線すごろく 東京近郊版をクリア！\n所要ターン数 2・移動回数 2・乗換回数 3\n#山手線すごろく\nhttps://yamanote-line-sugoroku.vercel.app",
+    );
+  });
+
+  it("excludes same-group ticket, arrival and deadhead changes on Oedo", () => {
+    const itemGame = state("toei-oedo-loop", [
+      ride(1, "toei-oedo-radial", "toei-oedo-loop"), deadhead(2, "toei-oedo-radial"),
+    ]);
+    expect(summarizeGame(itemGame, grouped)).toEqual({ turns: 2, moves: 2, transfers: 0 });
+  });
+
+  it("ClearScreen copies the item accounting from its original transcript", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    const itemGame = state("jr-yamanote", [deadhead(1, "toei-mita")]);
+    const mounted = mountReact(createElement(ClearScreen, {
+      game: itemGame, network: accountingNetwork, presentation: accountingPresentation, display,
+      shareActions: createResultShareActions({ writeText }, undefined), saveStatus: "saved",
+      onPlayAgain: vi.fn(), onShowTitle: vi.fn(),
+    }));
+    await click(mounted.container.querySelector("button")!);
+    expect(writeText).toHaveBeenCalledWith(buildShareText(display, { turns: 1, moves: 0, transfers: 1 }));
+    expect(mounted.container.textContent).toContain("回送");
     mounted.cleanup();
   });
 });

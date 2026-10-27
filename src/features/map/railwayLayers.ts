@@ -7,7 +7,7 @@ import type {
 import type { Position, SegmentFeatureCollection } from "../../types/data";
 import type { LineMetadata, ServicePattern, Station } from "../../types/network";
 import type { PresentationResolver } from "../game/presentationResolver";
-import { MVP_GAME_CONFIG } from "../game/gameConfig";
+import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import { buildLineColorExpression, buildTrackColorExpression } from "./lineColor";
 import { targetTrackFilter } from "./lineVisibility";
 import {
@@ -76,7 +76,7 @@ export function addRailwayLayers(
     services = [],
     lines = [],
     geometry,
-    targetServiceId = MVP_GAME_CONFIG.targetServiceId,
+    targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
     presentation,
     presentationIndex,
   }: RailwayLayerInput,
@@ -242,7 +242,7 @@ function stationLabelLayer(
 export function updateCompletedSegments(
   map: MapLibreMap,
   completedFeatureIds: readonly string[],
-  targetServiceId = MVP_GAME_CONFIG.targetServiceId,
+  targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
 ): void {
   if (!map.getLayer(LAYER_IDS.segmentsCompleted)) return;
   map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedFeatureIds, targetServiceId));

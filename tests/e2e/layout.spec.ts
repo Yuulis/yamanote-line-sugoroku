@@ -72,7 +72,7 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   await expect(titleScreen(page).getByText("東京近郊版", { exact: true })).toBeAttached();
   await expect(titleScreen(page).getByRole("button", { name: "クレジット" })).toBeVisible();
   await expect(titleScreen(page).getByText(
-    "新橋から出発し、東京近郊区間のJR線と対象の私鉄・地下鉄を乗り継ぐすごろくです。山手線外回り全30区間を踏破したあと、新橋に到着するとクリアです。サイコロの出目だけ駅を進み、到着駅で次に乗る路線を抽選します。",
+    "新橋から出発し、東京近郊の路線を乗り継ぎます。山手線は外回りに固定。全30区間を踏破して新橋に着くとクリアです。山手線では新橋で止まり、他路線ではちょうど止まる必要があります。終点・エリア端・系統の端で余った目は使いません。",
     { exact: true },
   )).toBeVisible();
   await titleScreen(page).getByRole("button", { name: "クレジット" }).click();

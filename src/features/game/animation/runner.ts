@@ -28,6 +28,7 @@ export function runMoveAnimation(
   scheduler: FrameScheduler,
   onFrame: (frame: AnimationFrame) => void,
   onDone: () => void,
+  maxDurationMs = Infinity,
 ): () => void {
   if (steps.length === 0 || stepMs <= 0) {
     onDone();
@@ -39,7 +40,7 @@ export function runMoveAnimation(
   const tick = (now: number) => {
     if (cancelled) return;
     startedAt ??= now;
-    const frame = frameAt(steps, now - startedAt, stepMs);
+    const frame = frameAt(steps, now - startedAt, stepMs, maxDurationMs);
     onFrame(frame);
     if (frame.done) {
       onDone();

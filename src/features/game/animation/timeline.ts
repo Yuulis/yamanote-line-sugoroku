@@ -26,14 +26,20 @@ export function hopDurationMs(step: StepPath, stepMs: number, timing: HopTiming 
   return stepMs * Math.min(timing.maxScale, Math.max(timing.minScale, scale));
 }
 
+export const MAX_MOVE_DURATION_MS = 6_000;
+
 /** Sample elapsed time across distance-paced hops; passed stations never add steps. */
-export function frameAt(steps: readonly StepPath[], elapsedMs: number, stepMs: number): AnimationFrame {
+export function frameAt(
+  steps: readonly StepPath[], elapsedMs: number, stepMs: number, maxDurationMs = Infinity,
+): AnimationFrame {
   const last = steps.at(-1);
   const finalPosition = last ? positionAlong(last, 1) : null;
   if (!last || stepMs <= 0) return { stepsCompleted: steps.length, position: finalPosition, done: true };
+  const naturalDuration = steps.reduce((sum, step) => sum + hopDurationMs(step, stepMs), 0);
+  const durationScale = Math.min(1, maxDurationMs / naturalDuration);
   let elapsed = Math.max(elapsedMs, 0);
   for (const [index, step] of steps.entries()) {
-    const duration = hopDurationMs(step, stepMs);
+    const duration = hopDurationMs(step, stepMs) * durationScale;
     if (elapsed < duration) {
       return { stepsCompleted: index, position: positionAlong(step, easeInOut(elapsed / duration)), done: false };
     }

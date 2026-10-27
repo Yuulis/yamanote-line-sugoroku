@@ -3,6 +3,7 @@ import {
   buildRailwayNetwork,
   createGame,
   moveByRoll,
+  isItemSave,
   playTurn,
   restoreGame,
   seedRng,
@@ -44,6 +45,7 @@ describe("serializeGame / restoreGame round trip", () => {
     const state = playTurns(4);
     const restored = restoreGame(serializeGame(state), network);
     expect(restored).toEqual(state);
+    if (isItemSave(restored)) throw new Error("Expected classic save");
     const original = playTurn(state, network);
     const resumed = playTurn(restored, network);
     expect(resumed.roll).toBe(original.roll);
@@ -54,17 +56,18 @@ describe("serializeGame / restoreGame round trip", () => {
     const state = completedGame();
     const restored = restoreGame(serializeGame(state), network);
     expect(restored).toEqual(state);
+    if (isItemSave(restored)) throw new Error("Expected classic save");
     expect(() => playTurn(restored, network)).toThrowError(
       expect.objectContaining({ code: "GAME_NOT_PLAYING" }),
     );
   });
 
-  it("ignores unknown extra keys instead of carrying them over", () => {
+  it("rejects unknown extra keys", () => {
     const state = playTurns(2);
     const json = tampered(state, (raw) => {
       raw.extra = "ignored";
     });
-    expect(restoreGame(json, network)).toEqual(state);
+    expect(() => restoreGame(json, network)).toThrowError(INVALID_SAVE);
   });
 });
 
@@ -74,9 +77,9 @@ describe("restoreGame rejects invalid saves", () => {
   });
 
   it("rejects an unknown save version", () => {
-    // Version 3 is now current; 4 stands for any future, unknown format.
+    // Version 4 is now current; 5 stands for any future, unknown format.
     const json = tampered(playTurns(1), (raw) => {
-      raw.saveVersion = 4;
+      raw.saveVersion = 5;
     });
     expect(() => restoreGame(json, network)).toThrowError(
       expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }),

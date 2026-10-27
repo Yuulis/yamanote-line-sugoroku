@@ -1,18 +1,19 @@
 // Core game transitions (spec 3.2-3.4, 4.1, 8.1). Pure: no I/O, no clock, no
 // global randomness; every function returns new objects.
 //
-// Turns are atomic: every exported GameState is settled (the service and
-// direction of the next move are already decided), so there is no pending
-// landing state to save or restore.
+// Classic turns are atomic. Item turns use the separate phased item kernel.
 
 import type {
   GameConfig,
   GameState,
+  ItemGameState,
   LandingChoice,
   MoveRecord,
   StopReason,
 } from "../../../types/network";
 import { copyGameConfig, validateConfig } from "./config";
+import { createItemEffectsState } from "./itemEffects";
+import { seedItemRng } from "./items";
 import { GameEngineError } from "./errors";
 import { drawLanding, landingOptions, resolveLandingEvent } from "./landing";
 import { advance, assertSettledPosition, type GamePosition } from "./movement";
@@ -20,9 +21,19 @@ import type { RailwayNetwork } from "./network";
 import { type DieFace, rollDie, seedRng } from "./rng";
 import type { MoveEvent, MoveResult } from "./types";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 const MIN_ROLL = 1;
 const MAX_ROLL = 6;
+
+/** Item state creation is explicit until save/replay and product wiring support it. */
+export function createItemGame(config: GameConfig, seed: string, network: RailwayNetwork): ItemGameState {
+  if (!config.itemPolicy) throw new GameEngineError("INVALID_CONFIG", "Item mode requires an item policy");
+  const base = createGame(config, seed, network);
+  return {
+    ...base, config: { ...base.config, itemPolicy: base.config.itemPolicy! }, movementHistory: [],
+    inventory: [], effects: createItemEffectsState(), itemRngState: seedItemRng(seed), pending: null,
+  };
+}
 
 /** A new game at the start station: turn 0, nothing completed, status playing. */
 export function createGame(
@@ -100,6 +111,7 @@ export function computeTurn(
   network: RailwayNetwork,
   source: LandingSource,
 ): ComputedTurn {
+  if (state.config.itemPolicy) invalidState("Use the item turn API for item mode");
   assertValidRoll(roll);
   assertPlaying(state);
   assertSettledPosition(state, network);

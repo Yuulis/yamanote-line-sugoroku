@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RailwayData } from "../data/loaders";
-import { displayedProgress } from "../features/game/animation/displayedProgress";
+import { displayedProgress, sessionProgress } from "../features/game/animation/displayedProgress";
 import { buildGeometryIndex } from "../features/game/animation/movePath";
 import { useMoveAnimation } from "../features/game/animation/useMoveAnimation";
 import { ClearScreen } from "../features/game/components/ClearScreen";
 import { ConfirmDialog } from "../features/game/components/ConfirmDialog";
 import { GamePanel } from "../features/game/components/GamePanel";
 import { TitleScreen } from "../features/game/components/TitleScreen";
-import { type RailwayNetwork, targetSegmentIds } from "../features/game/engine";
+import { type RailwayNetwork, isItemSave, targetSegmentIds } from "../features/game/engine";
 import {
   ANIMATION_SPEEDS,
   type AnimationSpeedId,
@@ -18,12 +18,15 @@ import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
-import { displayedRide } from "../features/game/presentation";
+import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
+import { itemTurnAnnouncement, displayedRide } from "../features/game/presentation";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
-import type { LineMetadata } from "../types/network";
+import type { GameState, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
+import type { SaveLookup } from "../features/game/store/persistence";
+import { hasGameProgress } from "../features/game/gameSession";
 import { summarizeGame } from "../features/game/gameSummary";
 
 interface GameAppProps {
@@ -61,7 +64,8 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
     () => createPresentationResolver(network, uiPresentation),
     [network, uiPresentation],
   );
-  const app = useGameApp(network, storage, edition.config, edition.saveKey);
+  const config = edition.config;
+  const app = useGameApp(network, storage, config, edition.saveKey);
   const reducedMotion = usePrefersReducedMotion();
   const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
   const [follow, setFollow] = useState(true);
@@ -78,6 +82,14 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   );
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
+  const presentationGame = useMemo(() => session ? sessionProgress(session) : null, [session]);
+  const titleSave: SaveLookup | null = app.saveLookup?.kind === "valid"
+    ? { kind: "valid", game: isItemSave(app.saveLookup.game)
+      ? { ...app.saveLookup.game, movementHistory: [] } : app.saveLookup.game }
+    : app.saveLookup;
+  const resumeSaved = useCallback((saved: GameState) => {
+    app.resume(app.saveLookup?.kind === "valid" ? app.saveLookup.game : saved);
+  }, [app.resume, app.saveLookup]);
   const speed = speedById(speedId);
   const stepMs = reducedMotion ? 0 : speed?.stepMs ?? 0;
   const { view, livePosition } = useMoveAnimation(
@@ -88,8 +100,8 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
     app.finishAnimation,
   );
   const shown = useMemo(
-    () => (game ? displayedProgress(game, network, view) : null),
-    [game, network, view],
+    () => (presentationGame ? displayedProgress(presentationGame, network, view) : null),
+    [presentationGame, network, view],
   );
   const progress = useMemo<MapProgress>(
     () =>
@@ -132,7 +144,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const requestNewGame = useCallback(() => {
     const saved = saveLookup?.kind === "valid" ? saveLookup.game : null;
     const current = game ?? saved;
-    if (current?.status === "playing" && current.turn > 0) {
+    if (current?.status === "playing" && hasGameProgress(current)) {
       const message = game
         ? "現在のゲームを終了して新しく始めますか？今の進行は上書きされます。"
         : `保存中のゲーム（${current.turn}ターン目）は上書きされます。はじめから始めますか？`;
@@ -160,11 +172,11 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const showClear = session?.game.status === "completed" && session.phase === "idle";
   const reportedClear = useRef(-1);
   useEffect(() => {
-    if (!showClear || !session || reportedClear.current === session.sessionId) return;
+    if (!showClear || !session || !presentationGame || reportedClear.current === session.sessionId) return;
     reportedClear.current = session.sessionId;
     const summary = summarizeGame(session.game, presentation);
     trackEvent("game_clear", { turns: summary.turns, moves: summary.moves, transfers: summary.transfers });
-  }, [showClear, session, presentation]);
+  }, [showClear, session, presentationGame, presentation]);
 
   return (
     <>
@@ -175,12 +187,12 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           presentation={presentation}
           display={edition.display}
           {...picker}
-          saveLookup={app.saveLookup}
+          saveLookup={titleSave}
           unavailableReason={null}
           notice={notice}
           focusOnMount={app.state.lastSessionId > 0}
           onNewGame={requestNewGame}
-          onResume={app.resume}
+          onResume={resumeSaved}
           onDeleteSave={() => setConfirm({ kind: "delete-save" })}
         />
       )}
@@ -200,6 +212,10 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           speedLabel={speed?.label ?? ""}
           reducedMotion={reducedMotion}
           onRoll={app.roll}
+          itemView={app.itemView}
+          onEditItemDraft={app.editItemDraft}
+          onAdjustItemRoll={app.adjustItemRoll}
+          onDiscardItem={app.discardItem}
           onSkip={skip}
           onToggleFollow={toggleFollow}
           onCycleSpeed={cycleSpeed}
@@ -207,9 +223,14 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           onShowTitle={showTitle}
         />
       )}
-      {session && showClear && (
+      {session && showClear && presentationGame && (
         <ClearScreen
           game={session.game}
+          itemNotice={app.itemView ? <ItemEventNotice
+            view={app.itemView} lastMove={session.lastMove} turn={session.game.turn} network={network} presentation={presentation}
+            completionAnnouncement={itemTurnAnnouncement(session, app.itemView, shown?.completedSegmentIds.filter((id) => requiredIds.has(id)).length ?? 0,
+              requiredIds.size, network, presentation)}
+          /> : undefined}
           network={network}
           presentation={presentation}
           display={edition.display}

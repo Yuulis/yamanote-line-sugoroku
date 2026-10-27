@@ -3,7 +3,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { createGame, playTurn, restoreGame, serializeGame, type MoveResult } from "../../src/features/game/engine";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { buildGeometryIndex, buildMovePlan, positionAlong } from "../../src/features/game/animation/movePath";
 import { frameAt, hopDurationMs, HOP_TIMING } from "../../src/features/game/animation/timeline";
@@ -173,7 +173,7 @@ describe("scaled map and presentation", () => {
     expect(initialOverviewServices(services.services, LEGACY_CAPITAL_REGION_CONFIG.targetServiceId).map((s) => s.id)).toEqual([LEGACY_CAPITAL_REGION_CONFIG.targetServiceId]);
     const live = await loadBundle("real");
     if (!live.data.services.ok) throw new Error("Missing services");
-    expect(initialOverviewServices(live.data.services.value.services, MVP_GAME_CONFIG.targetServiceId).map((s) => s.id)).toEqual([MVP_GAME_CONFIG.targetServiceId]);
+    expect(initialOverviewServices(live.data.services.value.services, DEFAULT_GAME_CONFIG.targetServiceId).map((s) => s.id)).toEqual([DEFAULT_GAME_CONFIG.targetServiceId]);
     expect(stations).toHaveLength(37);
   });
 

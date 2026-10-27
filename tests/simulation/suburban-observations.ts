@@ -3,7 +3,7 @@ import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { performance } from "node:perf_hooks";
 import { expect, it } from "vitest";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { CLASSIC_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import {
   createGame,
   landingOptions,
@@ -270,13 +270,13 @@ function independentServiceWeights(
   serviceIds: readonly string[],
   network: ReturnType<typeof loadShippedBundle>["network"],
 ): number[] {
-  const policy = MVP_GAME_CONFIG.serviceLottery;
+  const policy = CLASSIC_GAME_CONFIG.serviceLottery;
   const base = serviceIds.map((serviceId) => {
     const service = network.servicesById.get(serviceId);
     if (!service) throw new Error(`Unknown service candidate ${serviceId}`);
     return policy.kindWeights[service.kind];
   });
-  const targetIndex = serviceIds.indexOf(MVP_GAME_CONFIG.targetServiceId);
+  const targetIndex = serviceIds.indexOf(CLASSIC_GAME_CONFIG.targetServiceId);
   if (targetIndex < 0 || serviceIds.length === 1) return base;
   const targetPolicy = policy.target;
   if (targetPolicy.kind === "weight") {
@@ -302,7 +302,7 @@ function independentDirectionWeights(
   network: ReturnType<typeof loadShippedBundle>["network"],
   distances: ReadonlyMap<string, number>,
 ): number[] {
-  if (serviceId === MVP_GAME_CONFIG.targetServiceId || directions.length < 2) {
+  if (serviceId === CLASSIC_GAME_CONFIG.targetServiceId || directions.length < 2) {
     return directions.map(() => 1);
   }
   const nextDistances = directions.map((direction) => {
@@ -312,7 +312,7 @@ function independentDirectionWeights(
   if (nextDistances[0] === nextDistances[1]) return [1, 1];
   const toward = nextDistances[0]! < nextDistances[1]! ? 0 : 1;
   return directions.map((_, index) =>
-    index === toward ? MVP_GAME_CONFIG.directionLottery.towardTargetWeight : 1,
+    index === toward ? CLASSIC_GAME_CONFIG.directionLottery.towardTargetWeight : 1,
   );
 }
 
@@ -328,7 +328,7 @@ function independentTargetDistances(
 ): ReadonlyMap<string, number> {
   const cached = independentDistanceCache.get(network);
   if (cached) return cached;
-  const target = network.servicesById.get(MVP_GAME_CONFIG.targetServiceId);
+  const target = network.servicesById.get(CLASSIC_GAME_CONFIG.targetServiceId);
   if (!target) throw new Error("Target service missing from the shipped bundle");
   const distances = new Map<string, number>(target.stationIds.map((id) => [id, 0]));
   let changed = true;
@@ -344,7 +344,7 @@ function independentTargetDistances(
       }
     }
   }
-  const engine = targetHopDistances(network, MVP_GAME_CONFIG.targetServiceId);
+  const engine = targetHopDistances(network, CLASSIC_GAME_CONFIG.targetServiceId);
   const sameSize = engine.size === distances.size;
   if (!sameSize || [...distances].some(([id, value]) => engine.get(id) !== value)) {
     throw new Error("Independent target distances disagree with the engine");
@@ -381,7 +381,7 @@ function observeGame(
     equalDistanceForwardSelections: 0,
   };
   const distances = independentTargetDistances(network);
-  let state: GameState = createGame(MVP_GAME_CONFIG, seed, network);
+  let state: GameState = createGame(CLASSIC_GAME_CONFIG, seed, network);
   while (state.status === "playing" && state.turn < TURN_CAP) {
     try {
       if (!network.stationsById.has(state.currentStationId)) {
@@ -440,16 +440,16 @@ function observeGame(
             serviceCandidates: landing.serviceCandidates,
             serviceDrawRequired: landing.serviceDrawRequired,
             selectedService: landing.serviceId,
-            targetService: MVP_GAME_CONFIG.targetServiceId,
+            targetService: CLASSIC_GAME_CONFIG.targetServiceId,
             directionDrawRequired: landing.directionDrawRequired,
             nextDistances,
           });
           if (eligibility.targetService) {
-            const targetIndex = options.services.indexOf(MVP_GAME_CONFIG.targetServiceId);
+            const targetIndex = options.services.indexOf(CLASSIC_GAME_CONFIG.targetServiceId);
             const totalWeight = serviceWeights.reduce((total, weight) => total + weight, 0);
             game.targetDraws++;
             game.targetExpectedSelections += serviceWeights[targetIndex]! / totalWeight;
-            if (landing.serviceId === MVP_GAME_CONFIG.targetServiceId) game.targetSelections++;
+            if (landing.serviceId === CLASSIC_GAME_CONFIG.targetServiceId) game.targetSelections++;
           }
           const expectedDirectionWeights = independentDirectionWeights(
             landing.serviceId,
@@ -531,8 +531,8 @@ it.skipIf(process.env.S7_OBSERVE !== "1")(
     }
     const input = loadShippedBundle(
       "public/data",
-      MVP_GAME_CONFIG.targetServiceId,
-      MVP_GAME_CONFIG.startStationId,
+      CLASSIC_GAME_CONFIG.targetServiceId,
+      CLASSIC_GAME_CONFIG.startStationId,
     );
     const seeds = Array.from({ length: count }, (_, index) =>
       gameSeed(BASE_SEED, offset + index),
@@ -553,7 +553,7 @@ it.skipIf(process.env.S7_OBSERVE !== "1")(
       shard: { offset, games: count, baseSeed: BASE_SEED, turnCap: TURN_CAP },
       seeds,
       seedSetSha256: hash(`${seeds.join("\n")}\n`),
-      config: MVP_GAME_CONFIG,
+      config: CLASSIC_GAME_CONFIG,
       bundleHashes,
       sourceHashes,
       turns: games.map((game) => game.turns),

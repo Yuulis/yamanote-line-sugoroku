@@ -1,5 +1,5 @@
 import type { ExpressionSpecification, FilterSpecification } from "maplibre-gl";
-import { MVP_GAME_CONFIG } from "../game/gameConfig";
+import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import type { Position } from "../../types/data";
 
 function isCompleted(featureIds: readonly string[]): ExpressionSpecification {
@@ -9,7 +9,7 @@ function isCompleted(featureIds: readonly string[]): ExpressionSpecification {
 /** Filter matching segment features whose `segmentId` is in `segmentIds`. */
 export function completedSegmentFilter(
   featureIds: readonly string[],
-  targetServiceId = MVP_GAME_CONFIG.targetServiceId,
+  targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
 ): FilterSpecification {
   return ["all", ["==", ["get", "serviceId"], targetServiceId], isCompleted(featureIds)];
 }
@@ -17,7 +17,7 @@ export function completedSegmentFilter(
 /** Filter matching segment features not yet completed. */
 export function pendingSegmentFilter(
   featureIds: readonly string[],
-  targetServiceId = MVP_GAME_CONFIG.targetServiceId,
+  targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
 ): FilterSpecification {
   return ["all", ["==", ["get", "serviceId"], targetServiceId], ["!", isCompleted(featureIds)]];
 }

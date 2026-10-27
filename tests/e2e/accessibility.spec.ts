@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
-import { PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
+import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import {
   diceButton,
   gamePanel,
@@ -33,7 +33,7 @@ test.describe("animated roll focus", () => {
 });
 
 test.describe("game accessibility and text navigation", () => {
-  test.use({ reducedMotion: "reduce" });
+  test.use({ reducedMotion: "reduce", gameSeed: PRODUCT_HISTORY_GAME_SEED });
 
   test("focus moves to each new screen heading and the title map is inert", async ({ page }) => {
     await openTitle(page);
@@ -83,7 +83,7 @@ test.describe("game accessibility and text navigation", () => {
     await page.getByRole("button", { name: "はじめから" }).click();
     const summary = gamePanel(page).locator(".visually-hidden[role=status][aria-live=polite]");
     await expect(summary).toHaveCount(1);
-    await expect(summary).toHaveText("");
+    await expect(summary).toHaveText("サイコロを振れます");
     const rolls: number[] = [];
     await page.evaluate(() => {
       const region = document.querySelector<HTMLElement>(".visually-hidden[role=status][aria-live=polite]");
@@ -94,7 +94,7 @@ test.describe("game accessibility and text navigation", () => {
         const current = region.textContent ?? "";
         if (current !== previous) {
           previous = current;
-          changes.push(current);
+          if (/^\d+ターン目/.test(current)) changes.push(current);
         }
       }).observe(region, { childList: true, characterData: true, subtree: true });
       (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;
@@ -104,23 +104,20 @@ test.describe("game accessibility and text navigation", () => {
     await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(0);
 
     for (let turn = 1; turn <= 5; turn += 1) {
-      const before = (await readSave(page))?.turn ?? 0;
-      await diceButton(page).click();
-      await expect.poll(async () => (await readSave(page))?.turn).toBe(before + 1);
-      await expect(diceButton(page)).toHaveText("サイコロを振る");
+      await rollOnce(page);
       const save = await readSave(page);
       if (!save) throw new Error("turn was not saved");
       const move = save.movementHistory.at(-1);
-      if (!move) throw new Error("turn summary has no matching move");
-      rolls.push(move.roll);
+      if (!move || move.kind !== "item-ride") throw new Error("turn summary has no matching move");
+      rolls.push(move.rawRoll);
       await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(turn);
       const arrival = panelStat(page, "現在駅");
-      await expect(summary).toContainText(`${turn}ターン目：出目${move.roll}`);
+      await expect(summary).toContainText(`${turn}ターン目：出目${move.rawRoll}`);
       await expect(summary).toContainText(await arrival.innerText());
       await expect(summary).toContainText(`踏破 ${save.completedSegmentIds.filter((id) => id.startsWith("jr-yamanote:")).length}/30`);
     }
 
-    expect(rolls[3]).toBe(rolls[4]);
+    expect(rolls[1]).toBe(rolls[2]);
     const lastSummary = await summary.innerText();
     expect(lastSummary).toContain("5ターン目");
     expect(lastSummary).not.toContain("4ターン目");
@@ -138,14 +135,14 @@ test.describe("game accessibility and text navigation", () => {
     await gamePanel(page).getByRole("button", { name: "新規" }).click();
     await page.getByRole("alertdialog", { name: "新しく始めますか？" }).getByRole("button", { name: "新しく始める" }).click();
     await expect(panelStat(page, "ターン数")).toHaveText("0");
-    await expect(summary).toHaveText("");
+    await expect(summary).toHaveText("サイコロを振れます");
 
     await rollOnce(page);
     await expect(summary).toContainText("1ターン目");
     await expect(summary).not.toContainText("2ターン目");
   });
 
-  test("restoring a game starts with an empty announcement and announces once per finished turn", async ({ page }) => {
+  test("restoring a game announces the saved item turn and each new finished turn", async ({ page }) => {
     await openTitle(page);
     await page.getByRole("button", { name: "はじめから" }).click();
     await rollOnce(page);
@@ -154,7 +151,7 @@ test.describe("game accessibility and text navigation", () => {
     await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
 
     const summary = gamePanel(page).locator(".visually-hidden[role=status][aria-live=polite]");
-    await expect(summary).toHaveText("");
+    await expect(summary).toContainText("1ターン目");
     await page.evaluate(() => {
       const region = document.querySelector<HTMLElement>(".visually-hidden[role=status][aria-live=polite]");
       if (!region) throw new Error("turn announcement region is missing");
@@ -164,7 +161,7 @@ test.describe("game accessibility and text navigation", () => {
         const current = region.textContent ?? "";
         if (current !== previous) {
           previous = current;
-          changes.push(current);
+          if (/^\d+ターン目/.test(current)) changes.push(current);
         }
       }).observe(region, { childList: true, characterData: true, subtree: true });
       (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;

@@ -12,7 +12,8 @@ gzip bytes. GeoJSON is 1,288,259 raw / 265,508 gzip bytes. Totals include
 `uiPresentation` in `manifest.json`. The product stop order is pinned by the reviewed
 `data/overrides/expected-catalog.json` (SHA-256
 `42bcd19b8407c6d80d45622f0589268b2b0dc7970fdd63fc6f3cc7352ba2a231`); there
-is no live timetable lookup. Gameplay starts at 新橋 and uses ruleset `tokyo-suburban-1`.
+is no live timetable lookup. Gameplay starts at 新橋. The playable edition on `feature/item-system` uses
+`tokyo-suburban-items-1` (not yet released).
 
 ## Edition data directories
 
@@ -84,11 +85,15 @@ order across 11 prefectures, with 3,988 directed segments and 30 target
 segments. `data/overrides/dataset.json` pins its reviewed expected catalogue;
 the live bundle is identified by `dataVersion` `n02-2025-8a0970069659`. It starts
 at `shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile
-and simplifies geometry by 1 m. The ruleset is `tokyo-suburban-1`: when Yamanote
-is among at least two service candidates it receives 2/3 of the draw; the
+and simplifies geometry by 1 m. The playable ruleset is `tokyo-suburban-items-1`: when Yamanote
+is among at least two service candidates it receives 1/2 of the draw; the
 remaining probability is split equally among other services. `local` and
 `rapid` services have equal base weights. On a non-target service with two
-available directions, the direction closer to Yamanote has twice the weight.
+available directions, the closer and farther directions have weights 3:2
+(equal distances remain equally weighted). At the final stop, items drop with
+30% probability; 30% of drops are harmful. Players hold up to three beneficial
+items and actively use at most one per turn. See the
+[current rules](../docs/manual/tokyo-suburban/rules.md) for timing and discard choices.
 The UI presentation catalogue has 15 operators and 134 line groups; 46 station
 aliases and 90 service stop-name overrides preserve reviewed identities and
 labels (including 22 small-ヶ originals).
@@ -385,7 +390,7 @@ services require `kind` (`local | rapid`) and non-empty `lineIds`, plus
 `directionLabels`, `platformCoordinates`, and (if linear) `endpoints.first/last`
 (`terminus`, `area-boundary`, or `service-boundary`, displayed as 「系統の端」).
 Legacy v2 bundles are rejected by the runtime guards. `segments.json` is compact,
-with one object per line. The current live bundle uses the approved 135-service stop order and the `tokyo-suburban-1` gameplay rules.
+with one object per line. The current live bundle uses the approved 135-service stop order and the `tokyo-suburban-items-1` gameplay rules on `feature/item-system` (not yet released).
 
 The validator checks the strict five-file schema, registry/area/catalogue,
 metadata/stop order, pair coverage and walks, platforms/representatives and reviewed

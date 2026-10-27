@@ -1,21 +1,22 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import type { GameState } from "../../../types/network";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import type { GameState, ItemGameState } from "../../../types/network";
 import type { EditionDisplay } from "../../editions/types";
 import type { RailwayNetwork } from "../engine";
 import { earlyStopNote, endpointKindAt, summarizeGame } from "../gameSummary";
 import { buildShareText } from "../shareText";
 import { browserResultShareActions, type ResultShareActions } from "../resultShareActions";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
-import { directionLabel, landingTransitionText, serviceName, stationName } from "../presentation";
+import { itemHistoryText, directionLabel, landingTransitionText, serviceName, stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
 import { trackEvent } from "../../analytics/analytics";
 
 interface ClearScreenProps {
-  game: GameState;
+  game: GameState | ItemGameState;
   network: RailwayNetwork;
   presentation: PresentationResolver;
   display: EditionDisplay;
   shareActions?: ResultShareActions;
+  itemNotice?: ReactNode;
   /** Result of saving the clearing turn; a failure must stay visible here. */
   saveStatus: SaveWriteResult | null;
   onPlayAgain: () => void;
@@ -25,7 +26,7 @@ interface ClearScreenProps {
 export const HISTORY_PAGE_SIZE = 20;
 
 /** Shown once the clearing move has finished animating (spec 6.1). */
-export function ClearScreen({ game, network, presentation, display, saveStatus, shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
+export function ClearScreen({ game, network, presentation, display, saveStatus, itemNotice, shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
   const [page, setPage] = useState(0);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showShareText, setShowShareText] = useState(false);
@@ -74,6 +75,7 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
           セーブ: {saveStatusMessage(saveStatus)}。再読み込みするとこのクリアは残りません。
         </p>
       )}
+      {itemNotice}
       <dl className="clear-screen__stats">
         <dt>所要ターン数</dt>
         <dd>{turns}ターン</dd>
@@ -85,6 +87,7 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
       <h2 className="clear-screen__subtitle">移動履歴</h2>
       <ol ref={historyRef} className="clear-screen__history">
         {game.movementHistory.slice(currentPage * HISTORY_PAGE_SIZE, (currentPage + 1) * HISTORY_PAGE_SIZE).map((record) => {
+          if ("kind" in record) return <li key={record.turn}>{itemHistoryText(record, network, presentation)}</li>;
           const note = earlyStopNote(record, (id) => presentation.serviceStationName(record.serviceId, id), endpointKindAt(network, record.serviceId, record.toStationId));
           const transition = landingTransitionText(record, network, presentation);
           return (

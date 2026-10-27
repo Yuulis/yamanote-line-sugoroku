@@ -3,7 +3,7 @@ import { performance } from "node:perf_hooks";
 import { expect, it } from "vitest";
 import { gameSeed, PRESETS, presetConfig, runSimulation, validateRunOptions, type Preset } from "./harness";
 import { DEFAULT_CATALOG, DEFAULT_SERVICES, loadResearchCatalog, loadShippedBundle, sha256 } from "./inputs";
-import { MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { CLASSIC_GAME_CONFIG } from "../../src/features/game/gameConfig";
 
 const presetName = process.env.SIM_PRESET ?? "decided";
 const preset: Preset | undefined = PRESETS.find((value) => value === presetName);
@@ -26,13 +26,13 @@ it(`real-engine Monte Carlo: ${productConfig ? "product" : preset}`, () => {
     : loadResearchCatalog(process.env.SIM_CATALOG ?? DEFAULT_CATALOG, process.env.SIM_SERVICES ?? DEFAULT_SERVICES,
       process.env.SIM_TARGET, process.env.SIM_START);
   const config = productConfig
-    ? MVP_GAME_CONFIG
+    ? CLASSIC_GAME_CONFIG
     : presetConfig(preset as Preset, input.targetServiceId, input.startStationId);
   if (productConfig && (
     input.targetServiceId !== config.targetServiceId
     || input.startStationId !== config.startStationId
   )) {
-    throw new Error("Product simulation target/start differs from MVP_GAME_CONFIG");
+    throw new Error("Product simulation target/start differs from CLASSIC_GAME_CONFIG");
   }
   const seeds = Array.from({ length: options.games }, (_, index) => gameSeed(options.baseSeed, index));
   const started = performance.now();
