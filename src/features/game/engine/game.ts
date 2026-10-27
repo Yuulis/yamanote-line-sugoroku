@@ -21,7 +21,7 @@ import type { RailwayNetwork } from "./network";
 import { type DieFace, rollDie, seedRng } from "./rng";
 import type { MoveEvent, MoveResult } from "./types";
 
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 const MIN_ROLL = 1;
 const MAX_ROLL = 6;
 

@@ -62,7 +62,17 @@ const CASES: InvalidSaveCase[] = [
   {
     name: "unknown saveVersion",
     message: "このバージョンでは読み込めない形式のセーブデータです。",
-    tamper: (valid) => withField(valid, "saveVersion", 999),
+    tamper: (valid) => withField(valid, "saveVersion", 5),
+  },
+  {
+    name: "historical v3 saveVersion",
+    message: "このバージョンでは読み込めない形式のセーブデータです。",
+    tamper: (valid) => withField(valid, "saveVersion", 3),
+  },
+  {
+    name: "different dataVersion",
+    message: "路線データが更新されたため、このセーブデータは使えません。",
+    tamper: (valid) => withField(valid, "dataVersion", "n02-2000-000000000000"),
   },
   {
     name: "previous ruleset",
@@ -117,13 +127,13 @@ for (const { name, message, tamper } of CASES) {
 test.describe("captured pre-S5 save against the live product bundle", () => {
   test.use({ dataset: "real" });
 
-  test("reports a data update, survives cancellation and reload, then can be discarded", async ({ page }) => {
+  test("reports an unsupported format, survives cancellation and reload, then can be discarded", async ({ page }) => {
     await openTitle(page);
     await writeSaveText(page, OLD_CAPITAL_REGION_SAVE);
     await page.reload();
 
     const alert = titleScreen(page).getByRole("alert");
-    await expect(alert).toHaveText(/路線データが更新されたため/);
+    await expect(alert).toHaveText(/このバージョンでは読み込めない形式/);
     expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
     await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /クリア結果を見る/ })).toHaveCount(0);
@@ -135,7 +145,7 @@ test.describe("captured pre-S5 save against the live product bundle", () => {
 
     await page.reload();
     const reloadedAlert = titleScreen(page).getByRole("alert");
-    await expect(reloadedAlert).toHaveText(/路線データが更新されたため/);
+    await expect(reloadedAlert).toHaveText(/このバージョンでは読み込めない形式/);
     expect(await readSaveText(page)).toBe(OLD_CAPITAL_REGION_SAVE);
     await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /クリア結果を見る/ })).toHaveCount(0);
@@ -156,7 +166,7 @@ test.describe("fixture save discard cancellation", () => {
   test.use({ dataset: "fixture" });
 
   test("[8.3-4] cancelling the discard keeps the invalid save untouched", async ({ page }) => {
-    const tampered = await storeTamperedSave(page, (valid) => withField(valid, "saveVersion", 999));
+    const tampered = await storeTamperedSave(page, (valid) => withField(valid, "saveVersion", 5));
 
     await page.getByRole("button", { name: "セーブデータを破棄" }).click();
     const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });

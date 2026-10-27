@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  buildRailwayNetwork, createGame, landingOptions, moveByRoll, playTurn, restoreGame, rollDie, SAVE_VERSION, serializeGame,
+  buildRailwayNetwork, createGame, createItemGame, landingOptions, moveByRoll, playTurn, restoreGame, rollDie, SAVE_VERSION, serializeGame,
 } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG, MVP_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { GameConfig, GameState } from "../../src/types/network";
@@ -50,7 +50,7 @@ describe("save v3 lottery policies", () => {
     const config = lotteryConfig();
     if (kind === "weight") config.serviceLottery.target = { kind: "weight", weight: 3 };
     const states = seededStates(config, seed);
-    expect(SAVE_VERSION).toBe(3);
+    expect(SAVE_VERSION).toBe(4);
     expect(states.at(-1)?.status).toBe("completed");
     let nonEqualServiceDraws = 0;
     let nonEqualDirectionDraws = 0;
@@ -69,7 +69,7 @@ describe("save v3 lottery policies", () => {
     for (const state of states) {
       const restored = restoreGame(serializeGame(state), network, { expectedConfig: config, requireSeededRolls: true });
       expect(restored).toEqual(state);
-      expect(restored.saveVersion).toBe(3);
+      expect(restored.saveVersion).toBe(4);
       if (state.status === "playing") expect(playTurn(restored, network)).toEqual(playTurn(state, network));
     }
   });
@@ -105,7 +105,7 @@ describe("save v3 lottery policies", () => {
   });
 
   it("parses and round trips the internal item configuration with ordered pools", () => {
-    const state = createGame(ITEM_GAME_CONFIG, "item-config", yamanoteNetwork);
+    const state = createItemGame(ITEM_GAME_CONFIG, "item-config", yamanoteNetwork);
     const restored = restoreGame(serializeGame(state), yamanoteNetwork, { expectedConfig: ITEM_GAME_CONFIG });
     expect(restored).toEqual(state);
     expect(restored.config.directionLottery).toEqual({ towardTargetWeight: 3, awayFromTargetWeight: 2 });
@@ -132,7 +132,7 @@ describe("save v3 lottery policies", () => {
 
   it("config equality compares item policy values", () => {
     const config = structuredClone(ITEM_GAME_CONFIG);
-    const state = createGame(config, "item-config-equality", yamanoteNetwork);
+    const state = createItemGame(config, "item-config-equality", yamanoteNetwork);
     config.itemPolicy!.delayTurns += 1;
     expect(() => restoreGame(serializeGame(state), yamanoteNetwork, { expectedConfig: config }))
       .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));

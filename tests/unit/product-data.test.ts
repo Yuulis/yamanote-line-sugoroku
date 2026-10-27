@@ -206,7 +206,7 @@ describe("frozen Tokyo suburban runtime contract", () => {
     }
   });
 
-  it("accepts the archived save only on its source data and rejects current data plus old rules", async () => {
+  it("rejects the historical v3 save even on its source data, retaining provenance", async () => {
     expect(oldSaveProvenance.config).toEqual(LEGACY_CAPITAL_REGION_CONFIG);
     expect(oldSaveProvenance.turns).toBe(3);
     expect(createHash("sha256").update(readFileSync(
@@ -221,14 +221,14 @@ describe("frozen Tokyo suburban runtime contract", () => {
     expect(Object.fromEntries(
       Object.entries(archived.payloads).map(([file, payload]) => [file, createHash("sha256").update(payload).digest("hex")]),
     )).toEqual(oldSaveProvenance.bundleSha256);
-    expect(restoreGame(oldSave, archived.network, {
+    expect(() => restoreGame(oldSave, archived.network, {
       expectedConfig: LEGACY_CAPITAL_REGION_CONFIG,
       requireSeededRolls: true,
-    }).turn).toBe(oldSaveProvenance.turns);
+    })).toThrowError(expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }));
     if (data.manifest.ok) expect(data.manifest.value.dataVersion).not.toBe(oldSaveProvenance.bundleDataVersion);
     expect(() => restoreGame(oldSave, network, {
       expectedConfig: MVP_GAME_CONFIG,
-    })).toThrowError(expect.objectContaining({ code: "DATA_VERSION_MISMATCH" }));
+    })).toThrowError(expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }));
   });
 
   it("rejects current-data saves made under the old rules", () => {
@@ -240,12 +240,12 @@ describe("frozen Tokyo suburban runtime contract", () => {
 
   it("retains rejected old-save bytes across repeated reads", () => {
     const storage = memoryStorage(oldSave);
-    expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
-    expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
+    expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "unsupported-version" });
+    expect(readSave(storage, network, MVP_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "unsupported-version" });
     expect(storage.value).toBe(oldSave);
   });
 
-  it("matches the pre-edition source, resumed, and next-turn save bytes", () => {
+  it("matches the regenerated v4 source, resumed, and next-turn save bytes", () => {
     expect(createHash("sha256").update(preEditionSave).digest("hex")).toBe(editionSaveCompatibility.sourceSha256);
 
     const resumed = restoreGame(preEditionSave, network, {

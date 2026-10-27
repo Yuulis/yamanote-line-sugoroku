@@ -103,7 +103,7 @@ export {
   rollDie,
   seedRng,
 } from "./rng";
-export { type RestoreOptions, restoreGame, serializeGame, verifySeededHistory } from "./save";
+export { type RestoreOptions, type SavedGameState, isItemSave, restoreGame, serializeGame, verifySeededHistory } from "./save";
 export type {
   EndpointReachedEvent,
   GoalReachedEvent,
