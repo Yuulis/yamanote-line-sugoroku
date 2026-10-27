@@ -864,3 +864,7 @@ greedy plus reference tracing 58.4201 s, random 39.1976 s). Typecheck took
 No branch switch, commit or push was performed. An existing untracked
 `.claude/docs/plans/item-system-s7-prompt.md` belongs to the caller and was
 left untouched.
+
+### Round 4 follow-up (2026-10-27): single-eligible route ticket
+
+User decision: a route ticket may board the only eligible service when it differs from the current ride (e.g. leaving a suspended line). The engine (`itemTurnPreparation.ts`) now allows it; the production greedy adapter boards Yamanote in that case like the reference, while the random adapter keeps the reference's "two or more eligible services" usability rule. Rerun at 5,000 games: greedy 65 / 143 / 241, random 113 / 234 / 373 (unchanged, all tolerances pass); the only remaining greedy per-seed divergence class is `oedo-oversleep-hop-limit` (178 games), the intended six-hop rule versus the spike's hop-cap bug.

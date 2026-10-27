@@ -71,8 +71,10 @@ export function prepareItemTurn(state: ItemGameState, command: ItemTurnCommand, 
     switch (action.kind) {
       case "route-ticket": {
         const { options } = routeTicketOptions(state, { turn, suspensions: effects.suspensions }, network);
-        if (options.services.length < 2 || !options.services.includes(action.serviceId)) {
-          invalidItemTurn("Route ticket requires a choice of eligible services");
+        // A single eligible service still counts when it changes the ride (e.g. off a suspended line).
+        const changesRide = options.services.length >= 2 || action.serviceId !== state.currentServiceId;
+        if (!options.services.includes(action.serviceId) || !changesRide) {
+          invalidItemTurn("Route ticket requires an eligible service that changes the choice");
         }
         const directions = options.directionsByService.get(action.serviceId)!;
         let direction = directions[0]!;

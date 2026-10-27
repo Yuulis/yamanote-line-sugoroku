@@ -61,14 +61,15 @@ describe("round-3 production policy adapter", () => {
     state.currentServiceId = network.servicesByStation.get(state.currentStationId)!.find((id) => id !== state.config.targetServiceId)!;
     expect(choosePreRoll(state, network, "greedy", rng).command.items[0]).toMatchObject({ kind: "route-ticket", serviceId: "jr-yamanote" });
   });
-  it("exposes the singleton-target route discrepancy instead of issuing an illegal command", () => {
+  it("boards Yamanote with a route ticket when suspension leaves it the only eligible service", () => {
     const base = stateWith(["route-ticket"]);
     const services = network.servicesByStation.get(base.currentStationId)!;
     const state = { ...base, currentServiceId: services.find((id) => id !== base.config.targetServiceId)!,
       effects: { ...base.effects, suspensions: services.filter((id) => id !== base.config.targetServiceId).map((serviceId) => ({ serviceId, expiresTurn: 5 })) } };
     expect(engine.routeTicketOptions(state, { turn: 1, suspensions: state.effects.suspensions }, network).options.services).toEqual(["jr-yamanote"]);
-    expect(choosePreRoll(state, network, "greedy", rng).command.items).toEqual([]);
-    expect(() => engine.beginItemTurn(state, { items: [{ kind: "route-ticket", instanceId: "test-0", serviceId: "jr-yamanote" }] }, network)).toThrow("choice of eligible services");
+    const command = choosePreRoll(state, network, "greedy", rng).command;
+    expect(command.items).toEqual([{ kind: "route-ticket", instanceId: "test-0", serviceId: "jr-yamanote" }]);
+    expect(engine.beginItemTurn(state, command, network).state.pending).toMatchObject({ resolvedRide: { serviceId: "jr-yamanote" } });
   });
   it("history trimming preserves all policy measurements and trace output", () => {
     const full = runProductionGame(network, "s1m-20261012-0", "greedy", 20000, true, true);

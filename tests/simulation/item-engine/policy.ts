@@ -34,7 +34,10 @@ export function choosePreRoll(state: ItemGameState, network: engine.RailwayNetwo
     if (kind === "route-ticket") return routes.length >= 2;
     return true;
   });
-  if (usable.length === 0) return none;
+  // Reference greedy boards Yamanote even when suspension leaves it the only eligible route.
+  const boardsTarget = policy === "greedy" && state.currentServiceId !== state.config.targetServiceId
+    && state.inventory.some((item) => item.kind === "route-ticket") && routes.includes(state.config.targetServiceId);
+  if (usable.length === 0 && !boardsTarget) return none;
   let kind: ItemInstance["kind"] | null = null;
   let route = state.config.targetServiceId;
   if (policy === "random") {
@@ -47,11 +50,11 @@ export function choosePreRoll(state: ItemGameState, network: engine.RailwayNetwo
     const targets = engine.targetSegmentIds(state.config, network);
     const remains = targets.some((id) => !state.completedSegmentIds.includes(id));
     if (has("deadhead") && remains && engine.deadheadDestination(state, network).distance >= 3) kind = "deadhead";
-    else if (has("route-ticket") && !onTarget && routes.includes(route)) kind = "route-ticket";
+    else if (boardsTarget) kind = "route-ticket";
     else if (has("direction-ticket") && hint.closerDirection !== null && hint.closerDirection !== state.direction) kind = "direction-ticket";
     else if (has("double") && onTarget) kind = "double";
     else if (has("rapid") && engine.rapidHeadsTowardTarget(state, network)) kind = "rapid";
-    else if (has("route-ticket") && !onTarget) {
+    else if (has("route-ticket") && !onTarget && routes.length >= 2) {
       const ranked = routes.map((serviceId) => ({ serviceId, distance: Math.min(...engine.directionHint({ ...state, currentServiceId: serviceId }, network).directions.map((d) => d.targetHops)) }));
       const best = ranked.reduce((a, b) => b.distance < a.distance ? b : a);
       const current = hint.directions.find((d) => d.direction === state.direction)!.targetHops;

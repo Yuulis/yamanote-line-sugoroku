@@ -193,6 +193,23 @@ describe("independent RNG streams", () => {
   });
 });
 
+describe("route ticket with a single eligible service", () => {
+  const suspendedAt = (state: ItemGameState, ...serviceIds: string[]): ItemGameState => ({
+    ...state, effects: { ...state.effects, suspensions: serviceIds.map((serviceId) => ({ serviceId, expiresTurn: 5 })) },
+  });
+
+  it("boards the only eligible service when it differs from the current ride", () => {
+    const state = suspendedAt(holding({ ...game(), currentStationId: "b", currentServiceId: M_LINE }, "route-ticket"), M_LINE, M_SPUR);
+    expect(beginItemTurn(state, command("route-ticket", { serviceId: M_LOOP }), network).state.pending)
+      .toMatchObject({ resolvedRide: { serviceId: M_LOOP } });
+  });
+
+  it("rejects selecting the current ride when it is the only eligible service", () => {
+    const state = suspendedAt(holding({ ...game(), currentStationId: "b", currentServiceId: M_LINE }, "route-ticket"), M_LOOP, M_SPUR);
+    expectInvalid(() => beginItemTurn(state, command("route-ticket", { serviceId: M_LINE }), network));
+  });
+});
+
 describe("active item validation and adjustment", () => {
   it("rejects missing ownership, passive/harmful commands and two-item bundles", () => {
     expectInvalid(() => beginItemTurn(game(), command("double"), network));
