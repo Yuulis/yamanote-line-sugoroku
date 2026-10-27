@@ -1134,3 +1134,11 @@ button[aria-disabled="true"] {
   margin-top: 8px;
   font-size: 12px;
 }
+
+.item-event-notice {
+  margin-block: 1rem;
+  overflow-wrap: anywhere;
+}
+.item-event-notice h2 { font-size: 1rem; margin-block: .6rem .3rem; }
+.item-event-notice ul { padding-inline-start: 1.3rem; margin-block: .3rem; }
+.item-event-notice li + li { margin-block-start: .35rem; }

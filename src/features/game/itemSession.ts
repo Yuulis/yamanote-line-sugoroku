@@ -10,6 +10,7 @@ import {
   type ItemTurnEvent, type ItemTurnResult, type MoveEvent, type RailwayNetwork,
 } from "./engine";
 import type { GameAction, GameSession, LastMove, MoveAnimation } from "./gameSession";
+import { MAX_MOVE_DURATION_MS } from "./animation/timeline";
 import { endpointKindAt } from "./gameSummary";
 
 export interface ItemActionIdentity {
@@ -57,7 +58,7 @@ export function createItemSession(
     sessionId, game, phase: game.pending?.kind === "discard" ? "awaiting-discard"
       : game.pending?.kind === "roll" ? "awaiting-adjust" : "idle",
     lastMove: itemLastMove(game.pending?.kind === "discard" ? game.pending.record : game.movementHistory.at(-1), network), animation: null,
-    item: { decisionRevision: 0, draft: { items: [] }, stagedAnimation: null, events: [] },
+    item: { decisionRevision: 0, draft: { items: [] }, stagedAnimation: null, events: (game.pending?.kind === "discard" ? game.pending.record : game.movementHistory.at(-1))?.itemEvents ?? [] },
   };
   // A persisted roll without any legal adjustment never needs a UI decision.
   if (game.pending?.kind === "roll" && adjustmentOptions(game).length === 0) {
@@ -66,12 +67,17 @@ export function createItemSession(
   return session;
 }
 
-function itemLastMove(record: DeepReadonly<ItemTurnRecord> | undefined, network: RailwayNetwork): LastMove | null {
-  if (!record || record.kind === "deadhead") return null;
+export function itemLastMove(record: DeepReadonly<ItemTurnRecord> | undefined, network: RailwayNetwork): LastMove | null {
+  if (!record) return null;
+  if (record.kind === "deadhead") return {
+    roll: null, itemRecord: record, unusedPips: 0, stopReason: "relocation",
+    stopStationId: record.toStationId, serviceId: record.relocation.serviceId,
+    direction: record.relocation.direction, endpointKind: null, landing: null,
+  };
   const { resolvedRide: ride, landing, landingSnapshot: snapshot } = record;
   const service = snapshot?.services.find((candidate) => candidate.serviceId === landing?.serviceId);
   return {
-    roll: record.effectiveFace, unusedPips: record.unusedPips, stopReason: record.stopReason,
+    roll: record.effectiveFace, itemRecord: record, unusedPips: record.unusedPips, stopReason: record.stopReason,
     stopStationId: record.toStationId, serviceId: ride.serviceId, direction: ride.direction,
     endpointKind: endpointKindAt(network, ride.serviceId, record.toStationId),
     landing: landing && snapshot && service ? {
@@ -97,7 +103,7 @@ function stageResolution(session: GameSession, result: ItemTurnResult): GameSess
     item: { ...session.item!, decisionRevision: revision, draft: { items: [] }, events: result.events,
       stagedAnimation: record ? {
         sessionId: session.sessionId, turn: result.state.turn, decisionRevision: revision + 1,
-        fromStationId: record.fromStationId, events: movementEvents(result.events),
+        fromStationId: record.fromStationId, events: movementEvents(result.events), maxDurationMs: MAX_MOVE_DURATION_MS,
       } : null },
   };
 }

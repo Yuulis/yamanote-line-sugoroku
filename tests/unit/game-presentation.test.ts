@@ -251,3 +251,124 @@ describe("S6 presentation metadata", () => {
     expect(landingTransitionText({ ...record, landing: { ...record.landing, direction: 1 } }, network, resolver)).toBeNull();
   });
 });
+
+describe("verified item notices", () => {
+  it("keeps pickup, cancellation, chosen discard, countdown and activation copy precise", async () => {
+    const { itemEventTexts, activeItemEffectTexts } = await import("../../src/features/game/presentation");
+    expect(itemEventTexts([
+      { type: "pickup-pending-discard", item: { id: "new", kind: "double" }, candidates: [] },
+      { type: "discarded", item: { id: "held", kind: "rapid" } },
+      { type: "pickup-retained", item: { id: "new", kind: "double" } },
+      { type: "cancelled-by-certificate", item: "oversleep", certificate: { id: "cert", kind: "delay-certificate" } },
+      { type: "effect-activated", effect: "delay" },
+    ], 8, network)).toEqual([
+      "倍速券を拾いました。この回の出目が2倍になる", "快速券を選んで捨てました",
+      "拾った寝過ごしを遅延証明書で打ち消しました", "遅延が発動しました",
+    ]);
+    const effects = { delayDueTurns: [10], suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 12 }], detourPending: true, oversleepPending: true };
+    expect(activeItemEffectTexts(effects, 7, network)).toEqual([
+      "遅延：10ターン目に発動（あと3ターン）", "運休：山手線、あと5ターン",
+      "寄り道：次に別の路線へ乗り換えられる駅で発動します", "寝過ごし：次のターンは終点まで（環状線は6駅）進みます",
+    ]);
+    expect(activeItemEffectTexts(effects, 8, network)[0]).toContain("あと2ターン");
+  });
+
+  it("never calls a null landing a goal unless the recorded stop reason is goal", async () => {
+    const { arrivalSummary } = await import("../../src/features/game/presentation");
+    const last = { roll: 3, unusedPips: 0, stopReason: "roll" as const, stopStationId: "shimbashi",
+      serviceId: "jr-yamanote", direction: 1 as const, endpointKind: null, landing: null };
+    expect(arrivalSummary(1, last, 0, 30, network)).not.toContain("ゴール");
+    expect(arrivalSummary(1, { ...last, stopReason: "goal" }, 30, 30, network)).toContain("ゴール");
+    expect(arrivalSummary(1, { ...last, roll: null, stopReason: "relocation" }, 0, 30, network)).toContain("回送列車で新橋へ移りました（走行区間なし）");
+  });
+});
+
+it("pins replay-valid item E2E scenarios using the production item policy", async () => {
+  const { ITEM_SCENARIOS, itemScenario } = await import("../e2e/fixtures/itemScenarios");
+  const { beginItemTurn, playItemTurn, restoreGame, serializeGame } = await import("../../src/features/game/engine");
+  for (const name of Object.keys(ITEM_SCENARIOS) as (keyof typeof ITEM_SCENARIOS)[]) {
+    const base = itemScenario(name, network);
+    expect(restoreGame(serializeGame(base), network, { expectedConfig: base.config })).toEqual(base);
+    if (name === "adjust") {
+      const pending = beginItemTurn(base, { items: [] }, network).state;
+      expect(pending.pending).toMatchObject({ kind: "roll" });
+      if (pending.pending?.kind !== "roll") throw new Error("Expected die");
+      expect(pending.pending.rawRoll).toBeGreaterThan(1);
+      expect(pending.pending.rawRoll).toBeLessThan(6);
+      expect(base.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
+    } else if (name === "discard") {
+      expect(playItemTurn(base, {}, network).state.pending?.kind).toBe("discard");
+    } else if (name === "certificate" || name === "delay") {
+      expect(playItemTurn(base, {}, network).events.some((event) => name === "certificate"
+        ? event.type === "cancelled-by-certificate" : event.type === "harmful-scheduled" && event.effect === "delay")).toBe(true);
+    } else if (name === "oversleep") {
+      const result = playItemTurn(base, {}, network);
+      expect(result.record).toMatchObject({ movementMode: "oversleep", physicalHops: 6 });
+      expect(result.state.status).toBe("playing");
+    } else {
+      const kind = name === "rapid-long" ? "rapid" : name === "route" ? "route-ticket" : name === "direction" ? "direction-ticket" : name;
+      expect(base.inventory.some((item) => item.kind === kind)).toBe(true);
+    }
+  }
+});
+
+it("announces the revealed die and selected adjustment during animation without early pickup notices", async () => {
+  const { itemTurnAnnouncement, itemEventTexts } = await import("../../src/features/game/presentation");
+  const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+  const { beginItemTurn, finishItemTurn } = await import("../../src/features/game/engine");
+  const { itemSessionView } = await import("../../src/features/game/itemSession");
+  const base = itemScenario("adjust", network);
+  const pending = beginItemTurn(base, { items: [] }, network).state;
+  const ticket = base.inventory.find((item) => item.kind === "roll-adjust")!;
+  const arrived = finishItemTurn(pending, { instanceId: ticket.id, delta: 1 }, network).state;
+  const session = { ...resumeSession(arrived, network), phase: "animating" as const };
+  const message = itemTurnAnnouncement(session, itemSessionView(session, network)!, 0, 30, network);
+  expect(message).toContain("調整後");
+  expect(message).toContain("出目調整券を使いました");
+  expect(message).toContain("スキップできます");
+  expect(message).not.toContain("拾いました");
+  expect(itemEventTexts([
+    { type: "harmful-scheduled", item: "suspension", effect: "suspension", serviceId: "jr-yamanote", expiresTurn: 9 },
+    { type: "harmful-scheduled", item: "detour", effect: "detour" },
+    { type: "harmful-scheduled", item: "oversleep", effect: "oversleep" },
+  ], 4, network)).toEqual([
+    "運休：山手線、あと5ターン", "寄り道：次に別の路線へ乗り換えられる駅で発動します",
+    "寝過ごし：次のターンは終点まで（環状線は6駅）進みます",
+  ]);
+});
+
+it("shows the recorded arrival ride while a full-inventory choice is pending after resume", async () => {
+  const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+  const { playItemTurn } = await import("../../src/features/game/engine");
+  const pending = playItemTurn(itemScenario("discard", network), {}, network).state;
+  if (pending.pending?.kind !== "discard") throw new Error("Expected pending discard");
+  const session = resumeSession(pending, network);
+  expect(displayedRide(session)).toEqual({ serviceId: pending.pending.position.currentServiceId,
+    direction: pending.pending.position.direction });
+  expect(session.lastMove?.itemRecord).toEqual(pending.pending.record);
+});
+
+it("restores result history with item pips, physical hops, and relocation instead of classic arithmetic", async () => {
+  const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+  const { playItemTurn } = await import("../../src/features/game/engine");
+  const { itemHistoryText } = await import("../../src/features/game/presentation");
+  for (const name of ["rapid-long", "deadhead"] as const) {
+    const base = itemScenario(name, network);
+    const kind = name === "rapid-long" ? "rapid" : "deadhead";
+    const item = base.inventory.find((entry) => entry.kind === kind)!;
+    const arrived = playItemTurn(base, { command: { items: [{ kind, instanceId: item.id }] } }, network).state;
+    const record = arrived.movementHistory.at(-1)!;
+    const text = itemHistoryText(record, network);
+    const restored = resumeSession(arrived, network);
+    expect(itemHistoryText(restored.lastMove!.itemRecord!, network)).toBe(text);
+    expect(text).not.toContain("残り-");
+    if (record.kind === "item-ride") {
+      expect(text).toContain(`${record.physicalHops}駅移動`);
+      expect(text).toContain(`残り${record.unusedPips}は使わず`);
+    } else {
+      expect(text).toContain("走行区間なし");
+      expect(text).not.toContain("出目");
+      expect(text).not.toContain("ゴール");
+    }
+  }
+});

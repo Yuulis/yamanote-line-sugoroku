@@ -460,3 +460,40 @@ describe("createLivePosition", () => {
     expect(live.get()).toBeNull();
   });
 });
+
+describe("item movement presentation", () => {
+  it("uses every physical rapid hop rather than pips, and bounds long moves at six seconds", async () => {
+    const { loadBundle } = await import("../e2e/fixtures/bundle");
+    const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+    const { playItemTurn } = await import("../../src/features/game/engine");
+    const { MAX_MOVE_DURATION_MS } = await import("../../src/features/game/animation/timeline");
+    const bundle = await loadBundle("fixture");
+    const game = itemScenario("rapid", bundle.network);
+    const ticket = game.inventory.find((item) => item.kind === "rapid")!;
+    const result = playItemTurn(game, { command: { items: [{ kind: "rapid", instanceId: ticket.id }] } }, bundle.network);
+    const record = result.record!;
+    if (record.kind !== "item-ride") throw new Error("Expected ride");
+    const steps = buildMovePlan(result.events, bundle.network, new Map());
+    expect(record.physicalHops).toBeGreaterThan(record.pips);
+    expect(steps).toHaveLength(record.physicalHops);
+    const long = Array.from({ length: 300 }, () => ({ ...steps[0]!, distanceKm: 100 }));
+    expect(frameAt(long, MAX_MOVE_DURATION_MS - 1, 600, MAX_MOVE_DURATION_MS).done).toBe(false);
+    expect(frameAt(long, MAX_MOVE_DURATION_MS + 1, 600, MAX_MOVE_DURATION_MS)).toMatchObject({ done: true, stepsCompleted: 300 });
+    expect(frameAt(long, MAX_MOVE_DURATION_MS + 1, 600).done).toBe(false); // Classic pacing is unchanged.
+    expect(frameAt(long, 0, 0)).toMatchObject({ done: true, stepsCompleted: 300 });
+  });
+
+  it("does not invent a path for deadhead and immediately shows the relocated platform", async () => {
+    const { loadBundle } = await import("../e2e/fixtures/bundle");
+    const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+    const { playItemTurn, platformPosition } = await import("../../src/features/game/engine");
+    const bundle = await loadBundle("fixture");
+    const game = itemScenario("deadhead", bundle.network);
+    const ticket = game.inventory.find((item) => item.kind === "deadhead")!;
+    const result = playItemTurn(game, { command: { items: [{ kind: "deadhead", instanceId: ticket.id }] } }, bundle.network);
+    expect(buildMovePlan(result.events, bundle.network, new Map())).toEqual([]);
+    const shown = displayedProgress({ ...result.state, movementHistory: [] }, bundle.network, null);
+    expect(shown.position).toEqual(platformPosition(bundle.network, result.state.currentServiceId, result.state.currentStationId));
+    expect(shown.completedSegmentIds).toEqual(game.completedSegmentIds);
+  });
+});

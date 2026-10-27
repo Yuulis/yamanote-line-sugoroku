@@ -239,3 +239,51 @@ describe("item controls", () => {
     expect(onDiscard).toHaveBeenCalledWith("new-item");
   });
 });
+
+it("coordinates the modal announcement, focuses the adjustment heading, then restores roll focus", async () => {
+  const { act } = await import("react");
+  const { GamePanel } = await import("../../src/features/game/components/GamePanel");
+  const { beginItemTurn, finishItemTurn } = await import("../../src/features/game/engine");
+  const { resumeSession } = await import("../../src/features/game/gameSession");
+  const network = buildRailwayNetwork(multiServiceInput());
+  const config = { ...multiConfig(), itemPolicy: { ...ITEM_GAME_CONFIG.itemPolicy!, dropChancePerMille: 0 } };
+  const base = { ...createItemGame(config, "focus-adjust", network), inventory: [{ id: "adjust", kind: "roll-adjust" as const }] };
+  const pending = beginItemTurn(base, { items: [] }, network).state;
+  const session = resumeSession(pending, network);
+  const common = { network, lines: [], displayedStationId: base.currentStationId, displayedCompletedCount: 0,
+    requiredCount: 4, saveStatus: "saved" as const, follow: true, speedLabel: "省略", reducedMotion: true,
+    onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
+  const mount = mountReact(createElement(GamePanel, { ...common, session, itemView: itemSessionView(session, network) }));
+  mounted.push(mount);
+  expect(document.activeElement?.textContent).toBe("出目を調整しますか？");
+  expect(mount.container.querySelectorAll("[role=status]")).toHaveLength(1);
+  expect(mount.container.querySelector("dialog [role=status]")?.textContent).toContain("出目は");
+  const completed = resumeSession(finishItemTurn(pending, null, network).state, network);
+  act(() => mount.root.render(createElement(GamePanel, { ...common, session: completed, itemView: itemSessionView(completed, network) })));
+  expect(document.activeElement).toBe(mount.container.querySelector(".game-panel__roll"));
+  expect(mount.container.querySelectorAll("[role=status]")).toHaveLength(1);
+  expect(mount.container.querySelector("[role=status]")?.textContent).toContain("サイコロを振れます");
+});
+
+it("shows historical outcomes separately from countdowns, including the all-suspended fallback", async () => {
+  const { ItemEventNotice } = await import("../../src/features/game/components/ItemEventNotice");
+  const { resumeSession } = await import("../../src/features/game/gameSession");
+  const { playItemTurn } = await import("../../src/features/game/engine");
+  const network = buildRailwayNetwork(multiServiceInput());
+  const config = { ...multiConfig(), itemPolicy: { ...ITEM_GAME_CONFIG.itemPolicy!, dropChancePerMille: 1000,
+    harmfulChancePercent: 100, harmfulKinds: ["delay"] as const } };
+  const game = playItemTurn(createItemGame(config, "notice-delay", network), {}, network).state;
+  const session = resumeSession(game, network);
+  const last = session.lastMove!;
+  const record = last.itemRecord!;
+  const presentation = createPresentationResolver(network);
+  const mount = mountReact(createElement(ItemEventNotice, {
+    view: itemSessionView(session, network)!, turn: game.turn, network, presentation,
+    lastMove: { ...last, itemRecord: { ...record, landingSnapshot: { ...record.landingSnapshot!, suspensionIgnored: true } } },
+  }));
+  mounted.push(mount);
+  expect(mount.container.querySelector("[aria-label='前のターンの結果']")?.textContent).toContain("4ターン目に発動（あと3ターン）");
+  expect(mount.container.querySelector("[aria-label='続いている効果']")?.textContent).toContain("あと3ターン");
+  expect(mount.container.textContent).toContain("この駅では候補がすべて運休のため、運休を無視して抽選しました");
+  expect(mount.container.querySelectorAll("[role=status], [aria-live]")).toHaveLength(0);
+});

@@ -3,11 +3,12 @@ import type { ItemSessionView } from "../itemSession";
 import { ITEM_DESCRIPTIONS } from "../itemPresentation";
 
 interface DiscardChoiceProps {
+  announcement?: string;
   decision: Extract<NonNullable<ItemSessionView["decision"]>, { kind: "discard" }>;
   onDiscard: (instanceId: string) => void;
 }
 
-export function DiscardChoice({ decision, onDiscard }: DiscardChoiceProps) {
+export function DiscardChoice({ decision, onDiscard, announcement }: DiscardChoiceProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
@@ -26,6 +27,7 @@ export function DiscardChoice({ decision, onDiscard }: DiscardChoiceProps) {
   return (
     <dialog ref={dialogRef} className="dialog item-dialog item-discard" aria-labelledby={titleId} onCancel={preventClose}>
       <div className="dialog__body">
+        {announcement !== undefined && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
         <h2 id={titleId} ref={headingRef} className="dialog__title" tabIndex={-1}>捨てるアイテムを選ぶ</h2>
         <p className="item-dialog__hint">持ち物がいっぱいです。4つのうち1つを選んでください。</p>
         <ul className="item-discard__list">

@@ -143,7 +143,8 @@ describe("item session phases and identity", () => {
     expect(resolved.phase).toBe("resolving");
     expect(itemGame(resolved)).toMatchObject({ rngState: session.game.rngState, turn: 1, pending: null });
     expect(itemGame(resolved).movementHistory[0]?.kind).toBe("deadhead");
-    expect(saved(resolved).lastMove).toBeNull();
+    expect(saved(resolved).lastMove).toMatchObject({ roll: null, stopReason: "relocation",
+      stopStationId: itemGame(resolved).currentStationId });
     expect(finishAnimation(saved(resolved)).phase).toBe("idle");
   });
 
@@ -439,5 +440,33 @@ describe("read-only S9 view model", () => {
       expect(serializeGame(adjusting.game)).toBe(before);
     }
     expect(reduceAppState(INITIAL_APP_STATE, { type: "item-commit", sessionId: 0, turn: 0, decisionRevision: 0 }, config, network)).toBe(INITIAL_APP_STATE);
+  });
+});
+
+describe("restored item presentation", () => {
+  it("rebuilds events and landing candidates from the verified historical snapshot", async () => {
+    const mode = { ...config, itemPolicy: { ...config.itemPolicy, dropChancePerMille: 1000,
+      harmfulChancePercent: 100, harmfulKinds: ["delay"] as const } };
+    const base = createItemGame(mode, "history-notice", network);
+    const arrived = playItemTurn(base, {}, network).state;
+    const restored = resumeSession(arrived, network);
+    const record = arrived.movementHistory.at(-1)!;
+    expect(restored.item?.events).toEqual(record.itemEvents);
+    expect(restored.lastMove?.itemRecord).toBe(record);
+    expect(restored.lastMove?.landing?.serviceCandidates).toEqual(record.landingSnapshot?.services.map((entry) => entry.serviceId));
+    const laterEffects = { ...arrived, effects: { ...arrived.effects,
+      suspensions: [...network.servicesById.keys()].map((serviceId) => ({ serviceId, expiresTurn: 99 })) } };
+    expect(resumeSession(laterEffects, network).lastMove).toEqual(restored.lastMove);
+  });
+
+  it("retains the pending discard transcript and adds the chosen item after resume", () => {
+    const pending = persistedFixture("discard");
+    const resumed = resumeSession(pending, network);
+    expect(resumed.item?.events).toEqual(pending.pending?.kind === "discard" ? pending.pending.record.itemEvents : []);
+    const decision = itemSessionView(resumed, network)!.decision;
+    if (decision?.kind !== "discard") throw new Error("Expected discard");
+    const resolved = saved(reduce(resumed, { type: "item-discard", ...itemActionIdentity(resumed), instanceId: decision.candidates[0]!.id }));
+    expect(resumeSession(resolved.game, network).lastMove).toEqual(resolved.lastMove);
+    expect(resolved.lastMove?.itemRecord?.itemEvents.some((event) => event.type === "discarded" && event.item.id === decision.candidates[0]!.id)).toBe(true);
   });
 });

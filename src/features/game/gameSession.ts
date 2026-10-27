@@ -6,7 +6,7 @@
 // pending decisions; animations remain presentation only in both modes.
 
 import type {
-  Direction, EndpointKind, GameConfig, GameState, ItemGameState, StationId, StopReason,
+  DeepReadonly, Direction, EndpointKind, GameConfig, GameState, ItemGameState, ItemTurnRecord, StationId, StopReason,
 } from "../../types/network";
 import {
   createGame,
@@ -30,15 +30,19 @@ export interface MoveAnimation {
   /** Completed engine turn (a pending discard still belongs to the prior turn). */
   turn: number;
   decisionRevision?: number;
+  /** Item rides bound the whole presentation independently of their physical hops. */
+  maxDurationMs?: number;
   fromStationId: StationId;
   events: MoveEvent[];
 }
 
 export interface LastMove {
-  roll: number;
+  roll: number | null;
+  /** Verified item transcript, including physical hops and historical candidates. */
+  itemRecord?: DeepReadonly<ItemTurnRecord>;
   /** Pips discarded because the move stopped early (goal or endpoint). */
   unusedPips: number;
-  stopReason: StopReason;
+  stopReason: StopReason | "relocation";
   /** Station where the move ended. */
   stopStationId: StationId;
   serviceId: string;

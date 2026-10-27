@@ -18,7 +18,8 @@ import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
-import { displayedRide } from "../features/game/presentation";
+import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
+import { itemTurnAnnouncement, displayedRide } from "../features/game/presentation";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
@@ -26,6 +27,7 @@ import type { GameState, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
+import { configForE2E } from "../features/game/e2eRuleset";
 import { summarizeGame } from "../features/game/gameSummary";
 
 interface GameAppProps {
@@ -63,7 +65,8 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
     () => createPresentationResolver(network, uiPresentation),
     [network, uiPresentation],
   );
-  const app = useGameApp(network, storage, edition.config, edition.saveKey);
+  const config = useMemo(() => configForE2E(edition.config), [edition.config]);
+  const app = useGameApp(network, storage, config, edition.saveKey);
   const reducedMotion = usePrefersReducedMotion();
   const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
   const [follow, setFollow] = useState(true);
@@ -81,7 +84,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
   // Adapt item history only for the existing presentation helpers. Saves and
-  // decisions always use the original engine state; item visuals follow in S10.
+  // decisions always use the original engine state.
   const presentationGame = useMemo<GameState | null>(() => {
     if (!game || !isItemSave(game)) return game;
     const pending = game.pending?.kind === "discard" ? game.pending : null;
@@ -240,6 +243,12 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
       {session && showClear && presentationGame && (
         <ClearScreen
           game={presentationGame}
+          itemRecords={isItemSave(session.game) ? session.game.movementHistory : undefined}
+          itemNotice={app.itemView ? <ItemEventNotice
+            view={app.itemView} lastMove={session.lastMove} turn={session.game.turn} network={network} presentation={presentation}
+            completionAnnouncement={itemTurnAnnouncement(session, app.itemView, shown?.completedSegmentIds.filter((id) => requiredIds.has(id)).length ?? 0,
+              requiredIds.size, network, presentation)}
+          /> : undefined}
           network={network}
           presentation={presentation}
           display={edition.display}

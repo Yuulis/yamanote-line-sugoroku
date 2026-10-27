@@ -4,17 +4,19 @@ import type { ItemSessionView } from "../itemSession";
 import { adjustedPips } from "../itemPresentation";
 
 interface RollAdjustmentProps {
+  announcement?: string;
   decision: Extract<NonNullable<ItemSessionView["decision"]>, { kind: "adjust" }>;
   onContinue: (adjustment: ItemRollAdjustment | null) => void;
 }
 
 type AdjustmentChoice = -1 | 0 | 1;
 
-export function RollAdjustment({ decision, onContinue }: RollAdjustmentProps) {
+export function RollAdjustment({ decision, onContinue, announcement }: RollAdjustmentProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
   const groupId = useId();
+  const rollId = useId();
   const [choice, setChoice] = useState<AdjustmentChoice>(0);
 
   useLayoutEffect(() => {
@@ -47,8 +49,9 @@ export function RollAdjustment({ decision, onContinue }: RollAdjustmentProps) {
   return (
     <dialog ref={dialogRef} className="dialog item-dialog item-adjustment" aria-labelledby={titleId} onCancel={handleCancel}>
       <div className="dialog__body">
-        <h2 id={titleId} ref={headingRef} className="dialog__title" tabIndex={-1}>出目を調整しますか？</h2>
-        <p className="item-dialog__hint">出目：<strong>{decision.rawRoll}</strong></p>
+        {announcement !== undefined && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
+        <h2 id={titleId} aria-describedby={rollId} ref={headingRef} className="dialog__title" tabIndex={-1}>出目を調整しますか？</h2>
+        <p id={rollId} className="item-dialog__hint">出目：<strong>{decision.rawRoll}</strong></p>
         <p className="item-dialog__hint">±1を選ぶと出目調整券を1枚使います。</p>
         <fieldset className="item-dialog__group">
           <legend>進むマス数を選ぶ</legend>
