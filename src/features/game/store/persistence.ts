@@ -9,6 +9,8 @@ import {
   type RailwayNetwork,
   restoreGame,
   serializeGame,
+  type SavedGameState,
+  type RestoreOptions,
 } from "../engine";
 
 /**
@@ -32,9 +34,9 @@ export type SaveProblem =
   | "rules"
   | "rng-mismatch";
 
-export type SaveLookup =
+export type SaveLookup<G extends SavedGameState = GameState> =
   | { kind: "none" }
-  | { kind: "valid"; game: GameState }
+  | { kind: "valid"; game: G }
   | { kind: "invalid"; problem: SaveProblem }
   /** Storage could not be read at all (disabled, blocked, or throwing). */
   | { kind: "unavailable" };
@@ -79,12 +81,13 @@ export function parseSave(
   json: string,
   network: RailwayNetwork,
   config: GameConfig,
-): Extract<SaveLookup, { kind: "valid" | "invalid" }> {
+): Extract<SaveLookup<SavedGameState>, { kind: "valid" | "invalid" }> {
   try {
-    const game = restoreGame(json, network, {
+    const options: RestoreOptions = {
       expectedConfig: config,
       requireSeededRolls: true,
-    });
+    };
+    const game = restoreGame(json, network, options);
     return { kind: "valid", game };
   } catch (error) {
     // Anything unexpected is still a bad save, never a crash of the title screen.
@@ -98,7 +101,7 @@ export function readSave(
   network: RailwayNetwork,
   config: GameConfig,
   saveKey = SAVE_STORAGE_KEY,
-): SaveLookup {
+): SaveLookup<SavedGameState> {
   if (!storage) return { kind: "unavailable" };
   let json: string | null;
   try {
@@ -113,7 +116,7 @@ export function readSave(
 /** Save a committed game state; failures (quota, blocked storage) are reported. */
 export function writeSave(
   storage: StorageLike | null,
-  game: GameState,
+  game: SavedGameState,
   saveKey = SAVE_STORAGE_KEY,
 ): SaveWriteResult {
   if (!storage) return "unavailable";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRailwayNetwork, createGame, moveByRoll, playTurn } from "../../src/features/game/engine";
+import { buildRailwayNetwork, createGame, isItemSave, moveByRoll, playTurn } from "../../src/features/game/engine";
 import {
   type AppAction,
   type AppState,
@@ -50,6 +50,7 @@ function inGame(state: AppState): GameSession {
 describe("move animation lifecycle", () => {
   it("commits the turn before animating and records what to animate", () => {
     const start = startSession(DEFAULT_CONFIG, "anim", network, 4);
+    if (isItemSave(start.game)) throw new Error("Expected classic session");
     const expected = playTurn(start.game, network);
     const rolled = reduce(start, rollAction(start));
     expect(rolled.game).toEqual(expected.state);
@@ -245,6 +246,7 @@ describe("stop-reason texts", () => {
   it("a live roll records stop reason and stop station like a resumed one", () => {
     const start = startSession(DEFAULT_CONFIG, "live", network, 1);
     const rolled = reduce(start, rollAction(start));
+    if (isItemSave(rolled.game)) throw new Error("Expected classic session");
     expect(rolled.lastMove).toEqual(lastMoveOf(rolled.game, network));
   });
 });

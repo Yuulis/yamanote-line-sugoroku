@@ -2,12 +2,11 @@
 // The reducers are pure (StrictMode may call them twice): seeds and restored
 // games come in through actions, and the engine is deterministic.
 //
-// A roll commits the engine state immediately; the move animation that
-// follows is presentation only, so a reload mid-animation resumes from the
-// committed (and already saved) state.
+// Classic rolls commit atomically. Item turns add save acknowledgements around
+// pending decisions; animations remain presentation only in both modes.
 
 import type {
-  Direction, EndpointKind, GameConfig, GameState, StationId, StopReason,
+  Direction, EndpointKind, GameConfig, GameState, ItemGameState, StationId, StopReason,
 } from "../../types/network";
 import {
   createGame,
@@ -16,16 +15,21 @@ import {
   type MoveEvent,
   playTurn,
   type RailwayNetwork,
+  type SavedGameState,
+  isItemSave,
   resolveLandingEvent,
 } from "./engine";
+import { createItemSession, reduceItemSession, type ItemSessionAction, type ItemSessionState } from "./itemSession";
 import { endpointKindAt, unusedPipsOf } from "./gameSummary";
 
-export type SessionPhase = "idle" | "animating";
+export type SessionPhase = "idle" | "committing" | "awaiting-adjust" | "resolving" | "animating" | "awaiting-discard";
 
-/** The move being shown; identified by session and committed turn. */
+/** The move being shown; item mode also identifies the decision revision. */
 export interface MoveAnimation {
   sessionId: number;
+  /** Completed engine turn (a pending discard still belongs to the prior turn). */
   turn: number;
+  decisionRevision?: number;
   fromStationId: StationId;
   events: MoveEvent[];
 }
@@ -46,20 +50,22 @@ export interface LastMove {
 export interface GameSession {
   /** Changes on every new game or resume, so stale callbacks are recognisable. */
   sessionId: number;
-  game: GameState;
+  game: SavedGameState;
+  /** Present only for item mode; classic sessions retain their exact shape. */
+  item?: ItemSessionState;
   /** Rolls are ignored unless the phase is idle. */
   phase: SessionPhase;
   lastMove: LastMove | null;
   animation: MoveAnimation | null;
 }
 
-export type GameAction =
+export type GameAction = ItemSessionAction
   /** `sessionId`, `rngSeed` and `turn` identify the exact turn the click was made on. */
   | { type: "roll"; sessionId: number; rngSeed: string; turn: number }
   /** Sent by the animation (or the skip button) for the move it showed. */
-  | { type: "animation-finished"; sessionId: number; turn: number }
+  | { type: "animation-finished"; sessionId: number; turn: number; decisionRevision?: number }
   | { type: "new-game"; seed: string }
-  | { type: "resume"; game: GameState };
+  | { type: "resume"; game: SavedGameState };
 
 export function startSession(
   config: GameConfig,
@@ -67,6 +73,7 @@ export function startSession(
   network: RailwayNetwork,
   sessionId = 0,
 ): GameSession {
+  if (config.itemPolicy) return createItemSession(config, seed, network, sessionId);
   return {
     sessionId,
     game: createGame(config, seed, network),
@@ -102,8 +109,9 @@ export function lastMoveOf(game: GameState, network: RailwayNetwork): LastMove |
   };
 }
 
-/** A restored, already-validated game; resumes idle with no animation. */
-export function resumeSession(game: GameState, network: RailwayNetwork, sessionId = 0): GameSession {
+/** A validated save resumes at its pending decision, or idle without replay. */
+export function resumeSession(game: SavedGameState, network: RailwayNetwork, sessionId = 0): GameSession {
+  if (isItemSave(game)) return createItemSession(game.config, game.rngSeed, network, sessionId, game);
   return { sessionId, game, phase: "idle", lastMove: lastMoveOf(game, network), animation: null };
 }
 
@@ -137,6 +145,9 @@ export function reduceGameSession(
   config: GameConfig,
   network: RailwayNetwork,
 ): GameSession {
+  if (action.type === "new-game") return startSession(config, action.seed, network, session.sessionId + 1);
+  if (action.type === "resume") return resumeSession(action.game, network, session.sessionId + 1);
+  if (isItemSave(session.game)) return reduceItemSession(session, action, network);
   switch (action.type) {
     case "roll": {
       // A stale or repeated click must never apply a second move.
@@ -159,19 +170,17 @@ export function reduceGameSession(
       // Skip and the last animation frame may both report; only the first counts.
       if (!isCurrentAnimation(session, action.sessionId, action.turn)) return session;
       return { ...session, phase: "idle", animation: null };
-    case "new-game":
-      return startSession(config, action.seed, network, session.sessionId + 1);
-    case "resume":
-      return resumeSession(action.game, network, session.sessionId + 1);
+    default:
+      return session;
   }
 }
 
 /** Title screen (no game yet) or a running / finished game. */
 export type AppState =
-  | { screen: "title"; lastSessionId: number }
+  | { screen: "title"; lastSessionId: number; pendingGame?: ItemGameState }
   | { screen: "game"; session: GameSession };
 
-export type AppAction = GameAction | { type: "show-title" };
+export type AppAction = GameAction | { type: "show-title" } | { type: "forget-title-pending" };
 
 export const INITIAL_APP_STATE: AppState = { screen: "title", lastSessionId: 0 };
 
@@ -182,6 +191,9 @@ export function reduceAppState(
   network: RailwayNetwork,
 ): AppState {
   if (state.screen === "title") {
+    if (action.type === "forget-title-pending" && state.pendingGame) {
+      return { screen: "title", lastSessionId: state.lastSessionId };
+    }
     const sessionId = state.lastSessionId + 1;
     if (action.type === "new-game") {
       return { screen: "game", session: startSession(config, action.seed, network, sessionId) };
@@ -192,8 +204,28 @@ export function reduceAppState(
     return state;
   }
   if (action.type === "show-title") {
-    return { screen: "title", lastSessionId: state.session.sessionId };
+    const { session } = state;
+    if (session.item && (session.phase === "committing" || session.phase === "resolving")) {
+      return { screen: "game", session: { ...session, item: { ...session.item, leaveAfterSave: true } } };
+    }
+    return titleAfterSession(session);
   }
+  if (action.type === "forget-title-pending") return state;
   const session = reduceGameSession(state.session, action, config, network);
+  if (session.item?.leaveAfterSave && session.phase !== "committing" && session.phase !== "resolving") {
+    return titleAfterSession(session);
+  }
   return session === state.session ? state : { screen: "game", session };
+}
+
+/** A pending decision is progress even before the first completed turn. */
+export function hasGameProgress(game: SavedGameState): boolean {
+  return game.turn > 0 || (isItemSave(game) && game.pending !== null);
+}
+
+function titleAfterSession(session: GameSession): Extract<AppState, { screen: "title" }> {
+  // Keep an in-memory resume point when storage failed. Reload still depends
+  // on the reported save result, but visiting title must not cancel a decision.
+  return { screen: "title", lastSessionId: session.sessionId,
+    ...(isItemSave(session.game) && session.game.pending ? { pendingGame: session.game } : {}) };
 }

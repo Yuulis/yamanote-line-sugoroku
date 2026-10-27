@@ -7,7 +7,7 @@ import { ClearScreen } from "../features/game/components/ClearScreen";
 import { ConfirmDialog } from "../features/game/components/ConfirmDialog";
 import { GamePanel } from "../features/game/components/GamePanel";
 import { TitleScreen } from "../features/game/components/TitleScreen";
-import { type RailwayNetwork, targetSegmentIds } from "../features/game/engine";
+import { type RailwayNetwork, isItemSave, targetSegmentIds } from "../features/game/engine";
 import {
   ANIMATION_SPEEDS,
   type AnimationSpeedId,
@@ -22,8 +22,10 @@ import { displayedRide } from "../features/game/presentation";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
-import type { LineMetadata } from "../types/network";
+import type { GameState, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
+import type { SaveLookup } from "../features/game/store/persistence";
+import { hasGameProgress } from "../features/game/gameSession";
 import { summarizeGame } from "../features/game/gameSummary";
 
 interface GameAppProps {
@@ -78,6 +80,30 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   );
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
+  // Adapt item history only for the existing presentation helpers. Saves and
+  // decisions always use the original engine state; item visuals follow in S10.
+  const presentationGame = useMemo<GameState | null>(() => {
+    if (!game || !isItemSave(game)) return game;
+    const pending = game.pending?.kind === "discard" ? game.pending : null;
+    const arrived = pending && session?.phase !== "resolving" ? pending.position : game;
+    const records = pending && arrived === pending.position ? [...game.movementHistory, pending.record] : game.movementHistory;
+    return { ...arrived, config: game.config, completedSegmentIds: [...arrived.completedSegmentIds], movementHistory: records.map((record) => ({
+      turn: record.turn, roll: record.kind === "item-ride" ? record.effectiveFace : 0,
+      serviceId: record.kind === "item-ride" ? record.resolvedRide.serviceId : record.relocation.serviceId,
+      direction: record.kind === "item-ride" ? record.resolvedRide.direction : record.relocation.direction,
+      fromStationId: record.fromStationId, toStationId: record.toStationId,
+      traversedSegmentIds: [...record.traversedSegmentIds],
+      stopReason: record.kind === "item-ride" ? record.stopReason : "roll",
+      landing: record.landing ? { ...record.landing } : null,
+    })) };
+  }, [game, session?.phase]);
+  const titleSave: SaveLookup | null = app.saveLookup?.kind === "valid"
+    ? { kind: "valid", game: isItemSave(app.saveLookup.game)
+      ? { ...app.saveLookup.game, movementHistory: [] } : app.saveLookup.game }
+    : app.saveLookup;
+  const resumeSaved = useCallback((saved: GameState) => {
+    app.resume(app.saveLookup?.kind === "valid" ? app.saveLookup.game : saved);
+  }, [app.resume, app.saveLookup]);
   const speed = speedById(speedId);
   const stepMs = reducedMotion ? 0 : speed?.stepMs ?? 0;
   const { view, livePosition } = useMoveAnimation(
@@ -88,8 +114,8 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
     app.finishAnimation,
   );
   const shown = useMemo(
-    () => (game ? displayedProgress(game, network, view) : null),
-    [game, network, view],
+    () => (presentationGame ? displayedProgress(presentationGame, network, view) : null),
+    [presentationGame, network, view],
   );
   const progress = useMemo<MapProgress>(
     () =>
@@ -132,7 +158,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const requestNewGame = useCallback(() => {
     const saved = saveLookup?.kind === "valid" ? saveLookup.game : null;
     const current = game ?? saved;
-    if (current?.status === "playing" && current.turn > 0) {
+    if (current?.status === "playing" && hasGameProgress(current)) {
       const message = game
         ? "現在のゲームを終了して新しく始めますか？今の進行は上書きされます。"
         : `保存中のゲーム（${current.turn}ターン目）は上書きされます。はじめから始めますか？`;
@@ -160,11 +186,11 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const showClear = session?.game.status === "completed" && session.phase === "idle";
   const reportedClear = useRef(-1);
   useEffect(() => {
-    if (!showClear || !session || reportedClear.current === session.sessionId) return;
+    if (!showClear || !session || !presentationGame || reportedClear.current === session.sessionId) return;
     reportedClear.current = session.sessionId;
-    const summary = summarizeGame(session.game, presentation);
+    const summary = summarizeGame(presentationGame, presentation);
     trackEvent("game_clear", { turns: summary.turns, moves: summary.moves, transfers: summary.transfers });
-  }, [showClear, session, presentation]);
+  }, [showClear, session, presentationGame, presentation]);
 
   return (
     <>
@@ -175,12 +201,12 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           presentation={presentation}
           display={edition.display}
           {...picker}
-          saveLookup={app.saveLookup}
+          saveLookup={titleSave}
           unavailableReason={null}
           notice={notice}
           focusOnMount={app.state.lastSessionId > 0}
           onNewGame={requestNewGame}
-          onResume={app.resume}
+          onResume={resumeSaved}
           onDeleteSave={() => setConfirm({ kind: "delete-save" })}
         />
       )}
@@ -207,9 +233,9 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           onShowTitle={showTitle}
         />
       )}
-      {session && showClear && (
+      {session && showClear && presentationGame && (
         <ClearScreen
-          game={session.game}
+          game={presentationGame}
           network={network}
           presentation={presentation}
           display={edition.display}
