@@ -28,4 +28,5 @@ Branch: `feature/item-system` (branched from `docs/item-system-roadmap`, which i
 
 ## Next
 
-1. Wait for the user's go-ahead (they review after every step), start S9 (inventory, decisions and hints UI). Pacing: user allows continuous progress through steps until told otherwise; still ask before S11 switches the shipped default. S7 parity targets the round-3 "both rules" rows.
+1. Feature complete on `feature/item-system` (unreleased). Next: the user decides on the PR to develop (this branch already contains `docs/item-system-roadmap`, which can be closed or merged first), then release work (advance-notice policy, release notes, version) is separate.
+2. Still unverified: physical-device performance and touch pan, real screen readers.
