@@ -399,15 +399,18 @@ describe("read-only S9 view model", () => {
     expect(away.hints.deadheadDestination).toMatchObject({ toStationId: "b", distance: 1 });
   });
 
-  it("exposes active effects, passive/forced/selected reasons and unusable choices", () => {
+  it("exposes active effects, passive/forced reasons, and replaceable staged choices", () => {
     let session = fresh("direction-ticket", "deadhead", "delay-certificate");
     let view = itemSessionView(session, network)!;
     expect(view.usableItems[0]?.reason).toBe("fixed-direction");
     expect(view.usableItems[1]).toMatchObject({ usable: true, recommended: false });
     expect(view.usableItems[2]?.reason).toBe("passive");
+    session = fresh("double", "deadhead", "delay-certificate");
+    view = itemSessionView(session, network)!;
     session = draft(session, { items: [{ kind: "deadhead", instanceId: "held-1" }] });
     view = itemSessionView(session, network)!;
-    expect(view.usableItems[0]?.reason).toBe("item-already-selected");
+    expect(view.usableItems[0]).toMatchObject({ usable: true, reason: null, selected: false });
+    expect(view.usableItems[1]).toMatchObject({ usable: true, reason: null, selected: true });
     const game = itemGame(session);
     const effects = { delayDueTurns: [1, 4], suspensions: [{ serviceId: M_LINE, expiresTurn: 5 }],
       detourPending: true, oversleepPending: true };

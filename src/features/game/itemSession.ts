@@ -158,7 +158,8 @@ export function reduceItemSession(session: GameSession, action: GameAction, netw
 }
 
 export type ItemUnavailableReason = "completed" | "decision-pending" | "forced-turn" | "passive"
-  | "after-roll" | "item-already-selected" | "no-route-choice" | "fixed-direction" | "no-rapid-stop";
+  | "after-roll" | "item-already-selected" | "no-route-choice" | "fixed-direction" | "no-rapid-stop"
+  | "suspended-route";
 
 export interface ItemSessionView {
   readonly phase: GameSession["phase"];
@@ -182,6 +183,7 @@ export interface ItemSessionView {
     readonly deadheadDestination: DeepReadonly<ReturnType<typeof deadheadDestination>>;
     readonly deadheadRecommended: boolean;
     readonly suspensionIgnored: boolean;
+    readonly suspendedServiceIds: readonly string[];
   };
   readonly decision: null | {
     readonly kind: "adjust";
@@ -191,7 +193,8 @@ export interface ItemSessionView {
     readonly allowedDeltas: readonly (-1 | 1)[];
     readonly itemInstanceIds: readonly string[];
     readonly canContinue: true;
-  } | { readonly kind: "discard"; readonly turn: number; readonly candidates: DeepReadonly<ItemGameState["inventory"]> };
+  } | { readonly kind: "discard"; readonly turn: number; readonly candidates: DeepReadonly<ItemGameState["inventory"]>;
+    readonly newItemInstanceId: string };
   readonly effects: DeepReadonly<ItemGameState["effects"]>;
   readonly events: DeepReadonly<readonly ItemTurnEvent[]>;
 }
@@ -218,8 +221,15 @@ export function itemSessionView(session: GameSession, network: RailwayNetwork): 
     kind: "adjust", turn: pending.turn, rawRoll: pending.rawRoll, resolvedRide: pending.resolvedRide, allowedDeltas: deltas,
     itemInstanceIds: game.inventory.filter((owned) => owned.kind === "roll-adjust").map((owned) => owned.id), canContinue: true,
   } : session.phase === "awaiting-discard" && pending?.kind === "discard" ? {
-    kind: "discard", turn: pending.turn, candidates: pending.candidates,
+    kind: "discard", turn: pending.turn, candidates: pending.candidates, newItemInstanceId: pending.item.id,
   } : null;
+  const suspendedServiceIds = [...new Set(arrived.effects.suspensions
+    .filter((suspension) => suspension.expiresTurn >= arrived.turn + 1)
+    .map((suspension) => suspension.serviceId))];
+  const hasRouteChoice = routes.candidates.some((candidate) =>
+    routes.candidates.length > 1 || candidate.serviceId !== position.currentServiceId);
+  const hasSuspendedAlternative = !routes.suspensionIgnored && suspendedServiceIds.some((serviceId) =>
+    serviceId !== position.currentServiceId && network.servicesByStation.get(position.currentStationId)?.includes(serviceId));
   return {
     phase: session.phase, identity: itemActionIdentity(session), inventory: arrived.inventory, position,
     draft: item.draft, effects: arrived.effects, decision,
@@ -231,6 +241,7 @@ export function itemSessionView(session: GameSession, network: RailwayNetwork): 
         direction: directionHint({ ...position, currentServiceId: candidate.serviceId }, network) })),
       direction, rapidHeadsTowardYamanote: rapidHeadsTowardTarget(position, network),
       deadheadDestination: destination, deadheadRecommended, suspensionIgnored: routes.suspensionIgnored,
+      suspendedServiceIds,
     },
     usableItems: arrived.inventory.map((owned) => {
       let reason: ItemUnavailableReason | null = null;
@@ -239,10 +250,8 @@ export function itemSessionView(session: GameSession, network: RailwayNetwork): 
       else if (owned.kind === "roll-adjust" && decision?.kind === "adjust") reason = deltas.length > 0 ? null : "forced-turn";
       else if (session.phase !== "idle") reason = "decision-pending";
       else if (forced) reason = "forced-turn";
-      else if (selected && selected.instanceId !== owned.id) reason = "item-already-selected";
       else if (owned.kind === "roll-adjust") reason = "after-roll";
-      else if (owned.kind === "route-ticket" && !routes.candidates.some((candidate) =>
-        routes.candidates.length > 1 || candidate.serviceId !== position.currentServiceId)) reason = "no-route-choice";
+      else if (owned.kind === "route-ticket" && !hasRouteChoice) reason = hasSuspendedAlternative ? "suspended-route" : "no-route-choice";
       else if (owned.kind === "direction-ticket" && (position.currentServiceId === game.config.targetServiceId || direction.directions.length !== 2)) reason = "fixed-direction";
       else if (owned.kind === "rapid" && !rapidAvailable) reason = "no-rapid-stop";
       return { instanceId: owned.id, kind: owned.kind, usable: reason === null, reason,

@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { LineMetadata } from "../../../types/network";
+import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
@@ -22,6 +22,12 @@ import {
 import { GameLegend } from "./GameLegend";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
+import type { ItemSessionView } from "../itemSession";
+import { ITEM_DESCRIPTIONS } from "../itemPresentation";
+import { InventoryPanel } from "./InventoryPanel";
+import { ItemUseDialog } from "./ItemUseDialog";
+import { RollAdjustment } from "./RollAdjustment";
+import { DiscardChoice } from "./DiscardChoice";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -58,6 +64,10 @@ export interface GamePanelProps {
   onCycleSpeed: () => void;
   onNewGame: () => void;
   onShowTitle: () => void;
+  itemView?: ItemSessionView | null;
+  onEditItemDraft?: (command: ItemTurnCommand) => void;
+  onAdjustItemRoll?: (adjustment: ItemRollAdjustment | null) => void;
+  onDiscardItem?: (instanceId: string) => void;
 }
 
 function showAllLineGroups(): void {
@@ -133,6 +143,50 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, groupIds, checked));
   }, [legendGroups, selectedGroupIds, allGroupIds]);
   const saveFailed = saveStatus === "failed" || saveStatus === "unavailable";
+  const [itemDialog, setItemDialog] = useState<{
+    kind: "route-ticket" | "direction-ticket";
+    instanceId: string;
+  } | null>(null);
+  const rollButtonRef = useRef<HTMLButtonElement>(null);
+  const restoreRollFocusRef = useRef(false);
+  const draftItem = props.itemView?.draft.items[0];
+
+  const selectItem = useCallback((instanceId: string, kind: ItemKind) => {
+    if (!props.itemView || props.itemView.phase !== "idle") return;
+    if (kind === "route-ticket" || kind === "direction-ticket") {
+      setItemDialog({ kind, instanceId });
+      return;
+    }
+    if (kind === "double" || kind === "rapid" || kind === "deadhead") {
+      props.onEditItemDraft?.({ items: [{ kind, instanceId }] });
+    }
+  }, [props.itemView, props.onEditItemDraft]);
+
+  const clearDraft = useCallback(() => {
+    if (props.itemView?.phase === "idle") props.onEditItemDraft?.({ items: [] });
+  }, [props.itemView?.phase, props.onEditItemDraft]);
+
+  useEffect(() => {
+    if (!props.itemView || props.itemView.phase !== "idle" || !draftItem || itemDialog) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      clearDraft();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [props.itemView, draftItem, itemDialog, clearDraft]);
+
+  useEffect(() => {
+    if (props.itemView?.decision?.kind === "adjust") {
+      restoreRollFocusRef.current = true;
+      return;
+    }
+    if (restoreRollFocusRef.current && props.itemView?.phase === "idle") {
+      restoreRollFocusRef.current = false;
+      rollButtonRef.current?.focus({ preventScroll: true });
+    }
+  }, [props.itemView?.decision, props.itemView?.phase]);
 
   useEffect(() => {
     if (phase !== "idle" || !session.lastMove || game.turn <= knownTurn.current) return;
@@ -178,17 +232,27 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       </dl>
       <div className="game-panel__actions">
         <button
+          ref={rollButtonRef}
           type="button"
           className="game-panel__roll"
           onClick={() => { if (canRoll) props.onRoll(); }}
           aria-disabled={!canRoll}
         >
-          {animating ? "移動中…" : "サイコロを振る"}
+          {animating ? "移動中…" : draftItem ? "この内容でサイコロを振る" : "サイコロを振る"}
         </button>
         <button type="button" onClick={props.onSkip} disabled={!animating}>
           スキップ
         </button>
       </div>
+      {draftItem && props.itemView && <div className="item-staged-summary">
+        <span className="item-staged-summary__label">選択中：</span>
+        <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
+        {draftItem.kind === "route-ticket" && <span>（{serviceName(network, draftItem.serviceId, presentation)}。向きは抽選）</span>}
+        {draftItem.kind === "direction-ticket" && <span>（{directionLabel(network, props.itemView.position.currentServiceId, draftItem.direction)}）</span>}
+        <button type="button" onClick={clearDraft} disabled={phase !== "idle"}>選択を解除</button>
+        <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
+      </div>}
+      {props.itemView && <InventoryPanel view={props.itemView} onSelect={selectItem} />}
       <div className="game-panel__options">
         <button type="button" aria-pressed={follow} onClick={props.onToggleFollow}>
           追尾: {follow ? "ON" : "OFF"}
@@ -249,6 +313,28 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onSetOperator={setOperator}
         onShowAll={showAllLineGroups}
       />
+      {props.itemView && itemDialog && (
+        <ItemUseDialog
+          kind={itemDialog.kind}
+          instanceId={itemDialog.instanceId}
+          view={props.itemView}
+          network={network}
+          presentation={presentation}
+          onChoose={(command) => {
+            props.onEditItemDraft?.({ items: [command] });
+            setItemDialog(null);
+          }}
+          onClose={() => setItemDialog(null)}
+        />
+      )}
+      {props.itemView?.decision?.kind === "adjust" && <RollAdjustment
+        decision={props.itemView.decision}
+        onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
+      />}
+      {props.itemView?.decision?.kind === "discard" && <DiscardChoice
+        decision={props.itemView.decision}
+        onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
+      />}
     </main>
   );
 });

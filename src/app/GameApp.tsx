@@ -226,6 +226,10 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           speedLabel={speed?.label ?? ""}
           reducedMotion={reducedMotion}
           onRoll={app.roll}
+          itemView={app.itemView}
+          onEditItemDraft={app.editItemDraft}
+          onAdjustItemRoll={app.adjustItemRoll}
+          onDiscardItem={app.discardItem}
           onSkip={skip}
           onToggleFollow={toggleFollow}
           onCycleSpeed={cycleSpeed}
