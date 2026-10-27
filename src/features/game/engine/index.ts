@@ -17,13 +17,36 @@ export { GOAL_ARRIVAL_POLICIES, validateConfig } from "./config";
 export { GameEngineError, type GameEngineErrorCode, isGameEngineError } from "./errors";
 export { createGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";
 export { checkGoal, stopsAtGoal, targetSegmentIds } from "./goal";
-export { targetHopDistances } from "./proximity";
+export { nearestTargetStation, type NearestTargetStation, targetHopDistances } from "./proximity";
+export {
+  advanceWithMode,
+  type DeadheadMovement,
+  type ItemMovementResult,
+  type MovementRequest,
+  type RideMovement,
+  type RideMovementRequest,
+} from "./itemMovement";
+export {
+  deadheadDestination,
+  directionHint,
+  itemLandingOptions,
+  rapidHeadsTowardTarget,
+  routeTicketOptions,
+  type DirectionHint,
+  type ItemOptionPosition,
+  type RelocationOutcome,
+  type RouteTicketOptions,
+} from "./itemOptions";
 export {
   drawLanding,
+  filterLandingOptions,
+  type FilteredLandingOptions,
+  type LandingFilters,
   type LandingDraw,
   type LandingOptions,
   landingOptions,
   resolveLandingEvent,
+  type ServiceSuspension,
 } from "./landing";
 export {
   buildRailwayNetwork,

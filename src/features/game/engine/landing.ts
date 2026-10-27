@@ -45,6 +45,25 @@ export interface LandingDraw {
   nextRngState: string;
 }
 
+export interface ServiceSuspension {
+  serviceId: ServiceId;
+  /** Inclusive: unavailable through this turn, available on the next one. */
+  expiresTurn: number;
+}
+
+export interface LandingFilters {
+  turn: number;
+  suspensions: readonly ServiceSuspension[];
+  /** The just-ridden service when a detour is pending; absent otherwise. */
+  detourServiceId?: ServiceId;
+}
+
+export interface FilteredLandingOptions {
+  options: LandingOptions;
+  detourConsumed: boolean;
+  suspensionIgnored: boolean;
+}
+
 /** Minimum candidates for a lottery; fewer means the outcome is forced. */
 const LOTTERY_MIN = 2;
 
@@ -130,6 +149,41 @@ export function landingOptions(
     serviceDrawRequired: services.length >= LOTTERY_MIN,
     directionsByService,
     directionWeightsByService,
+  };
+}
+
+/** Filter before weighting: suspension fallback first, then a pending detour. */
+export function filterLandingOptions(
+  options: LandingOptions,
+  config: GameConfig,
+  filters: LandingFilters,
+  network: RailwayNetwork,
+): FilteredLandingOptions {
+  const suspended = new Set(filters.suspensions
+    .filter((entry) => entry.expiresTurn >= filters.turn)
+    .map((entry) => entry.serviceId));
+  const active = options.services.filter((serviceId) => !suspended.has(serviceId));
+  const suspensionIgnored = active.length === 0 && options.services.length > 0;
+  let services = suspensionIgnored ? [...options.services] : active;
+  let detourConsumed = false;
+  if (filters.detourServiceId !== undefined) {
+    const alternatives = services.filter((serviceId) => serviceId !== filters.detourServiceId);
+    if (alternatives.length > 0) {
+      services = alternatives;
+      detourConsumed = true;
+    }
+  }
+  return {
+    options: {
+      stationId: options.stationId,
+      services,
+      serviceWeights: serviceWeights(services, config, network),
+      serviceDrawRequired: services.length >= LOTTERY_MIN,
+      directionsByService: new Map(services.map((id) => [id, [...directionsOf(options, id)]])),
+      directionWeightsByService: new Map(services.map((id) => [id, [...options.directionWeightsByService.get(id)!]])),
+    },
+    detourConsumed,
+    suspensionIgnored,
   };
 }
 
