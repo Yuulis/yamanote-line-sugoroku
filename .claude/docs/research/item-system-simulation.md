@@ -11,6 +11,8 @@ Code: `tests/simulation/item-spike/` (throwaway; nothing under `src/`,
 
 **Round 2 (2026-10-27, four new items, mild vs mid)** is appended at the end
 of this file: [Round 2](#round-2-2026-10-27-four-new-items-mild-vs-mid).
+**Round 3 (2026-10-27, one item per turn + choose-what-to-discard)** follows it:
+[Round 3](#round-3-2026-10-27).
 
 ## TL;DR
 
@@ -201,8 +203,8 @@ the slowest variant (uniform, no items) took 758 s.
 ## Reproduce
 
 See `tests/simulation/item-spike/README.md`. The grid is opt-in: without
-`ITEM_SPIKE=1` it is skipped, so `npm run sim` does not run it. Round 2 is
-the default grid; round 1 needs `ITEM_SPIKE_ROUND=1`.
+`ITEM_SPIKE=1` it is skipped, so `npm run sim` does not run it. Round 3 is
+the default grid; earlier rounds need `ITEM_SPIKE_ROUND=1` or `2`.
 
 ```bash
 # Round-1 smoke (100 games per variant)
@@ -503,10 +505,10 @@ probability mass back on the other items of the same pool.
 
 ```bash
 # Smoke (100 games per round-2 variant, plus engine-equivalence and movement checks)
-ITEM_SPIKE=1 npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+ITEM_SPIKE=1 ITEM_SPIKE_ROUND=2 npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
 
 # Full: one 5,000-game shard per variant id (33 ids), then merge
-ITEM_SPIKE=1 ITEM_SPIKE_GAMES=5000 ITEM_SPIKE_FILTER='^<id>$' \
+ITEM_SPIKE=1 ITEM_SPIKE_ROUND=2 ITEM_SPIKE_GAMES=5000 ITEM_SPIKE_FILTER='^<id>$' \
   ITEM_SPIKE_OUTPUT=.claude/logs/item-spike/round2/<id>.json \
   npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
 ITEM_SPIKE_MERGE=.claude/logs/item-spike/round2 \
@@ -515,3 +517,159 @@ ITEM_SPIKE_MERGE=.claude/logs/item-spike/round2 \
 
 Runtime: 33 variants in 5 min 41 s wall on 11 parallel processes (≈57 CPU-min).
 Shards: `.claude/logs/item-spike/round2/` (git-ignored).
+
+## Round 3 (2026-10-27)
+
+Question: does the chosen ruleset (mild: Yamanote 1/2, direction 3:2; drop
+p 0.30; harmful 30%; round-2 item set; cap 3) still meet median 40-80
+(greedy) and p99 < 400 (greedy and random use) under two new rules?
+
+- **Rule 1:** at most one active item per turn. 出目調整券 (roll adjust)
+  counts as that item; 回送列車 (deadhead) stays exclusive; 遅延証明書
+  (certificate) stays passive.
+- **Rule 2:** with a full inventory, a beneficial pickup makes the player
+  discard one of the four items, instead of the new one being thrown away.
+
+### TL;DR
+
+- **Yes.** With both rules, greedy gives **65 / 143 / 241** (median / p90 /
+  p99) and random use gives **113 / 232 / 370**. Over 500 turns: 0% and 0.12%.
+- **Rule 1 costs almost nothing.** Without the rule, a player used more than
+  one active item on only ≈0.37 turns per game (greedy) or ≈0.30 (random).
+- **Rule 2 helps the greedy tail** (p99 291 → 248) because the bot keeps
+  回送列車 and 路線指定券 instead of losing them to a full inventory.
+- **The random p99 margin is small.** Random-use p99 has ≈±25 turns of
+  sampling noise at 5,000 games. Evidence: round 2 and the round-3
+  "neither rule" row differ only in which RNG stream drives the random
+  choices, and their p99s are 370 and 395. If more margin is wanted, p 0.35
+  (358) and p 0.40 (344) keep greedy in range (61 and 56) and add margin;
+  mid at p 0.30 gives 343.
+- **Drop rule confirmed in code:** a drop is decided only at the turn's final
+  stop (after the landing lottery). There is no drop on the clearing move
+  (the loop exits before the drop). The deadhead arrival station does roll
+  for a drop.
+
+### Key rows (5,000 games each; S7 seeds; turns)
+
+| ruleset (all v2 items, harmful 30%) | greedy med / p90 / p99 / max | random med / p90 / p99 / max | >500 (g / r) |
+|---|---|---|---|
+| **mild p.30, both rules (chosen)** | **65 / 143 / 241 / 433** | **113 / 232 / 370 / 565** | **0% / 0.12%** |
+| mild p.30, rule 1 only | 67 / 153 / 295 / 542 | 114 / 233 / 385 / 611 | 0.04% / 0.18% |
+| mild p.30, rule 2 only | 64 / 144 / 248 / 553 | 111 / 233 / 377 / 581 | 0.02% / 0.14% |
+| mild p.30, neither (round-3 policies) | 67 / 154 / 291 / 513 | 113 / 234 / 395 / 581 | 0.04% / 0.22% |
+| mild p.30, round 2 (reference) | 67 / 157 / 285 / 478 | 112 / 231 / 370 / 642 | 0% / 0.22% |
+| mild p.35, both rules | 61 / 134 / 248 / 707 | 106 / 225 / 358 / 656 | 0.02% / 0.08% |
+| mild p.40, both rules | 56 / 127 / 243 / 482 | 103 / 217 / 344 / 605 | 0% / 0.06% |
+| mid p.30, both rules (fallback) | 62 / 135 / 224 / 357 | 106 / 218 / 343 / 563 | 0% / 0.06% |
+
+The round-2 rows were re-run with `ITEM_SPIKE_ROUND=2` and are field-for-field
+identical to the round-2 shards, so the round-3 changes do not alter earlier
+code paths.
+
+### Greedy policy used in round 3
+
+**Single-item choice (rule 1)**, checked in this order before the roll. The
+first match is the turn's one item.
+
+1. 回送列車 (deadhead): hop distance to Yamanote ≥ 3 and Yamanote segments
+   remain (replaces the move).
+2. 路線指定券 (route): Yamanote is an active candidate at this station and the
+   player is not riding it; board Yamanote.
+3. 方向指定券 (direction): on a non-Yamanote service whose other direction's
+   next station is strictly closer to Yamanote; flip.
+4. 倍速券 (double): riding Yamanote.
+5. 快速券 (rapid): riding Yamanote, or the current heading's next station is
+   strictly closer to Yamanote than the current station. This replaces the
+   round-2 rule "whenever off Yamanote".
+6. 路線指定券 (route), secondary: switch to the candidate service whose better
+   direction is strictly closer to Yamanote than the current heading (the
+   direction is then drawn by the lottery).
+7. Nothing: 出目調整券 (adjust) stays available after the roll and is used only
+   when the round-1 landing score improves (clear > new Yamanote segments,
+   chance of a Yamanote landing, closeness to Yamanote).
+
+**Discard choice (rule 2):** keep-priority 回送列車 7 > 路線指定券 6 >
+方向指定券 5 > 倍速券 4 > 出目調整券 3 > 快速券 2 > 遅延証明書 1. The lowest
+is discarded; on a tie, the newest pickup goes. The certificate is always
+lowest; no "many harmful items pending" exception was modelled, as asked
+("keep it simple").
+
+**Random user:** each turn it picks one usable held kind uniformly at random
+and uses it. A chosen deadhead replaces the move; a chosen adjust is applied
+after the roll with a random valid ±1. On a full pickup it discards one of
+the four uniformly at random.
+
+### Round-3 modelling simplifications (in addition to rounds 1-2)
+
+17. **Rule 1** applies to the pre-roll items and the adjust ticket. The
+    certificate never counts. Delay and oversleep turns still allow no items.
+    An invariant counter (`multiItemTurns`) is asserted to be 0 in every
+    rule-1 row.
+18. **Rule 2** applies to beneficial pickups only (harmful items never enter
+    the inventory). The discarded item is gone, and a discard still counts in
+    `discarded/g`.
+19. **RNG streams.** Round-3 variants draw the random user's choices
+    (including discards) from a third stream `<seed>|policy`. The item stream
+    `<seed>|items` now carries only drops, kinds and the suspended service.
+    Rounds 1-2 keep their original stream use, which is why they still
+    reproduce.
+20. The **rapid rule change (item 5)** applies to every round-3 greedy row,
+    including the "neither rule" reference, so the rule rows differ from each
+    other only by the rules.
+21. The **p 0.35 / 0.40 rows** were run up front rather than conditionally;
+    random p99 at p 0.30 is 370, so they are only margin options.
+
+### Round-3 full results
+
+| variant | weighting | drop | harm% | policy | median | p90 | p99 | max | >500 | cap | pickups/g | used/g | discarded/g | decision turns/g | Yamanote turn share |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mild-d300-h30-greedy-v2-r3 | mild | 0.30 | 30 | greedy | 65 | 143 | 241 | 433 | 0.00% | 0 | 22.3 | 12.4 | 1.8 | 41.9 | 24.8% |
+| mild-d300-h30-greedy-v2-r3-single | mild | 0.30 | 30 | greedy | 67 | 153 | 295 | 542 | 0.04% | 0 | 23.6 | 12.6 | 2.5 | 44.8 | 23.6% |
+| mild-d300-h30-greedy-v2-r3-discard | mild | 0.30 | 30 | greedy | 64 | 144 | 248 | 553 | 0.02% | 0 | 22.3 | 12.3 | 1.9 | 41.5 | 24.7% |
+| mild-d300-h30-greedy-v2-r3-none | mild | 0.30 | 30 | greedy | 67 | 154 | 291 | 513 | 0.04% | 0 | 23.7 | 12.6 | 2.6 | 44.6 | 23.5% |
+| mid-d300-h30-greedy-v2-r3 | mid | 0.30 | 30 | greedy | 62 | 135 | 224 | 357 | 0.00% | 0 | 21.3 | 11.9 | 1.7 | 39.6 | 26.7% |
+| mild-d350-h30-greedy-v2-r3 | mild | 0.35 | 30 | greedy | 61 | 134 | 248 | 707 | 0.02% | 0 | 25.0 | 13.3 | 2.7 | 43.8 | 25.8% |
+| mild-d400-h30-greedy-v2-r3 | mild | 0.40 | 30 | greedy | 56 | 127 | 243 | 482 | 0.00% | 0 | 26.6 | 13.5 | 3.5 | 43.5 | 27.1% |
+| mild-d300-h30-random-v2-r3 | mild | 0.30 | 30 | random | 113 | 232 | 370 | 565 | 0.12% | 0 | 37.5 | 25.4 | 0.3 | 22.3 | 18.3% |
+| mild-d300-h30-random-v2-r3-single | mild | 0.30 | 30 | random | 114 | 233 | 385 | 611 | 0.18% | 0 | 38.0 | 25.5 | 0.5 | 22.2 | 18.2% |
+| mild-d300-h30-random-v2-r3-discard | mild | 0.30 | 30 | random | 111 | 233 | 377 | 581 | 0.14% | 0 | 37.5 | 25.5 | 0.3 | 22.0 | 18.3% |
+| mild-d300-h30-random-v2-r3-none | mild | 0.30 | 30 | random | 113 | 234 | 395 | 581 | 0.22% | 0 | 38.0 | 25.5 | 0.5 | 21.9 | 18.1% |
+| mid-d300-h30-random-v2-r3 | mid | 0.30 | 30 | random | 106 | 218 | 343 | 563 | 0.06% | 0 | 35.2 | 23.9 | 0.2 | 20.9 | 19.7% |
+| mild-d350-h30-random-v2-r3 | mild | 0.35 | 30 | random | 106 | 225 | 358 | 656 | 0.08% | 0 | 42.0 | 28.5 | 0.3 | 24.9 | 18.9% |
+| mild-d400-h30-random-v2-r3 | mild | 0.40 | 30 | random | 103 | 217 | 344 | 605 | 0.06% | 0 | 46.1 | 31.3 | 0.4 | 27.3 | 19.6% |
+
+| variant | route | direction | adjust | double | rapid | deadhead | certificate | harmful/g | cancelled/g | oversleep moves/g | forced-1/g |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| mild-d300-h30-greedy-v2-r3 | 2.03 | 1.82 | 1.91 | 1.82 | 1.98 | 1.51 | 1.33 | 6.76 | 1.33 | 1.37 | 1.27 |
+| mild-d300-h30-greedy-v2-r3-single | 1.92 | 1.76 | 1.90 | 1.91 | 1.98 | 1.46 | 1.70 | 7.18 | 1.70 | 1.39 | 1.28 |
+| mild-d300-h30-greedy-v2-r3-discard | 2.02 | 1.81 | 1.89 | 1.82 | 1.97 | 1.51 | 1.32 | 6.76 | 1.32 | 1.38 | 1.27 |
+| mild-d300-h30-greedy-v2-r3-none | 1.92 | 1.77 | 1.90 | 1.91 | 1.99 | 1.47 | 1.70 | 7.20 | 1.70 | 1.40 | 1.29 |
+| mid-d300-h30-greedy-v2-r3 | 1.96 | 1.70 | 1.84 | 1.79 | 1.89 | 1.44 | 1.25 | 6.44 | 1.25 | 1.31 | 1.22 |
+| mild-d350-h30-greedy-v2-r3 | 2.19 | 1.96 | 2.06 | 1.96 | 2.11 | 1.61 | 1.41 | 7.57 | 1.41 | 1.53 | 1.45 |
+| mild-d400-h30-greedy-v2-r3 | 2.28 | 1.95 | 2.08 | 2.00 | 2.14 | 1.67 | 1.42 | 8.04 | 1.42 | 1.67 | 1.55 |
+| mild-d300-h30-random-v2-r3 | 3.75 | 3.66 | 3.76 | 3.71 | 3.70 | 3.73 | 3.14 | 11.29 | 3.14 | 2.05 | 1.94 |
+| mild-d300-h30-random-v2-r3-single | 3.75 | 3.66 | 3.72 | 3.69 | 3.69 | 3.71 | 3.29 | 11.46 | 3.29 | 2.05 | 1.95 |
+| mild-d300-h30-random-v2-r3-discard | 3.74 | 3.66 | 3.76 | 3.72 | 3.70 | 3.74 | 3.16 | 11.32 | 3.16 | 2.05 | 1.94 |
+| mild-d300-h30-random-v2-r3-none | 3.74 | 3.64 | 3.73 | 3.71 | 3.69 | 3.70 | 3.31 | 11.48 | 3.31 | 2.06 | 1.95 |
+| mid-d300-h30-random-v2-r3 | 3.51 | 3.41 | 3.52 | 3.48 | 3.50 | 3.50 | 2.95 | 10.65 | 2.95 | 1.92 | 1.84 |
+| mild-d350-h30-random-v2-r3 | 4.14 | 4.11 | 4.21 | 4.14 | 4.13 | 4.14 | 3.59 | 12.70 | 3.59 | 2.29 | 2.17 |
+| mild-d400-h30-random-v2-r3 | 4.52 | 4.43 | 4.59 | 4.59 | 4.59 | 4.57 | 3.99 | 13.97 | 3.99 | 2.50 | 2.39 |
+
+### Reproduce round 3
+
+```bash
+# Smoke (100 games per round-3 variant; round 3 is the default grid)
+ITEM_SPIKE=1 npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+
+# Full: one 5,000-game shard per variant id (14 ids), then merge
+ITEM_SPIKE=1 ITEM_SPIKE_GAMES=5000 ITEM_SPIKE_FILTER='^<id>$' \
+  ITEM_SPIKE_OUTPUT=.claude/logs/item-spike/round3/<id>.json \
+  npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+ITEM_SPIKE_MERGE=.claude/logs/item-spike/round3 \
+  npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+
+# Round 2 is now selected with ITEM_SPIKE_ROUND=2 (round 1 with ITEM_SPIKE_ROUND=1)
+```
+
+Runtime: 14 variants in 2 min 31 s wall on 11 processes (≈21 CPU-min).
+Shards: `.claude/logs/item-spike/round3/` (git-ignored).

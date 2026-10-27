@@ -69,6 +69,24 @@ export const DEADHEAD_MIN_DISTANCE = 3;
 /** Oversleeping on the (circular) target service moves this many pips. */
 export const OVERSLEEP_TARGET_PIPS = 6;
 
+/**
+ * Round-3 rules (user decisions 2026-10-27). Present only on round-3 variants;
+ * its presence also switches on the round-3 greedy rapid rule (only toward
+ * Yamanote or on it) and a separate policy RNG stream (`<seed>|policy`) for
+ * random-user choices, so round-1/2 variants replay unchanged.
+ */
+export interface Round3Rules {
+  /** At most one active item per turn (adjust counts; deadhead exclusive; certificate passive). */
+  singleItem: boolean;
+  /** With a full inventory, the player discards one of the four (instead of the new item). */
+  chooseDiscard: boolean;
+}
+
+/** Greedy keep-priority for rule 2: the lowest value is discarded (ties: the newest pickup). */
+export const KEEP_PRIORITY: Readonly<Record<BeneficialItem, number>> = {
+  deadhead: 7, route: 6, direction: 5, double: 4, adjust: 3, rapid: 2, certificate: 1,
+};
+
 export interface Variant {
   id: string;
   weighting: Weighting["id"];
@@ -78,6 +96,7 @@ export interface Variant {
   harmfulPercent: number;
   policy: Policy;
   itemSet: ItemSet;
+  r3?: Round3Rules;
 }
 
 export interface SimContext {
@@ -112,6 +131,8 @@ export interface GameResult {
   /** Harmful pickups cancelled by a held delay certificate (still counted in harmfulPickups/harmfulByKind). */
   cancelledHarmful: number;
   oversleepTurns: number;
+  /** Turns on which more than one active (non-certificate) item was used; must be 0 under rule 1. */
+  multiItemTurns: number;
 }
 
 export function makeContext(network: engine.RailwayNetwork, config: GameConfig, weighting: Weighting): SimContext {
@@ -126,8 +147,14 @@ export function makeContext(network: engine.RailwayNetwork, config: GameConfig, 
 }
 
 /** Round-1 (v1) ids are unchanged so their shards stay comparable. */
-export function variantId(weighting: Weighting["id"], dropPerMille: number, harmfulPercent: number, policy: Policy, itemSet: ItemSet = "v1"): string {
-  return `${weighting}-d${dropPerMille}-h${harmfulPercent}-${policy}${itemSet === "v1" ? "" : `-${itemSet}`}`;
+export function variantId(
+  weighting: Weighting["id"], dropPerMille: number, harmfulPercent: number, policy: Policy,
+  itemSet: ItemSet = "v1", r3?: Round3Rules,
+): string {
+  const base = `${weighting}-d${dropPerMille}-h${harmfulPercent}-${policy}${itemSet === "v1" ? "" : `-${itemSet}`}`;
+  if (r3 === undefined) return base;
+  const suffix = r3.singleItem && r3.chooseDiscard ? "" : r3.singleItem ? "-single" : r3.chooseDiscard ? "-discard" : "-none";
+  return `${base}-r3${suffix}`;
 }
 
 /** Engine-equivalent service weights (kindWeights are all 1 in the product config). */
@@ -232,7 +259,26 @@ function scoreMove(ctx: SimContext, items: ItemState, position: GamePosition, mo
     - SCORE_PER_DISTANCE_HOP * distance;
 }
 
-interface TurnPlan { position: GamePosition; doubled: boolean; rapid: boolean; main: string; itemRng: string; policy: Policy }
+interface TurnPlan {
+  position: GamePosition;
+  doubled: boolean;
+  rapid: boolean;
+  main: string;
+  /** RNG for policy choices: the item stream (rounds 1-2) or the policy stream (round 3). */
+  itemRng: string;
+  policy: Policy;
+  /** Round 3: whether the roll-adjust ticket may (or, for a random choice, must) be used this turn. */
+  adjust: "allowed" | "forbidden" | "forced";
+  /** Round 3: greedy uses rapid only toward Yamanote or on it. */
+  smartRapid: boolean;
+}
+
+/** Round-3 rapid rule: on Yamanote, or the current heading gets strictly closer to Yamanote. */
+function rapidWorthIt(ctx: SimContext, position: GamePosition): boolean {
+  if (position.currentServiceId === ctx.targetId) return true;
+  const here = ctx.distances.get(position.currentStationId) ?? Infinity;
+  return nextDistance(ctx, position.currentServiceId, position.currentStationId, position.direction) < here;
+}
 
 /** The engine's advance, with the rapid ticket converting pips into hops first. */
 function computeMove(ctx: SimContext, position: GamePosition, pips: number, rapid: boolean): Advance {
@@ -322,7 +368,8 @@ function greedyPreRoll(ctx: SimContext, items: ItemState, plan: TurnPlan, turn: 
     doubled = true;
   }
   let rapid = false;
-  if (items.inventory.includes("rapid") && position.currentServiceId !== target) {
+  const rapidRule = plan.smartRapid ? rapidWorthIt(ctx, position) : position.currentServiceId !== target;
+  if (items.inventory.includes("rapid") && rapidRule) {
     takeItem(items, "rapid");
     useCounter(result, "rapid");
     rapid = true;
@@ -377,7 +424,7 @@ function adjustFace(
   ctx: SimContext, items: ItemState, plan: TurnPlan, face: number, turn: number, result: GameResult,
 ): { face: number; itemRng: string } {
   let itemRng = plan.itemRng;
-  if (!items.inventory.includes("adjust")) return { face, itemRng };
+  if (plan.adjust === "forbidden" || !items.inventory.includes("adjust")) return { face, itemRng };
   const multiplier = plan.doubled ? DOUBLE_FACTOR : 1;
   const deltas = validDeltas(face);
   let delta = 0;
@@ -403,16 +450,71 @@ function adjustFace(
   return { face: face + delta, itemRng };
 }
 
+function isUsable(ctx: SimContext, items: ItemState, position: GamePosition, turn: number, kind: BeneficialItem): boolean {
+  if (kind === "certificate") return false;
+  if (kind === "adjust" || kind === "double" || kind === "rapid" || kind === "deadhead") return true;
+  if (kind === "direction") {
+    return position.currentServiceId !== ctx.targetId
+      && directionsOf(ctx, position.currentServiceId, position.currentStationId).length >= 2;
+  }
+  return activeServices(ctx, items, position.currentStationId, turn).length >= 2;
+}
+
 function hasUsableItem(ctx: SimContext, items: ItemState, position: GamePosition, turn: number): boolean {
-  return items.inventory.some((kind) => {
-    if (kind === "certificate") return false;
-    if (kind === "adjust" || kind === "double" || kind === "rapid" || kind === "deadhead") return true;
-    if (kind === "direction") {
-      return position.currentServiceId !== ctx.targetId
-        && directionsOf(ctx, position.currentServiceId, position.currentStationId).length >= 2;
-    }
-    return activeServices(ctx, items, position.currentStationId, turn).length >= 2;
-  });
+  return items.inventory.some((kind) => isUsable(ctx, items, position, turn, kind));
+}
+
+/** Round-2 greedy secondary route rule: a service whose better direction is strictly closer to Yamanote. */
+function secondaryRouteWorthIt(ctx: SimContext, items: ItemState, position: GamePosition, turn: number): boolean {
+  const station = position.currentStationId;
+  const candidates = activeServices(ctx, items, station, turn);
+  if (candidates.length < 2) return false;
+  const current = nextDistance(ctx, position.currentServiceId, station, position.direction);
+  const best = candidates.map((serviceId) => ({ serviceId, ...bestDirection(ctx, serviceId, station) }))
+    .reduce((a, b) => (b.distance < a.distance ? b : a));
+  return best.serviceId !== position.currentServiceId && best.distance < current;
+}
+
+/**
+ * Round-3 greedy single-item priority (pre-roll). `null` = no pre-roll item;
+ * the adjust ticket then stays available after the roll.
+ */
+function greedySingleChoice(ctx: SimContext, items: ItemState, position: GamePosition, turn: number): BeneficialItem | null {
+  const has = (kind: BeneficialItem): boolean => items.inventory.includes(kind);
+  const station = position.currentStationId;
+  const onTarget = position.currentServiceId === ctx.targetId;
+  if (wantsDeadhead(ctx, items, position, "greedy")) return "deadhead";
+  if (has("route") && !onTarget && activeServices(ctx, items, station, turn).includes(ctx.targetId)) return "route";
+  if (has("direction") && !onTarget && directionsOf(ctx, position.currentServiceId, station).length >= 2
+    && bestDirection(ctx, position.currentServiceId, station).distance
+      < nextDistance(ctx, position.currentServiceId, station, position.direction)) return "direction";
+  if (has("double") && onTarget) return "double";
+  if (has("rapid") && rapidWorthIt(ctx, position)) return "rapid";
+  if (has("route") && !onTarget && secondaryRouteWorthIt(ctx, items, position, turn)) return "route";
+  return null;
+}
+
+/** Round-3 random user: one uniformly random usable held kind (policy stream). */
+function randomSingleChoice(
+  ctx: SimContext, items: ItemState, position: GamePosition, turn: number, rng: string,
+): { kind: BeneficialItem | null; rng: string } {
+  const usable = [...new Set(items.inventory)].filter((kind) => isUsable(ctx, items, position, turn, kind));
+  if (usable.length === 0) return { kind: null, rng };
+  const picked = uniformPick(usable, rng);
+  return { kind: picked.value, rng: picked.rng };
+}
+
+/** Apply exactly one pre-roll item by running the policy on a one-item inventory view. */
+function applySingle(
+  ctx: SimContext, items: ItemState, plan: TurnPlan, turn: number, result: GameResult, kind: BeneficialItem,
+): { plan: TurnPlan; used: boolean } {
+  const view: ItemState = { ...items, inventory: [kind] };
+  const next = plan.policy === "greedy"
+    ? greedyPreRoll(ctx, view, plan, turn, result)
+    : randomPreRoll(ctx, view, plan, turn, result);
+  const used = view.inventory.length === 0;
+  if (used) takeItem(items, kind);
+  return { plan: next, used };
 }
 
 function emptyResult(): GameResult {
@@ -420,17 +522,33 @@ function emptyResult(): GameResult {
     turns: 0, completed: false, pickups: 0, beneficialPickups: 0, harmfulPickups: 0, discarded: 0, used: 0,
     usedByKind: { route: 0, direction: 0, adjust: 0, double: 0, rapid: 0, deadhead: 0, certificate: 0 },
     harmfulByKind: { delay: 0, suspension: 0, detour: 0, oversleep: 0 },
-    decisionTurns: 0, targetTurns: 0, forcedOneTurns: 0, cancelledHarmful: 0, oversleepTurns: 0,
+    decisionTurns: 0, targetTurns: 0, forcedOneTurns: 0, cancelledHarmful: 0, oversleepTurns: 0, multiItemTurns: 0,
   };
 }
 
+interface PickUpRngs { itemRng: string; policyRng: string }
+
+/** Rule 2: which of the four (three held + new) to discard. Returns the index in `pool`. */
+function discardIndex(pool: readonly BeneficialItem[], policy: Policy, rng: string): { index: number; rng: string } {
+  if (policy === "random") {
+    const picked = uniformPick(pool.map((_, index) => index), rng);
+    return { index: picked.value, rng: picked.rng };
+  }
+  let index = 0;
+  for (const [candidate, kind] of pool.entries()) {
+    if (KEEP_PRIORITY[kind] <= KEEP_PRIORITY[pool[index] as BeneficialItem]) index = candidate;
+  }
+  return { index, rng };
+}
+
 function pickUp(
-  ctx: SimContext, variant: Variant, items: ItemState, stationId: StationId, turn: number, rng: string, result: GameResult,
-): string {
-  let itemRng = rng;
+  ctx: SimContext, variant: Variant, items: ItemState, stationId: StationId, turn: number, rngs: PickUpRngs, result: GameResult,
+): PickUpRngs {
+  let itemRng = rngs.itemRng;
+  let policyRng = rngs.policyRng;
   const drop = engine.drawIndex(itemRng, PER_MILLE);
   itemRng = drop.nextRngState;
-  if (drop.index >= variant.dropPerMille) return itemRng;
+  if (drop.index >= variant.dropPerMille) return { itemRng, policyRng };
   result.pickups += 1;
   let harmful = false;
   if (variant.harmfulPercent > 0) {
@@ -443,9 +561,19 @@ function pickUp(
     const picked = uniformPick(pools.beneficial, itemRng);
     itemRng = picked.rng;
     result.beneficialPickups += 1;
-    if (items.inventory.length < INVENTORY_CAP) items.inventory.push(picked.value);
-    else result.discarded += 1;
-    return itemRng;
+    if (items.inventory.length < INVENTORY_CAP) {
+      items.inventory.push(picked.value);
+    } else if (variant.r3?.chooseDiscard) {
+      const pool = [...items.inventory, picked.value];
+      const chosen = discardIndex(pool, variant.policy, policyRng);
+      policyRng = chosen.rng;
+      pool.splice(chosen.index, 1);
+      items.inventory.splice(0, items.inventory.length, ...pool);
+      result.discarded += 1;
+    } else {
+      result.discarded += 1;
+    }
+    return { itemRng, policyRng };
   }
   const picked = uniformPick(pools.harmful, itemRng);
   itemRng = picked.rng;
@@ -455,7 +583,7 @@ function pickUp(
     // 遅延証明書: a held certificate cancels the next harmful item and is consumed.
     useCounter(result, "certificate");
     result.cancelledHarmful += 1;
-    return itemRng;
+    return { itemRng, policyRng };
   }
   if (picked.value === "oversleep") items.oversleepPending = true;
   if (picked.value === "delay") items.delayTurns.add(turn + DELAY_OFFSET_TURNS);
@@ -466,7 +594,7 @@ function pickUp(
     itemRng = suspended.rng;
     items.suspendedUntil.set(suspended.value, turn + SUSPENSION_TURNS);
   }
-  return itemRng;
+  return { itemRng, policyRng };
 }
 
 /** One game. Turn order: items (pre-roll) -> roll -> adjust -> move -> landing lottery -> item drop. */
@@ -475,6 +603,9 @@ export function runItemGame(ctx: SimContext, variant: Variant, seed: string, tur
   let position: GamePosition = start;
   let main = position.rngState;
   let itemRng = engine.seedRng(`${seed}|items`);
+  // Round 3 only: random-user choices and discards come from their own stream.
+  const separatePolicy = variant.r3 !== undefined;
+  let policyRng = separatePolicy ? engine.seedRng(`${seed}|policy`) : "";
   const items: ItemState = {
     inventory: [], delayTurns: new Set(), suspendedUntil: new Map(), detourPending: false, oversleepPending: false,
   };
@@ -482,12 +613,51 @@ export function runItemGame(ctx: SimContext, variant: Variant, seed: string, tur
 
   while (position.status === "playing" && position.turn < turnCap) {
     const turn = position.turn + 1;
+    const activeUsesBefore = result.used - result.usedByKind.certificate;
     const delayed = items.delayTurns.delete(turn);
     // 寝過ごし: the player is asleep, so no items this turn; it overrides a delay on the same turn.
     const oversleep = items.oversleepPending;
     items.oversleepPending = false;
-    let plan: TurnPlan = { position, doubled: false, rapid: false, main, itemRng, policy: variant.policy };
-    if (!delayed && !oversleep && items.inventory.length > 0) {
+    let plan: TurnPlan = {
+      position, doubled: false, rapid: false, main, itemRng: separatePolicy ? policyRng : itemRng,
+      policy: variant.policy, adjust: "allowed", smartRapid: separatePolicy,
+    };
+    const drops = (stationId: StationId): void => {
+      if (variant.dropPerMille === 0) return;
+      const next = pickUp(ctx, variant, items, stationId, turn, { itemRng, policyRng }, result);
+      itemRng = next.itemRng;
+      policyRng = next.policyRng;
+    };
+    let singleChoice: BeneficialItem | null = null;
+    if (!delayed && !oversleep && items.inventory.length > 0 && variant.r3?.singleItem) {
+      if (hasUsableItem(ctx, items, position, turn)) result.decisionTurns += 1;
+      if (variant.policy === "greedy") {
+        singleChoice = greedySingleChoice(ctx, items, position, turn);
+      } else {
+        const picked = randomSingleChoice(ctx, items, position, turn, plan.itemRng);
+        singleChoice = picked.kind;
+        plan = { ...plan, itemRng: picked.rng };
+        policyRng = picked.rng;
+      }
+      if (singleChoice === "deadhead") {
+        takeItem(items, "deadhead");
+        useCounter(result, "deadhead");
+        position = {
+          ...position, currentStationId: nearestTarget(ctx, position.currentStationId),
+          currentServiceId: ctx.targetId, direction: ctx.config.targetDirection, turn,
+        };
+        drops(position.currentStationId);
+        continue;
+      }
+      if (singleChoice === "adjust") {
+        plan = { ...plan, adjust: "forced" };
+      } else if (singleChoice !== null) {
+        const applied = applySingle(ctx, items, plan, turn, result, singleChoice);
+        plan = { ...applied.plan, adjust: applied.used ? "forbidden" : plan.adjust };
+      } else if (variant.policy === "random") {
+        plan = { ...plan, adjust: "forbidden" };
+      }
+    } else if (!delayed && !oversleep && items.inventory.length > 0) {
       if (hasUsableItem(ctx, items, position, turn)) result.decisionTurns += 1;
       if (wantsDeadhead(ctx, items, position, variant.policy)) {
         // 回送列車: replaces the move (no roll, no landing lottery, no segments completed).
@@ -497,7 +667,9 @@ export function runItemGame(ctx: SimContext, variant: Variant, seed: string, tur
           ...position, currentStationId: nearestTarget(ctx, position.currentStationId),
           currentServiceId: ctx.targetId, direction: ctx.config.targetDirection, turn,
         };
-        if (variant.dropPerMille > 0) itemRng = pickUp(ctx, variant, items, position.currentStationId, turn, itemRng, result);
+        if (separatePolicy) policyRng = plan.itemRng;
+        else itemRng = plan.itemRng;
+        drops(position.currentStationId);
         continue;
       }
       plan = variant.policy === "greedy"
@@ -522,8 +694,10 @@ export function runItemGame(ctx: SimContext, variant: Variant, seed: string, tur
       ? oversleepMove(ctx, ridden)
       : computeMove(ctx, ridden, face * (plan.doubled ? DOUBLE_FACTOR : 1), plan.rapid);
     if (ridden.currentServiceId === ctx.targetId) result.targetTurns += 1;
+    if (result.used - result.usedByKind.certificate - activeUsesBefore > 1) result.multiItemTurns += 1;
     main = plan.main;
-    itemRng = plan.itemRng;
+    if (separatePolicy) policyRng = plan.itemRng;
+    else itemRng = plan.itemRng;
     if (moved.cleared) {
       position = { ...ridden, status: "completed", currentStationId: moved.stationId, turn, completedSegmentIds: moved.completedSegmentIds };
       break;
@@ -539,7 +713,7 @@ export function runItemGame(ctx: SimContext, variant: Variant, seed: string, tur
       // Only target segments affect the goal; dropping the rest keeps advance() O(30) per call.
       turn, completedSegmentIds: moved.completedSegmentIds.filter((id) => ctx.targetSegmentIds.has(id)), rngState: main,
     };
-    if (variant.dropPerMille > 0) itemRng = pickUp(ctx, variant, items, moved.stationId, turn, itemRng, result);
+    drops(moved.stationId);
   }
   return { ...result, turns: position.turn, completed: position.status === "completed" };
 }

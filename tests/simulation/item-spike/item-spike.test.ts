@@ -9,7 +9,8 @@ import { loadShippedBundle } from "../inputs";
 import * as engine from "../../../src/features/game/engine";
 import { hopsToEndpoint, nearestTargetStation, rapidHops } from "./moves";
 import {
-  ABLATIONS, type GameResult, type ItemSet, makeContext, type Policy, runItemGame, type SimContext, type Variant, variantId, WEIGHTINGS,
+  ABLATIONS, type GameResult, type ItemSet, makeContext, type Policy, type Round3Rules, runItemGame, type SimContext,
+  type Variant, variantId, WEIGHTINGS,
 } from "./sim";
 
 const BASE_SEED = 20261012;
@@ -25,12 +26,32 @@ function envInteger(name: string, fallback: number): number {
 }
 
 function variant(
-  weighting: Variant["weighting"], dropPerMille: number, harmfulPercent: number, policy: Policy, itemSet: ItemSet = "v1",
+  weighting: Variant["weighting"], dropPerMille: number, harmfulPercent: number, policy: Policy,
+  itemSet: ItemSet = "v1", r3?: Round3Rules,
 ): Variant {
   return {
-    id: variantId(weighting, dropPerMille, harmfulPercent, policy, itemSet),
-    weighting, dropPerMille, harmfulPercent, policy, itemSet,
+    id: variantId(weighting, dropPerMille, harmfulPercent, policy, itemSet, r3),
+    weighting, dropPerMille, harmfulPercent, policy, itemSet, ...(r3 === undefined ? {} : { r3 }),
   };
+}
+
+/**
+ * Round 3: the chosen ruleset (mild, p 0.30, harmful 30%, v2 items) under the
+ * one-item-per-turn rule and the choose-what-to-discard rule, each alone and
+ * neither; mid as fallback; higher drop rates in case random p99 > 400.
+ */
+export function roundThreeVariants(): Variant[] {
+  const both: Round3Rules = { singleItem: true, chooseDiscard: true };
+  const variants: Variant[] = [];
+  for (const policy of ["greedy", "random"] as const) {
+    for (const r3 of [both, { singleItem: true, chooseDiscard: false }, { singleItem: false, chooseDiscard: true },
+      { singleItem: false, chooseDiscard: false }]) {
+      variants.push(variant("mild", 300, 30, policy, "v2", r3));
+    }
+    variants.push(variant("mid", 300, 30, policy, "v2", both));
+    for (const drop of [350, 400]) variants.push(variant("mild", drop, 30, policy, "v2", both));
+  }
+  return variants;
 }
 
 /** Round 2: mild vs mid with the v2 item set, plus v1 comparison rows and baselines. */
@@ -50,9 +71,11 @@ export function roundTwoVariants(): Variant[] {
   return variants;
 }
 
-/** ITEM_SPIKE_ROUND=1 selects the round-1 grid; the default is round 2. */
+/** ITEM_SPIKE_ROUND=1 or 2 selects an earlier grid; the default is round 3. */
 export function selectedVariants(): Variant[] {
-  return process.env.ITEM_SPIKE_ROUND === "1" ? roundOneVariants() : roundTwoVariants();
+  if (process.env.ITEM_SPIKE_ROUND === "1") return roundOneVariants();
+  if (process.env.ITEM_SPIKE_ROUND === "2") return roundTwoVariants();
+  return roundThreeVariants();
 }
 
 /** Round 1. Greedy: full grid plus no-item baselines. Random user: a subset to bound the skill gap. */
@@ -88,7 +111,7 @@ interface Row {
   over500Share: number;
   perGame: {
     pickups: number; beneficial: number; harmful: number; used: number; discarded: number; decisionTurns: number;
-    forcedOne: number; cancelledHarmful: number; oversleep: number;
+    forcedOne: number; cancelledHarmful: number; oversleep: number; multiItemTurns: number;
   };
   itemSet: ItemSet;
   usedByKind: Record<string, number>;
@@ -124,6 +147,7 @@ function measure(context: SimContext, entry: Variant, games: number, cap: number
       discarded: perGame((r) => r.discarded), decisionTurns: perGame((r) => r.decisionTurns),
       forcedOne: perGame((r) => r.forcedOneTurns),
       cancelledHarmful: perGame((r) => r.cancelledHarmful), oversleep: perGame((r) => r.oversleepTurns),
+      multiItemTurns: perGame((r) => r.multiItemTurns),
     },
     usedByKind: kinds((r) => r.usedByKind), harmfulByKind: kinds((r) => r.harmfulByKind),
     targetTurnShare: sum((r) => r.targetTurns) / totalTurns,
@@ -208,11 +232,15 @@ it.skipIf(!process.env.ITEM_SPIKE || Boolean(process.env.ITEM_SPIKE_MERGE))("ite
   }
   expect(rows.length).toBeGreaterThan(0);
   expect(rows.every((row) => row.statistics.games === games)).toBe(true);
+  // Rule 1 (round 3): never more than one active item in a turn.
+  for (const row of rows.filter((r) => r.id.includes("-r3") && !r.id.includes("-discard") && !r.id.includes("-none"))) {
+    expect(row.perGame.multiItemTurns, row.id).toBe(0);
+  }
 }, 86_400_000);
 
 it.skipIf(!process.env.ITEM_SPIKE_MERGE)("item-spike merge shards (ITEM_SPIKE_MERGE=dir)", () => {
   const directory = resolve(process.env.ITEM_SPIKE_MERGE as string);
-  const order = [...roundOneVariants(), ...roundTwoVariants()].map((entry) => entry.id);
+  const order = [...roundOneVariants(), ...roundTwoVariants(), ...roundThreeVariants()].map((entry) => entry.id);
   const rows = readdirSync(directory).filter((file) => file.endsWith(".json") && file !== "merged.json")
     .flatMap((file) => (JSON.parse(readFileSync(join(directory, file), "utf8")) as { rows: Row[] }).rows)
     .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));

@@ -7,7 +7,8 @@ Branch: `feature/item-system` (branched from `docs/item-system-roadmap`, which i
 | Step | State | Commit | Evidence |
 |---|---|---|---|
 | Plan | Done (Codex Sol, read-only) | this commit | `.claude/docs/plans/item-system-plan.md`; prompt `item-system-plan-prompt.md` |
-| S1-S12 | Not started | — | Waiting for the user's answers to the plan's "Open questions for the user" |
+| Open questions | Answered 2026-10-27 (DESIGN.md; plan addendum) | this commit | Round 3 simulation confirms targets with one-item-per-turn and choose-discard |
+| S1-S12 | Not started | — | — |
 
 ## Decisions in force
 
@@ -16,5 +17,4 @@ Branch: `feature/item-system` (branched from `docs/item-system-roadmap`, which i
 
 ## Next
 
-1. Get user answers to the plan's open questions; record them in DESIGN.md.
-2. Start S1 (isolate and freeze classic).
+1. Start S1 (isolate and freeze classic). S7 parity targets the round-3 "both rules" rows.

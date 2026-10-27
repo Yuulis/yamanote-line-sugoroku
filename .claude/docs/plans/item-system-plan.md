@@ -624,3 +624,12 @@ These are product decisions left by the simulation’s simplifications. Engine w
 - **Changing the shipped default invalidates current product fixtures.** Regenerate current saves with provenance while preserving historical payloads for rejection tests.
 - **v4 intentionally makes old saves unusable.** Retain discovery and explicit discard behavior; apply the project’s announced-update/release policy when shipping.
 - **Planning is complete, implementation remains unverified.** No source, tests or documents were changed, and no test suite or simulation was executed during this read-only task.
+
+## Addendum (2026-10-27): user answers to the open questions
+
+Recorded in `.claude/docs/DESIGN.md` Key Decisions (2026-10-27). Answers that differ from the recommendations above take precedence:
+
+- Inventory full: the player chooses which one of the four items (three held + the new one) to discard. This adds a saveable post-turn decision; treat it like the pending-roll state (one engine transition, replay-validated).
+- At most ONE active item per turn in total, including 出目調整券 (no adjust after a pre-roll item). Deadhead remains exclusive; the certificate is passive and not counted.
+- All other recommendations were accepted as written.
+- Round 3 simulation (`.claude/docs/research/item-system-simulation.md`, "Round 3") confirms the targets under these rules: greedy 65/143/241, random 113/232/370. S7 parity should target the round-3 "both rules" rows, not round 2.
