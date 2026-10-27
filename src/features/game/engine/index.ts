@@ -5,6 +5,9 @@ export type {
   BeneficialItemKind,
   DirectionLotteryPolicy,
   HarmfulItemKind,
+  ItemEffectsState,
+  ItemEvent,
+  ItemInstance,
   ItemKind,
   ItemPolicy,
   LandingChoice,
@@ -14,6 +17,20 @@ export type {
 } from "../../../types/network";
 export { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, SERVICE_KINDS } from "../../../types/network";
 export { GOAL_ARRIVAL_POLICIES, validateConfig } from "./config";
+export {
+  clearDetour,
+  clearOversleep,
+  consumeDelayDue,
+  consumeInventoryInstance,
+  createItemEffectsState,
+  isDelayDue,
+  pruneExpiredSuspensions,
+  scheduleDelay,
+  scheduleDetour,
+  scheduleOversleep,
+  scheduleSuspension,
+} from "./itemEffects";
+export { drawItemDrop, resolvePendingItemDiscard, seedItemRng, type ItemDropResult, type PendingItemDiscard } from "./items";
 export { GameEngineError, type GameEngineErrorCode, isGameEngineError } from "./errors";
 export { createGame, moveByRoll, playTurn, SAVE_VERSION } from "./game";
 export { checkGoal, stopsAtGoal, targetSegmentIds } from "./goal";

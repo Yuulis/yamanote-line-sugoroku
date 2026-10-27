@@ -97,6 +97,30 @@ export type BeneficialItemKind = (typeof BENEFICIAL_ITEM_KINDS)[number];
 export type HarmfulItemKind = (typeof HARMFUL_ITEM_KINDS)[number];
 export type ItemKind = BeneficialItemKind | HarmfulItemKind;
 
+/** One inventory slot. IDs are deterministic within a turn history. */
+export interface ItemInstance {
+  id: string;
+  kind: ItemKind;
+}
+
+/** JSON-safe harmful-effect state consumed by the item turn kernel. */
+export interface ItemEffectsState {
+  delayDueTurns: readonly number[];
+  suspensions: readonly { serviceId: ServiceId; expiresTurn: number }[];
+  detourPending: boolean;
+  oversleepPending: boolean;
+}
+
+export type ItemEvent =
+  | { type: "pickup-retained"; item: ItemInstance }
+  | { type: "pickup-pending-discard"; item: ItemInstance; candidates: readonly ItemInstance[] }
+  | { type: "discarded"; item: ItemInstance }
+  | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "delay"; dueTurn: number }
+  | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "suspension"; serviceId: ServiceId; expiresTurn: number }
+  | { type: "harmful-scheduled"; item: HarmfulItemKind; effect: "detour" | "oversleep" }
+  | { type: "cancelled-by-certificate"; item: HarmfulItemKind; certificate: ItemInstance }
+  | { type: "consumed"; item: ItemInstance };
+
 export interface ItemPolicy {
   dropChancePerMille: number;
   harmfulChancePercent: number;
