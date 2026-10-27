@@ -6,8 +6,10 @@ import { expect, it } from "vitest";
 import { MVP_GAME_CONFIG } from "../../../src/features/game/gameConfig";
 import { gameSeed, runGame, summarizeTurns, type TurnStatistics } from "../harness";
 import { loadShippedBundle } from "../inputs";
+import * as engine from "../../../src/features/game/engine";
+import { hopsToEndpoint, nearestTargetStation, rapidHops } from "./moves";
 import {
-  type GameResult, makeContext, type Policy, runItemGame, type SimContext, type Variant, variantId, WEIGHTINGS,
+  ABLATIONS, type GameResult, type ItemSet, makeContext, type Policy, runItemGame, type SimContext, type Variant, variantId, WEIGHTINGS,
 } from "./sim";
 
 const BASE_SEED = 20261012;
@@ -22,12 +24,39 @@ function envInteger(name: string, fallback: number): number {
   return value;
 }
 
-function variant(weighting: Variant["weighting"], dropPerMille: number, harmfulPercent: number, policy: Policy): Variant {
-  return { id: variantId(weighting, dropPerMille, harmfulPercent, policy), weighting, dropPerMille, harmfulPercent, policy };
+function variant(
+  weighting: Variant["weighting"], dropPerMille: number, harmfulPercent: number, policy: Policy, itemSet: ItemSet = "v1",
+): Variant {
+  return {
+    id: variantId(weighting, dropPerMille, harmfulPercent, policy, itemSet),
+    weighting, dropPerMille, harmfulPercent, policy, itemSet,
+  };
 }
 
-/** Greedy: full grid plus no-item baselines. Random user: a subset to bound the skill gap. */
-export function allVariants(): Variant[] {
+/** Round 2: mild vs mid with the v2 item set, plus v1 comparison rows and baselines. */
+export function roundTwoVariants(): Variant[] {
+  const variants: Variant[] = [variant("current", 0, 0, "greedy")];
+  for (const id of ["mild", "mid"] as const) {
+    variants.push(variant(id, 0, 0, "greedy"), variant(id, 300, 30, "greedy"), variant(id, 300, 30, "random"));
+    for (const drop of [200, 300]) {
+      for (const harm of [30, 50]) for (const policy of ["greedy", "random"] as const) variants.push(variant(id, drop, harm, policy, "v2"));
+    }
+  }
+  // Leave-one-out ablations at drop 0.30 / harmful 30%: deadhead on both weightings, the rest on mid.
+  for (const policy of ["greedy", "random"] as const) {
+    variants.push(variant("mild", 300, 30, policy, "v2-no-deadhead"));
+    for (const ablated of ABLATIONS) variants.push(variant("mid", 300, 30, policy, `v2-no-${ablated}`));
+  }
+  return variants;
+}
+
+/** ITEM_SPIKE_ROUND=1 selects the round-1 grid; the default is round 2. */
+export function selectedVariants(): Variant[] {
+  return process.env.ITEM_SPIKE_ROUND === "1" ? roundOneVariants() : roundTwoVariants();
+}
+
+/** Round 1. Greedy: full grid plus no-item baselines. Random user: a subset to bound the skill gap. */
+export function roundOneVariants(): Variant[] {
   const variants: Variant[] = [];
   for (const id of ["uniform", "mild", "current"] as const) {
     variants.push(variant(id, 0, 0, "greedy"));
@@ -57,7 +86,11 @@ interface Row {
   policy: Policy;
   statistics: TurnStatistics;
   over500Share: number;
-  perGame: { pickups: number; beneficial: number; harmful: number; used: number; discarded: number; decisionTurns: number; forcedOne: number };
+  perGame: {
+    pickups: number; beneficial: number; harmful: number; used: number; discarded: number; decisionTurns: number;
+    forcedOne: number; cancelledHarmful: number; oversleep: number;
+  };
+  itemSet: ItemSet;
   usedByKind: Record<string, number>;
   harmfulByKind: Record<string, number>;
   targetTurnShare: number;
@@ -83,13 +116,14 @@ function measure(context: SimContext, entry: Variant, games: number, cap: number
   const statistics = summarizeTurns(turns, capped, totalTurns);
   return {
     id: entry.id, weighting: entry.weighting, dropPerMille: entry.dropPerMille,
-    harmfulPercent: entry.harmfulPercent, policy: entry.policy, statistics,
+    harmfulPercent: entry.harmfulPercent, policy: entry.policy, itemSet: entry.itemSet, statistics,
     over500Share: statistics.over500Count / games,
     perGame: {
       pickups: perGame((r) => r.pickups), beneficial: perGame((r) => r.beneficialPickups),
       harmful: perGame((r) => r.harmfulPickups), used: perGame((r) => r.used),
       discarded: perGame((r) => r.discarded), decisionTurns: perGame((r) => r.decisionTurns),
       forcedOne: perGame((r) => r.forcedOneTurns),
+      cancelledHarmful: perGame((r) => r.cancelledHarmful), oversleep: perGame((r) => r.oversleepTurns),
     },
     usedByKind: kinds((r) => r.usedByKind), harmfulByKind: kinds((r) => r.harmfulByKind),
     targetTurnShare: sum((r) => r.targetTurns) / totalTurns,
@@ -105,6 +139,20 @@ export function renderTable(rows: readonly Row[]): string {
   for (const row of rows) {
     const s = row.statistics;
     lines.push(`| ${row.id} | ${row.weighting} | ${fixed(row.dropPerMille / 1000, 2)} | ${row.harmfulPercent} | ${row.policy} | ${s.median} | ${s.p90} | ${s.p99} | ${s.max} | ${fixed(row.over500Share * 100, 2)}% | ${s.capHits} | ${fixed(row.perGame.pickups)} | ${fixed(row.perGame.used)} | ${fixed(row.perGame.discarded)} | ${fixed(row.perGame.decisionTurns)} | ${fixed(row.targetTurnShare * 100)}% |`);
+  }
+  return lines.join("\n");
+}
+
+const KIND_COLUMNS = ["route", "direction", "adjust", "double", "rapid", "deadhead", "certificate"] as const;
+
+/** Per-game uses by item kind, plus harmful events, cancellations and oversleep moves. */
+export function renderItemTable(rows: readonly Row[]): string {
+  const header = `| variant | ${KIND_COLUMNS.join(" | ")} | harmful/g | cancelled/g | oversleep moves/g | forced-1/g |`;
+  const lines = [header, `|${"---|".repeat(KIND_COLUMNS.length + 5)}`];
+  for (const row of rows) {
+    const uses = KIND_COLUMNS.map((kind) => fixed(row.usedByKind[kind] ?? 0, 2));
+    const p = row.perGame;
+    lines.push(`| ${row.id} | ${uses.join(" | ")} | ${fixed(p.harmful, 2)} | ${fixed(p.cancelledHarmful ?? 0, 2)} | ${fixed(p.oversleep ?? 0, 2)} | ${fixed(p.forcedOne, 2)} |`);
   }
   return lines.join("\n");
 }
@@ -130,9 +178,29 @@ it.skipIf(!process.env.ITEM_SPIKE || Boolean(process.env.ITEM_SPIKE_MERGE))("ite
     expect(spikeGame.turns, seed).toBe(engineGame.turn);
   }
 
-  const rows = allVariants().filter((entry) => filter.test(entry.id))
+  // Round-2 movement helpers on the real network.
+  for (const station of network.stationsById.keys()) {
+    const nearest = nearestTargetStation(current.adjacency, current.targetStationIds, station);
+    expect(nearest, station).toBeDefined();
+  }
+  for (const service of network.servicesById.values()) {
+    const from = service.stationIds[0] as string;
+    for (const direction of engine.movableDirections(network, service.id, from)) {
+      const walk = (hops: number): string => {
+        let station = from;
+        for (let hop = 0; hop < hops; hop += 1) station = engine.nextStationId(network, service.id, station, direction) as string;
+        return station;
+      };
+      const rapid = walk(rapidHops(network, current.transfers, service.id, from, direction, 1));
+      const end = walk(hopsToEndpoint(network, service.id, from, direction));
+      expect(current.transfers.has(rapid) || engine.nextStationId(network, service.id, rapid, direction) === undefined, service.id).toBe(true);
+      if (!service.circular) expect(engine.nextStationId(network, service.id, end, direction), service.id).toBeUndefined();
+    }
+  }
+
+  const rows = selectedVariants().filter((entry) => filter.test(entry.id))
     .map((entry) => measure(contexts.get(entry.weighting) as SimContext, entry, games, cap));
-  console.log(`\n${renderTable(rows)}\n`);
+  console.log(`\n${renderTable(rows)}\n\n${renderItemTable(rows)}\n`);
   const output = process.env.ITEM_SPIKE_OUTPUT;
   if (output) {
     mkdirSync(dirname(resolve(output)), { recursive: true });
@@ -144,11 +212,11 @@ it.skipIf(!process.env.ITEM_SPIKE || Boolean(process.env.ITEM_SPIKE_MERGE))("ite
 
 it.skipIf(!process.env.ITEM_SPIKE_MERGE)("item-spike merge shards (ITEM_SPIKE_MERGE=dir)", () => {
   const directory = resolve(process.env.ITEM_SPIKE_MERGE as string);
-  const order = allVariants().map((entry) => entry.id);
+  const order = [...roundOneVariants(), ...roundTwoVariants()].map((entry) => entry.id);
   const rows = readdirSync(directory).filter((file) => file.endsWith(".json") && file !== "merged.json")
     .flatMap((file) => (JSON.parse(readFileSync(join(directory, file), "utf8")) as { rows: Row[] }).rows)
     .sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
-  const table = renderTable(rows);
+  const table = `${renderTable(rows)}\n\n${renderItemTable(rows)}`;
   writeFileSync(join(directory, "merged.json"), `${JSON.stringify(rows, null, 2)}\n`, "utf8");
   writeFileSync(join(directory, "table.md"), `${table}\n`, "utf8");
   console.log(`\n${table}\n`);

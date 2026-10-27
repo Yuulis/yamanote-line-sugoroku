@@ -9,6 +9,9 @@ Code: `tests/simulation/item-spike/` (throwaway; nothing under `src/`,
 `.claude/logs/item-spike/shards/*.json` (git-ignored), merged table
 `.claude/logs/item-spike/shards/table.md`.
 
+**Round 2 (2026-10-27, four new items, mild vs mid)** is appended at the end
+of this file: [Round 2](#round-2-2026-10-27-four-new-items-mild-vs-mid).
+
 ## TL;DR
 
 - **Items cannot replace the weighting on this network.** With uniform
@@ -197,15 +200,22 @@ the slowest variant (uniform, no items) took 758 s.
 
 ## Reproduce
 
-See `tests/simulation/item-spike/README.md`. The smoke (100 games per variant)
-is `npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike`;
-full shards were produced with `ITEM_SPIKE_GAMES=5000 ITEM_SPIKE_FILTER='^<id>$'
-ITEM_SPIKE_OUTPUT=.claude/logs/item-spike/shards/<id>.json` per variant and
-merged with `ITEM_SPIKE_MERGE=.claude/logs/item-spike/shards`.
+See `tests/simulation/item-spike/README.md`. The grid is opt-in: without
+`ITEM_SPIKE=1` it is skipped, so `npm run sim` does not run it. Round 2 is
+the default grid; round 1 needs `ITEM_SPIKE_ROUND=1`.
 
-Note: `npm run sim` includes `tests/simulation/**`, so it now also runs this
-smoke (about 100 s). Delete `tests/simulation/item-spike/` once the
-decision is made, or gate it behind an env var if it is kept.
+```bash
+# Round-1 smoke (100 games per variant)
+ITEM_SPIKE=1 ITEM_SPIKE_ROUND=1 \
+  npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+
+# Round-1 full shards: one run per variant id, then merge
+ITEM_SPIKE=1 ITEM_SPIKE_ROUND=1 ITEM_SPIKE_GAMES=5000 ITEM_SPIKE_FILTER='^<id>$' \
+  ITEM_SPIKE_OUTPUT=.claude/logs/item-spike/shards/<id>.json \
+  npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+ITEM_SPIKE_MERGE=.claude/logs/item-spike/shards \
+  npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+```
 
 
 ## Method
@@ -299,3 +309,209 @@ decision is made, or gate it behind an env var if it is kept.
 10. Only Yamanote segments are kept in the simulated `completedSegmentIds`
     (other segments never affect the goal); results are unchanged by this
     (verified identical on a 50-game smoke before/after).
+
+## Round 2 (2026-10-27): four new items, mild vs mid
+
+Question: with four more items, which of (b) mild (Yamanote 1/2, direction
+3:2) and mid (Yamanote 1/2, direction 2:1) to use, at which drop rate and
+harmful share; and does 回送列車 cut the long tail for a player who uses items
+at random (target p99 < 400)?
+
+### TL;DR
+
+- **回送列車 (deadhead) cuts the random-use tail.** At p 0.30 / 30% harmful,
+  the random user's p99 drops from 774 → 370 (mild) and 578 → 336 (mid).
+  Leave-one-out ablation attributes this to deadhead: without it the new set
+  gives 711 (mild) and 551 (mid).
+- **Recommendation: (b) mild, drop p = 0.30, harmful 30%, round-2 item set.**
+  Greedy 67 / 157 / 285 (median / p90 / p99), random user 112 / 231 / 370. Both
+  policies are under p99 400, and mild is the softer of the two weightings.
+  Mid at the same setting has more margin (greedy 65 / 143 / 241, random
+  104 / 215 / 336; >500: 0.06% vs 0.22%). Choose mid if the random-use margin
+  matters more than the lighter weighting.
+- **Harmful 50% is too much for random use** (p99 448 mild / 406 mid at
+  p 0.30). **p 0.20 is too little for mild** (random p99 446); mid at p 0.20 /
+  30% is borderline (387).
+- **Greedy players gain almost nothing** from the new set (mild 64 → 67,
+  mid 60 → 65 median at p 0.30 / 30%). The new items mainly protect the
+  careless player. A random user's median stays above the 40-80 band
+  (104-137) in every setting.
+
+### Key rows (5,000 games each; S7 seeds; turns)
+
+| weighting | p | harm | items | policy | median | p90 | p99 | max | >500 |
+|---|---|---|---|---|---|---|---|---|---|
+| mild | .30 | 30% | old (v1) | greedy | 64 | 158 | 290 | 568 | 0.02% |
+| mild | .30 | 30% | old (v1) | random | 195 | 457 | 774 | 1204 | 7.34% |
+| **mild** | **.30** | **30%** | **new (v2)** | **greedy** | **67** | **157** | **285** | **478** | **0.00%** |
+| **mild** | **.30** | **30%** | **new (v2)** | **random** | **112** | **231** | **370** | **642** | **0.22%** |
+| mild | .30 | 30% | v2 − deadhead | random | 182 | 433 | 711 | 1156 | 5.88% |
+| mid | .30 | 30% | old (v1) | random | 161 | 361 | 578 | 984 | 2.32% |
+| mid | .30 | 30% | new (v2) | greedy | 65 | 143 | 241 | 634 | 0.02% |
+| mid | .30 | 30% | new (v2) | random | 104 | 215 | 336 | 650 | 0.06% |
+| mid | .30 | 30% | v2 − deadhead | random | 156 | 337 | 551 | 986 | 1.66% |
+| mild / mid | .30 | 50% | new (v2) | random | 130 / 120 | 274 / 250 | 448 / 406 | 860 / 670 | 0.64 / 0.18% |
+| mild / mid | .20 | 30% | new (v2) | random | 123 / 113 | 271 / 238 | 446 / 387 | 698 / 596 | 0.42 / 0.14% |
+
+The old-item rows were **re-run, not copied**: the v1 code path selects the
+same pools and draws, and all seven v1 / baseline shards (including the
+(c) current no-item engine check, 55 / 146 / 261 / 446) are field-for-field
+identical to round 1.
+
+### Effect of each new item (leave-one-out, mid, p 0.30 / 30%)
+
+| item set | greedy med / p99 | random med / p99 | uses per game (greedy / random) |
+|---|---|---|---|
+| full v2 | 65 / 241 | 104 / 336 | — |
+| − 快速券 rapid | 62 / 228 | 100 / 333 | 1.86 / 3.39 |
+| − 回送列車 deadhead | 78 / 290 | 156 / 551 | 1.41 / 3.42 |
+| − 遅延証明書 certificate | 60 / 227 | 99 / 332 | 1.65 / 3.00 cancellations |
+| − 寝過ごし oversleep | 65 / 234 | 108 / 360 | 1.28 / 1.88 oversleep moves |
+
+The "uses" column comes from the full-v2 row. Removing an item puts its
+probability mass back on the other items of the same pool.
+
+- **回送列車 (deadhead)** is the only new item with a large effect: −13
+  greedy and −52 random median turns, and −215 random p99.
+- **快速券 (rapid)** is slightly *negative* (removing it shortens games by
+  3-4 turns). The greedy rule uses it whenever the player is off Yamanote,
+  including when heading away. A "use only when heading toward Yamanote" rule
+  or UI hint would likely make it positive.
+- **遅延証明書 (certificate)** is also slightly negative (−5 median when
+  removed). It cancels ≈1.65 harmful events per game (greedy) but takes a
+  pool slot from an active item and holds an inventory slot until consumed.
+  Its value is protection and feel, not speed.
+- **寝過ごし (oversleep)** is roughly neutral (greedy p99 234 vs 241; random
+  360 vs 336, within noise). The player is carried to the line end, and that
+  is sometimes toward Yamanote. It adds chaos at almost no length cost.
+- With 7 beneficial kinds, each old item is drawn less often, so per-kind
+  uses fall from ≈3 to ≈1.9 per game (greedy). Total uses per game are
+  unchanged (≈12).
+
+### Round-2 modelling simplifications (in addition to round 1)
+
+11. **Pool sizes.** 7 beneficial kinds (route, direction, adjust, double,
+    rapid, deadhead, certificate), drawn uniformly. The request said "becomes
+    6" and also listed 7; 7 was used. 4 harmful kinds (delay, suspension,
+    detour, oversleep), drawn uniformly.
+12. **快速券 (rapid):** for this turn's move, pips are spent only on arriving
+    at a transfer station (a station with ≥ 2 services); other stations are
+    passed for free. The move becomes the engine's `advance` with the
+    resulting hop count, so endpoint truncation, segment completion and the
+    goal are unchanged. Truncation on Yamanote still clears mid-move. It
+    combines with double (face × 2 transfer stations) and adjust. Greedy uses
+    it whenever it is off Yamanote, without checking the heading (as
+    specified); the random user uses it at once.
+13. **回送列車 (deadhead):** used before the roll, it replaces the turn. There
+    is no die draw, no landing lottery and no segment completion. The player
+    is placed at the nearest Yamanote station (forward BFS over all directed
+    segments; ties go to the lowest index in Yamanote's station order), on
+    Yamanote outer. The turn counts, and the arrival still rolls for an item
+    drop. Greedy: when the hop distance to Yamanote is ≥ 3 and Yamanote
+    segments remain. Random user: immediately. It cannot be used on a delay
+    or oversleep turn.
+14. **遅延証明書 (certificate):** passive, held in the inventory (it counts
+    toward the cap of 3). The next harmful pickup is still drawn and counted,
+    then cancelled, and the certificate is consumed. It never counts as a
+    decision turn.
+15. **寝過ごし (oversleep):** the next move (the following turn) ignores the
+    roll and carries the player to the end of the ridden service in the
+    current direction. On Yamanote it moves 6 pips instead. The die is still
+    drawn so the stream stays aligned. No items can be used that turn (the
+    player is asleep), and it overrides a delay due on the same turn.
+    Segments passed are completed normally; the landing lottery at the end
+    runs normally. Pickups do not stack (one pending flag).
+16. **Ablations** (`v2-no-<item>`) remove one item from its pool, so the
+    remaining items of that pool become more frequent. They measure "this
+    item vs. the others", not "this item vs. nothing".
+
+### Round-2 full results
+
+| variant | weighting | drop | harm% | policy | median | p90 | p99 | max | >500 | cap | pickups/g | used/g | discarded/g | decision turns/g | Yamanote turn share |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| mild-d0-h0-greedy | mild | 0.00 | 0 | greedy | 173 | 394 | 667 | 1145 | 4.26% | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 12.3% |
+| mild-d300-h30-greedy | mild | 0.30 | 30 | greedy | 64 | 158 | 290 | 568 | 0.02% | 0 | 23.2 | 12.7 | 2.7 | 48.6 | 21.6% |
+| current-d0-h0-greedy | current | 0.00 | 0 | greedy | 55 | 146 | 261 | 446 | 0.00% | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 26.9% |
+| mild-d300-h30-random | mild | 0.30 | 30 | random | 195 | 457 | 774 | 1204 | 7.34% | 0 | 68.5 | 47.8 | 0.1 | 46.4 | 10.7% |
+| mid-d0-h0-greedy | mid | 0.00 | 0 | greedy | 137 | 309 | 512 | 1091 | 1.22% | 0 | 0.0 | 0.0 | 0.0 | 0.0 | 15.4% |
+| mid-d300-h30-greedy | mid | 0.30 | 30 | greedy | 60 | 132 | 234 | 443 | 0.00% | 0 | 20.6 | 11.8 | 1.7 | 41.1 | 24.7% |
+| mid-d300-h30-random | mid | 0.30 | 30 | random | 161 | 361 | 578 | 984 | 2.32% | 0 | 55.3 | 38.5 | 0.0 | 37.4 | 13.2% |
+| mild-d200-h30-greedy-v2 | mild | 0.20 | 30 | greedy | 85 | 190 | 327 | 585 | 0.08% | 0 | 19.6 | 11.1 | 1.5 | 44.4 | 20.4% |
+| mild-d200-h30-random-v2 | mild | 0.20 | 30 | random | 123 | 271 | 446 | 698 | 0.42% | 0 | 28.3 | 18.9 | 0.4 | 16.4 | 16.6% |
+| mild-d200-h50-greedy-v2 | mild | 0.20 | 50 | greedy | 101 | 225 | 381 | 733 | 0.28% | 0 | 23.3 | 10.2 | 0.6 | 42.9 | 18.0% |
+| mild-d200-h50-random-v2 | mild | 0.20 | 50 | random | 137 | 305 | 505 | 880 | 1.06% | 0 | 31.5 | 15.5 | 0.0 | 13.3 | 15.2% |
+| mild-d300-h30-greedy-v2 | mild | 0.30 | 30 | greedy | 67 | 157 | 285 | 478 | 0.00% | 0 | 23.8 | 12.7 | 2.6 | 44.6 | 23.5% |
+| mild-d300-h30-random-v2 | mild | 0.30 | 30 | random | 112 | 231 | 370 | 642 | 0.22% | 0 | 37.4 | 25.1 | 0.5 | 21.5 | 18.2% |
+| mild-d300-h50-greedy-v2 | mild | 0.30 | 50 | greedy | 85 | 192 | 319 | 592 | 0.04% | 0 | 29.5 | 12.4 | 1.3 | 45.4 | 20.2% |
+| mild-d300-h50-random-v2 | mild | 0.30 | 50 | random | 130 | 274 | 448 | 860 | 0.64% | 0 | 44.1 | 21.7 | 0.1 | 18.5 | 16.3% |
+| mid-d200-h30-greedy-v2 | mid | 0.20 | 30 | greedy | 78 | 168 | 281 | 438 | 0.00% | 0 | 17.9 | 10.3 | 1.1 | 39.1 | 22.6% |
+| mid-d200-h30-random-v2 | mid | 0.20 | 30 | random | 113 | 238 | 387 | 596 | 0.14% | 0 | 25.3 | 16.9 | 0.3 | 14.7 | 18.6% |
+| mid-d200-h50-greedy-v2 | mid | 0.20 | 50 | greedy | 93 | 202 | 332 | 538 | 0.04% | 0 | 21.2 | 9.4 | 0.4 | 36.9 | 20.1% |
+| mid-d200-h50-random-v2 | mid | 0.20 | 50 | random | 125 | 269 | 439 | 690 | 0.42% | 0 | 28.4 | 13.9 | 0.0 | 11.9 | 17.1% |
+| mid-d300-h30-greedy-v2 | mid | 0.30 | 30 | greedy | 65 | 143 | 241 | 634 | 0.02% | 0 | 22.3 | 12.2 | 2.0 | 40.8 | 25.6% |
+| mid-d300-h30-random-v2 | mid | 0.30 | 30 | random | 104 | 215 | 336 | 650 | 0.06% | 0 | 34.8 | 23.3 | 0.5 | 20.0 | 19.8% |
+| mid-d300-h50-greedy-v2 | mid | 0.30 | 50 | greedy | 81 | 172 | 291 | 449 | 0.00% | 0 | 27.6 | 11.8 | 0.9 | 41.2 | 22.2% |
+| mid-d300-h50-random-v2 | mid | 0.30 | 50 | random | 120 | 250 | 406 | 670 | 0.18% | 0 | 40.2 | 19.8 | 0.1 | 16.9 | 17.9% |
+| mild-d300-h30-greedy-v2-no-deadhead | mild | 0.30 | 30 | greedy | 84 | 200 | 371 | 640 | 0.14% | 0 | 30.2 | 16.4 | 3.6 | 55.1 | 18.1% |
+| mid-d300-h30-greedy-v2-no-rapid | mid | 0.30 | 30 | greedy | 62 | 131 | 228 | 424 | 0.00% | 0 | 20.8 | 10.7 | 2.4 | 39.7 | 26.8% |
+| mid-d300-h30-greedy-v2-no-deadhead | mid | 0.30 | 30 | greedy | 78 | 176 | 290 | 506 | 0.02% | 0 | 27.0 | 15.3 | 2.6 | 46.3 | 20.8% |
+| mid-d300-h30-greedy-v2-no-certificate | mid | 0.30 | 30 | greedy | 60 | 130 | 227 | 450 | 0.00% | 0 | 20.5 | 11.4 | 1.6 | 41.2 | 27.2% |
+| mid-d300-h30-greedy-v2-no-oversleep | mid | 0.30 | 30 | greedy | 65 | 139 | 234 | 451 | 0.00% | 0 | 22.3 | 12.2 | 2.0 | 41.1 | 25.9% |
+| mild-d300-h30-random-v2-no-deadhead | mild | 0.30 | 30 | random | 182 | 433 | 711 | 1156 | 5.88% | 0 | 64.3 | 42.7 | 1.6 | 35.3 | 11.2% |
+| mid-d300-h30-random-v2-no-rapid | mid | 0.30 | 30 | random | 100 | 207 | 333 | 509 | 0.02% | 0 | 33.4 | 22.0 | 0.7 | 18.4 | 20.4% |
+| mid-d300-h30-random-v2-no-deadhead | mid | 0.30 | 30 | random | 156 | 337 | 551 | 986 | 1.66% | 0 | 52.7 | 35.0 | 1.2 | 29.0 | 13.7% |
+| mid-d300-h30-random-v2-no-certificate | mid | 0.30 | 30 | random | 99 | 204 | 332 | 538 | 0.02% | 0 | 33.3 | 23.1 | 0.0 | 22.7 | 20.4% |
+| mid-d300-h30-random-v2-no-oversleep | mid | 0.30 | 30 | random | 108 | 218 | 360 | 602 | 0.12% | 0 | 35.7 | 23.9 | 0.5 | 20.6 | 19.9% |
+
+| variant | route | direction | adjust | double | rapid | deadhead | certificate | harmful/g | cancelled/g | oversleep moves/g | forced-1/g |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| mild-d0-h0-greedy | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| mild-d300-h30-greedy | 3.16 | 2.97 | 3.24 | 3.31 | 0.00 | 0.00 | 0.00 | 6.98 | 0.00 | 0.00 | 2.26 |
+| current-d0-h0-greedy | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| mild-d300-h30-random | 11.93 | 11.85 | 11.95 | 12.02 | 0.00 | 0.00 | 0.00 | 20.57 | 0.00 | 0.00 | 6.74 |
+| mid-d0-h0-greedy | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 | 0.00 |
+| mid-d300-h30-greedy | 2.93 | 2.70 | 3.04 | 3.10 | 0.00 | 0.00 | 0.00 | 6.20 | 0.00 | 0.00 | 2.00 |
+| mid-d300-h30-random | 9.57 | 9.49 | 9.69 | 9.76 | 0.00 | 0.00 | 0.00 | 16.64 | 0.00 | 0.00 | 5.46 |
+| mild-d200-h30-greedy-v2 | 1.67 | 1.62 | 1.71 | 1.71 | 1.64 | 1.32 | 1.44 | 5.94 | 1.44 | 1.11 | 1.10 |
+| mild-d200-h30-random-v2 | 2.78 | 2.77 | 2.77 | 2.77 | 2.72 | 2.74 | 2.39 | 8.59 | 2.39 | 1.55 | 1.50 |
+| mild-d200-h50-greedy-v2 | 1.50 | 1.48 | 1.55 | 1.51 | 1.51 | 1.22 | 1.43 | 11.71 | 1.43 | 2.57 | 2.45 |
+| mild-d200-h50-random-v2 | 2.24 | 2.21 | 2.24 | 2.22 | 2.21 | 2.23 | 2.10 | 15.84 | 2.10 | 3.45 | 3.27 |
+| mild-d300-h30-greedy-v2 | 1.93 | 1.78 | 1.92 | 1.93 | 1.93 | 1.49 | 1.72 | 7.20 | 1.72 | 1.39 | 1.29 |
+| mild-d300-h30-random-v2 | 3.65 | 3.57 | 3.66 | 3.62 | 3.66 | 3.67 | 3.25 | 11.33 | 3.25 | 2.01 | 1.93 |
+| mild-d300-h50-greedy-v2 | 1.87 | 1.74 | 1.85 | 1.82 | 1.83 | 1.47 | 1.79 | 14.80 | 1.79 | 3.27 | 3.02 |
+| mild-d300-h50-random-v2 | 3.17 | 3.07 | 3.13 | 3.08 | 3.10 | 3.12 | 2.98 | 22.10 | 2.98 | 4.82 | 4.50 |
+| mid-d200-h30-greedy-v2 | 1.57 | 1.47 | 1.57 | 1.60 | 1.54 | 1.20 | 1.30 | 5.40 | 1.30 | 1.02 | 0.99 |
+| mid-d200-h30-random-v2 | 2.46 | 2.46 | 2.51 | 2.47 | 2.44 | 2.47 | 2.09 | 7.70 | 2.09 | 1.41 | 1.35 |
+| mid-d200-h50-greedy-v2 | 1.39 | 1.32 | 1.43 | 1.41 | 1.41 | 1.10 | 1.32 | 10.68 | 1.32 | 2.33 | 2.23 |
+| mid-d200-h50-random-v2 | 2.02 | 1.98 | 2.03 | 1.98 | 1.97 | 2.00 | 1.88 | 14.26 | 1.88 | 3.14 | 2.96 |
+| mid-d300-h30-greedy-v2 | 1.86 | 1.69 | 1.87 | 1.88 | 1.86 | 1.41 | 1.65 | 6.75 | 1.65 | 1.28 | 1.21 |
+| mid-d300-h30-random-v2 | 3.41 | 3.30 | 3.41 | 3.35 | 3.39 | 3.42 | 3.00 | 10.49 | 3.00 | 1.88 | 1.77 |
+| mid-d300-h50-greedy-v2 | 1.76 | 1.62 | 1.76 | 1.75 | 1.76 | 1.39 | 1.70 | 13.87 | 1.70 | 3.06 | 2.84 |
+| mid-d300-h50-random-v2 | 2.88 | 2.79 | 2.88 | 2.80 | 2.85 | 2.85 | 2.72 | 20.16 | 2.72 | 4.40 | 4.07 |
+| mild-d300-h30-greedy-v2-no-deadhead | 2.80 | 2.66 | 2.80 | 2.82 | 2.79 | 0.00 | 2.57 | 9.14 | 2.57 | 1.65 | 1.56 |
+| mid-d300-h30-greedy-v2-no-rapid | 1.92 | 1.73 | 1.91 | 1.99 | 0.00 | 1.42 | 1.71 | 6.29 | 1.71 | 1.17 | 1.08 |
+| mid-d300-h30-greedy-v2-no-deadhead | 2.63 | 2.42 | 2.58 | 2.66 | 2.61 | 0.00 | 2.38 | 8.14 | 2.38 | 1.45 | 1.38 |
+| mid-d300-h30-greedy-v2-no-certificate | 2.01 | 1.80 | 1.98 | 2.05 | 2.02 | 1.53 | 0.00 | 6.24 | 0.00 | 1.56 | 1.47 |
+| mid-d300-h30-greedy-v2-no-oversleep | 1.87 | 1.69 | 1.87 | 1.87 | 1.85 | 1.40 | 1.63 | 6.73 | 1.63 | 0.00 | 1.63 |
+| mild-d300-h30-random-v2-no-deadhead | 7.23 | 7.14 | 7.15 | 7.24 | 7.22 | 0.00 | 6.74 | 19.33 | 6.74 | 3.15 | 3.04 |
+| mid-d300-h30-random-v2-no-rapid | 3.79 | 3.72 | 3.70 | 3.74 | 0.00 | 3.76 | 3.34 | 10.06 | 3.34 | 1.69 | 1.62 |
+| mid-d300-h30-random-v2-no-deadhead | 5.94 | 5.85 | 5.86 | 5.92 | 5.95 | 0.00 | 5.46 | 15.87 | 5.46 | 2.62 | 2.50 |
+| mid-d300-h30-random-v2-no-certificate | 3.88 | 3.81 | 3.83 | 3.86 | 3.82 | 3.95 | 0.00 | 10.07 | 0.00 | 2.51 | 2.43 |
+| mid-d300-h30-random-v2-no-oversleep | 3.51 | 3.42 | 3.51 | 3.43 | 3.47 | 3.50 | 3.07 | 10.74 | 3.07 | 0.00 | 2.50 |
+
+### Reproduce round 2
+
+```bash
+# Smoke (100 games per round-2 variant, plus engine-equivalence and movement checks)
+ITEM_SPIKE=1 npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+
+# Full: one 5,000-game shard per variant id (33 ids), then merge
+ITEM_SPIKE=1 ITEM_SPIKE_GAMES=5000 ITEM_SPIKE_FILTER='^<id>$' \
+  ITEM_SPIKE_OUTPUT=.claude/logs/item-spike/round2/<id>.json \
+  npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+ITEM_SPIKE_MERGE=.claude/logs/item-spike/round2 \
+  npx vitest run --config vitest.simulation.config.ts tests/simulation/item-spike
+```
+
+Runtime: 33 variants in 5 min 41 s wall on 11 parallel processes (≈57 CPU-min).
+Shards: `.claude/logs/item-spike/round2/` (git-ignored).
