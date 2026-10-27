@@ -29,6 +29,7 @@ describe("item presentation", () => {
     expect(itemTiming("roll-adjust")).toBe("出目を見てから使う");
     expect(itemTiming("double")).toBe("サイコロを振る前に使う");
     expect(itemUnavailableLabel("fixed-direction")).toBe("山手線は向きが固定");
+    expect(itemUnavailableLabel("single-direction")).toBe("この駅では進める向きが1つです");
     expect(itemUnavailableLabel("suspended-route")).toBe("運休中で選べない");
     expect(itemUnavailableLabel("forced-turn")).toBe("遅延・寝過ごしのターンは使えない");
     expect(itemUnavailableLabel("item-already-selected")).toBe("ほかのアイテムを選択中");

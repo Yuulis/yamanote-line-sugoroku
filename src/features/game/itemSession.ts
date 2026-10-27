@@ -11,6 +11,7 @@ import {
 } from "./engine";
 import type { GameAction, GameSession, LastMove, MoveAnimation } from "./gameSession";
 import { MAX_MOVE_DURATION_MS } from "./animation/timeline";
+import type { ProgressState } from "./animation/displayedProgress";
 import { endpointKindAt } from "./gameSummary";
 
 export interface ItemActionIdentity {
@@ -33,6 +34,7 @@ export interface ItemSessionState {
   readonly leaveAfterSave?: true;
   readonly draft: DeepReadonly<ItemTurnCommand>;
   readonly stagedAnimation: MoveAnimation | null;
+  readonly beforeMove: ProgressState | null;
   readonly events: readonly ItemTurnEvent[];
 }
 
@@ -58,7 +60,7 @@ export function createItemSession(
     sessionId, game, phase: game.pending?.kind === "discard" ? "awaiting-discard"
       : game.pending?.kind === "roll" ? "awaiting-adjust" : "idle",
     lastMove: itemLastMove(game.pending?.kind === "discard" ? game.pending.record : game.movementHistory.at(-1), network), animation: null,
-    item: { decisionRevision: 0, draft: { items: [] }, stagedAnimation: null, events: (game.pending?.kind === "discard" ? game.pending.record : game.movementHistory.at(-1))?.itemEvents ?? [] },
+    item: { decisionRevision: 0, draft: { items: [] }, stagedAnimation: null, beforeMove: null, events: (game.pending?.kind === "discard" ? game.pending.record : game.movementHistory.at(-1))?.itemEvents ?? [] },
   };
   // A persisted roll without any legal adjustment never needs a UI decision.
   if (game.pending?.kind === "roll" && adjustmentOptions(game).length === 0) {
@@ -101,6 +103,8 @@ function stageResolution(session: GameSession, result: ItemTurnResult): GameSess
   return {
     ...session, game: result.state, phase: "resolving", animation: null,
     item: { ...session.item!, decisionRevision: revision, draft: { items: [] }, events: result.events,
+      beforeMove: { currentStationId: session.game.currentStationId, currentServiceId: session.game.currentServiceId,
+        completedSegmentIds: session.game.completedSegmentIds },
       stagedAnimation: record ? {
         sessionId: session.sessionId, turn: result.state.turn, decisionRevision: revision + 1,
         fromStationId: record.fromStationId, events: movementEvents(result.events), maxDurationMs: MAX_MOVE_DURATION_MS,
@@ -145,7 +149,7 @@ export function reduceItemSession(session: GameSession, action: GameAction, netw
       const record = game.pending?.kind === "discard" ? game.pending.record : game.movementHistory.at(-1);
       return { ...session, phase: item.stagedAnimation ? "animating" : "idle",
         lastMove: itemLastMove(record, network), animation: item.stagedAnimation,
-        item: { ...item, stagedAnimation: null, decisionRevision: item.decisionRevision + 1 } };
+        item: { ...item, stagedAnimation: null, beforeMove: null, decisionRevision: item.decisionRevision + 1 } };
     }
     case "item-adjust":
       if (session.phase !== "awaiting-adjust") return session;
@@ -165,7 +169,7 @@ export function reduceItemSession(session: GameSession, action: GameAction, netw
 
 export type ItemUnavailableReason = "completed" | "decision-pending" | "forced-turn" | "passive"
   | "after-roll" | "item-already-selected" | "no-route-choice" | "fixed-direction" | "no-rapid-stop"
-  | "suspended-route";
+  | "single-direction" | "suspended-route";
 
 export interface ItemSessionView {
   readonly phase: GameSession["phase"];
@@ -258,7 +262,8 @@ export function itemSessionView(session: GameSession, network: RailwayNetwork): 
       else if (forced) reason = "forced-turn";
       else if (owned.kind === "roll-adjust") reason = "after-roll";
       else if (owned.kind === "route-ticket" && !hasRouteChoice) reason = hasSuspendedAlternative ? "suspended-route" : "no-route-choice";
-      else if (owned.kind === "direction-ticket" && (position.currentServiceId === game.config.targetServiceId || direction.directions.length !== 2)) reason = "fixed-direction";
+      else if (owned.kind === "direction-ticket" && position.currentServiceId === game.config.targetServiceId) reason = "fixed-direction";
+      else if (owned.kind === "direction-ticket" && direction.directions.length !== 2) reason = "single-direction";
       else if (owned.kind === "rapid" && !rapidAvailable) reason = "no-rapid-stop";
       return { instanceId: owned.id, kind: owned.kind, usable: reason === null, reason,
         selected: selected?.instanceId === owned.id,

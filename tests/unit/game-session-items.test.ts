@@ -12,6 +12,7 @@ import {
   type GameAction, type GameSession,
 } from "../../src/features/game/gameSession";
 import { adjustmentOptions, itemActionIdentity, itemSessionView } from "../../src/features/game/itemSession";
+import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
 import { readSave, type StorageLike } from "../../src/features/game/store/persistence";
 import { useGameApp, type GameAppControls } from "../../src/features/game/useGameApp";
 import { M_LINE, M_LOOP, M_SPUR, multiConfig, multiServiceInput } from "./fixtures/multiService";
@@ -114,6 +115,9 @@ describe("item session phases and identity", () => {
     const resolving = reduce(adjusting, { type: "item-adjust", ...itemActionIdentity(adjusting),
       adjustment: { instanceId: "held-0", delta } });
     expect(resolving).toMatchObject({ phase: "resolving", animation: null, game: { turn: 1, pending: null } });
+    expect(displayedProgress(sessionProgress(resolving), network, null)).toMatchObject({
+      stationId: game.currentStationId, completedSegmentIds: game.completedSegmentIds,
+    });
     expect(itemGame(resolving)).toEqual(finishItemTurn(game, { instanceId: "held-0", delta }, network).state);
     const animating = saved(resolving);
     expect(animating.phase).toBe("animating");
@@ -132,6 +136,9 @@ describe("item session phases and identity", () => {
     const committing = commit(session);
     const resolving = saved(committing);
     expect(resolving.phase).toBe("resolving");
+    expect(displayedProgress(sessionProgress(resolving), network, null)).toMatchObject({
+      stationId: session.game.currentStationId, completedSegmentIds: session.game.completedSegmentIds,
+    });
     expect(itemSessionView(resolving, network)?.decision).toBeNull();
     expect(itemGame(resolving)).toEqual(finishItemTurn(itemGame(committing), null, network).state);
     expect(saved(resolving).phase).toBe("animating");
@@ -191,6 +198,9 @@ describe("saveable pending decisions", () => {
     expect(session.phase).toBe("resolving");
     expect(itemGame(session).pending?.kind).toBe("discard");
     expect(itemSessionView(session, network)?.decision).toBeNull();
+    expect(displayedProgress(sessionProgress(session), network, null)).toMatchObject({
+      stationId: base.currentStationId, completedSegmentIds: base.completedSegmentIds,
+    });
     session = finishAnimation(saved(session));
     expect(session.phase).toBe("awaiting-discard");
     const view = itemSessionView(session, network)!;
@@ -380,6 +390,19 @@ describe("persistence boundary in the React hook", () => {
 });
 
 describe("read-only S9 view model", () => {
+  it.each([
+    [M_LOOP, "start", "fixed-direction"],
+    [M_LINE, "x", "single-direction"],
+    [M_LINE, "z", "single-direction"],
+    [M_SPUR, "s2", "single-direction"],
+    [M_LINE, "y", null],
+  ] as const)("explains direction-ticket availability on %s at %s", (currentServiceId, currentStationId, reason) => {
+    const session = fresh("direction-ticket");
+    const game = { ...itemGame(session), currentServiceId, currentStationId };
+    const view = itemSessionView({ ...session, game }, network)!;
+    expect(view.usableItems[0]).toMatchObject({ reason, usable: reason === null });
+  });
+
   it("reports route candidates, fixed Yamanote direction and graph-hop guidance", () => {
     const session = fresh("route-ticket", "direction-ticket", "rapid");
     const game = { ...itemGame(session), currentStationId: "b", currentServiceId: M_LINE, direction: -1 as const };

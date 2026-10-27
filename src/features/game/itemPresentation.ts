@@ -38,6 +38,7 @@ const UNAVAILABLE_LABELS: Readonly<Record<ItemUnavailableReason, string>> = {
   "item-already-selected": "ほかのアイテムを選択中",
   "no-route-choice": "選べる路線がありません",
   "fixed-direction": "山手線は向きが固定",
+  "single-direction": "この駅では進める向きが1つです",
   "no-rapid-stop": "快速で進める乗換駅がありません",
   "suspended-route": "運休中で選べない",
 };

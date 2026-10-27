@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RailwayData } from "../data/loaders";
-import { displayedProgress } from "../features/game/animation/displayedProgress";
+import { displayedProgress, sessionProgress } from "../features/game/animation/displayedProgress";
 import { buildGeometryIndex } from "../features/game/animation/movePath";
 import { useMoveAnimation } from "../features/game/animation/useMoveAnimation";
 import { ClearScreen } from "../features/game/components/ClearScreen";
@@ -82,23 +82,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   );
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
-  // Adapt item history only for the existing presentation helpers. Saves and
-  // decisions always use the original engine state.
-  const presentationGame = useMemo<GameState | null>(() => {
-    if (!game || !isItemSave(game)) return game;
-    const pending = game.pending?.kind === "discard" ? game.pending : null;
-    const arrived = pending && session?.phase !== "resolving" ? pending.position : game;
-    const records = pending && arrived === pending.position ? [...game.movementHistory, pending.record] : game.movementHistory;
-    return { ...arrived, config: game.config, completedSegmentIds: [...arrived.completedSegmentIds], movementHistory: records.map((record) => ({
-      turn: record.turn, roll: record.kind === "item-ride" ? record.effectiveFace : 0,
-      serviceId: record.kind === "item-ride" ? record.resolvedRide.serviceId : record.relocation.serviceId,
-      direction: record.kind === "item-ride" ? record.resolvedRide.direction : record.relocation.direction,
-      fromStationId: record.fromStationId, toStationId: record.toStationId,
-      traversedSegmentIds: [...record.traversedSegmentIds],
-      stopReason: record.kind === "item-ride" ? record.stopReason : "roll",
-      landing: record.landing ? { ...record.landing } : null,
-    })) };
-  }, [game, session?.phase]);
+  const presentationGame = useMemo(() => session ? sessionProgress(session) : null, [session]);
   const titleSave: SaveLookup | null = app.saveLookup?.kind === "valid"
     ? { kind: "valid", game: isItemSave(app.saveLookup.game)
       ? { ...app.saveLookup.game, movementHistory: [] } : app.saveLookup.game }
