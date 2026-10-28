@@ -35,10 +35,9 @@ reveal hook, toast host) for P2. Presentation only: no engine/RNG/save/public-da
 ## Branch
 
 `feature/ui-pop-hud-inventory` from develop `4368673` (v0.10.0); PR target `develop`.
-`UI_POP_BASE` (commit before S1): _record here when S1 starts._
-Pre-existing uncommitted work on the branch (leave alone unless the lead commits it separately):
-`.claude/docs/DESIGN.md` (2026-10-28 decisions), `.claude/docs/research/official-line-symbols-usage.md`,
-`.claude/docs/research/ui-pop-overhaul-audit.md`.
+`UI_POP_BASE` (commit before S1): `81454df` (planning docs commit, recorded 2026-10-28 when S1 started).
+The DESIGN.md 2026-10-28 decisions and the research notes were committed in `81454df`; the tree was clean
+when S1 started.
 
 ## How to resume
 
@@ -54,7 +53,7 @@ Pre-existing uncommitted work on the branch (leave alone unless the lead commits
 | Step | Title | Lane (impl / review) | Status | Commit | Evidence |
 |---|---|---|---|---|---|
 | Plan | Phases 1E/2E, Codex-validated | Sol | done (awaiting user approval) | — | validate_doc exit 0; workspace --verify exit 0; Codex validation round 1 NEEDS_REVISION → revised; round 2 PASS (`.claude/logs/codex/20261028T044343Z-uipop-validate2.md`) |
-| S1 | Tokens + accessible brand buttons | Luna high / Sol low | not started | — | — |
+| S1 | Tokens + accessible brand buttons | Luna high / Sol low | done | this commit (`feat(ui): add brand design tokens and button styles`) | Baseline @81454df: `ui_gate` 52 files / 977 passed, 1 skipped; full `ui_e2e` 226 passed, 2 skipped (13.3 min). After: `ui_gate` 53 files / 985 passed, 1 skipped; full `ui_e2e` 225 passed, 2 skipped, 1 failed (`save-errors.spec.ts:142` desktop-chromium, 30 s test timeout under CPU contention from a concurrent pytest run; idle page, dice ready) → rerun `save-errors.spec.ts --repeat-each=3` on all 3 projects 81 passed (that test 7.9–12.3 s); final tree `ui_gate` 985 passed + `layout`/`accessibility` 45 passed. Review: Sol low round 1 CHANGES_REQUIRED (base `:active` rule beat `.button-primary`/`.dialog__confirm` pressed fill → white on cream; disabled buttons looked enabled) → lead fixed (`:where()`, disabled tokens, `.dialog__confirm:active`); round 2 ACCEPT; its non-blocking note (aria-disabled CTA pressed fill) also fixed. `verify_delegation` exit 0: 0 out-of-scope, 0 placeholders, 0 weakened tests; forbidden-path diff empty. Logs: `.claude/logs/uipop-s1/`. |
 | S2 | Line-badge catalogue (S2A mapping research, S2B code) | Sol high + Luna high / Sol low | not started | — | — |
 | S3 | `LineBadge` + 11 item icons | Luna high / Sol low | not started | — | — |
 | S4 | HUD pure models, progress bar, effect chips | Luna high / Sol low | not started | — | — |
@@ -85,4 +84,16 @@ Pre-existing uncommitted work on the branch (leave alone unless the lead commits
 - Local E2E: `env -u WAYLAND_DISPLAY npx playwright test …` (WSL WAYLAND quirk), 2 workers; WebKit CI-only.
   Never `pkill -f`; stop servers by port.
 - Luna implementation runs need `--timeout 2400`; watch long runs every ~5 minutes.
-- Full local E2E gates at S1, S8, S9, S10, S14, S17, S21, S23, S25 — record the first full-run duration here.
+- Full local E2E gates at S1, S8, S9, S10, S14, S17, S21, S23, S25. First full run (S1 baseline): 228 tests,
+  13.3 min; S1 after-run 17.4 min. Do not run `verify.sh` (its 14 min pytest) concurrently with Playwright:
+  it caused the one S1 timeout.
+- `verify.sh` (run at S1) is red only on pytest: `tests/data_pipeline/` 4 failed + 5 errors ("audited output
+  hash is stale" in the local N02 staging handoff); ruff/ty pass. S1 touches no Python, `scripts/` or data, so
+  this is unrelated to the UI work; pytest was not run at `81454df` to prove it pre-existed.
+- S1 tokens available to later steps: `--color-brand`, `--color-brand-strong`, `--color-brand-tint`,
+  `--color-ink`, `--color-cream`, `--color-surface(-raised|-disabled)`, `--color-text(-muted|-disabled)`,
+  `--color-border`, `--color-good|bad|warning`, `--color-focus-ring`, `--radius-sm|md|lg|pill`,
+  `--shadow-sm|md`, `--motion-fast|normal|slow` (0 ms under reduced motion). `.button-cta` is defined
+  (brand fill, 18.7px/700, disabled + aria-disabled styles) but not applied — S10 applies it to the dice button.
+- Next: S2 (S2A Sol-high read-only mapping research first). Known pre-existing <44px controls (staged summary
+  36px, item select 40px, legend 32px) are fixed in S12/S23, not S1.
