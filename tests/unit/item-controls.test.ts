@@ -291,7 +291,7 @@ it("feeds the HUD displayed values and the supplied required count, and hides ch
   const { resumeSession } = await import("../../src/features/game/gameSession");
   const network = buildRailwayNetwork(multiServiceInput());
   const base = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "hud-displayed", network);
-  const game = { ...base, effects: { delayDueTurns: [3], suspensions: [], detourPending: false, oversleepPending: true } };
+  const game = { ...base, effects: { delayDueTurns: [3], suspensions: [], detourPending: true, oversleepPending: true } };
   const idle = resumeSession(game, network);
   const common = { network, lines: [], displayedStationId: "a", displayedCompletedCount: 2, requiredCount: 4,
     saveStatus: "saved" as const, follow: true, speedLabel: "標準", reducedMotion: false,
@@ -309,8 +309,18 @@ it("feeds the HUD displayed values and the supplied required count, and hides ch
   expect(bars).toHaveLength(1);
   expect([bars[0]!.getAttribute("aria-valuenow"), bars[0]!.getAttribute("aria-valuemax")]).toEqual(["2", "4"]);
   const chips = mount.container.querySelector(".game-panel [aria-label='続いている効果']");
-  expect([...chips!.querySelectorAll(".effect-chip__label")].map((label) => label.textContent)).toEqual(["遅延 あと3", "寝過ごし"]);
+  expect([...chips!.querySelectorAll(".effect-chip__label")].map((label) => label.textContent)).toEqual(["遅延 あと3", "寄り道", "寝過ごし"]);
   expect(chips!.textContent).toContain("遅延：3ターン目に発動（あと3ターン）");
+  const log = mount.container.querySelector("[aria-label='ターンのログ']")!;
+  const effectTextList = log.querySelector("[aria-label='効果の説明']")!;
+  expect([...effectTextList.querySelectorAll("li")].map((item) => item.textContent)).toEqual([
+    "遅延：3ターン目に発動（あと3ターン）",
+    "寄り道：次に別の路線へ乗り換えられる駅で発動します",
+    "寝過ごし：次のターンは終点まで（環状線は6駅）進みます",
+  ]);
+  expect((effectTextList as HTMLElement).hidden).toBe(false);
+  expect(effectTextList.querySelectorAll(".visually-hidden, [hidden]")).toHaveLength(0);
+  expect(log.querySelectorAll("[aria-label='続いている効果']")).toHaveLength(0);
   expect(mount.container.querySelectorAll("[aria-label='続いている効果']")).toHaveLength(1);
   const moving = { ...idle, phase: "animating" as const };
   const roll = mount.container.querySelector(".game-panel__roll");

@@ -525,6 +525,7 @@ button[aria-disabled="true"] {
   display: none;
 }
 
+.game-panel__log-trigger,
 .game-panel__menu-trigger {
   display: inline-flex;
   align-items: center;
@@ -535,12 +536,62 @@ button[aria-disabled="true"] {
   text-align: left;
 }
 
+.game-panel__disclosures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "log-trigger menu-trigger"
+    "log log"
+    "menu menu";
+  gap: 0 8px;
+}
+
+.game-panel__log-trigger {
+  grid-area: log-trigger;
+}
+
+.game-panel__menu-trigger {
+  grid-area: menu-trigger;
+}
+
+.game-panel__log {
+  grid-area: log;
+  min-width: 0;
+}
+
+.game-panel__log[hidden] {
+  display: none;
+}
+
+.game-panel__menu {
+  grid-area: menu;
+  min-width: 0;
+}
+
+.game-panel__effect-texts {
+  font-size: 12px;
+}
+
+.game-panel__effect-texts h2 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+}
+
+.game-panel__effect-texts ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+
+.game-panel__log-icon,
+.game-panel__log-chevron,
 .game-panel__menu-icon,
 .game-panel__menu-chevron {
   flex: 0 0 auto;
   color: currentColor;
 }
 
+.game-panel__log-chevron,
 .game-panel__menu-chevron {
   margin-left: auto;
 }
@@ -1397,12 +1448,10 @@ button[aria-disabled="true"] {
     grid-template-columns: minmax(0, 1fr) minmax(194px, 0.9fr);
     grid-template-areas:
       "stats actions"
-      "lottery menu-trigger"
-      "options options"
+      "log-trigger menu-trigger"
+      "lottery lottery"
       "chips chips"
       "save save"
-      "candidates candidates"
-      "route route"
       "legend legend";
     align-items: start;
     column-gap: 12px;
@@ -1464,7 +1513,7 @@ button[aria-disabled="true"] {
   }
 
   .game-panel__options {
-    grid-area: options;
+    grid-area: lottery;
     margin-top: 0;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -1476,10 +1525,40 @@ button[aria-disabled="true"] {
   }
 
   .game-panel__lottery {
-    grid-area: lottery;
     margin: 0;
     align-self: center;
     line-height: 1.3;
+  }
+
+  .game-panel__disclosures {
+    display: contents;
+  }
+
+  .game-panel__log-trigger,
+  .game-panel__menu-trigger {
+    grid-area: menu-trigger;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .game-panel__log-trigger {
+    grid-area: log-trigger;
+  }
+
+  .game-panel__log {
+    grid-area: lottery;
+    min-height: 0;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  /* Short landscape only: the open menu's options and legend take their own grid areas. */
+  .game-panel__menu {
+    display: contents;
+  }
+
+  .game-panel__legend-section {
+    grid-area: legend;
   }
 
   .game-panel__save {
@@ -1490,37 +1569,6 @@ button[aria-disabled="true"] {
   .game-panel .effect-chips {
     grid-area: chips;
     margin-top: 0;
-  }
-
-  .game-panel__candidates {
-    grid-area: candidates;
-  }
-
-  .game-panel__route-summary {
-    grid-area: route;
-    margin-top: 0;
-  }
-
-  .game-panel__legend-section {
-    grid-area: legend;
-  }
-
-  .game-panel__menu-trigger {
-    grid-area: menu-trigger;
-    margin-top: 0;
-  }
-
-  /* Short landscape only: let the options and legend take their own grid areas. */
-  .game-panel__menu {
-    display: contents;
-  }
-
-  .game-panel__menu .game-panel__options {
-    grid-area: options;
-  }
-
-  .game-panel__menu .game-panel__legend-section {
-    grid-area: legend;
   }
 }
 

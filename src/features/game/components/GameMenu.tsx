@@ -1,9 +1,12 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef } from "react";
 import { GameLegend, type LegendLine } from "./GameLegend";
 
 const MENU_ICON_SIZE = 16;
 
 export interface GameMenuProps {
+  /** Owned by `GamePanel`, which keeps the menu and the turn log mutually exclusive. */
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
   follow: boolean;
   reducedMotion: boolean;
   speedLabel: string;
@@ -26,6 +29,8 @@ export function modalDialogOpen(): boolean {
 
 /** Persistent game controls and the grouped line legend, hidden as one disclosure. */
 export function GameMenu({
+  expanded,
+  onExpandedChange,
   follow,
   reducedMotion,
   speedLabel,
@@ -40,7 +45,6 @@ export function GameMenu({
   onSetOperator,
   onShowAll,
 }: GameMenuProps): React.JSX.Element {
-  const [expanded, setExpanded] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const regionId = useId();
 
@@ -52,21 +56,21 @@ export function GameMenu({
       // A native modal owns Escape: preventing it here would keep the dialog open.
       if (modalDialogOpen()) return;
       event.preventDefault();
-      setExpanded(false);
+      onExpandedChange(false);
       triggerRef.current?.focus({ preventScroll: true });
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [expanded]);
+  }, [expanded, onExpandedChange]);
 
   const close = (): void => {
-    setExpanded(false);
+    onExpandedChange(false);
     triggerRef.current?.focus({ preventScroll: true });
   };
 
   const startNewGame = (): void => {
     triggerRef.current?.focus({ preventScroll: true });
-    setExpanded(false);
+    onExpandedChange(false);
     onNewGame();
   };
 
@@ -78,7 +82,7 @@ export function GameMenu({
         className="game-panel__menu-trigger"
         aria-expanded={expanded}
         aria-controls={regionId}
-        onClick={() => expanded ? close() : setExpanded(true)}
+        onClick={() => expanded ? close() : onExpandedChange(true)}
       >
         <svg className="game-panel__menu-icon" aria-hidden="true" focusable="false" width={MENU_ICON_SIZE} height={MENU_ICON_SIZE} viewBox="0 0 16 16">
           <path d="M2 3.5h12M2 8h12M2 12.5h12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />

@@ -28,7 +28,10 @@ function Harness({ value }: { value: GameHudProps }): React.JSX.Element {
   return createElement(GameHud, value);
 }
 
-function menuProps(overrides: Partial<GameMenuProps> = {}): GameMenuProps {
+/** Menu props without the open state, which `MenuHarness` owns (in the app, `GamePanel` does). */
+type MenuValue = Omit<GameMenuProps, "expanded" | "onExpandedChange">;
+
+function menuProps(overrides: Partial<MenuValue> = {}): MenuValue {
   return {
     follow: true, reducedMotion: false, speedLabel: "ふつう", lines: [
       { id: "jr-yamanote", name: "山手線", color: "#80c241", operatorId: "JR東日本", serviceIds: ["jr-yamanote"] },
@@ -38,11 +41,12 @@ function menuProps(overrides: Partial<GameMenuProps> = {}): GameMenuProps {
   };
 }
 
-function MenuHarness({ value }: { value: GameMenuProps }): React.JSX.Element {
-  return createElement(GameMenu, value);
+function MenuHarness({ value }: { value: MenuValue }): React.JSX.Element {
+  const [expanded, setExpanded] = useState(false);
+  return createElement(GameMenu, { ...value, expanded, onExpandedChange: setExpanded });
 }
 
-function DraftEscapeHarness({ value }: { value: GameMenuProps }): React.JSX.Element {
+function DraftEscapeHarness({ value }: { value: MenuValue }): React.JSX.Element {
   const [draft, setDraft] = useState(true);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -320,4 +324,70 @@ describe("GameMenu", () => {
     expect(css).not.toMatch(/\.game-panel__legend-reset\s*\{[^}]*min-height:\s*32px/s);
     expect(css).not.toMatch(/\.game-panel__legend-operator label\s*\{[^}]*min-height:\s*32px/s);
   });
+});
+
+it("keeps the turn log mounted, mutually exclusive, keyboard closable, and retains route details", () => {
+  const network = buildRailwayNetwork(multiServiceInput());
+  const game = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "log-disclosure", network);
+  const session = resumeSession(game, network);
+  const common = { network, lines: [], displayedStationId: "a", displayedCompletedCount: 0, requiredCount: 4,
+    saveStatus: "saved" as const, follow: true, speedLabel: "標準", reducedMotion: false,
+    onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
+  type PanelProps = Parameters<typeof GamePanel>[0];
+  function Harness({ value }: { value: PanelProps }): React.JSX.Element {
+    return createElement(GamePanel, value);
+  }
+  const mount = mountReact(createElement(Harness, { value: { ...common, session } }));
+  try {
+    const logTrigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")!;
+    const menuTrigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
+    const log = mount.container.querySelector<HTMLElement>(".game-panel__log")!;
+    const menu = mount.container.querySelector<HTMLElement>(".game-panel__menu")!;
+    expect(logTrigger.textContent).toBe("ログ");
+    expect(logTrigger.getAttribute("aria-expanded")).toBe("true");
+    expect(logTrigger.getAttribute("aria-controls")).toBe(log.id);
+    expect(log.getAttribute("aria-label")).toBe("ターンのログ");
+    expect(log.hidden).toBe(false);
+    expect(log.querySelector(".game-panel__lottery")).not.toBeNull();
+    expect(log.querySelector(".game-panel__route-summary")).not.toBeNull();
+    expect(log.querySelector("[role=status], [aria-live]")).toBeNull();
+    expect(mount.container.querySelectorAll(".game-panel [role=status]")).toHaveLength(1);
+    expect(logTrigger.querySelectorAll("svg[aria-hidden=true]")).toHaveLength(2);
+    expect(logTrigger.querySelector("svg title, svg text")).toBeNull();
+
+    const routeSummary = log.querySelector<HTMLDetailsElement>(".game-panel__route-summary")!;
+    routeSummary.open = true;
+    dispatchReactEvent(menuTrigger, new MouseEvent("click", { bubbles: true }));
+    expect(menuTrigger.getAttribute("aria-expanded")).toBe("true");
+    expect(menu.hidden).toBe(false);
+    expect(logTrigger.getAttribute("aria-expanded")).toBe("false");
+    expect(log.hidden).toBe(true);
+    dispatchReactEvent(logTrigger, new MouseEvent("click", { bubbles: true }));
+    expect(menuTrigger.getAttribute("aria-expanded")).toBe("false");
+    expect(menu.hidden).toBe(true);
+    expect(log.hidden).toBe(false);
+    expect(routeSummary.open).toBe(true);
+
+    logTrigger.focus();
+    const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    act(() => window.dispatchEvent(escape));
+    expect(escape.defaultPrevented).toBe(true);
+    expect(log.hidden).toBe(true);
+    expect(document.activeElement).toBe(logTrigger);
+
+    const dialog = document.createElement("dialog");
+    dialog.setAttribute("open", "");
+    document.body.append(dialog);
+    try {
+      dispatchReactEvent(logTrigger, new MouseEvent("click", { bubbles: true }));
+      const modalEscape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+      act(() => dialog.dispatchEvent(modalEscape));
+      expect(modalEscape.defaultPrevented).toBe(false);
+      expect(log.hidden).toBe(false);
+    } finally {
+      dialog.remove();
+    }
+  } finally {
+    mount.cleanup();
+  }
 });

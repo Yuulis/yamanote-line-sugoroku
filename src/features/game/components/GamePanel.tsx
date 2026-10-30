@@ -34,6 +34,7 @@ import { ItemUseDialog } from "./ItemUseDialog";
 import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
 import { DiscardChoice } from "./DiscardChoice";
+import { TurnLogDrawer } from "./TurnLogDrawer";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -149,6 +150,10 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     kind: "route-ticket" | "direction-ticket";
     instanceId: string;
   } | null>(null);
+  // One disclosure surface at a time; the log starts expanded until S17.
+  const [activeSurface, setActiveSurface] = useState<"log" | "menu" | null>("log");
+  const setLogExpanded = useCallback((expanded: boolean) => setActiveSurface(expanded ? "log" : null), []);
+  const setMenuExpanded = useCallback((expanded: boolean) => setActiveSurface(expanded ? "menu" : null), []);
   const itemDialogOpen = Boolean(props.itemView && itemDialog);
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
@@ -250,53 +255,60 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
       </div>}
       {props.itemView && <InventoryPanel view={props.itemView} onSelect={selectItem} />}
-      <GameMenu
-        follow={follow}
-        reducedMotion={reducedMotion}
-        speedLabel={props.speedLabel}
-        lines={legendGroups}
-        targetColor={targetColor}
-        selectedGroupIds={selectedGroupIds}
-        onToggleFollow={props.onToggleFollow}
-        onCycleSpeed={props.onCycleSpeed}
-        onNewGame={props.onNewGame}
-        onShowTitle={props.onShowTitle}
-        onToggleGroup={toggleGroup}
-        onSetOperator={setOperator}
-        onShowAll={showAllLineGroups}
-      />
-      {props.itemView && session.lastMove && phase === "idle" && <p className="item-arrival">{arrivalSummary(
-        session.lastMove.itemRecord?.turn ?? game.turn, session.lastMove, props.displayedCompletedCount,
-        props.requiredCount, network, presentation)}</p>}
-      {props.itemView && (phase === "idle" || phase === "awaiting-discard") && <ItemEventNotice
-        view={props.itemView} lastMove={session.lastMove} turn={game.turn} network={network} presentation={presentation} showEffects={false}
-      />}
-      <p className="game-panel__lottery">
-        <span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network, presentation)}
-      </p>
+      <div className="game-panel__disclosures">
+        <TurnLogDrawer
+          expanded={activeSurface === "log"}
+          onExpandedChange={setLogExpanded}
+          arrival={props.itemView && session.lastMove && phase === "idle" ? arrivalSummary(
+            session.lastMove.itemRecord?.turn ?? game.turn, session.lastMove, props.displayedCompletedCount,
+            props.requiredCount, network, presentation) : null}
+          lottery={<p className="game-panel__lottery"><span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network, presentation)}</p>}
+          notice={props.itemView && (phase === "idle" || phase === "awaiting-discard") ? <ItemEventNotice
+            view={props.itemView} lastMove={session.lastMove} turn={game.turn} network={network} presentation={presentation} showEffects={false}
+          /> : null}
+          effectTexts={effectModels.map((model) => model.text)}
+          routeSummary={<details className="game-panel__route-summary">
+            <summary>地図なしで確認</summary>
+            <section aria-label="山手線の未踏破区間">
+              <h2>山手線の未踏破区間（{remainingSections.length}）</h2>
+              {remainingSections.length > 0 ? (
+                <ol>{remainingSections.map((section) => <li key={section.id}>{section.from} → {section.to}</li>)}</ol>
+              ) : <p>未踏破区間はありません。</p>}
+            </section>
+            <section aria-label="乗車中の次の駅">
+              <h2>乗車中の次の駅</h2>
+              <p>{serviceName(network, ride.serviceId, presentation)}・{directionLabel(network, ride.serviceId, ride.direction)}</p>
+              {upcomingStations.length > 0 ? (
+                <ol>{upcomingStations.map((stationId) => <li key={stationId}>{stationName(network, stationId, presentation)}</li>)}</ol>
+              ) : <p>この路線に次の駅はありません。</p>}
+            </section>
+          </details>}
+          candidates={!animating && candidates.length > LOTTERY_INLINE_LIMIT ? (
+            <details className="game-panel__candidates" key={game.turn}>
+              <summary>抽選候補をすべて表示（{candidates.length}抽選枠）</summary>
+              <ul>{presentation.candidateRows(candidates).map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
+            </details>
+          ) : null}
+        />
+        <GameMenu
+          expanded={activeSurface === "menu"}
+          onExpandedChange={setMenuExpanded}
+          follow={follow}
+          reducedMotion={reducedMotion}
+          speedLabel={props.speedLabel}
+          lines={legendGroups}
+          targetColor={targetColor}
+          selectedGroupIds={selectedGroupIds}
+          onToggleFollow={props.onToggleFollow}
+          onCycleSpeed={props.onCycleSpeed}
+          onNewGame={props.onNewGame}
+          onShowTitle={props.onShowTitle}
+          onToggleGroup={toggleGroup}
+          onSetOperator={setOperator}
+          onShowAll={showAllLineGroups}
+        />
+      </div>
       {!props.itemView?.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
-      <details className="game-panel__route-summary">
-        <summary>地図なしで確認</summary>
-        <section aria-label="山手線の未踏破区間">
-          <h2>山手線の未踏破区間（{remainingSections.length}）</h2>
-          {remainingSections.length > 0 ? (
-            <ol>{remainingSections.map((section) => <li key={section.id}>{section.from} → {section.to}</li>)}</ol>
-          ) : <p>未踏破区間はありません。</p>}
-        </section>
-        <section aria-label="乗車中の次の駅">
-          <h2>乗車中の次の駅</h2>
-          <p>{serviceName(network, ride.serviceId, presentation)}・{directionLabel(network, ride.serviceId, ride.direction)}</p>
-          {upcomingStations.length > 0 ? (
-            <ol>{upcomingStations.map((stationId) => <li key={stationId}>{stationName(network, stationId, presentation)}</li>)}</ol>
-          ) : <p>この路線に次の駅はありません。</p>}
-        </section>
-      </details>
-      {!animating && candidates.length > LOTTERY_INLINE_LIMIT && (
-        <details className="game-panel__candidates" key={game.turn}>
-          <summary>抽選候補をすべて表示（{candidates.length}抽選枠）</summary>
-          <ul>{presentation.candidateRows(candidates).map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
-        </details>
-      )}
       {props.itemView && itemDialog && (
         <ItemUseDialog
           kind={itemDialog.kind}
