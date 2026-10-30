@@ -220,6 +220,59 @@ button[aria-disabled="true"] {
   overflow-wrap: anywhere;
 }
 
+.target-progress {
+  width: 100%;
+}
+
+.target-progress__segments {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 2px;
+  width: 100%;
+  min-height: 8px;
+}
+
+.target-progress__segment {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 8px;
+  background: var(--color-border);
+  transition: background-color var(--motion-normal);
+}
+
+.target-progress__segment--completed {
+  background: var(--color-brand);
+}
+
+.effect-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.effect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  color: var(--color-text);
+}
+
+.effect-chip__text {
+  overflow-wrap: anywhere;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .target-progress__segment {
+    transition: none;
+  }
+}
+
 .game-panel__subtitle {
   margin: 0 0 6px;
   color: #555555;

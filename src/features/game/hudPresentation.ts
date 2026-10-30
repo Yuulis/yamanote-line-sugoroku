@@ -1,0 +1,93 @@
+import type { DeepReadonly, HarmfulItemKind, ItemEffectsState, ItemRideRecord } from "../../types/network";
+import type { LastMove } from "./gameSession";
+import type { PresentationResolver } from "./presentationResolver";
+import { activeItemEffectTexts } from "./presentation";
+import type { RailwayNetwork } from "./engine";
+
+export interface CompactRollModel {
+  face: number | null;
+  label: string;
+  modifier: string | null;
+}
+
+export interface ProgressSegment {
+  index: number;
+  completed: boolean;
+}
+
+export interface EffectChipModel {
+  key: string;
+  kind: HarmfulItemKind;
+  text: string;
+  remainingTurns: number | null;
+  serviceId: string | null;
+}
+
+export function compactRollFor(lastMove: LastMove | null): CompactRollModel {
+  if (!lastMove) return { face: null, label: "—", modifier: null };
+  if (lastMove.stopReason === "relocation" || lastMove.itemRecord?.kind === "deadhead") {
+    return { face: null, label: "回送（サイコロなし）", modifier: null };
+  }
+
+  const record = lastMove.itemRecord;
+  if (record?.kind === "item-ride") return compactItemRoll(record);
+
+  const face: number | null = lastMove.roll;
+  return { face, label: face === null ? "—" : `${face}マス`, modifier: null };
+}
+
+/** Item rides read only typed record fields; `pips` counts squares, `hopBudget` counts stations. */
+function compactItemRoll(record: DeepReadonly<ItemRideRecord>): CompactRollModel {
+  const face: number = record.effectiveFace;
+  if (record.movementMode === "oversleep") return { face, label: "寝過ごし", modifier: null };
+  // Rapid spends pips on transfer stops only; its budget is a physical station count.
+  if (record.movementMode === "rapid") return { face, label: `${record.hopBudget}駅`, modifier: "快速" };
+  const label = `${record.pips}マス`;
+  if (record.adjustment) return { face, label, modifier: record.adjustment.delta > 0 ? "調整+1" : "調整-1" };
+  if (record.command.items.some((item) => item.kind === "double")) return { face, label, modifier: "×2" };
+  // A due delay forces the effective face to 1 without an adjustment ticket.
+  if (record.effectiveFace !== record.rawRoll) return { face, label, modifier: "遅延" };
+  return { face, label, modifier: null };
+}
+
+export function progressSegments(completedCount: number, requiredCount: number): readonly ProgressSegment[] {
+  const count: number = Number.isFinite(requiredCount) ? Math.max(0, Math.floor(requiredCount)) : 0;
+  const completed: number = Number.isFinite(completedCount) ? Math.min(count, Math.max(0, Math.floor(completedCount))) : 0;
+  return Array.from({ length: count }, (_unused: unknown, index: number): ProgressSegment => ({
+    index,
+    completed: index < completed,
+  }));
+}
+
+export function effectChipModels(
+  effects: DeepReadonly<ItemEffectsState>,
+  turn: number,
+  network: RailwayNetwork,
+  presentation?: PresentationResolver,
+): readonly EffectChipModel[] {
+  const texts: string[] = activeItemEffectTexts(effects, turn, network, presentation);
+  const occurrences = new Map<string, number>();
+  // Keys come from each effect's own identity (plus its rank among identical entries), never from the
+  // array position, so an earlier effect expiring does not re-key the chips that remain.
+  const keyFor = (identity: string): string => {
+    const rank: number = occurrences.get(identity) ?? 0;
+    occurrences.set(identity, rank + 1);
+    return `${identity}#${rank}`;
+  };
+  const models: EffectChipModel[] = [];
+  effects.delayDueTurns.forEach((dueTurn: number): void => {
+    models.push({ key: keyFor(`delay:${dueTurn}`), kind: "delay", text: texts[models.length]!,
+      remainingTurns: Math.max(0, dueTurn - turn), serviceId: null });
+  });
+  effects.suspensions.filter((entry) => entry.expiresTurn > turn).forEach((entry): void => {
+    models.push({ key: keyFor(`suspension:${entry.serviceId}:${entry.expiresTurn}`), kind: "suspension",
+      text: texts[models.length]!, remainingTurns: entry.expiresTurn - turn, serviceId: entry.serviceId });
+  });
+  if (effects.detourPending) {
+    models.push({ key: keyFor("detour:pending"), kind: "detour", text: texts[models.length]!, remainingTurns: null, serviceId: null });
+  }
+  if (effects.oversleepPending) {
+    models.push({ key: keyFor("oversleep:pending"), kind: "oversleep", text: texts[models.length]!, remainingTurns: null, serviceId: null });
+  }
+  return models;
+}
