@@ -10,7 +10,7 @@ import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
-import { diceButton, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
+import { closeGameMenu, diceButton, gamePanel, markerPosition, openGameMenu, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 test.use({ dataset: "real" });
 const SCREENSHOT_DIR = resolve(".claude/logs/s6/screenshots");
@@ -107,6 +107,7 @@ test("the Oedo legend checkbox groups both services and works by keyboard and ph
   await startNewGame(page);
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   const panel = gamePanel(page);
+  await openGameMenu(page);
   const legendToggle = panel.getByRole("button", { name: /路線の凡例/ });
   await legendToggle.focus();
   await page.keyboard.press("Enter");
@@ -187,6 +188,7 @@ test("operator and line filters hide, restore, and resolve a Fukutoshin shared p
   await startNewGame(page);
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   const panel = gamePanel(page);
+  await openGameMenu(page);
   await panel.getByRole("button", { name: /路線の凡例/ }).click();
   const metro = panel.locator(".game-panel__legend-operator").filter({ hasText: "東京地下鉄" });
   await metro.locator("summary").click();
@@ -262,6 +264,7 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
     })}`);
   }
   const panel = gamePanel(page);
+  await openGameMenu(page);
   const lineToggle = panel.getByRole("button", { name: /路線の凡例/ });
   await expect(lineToggle).toHaveAttribute("aria-expanded", "false");
   await lineToggle.click();
@@ -273,6 +276,7 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   await expect(panel.getByRole("checkbox", { name: "埼京線を表示" })).toBeVisible();
   await expect(panel.getByRole("checkbox", { name: "京葉線を表示" })).toBeVisible();
   // Line settings sit below the item inventory in the scrollable phone panel.
+  await closeGameMenu(page);
   await diceButton(page).scrollIntoViewIfNeeded();
   await expect(diceButton(page)).toBeInViewport();
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
@@ -360,6 +364,7 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
     const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
     hook.map.jumpTo({ center: [139.61, 35.72], zoom: 16 });
   });
+  await openGameMenu(page);
   await gamePanel(page).getByRole("button", { name: "新規", exact: true }).click();
   await page.getByRole("button", { name: "新しく始める", exact: true }).click();
   await expect(panelStat(page, "ターン数")).toHaveText("0");

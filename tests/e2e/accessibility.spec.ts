@@ -2,8 +2,10 @@ import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import {
+  closeGameMenu,
   diceButton,
   gamePanel,
+  openGameMenu,
   openTitle,
   panelStat,
   readMap,
@@ -53,6 +55,7 @@ test.describe("game accessibility and text navigation", () => {
     expect(mapAfterPanel).toBe(true);
 
     await rollOnce(page);
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
     const titleHeading = titleScreen(page).getByRole("heading", { name: "山手線すごろく" });
     await expect(titleHeading).toBeFocused();
@@ -100,7 +103,9 @@ test.describe("game accessibility and text navigation", () => {
       (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;
     });
 
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "追尾: ON" }).click();
+    await closeGameMenu(page);
     await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(0);
 
     for (let turn = 1; turn <= 5; turn += 1) {
@@ -132,6 +137,7 @@ test.describe("game accessibility and text navigation", () => {
     await rollOnce(page);
     await expect(summary).toContainText("2ターン目");
 
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "新規" }).click();
     await page.getByRole("alertdialog", { name: "新しく始めますか？" }).getByRole("button", { name: "新しく始める" }).click();
     await expect(panelStat(page, "ターン数")).toHaveText("0");
@@ -167,7 +173,9 @@ test.describe("game accessibility and text navigation", () => {
       (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;
     });
 
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "追尾: ON" }).click();
+    await closeGameMenu(page);
     await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(0);
     await rollOnce(page);
     await expect(summary).toContainText("2ターン目");
@@ -224,6 +232,7 @@ test.describe("compact layouts and map follow padding", () => {
     await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
 
     const panel = gamePanel(page);
+    await openGameMenu(page);
     const assertCompactControlsVisible = async () => {
       const viewport = page.viewportSize();
       const panelBox = await panel.boundingBox();
@@ -371,12 +380,14 @@ test.describe("compact layouts and map follow padding", () => {
 
     await preserveMapIdentity();
     await rollOnce(page);
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "新規" }).click();
     await page.getByRole("alertdialog", { name: "新しく始めますか？" }).getByRole("button", { name: "新しく始める" }).click();
     await expect(panelStat(page, "ターン数")).toHaveText("0");
     await rollOnce(page);
     await verifyReplacementPanel();
 
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
     await expect(titleScreen(page)).toBeVisible();
     await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();

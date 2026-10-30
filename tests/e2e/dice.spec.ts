@@ -8,6 +8,7 @@ import {
   markerPosition,
   targetCompletedIds,
   openTitle,
+  openGameMenu,
   panelStat,
   REQUIRED_SEGMENTS,
   readMap,
@@ -76,6 +77,7 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
 }) => {
   await openTitle(page);
   await startNewGame(page);
+  await openGameMenu(page);
   const legend = gamePanel(page).getByRole("list", { name: "凡例" });
   await expect(legend.getByRole("listitem")).toHaveText([
     "山手線 踏破済み（実線）",

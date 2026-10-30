@@ -1,7 +1,9 @@
 import { expect, test } from "./fixtures";
 import {
+  closeGameMenu,
   gamePanel,
   loadManifestSource,
+  openGameMenu,
   openTitle,
   readMap,
   startNewGame,
@@ -30,9 +32,11 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
   await expect(map).toBeVisible();
   await expect(titleScreen(page)).toBeHidden();
   const panel = gamePanel(page);
+  await openGameMenu(page);
   await expect(panel.getByRole("button", { name: "サイコロを振る" })).toBeEnabled();
   await expect(panel.getByRole("button", { name: "スキップ" })).toBeVisible();
   await expect(panel.getByRole("button", { name: /追尾/ })).toBeVisible();
+  await closeGameMenu(page);
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   await expect(page.getByRole("alert")).toHaveCount(0);
 
@@ -122,6 +126,7 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   await expect(inner).toBeInViewport();
 
   // The full credits stay one click away from the play screen.
+  await openGameMenu(page);
   await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
   await titleScreen(page).getByRole("button", { name: "クレジット" }).click();
   await expect(credits).toBeVisible();

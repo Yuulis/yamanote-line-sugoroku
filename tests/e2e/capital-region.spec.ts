@@ -18,7 +18,7 @@ import {
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
-import { diceButton, freezeClock, gamePanel, markerPosition, openTitle, panelStat, readMap, readSave, revealUnadjustedRoll, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
+import { closeGameMenu, diceButton, freezeClock, gamePanel, markerPosition, openGameMenu, openTitle, panelStat, readMap, readSave, revealUnadjustedRoll, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -134,6 +134,7 @@ test("regional target view and full overview fit outside the panel; operator lin
   await expectFit(page, railwayBundle, true);
   await page.getByRole("button", { name: "全体", exact: true }).click();
   await expectFit(page, railwayBundle, false);
+  await openGameMenu(page);
   await expect(gamePanel(page).getByRole("button", { name: "追尾: OFF", exact: true })).toBeVisible();
   const panelLocator = gamePanel(page);
   const group = panelLocator.locator(".game-panel__legend-operator").filter({ hasText: "Fixture railway" });
@@ -155,6 +156,7 @@ test("regional target view and full overview fit outside the panel; operator lin
   expect(multiServiceMembers).toHaveLength(3);
   await group.locator("summary").click();
   await expect(group).not.toHaveAttribute("open");
+  await closeGameMenu(page);
   await page.getByRole("button", { name: "目標路線", exact: true }).click();
   await expectFit(page, railwayBundle, true);
   const viewport = page.viewportSize()!;
