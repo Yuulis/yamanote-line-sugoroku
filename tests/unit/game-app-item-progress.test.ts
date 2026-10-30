@@ -133,7 +133,8 @@ function gameBefore(seed: string, turn: number): ItemGameState {
 
 function stat(label: string): string | null {
   return [...mounted!.container.querySelectorAll("dt")]
-    .find((term) => term.textContent === label)?.nextElementSibling?.textContent ?? null;
+    .find((term) => term.textContent === label)?.nextElementSibling
+    ?.querySelector<HTMLElement>(".hud-stat__value")?.textContent ?? null;
 }
 
 describe("item progress in GameApp", () => {

@@ -69,11 +69,71 @@ export function diceButton(page: Page): Locator {
   return gamePanel(page).getByRole("button", { name: /サイコロを振る|移動中…/ });
 }
 
-/** The <dd> next to a <dt> label in the panel stats. */
+/** `data-stat` marker for each panel stat label (the value span, not the <dd>). */
+const STAT_DATA_BY_LABEL: Readonly<Record<string, string>> = {
+  "現在駅": "station",
+  "乗車中": "ride",
+  "進行方向": "direction",
+  "ターン数": "turn",
+  "踏破区間": "progress",
+  "出目": "roll",
+};
+
+/** The value span of a panel stat, found by its <dt> label through `data-stat`. */
 export function panelStat(page: Page, label: string): Locator {
-  return gamePanel(page)
-    .locator("dt", { hasText: new RegExp(`^${label}$`) })
-    .locator("xpath=following-sibling::dd[1]");
+  const stat = STAT_DATA_BY_LABEL[label];
+  if (!stat) throw new Error(`Unknown game panel stat label: ${label}`);
+  return gamePanel(page).locator(`[data-stat="${stat}"]`);
+}
+
+/** Open the turn log if needed and wait for its labelled region to be visible. */
+export async function openGameLog(page: Page): Promise<void> {
+  const trigger = gamePanel(page).getByRole("button", { name: "ログ", exact: true });
+  const region = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
+  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  await expect(region).toBeVisible();
+}
+
+/** Close the turn log if needed and wait for its labelled region to be hidden. */
+export async function closeGameLog(page: Page): Promise<void> {
+  const trigger = gamePanel(page).getByRole("button", { name: "ログ", exact: true });
+  const region = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
+  if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
+  await expect(region).toBeHidden();
+}
+
+/** Open the game menu if needed and wait for its labelled region to be visible. */
+export async function openGameMenu(page: Page): Promise<void> {
+  const trigger = gamePanel(page).getByRole("button", { name: "メニュー", exact: true });
+  const region = gamePanel(page).getByRole("region", { name: "メニュー", exact: true });
+  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  await expect(region).toBeVisible();
+}
+
+/** Close the game menu if needed and wait for its labelled region to be hidden. */
+export async function closeGameMenu(page: Page): Promise<void> {
+  const trigger = gamePanel(page).getByRole("button", { name: "メニュー", exact: true });
+  const region = gamePanel(page).getByRole("region", { name: "メニュー", exact: true });
+  if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
+  await expect(region).toBeHidden();
+}
+
+/**
+ * Locate an inventory slot by its visible item heading. S20 keeps that
+ * heading inside `.item-slot`; S21 adds an item-card opener to the slot and
+ * labels the resulting dialog with the same item name.
+ */
+export function inventoryItem(page: Page, name: string): Locator {
+  return gamePanel(page).locator(".item-slot")
+    .filter({ has: page.getByRole("heading", { name, exact: true }) });
+}
+
+/** Open an item's card, then activate its 使う action. */
+export async function useInventoryItem(page: Page, name: string): Promise<void> {
+  await inventoryItem(page, name).getByRole("button").click();
+  const card = gamePanel(page).getByRole("dialog", { name, exact: true });
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "使う", exact: true }).click();
 }
 
 export async function openTitle(page: Page): Promise<void> {

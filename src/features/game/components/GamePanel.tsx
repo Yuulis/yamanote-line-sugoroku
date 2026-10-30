@@ -212,22 +212,22 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       <p className="game-panel__subtitle">{display.subtitle}</p>
       <dl className="game-panel__stats">
         <dt>現在駅</dt>
-        <dd>{stationName(network, props.displayedStationId, presentation)}</dd>
+        <dd><span className="hud-stat__value" data-stat="station">{stationName(network, props.displayedStationId, presentation)}</span></dd>
         <dt>乗車中</dt>
         <dd>
           <span className="service-swatch" style={{ backgroundColor: presentation.lineGroupColor(ride.serviceId) ?? currentService?.color }} aria-hidden="true" />
-          {serviceName(network, ride.serviceId, presentation)}
+          <span className="hud-stat__value" data-stat="ride">{serviceName(network, ride.serviceId, presentation)}</span>
         </dd>
         <dt>進行方向</dt>
-        <dd>{directionLabel(network, ride.serviceId, ride.direction)}</dd>
+        <dd><span className="hud-stat__value" data-stat="direction">{directionLabel(network, ride.serviceId, ride.direction)}</span></dd>
         <dt>ターン数</dt>
-        <dd>{arrived.turn}</dd>
+        <dd><span className="hud-stat__value" data-stat="turn">{arrived.turn}</span></dd>
         <dt>踏破区間</dt>
         <dd>
-          {props.displayedCompletedCount}/{props.requiredCount}
+          <span className="hud-stat__value" data-stat="progress">{props.displayedCompletedCount}/{props.requiredCount}</span>
         </dd>
         <dt>出目</dt>
-        <dd>{lastRollText(session.lastMove, network, presentation)}</dd>
+        <dd><span className="hud-stat__value" data-stat="roll">{lastRollText(session.lastMove, network, presentation)}</span></dd>
       </dl>
       <div className="game-panel__actions">
         <button
