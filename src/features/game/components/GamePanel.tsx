@@ -21,7 +21,7 @@ import {
   updateLineGroupSelection,
   useVisibleLineGroupIds,
 } from "../../map/lineVisibilityStore";
-import { GameLegend } from "./GameLegend";
+import { GameMenu, modalDialogOpen } from "./GameMenu";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import type { ItemSessionView } from "../itemSession";
@@ -178,6 +178,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     if (!props.itemView || props.itemView.phase !== "idle" || !draftItem || itemDialog) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
+      // e.g. the 新規 confirmation: its Escape must close it, not clear the draft behind it.
+      if (modalDialogOpen()) return;
       event.preventDefault();
       clearDraft();
     };
@@ -248,26 +250,21 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
       </div>}
       {props.itemView && <InventoryPanel view={props.itemView} onSelect={selectItem} />}
-      <div className="game-panel__options">
-        <button type="button" aria-pressed={follow} onClick={props.onToggleFollow}>
-          追尾: {follow ? "ON" : "OFF"}
-        </button>
-        <button
-          type="button"
-          onClick={props.onCycleSpeed}
-          disabled={reducedMotion}
-          aria-label={`アニメーション速度: ${props.speedLabel}（押すと切り替え）`}
-          title={reducedMotion ? "視差効果を減らす設定のためアニメーションは省略されます" : undefined}
-        >
-          速度: {reducedMotion ? "省略" : props.speedLabel}
-        </button>
-        <button type="button" onClick={props.onNewGame}>
-          新規
-        </button>
-        <button type="button" onClick={props.onShowTitle}>
-          タイトル
-        </button>
-      </div>
+      <GameMenu
+        follow={follow}
+        reducedMotion={reducedMotion}
+        speedLabel={props.speedLabel}
+        lines={legendGroups}
+        targetColor={targetColor}
+        selectedGroupIds={selectedGroupIds}
+        onToggleFollow={props.onToggleFollow}
+        onCycleSpeed={props.onCycleSpeed}
+        onNewGame={props.onNewGame}
+        onShowTitle={props.onShowTitle}
+        onToggleGroup={toggleGroup}
+        onSetOperator={setOperator}
+        onShowAll={showAllLineGroups}
+      />
       {props.itemView && session.lastMove && phase === "idle" && <p className="item-arrival">{arrivalSummary(
         session.lastMove.itemRecord?.turn ?? game.turn, session.lastMove, props.displayedCompletedCount,
         props.requiredCount, network, presentation)}</p>}
@@ -300,14 +297,6 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           <ul>{presentation.candidateRows(candidates).map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
         </details>
       )}
-      <GameLegend
-        lines={legendGroups}
-        targetColor={targetColor}
-        selectedGroupIds={selectedGroupIds}
-        onToggleGroup={toggleGroup}
-        onSetOperator={setOperator}
-        onShowAll={showAllLineGroups}
-      />
       {props.itemView && itemDialog && (
         <ItemUseDialog
           kind={itemDialog.kind}

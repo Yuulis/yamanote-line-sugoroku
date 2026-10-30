@@ -515,6 +515,23 @@ button[aria-disabled="true"] {
   margin-top: 6px;
 }
 
+.game-panel__menu {
+  display: block;
+}
+
+/* Must stay more specific than every .game-panel__menu display rule (incl. the
+   short-landscape `display: contents`), so a closed menu is never rendered. */
+.game-panel__menu[hidden] {
+  display: none;
+}
+
+.game-panel__menu-trigger {
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
 .game-panel__options button {
   padding: 0 2px;
   font-size: 12px;
@@ -1268,9 +1285,9 @@ button[aria-disabled="true"] {
 .game-panel__legend-toggle {
   display: block;
   width: calc(100% - 82px);
-  min-height: 32px;
+  min-height: 44px;
   margin-top: 8px;
-  padding: 2px 8px;
+  padding: 4px 8px;
   font-size: 12px;
   text-align: left;
   background: #ffffff;
@@ -1281,9 +1298,9 @@ button[aria-disabled="true"] {
 .game-panel__legend-reset {
   float: right;
   width: 76px;
-  min-height: 32px;
-  margin-top: -32px;
-  padding: 2px 4px;
+  min-height: 44px;
+  margin-top: -44px;
+  padding: 4px;
   font-size: 12px;
   background: #ffffff;
   border: 1px solid #aaaaaa;
@@ -1302,8 +1319,10 @@ button[aria-disabled="true"] {
 
 .game-panel summary {
   cursor: pointer;
-  min-height: 32px;
-  line-height: 32px;
+  min-height: 44px;
+  padding-block: 12px;
+  box-sizing: border-box;
+  line-height: 20px;
 }
 
 .game-panel__legend-operator ul,
@@ -1321,7 +1340,7 @@ button[aria-disabled="true"] {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 44px;
   cursor: pointer;
 }
 
@@ -1365,7 +1384,8 @@ button[aria-disabled="true"] {
     grid-template-columns: minmax(0, 1fr) minmax(194px, 0.9fr);
     grid-template-areas:
       "stats actions"
-      "lottery options"
+      "lottery menu-trigger"
+      "options options"
       "chips chips"
       "save save"
       "candidates candidates"
@@ -1469,6 +1489,24 @@ button[aria-disabled="true"] {
   }
 
   .game-panel__legend-section {
+    grid-area: legend;
+  }
+
+  .game-panel__menu-trigger {
+    grid-area: menu-trigger;
+    margin-top: 0;
+  }
+
+  /* Short landscape only: let the options and legend take their own grid areas. */
+  .game-panel__menu {
+    display: contents;
+  }
+
+  .game-panel__menu .game-panel__options {
+    grid-area: options;
+  }
+
+  .game-panel__menu .game-panel__legend-section {
     grid-area: legend;
   }
 }
