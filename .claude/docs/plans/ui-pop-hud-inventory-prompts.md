@@ -433,6 +433,8 @@ state survives, visible focus origin for confirmation).
 
 Acceptance: `ui_gate && ui_e2e` (full).
 
+**Lead addendum (user decision 2026-10-30, binding):** the `メニュー` trigger gets a ☰ icon (self-drawn inline SVG, aria-hidden) and an open/closed chevron (▾ closed / ▴ open, aria-hidden; state stays in `aria-expanded`). Keep the accessible name exactly `メニュー` (S9 helpers depend on it) and the 44px target. Also add the permanent E2E for the dialog Escape order noted in S12 (adjust dialog closes on Escape with the menu open; with a staged item, 新規 → Escape closes the confirmation first and keeps the item).
+
 ## S15: Turn log disclosure (initially expanded)
 
 Objective: move per-turn text and the text route view into a real log disclosure that starts expanded.
