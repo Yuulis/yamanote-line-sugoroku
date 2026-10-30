@@ -23,6 +23,8 @@ reveal hook, toast host) for P2. Presentation only: no engine/RNG/save/public-da
   S3 badge shape/icons/accents unchanged.
 - 2026-10-30 (user): S4 compact-roll wordings (`N駅`+`快速`, `調整±1`, `遅延`) are accepted as-is. Effect chips must be SHORT in the HUD (e.g. `遅延 あと1`, `運休 山手線 あと3`, `寄り道`, `寝過ごし`): S10 adds a short chip label and moves the full sentence to a tooltip/accessible description; the current long sentence must not be the visible chip text.
 
+- 2026-10-30 (user, after S6): toast text must be SHORT and simple — item name + outcome only, no effect sentence (e.g. `快速券を手に入れた！`, `倍速券を使った`, `回送列車を捨てた`, `遅延証明書で遅延を打ち消した`, `遅延が発動！`, `山手線の運休が終わった`; save failure `保存に失敗しました`). Full sentences stay in the log and item cards. Implemented in S8 (toast text derived from typed events, with tests). `unavailable` saves raise NO toast (status icon only); only `failed` is sticky. Ordinary toasts use 2 slots even without a save failure (accepted).
+
 ## Documents
 
 - Brief: `.claude/docs/research/feature-ui-pop-hud-inventory-brief.md`

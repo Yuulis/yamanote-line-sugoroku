@@ -316,6 +316,8 @@ time; replacing the session while `ItemUseDialog` is open leaves no inherited ob
 
 Acceptance: `ui_gate && ui_e2e` (full).
 
+**Lead addendum (user decisions 2026-10-30, binding):** (1) Toast text must be SHORT and simple: item name + outcome only, never the effect sentence from `itemEventTexts` (e.g. `快速券を手に入れた！`, `倍速券を使った`, `回送列車を捨てた`, `遅延証明書で遅延を打ち消した`, `遅延が発動！`, `山手線の運休が終わった`; save failure `保存に失敗しました`). Derive it from the typed item events in `toastQueue.ts` (add a short-text function; keep `itemEventTexts` unchanged for the log/live region) and update `tests/unit/toast.test.ts` to assert the short texts for every outcome kind. List the final wordings in your report for user review. (2) `unavailable` saves raise NO toast — status icon only; only `failed` raises the sticky toast. (3) Ordinary toasts keep 2 slots.
+
 ## S9: Stat value markers and shared E2E helpers
 
 Objective: give every HUD value a stable marker and migrate the shared E2E helpers once, with no visible change.
