@@ -27,6 +27,8 @@ reveal hook, toast host) for P2. Presentation only: no engine/RNG/save/public-da
 
 - 2026-10-30 (user, after S10): the dice button must keep the same vertical position regardless of how much information the HUD shows (S10b); the saved ✓ goes inline in an existing HUD row (S10b); suspension chips show a small line badge instead of the line name (S10b); the log keeps the 寄り道/寝過ごし explanation text (S15).
 
+- 2026-10-30 (user, after S10b/S11): fixed panel height accepted — menu/log disclosures scroll inside the panel and do not change camera padding; desktop suspension chips stacking one per line accepted; phone ride name must be widened in S23.
+
 ## Documents
 
 - Brief: `.claude/docs/research/feature-ui-pop-hud-inventory-brief.md`

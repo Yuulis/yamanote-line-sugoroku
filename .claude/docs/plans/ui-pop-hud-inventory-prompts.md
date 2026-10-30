@@ -585,6 +585,8 @@ Tests: plan §4 S23 list.
 
 Acceptance: `ui_gate && ui_e2e` (full).
 
+**Lead addendum (user decision 2026-10-30, binding):** on phone the 乗車中 row must be wide enough to show the full line name in normal cases (e.g. let the ride row span the full HUD width); the dice button must still keep a fixed position (keep `tests/e2e/hud-layout.spec.ts` green).
+
 ## S24: Phone attribution starts collapsed
 
 Files: `src/features/map/RailwayMap.tsx`, `src/features/map/attribution.ts`, `tests/e2e/layout.spec.ts`,
