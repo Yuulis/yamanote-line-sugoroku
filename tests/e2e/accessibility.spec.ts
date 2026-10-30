@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
+import { itemScenario } from "./fixtures/itemScenarios";
+import { serializeGame } from "../../src/features/game/engine";
 import {
   closeGameMenu,
   diceButton,
@@ -219,6 +221,135 @@ test.describe("game accessibility and text navigation", () => {
     const clearScrollTop = await clear.evaluate((element) => element.scrollTop);
     expect(clearScrollTop).toBe(0);
     await expect(heading).toBeInViewport();
+  });
+});
+
+test.describe("game menu disclosure", () => {
+  test.use({ dataset: "fixture", reducedMotion: "reduce" });
+
+  test("starts closed and keeps hidden menu controls out of keyboard navigation", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const region = panel.locator("section.game-panel__menu");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(region).toBeHidden();
+    await trigger.focus();
+    for (let tabIndex = 0; tabIndex < 12; tabIndex += 1) {
+      await page.keyboard.press("Tab");
+      expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".game-panel__menu")))).toBe(false);
+    }
+  });
+
+  test("opens with Enter and Space, closes on Escape, and restores visible keyboard focus", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const region = panel.getByRole("region", { name: "メニュー", exact: true });
+    for (const key of ["Enter", "Escape", "Space", "Escape"]) {
+      await trigger.focus();
+      await page.keyboard.press(key);
+      const isOpen = key === "Enter" || key === "Space";
+      await expect(trigger).toHaveAttribute("aria-expanded", String(isOpen));
+      if (isOpen) {
+        await expect(region).toBeVisible();
+        await expect(trigger).toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(panel.getByRole("button", { name: "追尾: ON" })).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(trigger).toHaveAttribute("aria-expanded", "false");
+        await expect(trigger).toBeFocused();
+        expect(await trigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+      }
+    }
+  });
+
+  test("keeps legend expansion and filter state after the menu closes", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await openGameMenu(page);
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const legendToggle = panel.locator(".game-panel__legend-toggle").first();
+    const operator = panel.locator(".game-panel__legend-operator").first();
+    await operator.locator("summary").click();
+    const groupFilter = operator.getByRole("checkbox").last();
+    await groupFilter.uncheck();
+    await expect(groupFilter).not.toBeChecked();
+    const initial = await legendToggle.getAttribute("aria-expanded");
+    await legendToggle.click();
+    const expanded = await legendToggle.getAttribute("aria-expanded");
+    expect(expanded).not.toBe(initial);
+    await closeGameMenu(page);
+    await openGameMenu(page);
+    await expect(legendToggle).toHaveAttribute("aria-expanded", expanded!);
+    if (expanded !== "true") await legendToggle.click();
+    if (!(await operator.evaluate((element) => (element as HTMLDetailsElement).open))) {
+      await operator.locator("summary").click();
+    }
+    await expect(operator.getByRole("checkbox").last()).not.toBeChecked();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("returns keyboard focus visibly to the menu trigger after cancelling 新規", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await rollOnce(page);
+    const panel = gamePanel(page);
+    await openGameMenu(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const newGame = panel.getByRole("button", { name: "新規", exact: true });
+    await newGame.focus();
+    await page.keyboard.press("Enter");
+    const confirmation = page.getByRole("alertdialog", { name: "新しく始めますか？" });
+    await expect(confirmation).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    expect(await trigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+  });
+
+  test("Escape closes a native adjust dialog before the open menu", async ({ page, railwayBundle }) => {
+    const game = itemScenario("adjust", railwayBundle.network);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const panel = gamePanel(page);
+    await openGameMenu(page);
+    await diceButton(page).click();
+    const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await expect(adjustment).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(adjustment).toBeHidden();
+    await expect(panel.getByRole("button", { name: "メニュー", exact: true })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("新規 confirmation Escape preserves the staged item before the next Escape clears it", async ({ page, railwayBundle }) => {
+    const game = itemScenario("double", railwayBundle.network);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const slot = panel.locator(".item-slot").filter({ has: page.getByRole("heading", { name: "倍速券", exact: true }) });
+    await slot.getByRole("button").click();
+    await expect(panel.getByText("倍速券を選択中")).toBeVisible();
+    await openGameMenu(page);
+    const newGame = panel.getByRole("button", { name: "新規", exact: true });
+    await newGame.focus();
+    await page.keyboard.press("Enter");
+    const confirmation = page.getByRole("alertdialog", { name: "新しく始めますか？" });
+    await expect(confirmation).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(confirmation).toBeHidden();
+    await expect(panel.getByText("倍速券を選択中")).toBeVisible();
+    await expect(trigger).toBeFocused();
+    expect(await trigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(panel.getByText("倍速券を選択中")).toBeHidden();
   });
 });
 

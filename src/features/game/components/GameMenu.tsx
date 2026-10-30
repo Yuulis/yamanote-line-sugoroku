@@ -1,6 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { GameLegend, type LegendLine } from "./GameLegend";
 
+const MENU_ICON_SIZE = 16;
+
 export interface GameMenuProps {
   follow: boolean;
   reducedMotion: boolean;
@@ -38,7 +40,7 @@ export function GameMenu({
   onSetOperator,
   onShowAll,
 }: GameMenuProps): React.JSX.Element {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const regionId = useId();
 
@@ -78,7 +80,13 @@ export function GameMenu({
         aria-controls={regionId}
         onClick={() => expanded ? close() : setExpanded(true)}
       >
-        メニュー
+        <svg className="game-panel__menu-icon" aria-hidden="true" focusable="false" width={MENU_ICON_SIZE} height={MENU_ICON_SIZE} viewBox="0 0 16 16">
+          <path d="M2 3.5h12M2 8h12M2 12.5h12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        </svg>
+        <span>メニュー</span>
+        <svg className="game-panel__menu-chevron" aria-hidden="true" focusable="false" width={MENU_ICON_SIZE} height={MENU_ICON_SIZE} viewBox="0 0 16 16">
+          <path d={expanded ? "M3 10.5 8 5.5l5 5" : "M3 5.5 8 10.5l5-5"} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
       </button>
       <section id={regionId} className="game-panel__menu" aria-label="メニュー" hidden={!expanded}>
         <div className="game-panel__options">

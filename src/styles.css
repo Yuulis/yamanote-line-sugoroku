@@ -526,10 +526,23 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   min-height: 44px;
   margin-top: 6px;
   padding: 4px 8px;
   text-align: left;
+}
+
+.game-panel__menu-icon,
+.game-panel__menu-chevron {
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.game-panel__menu-chevron {
+  margin-left: auto;
 }
 
 .game-panel__options button {

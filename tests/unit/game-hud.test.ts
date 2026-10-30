@@ -127,15 +127,16 @@ describe("GameHud", () => {
 });
 
 describe("GameMenu", () => {
-  it("starts expanded with a labelled section, four existing actions, and the legend inside", () => {
+  it("starts closed with a labelled mounted section, four actions, and the legend inside", () => {
     const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
     try {
       const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
       const region = mount.container.querySelector("section.game-panel__menu")!;
       expect(trigger.textContent).toBe("メニュー");
-      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
       expect(trigger.getAttribute("aria-controls")).toBe(region.id);
       expect(region.getAttribute("aria-label")).toBe("メニュー");
+      expect((region as HTMLElement).hidden).toBe(true);
       expect(region.hasAttribute("role")).toBe(false);
       expect(region.querySelectorAll('[role="menu"]')).toHaveLength(0);
       expect([...region.querySelectorAll(".game-panel__options button")].map((button) => button.textContent?.trim())).toEqual([
@@ -153,6 +154,8 @@ describe("GameMenu", () => {
     try {
       const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
       const region = mount.container.querySelector<HTMLElement>(".game-panel__menu")!;
+      dispatchReactEvent(trigger, new MouseEvent("click", { bubbles: true }));
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
       const legendToggle = mount.container.querySelector<HTMLButtonElement>(".game-panel__legend-toggle")!;
       const initialLegend = legendToggle.getAttribute("aria-expanded");
       dispatchReactEvent(legendToggle, new MouseEvent("click", { bubbles: true }));
@@ -179,6 +182,8 @@ describe("GameMenu", () => {
     });
     mount = mountReact(createElement(MenuHarness, { value: menuProps({ onNewGame }) }));
     try {
+      dispatchReactEvent(mount.container.querySelector(".game-panel__menu-trigger")!, new MouseEvent("click", { bubbles: true }));
+      expect(mount.container.querySelector(".game-panel__menu")?.hasAttribute("hidden")).toBe(false);
       dispatchReactEvent(mount.container.querySelector(".game-panel__options button:nth-child(3)")!, new MouseEvent("click", { bubbles: true }));
       expect(onNewGame).toHaveBeenCalledOnce();
       expect(triggerSeenAtRequest).toEqual([true]);
@@ -193,6 +198,8 @@ describe("GameMenu", () => {
     const mount = mountReact(createElement(DraftEscapeHarness, { value: menuProps() }));
     try {
       const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
+      dispatchReactEvent(trigger, new MouseEvent("click", { bubbles: true }));
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
       const firstEscape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
       act(() => window.dispatchEvent(firstEscape));
       expect(firstEscape.defaultPrevented).toBe(true);
@@ -210,6 +217,8 @@ describe("GameMenu", () => {
 
   it("leaves Escape to an open native modal dialog and stays expanded", () => {
     const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
+    dispatchReactEvent(mount.container.querySelector(".game-panel__menu-trigger")!, new MouseEvent("click", { bubbles: true }));
+    expect(mount.container.querySelector(".game-panel__menu-trigger")?.getAttribute("aria-expanded")).toBe("true");
     const dialog = document.createElement("dialog");
     dialog.setAttribute("open", "");
     document.body.append(dialog);
@@ -244,6 +253,8 @@ describe("GameMenu", () => {
         return event;
       };
       const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
+      dispatchReactEvent(trigger, new MouseEvent("click", { bubbles: true }));
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
       expect(escape().defaultPrevented).toBe(true);
       expect(trigger.getAttribute("aria-expanded")).toBe("false");
       expect(document.activeElement).toBe(trigger);
@@ -259,6 +270,41 @@ describe("GameMenu", () => {
       expect(onEditItemDraft).toHaveBeenCalledExactlyOnceWith({ items: [] });
     } finally {
       dialog.remove();
+      mount.cleanup();
+    }
+  });
+
+  it("renders decorative menu and state chevrons without changing the trigger name", () => {
+    const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
+    try {
+      const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
+      const icon = trigger.querySelector(".game-panel__menu-icon")!;
+      const chevron = trigger.querySelector(".game-panel__menu-chevron path")!;
+      const closedPath = chevron.getAttribute("d");
+      expect(trigger.textContent).toBe("メニュー");
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(icon.getAttribute("aria-hidden")).toBe("true");
+      expect(chevron.closest("svg")?.getAttribute("aria-hidden")).toBe("true");
+      expect(trigger.querySelectorAll("title, text")).toHaveLength(0);
+      dispatchReactEvent(trigger, new MouseEvent("click", { bubbles: true }));
+      expect(trigger.querySelector(".game-panel__menu-chevron path")?.getAttribute("d")).not.toBe(closedPath);
+      expect(trigger.textContent).toBe("メニュー");
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("opens by activation while focus stays on the trigger", () => {
+    const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
+    try {
+      const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
+      act(() => trigger.focus());
+      dispatchReactEvent(trigger, new MouseEvent("click", { bubbles: true }));
+      expect(trigger.getAttribute("aria-expanded")).toBe("true");
+      expect(mount.container.querySelector<HTMLElement>(".game-panel__menu")?.hidden).toBe(false);
+      expect(document.activeElement).toBe(trigger);
+    } finally {
       mount.cleanup();
     }
   });
