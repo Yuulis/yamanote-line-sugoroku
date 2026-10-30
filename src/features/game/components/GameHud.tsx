@@ -7,6 +7,9 @@ import { LineBadge } from "./LineBadge";
 import { TargetProgressBar } from "./TargetProgressBar";
 
 export interface GameHudProps {
+  title: string;
+  subtitle: string;
+  headingRef: RefObject<HTMLHeadingElement | null>;
   station: string;
   ride: string;
   lineBadge: LineBadgeModel;
@@ -39,25 +42,34 @@ function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element
 }
 
 export function GameHud({
+  title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, roll, saveStatus, saveStatusMessage,
   canRoll, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
 }: GameHudProps): React.JSX.Element {
   const failed: boolean = saveStatus === "failed" || saveStatus === "unavailable";
+  const saveMark: boolean = saveStatus === "saved";
   return (
     <>
+      <div className="game-panel__header">
+        <h1 ref={headingRef} className="game-panel__title" tabIndex={-1}>{title}</h1>
+        {saveMark && <p className="game-panel__save game-panel__save--inline" title={`セーブ: ${saveStatusMessage}`}>
+          <SaveIcon /><span className="visually-hidden">セーブ: {saveStatusMessage}</span>
+        </p>}
+      </div>
+      <p className="game-panel__subtitle">{subtitle}</p>
       <dl className="game-panel__stats">
         <dt>現在駅</dt>
-        <dd><span className="hud-stat__value" data-stat="station">{station}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="station" title={station}>{station}</span></dd>
         <dt>乗車中</dt>
-        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride">{ride}</span></dd>
+        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride" title={ride}>{ride}</span></dd>
         <dt>進行方向</dt>
-        <dd><span className="hud-stat__value" data-stat="direction">{direction}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="direction" title={direction}>{direction}</span></dd>
         <dt>ターン数</dt>
-        <dd><span className="hud-stat__value" data-stat="turn">{turn}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="turn" title={String(turn)}>{turn}</span></dd>
         <dt>踏破区間</dt>
-        <dd><span className="hud-stat__value" data-stat="progress">{completed}/{required}</span><TargetProgressBar completed={completed} required={required} /></dd>
+        <dd><span className="hud-stat__value" data-stat="progress" title={`${completed}/${required}`}>{completed}/{required}</span><TargetProgressBar completed={completed} required={required} /></dd>
         <dt>出目</dt>
-        <dd><span className="hud-stat__value" data-stat="roll">{roll}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="roll" title={roll}>{roll}</span></dd>
       </dl>
       <div className="game-panel__actions">
         <button
@@ -72,14 +84,12 @@ export function GameHud({
         <button type="button" onClick={onSkip} disabled={!animating}>スキップ</button>
       </div>
       <EffectChips models={effects} />
-      <p
+      {!saveMark && <p
         className={`game-panel__save${failed ? " game-panel__save--warning" : ""}`}
-        title={saveStatus === "saved" ? `セーブ: ${saveStatusMessage}` : undefined}
       >
-        {saveStatus === "saved" ? <><SaveIcon /><span className="visually-hidden">セーブ: {saveStatusMessage}</span></> :
-          failed ? <><SaveIcon warning /><span>セーブ: {saveStatusMessage}</span></> :
+        {failed ? <><SaveIcon warning /><span>セーブ: {saveStatusMessage}</span></> :
             <span>セーブ: {saveStatusMessage}</span>}
-      </p>
+      </p>}
     </>
   );
 }

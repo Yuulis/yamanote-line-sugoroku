@@ -185,7 +185,20 @@ describe("active harmful effect chips", () => {
   ])("uses canonical copy and short labels for %#", (state: ItemEffectsState, turn: number, labels: string[]) => {
     const models = effectChipModels(state, turn, network);
     expect(models.map((model) => model.text)).toEqual(activeItemEffectTexts(state, turn, network));
-    expect(models.map((model) => model.label)).toEqual(labels);
+    expect(models.map((model) => model.label)).toEqual(labels.map((label) => label.startsWith("運休 ") ? "運休" : label));
+    models.forEach((model, index) => {
+      if (model.kind === "suspension") {
+        expect(model.lineBadge).not.toBeNull();
+        // The S10 label `運休 {line} あと{n}` now renders as label + badge + countdown; the line name moved
+        // to the full text (title and visually hidden copy).
+        const [prefix, lineName, countdown] = labels[index]!.split(" ");
+        expect([model.label, model.countdown]).toEqual([prefix, countdown]);
+        expect(model.text).toContain(lineName!);
+      } else {
+        expect(model.lineBadge).toBeNull();
+        expect(model.countdown).toBeNull();
+      }
+    });
     expect(new Set(models.map((model) => model.key)).size).toBe(models.length);
     expect(effectChipModels(state, turn, network).map((model) => model.key)).toEqual(models.map((model) => model.key));
     models.filter((model) => model.kind === "detour" || model.kind === "oversleep")
@@ -206,6 +219,19 @@ describe("active harmful effect chips", () => {
     expect([...later.keys()].every((key) => earlier.has(key))).toBe(true);
   });
 
+  it("builds coded and colour-only suspension badges without changing effect keys", () => {
+    const state = effects({ suspensions: [
+      { serviceId: "jr-yamanote", expiresTurn: 8 },
+      { serviceId: "fixture-south", expiresTurn: 9 },
+    ] });
+    const models = effectChipModels(state, 3, network);
+    expect(models.map((model) => model.key)).toEqual(["suspension:jr-yamanote:8#0", "suspension:fixture-south:9#0"]);
+    expect(models[0]?.lineBadge).toMatchObject({ code: "JY" });
+    expect(models[1]?.lineBadge).toMatchObject({ code: null });
+    expect(models[1]?.lineBadge?.color).not.toBeNull();
+    expect(models.map((model) => [model.label, model.countdown])).toEqual([["運休", "あと5"], ["運休", "あと6"]]);
+  });
+
   it("expires suspensions at the boundary but retains due-delay copy at zero", () => {
     const state = effects({ delayDueTurns: [4], suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 4 }] });
     const models = effectChipModels(state, 4, network);
@@ -215,7 +241,7 @@ describe("active harmful effect chips", () => {
   });
 
   it("renders full text and harmful icons, and renders nothing when empty", () => {
-    const models = effectChipModels(effects({ delayDueTurns: [4], detourPending: true }), 2, network);
+    const models = effectChipModels(effects({ delayDueTurns: [4], suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 7 }], detourPending: true }), 2, network);
     const markup = renderToStaticMarkup(createElement(EffectChips, { models }));
     expect(markup.match(/<div class="effect-chips" aria-label="続いている効果">/g)).toHaveLength(1);
     expect(markup).not.toMatch(/role=|aria-live/);
@@ -226,6 +252,8 @@ describe("active harmful effect chips", () => {
     expect(markup.match(/<span class="effect-chip" title="[^"]*"><svg[^>]*aria-hidden="true"/g)).toHaveLength(models.length);
     expect([...markup.matchAll(/<span class="effect-chip" title="([^"]*)">/g)].map((match) => match[1]))
       .toEqual(models.map((model) => model.text));
+    expect(markup).toContain("effect-chip__countdown");
+    expect(markup).toContain("line-badge__code");
     expect(renderToStaticMarkup(createElement(EffectChips, { models: [] }))).toBe("");
   });
 });

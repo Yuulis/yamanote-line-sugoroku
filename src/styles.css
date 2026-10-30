@@ -272,11 +272,15 @@ button[aria-disabled="true"] {
 
 /* Game control panel: bottom-left, compact so the map stays visible. */
 .game-panel {
+  --hud-row-height: 24px;
   position: fixed;
   z-index: var(--layer-panel);
   left: 12px;
   bottom: 28px;
   width: 310px;
+  /* A fixed height (not content-sized) keeps the panel top, and so the dice
+     button, in the same place whatever the lower content is. */
+  height: calc(100% - 120px);
   max-height: calc(100% - 120px);
   overflow-y: auto;
   padding: 10px 12px;
@@ -300,26 +304,66 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__title {
-  margin: 0 0 6px;
+  min-width: 0;
+  margin: 0;
   font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 24px;
+  min-width: 0;
 }
 
 .game-panel__stats {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 2px 10px;
   margin: 0 0 8px;
 }
 
 .game-panel__stats dt {
+  height: var(--hud-row-height, 24px);
+  line-height: var(--hud-row-height, 24px);
   color: #555555;
+  white-space: nowrap;
 }
 
 .game-panel__stats dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--hud-row-height, 24px);
   margin: 0;
   font-weight: bold;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.hud-stat__value {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-panel__stats dd:has(.target-progress) .hud-stat__value {
+  flex: 0 1 auto;
+}
+
+.game-panel__stats .target-progress {
+  flex: 1 1 auto;
+  min-width: 42px;
+  width: auto;
 }
 
 .target-progress {
@@ -372,7 +416,11 @@ button[aria-disabled="true"] {
 .effect-chip__label {
   min-width: 0;
   max-width: 100%;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+
+.effect-chip__countdown {
+  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -382,9 +430,14 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__subtitle {
+  height: 18px;
   margin: 0 0 6px;
   color: #555555;
   font-size: 12px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .game-panel__lottery {
@@ -487,6 +540,13 @@ button[aria-disabled="true"] {
   width: 16px;
   height: 16px;
   flex: 0 0 16px;
+}
+
+.game-panel__save--inline {
+  flex: 0 0 16px;
+  justify-content: center;
+  margin: 0;
+  font-size: 12px;
 }
 
 .game-panel__save--warning {
@@ -1105,6 +1165,7 @@ button[aria-disabled="true"] {
     right: 8px;
     bottom: 8px;
     width: auto;
+    height: 45%;
     max-height: 45%;
     padding: 8px 10px;
     font-size: 13px;
@@ -1122,6 +1183,22 @@ button[aria-disabled="true"] {
     border: 0;
   }
 
+  .game-panel__header {
+    position: absolute;
+    z-index: 1;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 0;
+    justify-content: flex-end;
+  }
+
+  .game-panel__save--inline {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
   .game-panel__subtitle {
     display: none;
   }
@@ -1129,6 +1206,13 @@ button[aria-disabled="true"] {
   .game-panel__stats {
     grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
     margin-bottom: 6px;
+  }
+
+  /* The saved mark overlays the top-right corner: keep the first row's last
+     value (乗車中 in the four-column phone grid) clear of it. */
+  .game-panel__stats dd:nth-of-type(2) {
+    padding-right: 24px;
+    box-sizing: border-box;
   }
 
   .game-panel__legend {
@@ -1293,6 +1377,7 @@ button[aria-disabled="true"] {
     left: 12px;
     bottom: 8px;
     width: min(440px, calc(100vw - 192px));
+    height: min(75vh, calc(100% - 16px));
     max-height: min(75vh, calc(100% - 16px));
     padding: 8px 10px;
   }
@@ -1309,6 +1394,22 @@ button[aria-disabled="true"] {
     border: 0;
   }
 
+  .game-panel__header {
+    position: absolute;
+    z-index: 1;
+    top: 6px;
+    right: 8px;
+    width: 24px;
+    height: 0;
+    justify-content: flex-end;
+  }
+
+  .game-panel__save--inline {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
   .game-panel__subtitle {
     display: none;
   }
@@ -1317,6 +1418,11 @@ button[aria-disabled="true"] {
     grid-area: stats;
     margin: 0;
     grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .game-panel__stats dd:first-of-type {
+    padding-right: 24px;
+    box-sizing: border-box;
   }
 
   .game-panel__actions {

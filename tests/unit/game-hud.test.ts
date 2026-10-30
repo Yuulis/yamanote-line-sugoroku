@@ -7,6 +7,7 @@ import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
 
 function props(overrides: Partial<GameHudProps> = {}): GameHudProps {
   return {
+    title: "山手線すごろく", subtitle: "東京近郊版", headingRef: createRef<HTMLHeadingElement>(),
     station: "東京", ride: "山手線", lineBadge: { groupId: "jr-yamanote", code: "JY", color: "#80c241", name: "山手線", textColor: "#000000" },
     direction: "外回り", turn: 5, completed: 3, required: 30, roll: "3マス", saveStatus: null,
     saveStatusMessage: "未保存", canRoll: true, animating: false, draftSelected: false,
@@ -24,6 +25,9 @@ describe("GameHud", () => {
     try {
       expect(mount.container.querySelectorAll(".game-panel__stats dt")).toHaveLength(6);
       expect(mount.container.querySelector("[data-stat=ride]")?.textContent).toBe("山手線");
+      expect(mount.container.querySelector("[data-stat=ride]")?.getAttribute("title")).toBe("山手線");
+      expect(mount.container.querySelector("[data-stat=roll]")?.getAttribute("title")).toBe("3マス");
+      expect([...mount.container.querySelectorAll(".hud-stat__value")].every((value) => value.hasAttribute("title"))).toBe(true);
       expect(mount.container.querySelector("[data-stat=ride]")?.previousElementSibling?.classList.contains("line-badge")).toBe(true);
       expect(mount.container.querySelector("[data-stat=progress]")?.nextElementSibling?.getAttribute("role")).toBe("progressbar");
       expect(mount.container.querySelector("[role=progressbar]")?.getAttribute("aria-valuemax")).toBe("30");
@@ -65,10 +69,19 @@ describe("GameHud", () => {
       expect(saved.container.querySelector(".game-panel__save")?.querySelector(".visually-hidden")?.textContent).toBe("セーブ: 自動保存済み");
       expect(saved.container.querySelector(".game-panel__save")?.getAttribute("title")).toBe("セーブ: 自動保存済み");
       expect(saved.container.querySelector(".game-panel__save svg")?.getAttribute("aria-hidden")).toBe("true");
+      expect(saved.container.querySelector(".game-panel__header .game-panel__save")).not.toBeNull();
       expect(failed.container.querySelector(".game-panel__save")?.textContent).toContain("セーブ: 保存に失敗しました");
+      expect(failed.container.querySelector(".game-panel__header .game-panel__save")).toBeNull();
+      expect(failed.container.querySelector(".game-panel__actions")!.compareDocumentPosition(failed.container.querySelector(".game-panel__save")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       expect(failed.container.querySelector(".game-panel__save--warning")).not.toBeNull();
       expect(unavailable.container.querySelector(".game-panel__save")?.textContent).toContain("この環境では保存できません");
       expect(empty.container.querySelector(".game-panel__save")?.textContent).toBe("セーブ: 未保存");
+      for (const mount of [failed, unavailable, empty]) {
+        const actions: Element = mount.container.querySelector(".game-panel__actions")!;
+        const save: Element = mount.container.querySelector(".game-panel__save")!;
+        expect(actions.compareDocumentPosition(save) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(mount.container.querySelector(".game-panel__header .game-panel__save")).toBeNull();
+      }
       for (const mount of [saved, failed, unavailable, empty]) {
         expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
       }

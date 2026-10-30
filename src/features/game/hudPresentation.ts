@@ -1,8 +1,10 @@
 import type { DeepReadonly, HarmfulItemKind, ItemEffectsState, ItemRideRecord } from "../../types/network";
 import type { LastMove } from "./gameSession";
 import type { PresentationResolver } from "./presentationResolver";
-import { activeItemEffectTexts, serviceName } from "./presentation";
+import { activeItemEffectTexts } from "./presentation";
 import type { RailwayNetwork } from "./engine";
+import { createPresentationResolver } from "./presentationResolver";
+import { lineBadgeFor, type LineBadgeModel } from "./lineBadge";
 
 export interface CompactRollModel {
   face: number | null;
@@ -22,6 +24,8 @@ export interface EffectChipModel {
   label: string;
   remainingTurns: number | null;
   serviceId: string | null;
+  lineBadge: LineBadgeModel | null;
+  countdown: string | null;
 }
 
 export function compactRollFor(lastMove: LastMove | null): CompactRollModel {
@@ -66,6 +70,7 @@ export function effectChipModels(
   network: RailwayNetwork,
   presentation?: PresentationResolver,
 ): readonly EffectChipModel[] {
+  const resolver: PresentationResolver = presentation ?? createPresentationResolver(network);
   const texts: string[] = activeItemEffectTexts(effects, turn, network, presentation);
   const occurrences = new Map<string, number>();
   // Keys come from each effect's own identity (plus its rank among identical entries), never from the
@@ -80,19 +85,21 @@ export function effectChipModels(
     const remainingTurns: number = Math.max(0, dueTurn - turn);
     models.push({ key: keyFor(`delay:${dueTurn}`), kind: "delay", text: texts[models.length]!,
       label: `遅延 あと${remainingTurns}`,
-      remainingTurns, serviceId: null });
+      remainingTurns, serviceId: null, lineBadge: null, countdown: null });
   });
   effects.suspensions.filter((entry) => entry.expiresTurn > turn).forEach((entry): void => {
+    const remainingTurns: number = entry.expiresTurn - turn;
+    const service = network.servicesById.get(entry.serviceId);
     models.push({ key: keyFor(`suspension:${entry.serviceId}:${entry.expiresTurn}`), kind: "suspension",
       text: texts[models.length]!,
-      label: `運休 ${serviceName(network, entry.serviceId, presentation)} あと${entry.expiresTurn - turn}`,
-      remainingTurns: entry.expiresTurn - turn, serviceId: entry.serviceId });
+      label: "運休", remainingTurns, serviceId: entry.serviceId,
+      lineBadge: lineBadgeFor(entry.serviceId, resolver, service?.color ?? undefined), countdown: `あと${remainingTurns}` });
   });
   if (effects.detourPending) {
-    models.push({ key: keyFor("detour:pending"), kind: "detour", text: texts[models.length]!, label: "寄り道", remainingTurns: null, serviceId: null });
+    models.push({ key: keyFor("detour:pending"), kind: "detour", text: texts[models.length]!, label: "寄り道", remainingTurns: null, serviceId: null, lineBadge: null, countdown: null });
   }
   if (effects.oversleepPending) {
-    models.push({ key: keyFor("oversleep:pending"), kind: "oversleep", text: texts[models.length]!, label: "寝過ごし", remainingTurns: null, serviceId: null });
+    models.push({ key: keyFor("oversleep:pending"), kind: "oversleep", text: texts[models.length]!, label: "寝過ごし", remainingTurns: null, serviceId: null, lineBadge: null, countdown: null });
   }
   return models;
 }

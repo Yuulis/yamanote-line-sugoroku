@@ -1,5 +1,6 @@
 import type { EffectChipModel } from "../hudPresentation";
 import { ItemIcon } from "./ItemIcon";
+import { LineBadge } from "./LineBadge";
 
 export interface EffectChipsProps {
   models: readonly EffectChipModel[];
@@ -13,6 +14,8 @@ export function EffectChips({ models }: EffectChipsProps): React.JSX.Element | n
         <span className="effect-chip" key={model.key} title={model.text}>
           <ItemIcon kind={model.kind} size={20} />
           <span className="effect-chip__label" aria-hidden="true">{model.label}</span>
+          {model.lineBadge && <LineBadge model={model.lineBadge} size="sm" showName={false} />}
+          {model.countdown && <span className="effect-chip__countdown" aria-hidden="true">{model.countdown}</span>}
           <span className="visually-hidden">{model.text}</span>
         </span>
       ))}

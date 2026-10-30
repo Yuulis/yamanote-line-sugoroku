@@ -217,9 +217,10 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
 
   return (
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
-      <h1 ref={headingRef} className="game-panel__title" tabIndex={-1}>{display.title}</h1>
-      <p className="game-panel__subtitle">{display.subtitle}</p>
       <GameHud
+        title={display.title}
+        subtitle={display.subtitle}
+        headingRef={headingRef}
         station={stationName(network, props.displayedStationId, presentation)}
         ride={currentRideName}
         lineBadge={lineBadge}
