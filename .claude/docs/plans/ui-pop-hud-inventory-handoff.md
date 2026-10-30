@@ -25,6 +25,8 @@ reveal hook, toast host) for P2. Presentation only: no engine/RNG/save/public-da
 
 - 2026-10-30 (user, after S6): toast text must be SHORT and simple — item name + outcome only, no effect sentence (e.g. `快速券を手に入れた！`, `倍速券を使った`, `回送列車を捨てた`, `遅延証明書で遅延を打ち消した`, `遅延が発動！`, `山手線の運休が終わった`; save failure `保存に失敗しました`). Full sentences stay in the log and item cards. Implemented in S8 (toast text derived from typed events, with tests). `unavailable` saves raise NO toast (status icon only); only `failed` is sticky. Ordinary toasts use 2 slots even without a save failure (accepted).
 
+- 2026-10-30 (user, after S10): the dice button must keep the same vertical position regardless of how much information the HUD shows (S10b); the saved ✓ goes inline in an existing HUD row (S10b); suspension chips show a small line badge instead of the line name (S10b); the log keeps the 寄り道/寝過ごし explanation text (S15).
+
 ## Documents
 
 - Brief: `.claude/docs/research/feature-ui-pop-hud-inventory-brief.md`

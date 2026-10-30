@@ -364,6 +364,16 @@ Acceptance: `ui_gate && ui_e2e` (full).
 
 **Lead addendum (user decision 2026-10-30, binding):** effect chips in the HUD show a SHORT label (e.g. `遅延 あと1`, `運休 山手線 あと3`, `寄り道`, `寝過ごし`); the current full sentence from `effectChipModels` moves to a tooltip / accessible description (e.g. `title` plus visually hidden text or `aria-describedby`), never the visible chip text. Add the short label to the chip model with unit tests; keep chip keys stable.
 
+## S10b: HUD polish after user review (stable dice position, inline save mark, badge chips)
+
+Added by the lead after the user reviewed S10 (2026-10-30). Binding user decisions:
+
+1. **The dice button (`サイコロを振る`) must not move up or down with the amount of information.** Its vertical offset from the top of `.game-panel` must be identical across states: no/one/several effect chips, short vs long ride line name, one- vs two-line roll text, coded vs uncoded badge, saved/unsaved/failed save status, empty vs full inventory — on desktop (1280x800) and phone (Pixel 7 project). Acceptable approaches: (a) everything above the action row has a fixed height (single-line rows, overflow ellipsis with the full text kept in `title` and accessible text, no wrapping), or (b) move the action row (dice + スキップ) above all variable-height content. Pick the one that keeps the HUD readable, keep the six `<dt>` labels / `data-stat` spans so `panelStat()` still reads the same values, and record the choice in the handoff. Add a Playwright test that measures the dice button's bounding-box y in at least 4 differing states (e.g. turn 0, after rolls with chips from an item fixture, a long line name, a failed save) on desktop and phone and asserts equality within 1 px. Keep the exact dice-button text.
+2. **Save mark inline:** the saved ✓ must not occupy its own row; place it small inside an existing HUD row (e.g. the top-right of the HUD/title row). Failed/unavailable states stay visible as text (as in S10).
+3. **Effect chips use a small line badge instead of the line name** for suspensions, e.g. `運休 [A] あと2` (S3 `LineBadge` size sm, `showName={false}`; colour-only badge for uncoded lines). The line name stays in the chip's `title` and accessible text. `遅延 あと{n}`, `寄り道`, `寝過ごし` are unchanged. Keep chip keys stable; update unit tests.
+
+Acceptance: typecheck, `npx vitest run`, build, the new dice-position E2E on desktop-chromium, phone-chromium and desktop-firefox, plus `tests/e2e/items.spec.ts`, `layout.spec.ts`, `accessibility.spec.ts` on those projects. Screenshots before/after to `.claude/logs/screenshots/s10b-*.png`.
+
 ## S11: Map observes the real panel across sessions
 
 Objective: keep camera padding correct after the panel restructure and across session replacement.
@@ -441,6 +451,8 @@ Tests: plan §4 S15 list; migrate the log reads in accessibility.spec and real-d
 menu.
 
 Acceptance: `ui_gate && ui_e2e tests/e2e/accessibility.spec.ts tests/e2e/real-data.spec.ts tests/e2e/lottery.spec.ts tests/e2e/items.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/tokyo-suburban.spec.ts tests/e2e/dice.spec.ts`.
+
+**Lead addendum (user decision 2026-10-30, binding):** the log must keep the explanation sentences of `寄り道` and `寝過ごし` (and the other effect sentences) visible as text, because chips show them only as tooltips and touch users cannot hover. Assert this in a test.
 
 ## S16: Migrate remaining log consumers
 
