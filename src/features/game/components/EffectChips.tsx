@@ -10,9 +10,10 @@ export function EffectChips({ models }: EffectChipsProps): React.JSX.Element | n
   return (
     <div className="effect-chips" aria-label="続いている効果">
       {models.map((model) => (
-        <span className="effect-chip" key={model.key}>
+        <span className="effect-chip" key={model.key} title={model.text}>
           <ItemIcon kind={model.kind} size={20} />
-          <span className="effect-chip__text">{model.text}</span>
+          <span className="effect-chip__label" aria-hidden="true">{model.label}</span>
+          <span className="visually-hidden">{model.text}</span>
         </span>
       ))}
     </div>

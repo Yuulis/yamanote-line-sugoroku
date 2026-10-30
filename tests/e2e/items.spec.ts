@@ -141,10 +141,10 @@ test("delay countdown updates after each turn, survives resume, and announces ac
     const turn = base.turn + offset;
     await expect(panelStat(page, "ターン数")).toHaveText(String(turn));
     if (offset < 4) {
-      await expect(notices(page).getByLabel("続いている効果")).toContainText(`8ターン目に発動（あと${4 - offset}ターン）`);
+      await expect(gamePanel(page).getByLabel("続いている効果")).toContainText(`8ターン目に発動（あと${4 - offset}ターン）`);
       if (offset === 2) {
         await restore(page, await itemSave(page));
-        await expect(notices(page).getByLabel("続いている効果")).toContainText("あと2ターン");
+        await expect(gamePanel(page).getByLabel("続いている効果")).toContainText("あと2ターン");
       }
     } else {
       await expect(notices(page)).toContainText("遅延が発動しました");

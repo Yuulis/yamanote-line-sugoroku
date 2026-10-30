@@ -13,10 +13,11 @@ interface ItemEventNoticeProps {
   presentation: PresentationResolver;
   /** The clearing turn is presented inside the result sheet after its mount. */
   completionAnnouncement?: string;
+  showEffects?: boolean;
 }
 
 /** Visible transcript and current countdowns share copy with the announcer. */
-export function ItemEventNotice({ view, lastMove, turn, network, presentation, completionAnnouncement }: ItemEventNoticeProps) {
+export function ItemEventNotice({ view, lastMove, turn, network, presentation, completionAnnouncement, showEffects = true }: ItemEventNoticeProps) {
   const [announcement, setAnnouncement] = useState("");
   useEffect(() => { setAnnouncement(completionAnnouncement ?? ""); }, [completionAnnouncement]);
   const record = lastMove?.itemRecord;
@@ -29,7 +30,7 @@ export function ItemEventNotice({ view, lastMove, turn, network, presentation, c
       <ul>{outcomes.map((text, index) => <li key={index}>{text}</li>)}</ul>
     </div>}
     {record?.landingSnapshot?.suspensionIgnored && <p>この駅では候補がすべて運休のため、運休を無視して抽選しました。</p>}
-    {effects.length > 0 && <div aria-label="続いている効果">
+    {showEffects && effects.length > 0 && <div aria-label="続いている効果">
       <h2>続いている効果</h2>
       <ul>{effects.map((text, index) => <li key={index}>{text}</li>)}</ul>
     </div>}

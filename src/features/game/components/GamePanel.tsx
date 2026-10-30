@@ -26,7 +26,10 @@ import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import type { ItemSessionView } from "../itemSession";
 import { ITEM_DESCRIPTIONS } from "../itemPresentation";
+import { effectChipModels } from "../hudPresentation";
+import { lineBadgeFor } from "../lineBadge";
 import { InventoryPanel } from "./InventoryPanel";
+import { GameHud } from "./GameHud";
 import { ItemUseDialog } from "./ItemUseDialog";
 import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
@@ -80,6 +83,13 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const canRoll = game.status === "playing" && phase === "idle";
   const ride = displayedRide(session);
   const currentService = network.servicesById.get(ride.serviceId);
+  const currentRideName = serviceName(network, ride.serviceId, presentation);
+  const lineBadge = lineBadgeFor(ride.serviceId, presentation, currentService?.color);
+  const effectsVisible = Boolean(props.itemView && (phase === "idle" || phase === "awaiting-discard"));
+  const effectTurn: number = session.lastMove?.itemRecord?.turn ?? game.turn;
+  const effectModels = effectsVisible && props.itemView
+    ? effectChipModels(props.itemView.effects, effectTurn, network, presentation)
+    : [];
   const selectedGroupIds = useVisibleLineGroupIds();
   const targetColor = presentation.lineGroupColor(game.config.targetServiceId)
     ?? network.servicesById.get(game.config.targetServiceId)?.color;
@@ -135,7 +145,6 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     const groupIds = legendGroups.filter((group) => group.operatorId === operatorId).map((group) => group.id);
     setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, groupIds, checked));
   }, [legendGroups, selectedGroupIds, allGroupIds]);
-  const saveFailed = saveStatus === "failed" || saveStatus === "unavailable";
   const [itemDialog, setItemDialog] = useState<{
     kind: "route-ticket" | "direction-ticket";
     instanceId: string;
@@ -210,39 +219,25 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <h1 ref={headingRef} className="game-panel__title" tabIndex={-1}>{display.title}</h1>
       <p className="game-panel__subtitle">{display.subtitle}</p>
-      <dl className="game-panel__stats">
-        <dt>現在駅</dt>
-        <dd><span className="hud-stat__value" data-stat="station">{stationName(network, props.displayedStationId, presentation)}</span></dd>
-        <dt>乗車中</dt>
-        <dd>
-          <span className="service-swatch" style={{ backgroundColor: presentation.lineGroupColor(ride.serviceId) ?? currentService?.color }} aria-hidden="true" />
-          <span className="hud-stat__value" data-stat="ride">{serviceName(network, ride.serviceId, presentation)}</span>
-        </dd>
-        <dt>進行方向</dt>
-        <dd><span className="hud-stat__value" data-stat="direction">{directionLabel(network, ride.serviceId, ride.direction)}</span></dd>
-        <dt>ターン数</dt>
-        <dd><span className="hud-stat__value" data-stat="turn">{arrived.turn}</span></dd>
-        <dt>踏破区間</dt>
-        <dd>
-          <span className="hud-stat__value" data-stat="progress">{props.displayedCompletedCount}/{props.requiredCount}</span>
-        </dd>
-        <dt>出目</dt>
-        <dd><span className="hud-stat__value" data-stat="roll">{lastRollText(session.lastMove, network, presentation)}</span></dd>
-      </dl>
-      <div className="game-panel__actions">
-        <button
-          ref={rollButtonRef}
-          type="button"
-          className="game-panel__roll"
-          onClick={() => { if (canRoll) props.onRoll(); }}
-          aria-disabled={!canRoll}
-        >
-          {animating ? "移動中…" : draftItem ? "この内容でサイコロを振る" : "サイコロを振る"}
-        </button>
-        <button type="button" onClick={props.onSkip} disabled={!animating}>
-          スキップ
-        </button>
-      </div>
+      <GameHud
+        station={stationName(network, props.displayedStationId, presentation)}
+        ride={currentRideName}
+        lineBadge={lineBadge}
+        direction={directionLabel(network, ride.serviceId, ride.direction)}
+        turn={arrived.turn}
+        completed={props.displayedCompletedCount}
+        required={props.requiredCount}
+        roll={lastRollText(session.lastMove, network, presentation)}
+        saveStatus={saveStatus}
+        saveStatusMessage={saveStatusMessage(saveStatus)}
+        canRoll={canRoll}
+        animating={animating}
+        draftSelected={Boolean(draftItem)}
+        rollButtonRef={rollButtonRef}
+        onRoll={props.onRoll}
+        onSkip={props.onSkip}
+        effects={effectModels}
+      />
       {draftItem && props.itemView && <div className="item-staged-summary">
         <span className="item-staged-summary__label">選択中：</span>
         <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
@@ -276,7 +271,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         session.lastMove.itemRecord?.turn ?? game.turn, session.lastMove, props.displayedCompletedCount,
         props.requiredCount, network, presentation)}</p>}
       {props.itemView && (phase === "idle" || phase === "awaiting-discard") && <ItemEventNotice
-        view={props.itemView} lastMove={session.lastMove} turn={game.turn} network={network} presentation={presentation}
+        view={props.itemView} lastMove={session.lastMove} turn={game.turn} network={network} presentation={presentation} showEffects={false}
       />}
       <p className="game-panel__lottery">
         <span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network, presentation)}
@@ -304,12 +299,6 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           <ul>{presentation.candidateRows(candidates).map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
         </details>
       )}
-      <p
-        className={`game-panel__save${saveFailed ? " game-panel__save--warning" : ""}`}
-        role={props.itemView ? undefined : "status"}
-      >
-        セーブ: {saveStatusMessage(saveStatus)}
-      </p>
       <GameLegend
         lines={legendGroups}
         targetColor={targetColor}

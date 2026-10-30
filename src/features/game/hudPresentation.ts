@@ -1,7 +1,7 @@
 import type { DeepReadonly, HarmfulItemKind, ItemEffectsState, ItemRideRecord } from "../../types/network";
 import type { LastMove } from "./gameSession";
 import type { PresentationResolver } from "./presentationResolver";
-import { activeItemEffectTexts } from "./presentation";
+import { activeItemEffectTexts, serviceName } from "./presentation";
 import type { RailwayNetwork } from "./engine";
 
 export interface CompactRollModel {
@@ -19,6 +19,7 @@ export interface EffectChipModel {
   key: string;
   kind: HarmfulItemKind;
   text: string;
+  label: string;
   remainingTurns: number | null;
   serviceId: string | null;
 }
@@ -76,18 +77,22 @@ export function effectChipModels(
   };
   const models: EffectChipModel[] = [];
   effects.delayDueTurns.forEach((dueTurn: number): void => {
+    const remainingTurns: number = Math.max(0, dueTurn - turn);
     models.push({ key: keyFor(`delay:${dueTurn}`), kind: "delay", text: texts[models.length]!,
-      remainingTurns: Math.max(0, dueTurn - turn), serviceId: null });
+      label: `遅延 あと${remainingTurns}`,
+      remainingTurns, serviceId: null });
   });
   effects.suspensions.filter((entry) => entry.expiresTurn > turn).forEach((entry): void => {
     models.push({ key: keyFor(`suspension:${entry.serviceId}:${entry.expiresTurn}`), kind: "suspension",
-      text: texts[models.length]!, remainingTurns: entry.expiresTurn - turn, serviceId: entry.serviceId });
+      text: texts[models.length]!,
+      label: `運休 ${serviceName(network, entry.serviceId, presentation)} あと${entry.expiresTurn - turn}`,
+      remainingTurns: entry.expiresTurn - turn, serviceId: entry.serviceId });
   });
   if (effects.detourPending) {
-    models.push({ key: keyFor("detour:pending"), kind: "detour", text: texts[models.length]!, remainingTurns: null, serviceId: null });
+    models.push({ key: keyFor("detour:pending"), kind: "detour", text: texts[models.length]!, label: "寄り道", remainingTurns: null, serviceId: null });
   }
   if (effects.oversleepPending) {
-    models.push({ key: keyFor("oversleep:pending"), kind: "oversleep", text: texts[models.length]!, remainingTurns: null, serviceId: null });
+    models.push({ key: keyFor("oversleep:pending"), kind: "oversleep", text: texts[models.length]!, label: "寝過ごし", remainingTurns: null, serviceId: null });
   }
   return models;
 }

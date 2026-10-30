@@ -173,14 +173,19 @@ describe("active harmful effect chips", () => {
   });
 
   it.each([
-    [effects({ delayDueTurns: [5] }), 2],
-    [effects({ delayDueTurns: [5, 8, 8] }), 2],
-    [effects({ suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 8 }, { serviceId: "fixture-south", expiresTurn: 10 }] }), 3],
-    [effects({ detourPending: true, oversleepPending: true }), 2],
-    [effects({ delayDueTurns: [3], suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 3 }], detourPending: true }), 3],
-  ])("uses canonical copy and metadata for %#", (state: ItemEffectsState, turn: number) => {
+    [effects({ delayDueTurns: [5] }), 2, ["遅延 あと3"]],
+    [effects({ delayDueTurns: [5, 8, 8] }), 2, ["遅延 あと3", "遅延 あと6", "遅延 あと6"]],
+    [effects({ suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 8 }, { serviceId: "fixture-south", expiresTurn: 10 }] }), 3,
+      ["運休 山手線 あと5", "運休 テスト南線 あと7"]],
+    [effects({ suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 8 }, { serviceId: "jr-yamanote", expiresTurn: 10 }] }), 3,
+      ["運休 山手線 あと5", "運休 山手線 あと7"]],
+    [effects({ detourPending: true, oversleepPending: true }), 2, ["寄り道", "寝過ごし"]],
+    [effects({ delayDueTurns: [3], suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 3 }], detourPending: true }), 3,
+      ["遅延 あと0", "寄り道"]],
+  ])("uses canonical copy and short labels for %#", (state: ItemEffectsState, turn: number, labels: string[]) => {
     const models = effectChipModels(state, turn, network);
     expect(models.map((model) => model.text)).toEqual(activeItemEffectTexts(state, turn, network));
+    expect(models.map((model) => model.label)).toEqual(labels);
     expect(new Set(models.map((model) => model.key)).size).toBe(models.length);
     expect(effectChipModels(state, turn, network).map((model) => model.key)).toEqual(models.map((model) => model.key));
     models.filter((model) => model.kind === "detour" || model.kind === "oversleep")
@@ -214,9 +219,13 @@ describe("active harmful effect chips", () => {
     const markup = renderToStaticMarkup(createElement(EffectChips, { models }));
     expect(markup.match(/<div class="effect-chips" aria-label="続いている効果">/g)).toHaveLength(1);
     expect(markup).not.toMatch(/role=|aria-live/);
-    expect([...markup.matchAll(/<span class="effect-chip__text">([^<]*)<\/span>/g)].map((match) => match[1]))
+    expect([...markup.matchAll(/<span class="effect-chip__label" aria-hidden="true">([^<]*)<\/span>/g)].map((match) => match[1]))
+      .toEqual(models.map((model) => model.label));
+    expect([...markup.matchAll(/<span class="visually-hidden">([^<]*)<\/span>/g)].map((match) => match[1]))
       .toEqual(models.map((model) => model.text));
-    expect(markup.match(/<span class="effect-chip"><svg[^>]*aria-hidden="true"/g)).toHaveLength(models.length);
+    expect(markup.match(/<span class="effect-chip" title="[^"]*"><svg[^>]*aria-hidden="true"/g)).toHaveLength(models.length);
+    expect([...markup.matchAll(/<span class="effect-chip" title="([^"]*)">/g)].map((match) => match[1]))
+      .toEqual(models.map((model) => model.text));
     expect(renderToStaticMarkup(createElement(EffectChips, { models: [] }))).toBe("");
   });
 });

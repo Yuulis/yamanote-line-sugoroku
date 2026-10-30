@@ -353,6 +353,10 @@ button[aria-disabled="true"] {
   gap: 6px;
 }
 
+.game-panel .effect-chips {
+  margin-top: 4px;
+}
+
 .effect-chip {
   display: inline-flex;
   align-items: center;
@@ -365,7 +369,9 @@ button[aria-disabled="true"] {
   color: var(--color-text);
 }
 
-.effect-chip__text {
+.effect-chip__label {
+  min-width: 0;
+  max-width: 100%;
   overflow-wrap: anywhere;
 }
 
@@ -379,15 +385,6 @@ button[aria-disabled="true"] {
   margin: 0 0 6px;
   color: #555555;
   font-size: 12px;
-}
-
-.service-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 4px;
-  border: 1px solid rgb(0 0 0 / 25%);
-  border-radius: 2px;
 }
 
 .game-panel__lottery {
@@ -477,9 +474,19 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__save {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin: 6px 0 0;
   font-size: 12px;
   color: #555555;
+  overflow-wrap: anywhere;
+}
+
+.game-panel__save-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
 }
 
 .game-panel__save--warning {
@@ -1275,6 +1282,7 @@ button[aria-disabled="true"] {
     grid-template-areas:
       "stats actions"
       "lottery options"
+      "chips chips"
       "save save"
       "candidates candidates"
       "route route"
@@ -1338,6 +1346,11 @@ button[aria-disabled="true"] {
   .game-panel__save {
     grid-area: save;
     margin: 0;
+  }
+
+  .game-panel .effect-chips {
+    grid-area: chips;
+    margin-top: 0;
   }
 
   .game-panel__candidates {
