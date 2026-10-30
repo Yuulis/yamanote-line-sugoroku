@@ -28,6 +28,9 @@ import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
 import { summarizeGame } from "../features/game/gameSummary";
+import { useRevealSequence, type RevealStage } from "../features/game/animation/useRevealSequence";
+import { ToastHost } from "../features/game/components/ToastHost";
+import { turnToasts, type ToastInput } from "../features/game/toastQueue";
 
 interface GameAppProps {
   data: RailwayData;
@@ -46,6 +49,16 @@ type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-sa
 
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
+const NO_REVEAL_STAGES: readonly RevealStage[] = [];
+
+/** Toast keys of the record a session was entered with; they are never shown (no replay on resume). */
+interface ToastBaseline {
+  /** `undefined` before the first session observation, so the first effect always captures one. */
+  sessionId: number | null | undefined;
+  keys: ReadonlySet<string>;
+}
+
+const NO_TOAST_BASELINE: ToastBaseline = { sessionId: undefined, keys: new Set() };
 
 function speedById(id: AnimationSpeedId) {
   return ANIMATION_SPEEDS.find((speed) => speed.id === id) ?? ANIMATION_SPEEDS[1];
@@ -71,6 +84,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const [follow, setFollow] = useState(true);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [itemDialogOpen, setItemDialogOpen] = useState(false);
 
   const geometry = useMemo(
     () => buildGeometryIndex(data.geometry.ok ? data.geometry.value : undefined),
@@ -82,6 +96,44 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   );
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
+  const reveal = useRevealSequence({
+    observation: {
+      sessionId: session?.sessionId ?? 0,
+      recordTurn: session?.lastMove?.itemRecord?.turn ?? null,
+      gameTurn: game?.turn ?? 0,
+      pendingDecisionTurn: app.itemView?.decision ? game?.turn ?? null : null,
+      movementComplete: session?.phase !== "animating",
+    },
+    stages: NO_REVEAL_STAGES,
+    reducedMotion,
+  });
+  const revealSkipRef = useRef(reveal.skip);
+  revealSkipRef.current = reveal.skip;
+  const toastSessionId = session?.sessionId ?? null;
+  const toastInputs = useMemo(
+    () => reveal.ready && session ? turnToasts(session.sessionId, session.lastMove, network, presentation) : [],
+    [reveal.ready, session, network, presentation],
+  );
+  const toastBaseline = useRef<ToastBaseline>(NO_TOAST_BASELINE);
+  const processedToastInputs = useRef<readonly ToastInput[] | null>(null);
+  const [acceptedToastInputs, setAcceptedToastInputs] = useState<readonly ToastInput[]>([]);
+  useEffect(() => {
+    if (toastBaseline.current.sessionId !== toastSessionId) {
+      toastBaseline.current = {
+        sessionId: toastSessionId,
+        keys: new Set(turnToasts(session?.sessionId ?? 0, session?.lastMove ?? null, network, presentation).map((input) => input.key)),
+      };
+      processedToastInputs.current = toastInputs;
+      setAcceptedToastInputs([]);
+      setItemDialogOpen(false);
+      return;
+    }
+    if (!reveal.ready || !reveal.key) return;
+    if (toastInputs !== processedToastInputs.current) {
+      processedToastInputs.current = toastInputs;
+      setAcceptedToastInputs(toastInputs.filter((input) => !toastBaseline.current.keys.has(input.key)));
+    }
+  }, [toastSessionId, reveal.key, reveal.ready, toastInputs, session, network, presentation]);
   const presentationGame = useMemo(() => session ? sessionProgress(session) : null, [session]);
   const titleSave: SaveLookup | null = app.saveLookup?.kind === "valid"
     ? { kind: "valid", game: isItemSave(app.saveLookup.game)
@@ -160,9 +212,13 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   };
 
   const currentAnimation = session?.animation;
+  const currentAnimationRef = useRef(currentAnimation);
+  currentAnimationRef.current = currentAnimation;
   const skip = useCallback(() => {
-    if (currentAnimation) finishAnimation(currentAnimation);
-  }, [currentAnimation, finishAnimation]);
+    revealSkipRef.current();
+    const animation = currentAnimationRef.current;
+    if (animation) finishAnimation(animation);
+  }, [finishAnimation]);
 
   const showTitle = useCallback(() => {
     setNotice(null);
@@ -221,8 +277,16 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           onCycleSpeed={cycleSpeed}
           onNewGame={requestNewGame}
           onShowTitle={showTitle}
+          onItemDialogOpenChange={setItemDialogOpen}
         />
       )}
+      <ToastHost
+        sessionId={toastSessionId}
+        inputs={acceptedToastInputs}
+        saveFailed={app.saveStatus === "failed"}
+        obscured={confirm !== null || app.itemView?.decision != null || itemDialogOpen}
+        reducedMotion={reducedMotion}
+      />
       {session && showClear && presentationGame && (
         <ClearScreen
           game={session.game}

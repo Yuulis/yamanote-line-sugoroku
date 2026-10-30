@@ -1,9 +1,9 @@
 import type { ItemEvent, ItemKind } from "../../types/network";
 import type { LastMove } from "./gameSession";
-import { itemEventTexts } from "./presentation";
+import { serviceName } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
 import type { RailwayNetwork } from "./engine";
-import { saveStatusMessage } from "./store/persistence";
+import { ITEM_DESCRIPTIONS } from "./itemPresentation";
 
 export const MAX_VISIBLE_TOASTS = 3;
 export const TOAST_READING_MS = 4000;
@@ -51,6 +51,35 @@ function toastPresentation(event: ItemEvent): ToastPresentation {
   }
 }
 
+/** Keep toast copy brief; the full canonical event wording remains in the log and live region. */
+export function itemEventToastText(
+  event: ItemEvent,
+  network: RailwayNetwork,
+  presentation?: PresentationResolver,
+): string {
+  switch (event.type) {
+    case "pickup-retained":
+    case "pickup-pending-discard":
+      return `${ITEM_DESCRIPTIONS[event.item.kind].name}を手に入れた！`;
+    case "consumed":
+      return `${ITEM_DESCRIPTIONS[event.item.kind].name}を使った`;
+    case "discarded":
+      return `${ITEM_DESCRIPTIONS[event.item.kind].name}を捨てた`;
+    case "cancelled-by-certificate":
+      return `${ITEM_DESCRIPTIONS[event.certificate.kind].name}で${ITEM_DESCRIPTIONS[event.item].name}を打ち消した`;
+    case "harmful-scheduled":
+      return event.effect === "suspension"
+        ? `${serviceName(network, event.serviceId, presentation)}が運休！`
+        : `${ITEM_DESCRIPTIONS[event.item].name}を拾ってしまった！`;
+    case "effect-activated":
+      return `${ITEM_DESCRIPTIONS[event.effect].name}が発動！`;
+    case "effect-expired":
+      return `${serviceName(network, event.serviceId, presentation)}の運休が終わった`;
+    default:
+      return assertNever(event);
+  }
+}
+
 /** Convert canonical item events into deterministic, presentation-only toasts. */
 export function turnToasts(
   sessionId: number,
@@ -68,8 +97,7 @@ export function turnToasts(
       if (seenPickupIds.has(event.item.id)) return;
       seenPickupIds.add(event.item.id);
     }
-    const text = itemEventTexts([event], record.turn, network, presentation)[0];
-    if (text === undefined) return;
+    const text = itemEventToastText(event, network, presentation);
     const model = toastPresentation(event);
     toasts.push({
       key: `${sessionId}:${record.turn}:${eventIndex}`,
@@ -90,7 +118,7 @@ export function saveFailureToast(sessionId: number | null): ToastInput {
     sessionId,
     turn: null,
     eventIndex: null,
-    text: `セーブ: ${saveStatusMessage("failed")}`,
+    text: "保存に失敗しました",
     tone: "bad",
     sticky: true,
   };

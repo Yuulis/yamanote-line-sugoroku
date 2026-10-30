@@ -1,4 +1,7 @@
 import { expect, test } from "./fixtures";
+import { playItemTurn } from "../../src/features/game/engine";
+import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
+import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import {
   diceButton,
   freezeClock,
@@ -15,6 +18,7 @@ import {
   startNewGame,
   targetFeatureIds,
   titleScreen,
+  writeSaveText,
 } from "./support/app";
 
 // Spec 8.3 item covered here:
@@ -88,6 +92,42 @@ test.describe("with move animation", () => {
     await expect(gamePanel(page)).toBeVisible();
     await expect(panelStat(page, "ターン数")).toHaveText("1");
     await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(page.locator(".toast-host__toast")).toHaveCount(0);
     expect(await readSave(page)).toEqual(committed);
+  });
+
+  test("does not replay an item pickup toast after reload and resume", async ({ page, railwayBundle }) => {
+    const scenarios: ItemScenario[] = ["route", "rapid", "double", "discard", "certificate", "delay", "oversleep"];
+    const candidate = scenarios.map((name) => itemScenario(name, railwayBundle.network)).find((game) =>
+      playItemTurn(game, {}, railwayBundle.network).record?.itemEvents.some((event) => event.type === "pickup-retained"),
+    );
+    if (!candidate) throw new Error("Expected an engine-built scenario with a next-turn pickup");
+    const predicted = playItemTurn(candidate, {}, railwayBundle.network).record;
+    const pickup = predicted?.itemEvents.find((event) => event.type === "pickup-retained");
+    if (!predicted || pickup?.type !== "pickup-retained") throw new Error("Expected the predicted engine record to include a pickup");
+    const expectedText = `${ITEM_DESCRIPTIONS[pickup.item.kind].name}を手に入れた！`;
+
+    await page.goto("/");
+    await writeSaveText(page, JSON.stringify(candidate));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await diceButton(page).click();
+    await expect(diceButton(page)).toHaveText("移動中…");
+    await expect.poll(async () => (await readSave(page))?.turn).toBe(candidate.turn + 1);
+    const liveSave = await readSave(page);
+    const liveRecord = liveSave?.movementHistory.at(-1);
+    const livePickup = liveRecord?.itemEvents.find((event) => event.type === "pickup-retained");
+    expect(livePickup).toMatchObject({ type: "pickup-retained", item: { kind: pickup.item.kind } });
+    await gamePanel(page).getByRole("button", { name: "スキップ" }).click();
+    await expect(page.locator(".toast-host__toast")).toHaveCount(1);
+    await expect(page.locator(".toast-host__toast")).toHaveText(expectedText);
+
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+    await page.waitForTimeout(250);
+    await expect(page.locator(".toast-host__toast")).toHaveCount(0);
   });
 });

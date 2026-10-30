@@ -8,9 +8,9 @@ import {
 } from "../../src/features/game/toastQueue";
 import { lastMoveOf } from "../../src/features/game/gameSession";
 import { itemLastMove } from "../../src/features/game/itemSession";
-import { itemEventTexts } from "../../src/features/game/presentation";
 import { createGame, moveByRoll, playItemTurn, resolveItemDiscard } from "../../src/features/game/engine";
 import type { ItemEvent, ItemGameState, ItemKind, ItemTurnRecord } from "../../src/types/network";
+import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { itemScenario } from "../e2e/fixtures/itemScenarios";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
@@ -68,6 +68,26 @@ function dispatch(state: ToastQueueState, action: ToastQueueAction): ToastQueueS
   return toastQueueReducer(state, action);
 }
 
+function expectedEngineToastText(event: ItemEvent): string {
+  switch (event.type) {
+    case "pickup-retained":
+    case "pickup-pending-discard": return `${ITEM_DESCRIPTIONS[event.item.kind].name}を手に入れた！`;
+    case "consumed": return `${ITEM_DESCRIPTIONS[event.item.kind].name}を使った`;
+    case "discarded": return `${ITEM_DESCRIPTIONS[event.item.kind].name}を捨てた`;
+    case "cancelled-by-certificate": return `${ITEM_DESCRIPTIONS[event.certificate.kind].name}で${ITEM_DESCRIPTIONS[event.item].name}を打ち消した`;
+    case "harmful-scheduled": return event.effect === "suspension"
+      ? `${network.servicesById.get(event.serviceId)?.name ?? "路線"}が運休！`
+      : `${ITEM_DESCRIPTIONS[event.item].name}を拾ってしまった！`;
+    case "effect-activated": return `${ITEM_DESCRIPTIONS[event.effect].name}が発動！`;
+    case "effect-expired": return `${network.servicesById.get(event.serviceId)?.name ?? "路線"}の運休が終わった`;
+    default: return assertNever(event);
+  }
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unexpected event: ${JSON.stringify(value)}`);
+}
+
 describe("canonical item event toast conversion", () => {
   it("returns no toasts for a null move or a classic move without an item record", () => {
     const classicGame = moveByRoll(createGame(LEGACY_CAPITAL_REGION_CONFIG, "toast-classic", network), 3, network).state;
@@ -76,7 +96,7 @@ describe("canonical item event toast conversion", () => {
     expect(turnToasts(1, classic, network)).toEqual([]);
   });
 
-  it("reuses exact event wording and keeps original indexes when duplicate pickups are deduped", () => {
+  it("uses short outcome wording and keeps original indexes when duplicate pickups are deduped", () => {
     const events: ItemEvent[] = [
       { type: "pickup-retained", item: { id: "same", kind: "double" } },
       { type: "consumed", item: { id: "used", kind: "double" } },
@@ -87,8 +107,7 @@ describe("canonical item event toast conversion", () => {
     const output = turnToasts(42, itemLastMove(record, network), network);
     expect(output.map((entry) => entry.eventIndex)).toEqual([0, 1, 3]);
     expect(output.map((entry) => entry.key)).toEqual(["42:9:0", "42:9:1", "42:9:3"]);
-    expect(output.map((entry) => entry.text)).toEqual(itemEventTexts(record.itemEvents, record.turn, network));
-    expect(output.map((entry) => entry.text).join("|")).toBe(itemEventTexts(record.itemEvents, record.turn, network).join("|"));
+    expect(output.map((entry) => entry.text)).toEqual(["倍速券を手に入れた！", "倍速券を使った", "快速券を捨てた"]);
     expect(output.every((entry) => entry.sessionId === 42 && entry.turn === 9 && !entry.sticky)).toBe(true);
   });
 
@@ -110,25 +129,42 @@ describe("canonical item event toast conversion", () => {
     const output = convert([event as ItemEvent]);
     expect(output).toHaveLength(1);
     expect(output[0]).toMatchObject({ tone, itemKind: itemKind as ItemKind, eventIndex: 0 });
-    expect(output[0]?.text).toBe(itemEventTexts([event as ItemEvent], 1, network)[0]);
   });
 
   it.each([
-    ["route", "pickup-retained", "good", "rapid"],
-    ["discard", "pickup-pending-discard", "good", "delay-certificate"],
-    ["certificate", "cancelled-by-certificate", "good", "delay-certificate"],
-    ["delay", "harmful-scheduled", "bad", "delay"],
-    ["adjust", "harmful-scheduled", "bad", "oversleep"],
-    ["oversleep", "effect-activated", "bad", "oversleep"],
-  ] as const)("converts the engine-generated %s turn into a %s toast", (name, type, tone, itemKind) => {
+    [{ type: "pickup-retained", item: { id: "a", kind: "rapid" } }, "快速券を手に入れた！"],
+    [{ type: "pickup-pending-discard", item: { id: "a", kind: "delay-certificate" }, candidates: [] }, "遅延証明書を手に入れた！"],
+    [{ type: "consumed", item: { id: "a", kind: "double" } }, "倍速券を使った"],
+    [{ type: "discarded", item: { id: "a", kind: "deadhead" } }, "回送列車を捨てた"],
+    [{ type: "cancelled-by-certificate", item: "delay", certificate: { id: "c", kind: "delay-certificate" } }, "遅延証明書で遅延を打ち消した"],
+    [{ type: "harmful-scheduled", item: "delay", effect: "delay", dueTurn: 4 }, "遅延を拾ってしまった！"],
+    [{ type: "harmful-scheduled", item: "suspension", effect: "suspension", serviceId: "jr-yamanote", expiresTurn: 4 }, "山手線が運休！"],
+    [{ type: "harmful-scheduled", item: "detour", effect: "detour" }, "寄り道を拾ってしまった！"],
+    [{ type: "harmful-scheduled", item: "oversleep", effect: "oversleep" }, "寝過ごしを拾ってしまった！"],
+    [{ type: "effect-activated", effect: "delay" }, "遅延が発動！"],
+    [{ type: "effect-activated", effect: "detour" }, "寄り道が発動！"],
+    [{ type: "effect-activated", effect: "oversleep" }, "寝過ごしが発動！"],
+    [{ type: "effect-expired", effect: "suspension", serviceId: "jr-yamanote" }, "山手線の運休が終わった"],
+  ] as const)("uses short toast wording for %s", (event, expected) => {
+    expect(convert([event as ItemEvent])[0]?.text).toBe(expected);
+  });
+
+  it.each([
+    ["route", "pickup-retained", "good", "rapid", "快速券を手に入れた！"],
+    ["discard", "pickup-pending-discard", "good", "delay-certificate", "遅延証明書を手に入れた！"],
+    ["certificate", "cancelled-by-certificate", "good", "delay-certificate", "遅延証明書で寝過ごしを打ち消した"],
+    ["delay", "harmful-scheduled", "bad", "delay", "遅延を拾ってしまった！"],
+    ["adjust", "harmful-scheduled", "bad", "oversleep", "寝過ごしを拾ってしまった！"],
+    ["oversleep", "effect-activated", "bad", "oversleep", "寝過ごしが発動！"],
+  ] as const)("converts the engine-generated %s turn into a %s toast", (name, type, tone, itemKind, expectedText) => {
     const record = arrivedRecord(playItemTurn(itemScenario(name, network), {}, network).state);
     const eventIndex = record.itemEvents.findIndex((event) => event.type === type);
     expect(eventIndex).toBeGreaterThanOrEqual(0);
-    const event = record.itemEvents[eventIndex]!;
     const converted = turnToasts(5, itemLastMove(record, network), network);
     expect(converted.find((entry) => entry.eventIndex === eventIndex)).toEqual({
       key: `5:${record.turn}:${eventIndex}`, sessionId: 5, turn: record.turn, eventIndex,
-      text: itemEventTexts([event], record.turn, network)[0], tone, itemKind, sticky: false,
+      text: expectedText,
+      tone, itemKind, sticky: false,
     });
   });
 
@@ -143,7 +179,7 @@ describe("canonical item event toast conversion", () => {
     expect(eventIndex).toBeGreaterThanOrEqual(0);
     const converted = turnToasts(5, itemLastMove(record, network), network);
     expect(converted.find((entry) => entry.eventIndex === eventIndex)).toMatchObject({
-      key: `5:${record.turn}:${eventIndex}`, tone: "good", itemKind: "double", text: "倍速券を使いました",
+      key: `5:${record.turn}:${eventIndex}`, tone: "good", itemKind: "double", text: "倍速券を使った",
     });
   });
 
@@ -159,7 +195,7 @@ describe("canonical item event toast conversion", () => {
     for (const record of [activation, expiry]) {
       if (!record) throw new Error("Expected an engine-generated event record");
       const converted = turnToasts(42, itemLastMove(record, network), network);
-      expect(converted.map((entry) => entry.text)).toEqual(itemEventTexts(record.itemEvents, record.turn, network));
+      expect(converted.map((entry) => entry.text)).toEqual(record.itemEvents.map(expectedEngineToastText));
     }
     const pinnedRecords = ["delay", "certificate", "discard", "double", "oversleep", "rapid"]
       .flatMap((name) => replayRecords(name as Parameters<typeof itemScenario>[0]));
@@ -169,7 +205,15 @@ describe("canonical item event toast conversion", () => {
     expect(eventTypes).toContain("effect-activated");
     for (const record of pinnedRecords) {
       const converted = turnToasts(42, itemLastMove(record, network), network);
-      expect(converted.map((entry) => entry.text)).toEqual(itemEventTexts(record.itemEvents, record.turn, network));
+      const seenPickupIds = new Set<string>();
+      const expected = record.itemEvents.flatMap((event, eventIndex) => {
+        if (event.type === "pickup-retained" || event.type === "pickup-pending-discard") {
+          if (seenPickupIds.has(event.item.id)) return [];
+          seenPickupIds.add(event.item.id);
+        }
+        return [{ eventIndex, text: expectedEngineToastText(event) }];
+      });
+      expect(converted.map(({ eventIndex, text }) => ({ eventIndex, text }))).toEqual(expected);
     }
   });
 
@@ -191,17 +235,17 @@ describe("canonical item event toast conversion", () => {
     expect(state.items.slice(0, afterPickup.items.length)).toEqual(afterPickup.items);
     expect(state.items.map((entry) => entry.key)).toEqual([`42:${resolved.turn}:0`, `42:${resolved.turn}:${discardIndex}`]);
     expect(state.items.at(-1)).toMatchObject({ tone: "neutral", itemKind: "delay-certificate" });
-    expect(state.items.map((entry) => entry.text)).toEqual(itemEventTexts(resolved.itemEvents, resolved.turn, network));
+    expect(state.items.map((entry) => entry.text)).toEqual(["遅延証明書を手に入れた！", "遅延証明書を捨てた"]);
     expect(enqueue(state, secondList)).toBe(state);
   });
 
-  it("uses no synthesized wording or unstable values", () => {
+  it("uses the short caught-item wording without exposing scheduled turn details", () => {
     const event: ItemEvent = { type: "harmful-scheduled", item: "delay", effect: "delay", dueTurn: 5 };
     const record = recordWithEvents([event], 2);
     const first = turnToasts(3, itemLastMove(record, network), network);
     const second = turnToasts(3, itemLastMove(record, network), network);
     expect(second).toEqual(first);
-    expect(first[0]?.text).toBe("遅延：5ターン目に発動（あと3ターン）。出目が1になります");
+    expect(first[0]?.text).toBe("遅延を拾ってしまった！");
   });
 });
 
@@ -223,6 +267,7 @@ describe("bounded toast queue", () => {
     state = dispatch(state, { type: "saveFailed" });
     expect(visibleToasts(state).map((item) => item.key)).toEqual(["a", "b", "7:save-failed"]);
     expect(saveFailureToast(7)).toMatchObject({ tone: "bad", sticky: true, turn: null, eventIndex: null });
+    expect(saveFailureToast(7).text).toBe("保存に失敗しました");
     expect(dispatch(state, { type: "expire", key: "7:save-failed" })).toBe(state);
     state = dispatch(state, { type: "saveSucceeded" });
     expect(state.saveFailed).toBe(false);
@@ -483,24 +528,24 @@ describe("ToastHost", () => {
     expect(Array.from(toastHost().querySelectorAll(".toast-host__toast"))).toHaveLength(3);
     expect(toastHost().textContent).toContain("ordinary one");
     expect(toastHost().textContent).toContain("ordinary two");
-    expect(toastHost().textContent).toContain("セーブ:");
+    expect(toastHost().textContent).toContain("保存に失敗しました");
     expect(toastHost().textContent).not.toContain("waiting");
     act(() => vi.advanceTimersByTime(100_000));
-    expect(toastHost().textContent).toContain("セーブ:");
+    expect(toastHost().textContent).toContain("保存に失敗しました");
     render(props({ inputs: [toast("ordinary one", 1, 0), toast("ordinary two", 1, 1), toast("waiting", 1, 2)], saveFailed: false }));
-    expect(toastHost().textContent).not.toContain("セーブ:");
+    expect(toastHost().textContent).not.toContain("保存に失敗しました");
     render(props({ sessionId: 8, inputs: [], saveFailed: false }));
-    expect(toastHost().textContent).not.toContain("セーブ:");
+    expect(toastHost().textContent).not.toContain("保存に失敗しました");
   });
 
   it("clears the sticky failure on session change and raises it again only on a new failure", () => {
     render(props({ saveFailed: true }));
-    expect(toastHost().textContent).toContain("セーブ:");
+    expect(toastHost().textContent).toContain("保存に失敗しました");
     render(props({ sessionId: 8, saveFailed: true }));
-    expect(toastHost().textContent).not.toContain("セーブ:");
+    expect(toastHost().textContent).not.toContain("保存に失敗しました");
     render(props({ sessionId: 8, saveFailed: false }));
     render(props({ sessionId: 8, saveFailed: true }));
-    expect(toastHost().textContent).toContain("セーブ:");
+    expect(toastHost().textContent).toContain("保存に失敗しました");
     expect(vi.getTimerCount()).toBe(0);
   });
 

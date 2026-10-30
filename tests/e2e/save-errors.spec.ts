@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
+  diceButton,
   openTitle,
   readSave,
   readSaveText,
@@ -187,5 +188,37 @@ test.describe("fixture save discard cancellation", () => {
 
     await expect(titleScreen(page).getByRole("alert")).toBeVisible();
     expect(await readSaveText(page)).toBe(tampered);
+  });
+});
+
+test.describe("save failure toast", () => {
+  test.use({ dataset: "fixture", reducedMotion: "reduce" });
+
+  test("stays visible past four seconds, then clears after a successful save", async ({ page }) => {
+    await openTitle(page);
+    await startNewGame(page);
+    await page.evaluate(() => {
+      const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+      storage.originalSetItem = storage.setItem;
+      storage.setItem = function (key: string, value: string): void {
+        if (key.includes("save")) throw new Error("quota");
+        storage.originalSetItem?.call(this, key, value);
+      };
+    });
+    await diceButton(page).click();
+    await expect(page.locator(".game-panel__save")).toContainText("失敗");
+    await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
+    await page.waitForTimeout(4200);
+    await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
+
+    await page.evaluate(() => {
+      const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+      if (storage.originalSetItem) storage.setItem = storage.originalSetItem;
+      delete storage.originalSetItem;
+    });
+    await diceButton(page).click();
+    await expect(page.locator(".game-panel__save")).toContainText("自動保存済み");
+    await expect(page.locator(".toast-host__toast", { hasText: "保存に失敗しました" })).toHaveCount(0);
   });
 });

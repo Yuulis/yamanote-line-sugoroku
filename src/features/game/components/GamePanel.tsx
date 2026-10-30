@@ -58,6 +58,7 @@ export interface GamePanelProps {
   onEditItemDraft?: (command: ItemTurnCommand) => void;
   onAdjustItemRoll?: (adjustment: ItemRollAdjustment | null) => void;
   onDiscardItem?: (instanceId: string) => void;
+  onItemDialogOpenChange?: (open: boolean) => void;
 }
 
 function showAllLineGroups(): void {
@@ -139,6 +140,12 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     kind: "route-ticket" | "direction-ticket";
     instanceId: string;
   } | null>(null);
+  const itemDialogOpen = Boolean(props.itemView && itemDialog);
+  useEffect(() => {
+    if (!props.onItemDialogOpenChange) return;
+    props.onItemDialogOpenChange(itemDialogOpen);
+    return () => props.onItemDialogOpenChange?.(false);
+  }, [itemDialogOpen, props.onItemDialogOpenChange]);
   const rollButtonRef = useRef<HTMLButtonElement>(null);
   const restoreRollFocusRef = useRef(false);
   const draftItem = props.itemView?.draft.items[0];
