@@ -18,8 +18,10 @@ reveal hook, toast host) for P2. Presentation only: no engine/RNG/save/public-da
   invent codes; no monetisation planned.
 - P2 lottery display will be split-flap (パタパタ), ~2 s, skippable, omitted on reduced motion/resume — out of
   scope here; the reveal hook is its foundation.
-- Pending user answers (plan §10; defaults apply until answered): multi-code groups → one representative code;
-  partial JU/JO lines → show code; toast reading time 4,000 ms; all canonical item outcomes toast (max 3).
+- Answered (user 2026-10-28/30): multi-code groups → one Tokyo-side code; partial JU/JO lines → show code;
+  toast reading time 4,000 ms; all canonical item outcomes toast (max 3); Musashino through services JM;
+  S3 badge shape/icons/accents unchanged.
+- 2026-10-30 (user): S4 compact-roll wordings (`N駅`+`快速`, `調整±1`, `遅延`) are accepted as-is. Effect chips must be SHORT in the HUD (e.g. `遅延 あと1`, `運休 山手線 あと3`, `寄り道`, `寝過ごし`): S10 adds a short chip label and moves the full sentence to a tooltip/accessible description; the current long sentence must not be the visible chip text.
 
 ## Documents
 

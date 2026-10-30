@@ -360,6 +360,8 @@ Tests: plan §4 S10 list; in `items.spec.ts` change only the scope of the `続�
 
 Acceptance: `ui_gate && ui_e2e` (full).
 
+**Lead addendum (user decision 2026-10-30, binding):** effect chips in the HUD show a SHORT label (e.g. `遅延 あと1`, `運休 山手線 あと3`, `寄り道`, `寝過ごし`); the current full sentence from `effectChipModels` moves to a tooltip / accessible description (e.g. `title` plus visually hidden text or `aria-describedby`), never the visible chip text. Add the short label to the chip model with unit tests; keep chip keys stable.
+
 ## S11: Map observes the real panel across sessions
 
 Objective: keep camera padding correct after the panel restructure and across session replacement.
