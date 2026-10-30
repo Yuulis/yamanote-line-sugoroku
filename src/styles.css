@@ -1215,3 +1215,52 @@ button[aria-disabled="true"] {
 .item-event-notice h2 { font-size: 1rem; margin-block: .6rem .3rem; }
 .item-event-notice ul { padding-inline-start: 1.3rem; margin-block: .3rem; }
 .item-event-notice li + li { margin-block-start: .35rem; }
+
+.line-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.line-badge__mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 24px;
+  padding: 2px 9px 2px 11px;
+  box-sizing: border-box;
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 0 100%);
+}
+
+.line-badge__code {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.line-badge__name {
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.line-badge--sm .line-badge__mark { min-width: 30px; min-height: 20px; padding-inline: 8px 7px; }
+.line-badge--sm .line-badge__code { font-size: 11px; }
+.line-badge--sm .line-badge__name { font-size: 12px; }
+.line-badge--lg .line-badge__mark { min-width: 44px; min-height: 30px; padding-inline: 12px 10px; }
+.line-badge--lg .line-badge__code { font-size: 15px; }
+.line-badge--lg .line-badge__name { font-size: 16px; }
+
+.item-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  color: currentColor;
+  vertical-align: middle;
+}
+
+/* Callers may set --item-icon-accent on any ancestor; the brand colour is the default. */
+.item-icon__accent { fill: var(--item-icon-accent, var(--color-brand)); stroke: var(--item-icon-accent, var(--color-brand)); }
+.item-icon__accent-stroke { stroke: var(--item-icon-accent, var(--color-brand)); }

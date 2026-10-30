@@ -1,6 +1,10 @@
+// @vitest-environment jsdom
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { LineBadge } from "../../src/features/game/components/LineBadge";
 import { badgeTextColor, LINE_BADGE_CODES, lineBadgeFor, NO_CODE_LINE_GROUP_IDS } from "../../src/features/game/lineBadge";
 import type { PresentationResolver } from "../../src/features/game/presentationResolver";
 import { contrastRatio } from "../../src/features/game/uiContrast";
@@ -184,5 +188,65 @@ describe("line badge catalogue", () => {
     for (const group of LINE_GROUPS) {
       expect(contrastRatio(group.color, badgeTextColor(group.color))).toBeGreaterThanOrEqual(4.5);
     }
+  });
+});
+
+describe("LineBadge renderer", () => {
+  it("renders the model code on an aria-hidden pennant and the line name as text", () => {
+    const model = lineBadgeFor("jr-yamanote", PRESENTATION);
+    const markup: string = renderToStaticMarkup(createElement(LineBadge, { model }));
+    const document: Document = new DOMParser().parseFromString(markup, "text/html");
+    const mark: HTMLElement | null = document.querySelector(".line-badge__mark");
+
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(mark?.querySelector(".line-badge__code")?.textContent).toBe("JY");
+    expect(document.querySelector(".line-badge__name")?.textContent).toBe("山手線");
+    expect(document.querySelector(".line-badge")).not.toBeNull();
+    expect(mark?.getAttribute("style")).toContain("color:#000000");
+    expect(mark?.className).toBe("line-badge__mark");
+    expect(markup).not.toMatch(/(?:class|style)="[^"]*(?:ring|border-radius\s*:\s*50%)[^"]*"/i);
+  });
+
+  it("renders uncoded and unknown lines as a colour block with no code", () => {
+    const uncoded: string = renderToStaticMarkup(createElement(LineBadge, {
+      model: lineBadgeFor("jr-hachiko", PRESENTATION),
+    }));
+    const unknown: string = renderToStaticMarkup(createElement(LineBadge, {
+      model: lineBadgeFor("unknown-service", PRESENTATION),
+    }));
+    const uncodedDocument: Document = new DOMParser().parseFromString(uncoded, "text/html");
+    const unknownDocument: Document = new DOMParser().parseFromString(unknown, "text/html");
+
+    expect(uncodedDocument.querySelector(".line-badge__code")).toBeNull();
+    expect(uncodedDocument.querySelector(".line-badge__name")?.textContent).toBe("八高線");
+    expect(unknownDocument.querySelector(".line-badge__code")).toBeNull();
+    expect(unknownDocument.querySelector(".line-badge__name")?.textContent).toBe("unknown-service");
+    expect(unknownDocument.querySelector(".line-badge__mark")?.getAttribute("style")).toContain("var(--color-border)");
+  });
+
+  it("shows only the catalogue letters on every manifest line, never a station number", () => {
+    for (const [serviceId, group] of GROUP_BY_SERVICE) {
+      const markup: string = renderToStaticMarkup(createElement(LineBadge, {
+        model: lineBadgeFor(serviceId, PRESENTATION),
+      }));
+      const document: Document = new DOMParser().parseFromString(markup, "text/html");
+      const codeText: string | undefined = document.querySelector(".line-badge__code")?.textContent ?? undefined;
+
+      expect(codeText, group.id).toBe(Object.hasOwn(LINE_BADGE_CODES, group.id) ? LINE_BADGE_CODES[group.id] : undefined);
+      expect(document.querySelector(".line-badge__mark")?.textContent ?? "", group.id).toMatch(/^[A-Z]{0,2}$/);
+      expect(document.querySelector(".line-badge__name")?.textContent, group.id).toBe(group.name);
+    }
+  });
+
+  it("can omit the adjacent line name and uses the requested size class", () => {
+    const markup: string = renderToStaticMarkup(createElement(LineBadge, {
+      model: lineBadgeFor("jr-yamanote", PRESENTATION),
+      showName: false,
+      size: "lg",
+    }));
+
+    expect(markup).toContain("line-badge--lg");
+    expect(markup).not.toContain("line-badge__name");
+    expect(markup).toContain("JY");
   });
 });
