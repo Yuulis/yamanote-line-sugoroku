@@ -107,11 +107,14 @@ test.describe("with move animation", () => {
     if (!predicted || pickup?.type !== "pickup-retained") throw new Error("Expected the predicted engine record to include a pickup");
     const expectedText = `${ITEM_DESCRIPTIONS[pickup.item.kind].name}を手に入れた！`;
 
+    // Pin the clock so the move is still running when スキップ is pressed.
+    await page.clock.install();
     await page.goto("/");
     await writeSaveText(page, JSON.stringify(candidate));
     await page.reload();
     await page.getByRole("button", { name: /つづきから/ }).click();
     await expect(gamePanel(page)).toBeVisible();
+    await freezeClock(page);
     await diceButton(page).click();
     await expect(diceButton(page)).toHaveText("移動中…");
     await expect.poll(async () => (await readSave(page))?.turn).toBe(candidate.turn + 1);
