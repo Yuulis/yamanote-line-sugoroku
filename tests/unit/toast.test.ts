@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { createRequire } from "node:module";
+import { act, createElement } from "react";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createReadingClock, createToastQueue, INITIAL_TOAST_QUEUE, MAX_VISIBLE_TOASTS, pauseReadingClock,
   readingRemainingMs, resumeReadingClock, saveFailureToast, toastQueueReducer, TOAST_READING_MS,
@@ -12,6 +14,8 @@ import type { ItemEvent, ItemGameState, ItemKind, ItemTurnRecord } from "../../s
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { itemScenario } from "../e2e/fixtures/itemScenarios";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
+import { mountReact, type MountedReact } from "./helpers/reactDom";
+import { ToastHost, type ToastHostProps } from "../../src/features/game/components/ToastHost";
 
 const { network } = await loadBundle("fixture");
 
@@ -312,5 +316,216 @@ describe("toast reading clock", () => {
     expect(readingRemainingMs(running, 9000)).toBe(0);
     expect(resumeReadingClock(finished, 10000)).toBe(finished);
     expect(pauseReadingClock(finished, 10000)).toBe(finished);
+  });
+});
+
+describe("ToastHost", () => {
+  interface TestDom {
+    window: Window & typeof globalThis & { close: () => void };
+  }
+  const JSDOM = createRequire(import.meta.url)("jsdom").JSDOM as new (
+    html: string,
+    options: { url: string },
+  ) => TestDom;
+  let dom: TestDom;
+  let mounted: MountedReact | null = null;
+  const originalGlobals = new Map<string, PropertyDescriptor | undefined>();
+  const globalNames: string[] = ["window", "document", "HTMLElement", "Element", "Node", "navigator", "MutationObserver"];
+
+  function Harness(props: ToastHostProps): React.JSX.Element {
+    return createElement(ToastHost, props);
+  }
+
+  function props(overrides: Partial<ToastHostProps> = {}): ToastHostProps {
+    return {
+      sessionId: 7,
+      inputs: [],
+      saveFailed: false,
+      obscured: false,
+      reducedMotion: false,
+      ...overrides,
+    };
+  }
+
+  function render(next: ToastHostProps): void {
+    if (!mounted) {
+      mounted = mountReact(createElement(Harness, next));
+      return;
+    }
+    act(() => mounted?.root.render(createElement(Harness, next)));
+  }
+
+  function toastHost(): HTMLElement {
+    const host = mounted?.container.querySelector(".toast-host");
+    if (!(host instanceof HTMLElement)) throw new Error("Expected the toast host");
+    return host;
+  }
+
+  beforeAll(() => {
+    dom = new JSDOM("<!doctype html><html><body></body></html>", { url: "https://localhost/" });
+    for (const name of globalNames) {
+      originalGlobals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
+      Object.defineProperty(globalThis, name, {
+        configurable: true,
+        value: name === "window" ? dom.window
+          : name === "document" ? dom.window.document
+            : name === "navigator" ? dom.window.navigator
+              : (dom.window as unknown as Record<string, unknown>)[name],
+      });
+    }
+  });
+
+  afterAll(() => {
+    dom.window.close();
+    for (const name of globalNames) {
+      const descriptor = originalGlobals.get(name);
+      if (descriptor) Object.defineProperty(globalThis, name, descriptor);
+      else Reflect.deleteProperty(globalThis, name);
+    }
+  });
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    document.body.innerHTML = "";
+  });
+
+  afterEach(() => {
+    (mounted as MountedReact | null)?.cleanup();
+    mounted = null;
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it("expires each visible toast after exactly 4,000 ms", () => {
+    render(props({ inputs: [toast("visible", 1, 0)] }));
+    expect(toastHost().textContent).toContain("visible");
+    act(() => vi.advanceTimersByTime(3999));
+    expect(toastHost().textContent).toContain("visible");
+    act(() => vi.advanceTimersByTime(1));
+    expect(toastHost().textContent).not.toContain("visible");
+  });
+
+  it("starts a queued third toast's full reading time when it becomes visible", () => {
+    render(props({ inputs: [toast("first", 1, 0), toast("second", 1, 1), toast("third", 1, 2)] }));
+    expect(toastHost().textContent).toContain("first");
+    expect(toastHost().textContent).not.toContain("third");
+    act(() => vi.advanceTimersByTime(4000));
+    expect(toastHost().textContent).toContain("third");
+    act(() => vi.advanceTimersByTime(3999));
+    expect(toastHost().textContent).toContain("third");
+    act(() => vi.advanceTimersByTime(1));
+    expect(toastHost().textContent).not.toContain("third");
+  });
+
+  it("defers reading while obscured and pauses with the exact remaining time", () => {
+    render(props({ inputs: [toast("paused", 1, 0)], obscured: true }));
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(toastHost().textContent).toContain("paused");
+    render(props({ inputs: [toast("paused", 1, 0)], obscured: false }));
+    act(() => vi.advanceTimersByTime(1500));
+    render(props({ inputs: [toast("paused", 1, 0)], obscured: true }));
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(toastHost().textContent).toContain("paused");
+    render(props({ inputs: [toast("paused", 1, 0)], obscured: false }));
+    act(() => vi.advanceTimersByTime(2499));
+    expect(toastHost().textContent).toContain("paused");
+    act(() => vi.advanceTimersByTime(1));
+    expect(toastHost().textContent).not.toContain("paused");
+  });
+
+  it("ignores cancelled timer callbacks after a pause and after a resume", () => {
+    const setTimeoutSpy = vi.spyOn(globalThis, "setTimeout");
+    const inputs = [toast("guarded", 1, 0)];
+    render(props({ inputs }));
+    const firstCallback = setTimeoutSpy.mock.calls.at(-1)?.[0] as () => void;
+    act(() => vi.advanceTimersByTime(1000));
+    render(props({ inputs, obscured: true }));
+    act(() => firstCallback());
+    expect(toastHost().textContent).toContain("guarded");
+    render(props({ inputs, obscured: false }));
+    act(() => firstCallback());
+    expect(toastHost().textContent).toContain("guarded");
+    act(() => vi.advanceTimersByTime(2999));
+    expect(toastHost().textContent).toContain("guarded");
+    act(() => vi.advanceTimersByTime(1));
+    expect(toastHost().textContent).not.toContain("guarded");
+    setTimeoutSpy.mockRestore();
+  });
+
+  it("keeps reading time under reduced motion without applying a motion class", () => {
+    render(props({ inputs: [toast("still reads", 1, 0)], reducedMotion: true }));
+    expect(toastHost().querySelector(".toast-host__toast--motion")).toBeNull();
+    act(() => vi.advanceTimersByTime(3999));
+    expect(toastHost().textContent).toContain("still reads");
+    act(() => vi.advanceTimersByTime(1));
+    expect(toastHost().textContent).not.toContain("still reads");
+  });
+
+  it("clears timers on unmount and session replacement without stale toasts", () => {
+    render(props({ inputs: [toast("old", 1, 0)] }));
+    expect(vi.getTimerCount()).toBe(1);
+    (mounted as MountedReact | null)?.cleanup();
+    mounted = null;
+    expect(vi.getTimerCount()).toBe(0);
+
+    render(props({ inputs: [toast("session 7", 1, 0)] }));
+    render(props({ sessionId: 8, inputs: [toast("session 8", 1, 0, 8)] }));
+    expect(toastHost().textContent).not.toContain("session 7");
+    expect(toastHost().textContent).toContain("session 8");
+    expect(vi.getTimerCount()).toBe(1);
+    (mounted as MountedReact | null)?.cleanup();
+    mounted = null;
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps the sticky failure in the reserved third slot until save succeeds", () => {
+    render(props({ inputs: [toast("ordinary one", 1, 0), toast("ordinary two", 1, 1), toast("waiting", 1, 2)], saveFailed: true }));
+    expect(Array.from(toastHost().querySelectorAll(".toast-host__toast"))).toHaveLength(3);
+    expect(toastHost().textContent).toContain("ordinary one");
+    expect(toastHost().textContent).toContain("ordinary two");
+    expect(toastHost().textContent).toContain("セーブ:");
+    expect(toastHost().textContent).not.toContain("waiting");
+    act(() => vi.advanceTimersByTime(100_000));
+    expect(toastHost().textContent).toContain("セーブ:");
+    render(props({ inputs: [toast("ordinary one", 1, 0), toast("ordinary two", 1, 1), toast("waiting", 1, 2)], saveFailed: false }));
+    expect(toastHost().textContent).not.toContain("セーブ:");
+    render(props({ sessionId: 8, inputs: [], saveFailed: false }));
+    expect(toastHost().textContent).not.toContain("セーブ:");
+  });
+
+  it("clears the sticky failure on session change and raises it again only on a new failure", () => {
+    render(props({ saveFailed: true }));
+    expect(toastHost().textContent).toContain("セーブ:");
+    render(props({ sessionId: 8, saveFailed: true }));
+    expect(toastHost().textContent).not.toContain("セーブ:");
+    render(props({ sessionId: 8, saveFailed: false }));
+    render(props({ sessionId: 8, saveFailed: true }));
+    expect(toastHost().textContent).toContain("セーブ:");
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("runs no reading timer while obscured and applies the motion class only with motion enabled", () => {
+    render(props({ inputs: [toast("hidden reader", 1, 0)], obscured: true }));
+    expect(vi.getTimerCount()).toBe(0);
+    expect(toastHost().querySelector(".toast-host__toast--motion")).not.toBeNull();
+    render(props({ inputs: [toast("hidden reader", 1, 0)], obscured: false }));
+    expect(vi.getTimerCount()).toBe(1);
+  });
+
+  it("is visual-only, preserves focus, renders item icons, and applies tone classes", () => {
+    const focusTarget = document.createElement("button");
+    document.body.append(focusTarget);
+    focusTarget.focus();
+    const activeElement = document.activeElement;
+    render(props({ inputs: [
+      { ...toast("icon good", 1, 0), tone: "good", itemKind: "double" },
+      { ...toast("plain bad", 1, 1), tone: "bad" },
+    ] }));
+    expect(toastHost().getAttribute("aria-hidden")).toBe("true");
+    expect(toastHost().querySelector("[role], [aria-live], button, a, input, [tabindex]")).toBeNull();
+    expect(toastHost().querySelectorAll(".item-icon")).toHaveLength(1);
+    expect(toastHost().querySelector(".toast-host__toast--good")).not.toBeNull();
+    expect(toastHost().querySelector(".toast-host__toast--bad")).not.toBeNull();
+    expect(document.activeElement).toBe(activeElement);
   });
 });
