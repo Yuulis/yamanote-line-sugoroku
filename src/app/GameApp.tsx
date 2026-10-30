@@ -328,6 +328,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
         progress={progress}
         livePosition={livePosition}
         follow={mapFollow}
+        panelKey={session && shown && !showClear ? session.sessionId : undefined}
         overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
         inert={app.state.screen === "title" || showClear}
       />

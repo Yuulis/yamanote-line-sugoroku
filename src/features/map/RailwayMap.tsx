@@ -63,12 +63,61 @@ interface RailwayMapProps {
   /** Per-frame marker position of a running move; overrides the progress position once set. */
   livePosition?: LivePosition;
   follow?: MapFollow;
+  /** Session identity for rebinding layout observation when the panel is replaced. */
+  panelKey?: number;
   /** New/resumed turn-0 session: fit the entire network even on a reused map. */
   overviewKey?: number;
   /** Remove map controls from keyboard and assistive technology while another screen is active. */
   inert?: boolean;
   targetServiceId?: string;
   minZoom?: number;
+}
+
+/** Elements whose size changes the follow-camera layout: the map container and the panel root. */
+export function cameraLayoutTargets(container: HTMLElement, panelRoot: HTMLElement | null): HTMLElement[] {
+  return panelRoot ? [container, panelRoot] : [container];
+}
+
+/**
+ * Watch the map's container, the current `.game-panel` root and the window, and call `onLayoutChange` at
+ * most once per animation frame. A new map or a new `panelKey` (a new session's panel element) rebinds the
+ * observer to the replacement panel; `onBind` runs on every (re)bind before any observation. A null map
+ * observes nothing.
+ */
+export function useCameraLayoutObserver(
+  map: Pick<MapLibreMap, "getContainer"> | null,
+  panelKey: number | undefined,
+  onBind: () => void,
+  onLayoutChange: () => void,
+): void {
+  const callbacksRef = useRef({ onBind, onLayoutChange });
+  useEffect(() => {
+    callbacksRef.current = { onBind, onLayoutChange };
+  });
+  useEffect(() => {
+    if (!map) return;
+    const container: HTMLElement = map.getContainer();
+    callbacksRef.current.onBind();
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    let animationFrame = 0;
+    const requestLayoutUpdate = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        animationFrame = 0;
+        callbacksRef.current.onLayoutChange();
+      });
+    };
+    const observer = typeof ResizeObserver === "undefined"
+      ? null
+      : new ResizeObserver(requestLayoutUpdate);
+    for (const target of cameraLayoutTargets(container, panel)) observer?.observe(target);
+    window.addEventListener("resize", requestLayoutUpdate);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", requestLayoutUpdate);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, [map, panelKey]);
 }
 
 const NO_LIVE_POSITION: LivePosition = {
@@ -178,7 +227,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -339,35 +388,18 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
   // The camera layout last applied by a follow move; null forces the next
   // observed layout to be applied even if the marker is already centred.
   const appliedCameraLayoutRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!loadedMap || !followEnabled) return;
-    appliedCameraLayoutRef.current = null;
-    const panel = document.querySelector<HTMLElement>(".game-panel");
-    const routeSummary = panel?.querySelector<HTMLElement>(".game-panel__route-summary");
-    let animationFrame = 0;
-    const requestLayoutUpdate = () => {
-      if (animationFrame) return;
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = 0;
-        // A resize that leaves the camera layout unchanged (any panel resize
-        // on desktop) must not pull a moved camera back to the marker.
-        if (cameraLayoutKey(loadedMap) === appliedCameraLayoutRef.current) return;
-        setCameraLayoutRevision((revision) => revision + 1);
-      });
-    };
-    const observer = typeof ResizeObserver === "undefined"
-      ? null
-      : new ResizeObserver(requestLayoutUpdate);
-    observer?.observe(loadedMap.getContainer());
-    if (panel) observer?.observe(panel);
-    if (routeSummary) observer?.observe(routeSummary);
-    window.addEventListener("resize", requestLayoutUpdate);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", requestLayoutUpdate);
-      if (animationFrame) window.cancelAnimationFrame(animationFrame);
-    };
-  }, [loadedMap, followEnabled]);
+  useCameraLayoutObserver(
+    followEnabled ? loadedMap : null,
+    panelKey,
+    () => { appliedCameraLayoutRef.current = null; },
+    () => {
+      if (!loadedMap) return;
+      // A resize that leaves the camera layout unchanged (any panel resize
+      // on desktop) must not pull a moved camera back to the marker.
+      if (cameraLayoutKey(loadedMap) === appliedCameraLayoutRef.current) return;
+      setCameraLayoutRevision((revision) => revision + 1);
+    },
+  );
   // Declared before the camera effect: re-enabling following clears the
   // gesture flag before the camera recentres.
   useEffect(() => {

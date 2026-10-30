@@ -323,6 +323,68 @@ test.describe("compact layouts and map follow padding", () => {
     await expect.poll(markerAbovePanel).toBe(true);
   });
 
+  // Integration check: after a new game and a resume the follow padding tracks the replacement panel and the
+  // map is reused. The panel has a fixed height since S10b, so the test resizes it directly. Follow is off at
+  // turn 0 and on the title screen, which also rebinds the observer; the `panelKey`-specific rebinding is
+  // pinned by `tests/unit/map-panel-observer.test.ts`.
+  test("follow padding rebinds to replacement panels without recreating the map", async ({ page }) => {
+    await page.setViewportSize({ width: 812, height: 375 });
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+
+    const preserveMapIdentity = async () => page.evaluate(() => {
+      const hook = (window as unknown as { __sugorokuE2E?: { map?: object | null; originalMap?: object } }).__sugorokuE2E;
+      if (!hook?.map) throw new Error("MapLibre instance is missing");
+      hook.originalMap = hook.map;
+    });
+    const sameMapInstance = async () => page.evaluate(() => {
+      const hook = (window as unknown as { __sugorokuE2E?: { map?: object | null; originalMap?: object } }).__sugorokuE2E;
+      return Boolean(hook?.map && hook.originalMap === hook.map);
+    });
+    const hasExpandedPanelPadding = async () => page.evaluate(() => {
+      interface PaddedMap { getPadding(): { bottom: number } }
+      const map = (window as unknown as { __sugorokuE2E?: { map?: PaddedMap | null } }).__sugorokuE2E?.map;
+      return (map?.getPadding().bottom ?? 0) > 250;
+    });
+    const markerAbovePanel = async () => page.evaluate(async () => {
+      interface CameraMap {
+        getSource(id: string): { getData(): Promise<{ features: { geometry: { coordinates: [number, number] } }[] }> } | undefined;
+        project(position: [number, number]): { x: number; y: number };
+      }
+      const map = (window as unknown as { __sugorokuE2E?: { map?: CameraMap | null } }).__sugorokuE2E?.map;
+      const panel = document.querySelector<HTMLElement>(".game-panel");
+      const source = await map?.getSource("game-current-position")?.getData();
+      const coordinates = source?.features[0]?.geometry.coordinates;
+      return Boolean(map && panel && coordinates && map.project(coordinates).y < panel.getBoundingClientRect().top - 12);
+    });
+    const verifyReplacementPanel = async () => {
+      await expect.poll(markerAbovePanel).toBe(true);
+      await gamePanel(page).evaluate((panel) => { panel.style.height = "65%"; });
+      await expect.poll(hasExpandedPanelPadding).toBe(true);
+      await expect.poll(markerAbovePanel).toBe(true);
+      await gamePanel(page).locator(".game-panel__route-summary > summary").click();
+      await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
+      await expect.poll(markerAbovePanel).toBe(true);
+      await expect.poll(sameMapInstance).toBe(true);
+    };
+
+    await preserveMapIdentity();
+    await rollOnce(page);
+    await gamePanel(page).getByRole("button", { name: "新規" }).click();
+    await page.getByRole("alertdialog", { name: "新しく始めますか？" }).getByRole("button", { name: "新しく始める" }).click();
+    await expect(panelStat(page, "ターン数")).toHaveText("0");
+    await rollOnce(page);
+    await verifyReplacementPanel();
+
+    await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
+    await expect(titleScreen(page)).toBeVisible();
+    await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await rollOnce(page);
+    await verifyReplacementPanel();
+  });
+
   test("a desktop panel resize leaves a camera moved off the marker where it is", async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await openTitle(page);

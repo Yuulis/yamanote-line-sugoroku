@@ -15,7 +15,11 @@ import { dispatchReactEvent, flushReact, mountReact, type MountedReact } from ".
 import { itemScenario, ITEM_SCENARIOS } from "../e2e/fixtures/itemScenarios";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 
-vi.mock("../../src/features/map/RailwayMap", () => ({ RailwayMap: () => createElement("div") }));
+const { railwayMapProps } = vi.hoisted(() => ({ railwayMapProps: vi.fn() }));
+vi.mock("../../src/features/map/RailwayMap", () => ({ RailwayMap: (props: { panelKey?: number }) => {
+  railwayMapProps(props);
+  return createElement("div");
+} }));
 
 const data = await loadRailwayData("", async (file) =>
   JSON.parse(readFileSync(`tests/e2e/fixtures/data/${file}`, "utf8")));
@@ -49,6 +53,33 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.useRealTimers();
   localStorage.clear();
+  railwayMapProps.mockClear();
+});
+
+describe("RailwayMap panel session key", () => {
+  it("tracks the mounted panel session, changes for a new game, and clears on the title screen", () => {
+    localStorage.setItem(edition.saveKey, serializeGame(itemScenario("route", network)));
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    mounted = mountReact(createElement(Harness, {
+      data, network, edition, picker: {
+        editions: EDITIONS, editionId: edition.id, onEditionChange: vi.fn(),
+        focusPicker: false, onPickerFocusRestored: vi.fn(),
+      },
+    }));
+    click("つづきから");
+    const resumedKey = railwayMapProps.mock.calls.at(-1)?.[0].panelKey;
+    expect(typeof resumedKey).toBe("number");
+
+    click("新規");
+    click("新しく始める");
+    const newGameKey = railwayMapProps.mock.calls.at(-1)?.[0].panelKey;
+    expect(typeof newGameKey).toBe("number");
+    expect(newGameKey).not.toBe(resumedKey);
+
+    click("タイトル");
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].panelKey).toBeUndefined();
+  });
 });
 
 function click(label: string): void {
