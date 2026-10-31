@@ -150,6 +150,10 @@ function openRouteTicketDialog(): void {
   const routeButton = routeSlot?.querySelector<HTMLButtonElement>("button");
   if (!routeButton || routeButton.disabled) throw new Error("Expected a usable route ticket on the engine-built scenario");
   dispatchReactEvent(routeButton, new MouseEvent("click", { bubbles: true }));
+  const useButton = mounted!.container.querySelector<HTMLButtonElement>(".item-card__action");
+  expect(useButton).not.toBeNull();
+  expect(useButton?.disabled).toBe(false);
+  click("使う");
   expect(mounted!.container.querySelector(".item-dialog")).not.toBeNull();
 }
 

@@ -5,7 +5,7 @@ import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/featu
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { closeGameLog, diceButton, freezeClock, gamePanel, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, writeSaveText } from "./support/app";
+import { closeGameLog, diceButton, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, useInventoryItem, writeSaveText } from "./support/app";
 
 test.use({ dataset: "fixture" });
 
@@ -44,10 +44,6 @@ function notices(page: Page) {
   return page.getByRole("region", { name: "アイテムのお知らせ" });
 }
 
-function inventoryItem(page: Page, name: string) {
-  return gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name, exact: true }) });
-}
-
 test("the default edition starts an item game without a rules picker", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "はじめから" }).click();
@@ -60,8 +56,10 @@ test("the default edition starts an item game without a rules picker", async ({ 
 test("stages and uses a double ticket, shows physical movement and restores its notice", async ({ page, railwayBundle }) => {
   const base = await scenario(page, railwayBundle, "double");
   const slot = inventoryItem(page, "倍速券");
-  await slot.getByRole("button").click();
-  await expect(slot.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  await useInventoryItem(page, "倍速券");
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  await expect(slot.getByRole("button", { name: "倍速券（選択中）の詳細" })).toBeVisible();
+  await expect(gamePanel(page).locator(".item-staged-summary")).toContainText("倍速券");
   await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
   expect((await itemSave(page)).turn).toBe(base.turn);
   await diceButton(page).click();
@@ -126,8 +124,9 @@ test("Escape dismisses a slot tooltip before it clears the staged item", async (
   const base = await scenario(page, railwayBundle, "double");
   const slot = inventoryItem(page, "倍速券");
   const button = slot.getByRole("button");
-  await button.click();
-  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await useInventoryItem(page, "倍速券");
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  await expect(slot.getByRole("button", { name: "倍速券（選択中）の詳細" })).toBeVisible();
   await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
   const staged = gamePanel(page).locator(".item-staged-summary");
   await expect(staged).toContainText("倍速券");
@@ -139,11 +138,12 @@ test("Escape dismisses a slot tooltip before it clears the staged item", async (
   await expect(slot.locator(".item-slot__tooltip")).toBeHidden();
   await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
   await expect(staged).toContainText("倍速券");
-  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(slot).toHaveClass(/item-slot--selected/);
   expect((await itemSave(page)).turn).toBe(base.turn);
   await page.keyboard.press("Escape");
   await expect(staged).toHaveCount(0);
-  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(slot).not.toHaveClass(/item-slot--selected/);
+  await expect(slot.getByRole("button", { name: "倍速券の詳細" })).toBeVisible();
   await expect(gamePanel(page).getByRole("status")).not.toContainText("倍速券を選択中");
 });
 
@@ -158,9 +158,13 @@ test("the passive certificate slot shows timing without the redundant passive hi
   await button.hover();
   await expect(slot.locator(".item-slot__tooltip")).toContainText("持っているだけで効く");
   await expect(slot.locator(".item-slot__tooltip")).not.toContainText("持っているだけで効くアイテムです");
-  await expect(button).toHaveAttribute("aria-disabled", "true");
+  await expect(button).not.toHaveAttribute("aria-disabled");
   await expect(button).not.toHaveAttribute("aria-pressed");
-  await button.dispatchEvent("click");
+  await expect(button).toHaveAttribute("aria-expanded", "false");
+  await button.click();
+  const card = gamePanel(page).getByRole("dialog", { name: "遅延証明書", exact: true });
+  await expect(card).toBeVisible();
+  await expect(card.getByRole("button", { name: "使う" })).toHaveCount(0);
   await expect(gamePanel(page).locator(".item-staged-summary")).toHaveCount(0);
 });
 
@@ -184,12 +188,15 @@ test("reduced motion leaves slot tooltips without transitions", async ({ page, r
   expect(durations.map((duration) => duration.split(",").map((entry) => entry.trim()))).toEqual([["0s"], ["0s", "0s", "0s"]]);
 });
 
-test("a touch tap still stages an item in one step and opens no tooltip", async ({ page, railwayBundle }) => {
+test("a touch tap opens an item card and stages it without a tooltip", async ({ page, railwayBundle }) => {
   test.skip(!test.info().project.use.hasTouch, "needs a touch device");
   await scenario(page, railwayBundle, "double");
   const slot = inventoryItem(page, "倍速券");
   await slot.getByRole("button").tap();
-  await expect(slot.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  const card = gamePanel(page).getByRole("dialog", { name: "倍速券", exact: true });
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "使う", exact: true }).tap();
+  await expect(slot).toHaveClass(/item-slot--selected/);
   await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
   await expect(slot.locator(".item-slot__tooltip")).toHaveCount(0);
 });
@@ -279,7 +286,7 @@ test("delay countdown updates after each turn, survives resume, and announces ac
 
 test("deadhead repositions directly, with no die or invented route", async ({ page, railwayBundle }) => {
   const base = await scenario(page, railwayBundle, "deadhead");
-  await inventoryItem(page, "回送列車").getByRole("button").click();
+  await useInventoryItem(page, "回送列車");
   await diceButton(page).click();
   await finishReducedTurn(page, base.turn);
   const arrived = await itemSave(page);
@@ -302,7 +309,7 @@ test.describe("animated item turns", () => {
       await page.clock.install();
       const base = await scenario(page, railwayBundle, name);
       await freezeClock(page);
-      if (name === "rapid") await inventoryItem(page, "快速券").getByRole("button").click();
+      if (name === "rapid") await useInventoryItem(page, "快速券");
       await diceButton(page).evaluate((button: HTMLButtonElement) => { button.click(); button.click(); button.click(); });
       await expect(diceButton(page)).toHaveText("移動中…");
       const committed = await itemSave(page);
@@ -326,7 +333,7 @@ for (const name of ["route", "direction", "adjust", "discard"] as const) {
     const base = await scenario(page, railwayBundle, name);
     await expect(page.getByRole("alert").filter({ hasText: "地図の読み込みに失敗しました。" })).toBeVisible();
     if (name === "route" || name === "direction") {
-      await inventoryItem(page, name === "route" ? "路線指定券" : "方向指定券").getByRole("button").click();
+      await useInventoryItem(page, name === "route" ? "路線指定券" : "方向指定券");
       const dialog = page.getByRole("dialog");
       await expect(dialog.getByRole("radio").first()).toBeVisible();
       await dialog.getByRole("radio").first().check();
@@ -355,7 +362,7 @@ for (const name of ["rapid", "oversleep"] as const) {
   test(`reduced motion preserves the complete ${name} result without playing the animation`, async ({ page, railwayBundle }) => {
     const base = await scenario(page, railwayBundle, name);
     const ticket = base.inventory.find((item) => item.kind === "rapid");
-    if (name === "rapid") await inventoryItem(page, "快速券").getByRole("button").click();
+    if (name === "rapid") await useInventoryItem(page, "快速券");
     const expected = playItemTurn(base, name === "rapid"
       ? { command: { items: [{ kind: "rapid", instanceId: ticket!.id }] } } : {}, railwayBundle.network).state;
     await diceButton(page).click();
@@ -388,7 +395,7 @@ test.describe("long rapid goal arrival", () => {
     await page.clock.install();
     const base = await scenario(page, railwayBundle, "rapid-long");
     await freezeClock(page);
-    await inventoryItem(page, "快速券").getByRole("button").click();
+    await useInventoryItem(page, "快速券");
     await diceButton(page).click();
     await expect(diceButton(page)).toHaveText("移動中…");
     const committed = await itemSave(page);

@@ -28,8 +28,22 @@ export interface ItemCardPlacementRect { top: number; left: number; width: numbe
 export interface ItemCardSize { width: number; height: number }
 export interface ItemCardViewport { width: number; height: number }
 export type ItemCardPlacement =
-  | { mode: "sheet" }
+  | { mode: "sheet"; side?: "above" | "below"; offset?: number; maxHeight?: number }
   | { mode: "anchored"; side: "above" | "below"; top: number; left: number };
+
+export interface ItemCardSheetPlacement { side: "above" | "below"; offset: number; maxHeight: number }
+
+export function placeItemSheet(anchorRect: ItemCardPlacementRect, viewport: ItemCardViewport): ItemCardSheetPlacement {
+  const aboveRoom: number = Math.max(0, anchorRect.top - ITEM_CARD_VIEWPORT_MARGIN - ITEM_CARD_GAP);
+  const anchorBottom: number = anchorRect.top + anchorRect.height;
+  const belowRoom: number = Math.max(0, viewport.height - ITEM_CARD_VIEWPORT_MARGIN - anchorBottom - ITEM_CARD_GAP);
+  const side: "above" | "below" = aboveRoom >= belowRoom ? "above" : "below";
+  const room: number = side === "above" ? aboveRoom : belowRoom;
+  const offset: number = Math.round(side === "above"
+    ? viewport.height - anchorRect.top + ITEM_CARD_GAP
+    : anchorBottom + ITEM_CARD_GAP);
+  return { side, offset, maxHeight: Math.round(Math.max(0, room)) };
+}
 
 export function placeItemCard(
   anchorRect: ItemCardPlacementRect,
@@ -67,7 +81,10 @@ export function placeItemCard(
 }
 
 function samePlacement(a: ItemCardPlacement, b: ItemCardPlacement): boolean {
-  if (a.mode === "sheet" || b.mode === "sheet") return a.mode === b.mode;
+  if (a.mode === "sheet" || b.mode === "sheet") {
+    if (a.mode !== "sheet" || b.mode !== "sheet") return false;
+    return a.side === b.side && a.offset === b.offset && a.maxHeight === b.maxHeight;
+  }
   return a.side === b.side && a.top === b.top && a.left === b.left;
 }
 
@@ -151,9 +168,13 @@ export function ItemCardPopover({ open, anchor, onClose, children, labelledBy, i
     const measure = (): void => {
       const element: HTMLDivElement | null = elementRef.current;
       const currentAnchor: HTMLElement | null = anchorRef.current;
+      const viewport = { width: window.innerWidth, height: window.innerHeight };
       const next: ItemCardPlacement = element?.isConnected && currentAnchor?.isConnected
-        ? placeItemCard(currentAnchor.getBoundingClientRect(), element.getBoundingClientRect(),
-          { width: window.innerWidth, height: window.innerHeight })
+        ? (() => {
+          const rect = currentAnchor.getBoundingClientRect();
+          const placed = placeItemCard(rect, element.getBoundingClientRect(), viewport);
+          return placed.mode === "sheet" ? { mode: "sheet", ...placeItemSheet(rect, viewport) } : placed;
+        })()
         : { mode: "sheet" };
       // Keep the previous object when nothing moved, so scroll events do not re-render.
       setPlacement((previous: ItemCardPlacement) => samePlacement(previous, next) ? previous : next);
@@ -228,7 +249,13 @@ export function ItemCardPopover({ open, anchor, onClose, children, labelledBy, i
   const placementClass: string = placement.mode === "sheet" ? "item-card-popover--sheet" : "item-card-popover--anchored";
   const inlineStyle: React.CSSProperties | undefined = nativeSupported && placement.mode === "anchored"
     ? { top: `${placement.top}px`, left: `${placement.left}px` }
-    : undefined;
+    : nativeSupported && placement.mode === "sheet" && placement.side
+      ? {
+        top: placement.side === "below" ? `${placement.offset}px` : "auto",
+        bottom: placement.side === "above" ? `${placement.offset}px` : "auto",
+        maxHeight: `${placement.maxHeight}px`,
+      }
+      : undefined;
 
   return <div
     ref={elementRef}

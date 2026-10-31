@@ -13,12 +13,37 @@ import {
   panelStat,
   readMap,
   readSave,
+  readSaveText,
   rollOnce,
   titleScreen,
   writeSaveText,
+  useInventoryItem,
 } from "./support/app";
 
 test.use({ dataset: "real", gameSeed: PRODUCT_HUB_GAME_SEED });
+
+test("item card Escape closes before the staged draft can be cleared", async ({ page, railwayBundle }) => {
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(itemScenario("double", railwayBundle.network)));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  const saveBefore = await readSaveText(page);
+  await useInventoryItem(page, "倍速券");
+  const slot = gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name: "倍速券" }) });
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
+  await slot.getByRole("button").click();
+  const card = gamePanel(page).getByRole("dialog", { name: "倍速券" });
+  await expect(card).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(card).toBeHidden();
+  await expect(slot.getByRole("button")).toBeFocused();
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
+  expect(await readSaveText(page)).toBe(saveBefore);
+  await page.keyboard.press("Escape");
+  await expect(gamePanel(page).locator(".item-staged-summary")).toHaveCount(0);
+});
 
 test.describe("animated roll focus", () => {
   test.use({ reducedMotion: "no-preference" });
@@ -338,7 +363,8 @@ test.describe("game menu disclosure", () => {
     const panel = gamePanel(page);
     const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
     const slot = panel.locator(".item-slot").filter({ has: page.getByRole("heading", { name: "倍速券", exact: true }) });
-    await slot.getByRole("button").click();
+    await useInventoryItem(page, "倍速券");
+    await expect(slot).toHaveClass(/item-slot--selected/);
     await expect(panel.getByText("倍速券を選択中")).toBeVisible();
     await openGameMenu(page);
     const newGame = panel.getByRole("button", { name: "新規", exact: true });

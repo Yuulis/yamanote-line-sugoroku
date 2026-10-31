@@ -3,7 +3,7 @@ import { act, createElement, Fragment, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ItemCard, ItemCardPopover, placeItemCard, type ItemCardPopoverProps, type ItemCardPlacementRect } from "../../src/features/game/components/ItemCard";
+import { ItemCard, ItemCardPopover, placeItemCard, placeItemSheet, type ItemCardPopoverProps, type ItemCardPlacementRect } from "../../src/features/game/components/ItemCard";
 import {
   ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, itemHint, itemTiming, itemTone,
   itemUnavailableLabel,
@@ -146,6 +146,57 @@ describe("ItemCard", () => {
     expect(headingIds).toHaveLength(2);
     expect(headingIds.every((id) => id.length > 0)).toBe(true);
     expect(new Set([...headingIds, ...reasonIds]).size).toBe(4);
+  });
+
+  it("places sheets on the side with more room and rounds offsets and heights", () => {
+    expect(placeItemSheet({ top: 501.4, left: 0, width: 40, height: 40 }, { width: 412, height: 839 })).toEqual({
+      side: "above", offset: 346, maxHeight: 485,
+    });
+    expect(placeItemSheet({ top: 101.2, left: 0, width: 40, height: 40 }, { width: 412, height: 839 })).toEqual({
+      side: "below", offset: 149, maxHeight: 682,
+    });
+    expect(placeItemSheet({ top: 8.2, left: 0, width: 40, height: 40 }, { width: 412, height: 100 })).toEqual({
+      side: "below", offset: 56, maxHeight: 36,
+    });
+  });
+
+  it("wires sheet placement styles from a narrow viewport anchor and leaves an anchorless sheet unpositioned", () => {
+    const width = Object.getOwnPropertyDescriptor(window, "innerWidth");
+    const height = Object.getOwnPropertyDescriptor(window, "innerHeight");
+    const show = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "showPopover");
+    const hide = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidePopover");
+    Object.defineProperty(HTMLElement.prototype, "showPopover", { configurable: true, value: vi.fn() });
+    Object.defineProperty(HTMLElement.prototype, "hidePopover", { configurable: true, value: vi.fn() });
+    Object.defineProperty(window, "innerWidth", { configurable: true, value: 412 });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 839 });
+    let mount: ReturnType<typeof mountReact> | null = null;
+    try {
+      mount = mountReact(createElement(Harness, { open: false, anchorPresent: true, onClose: vi.fn() }));
+      const activeMount = mount;
+      const anchor = [...activeMount.container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "slot")!;
+      anchor.getBoundingClientRect = () => ({ top: 600, bottom: 640, left: 0, right: 40, width: 40, height: 40, x: 0, y: 600, toJSON: () => ({}) });
+      act(() => activeMount.root.render(createElement(Harness, { open: true, anchorPresent: true, onClose: vi.fn() })));
+      const popover = activeMount.container.querySelector<HTMLElement>(".item-card-popover")!;
+      expect(popover.style.bottom).toBe("247px");
+      expect(popover.style.top).toBe("auto");
+      expect(popover.style.maxHeight).toBe("584px");
+      act(() => activeMount.root.render(createElement(Harness, { open: false, anchorPresent: false, onClose: vi.fn() })));
+      act(() => activeMount.root.render(createElement(Harness, { open: true, anchorPresent: false, onClose: vi.fn() })));
+      expect(popover.style.top).toBe("");
+      expect(popover.style.bottom).toBe("");
+      expect(popover.style.maxHeight).toBe("");
+      activeMount.cleanup();
+    } finally {
+      mount?.cleanup();
+      if (width) Object.defineProperty(window, "innerWidth", width);
+      else Reflect.deleteProperty(window, "innerWidth");
+      if (height) Object.defineProperty(window, "innerHeight", height);
+      else Reflect.deleteProperty(window, "innerHeight");
+      if (show) Object.defineProperty(HTMLElement.prototype, "showPopover", show);
+      else Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+      if (hide) Object.defineProperty(HTMLElement.prototype, "hidePopover", hide);
+      else Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
+    }
   });
 
   it("does not import game engines or stores and keeps card CSS static", () => {
@@ -387,7 +438,7 @@ describe("ItemCardPopover", () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 390 });
     act(() => window.dispatchEvent(new Event("resize")));
     expect(element?.classList.contains("item-card-popover--sheet")).toBe(true);
-    expect(element?.style.top).toBe("");
+    expect(element?.style.top).toBe("8px");
     Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
     mount.cleanup();
   });
@@ -533,5 +584,15 @@ describe("placeItemCard", () => {
       expect(placeItemCard(anchor, { width: 200, height: 100 }, size)).toEqual({ mode: "sheet" });
     }
     expect(placeItemCard(anchor, { width: 200, height: 100 }, { width: 601, height: 501 }).mode).toBe("anchored");
+  });
+});
+
+describe("placeItemSheet", () => {
+  it("chooses the roomier side and returns rounded viewport offsets and room", () => {
+    expect(placeItemSheet({ top: 600, left: 20, width: 80, height: 56 }, { width: 412, height: 839 }))
+      .toEqual({ side: "above", offset: 247, maxHeight: 584 });
+    expect(placeItemSheet({ top: 120, left: 20, width: 80, height: 56 }, { width: 412, height: 839 }))
+      .toEqual({ side: "below", offset: 184, maxHeight: 647 });
+    expect(placeItemSheet({ top: 2.4, left: 0, width: 40, height: 40 }, { width: 320, height: 40 }).maxHeight).toBe(0);
   });
 });

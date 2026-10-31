@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, useState } from "react";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { DiscardChoice } from "../../src/features/game/components/DiscardChoice";
 import { InventoryPanel } from "../../src/features/game/components/InventoryPanel";
+import { GamePanel, type GamePanelProps } from "../../src/features/game/components/GamePanel";
 import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
 import { ItemUseDialog } from "../../src/features/game/components/ItemUseDialog";
 import { RollAdjustment } from "../../src/features/game/components/RollAdjustment";
@@ -75,6 +76,7 @@ function routeDialogFixture(kind: "route-ticket" | "direction-ticket") {
   const session = createItemSession(config, "item-controls", network, 1, restored);
   return {
     network,
+    session,
     view: itemSessionView(session, network)!,
     presentation: createPresentationResolver(network),
   };
@@ -87,7 +89,9 @@ interface InventoryHarnessProps {
 
 /** Stable component identity: updates go through `mount.root.render(createElement(InventoryHarness, props))`. */
 function InventoryHarness({ view, onSelect }: InventoryHarnessProps): React.JSX.Element {
-  return createElement(InventoryPanel, { view, onSelect });
+  const [openItemId, setOpenItemId] = useState<string | null>(null);
+  return createElement(InventoryPanel, { view, openItemId, onOpenItemChange: setOpenItemId,
+    onUse: (instanceId, kind) => { setOpenItemId(null); onSelect(instanceId, kind); } });
 }
 
 function mountInventory(props: InventoryHarnessProps): MountedReact {
@@ -117,9 +121,120 @@ function stubBox(element: Element, top: number, bottom: number): void {
 }
 
 describe("item controls", () => {
+  it("closes the inline fallback on pointer and keyboard reactivation, and switches to another slot", () => {
+    const popoverMethods = {
+      show: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "showPopover"),
+      hide: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidePopover"),
+      toggle: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "togglePopover"),
+    };
+    Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+    Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
+    Reflect.deleteProperty(HTMLElement.prototype, "togglePopover");
+    const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
+    const slots = [...mount.container.querySelectorAll<HTMLElement>(".item-slot")];
+    const first = slots[0]!.querySelector<HTMLButtonElement>("button")!;
+    const second = slots[1]!.querySelector<HTMLButtonElement>("button")!;
+    act(() => first.click());
+    expect(mount.container.querySelector<HTMLDivElement>(".item-card-popover")?.hidden).toBe(false);
+    act(() => {
+      dispatchReactEvent(first, pointerEventOf("pointerdown", "mouse"));
+      dispatchReactEvent(first, new MouseEvent("click", { bubbles: true, detail: 1 }));
+    });
+    expect(mount.container.querySelector<HTMLDivElement>(".item-card-popover")?.hidden).toBe(true);
+    expect(first.getAttribute("aria-expanded")).toBe("false");
+    act(() => first.click());
+    act(() => second.click());
+    expect(first.getAttribute("aria-expanded")).toBe("false");
+    expect(second.getAttribute("aria-expanded")).toBe("true");
+    act(() => second.click());
+    expect(mount.container.querySelector<HTMLDivElement>(".item-card-popover")?.hidden).toBe(true);
+    expect(second.getAttribute("aria-expanded")).toBe("false");
+    if (popoverMethods.show) Object.defineProperty(HTMLElement.prototype, "showPopover", popoverMethods.show);
+    if (popoverMethods.hide) Object.defineProperty(HTMLElement.prototype, "hidePopover", popoverMethods.hide);
+    if (popoverMethods.toggle) Object.defineProperty(HTMLElement.prototype, "togglePopover", popoverMethods.toggle);
+  });
+
+  it("keeps the fallback closed when focus leaves the card before the opener click", () => {
+    const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
+    const first = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+    act(() => first.click());
+    const heading = mount.container.querySelector<HTMLElement>(".item-card__name")!;
+    act(() => heading.focus());
+    act(() => dispatchReactEvent(first, pointerEventOf("pointerdown", "mouse")));
+    act(() => first.focus());
+    act(() => dispatchReactEvent(first, new MouseEvent("click", { bubbles: true, detail: 1 })));
+    expect(first.getAttribute("aria-expanded")).toBe("false");
+    expect(mount.container.querySelector<HTMLDivElement>(".item-card-popover")?.hidden).toBe(true);
+  });
+
+  it("does not reopen after native light dismiss whether beforetoggle precedes pointerdown or follows it", () => {
+    const descriptors = {
+      show: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "showPopover"),
+      hide: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidePopover"),
+      toggle: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "togglePopover"),
+    };
+    const show = vi.fn();
+    const hide = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, "showPopover", { configurable: true, value: show });
+    Object.defineProperty(HTMLElement.prototype, "hidePopover", { configurable: true, value: hide });
+    Object.defineProperty(HTMLElement.prototype, "togglePopover", { configurable: true, value: vi.fn() });
+    try {
+      for (const dismissFirst of [false, true]) {
+        const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
+        const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+        act(() => opener.click());
+        const popover = mount.container.querySelector<HTMLElement>(".item-card-popover")!;
+        const beforetoggle = (): Event => {
+          const event = new Event("beforetoggle");
+          Object.defineProperty(event, "newState", { value: "closed" });
+          return event;
+        };
+        const callsBefore = show.mock.calls.length;
+        if (dismissFirst) act(() => popover.dispatchEvent(beforetoggle()));
+        act(() => dispatchReactEvent(opener, pointerEventOf("pointerdown", "mouse")));
+        if (!dismissFirst) act(() => popover.dispatchEvent(beforetoggle()));
+        act(() => dispatchReactEvent(opener, new MouseEvent("click", { bubbles: true, detail: 1 })));
+        expect(opener.getAttribute("aria-expanded")).toBe("false");
+        expect(show).toHaveBeenCalledTimes(callsBefore);
+        mount.cleanup();
+      }
+    } finally {
+      for (const [name, descriptor] of [["showPopover", descriptors.show], ["hidePopover", descriptors.hide], ["togglePopover", descriptors.toggle]] as const) {
+        if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor);
+        else Reflect.deleteProperty(HTMLElement.prototype, name);
+      }
+    }
+  });
+
+  it("clears focus tooltip suppression after a light dismiss without focus restoration", () => {
+    const descriptors = {
+      show: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "showPopover"),
+      hide: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidePopover"),
+    };
+    Object.defineProperty(HTMLElement.prototype, "showPopover", { configurable: true, value: vi.fn() });
+    Object.defineProperty(HTMLElement.prototype, "hidePopover", { configurable: true, value: vi.fn() });
+    try {
+      const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
+      const slot = mount.container.querySelector<HTMLElement>(".item-slot")!;
+      const opener = slot.querySelector<HTMLButtonElement>("button")!;
+      act(() => opener.click());
+      const popover = mount.container.querySelector<HTMLElement>(".item-card-popover")!;
+      const beforetoggle = new Event("beforetoggle");
+      Object.defineProperty(beforetoggle, "newState", { value: "closed" });
+      act(() => popover.dispatchEvent(beforetoggle));
+      act(() => opener.blur());
+      act(() => opener.focus());
+      expect(slot.querySelector("[role=tooltip]")).not.toBeNull();
+    } finally {
+      if (descriptors.show) Object.defineProperty(HTMLElement.prototype, "showPopover", descriptors.show);
+      else Reflect.deleteProperty(HTMLElement.prototype, "showPopover");
+      if (descriptors.hide) Object.defineProperty(HTMLElement.prototype, "hidePopover", descriptors.hide);
+      else Reflect.deleteProperty(HTMLElement.prototype, "hidePopover");
+    }
+  });
+
   it("renders icon slots with persistent descriptions and empty labels", () => {
-    const mount = mountReact(createElement(InventoryPanel, { view: itemView(), onSelect: vi.fn() }));
-    mounted.push(mount);
+    const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
     const slots = [...mount.container.querySelectorAll<HTMLElement>("li.item-slot")];
     expect(slots).toHaveLength(3);
     expect(mount.container.querySelector("h2.visually-hidden")?.textContent).toBe("アイテム（3枠）");
@@ -136,10 +251,9 @@ describe("item controls", () => {
     const descriptions = [...mount.container.querySelectorAll<HTMLElement>("[id^='item-description-']")];
     expect(descriptions[0]?.textContent).toContain(ITEM_DESCRIPTIONS["route-ticket"].effect);
     expect(descriptions[0]?.textContent).toContain(itemTiming("route-ticket"));
-    const emptyMount = mountReact(createElement(InventoryPanel, {
+    const emptyMount = mountInventory({
       view: itemView({ inventory: [], usableItems: [], draft: { items: [] } }), onSelect: vi.fn(),
-    }));
-    mounted.push(emptyMount);
+    });
     expect(emptyMount.container.querySelectorAll(".item-slot--empty .item-slot__empty")).toHaveLength(3);
   });
 
@@ -158,8 +272,7 @@ describe("item controls", () => {
       ],
       hints: { ...itemView().hints, rapidHeadsTowardYamanote: false },
     });
-    const mount = mountReact(createElement(InventoryPanel, { view, onSelect: vi.fn() }));
-    mounted.push(mount);
+    const mount = mountInventory({ view, onSelect: vi.fn() });
     const textFor = (name: string): string => {
       const slot = [...mount.container.querySelectorAll<HTMLElement>(".item-slot")]
         .find((candidate) => candidate.querySelector("h3")?.textContent === name)!;
@@ -174,8 +287,7 @@ describe("item controls", () => {
   });
 
   it("shows and dismisses tooltips for hover and keyboard focus, respecting touch and modal Escape", () => {
-    const mount = mountReact(createElement(InventoryPanel, { view: itemView(), onSelect: vi.fn() }));
-    mounted.push(mount);
+    const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
     const slot = mount.container.querySelector<HTMLElement>(".item-slot")!;
     const button = slot.querySelector<HTMLButtonElement>("button")!;
     const enter = new MouseEvent("pointerover", { bubbles: true });
@@ -197,6 +309,52 @@ describe("item controls", () => {
     expect(slot.querySelector("[role=tooltip]")).not.toBeNull();
     act(() => button.blur());
     expect(slot.querySelector("[role=tooltip]")).toBeNull();
+  });
+
+  it("hides the open slot tooltip, gives Escape to the card, then lets the other tooltip Escape dismiss", () => {
+    const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
+    const slots = [...mount.container.querySelectorAll<HTMLElement>(".item-slot")];
+    const first = slots[0]!;
+    const second = slots[1]!;
+    const firstButton = first.querySelector<HTMLButtonElement>("button")!;
+    act(() => firstButton.click());
+    act(() => dispatchReactEvent(first, pointerEventOf("pointerover", "mouse")));
+    act(() => firstButton.dispatchEvent(new FocusEvent("focus", { bubbles: false })));
+    expect(first.querySelector("[role=tooltip]")).toBeNull();
+    act(() => dispatchReactEvent(second, pointerEventOf("pointerover", "mouse")));
+    expect(second.querySelector("[role=tooltip]")).not.toBeNull();
+    const cardEscape = escapeKey();
+    act(() => window.dispatchEvent(cardEscape));
+    expect(cardEscape.defaultPrevented).toBe(true);
+    expect(firstButton.getAttribute("aria-expanded")).toBe("false");
+    expect(second.querySelector("[role=tooltip]")).not.toBeNull();
+    expect(first.querySelector("[role=tooltip]")).toBeNull();
+    const tooltipEscape = escapeKey();
+    act(() => window.dispatchEvent(tooltipEscape));
+    expect(tooltipEscape.defaultPrevented).toBe(true);
+    expect(second.querySelector("[role=tooltip]")).toBeNull();
+  });
+
+  it("gives Escape to a card opened after another slot's tooltip registered its listener", () => {
+    const mount = mountInventory({ view: itemView(), onSelect: vi.fn() });
+    const slots = [...mount.container.querySelectorAll<HTMLElement>(".item-slot")];
+    const first = slots[0]!;
+    const second = slots[1]!;
+    const firstButton = first.querySelector<HTMLButtonElement>("button")!;
+    act(() => dispatchReactEvent(second, pointerEventOf("pointerover", "mouse")));
+    expect(second.querySelector("[role=tooltip]")).not.toBeNull();
+    act(() => dispatchReactEvent(firstButton, new MouseEvent("click", { bubbles: true, detail: 0 })));
+    expect(firstButton.getAttribute("aria-expanded")).toBe("true");
+    expect(second.querySelector("[role=tooltip]")).not.toBeNull();
+    const cardEscape = escapeKey();
+    act(() => window.dispatchEvent(cardEscape));
+    expect(cardEscape.defaultPrevented).toBe(true);
+    expect(firstButton.getAttribute("aria-expanded")).toBe("false");
+    expect(second.querySelector("[role=tooltip]")).not.toBeNull();
+    const tooltipEscape = escapeKey();
+    act(() => window.dispatchEvent(tooltipEscape));
+    expect(tooltipEscape.defaultPrevented).toBe(true);
+    expect(second.querySelector("[role=tooltip]")).toBeNull();
   });
 
   it("keeps inventory tiles fixed-height and free of slot-specific motion", () => {
@@ -318,7 +476,7 @@ describe("item controls", () => {
 
   it("keeps a tooltip open over itself, skips pointer-press focus, dismisses on click, and removes its Escape listener", () => {
     const onSelect = vi.fn();
-    const mount = mountReact(createElement(InventoryPanel, { view: itemView(), onSelect }));
+    const mount = mountInventory({ view: itemView(), onSelect });
     const slot = mount.container.querySelector<HTMLElement>(".item-slot")!;
     const button = slot.querySelector<HTMLButtonElement>("button")!;
     const pointer = (type: string, init: MouseEventInit = {}): MouseEvent => {
@@ -348,8 +506,10 @@ describe("item controls", () => {
     act(() => button.focus());
     expect(slot.querySelector("[role=tooltip]")).toBeNull();
     act(() => dispatchReactEvent(button, new MouseEvent("click", { bubbles: true })));
+    expect(mount.container.querySelector(".item-card-popover")?.getAttribute("hidden")).toBeNull();
+    act(() => mount.container.querySelector<HTMLButtonElement>(".item-card__action")?.click());
     expect(onSelect).toHaveBeenCalledWith("route-1", "route-ticket");
-    act(() => dispatchReactEvent(button, pointer("pointerover", { relatedTarget: document.body })));
+    expect(mount.container.querySelector(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
     expect(slot.querySelector("[role=tooltip]")).toBeNull();
     act(() => button.blur());
     act(() => dispatchReactEvent(button, pointer("pointerout", { relatedTarget: document.body })));
@@ -365,29 +525,48 @@ describe("item controls", () => {
     expect(afterUnmount.defaultPrevented).toBe(false);
   });
 
-  it("renders three inventory slots, selected state, disabled reason, and a passive certificate", () => {
+  it("renders accessible detail openers for selected, unavailable, and passive items", () => {
     const onSelect = vi.fn();
     const mount = mountInventory({ view: itemView(), onSelect });
 
     expect(mount.container.querySelectorAll(".item-slot")).toHaveLength(3);
-    const selected = mount.container.querySelector<HTMLButtonElement>("button[aria-pressed='true']");
-    expect(selected?.textContent).toContain("変更する");
-    expect(selected?.getAttribute("aria-pressed")).toBe("true");
-    const disabled = mount.container.querySelector<HTMLButtonElement>(".item-slot--unavailable button[aria-disabled='true']");
-    expect(disabled?.getAttribute("aria-describedby")).toBeTruthy();
+    const inventory = mount.container.querySelector(".item-inventory__slots")!;
+    expect(inventory.nextElementSibling?.classList.contains("item-card-popover")).toBe(true);
+    expect(mount.container.querySelector("li.item-slot .item-card-popover")).toBeNull();
+    expect(mount.container.querySelector(".item-card__name")).toBeNull();
+    const selected = mount.container.querySelector<HTMLButtonElement>(".item-slot--selected button")!;
+    expect(selected.getAttribute("aria-expanded")).toBe("false");
+    expect(selected.getAttribute("aria-controls")).toBeTruthy();
+    expect(selected.getAttribute("aria-describedby")).toBeTruthy();
+    expect(selected.getAttribute("aria-pressed")).toBeNull();
+    expect(selected.disabled).toBe(false);
+    expect(selected.textContent).toContain("路線指定券（選択中）の詳細");
+    const disabled = mount.container.querySelector<HTMLButtonElement>(".item-slot--unavailable button")!;
+    expect(disabled.disabled).toBe(false);
+    expect(disabled.getAttribute("aria-disabled")).toBeNull();
+    expect(disabled.getAttribute("aria-describedby")).toBeTruthy();
     expect(mount.container.textContent).toContain("遅延・寝過ごしのターンは使えない");
     expect(mount.container.textContent).toContain("持っているだけで効く");
     const passiveButton = mount.container.querySelector<HTMLButtonElement>(".item-slot--passive button")!;
     expect(passiveButton.hasAttribute("aria-pressed")).toBe(false);
-    expect(passiveButton.getAttribute("aria-disabled")).toBe("true");
+    expect(passiveButton.getAttribute("aria-disabled")).toBeNull();
+    expect(passiveButton.disabled).toBe(false);
+    expect(passiveButton.textContent).toContain("遅延証明書の詳細");
     expect(passiveButton.textContent).not.toContain("このアイテムを使う");
     expect(passiveButton.textContent).not.toContain("変更する");
 
-    dispatchReactEvent(selected!, new MouseEvent("click", { bubbles: true }));
+    dispatchReactEvent(selected, new MouseEvent("click", { bubbles: true }));
+    expect(mount.container.querySelector(".item-card__action")?.textContent).toBe("選択中・変更する");
+    act(() => mount.container.querySelector<HTMLButtonElement>(".item-card__action")?.click());
     expect(onSelect).toHaveBeenCalledWith("route-1", "route-ticket");
     dispatchReactEvent(disabled!, new MouseEvent("click", { bubbles: true }));
+    expect(mount.container.querySelector<HTMLButtonElement>(".item-card__action")?.disabled).toBe(true);
+    expect(mount.container.querySelector(".item-card__reason")?.textContent).toContain("遅延・寝過ごしのターンは使えない");
     dispatchReactEvent(passiveButton, new MouseEvent("click", { bubbles: true }));
     expect(onSelect).toHaveBeenCalledTimes(1);
+    expect(mount.container.querySelector(".item-card__action")).toBeNull();
+    expect(mount.container.querySelector(".item-card-popover")?.textContent).toContain("持っているだけで効く");
+    expect(mount.container.querySelector(".item-card-popover")?.textContent).not.toContain("持っているだけで効くアイテムです");
     rerenderInventory(mount, {
       view: itemView({ inventory: [], usableItems: [], draft: { items: [] } }), onSelect,
     });
@@ -404,14 +583,17 @@ describe("item controls", () => {
         { instanceId: "double-1", kind: "double", usable: true, reason: null, selected: false, recommended: true },
       ],
     });
-    const mount = mountReact(createElement(InventoryPanel, { view, onSelect }));
-    mounted.push(mount);
+    const mount = mountInventory({ view, onSelect });
 
     expect(mount.container.textContent).toContain("ほかのアイテムを選択中です。使うと置き換わります。");
     const replaceButton = [...mount.container.querySelectorAll<HTMLButtonElement>("button")]
       .find((button) => button.closest(".item-slot")?.textContent?.includes("倍速券"))!;
     expect(replaceButton.disabled).toBe(false);
     expect(replaceButton.getAttribute("aria-disabled")).not.toBe("true");
+    act(() => replaceButton.click());
+    expect(mount.container.querySelector(".item-card__note")?.textContent).toContain("ほかのアイテム");
+    expect(mount.container.querySelector(".item-card__action")?.textContent).toBe("使う");
+    act(() => mount.container.querySelector<HTMLButtonElement>(".item-card__action")?.click());
     dispatchReactEvent(replaceButton, new MouseEvent("click", { bubbles: true }));
     expect(onSelect).toHaveBeenCalledWith("double-1", "double");
   });
@@ -530,6 +712,136 @@ describe("item controls", () => {
     expect(onDiscard).not.toHaveBeenCalled();
     dispatchReactEvent(mount.container.querySelectorAll("button")[3]!, new MouseEvent("click", { bubbles: true }));
     expect(onDiscard).toHaveBeenCalledWith("new-item");
+  });
+});
+
+interface GamePanelHarnessProps { value: GamePanelProps }
+
+function GamePanelHarness({ value }: GamePanelHarnessProps): React.JSX.Element {
+  return createElement(GamePanel, value);
+}
+
+function panelValue(): GamePanelProps {
+  const fixture = routeDialogFixture("route-ticket");
+  return {
+    session: fixture.session, network: fixture.network, lines: [],
+    displayedStationId: fixture.session.game.currentStationId, displayedCompletedCount: 0, requiredCount: 4,
+    saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
+    onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
+    onEditItemDraft: vi.fn(), itemView: fixture.view,
+  };
+}
+
+function renderGamePanel(mount: MountedReact, value: GamePanelProps): void {
+  act(() => mount.root.render(createElement(GamePanelHarness, { value })));
+}
+
+describe("GamePanel item card integration", () => {
+  it("opens and cancels a route ticket dialog with focus returned to its slot opener", () => {
+    const value = panelValue();
+    const mount = mountReact(createElement(GamePanelHarness, { value }));
+    mounted.push(mount);
+    const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+    const focusOpener = vi.spyOn(opener, "focus");
+    act(() => opener.click());
+    expect(opener.getAttribute("aria-expanded")).toBe("true");
+    act(() => mount.container.querySelector<HTMLButtonElement>(".item-card__action")?.click());
+    expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
+    expect(focusOpener).toHaveBeenCalledWith({ preventScroll: true });
+    expect(mount.container.querySelector(".item-dialog")).not.toBeNull();
+    act(() => mount.container.querySelector<HTMLButtonElement>(".item-dialog button")?.click());
+    expect(mount.container.querySelector(".item-dialog")).toBeNull();
+    expect(document.activeElement).toBe(opener);
+  });
+
+  it("rejects activation when the latest item view is no longer idle", () => {
+    const value = panelValue();
+    const mount = mountReact(createElement(GamePanelHarness, { value }));
+    mounted.push(mount);
+    const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+    act(() => opener.click());
+    const updated: GamePanelProps = { ...value, itemView: { ...value.itemView!, phase: "animating" } };
+    renderGamePanel(mount, updated);
+    const action = mount.container.querySelector<HTMLButtonElement>(".item-card__action")!;
+    expect(action.disabled).toBe(false);
+    act(() => action.click());
+    expect(value.onEditItemDraft).not.toHaveBeenCalled();
+    expect(opener.getAttribute("aria-expanded")).toBe("true");
+  });
+
+  it("hides the card before an automatic decision modal opens without restoring slot focus", () => {
+    const value = panelValue();
+    const mount = mountReact(createElement(GamePanelHarness, { value }));
+    mounted.push(mount);
+    const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+    act(() => opener.click());
+    const seenHidden: boolean[] = [];
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value(this: HTMLDialogElement) {
+        seenHidden.push(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden") ?? false);
+        this.setAttribute("open", "");
+      },
+    });
+    try {
+      const adjustedView: ItemSessionView = { ...value.itemView!, decision: {
+        kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
+        allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
+      } };
+      renderGamePanel(mount, { ...value, itemView: adjustedView });
+      expect(seenHidden).toEqual([true]);
+      expect(document.activeElement).not.toBe(opener);
+      expect(opener.getAttribute("aria-expanded")).toBe("false");
+      renderGamePanel(mount, value);
+      expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
+    } finally {
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, "showModal", descriptor);
+    }
+  });
+
+  it("keeps an open menu across a decision and enforces card, log, and menu exclusion", () => {
+    const value = panelValue();
+    const mount = mountReact(createElement(GamePanelHarness, { value }));
+    mounted.push(mount);
+    const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+    act(() => opener.click());
+    act(() => mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.click());
+    expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
+    expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.getAttribute("aria-expanded")).toBe("true");
+    const decisionView: ItemSessionView = { ...value.itemView!, decision: {
+      kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
+      allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
+    } };
+    renderGamePanel(mount, { ...value, itemView: decisionView });
+    expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.getAttribute("aria-expanded")).toBe("true");
+    renderGamePanel(mount, value);
+    act(() => mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")?.click());
+    expect(mount.container.querySelector<HTMLElement>(".game-panel__log")?.hidden).toBe(true);
+    expect(mount.container.querySelector<HTMLElement>(".game-panel__menu")?.hidden).toBe(false);
+    const menuDecisionView: ItemSessionView = { ...value.itemView!, decision: {
+      kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
+      allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
+    } };
+    renderGamePanel(mount, { ...value, itemView: menuDecisionView });
+    expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")?.getAttribute("aria-expanded")).toBe("true");
+    renderGamePanel(mount, value);
+    act(() => opener.click());
+    expect(mount.container.querySelector<HTMLElement>(".game-panel__menu")?.hidden).toBe(true);
+    expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(false);
+    expect(mount.container.querySelectorAll(".game-panel [role=status]")).toHaveLength(1);
+  });
+
+  it("closes a removed item card and focuses the dice button", () => {
+    const value = panelValue();
+    const mount = mountReact(createElement(GamePanelHarness, { value }));
+    mounted.push(mount);
+    const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+    act(() => opener.click());
+    const removedView: ItemSessionView = { ...value.itemView!, inventory: [], usableItems: [] };
+    renderGamePanel(mount, { ...value, itemView: removedView });
+    expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
+    expect(mount.container.querySelector(".game-panel__roll")).toBe(document.activeElement);
   });
 });
 

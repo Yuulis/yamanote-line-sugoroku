@@ -152,9 +152,23 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     instanceId: string;
   } | null>(null);
   // One disclosure surface at a time; both disclosures start closed.
-  const [activeSurface, setActiveSurface] = useState<"log" | "menu" | null>(null);
-  const setLogExpanded = useCallback((expanded: boolean) => setActiveSurface(expanded ? "log" : null), []);
-  const setMenuExpanded = useCallback((expanded: boolean) => setActiveSurface(expanded ? "menu" : null), []);
+  const [activeSurface, setActiveSurface] = useState<"log" | "menu" | "card" | null>(null);
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const itemViewRef = useRef(props.itemView);
+  itemViewRef.current = props.itemView;
+  const itemDialogOpenerRef = useRef<HTMLElement | null>(null);
+  const setOpenItemCard = useCallback((id: string | null) => {
+    setOpenCardId(id);
+    setActiveSurface(id ? "card" : (current => current === "card" ? null : current));
+  }, []);
+  const setLogExpanded = useCallback((expanded: boolean) => {
+    if (expanded) { setOpenCardId(null); setActiveSurface("log"); }
+    else setActiveSurface((current) => current === "log" ? null : current);
+  }, []);
+  const setMenuExpanded = useCallback((expanded: boolean) => {
+    if (expanded) { setOpenCardId(null); setActiveSurface("menu"); }
+    else setActiveSurface((current) => current === "menu" ? null : current);
+  }, []);
   const itemDialogOpen = Boolean(props.itemView && itemDialog);
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
@@ -175,6 +189,27 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       props.onEditItemDraft?.({ items: [{ kind, instanceId }] });
     }
   }, [props.itemView, props.onEditItemDraft]);
+
+  const activateInventoryItem = useCallback((instanceId: string, kind: ItemKind, opener: HTMLElement) => {
+    const current = itemViewRef.current;
+    const usable = current?.usableItems.find((item) => item.instanceId === instanceId);
+    if (!current || current.phase !== "idle" || current.decision || usable?.usable !== true) return;
+    setOpenItemCard(null);
+    itemDialogOpenerRef.current = opener;
+    opener.focus({ preventScroll: true });
+    selectItem(instanceId, kind);
+  }, [selectItem]);
+  const restoreItemDialogFocus = useCallback(() => {
+    const opener = itemDialogOpenerRef.current;
+    itemDialogOpenerRef.current = null;
+    if (opener?.isConnected) opener.focus({ preventScroll: true });
+  }, []);
+
+  useEffect(() => {
+    if (!props.itemView?.decision || !openCardId) return;
+    setOpenCardId(null);
+    setActiveSurface((current) => current === "card" ? null : current);
+  }, [props.itemView?.decision, openCardId]);
 
   const clearDraft = useCallback(() => {
     if (props.itemView?.phase === "idle") props.onEditItemDraft?.({ items: [] });
@@ -255,7 +290,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         <button type="button" onClick={clearDraft} disabled={phase !== "idle"}>選択を解除</button>
         <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
       </div>}
-      {props.itemView && <InventoryPanel view={props.itemView} onSelect={selectItem} />}
+      {props.itemView && <InventoryPanel view={props.itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem} />}
       <div className="game-panel__disclosures">
         <TurnLogDrawer
           expanded={activeSurface === "log"}
@@ -321,8 +356,9 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onChoose={(command) => {
             props.onEditItemDraft?.({ items: [command] });
             setItemDialog(null);
+            restoreItemDialogFocus();
           }}
-          onClose={() => setItemDialog(null)}
+          onClose={() => { setItemDialog(null); restoreItemDialogFocus(); }}
         />
       )}
       {props.itemView?.decision?.kind === "adjust" && <RollAdjustment
