@@ -1,5 +1,47 @@
-import type { ItemKind } from "../../types/network";
-import type { ItemUnavailableReason } from "./itemSession";
+import { HARMFUL_ITEM_KINDS, type ItemKind } from "../../types/network";
+import type { ItemSessionView, ItemUnavailableReason } from "./itemSession";
+
+export const ITEM_SHORT_NAMES: Readonly<Record<ItemKind, string>> = {
+  "route-ticket": "路線指定",
+  "direction-ticket": "方向指定",
+  "roll-adjust": "出目調整",
+  double: "倍速",
+  rapid: "快速",
+  deadhead: "回送",
+  "delay-certificate": "証明書",
+  delay: "遅延",
+  suspension: "運休",
+  detour: "寄り道",
+  oversleep: "寝過ごし",
+};
+
+export type ItemTone = "good" | "bad";
+
+export function itemTone(kind: ItemKind): ItemTone {
+  return HARMFUL_ITEM_KINDS.includes(kind as (typeof HARMFUL_ITEM_KINDS)[number]) ? "bad" : "good";
+}
+
+export interface ItemHint {
+  readonly text: string;
+  readonly caution: boolean;
+}
+
+export function itemHint(
+  kind: ItemKind,
+  hints: Pick<ItemSessionView["hints"], "rapidHeadsTowardYamanote" | "deadheadRecommended">,
+): ItemHint | null {
+  if (kind === "rapid") {
+    return hints.rapidHeadsTowardYamanote
+      ? { text: "おすすめ：現在の向きは山手線に近づきます", caution: false }
+      : { text: "注意：現在の向きは山手線から遠ざかります", caution: true };
+  }
+  if (kind === "deadhead" && !hints.deadheadRecommended) {
+    return { text: "おすすめしない：山手線の駅にいるため、同じ駅にとどまり1ターン使います", caution: true };
+  }
+  return null;
+}
+
+export const ITEM_REPLACEMENT_NOTE = "ほかのアイテムを選択中です。使うと置き換わります。";
 
 export interface ItemDescription {
   readonly name: string;

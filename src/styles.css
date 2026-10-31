@@ -1239,6 +1239,108 @@ button[aria-disabled="true"] {
   color: #7f0000;
 }
 
+.item-card {
+  --item-card-accent: var(--color-good);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--item-card-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.item-card--good {
+  --item-card-accent: var(--color-good);
+}
+
+.item-card--bad {
+  --item-card-accent: var(--color-bad);
+}
+
+.item-card--selected {
+  border-color: var(--color-brand);
+  background: var(--color-brand-tint);
+}
+
+.item-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.item-card__icon {
+  --item-icon-accent: var(--item-card-accent);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.item-card__name {
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.item-card__name:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.item-card__markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 6px 0 0;
+}
+
+.item-card__marker {
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-tint);
+  color: var(--color-brand-strong);
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* The selected card already uses the tint, so its markers sit on the surface colour. */
+.item-card--selected .item-card__marker {
+  background: var(--color-surface);
+}
+
+.item-card__effect,
+.item-card__timing,
+.item-card__hint,
+.item-card__note,
+.item-card__reason {
+  margin: 6px 0 0;
+}
+
+.item-card__timing,
+.item-card__note {
+  color: var(--color-text-muted);
+}
+
+.item-card__hint {
+  color: var(--color-good);
+}
+
+.item-card__hint--caution,
+.item-card__reason {
+  color: var(--color-warning);
+}
+
+.item-card__action {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
 .item-adjustment .dialog__actions button {
   min-height: 44px;
   width: 100%;
