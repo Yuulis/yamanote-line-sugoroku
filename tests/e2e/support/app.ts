@@ -79,6 +79,11 @@ const STAT_DATA_BY_LABEL: Readonly<Record<string, string>> = {
   "出目": "roll",
 };
 
+/** Compact roll value shown in the HUD. */
+export function hudCompactRoll(page: Page): Locator {
+  return gamePanel(page).locator('[data-stat="roll-compact"]');
+}
+
 /** The value span of a panel stat, found by its <dt> label through `data-stat`. */
 export function panelStat(page: Page, label: string): Locator {
   const stat = STAT_DATA_BY_LABEL[label];

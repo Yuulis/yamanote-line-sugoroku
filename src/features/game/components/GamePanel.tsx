@@ -4,6 +4,7 @@ import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine"
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
 import {
+  arrivalLogText,
   arrivalSummary,
   itemTurnAnnouncement,
   directionLabel,
@@ -26,7 +27,7 @@ import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import type { ItemSessionView } from "../itemSession";
 import { ITEM_DESCRIPTIONS } from "../itemPresentation";
-import { effectChipModels } from "../hudPresentation";
+import { compactRollFor, compactRollText, effectChipModels } from "../hudPresentation";
 import { lineBadgeFor } from "../lineBadge";
 import { InventoryPanel } from "./InventoryPanel";
 import { GameHud } from "./GameHud";
@@ -150,8 +151,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     kind: "route-ticket" | "direction-ticket";
     instanceId: string;
   } | null>(null);
-  // One disclosure surface at a time; the log starts expanded until S17.
-  const [activeSurface, setActiveSurface] = useState<"log" | "menu" | null>("log");
+  // One disclosure surface at a time; both disclosures start closed.
+  const [activeSurface, setActiveSurface] = useState<"log" | "menu" | null>(null);
   const setLogExpanded = useCallback((expanded: boolean) => setActiveSurface(expanded ? "log" : null), []);
   const setMenuExpanded = useCallback((expanded: boolean) => setActiveSurface(expanded ? "menu" : null), []);
   const itemDialogOpen = Boolean(props.itemView && itemDialog);
@@ -235,7 +236,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         turn={arrived.turn}
         completed={props.displayedCompletedCount}
         required={props.requiredCount}
-        roll={lastRollText(session.lastMove, network, presentation)}
+        compactRoll={compactRollText(compactRollFor(session.lastMove))}
         saveStatus={saveStatus}
         saveStatusMessage={saveStatusMessage(saveStatus)}
         canRoll={canRoll}
@@ -259,9 +260,10 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         <TurnLogDrawer
           expanded={activeSurface === "log"}
           onExpandedChange={setLogExpanded}
-          arrival={props.itemView && session.lastMove && phase === "idle" ? arrivalSummary(
+          arrival={props.itemView && session.lastMove && phase === "idle" ? arrivalLogText(
             session.lastMove.itemRecord?.turn ?? game.turn, session.lastMove, props.displayedCompletedCount,
             props.requiredCount, network, presentation) : null}
+          roll={lastRollText(session.lastMove, network, presentation)}
           lottery={<p className="game-panel__lottery"><span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network, presentation)}</p>}
           notice={props.itemView && (phase === "idle" || phase === "awaiting-discard") ? <ItemEventNotice
             view={props.itemView} lastMove={session.lastMove} turn={game.turn} network={network} presentation={presentation} showEffects={false}

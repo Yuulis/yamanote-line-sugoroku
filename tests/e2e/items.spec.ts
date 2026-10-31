@@ -171,7 +171,7 @@ test("deadhead repositions directly, with no die or invented route", async ({ pa
   expect(record).toMatchObject({ kind: "deadhead", rawRoll: null, physicalHops: 0, traversedSegmentIds: [] });
   await openGameLog(page);
   await expect(panelStat(page, "出目")).toHaveText("回送（サイコロなし）");
-  await expect(gamePanel(page).locator(".item-arrival")).toContainText("走行区間なし");
+  await expect(gamePanel(page).locator(".game-panel__lottery")).toContainText("走行区間なし");
   await closeGameLog(page);
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(
     railwayBundle.network.servicesById.get(arrived.currentServiceId)!.platformCoordinates[arrived.currentStationId],

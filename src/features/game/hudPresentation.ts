@@ -28,6 +28,11 @@ export interface EffectChipModel {
   countdown: string | null;
 }
 
+export function compactRollText(model: CompactRollModel): string {
+  if (model.modifier === null) return model.label;
+  return `${model.label} ${model.modifier}`;
+}
+
 export function compactRollFor(lastMove: LastMove | null): CompactRollModel {
   if (!lastMove) return { face: null, label: "—", modifier: null };
   if (lastMove.stopReason === "relocation" || lastMove.itemRecord?.kind === "deadhead") {

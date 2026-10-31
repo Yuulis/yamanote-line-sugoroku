@@ -17,7 +17,7 @@ export interface GameHudProps {
   turn: number;
   completed: number;
   required: number;
-  roll: string;
+  compactRoll: string;
   saveStatus: SaveWriteResult | null;
   saveStatusMessage: string;
   canRoll: boolean;
@@ -43,7 +43,7 @@ function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element
 
 export function GameHud({
   title, subtitle, headingRef,
-  station, ride, lineBadge, direction, turn, completed, required, roll, saveStatus, saveStatusMessage,
+  station, ride, lineBadge, direction, turn, completed, required, compactRoll, saveStatus, saveStatusMessage,
   canRoll, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
 }: GameHudProps): React.JSX.Element {
   const failed: boolean = saveStatus === "failed" || saveStatus === "unavailable";
@@ -69,7 +69,7 @@ export function GameHud({
         <dt>踏破区間</dt>
         <dd><span className="hud-stat__value" data-stat="progress" title={`${completed}/${required}`}>{completed}/{required}</span><TargetProgressBar completed={completed} required={required} /></dd>
         <dt>出目</dt>
-        <dd><span className="hud-stat__value" data-stat="roll" title={roll}>{roll}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="roll-compact" title={compactRoll}>{compactRoll}</span></dd>
       </dl>
       <div className="game-panel__actions">
         <button

@@ -389,19 +389,23 @@ test.describe("turn log disclosure", () => {
     await expect(explanation.locator("[hidden], .visually-hidden")).toHaveCount(0);
   });
 
-  test("starts expanded, toggles by keyboard, restores focus, and excludes the menu", async ({ page }) => {
+  test("starts closed, toggles by keyboard, restores focus, and excludes the menu", async ({ page }) => {
     await openTitle(page);
     await page.getByRole("button", { name: "はじめから" }).click();
     const panel = gamePanel(page);
     const logTrigger = panel.getByRole("button", { name: "ログ", exact: true });
     const menuTrigger = panel.getByRole("button", { name: "メニュー", exact: true });
-    const log = panel.getByRole("region", { name: "ターンのログ", exact: true });
-    await expect(logTrigger).toHaveAttribute("aria-expanded", "true");
+    const log = panel.locator(".game-panel__log");
+    await expect(logTrigger).toHaveAttribute("aria-expanded", "false");
+    await expect(log).toBeHidden();
     const logId = await log.getAttribute("id");
     if (!logId) throw new Error("the turn log region id is missing");
     await expect(logTrigger).toHaveAttribute("aria-controls", logId);
-    await expect(log).toBeVisible();
     await logTrigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(log).toBeVisible();
+    await expect(panel.getByRole("region", { name: "ターンのログ", exact: true })).toBeVisible();
+    await expect(logTrigger).toBeFocused();
     await page.keyboard.press("Enter");
     await expect(log).toBeHidden();
     await expect(logTrigger).toBeFocused();
@@ -643,9 +647,14 @@ test.describe("compact layouts and map follow padding", () => {
       return target;
     });
     // Desktop follow padding is zero, so growing the panel changes no camera layout.
+    const logRegion = gamePanel(page).locator(".game-panel__log");
+    const closedLogHeight = await logRegion.evaluate((element) => element.getBoundingClientRect().height);
+    expect(closedLogHeight).toBe(0);
     await openGameLog(page);
     await gamePanel(page).locator(".game-panel__route-summary > summary").click();
     await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
+    const openLogHeight = await logRegion.evaluate((element) => element.getBoundingClientRect().height);
+    expect(openLogHeight).toBeGreaterThan(closedLogHeight);
 
     // Let the resize observer, its animation frame and the React effects run.
     const LAYOUT_SETTLE_FRAMES = 10;

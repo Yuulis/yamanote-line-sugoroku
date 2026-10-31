@@ -4,7 +4,7 @@ import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { diceButton, gamePanel, openTitle, panelStat, rollOnce, startNewGame, writeSaveText } from "./support/app";
+import { closeGameLog, diceButton, gamePanel, hudCompactRoll, openGameLog, openTitle, panelStat, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 // Real data: its long line names are what overflow the phone value columns.
 test.use({ dataset: "real", reducedMotion: "reduce" });
@@ -86,11 +86,18 @@ test("keeps the dice button at one HUD position across variable content and save
 
   await rollOnce(page);
   positions.push(await measureDice(page, "after roll"));
-  const afterRollText: string = await panelStat(page, "出目").innerText();
+  const afterRollText: string = await hudCompactRoll(page).innerText();
   expect(afterRollText.length).toBeGreaterThan(2);
-  expect(await panelStat(page, "出目").getAttribute("title")).toBe(afterRollText);
+  expect(await hudCompactRoll(page).getAttribute("title")).toBe(afterRollText);
   if (testInfo.project.name === "phone-chromium") {
-    await expect.poll(() => panelStat(page, "出目").evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+    await expect.poll(() => hudCompactRoll(page).evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await openGameLog(page);
+    const fullRoll = panelStat(page, "出目");
+    await expect(fullRoll).toBeVisible();
+    await expect(fullRoll).toContainText("駅移動");
+    await expect.poll(() => fullRoll.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await closeGameLog(page);
+    await expect.poll(() => gamePanel(page).evaluate((element) => element.scrollTop)).toBe(0);
   }
 
   await page.evaluate(() => {

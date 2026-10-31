@@ -568,6 +568,37 @@ button[aria-disabled="true"] {
   min-width: 0;
 }
 
+.game-panel__turn-facts {
+  margin: 0 0 8px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  color: var(--color-text);
+}
+
+.game-panel__turn-facts h2 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}
+
+.game-panel__turn-facts dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 8px;
+  margin: 0;
+}
+
+.game-panel__turn-facts dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.game-panel__log-value {
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+}
+
 .game-panel__effect-texts {
   font-size: 12px;
 }
@@ -1550,6 +1581,25 @@ button[aria-disabled="true"] {
     min-height: 0;
     max-height: 120px;
     overflow-y: auto;
+  }
+
+  .game-panel__turn-facts {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 4px;
+    padding: 4px;
+  }
+
+  .game-panel__turn-facts h2 {
+    flex: 0 0 auto;
+    margin: 0;
+  }
+
+  .game-panel__turn-facts dl {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
   }
 
   /* Short landscape only: the open menu's options and legend take their own grid areas. */

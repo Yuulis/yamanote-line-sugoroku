@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { EffectChips } from "../../src/features/game/components/EffectChips";
 import { TargetProgressBar } from "../../src/features/game/components/TargetProgressBar";
-import { effectChipModels, compactRollFor, progressSegments } from "../../src/features/game/hudPresentation";
+import { effectChipModels, compactRollFor, compactRollText, progressSegments } from "../../src/features/game/hudPresentation";
 import { lastMoveOf } from "../../src/features/game/gameSession";
 import { itemLastMove } from "../../src/features/game/itemSession";
 import { activeItemEffectTexts } from "../../src/features/game/presentation";
@@ -70,6 +70,19 @@ function compactFor(record: ItemTurnRecord) {
 }
 
 describe("compact HUD roll presentation", () => {
+  it("formats compact roll labels with and without modifiers", () => {
+    expect(compactRollText({ face: 3, label: "3マス", modifier: null })).toBe("3マス");
+    for (const [label, modifier, expected] of [
+      ["4駅", "快速", "4駅 快速"], ["3マス", "調整+1", "3マス 調整+1"],
+      ["3マス", "遅延", "3マス 遅延"], ["6マス", "×2", "6マス ×2"],
+    ] as const) {
+      expect(compactRollText({ face: 3, label, modifier })).toBe(expected);
+    }
+    expect(compactRollText({ face: 3, label: "寝過ごし", modifier: null })).toBe("寝過ごし");
+    expect(compactRollText({ face: null, label: "回送（サイコロなし）", modifier: null })).toBe("回送（サイコロなし）");
+    expect(compactRollText({ face: null, label: "—", modifier: null })).toBe("—");
+  });
+
   it("shows a dash before the first roll", () => {
     expect(compactRollFor(null)).toEqual({ face: null, label: "—", modifier: null });
   });

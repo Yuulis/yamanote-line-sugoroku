@@ -7,10 +7,12 @@ import type { GameHudProps } from "../../src/features/game/components/GameHud";
 import { GameMenu } from "../../src/features/game/components/GameMenu";
 import type { GameMenuProps } from "../../src/features/game/components/GameMenu";
 import { GamePanel } from "../../src/features/game/components/GamePanel";
-import { buildRailwayNetwork, createItemGame } from "../../src/features/game/engine";
+import { buildRailwayNetwork, createItemGame, playItemTurn } from "../../src/features/game/engine";
 import { resumeSession } from "../../src/features/game/gameSession";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { itemSessionView } from "../../src/features/game/itemSession";
+import { landingText, lastRollText } from "../../src/features/game/presentation";
+import { compactRollFor, compactRollText } from "../../src/features/game/hudPresentation";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
 
@@ -18,7 +20,7 @@ function props(overrides: Partial<GameHudProps> = {}): GameHudProps {
   return {
     title: "山手線すごろく", subtitle: "東京近郊版", headingRef: createRef<HTMLHeadingElement>(),
     station: "東京", ride: "山手線", lineBadge: { groupId: "jr-yamanote", code: "JY", color: "#80c241", name: "山手線", textColor: "#000000" },
-    direction: "外回り", turn: 5, completed: 3, required: 30, roll: "3マス", saveStatus: null,
+    direction: "外回り", turn: 5, completed: 3, required: 30, compactRoll: "3マス", saveStatus: null,
     saveStatusMessage: "未保存", canRoll: true, animating: false, draftSelected: false,
     rollButtonRef: createRef<HTMLButtonElement>(), onRoll: vi.fn(), onSkip: vi.fn(), effects: [], ...overrides,
   };
@@ -59,13 +61,60 @@ function DraftEscapeHarness({ value }: { value: MenuValue }): React.JSX.Element 
 }
 
 describe("GameHud", () => {
+  it("keeps the full roll only in the closed log and separates item arrival from lottery text", async () => {
+    const fixtureNetwork = buildRailwayNetwork(multiServiceInput());
+    const base = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "log-arrival", fixtureNetwork);
+    const result = playItemTurn(base, {}, fixtureNetwork);
+    const settled = resumeSession(result.state, fixtureNetwork);
+    if (!settled.lastMove) throw new Error("Expected a settled item move");
+    for (const scenario of ["route", "deadhead"] as const) {
+      const session = scenario === "route" ? settled : { ...settled, lastMove: {
+        ...settled.lastMove, roll: null, stopReason: "relocation" as const, landing: null,
+      } };
+      const itemView = itemSessionView(session, fixtureNetwork);
+      if (!itemView) throw new Error("Expected item session view");
+      const value: Parameters<typeof GamePanel>[0] = {
+        session, network: fixtureNetwork, lines: [], displayedStationId: session.game.currentStationId,
+        displayedCompletedCount: session.game.completedSegmentIds.length, requiredCount: 30,
+        saveStatus: null, follow: true, speedLabel: "標準", reducedMotion: false,
+        onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
+        onNewGame: vi.fn(), onShowTitle: vi.fn(), itemView,
+      };
+      const mount = mountReact(createElement(GamePanel, value));
+      try {
+        const log = mount.container.querySelector<HTMLElement>(".game-panel__log")!;
+        const roll = mount.container.querySelector<HTMLElement>('[data-stat="roll"]')!;
+        const compactRoll = mount.container.querySelector<HTMLElement>('[data-stat="roll-compact"]')!;
+        expect(mount.container.querySelectorAll('[data-stat="roll"]')).toHaveLength(1);
+        expect(log.contains(roll)).toBe(true);
+        expect(roll.textContent).toBe(lastRollText(session.lastMove, fixtureNetwork));
+        expect(compactRoll.textContent).toBe(compactRollText(compactRollFor(session.lastMove)));
+        const logText = log.textContent ?? "";
+        if (scenario === "route") {
+          const lottery = landingText(session.lastMove, fixtureNetwork);
+          expect(lottery).not.toBe("—");
+          expect(logText.split(lottery).length - 1).toBe(1);
+          expect(mount.container.querySelector(".item-arrival")?.textContent).not.toContain(lottery);
+        } else {
+          expect(session.lastMove?.stopReason).toBe("relocation");
+          expect(logText.split("回送列車で").length - 1).toBe(1);
+        }
+      } finally {
+        mount.cleanup();
+      }
+    }
+  });
+
   it("renders six labelled stats, a separate badge and straight progress bar", () => {
     const mount = mountReact(createElement(GameHud, props()));
     try {
-      expect(mount.container.querySelectorAll(".game-panel__stats dt")).toHaveLength(6);
+      expect([...mount.container.querySelectorAll(".game-panel__stats dt")].map((label) => label.textContent)).toEqual([
+        "現在駅", "乗車中", "進行方向", "ターン数", "踏破区間", "出目",
+      ]);
       expect(mount.container.querySelector("[data-stat=ride]")?.textContent).toBe("山手線");
       expect(mount.container.querySelector("[data-stat=ride]")?.getAttribute("title")).toBe("山手線");
-      expect(mount.container.querySelector("[data-stat=roll]")?.getAttribute("title")).toBe("3マス");
+      expect(mount.container.querySelector("[data-stat=roll-compact]")?.getAttribute("title")).toBe("3マス");
+      expect(mount.container.querySelector("[data-stat=roll]")).toBeNull();
       expect([...mount.container.querySelectorAll(".hud-stat__value")].every((value) => value.hasAttribute("title"))).toBe(true);
       expect(mount.container.querySelector("[data-stat=ride]")?.previousElementSibling?.classList.contains("line-badge")).toBe(true);
       expect(mount.container.querySelector("[data-stat=progress]")?.nextElementSibling?.getAttribute("role")).toBe("progressbar");
@@ -344,10 +393,15 @@ it("keeps the turn log mounted, mutually exclusive, keyboard closable, and retai
     const log = mount.container.querySelector<HTMLElement>(".game-panel__log")!;
     const menu = mount.container.querySelector<HTMLElement>(".game-panel__menu")!;
     expect(logTrigger.textContent).toBe("ログ");
-    expect(logTrigger.getAttribute("aria-expanded")).toBe("true");
+    expect(logTrigger.getAttribute("aria-expanded")).toBe("false");
     expect(logTrigger.getAttribute("aria-controls")).toBe(log.id);
     expect(log.getAttribute("aria-label")).toBe("ターンのログ");
+    expect(log.hidden).toBe(true);
+    dispatchReactEvent(logTrigger, new MouseEvent("click", { bubbles: true }));
+    expect(logTrigger.getAttribute("aria-expanded")).toBe("true");
     expect(log.hidden).toBe(false);
+    expect(mount.container.querySelectorAll("[data-stat=roll]")).toHaveLength(1);
+    expect(log.querySelector("[data-stat=roll]")?.textContent).toBe("—");
     expect(log.querySelector(".game-panel__lottery")).not.toBeNull();
     expect(log.querySelector(".game-panel__route-summary")).not.toBeNull();
     expect(log.querySelector("[role=status], [aria-live]")).toBeNull();
