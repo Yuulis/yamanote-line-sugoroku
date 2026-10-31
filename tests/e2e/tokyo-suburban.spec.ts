@@ -14,6 +14,7 @@ import {
 import {
   gamePanel,
   markerPosition,
+  openGameLog,
   openTitle,
   panelStat,
   readMap,
@@ -47,6 +48,7 @@ test("the real Korakuen transfer shows joined station names, candidates, platfor
   await page.getByRole("button", { name: /つづきから/ }).click();
   await expect(panelStat(page, "ターン数")).toHaveText("12");
   await rollOnce(page);
+  await openGameLog(page);
   expect(await readSave(page)).toEqual(expected);
   await expect(panelStat(page, "現在駅")).toHaveText("後楽園・春日");
   await expect(panelStat(page, "乗車中")).toHaveText("東京メトロ丸ノ内線 各停");

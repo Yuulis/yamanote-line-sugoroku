@@ -129,6 +129,7 @@ test.describe("game accessibility and text navigation", () => {
     const lastSummary = await summary.innerText();
     expect(lastSummary).toContain("5ターン目");
     expect(lastSummary).not.toContain("4ターン目");
+    await openGameLog(page);
     await expect(gamePanel(page).locator(".game-panel__lottery")).not.toHaveAttribute("aria-live", /.+/);
   });
 
@@ -191,6 +192,7 @@ test.describe("game accessibility and text navigation", () => {
   test("the text route view lists remaining Yamanote sections and upcoming stations", async ({ page, railwayBundle }) => {
     await openTitle(page);
     await page.getByRole("button", { name: "はじめから" }).click();
+    await openGameLog(page);
     const route = gamePanel(page).locator(".game-panel__route-summary");
     await route.getByText("地図なしで確認").click();
 
@@ -363,6 +365,7 @@ test.describe("turn log disclosure", () => {
     await writeSaveText(page, serializeGame(game));
     await page.reload();
     await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
+    await openGameLog(page);
     const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
     const explanation = log.getByRole("region", { name: "効果の説明", exact: true });
     await expect(explanation).toContainText("遅延：8ターン目に発動（あと3ターン）");
@@ -379,6 +382,7 @@ test.describe("turn log disclosure", () => {
     await page.reload();
     await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
     await expect(gamePanel(page).locator(".effect-chip__label")).toContainText(["寝過ごし"]);
+    await openGameLog(page);
     const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
     const explanation = log.getByRole("region", { name: "効果の説明", exact: true });
     await expect(explanation.getByText("寝過ごし：次のターンは終点まで（環状線は6駅）進みます", { exact: true })).toBeVisible();
@@ -536,6 +540,7 @@ test.describe("compact layouts and map follow padding", () => {
 
     await page.setViewportSize({ width: 812, height: 375 });
     await expect.poll(markerAbovePanel).toBe(true);
+    await openGameLog(page);
     await gamePanel(page).locator(".game-panel__route-summary > summary").click();
     await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
     await expect.poll(markerAbovePanel).toBe(true);
@@ -638,6 +643,7 @@ test.describe("compact layouts and map follow padding", () => {
       return target;
     });
     // Desktop follow padding is zero, so growing the panel changes no camera layout.
+    await openGameLog(page);
     await gamePanel(page).locator(".game-panel__route-summary > summary").click();
     await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
 

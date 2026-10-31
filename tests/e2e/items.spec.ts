@@ -5,7 +5,7 @@ import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { diceButton, freezeClock, gamePanel, panelStat, readMap, SAVE_STORAGE_KEY, writeSaveText } from "./support/app";
+import { closeGameLog, diceButton, freezeClock, gamePanel, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, writeSaveText } from "./support/app";
 
 test.use({ dataset: "fixture" });
 
@@ -66,6 +66,7 @@ test("stages and uses a double ticket, shows physical movement and restores its 
   expect((await itemSave(page)).turn).toBe(base.turn);
   await diceButton(page).click();
   await finishReducedTurn(page, base.turn);
+  await openGameLog(page);
   await expect(notices(page)).toContainText("倍速券を使いました");
   const arrived = await itemSave(page);
   const record = arrived.movementHistory.at(-1)!;
@@ -73,6 +74,7 @@ test("stages and uses a double ticket, shows physical movement and restores its 
   expect(record.pips).toBe(record.effectiveFace * 2);
   await expect(panelStat(page, "出目")).toContainText(`${record.physicalHops}駅移動`);
   await restore(page, arrived);
+  await openGameLog(page);
   await expect(notices(page)).toContainText("倍速券を使いました");
 });
 
@@ -114,15 +116,18 @@ test("full inventory survives reload and reports the player's chosen discard", a
   const discarded = base.inventory[0]!;
   await dialog.getByRole("button").first().click();
   await expect(dialog).toBeHidden();
+  // Opening the log moves focus to its trigger, so check the dialog's focus return first.
+  await expect(diceButton(page)).toBeFocused();
+  await openGameLog(page);
   await expect(notices(page)).toContainText(`${ITEM_DESCRIPTIONS[discarded.kind].name}を選んで捨てました`);
   expect((await itemSave(page)).inventory.some((item) => item.id === discarded.id)).toBe(false);
-  await expect(diceButton(page)).toBeFocused();
 });
 
 test("certificate cancellation names the harmful pickup, and restores the same notice", async ({ page, railwayBundle }) => {
   const base = await scenario(page, railwayBundle, "certificate");
   await diceButton(page).click();
   await finishReducedTurn(page, base.turn);
+  await openGameLog(page);
   await expect(notices(page)).toContainText("遅延証明書で打ち消しました");
   const arrived = await itemSave(page);
   const event = arrived.movementHistory.at(-1)!.itemEvents.find((entry) => entry.type === "cancelled-by-certificate");
@@ -130,6 +135,7 @@ test("certificate cancellation names the harmful pickup, and restores the same n
   await expect(notices(page)).toContainText(`拾った${ITEM_DESCRIPTIONS[event.item].name}`);
   expect(arrived.inventory.some((item) => item.id === event.certificate.id)).toBe(false);
   await restore(page, arrived);
+  await openGameLog(page);
   await expect(notices(page)).toContainText("遅延証明書で打ち消しました");
 });
 
@@ -147,6 +153,7 @@ test("delay countdown updates after each turn, survives resume, and announces ac
         await expect(gamePanel(page).getByLabel("続いている効果")).toContainText("あと2ターン");
       }
     } else {
+      await openGameLog(page);
       await expect(notices(page)).toContainText("遅延が発動しました");
       await expect(gamePanel(page).getByRole("status")).toContainText("遅延が発動しました");
       expect((await itemSave(page)).movementHistory.at(-1)).toMatchObject({ effectiveFace: 1 });
@@ -162,8 +169,10 @@ test("deadhead repositions directly, with no die or invented route", async ({ pa
   const arrived = await itemSave(page);
   const record = arrived.movementHistory.at(-1)!;
   expect(record).toMatchObject({ kind: "deadhead", rawRoll: null, physicalHops: 0, traversedSegmentIds: [] });
+  await openGameLog(page);
   await expect(panelStat(page, "出目")).toHaveText("回送（サイコロなし）");
   await expect(gamePanel(page).locator(".item-arrival")).toContainText("走行区間なし");
+  await closeGameLog(page);
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(
     railwayBundle.network.servicesById.get(arrived.currentServiceId)!.platformCoordinates[arrived.currentStationId],
   );
@@ -219,6 +228,7 @@ for (const name of ["route", "direction", "adjust", "discard"] as const) {
     }
     await expect(panelStat(page, "ターン数")).toHaveText(String(base.turn + 1));
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+    await openGameLog(page);
     await gamePanel(page).getByText("地図なしで確認", { exact: true }).click();
     await expect(page.getByRole("heading", { name: "乗車中の次の駅" })).toBeVisible();
     expect(await readMap(page)).toBeNull();

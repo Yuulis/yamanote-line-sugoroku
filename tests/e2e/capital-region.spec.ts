@@ -18,7 +18,7 @@ import {
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
-import { closeGameMenu, diceButton, freezeClock, gamePanel, markerPosition, openGameMenu, openTitle, panelStat, readMap, readSave, revealUnadjustedRoll, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
+import { closeGameLog, closeGameMenu, diceButton, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, revealUnadjustedRoll, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -176,6 +176,7 @@ test.describe("current product scenarios", () => {
     await openTitle(page);
     await startNewGame(page);
     await rollOnce(page);
+    await openGameLog(page);
     const result = gamePanel(page).locator(".game-panel__lottery");
     await expect(result).toHaveText("抽選: 品川：6系統から抽選 → 京急本線 普通 ／ 方向抽選 → 浦賀方面");
     const candidates = gamePanel(page).locator(".game-panel__candidates");
@@ -196,6 +197,7 @@ test.describe("current product scenarios", () => {
       await expect(candidates.getByRole("listitem").filter({ hasText: row.label })).toBeVisible();
     }
     await candidates.locator("summary").click();
+    await closeGameLog(page);
     await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
       .toContain("keikyu-main:shinagawa~keikyu-kita-shinagawa");
     const committed = (await readSave(page))!;
@@ -232,6 +234,7 @@ test.describe("current product scenarios", () => {
       expect(forwardCommitted).toEqual(forwardResult.state);
       await page.clock.runFor(16);
       await page.clock.fastForward(forwardTiming.beforeTargetMs + forwardTiming.targetDurationMs / 2);
+      await openGameLog(page);
       await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
       await expect(panelStat(page, "進行方向")).toHaveText(expectedMidpoint.direction);
       await expect(panelStat(page, "踏破区間")).toHaveText(expectedMidpoint.progress);
@@ -272,6 +275,7 @@ test.describe("current product scenarios", () => {
       expect(committed).toEqual(result.state);
       await page.clock.runFor(16);
       await page.clock.fastForward(timing.beforeTargetMs + timing.targetDurationMs / 2);
+      await openGameLog(page);
       await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
       await expect(panelStat(page, "進行方向")).toHaveText(expectedMidpoint.direction);
       await expect(panelStat(page, "踏破区間")).toHaveText(expectedMidpoint.progress);
@@ -384,6 +388,7 @@ test.describe("branch", () => {
     await startNewGame(page);
     for (let turn = 0; turn < 4; turn += 1) await rollOnce(page);
     await expect(panelStat(page, "乗車中")).toHaveText("広域支線");
+    await openGameLog(page);
     await expect(panelStat(page, "出目")).toHaveText("6（6マス、2駅移動、残り4は使わず）");
     await expect(gamePanel(page).locator(".game-panel__lottery")).toContainText("系統の端");
     await rollOnce(page);

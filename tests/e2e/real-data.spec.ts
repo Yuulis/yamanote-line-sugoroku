@@ -10,7 +10,7 @@ import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
-import { closeGameMenu, diceButton, gamePanel, markerPosition, openGameMenu, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
+import { closeGameMenu, diceButton, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 test.use({ dataset: "real" });
 const SCREENSHOT_DIR = resolve(".claude/logs/s6/screenshots");
@@ -162,6 +162,7 @@ test("Oedo candidates at 都庁前 display one row with two lottery slots", asyn
   await rollOnce(page);
   expect(await readSave(page)).toEqual(game);
   await expect(panelStat(page, "現在駅")).toHaveText("都庁前");
+  await openGameLog(page);
   await expect(gamePanel(page).locator(".game-panel__lottery"))
     .toContainText("都庁前：大江戸線（抽選枠2）から抽選 → 大江戸線");
   expect(["toei-oedo-loop", "toei-oedo-radial"]).toContain(game.currentServiceId);

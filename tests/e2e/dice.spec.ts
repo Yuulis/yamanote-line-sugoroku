@@ -8,6 +8,7 @@ import {
   markerPosition,
   targetCompletedIds,
   openTitle,
+  openGameLog,
   openGameMenu,
   panelStat,
   REQUIRED_SEGMENTS,
@@ -48,6 +49,7 @@ test("[8.3-2] a roll updates station, turn, progress and the map marker", async 
   const start = stations.get(START_STATION_ID);
   await expect(panelStat(page, "現在駅")).toHaveText("新橋");
   await expect(panelStat(page, "踏破区間")).toHaveText(`0/${REQUIRED_SEGMENTS}`);
+  await openGameLog(page);
   await expect(panelStat(page, "出目")).toHaveText("—");
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(start?.coordinates);
   await expect.poll(async () => (await readMap(page))?.markerRendered).toBe(true);
@@ -63,6 +65,7 @@ test("[8.3-2] a roll updates station, turn, progress and the map marker", async 
   expect(move.toStationId).toBe(save.currentStationId);
   expect(save.currentStationId).not.toBe(START_STATION_ID);
   await expect(panelStat(page, "ターン数")).toHaveText("1");
+  await openGameLog(page);
   await expect(panelStat(page, "出目")).toHaveText(`${move.rawRoll}（${move.pips}マス、${move.physicalHops}駅移動）`);
   await expect(panelStat(page, "現在駅")).toHaveText(arrived?.name ?? "?");
   await expect(panelStat(page, "踏破区間")).toHaveText(`${move.rawRoll}/${REQUIRED_SEGMENTS}`);
