@@ -565,6 +565,8 @@ values). Add: a card kept open while its item becomes unusable rejects activatio
 
 Acceptance: `ui_gate && ui_e2e` (full).
 
+**Lead addendum (S21; user decision 2026-10-31, binding):** clicking or tapping the slot whose item card is already open **closes** the card; it must never reopen it. Native light dismiss (`popover="auto"`) fires on **pointerdown**, including a pointerdown on the opener itself (S19 browser probe, Chromium and Firefox; `source` does not exempt it), so by the time the slot's `click` runs, `ItemCardPopover` has already called `onClose` and a plain toggle would reopen the card. The opener handler must detect this case — e.g. on the slot's `pointerdown` (capture) record that this slot's card was open, and in `click` keep it closed when that record is set, clearing the record after the click — and must not rely on reading `:popover-open`. Keyboard activation (Enter/Space) of the open card's opener also closes it. Clicking a different slot still switches straight to that slot's card. The inline fallback (no Popover API, no light dismiss) behaves the same: a second activation of the same slot closes the card. Tests: E2E in `tests/e2e/ui-pop.spec.ts` on desktop-chromium and desktop-firefox (`click()` the open card's slot → card hidden, slot `aria-expanded="false"`, and still hidden after the next animation frame) and on phone-chromium with `.tap()` (same expectations); a jsdom unit test for the fallback (stable harness).
+
 ## S22: Discard dialog reuses item cards
 
 Files: `src/features/game/components/DiscardChoice.tsx`, `src/styles.css`, `tests/unit/item-controls.test.ts`,
