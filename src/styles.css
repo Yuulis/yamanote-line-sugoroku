@@ -1341,6 +1341,58 @@ button[aria-disabled="true"] {
   font-size: 14px;
 }
 
+.item-card-popover {
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.item-card-popover--native {
+  position: fixed;
+  margin: 0;
+  inset: auto;
+}
+
+.item-card-popover--anchored {
+  width: min(320px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+}
+
+.item-card-popover--sheet {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  max-width: none;
+  max-height: min(70vh, calc(100vh - 16px));
+  max-height: min(70dvh, calc(100dvh - 16px));
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+}
+
+.item-card-popover--inline {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.item-card-popover--inline[hidden] {
+  display: none;
+}
+
+.item-card-popover__close {
+  display: block;
+  margin: 8px 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+}
+
 .item-adjustment .dialog__actions button {
   min-height: 44px;
   width: 100%;
