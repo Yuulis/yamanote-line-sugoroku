@@ -595,6 +595,8 @@ Acceptance: `ui_gate && ui_e2e` (full).
 
 **Lead addendum (user decision 2026-10-30, binding):** on phone the 乗車中 row must be wide enough to show the full line name in normal cases (e.g. let the ride row span the full HUD width); the dice button must still keep a fixed position (keep `tests/e2e/hud-layout.spec.ts` green).
 
+**Lead addendum (S23; user decisions 2026-10-31, binding):** (1) short landscape (≤ 500px tall, e.g. 667×375 and 640×400): with an item staged, the inventory tiles must not be cut off at the panel bottom and the top HUD row (現在駅) must not be scrolled out of view — today both happen (`.claude/logs/screenshots/s20-landscape-selected.png`: the staged summary pushes the inventory into the right column below ログ/メニュー and the slots are clipped); add a populated short-landscape E2E check that all three slots and the 現在駅 row are fully inside the visible panel with an item staged, without moving the dice button (`tests/e2e/hud-layout.spec.ts` stays green). (2) The slot tooltip (`.item-slot__tooltip`, `pointer-events: none`) may currently overlap the ログ/メニュー triggers; this overlap is accepted for now — re-check it during this layout pass and resolve it only if the new layout makes it cheap (clicks must keep reaching the triggers either way). (3) Hover/focus tooltips stay; while a slot's item card is open its tooltip stays hidden; touch never shows it — keep these behaviours when restyling.
+
 ## S24: Phone attribution starts collapsed
 
 Files: `src/features/map/RailwayMap.tsx`, `src/features/map/attribution.ts`, `tests/e2e/layout.spec.ts`,
