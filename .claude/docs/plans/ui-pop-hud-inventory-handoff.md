@@ -31,6 +31,8 @@ reveal hook, toast host) for P2. Presentation only: no engine/RNG/save/public-da
 
 - 2026-10-30 (user, after S12): menu trigger gets a ☰ icon and an open/closed chevron in S14; the duplicated lottery sentence is merged when the log moves (S15–S17).
 
+- 2026-10-31 (user, after S15): S17 merges the duplicated lottery sentence; adjust/discard dialogs leave the menu/log open (plan rule withdrawn).
+
 ## Documents
 
 - Brief: `.claude/docs/research/feature-ui-pop-hud-inventory-brief.md`

@@ -290,3 +290,9 @@ native modal obscures them; reveal completion or toast expiry never gates saving
 2. Partial-coverage JR lines (宇都宮線・高崎線 JU, 成田線・総武本線 JO): show the code (default) or treat as uncoded?
 3. Toast reading time: default 4,000 ms; save failure sticky until a successful save.
 4. Which item outcomes toast: default all canonical pickup/use/cancel/discard/activation summaries (bounded to 3).
+
+
+## Lead amendment (user, 2026-10-31)
+
+- Automatic decision dialogs (adjust/discard) do not close the menu or log; the earlier rule that they close the open disclosure first is withdrawn (native modals overlay them and the Escape order is covered by S14 tests).
+- S17 merges the duplicated lottery sentence (see the S17 lead addendum in the prompts doc).

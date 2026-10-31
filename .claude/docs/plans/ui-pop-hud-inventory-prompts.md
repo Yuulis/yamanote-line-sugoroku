@@ -486,6 +486,8 @@ Tests: plan §4 S17 list (desktop camera test proves panel geometry changes befo
 
 Acceptance: `ui_gate && ui_e2e` (full).
 
+**Lead addendum (user decision 2026-10-31, binding):** S17 also merges the duplicated lottery sentence so each turn's landing/lottery information appears exactly once in the log (the item-mode `.item-arrival` sentence and the `抽選:` line currently repeat it). `src/features/game/presentation.ts` and the arrival/lottery components may be edited for this. Every test that checked the lottery text must still check the same information in the remaining location (state old → new for each); no assertion is dropped. Automatic decision dialogs (adjust/discard) do NOT close the menu or log — they stay open behind the modal (the plan §2 rule is withdrawn).
+
 ## S18: Shared ItemCard and item metadata
 
 Objective: a presentational item card reused by the inventory and the discard dialog.
