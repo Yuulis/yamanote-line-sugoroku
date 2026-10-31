@@ -542,6 +542,8 @@ Tests: plan §4 S20 list.
 
 Acceptance: `ui_gate && ui_e2e tests/e2e/items.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/layout.spec.ts`.
 
+**Lead addendum (S20; user decisions 2026-10-31, binding):** (1) When the InventoryPanel switches to `ItemCard` (and in the slot's persistent description and tooltip), the passive delay certificate must NOT show `持っているだけで効くアイテムです` (`itemUnavailableLabel("passive")`): its timing line already says `持っているだけで効く`. Drop the reason/hint for passive items — or, more generally, skip any hint/reason whose text repeats the timing text. If this is done inside `ItemCard`, update `tests/unit/item-card.test.ts` "renders a passive certificate without an action button": replace the `.item-card__reason` = `持っているだけで効くアイテムです` assertion with "no `.item-card__reason`" while keeping the `.item-card__timing` = `持っているだけで効く` and no-button assertions; any other test that asserted the hint asserts the remaining timing text instead (state old → new for each; no assertion dropped or loosened). (2) ItemCard colours stay as built in S18: good items use the `--color-good` (green) tone accent (not vermilion); a selected card replaces the tone accent with the brand border on all four sides. Do not restyle the card in S20.
+
 ## S21: Inspect-then-use inventory interaction
 
 Objective: occupied slots open the item card; 使う in the card stages or opens the use dialog.
