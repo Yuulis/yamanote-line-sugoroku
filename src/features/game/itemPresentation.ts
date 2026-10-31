@@ -89,6 +89,15 @@ export function itemUnavailableLabel(reason: ItemUnavailableReason): string {
   return UNAVAILABLE_LABELS[reason];
 }
 
+export function itemUnavailableText(
+  kind: ItemKind,
+  reason: ItemUnavailableReason | null | undefined,
+): string | null {
+  if (!reason) return null;
+  const label: string = itemUnavailableLabel(reason);
+  return label.includes(itemTiming(kind)) ? null : label;
+}
+
 export function directionGuidance(
   targetHops: number,
   directionIsCloser: boolean,

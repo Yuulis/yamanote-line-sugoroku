@@ -1019,94 +1019,120 @@ button[aria-disabled="true"] {
   min-width: 0;
 }
 
-.item-inventory__heading {
+.item-inventory__header {
+  display: flex;
+  align-items: center;
+}
+
+.item-inventory__label {
   margin: 0 0 4px;
-  font-size: 14px;
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: bold;
 }
 
 .item-inventory__slots {
+  position: relative;
   display: grid;
-  gap: 5px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .item-slot {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  position: static;
   min-width: 0;
-  box-sizing: border-box;
-  padding: 6px;
-  border: 1px solid #c7c7c7;
-  border-radius: 5px;
-  background: #ffffff;
 }
 
-.item-slot--selected {
+.item-slot__button,
+.item-slot--empty {
+  width: 100%;
+  height: 56px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.item-slot__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.item-slot--good .item-slot__icon { --item-icon-accent: var(--color-good); }
+.item-slot--bad .item-slot__icon { --item-icon-accent: var(--color-bad); }
+
+.item-slot__short {
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.item-slot--selected .item-slot__button {
   border: 2px solid var(--color-brand);
-  padding: 5px;
+  padding: 3px;
   background: var(--color-brand-tint);
+  color: var(--color-text);
+}
+
+.item-slot--unavailable .item-slot__icon { opacity: 0.72; }
+
+.item-slot--passive .item-slot__button {
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: default;
 }
 
 .item-slot--empty {
-  min-height: 38px;
+  display: flex;
   align-items: center;
-  color: #666666;
-}
-
-.item-slot__number {
-  flex: 0 0 22px;
-  color: #555555;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--color-text-muted);
   font-size: 12px;
-  font-weight: bold;
 }
 
-.item-slot__body {
-  min-width: 0;
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-.item-slot__name {
+.item-slot__tooltip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Below the slots: above them the tooltip would cover the dice button. */
+  top: 100%;
+  z-index: 2;
   margin: 0;
-  font-size: 13px;
-}
-
-.item-slot__effect,
-.item-slot__timing,
-.item-slot__hint,
-.item-slot__reason,
-.item-slot__availability {
-  margin: 2px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  font-size: 12px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  /* Never blocks the controls it covers; InventoryPanel keeps it open while the pointer is over it. */
+  pointer-events: none;
 }
 
-.item-slot__timing,
-.item-slot__availability {
-  color: #555555;
-  font-size: 12px;
-}
-
-.item-slot__hint {
-  color: var(--color-good);
-  font-size: 12px;
-}
-
-.item-slot__hint--caution,
-.item-slot__reason {
-  color: #8a3b00;
-  font-size: 12px;
-}
-
-.item-slot__select {
-  width: 100%;
-  min-height: 40px;
-  margin-top: 4px;
-  padding: 4px 8px;
-  text-align: left;
-}
+.item-slot__tooltip p { margin: 2px 0 0; }
+.item-slot__tooltip-name { font-size: 13px; font-weight: bold; }
+.item-slot__tooltip-timing,
+.item-slot__tooltip-note { color: var(--color-text-muted); }
+.item-slot__tooltip-hint { color: var(--color-good); }
+.item-slot__tooltip-hint--caution,
+.item-slot__tooltip-reason { color: var(--color-warning); }
+.item-slot--empty .item-slot__empty { line-height: 1.2; }
 
 .item-dialog {
   max-height: min(82vh, 720px);
@@ -1399,15 +1425,6 @@ button[aria-disabled="true"] {
 }
 
 @media (max-width: 360px) {
-  .item-slot {
-    gap: 5px;
-    padding: 5px;
-  }
-
-  .item-slot__number {
-    flex-basis: 18px;
-  }
-
   .dialog__body {
     padding: 12px;
   }
@@ -1773,6 +1790,12 @@ button[aria-disabled="true"] {
   .game-panel .effect-chips {
     grid-area: chips;
     margin-top: 0;
+  }
+
+  /* The inventory ends the left column here; the dice sits in the right column, so open upwards. */
+  .item-slot__tooltip {
+    top: auto;
+    bottom: 100%;
   }
 }
 

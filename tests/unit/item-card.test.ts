@@ -43,7 +43,8 @@ describe("ItemCard", () => {
     container.innerHTML = markup("delay-certificate", { unavailableReason: "passive" });
     expect(container.querySelector("button")).toBeNull();
     expect(container.querySelector(".item-card__timing")?.textContent).toBe("持っているだけで効く");
-    expect(container.querySelector(".item-card__reason")?.textContent).toBe("持っているだけで効くアイテムです");
+    expect(container.querySelector(".item-card__reason")).toBeNull();
+    expect(container.textContent).not.toContain("持っているだけで効くアイテムです");
   });
 
   it("describes an after-roll action with its unavailable reason", () => {

@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import type { ItemGameState } from "../../src/types/network";
 import { playItemTurn, serializeGame } from "../../src/features/game/engine";
-import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
+import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
@@ -76,6 +76,122 @@ test("stages and uses a double ticket, shows physical movement and restores its 
   await restore(page, arrived);
   await openGameLog(page);
   await expect(notices(page)).toContainText("倍速券を使いました");
+});
+
+test("inventory shows icon slots with short names, persistent descriptions and a hoverable tooltip", async ({ page, railwayBundle }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "はじめから" }).click();
+  await expect(gamePanel(page).locator(".item-slot--empty")).toHaveText(["空き枠", "空き枠", "空き枠"]);
+  await expect(gamePanel(page).locator(".item-slot button")).toHaveCount(0);
+  const base = await scenario(page, railwayBundle, "double");
+  const heading = page.getByRole("heading", { name: "アイテム（3枠）" });
+  await expect(heading).toBeAttached();
+  await expect(gamePanel(page).locator(".item-inventory__label")).toHaveText("持ち物");
+  for (const item of base.inventory) {
+    const slot = inventoryItem(page, ITEM_DESCRIPTIONS[item.kind].name);
+    await expect(slot.locator(".item-slot__short")).toHaveText(ITEM_SHORT_NAMES[item.kind]);
+    await expect(slot.getByRole("heading", { name: ITEM_DESCRIPTIONS[item.kind].name })).toBeAttached();
+    const button = slot.getByRole("button");
+    const box = await button.boundingBox();
+    expect(box?.width).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    const description = page.locator(`#${await button.getAttribute("aria-describedby")}`);
+    await expect(description).toContainText(ITEM_DESCRIPTIONS[item.kind].effect);
+    await expect(description).toContainText(itemTiming(item.kind));
+  }
+  await expect(gamePanel(page).locator(".item-slot--empty")).toHaveCount(3 - base.inventory.length);
+  const slot = inventoryItem(page, "倍速券");
+  const button = slot.getByRole("button");
+  await button.hover();
+  const tooltip = slot.locator(".item-slot__tooltip");
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toContainText("倍速券");
+  await expect(tooltip).toContainText(ITEM_DESCRIPTIONS.double.effect);
+  const box = await tooltip.boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await expect(tooltip).toBeVisible();
+  // The tooltip never takes the click: whatever it covers stays operable.
+  expect(await tooltip.evaluate((element, point) => element.contains(document.elementFromPoint(point.x, point.y)),
+    { x: box!.x + box!.width / 2, y: box!.y + box!.height / 2 })).toBe(false);
+  const panelBox = await gamePanel(page).boundingBox();
+  await page.mouse.move(panelBox!.x + panelBox!.width / 2, Math.max(0, panelBox!.y - 20));
+  await expect(tooltip).toBeHidden();
+  await button.focus();
+  await expect(tooltip).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(tooltip).toBeHidden();
+});
+
+test("Escape dismisses a slot tooltip before it clears the staged item", async ({ page, railwayBundle }) => {
+  const base = await scenario(page, railwayBundle, "double");
+  const slot = inventoryItem(page, "倍速券");
+  const button = slot.getByRole("button");
+  await button.click();
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
+  const staged = gamePanel(page).locator(".item-staged-summary");
+  await expect(staged).toContainText("倍速券");
+  await page.mouse.move(0, 0);
+  await button.evaluate((element: HTMLButtonElement) => element.blur());
+  await button.focus();
+  await expect(slot.locator(".item-slot__tooltip")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(slot.locator(".item-slot__tooltip")).toBeHidden();
+  await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
+  await expect(staged).toContainText("倍速券");
+  await expect(button).toHaveAttribute("aria-pressed", "true");
+  expect((await itemSave(page)).turn).toBe(base.turn);
+  await page.keyboard.press("Escape");
+  await expect(staged).toHaveCount(0);
+  await expect(button).toHaveAttribute("aria-pressed", "false");
+  await expect(gamePanel(page).getByRole("status")).not.toContainText("倍速券を選択中");
+});
+
+test("the passive certificate slot shows timing without the redundant passive hint", async ({ page, railwayBundle }) => {
+  await scenario(page, railwayBundle, "certificate");
+  const slot = inventoryItem(page, "遅延証明書");
+  const button = slot.getByRole("button");
+  const description = page.locator(`#${await button.getAttribute("aria-describedby")}`);
+  await expect(description).toContainText(ITEM_DESCRIPTIONS["delay-certificate"].effect);
+  await expect(description).toContainText("持っているだけで効く");
+  await expect(description).not.toContainText("持っているだけで効くアイテムです");
+  await button.hover();
+  await expect(slot.locator(".item-slot__tooltip")).toContainText("持っているだけで効く");
+  await expect(slot.locator(".item-slot__tooltip")).not.toContainText("持っているだけで効くアイテムです");
+  await expect(button).toHaveAttribute("aria-disabled", "true");
+  await expect(button).not.toHaveAttribute("aria-pressed");
+  await button.dispatchEvent("click");
+  await expect(gamePanel(page).locator(".item-staged-summary")).toHaveCount(0);
+});
+
+test("inventory height does not depend on how many slots are filled", async ({ page, railwayBundle }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "はじめから" }).click();
+  const freshHeight = await gamePanel(page).locator(".item-inventory").evaluate((element) => element.getBoundingClientRect().height);
+  await scenario(page, railwayBundle, "discard");
+  const fullHeight = await gamePanel(page).locator(".item-inventory").evaluate((element) => element.getBoundingClientRect().height);
+  expect(Math.abs(freshHeight - fullHeight)).toBeLessThanOrEqual(1);
+});
+
+test("reduced motion leaves slot tooltips without transitions", async ({ page, railwayBundle }) => {
+  await scenario(page, railwayBundle, "double");
+  const slot = inventoryItem(page, "倍速券");
+  await slot.getByRole("button").focus();
+  const durations = await slot.evaluate((element) => [
+    getComputedStyle(element.querySelector(".item-slot__tooltip")!).transitionDuration,
+    getComputedStyle(element.querySelector(".item-slot__button")!).transitionDuration,
+  ]);
+  expect(durations.map((duration) => duration.split(",").map((entry) => entry.trim()))).toEqual([["0s"], ["0s", "0s", "0s"]]);
+});
+
+test("a touch tap still stages an item in one step and opens no tooltip", async ({ page, railwayBundle }) => {
+  test.skip(!test.info().project.use.hasTouch, "needs a touch device");
+  await scenario(page, railwayBundle, "double");
+  const slot = inventoryItem(page, "倍速券");
+  await slot.getByRole("button").tap();
+  await expect(slot.getByRole("button")).toHaveAttribute("aria-pressed", "true");
+  await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
+  await expect(slot.locator(".item-slot__tooltip")).toHaveCount(0);
 });
 
 for (const delta of [-1, 1] as const) {

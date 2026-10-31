@@ -1,7 +1,7 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { ItemIcon } from "./ItemIcon";
 import {
-  ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, itemTiming, itemTone, itemUnavailableLabel,
+  ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, itemTiming, itemTone, itemUnavailableText,
   type ItemHint,
 } from "../itemPresentation";
 import type { ItemKind } from "../../../types/network";
@@ -270,7 +270,7 @@ export function ItemCard({
   const actualHeadingId: string = headingId ?? `item-card-heading-${generatedId}`;
   const reasonId: string = `item-card-reason-${generatedId}`;
   const description = ITEM_DESCRIPTIONS[kind];
-  const unavailableText: string | null = unavailableReason ? itemUnavailableLabel(unavailableReason) : null;
+  const unavailableText: string | null = itemUnavailableText(kind, unavailableReason);
 
   return (
     <div className={`item-card item-card--${itemTone(kind)}${selected ? " item-card--selected" : ""}`}>

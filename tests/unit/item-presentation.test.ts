@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   adjustedPips, directionGuidance, ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, ITEM_SHORT_NAMES,
-  itemHint, itemTiming, itemTone, itemUnavailableLabel,
+  itemHint, itemTiming, itemTone, itemUnavailableLabel, itemUnavailableText,
 } from "../../src/features/game/itemPresentation";
 import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, type ItemKind } from "../../src/types/network";
 
@@ -37,6 +37,14 @@ describe("item presentation", () => {
     expect(itemUnavailableLabel("suspended-route")).toBe("運休中で選べない");
     expect(itemUnavailableLabel("forced-turn")).toBe("遅延・寝過ごしのターンは使えない");
     expect(itemUnavailableLabel("item-already-selected")).toBe("ほかのアイテムを選択中");
+  });
+
+  it("omits unavailable labels that repeat an item's timing", () => {
+    expect(itemUnavailableText("delay-certificate", "passive")).toBeNull();
+    expect(itemUnavailableText("double", null)).toBeNull();
+    expect(itemUnavailableText("roll-adjust", "after-roll")).toBe("出目が出た後に使えるアイテムです");
+    expect(itemUnavailableText("double", "forced-turn")).toBe("遅延・寝過ごしのターンは使えない");
+    expect(itemUnavailableText("double", "passive")).toBe("持っているだけで効くアイテムです");
   });
 
   it("reports hop guidance ties and calculates a single legal adjustment", () => {
