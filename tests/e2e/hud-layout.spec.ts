@@ -144,8 +144,10 @@ test("keeps the dice button at one HUD position across variable content and save
   await restore(page, longRide);
   const ride = panelStat(page, "乗車中");
   if (testInfo.project.name === "phone-chromium") {
-    await expect.poll(() => ride.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
-    // The display name can differ from the raw service name; truncation is CSS-only, so the span keeps the
+    // S23 (user decision 2026-10-30): the phone ride row spans the HUD width, so the longest fixture ride name
+    // is shown in full instead of being truncated (S10b asserted the overflow of the old narrow column).
+    await expect.poll(() => ride.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    // The display name can differ from the raw service name; any truncation is CSS-only, so the span keeps the
     // whole name as text and title.
     const shownName: string = (await ride.textContent()) ?? "";
     expect(shownName.length).toBeGreaterThan(0);

@@ -1,9 +1,115 @@
 import { expect, test } from "./fixtures";
 import { itemScenario } from "./fixtures/itemScenarios";
-import { serializeGame } from "../../src/features/game/engine";
+import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import type { ItemGameState } from "../../src/types/network";
 import { diceButton, gamePanel, inventoryItem, readSaveText, writeSaveText } from "./support/app";
+import type { RailwayBundle } from "./fixtures/bundle";
 
 test.use({ dataset: "fixture" });
+
+interface PopulatedState {
+  state: ItemGameState;
+  itemName: string;
+  /** Active effects (= HUD effect chips) after the failed-save roll. */
+  effects: number;
+}
+
+// Scanning real data is deterministic but costly, so each worker computes it once.
+let populatedCache: PopulatedState | null = null;
+
+function populatedState(bundle: RailwayBundle): PopulatedState {
+  if (populatedCache) return populatedCache;
+  let best: PopulatedState | null = null;
+  let bestScore: number = -1;
+  for (let seedValue: number = 0; seedValue < 256; seedValue += 1) {
+    const seed: string = seedValue.toString(16).padStart(32, "0");
+    let state: ItemGameState = createItemGame(ITEM_GAME_CONFIG, seed, bundle.network);
+    for (let turnIndex: number = 0; turnIndex < 48 && state.status === "playing"; turnIndex += 1) {
+      if (state.inventory.length === 3 && state.pending === null) {
+        // The measured HUD is the one after the failed-save roll, so judge that state, not the restored one.
+        const next: ItemGameState = playItemTurn(state, {}, bundle.network).state;
+        const eligibleItem = next.inventory.find((item) => item.kind === "double" || item.kind === "rapid");
+        const effects: number = next.effects.delayDueTurns.filter((dueTurn) => dueTurn > next.turn).length
+          + next.effects.suspensions.filter((entry) => entry.expiresTurn > next.turn).length
+          + (next.effects.detourPending ? 1 : 0) + (next.effects.oversleepPending ? 1 : 0);
+        const hasSuspension: boolean = next.effects.suspensions.some((entry) => entry.expiresTurn > next.turn);
+        const serviceName: string = bundle.network.servicesById.get(next.currentServiceId)?.name ?? "";
+        // Prefer more effect chips (so the chip row overflows on narrow phones), then the longer ride name.
+        const score: number = effects * 1000 + serviceName.length;
+        if (next.pending === null && next.inventory.length === 3 && eligibleItem && effects >= 2 && hasSuspension && score > bestScore) {
+          best = { state, itemName: eligibleItem.kind === "double" ? "倍速券" : "快速券", effects };
+          bestScore = score;
+        }
+      }
+      const result = playItemTurn(state, {}, bundle.network);
+      state = result.state.pending?.kind === "discard"
+        ? resolveItemDiscard(result.state, result.state.pending.item.id).state
+        : result.state;
+    }
+  }
+  if (!best) throw new Error("No seeded real-data state had three items, a usable speed ticket, active effects and a non-pending next turn");
+  populatedCache = best;
+  return best;
+}
+
+async function buildPopulatedState(page: import("@playwright/test").Page, bundle: RailwayBundle): Promise<PopulatedState> {
+  const populated: PopulatedState = populatedState(bundle);
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(populated.state));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  await page.evaluate(() => {
+    const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+    storage.originalSetItem = storage.setItem;
+    storage.setItem = function (key: string, value: string): void {
+      if (key.includes("save")) throw new Error("quota");
+      storage.originalSetItem?.call(this, key, value);
+    };
+  });
+  await diceButton(page).click();
+  // A held 出目調整券 asks before the move finishes; keep the roll as it is.
+  const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  const save = gamePanel(page).locator(".game-panel__save");
+  await expect.poll(async () => await adjustment.isVisible() || ((await save.textContent()) ?? "").includes("失敗")).toBe(true);
+  if (await adjustment.isVisible()) await adjustment.getByRole("button", { name: "そのまま続ける" }).click();
+  await expect(save).toContainText("失敗");
+  await page.evaluate(() => {
+    const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+    if (storage.originalSetItem) storage.setItem = storage.originalSetItem;
+    delete storage.originalSetItem;
+  });
+  const slot = inventoryItem(page, populated.itemName).first();
+  await slot.getByRole("button").click();
+  const card = gamePanel(page).getByRole("dialog", { name: populated.itemName, exact: true });
+  await expect(card).toBeVisible();
+  await card.getByRole("button", { name: "使う", exact: true }).click();
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  await expect(gamePanel(page).locator(".item-staged-summary")).toBeVisible();
+  expect(await gamePanel(page).locator(".item-slot:not(.item-slot--empty)").count()).toBe(3);
+  expect(await gamePanel(page).locator(".effect-chip").count()).toBeGreaterThanOrEqual(2);
+  return populated;
+}
+
+async function measureIdleDiceOffset(page: import("@playwright/test").Page, itemName: string): Promise<number> {
+  await gamePanel(page).locator(".item-staged-summary").getByRole("button", { name: "選択を解除" }).click();
+  await gamePanel(page).evaluate((panel) => { panel.scrollTop = 0; });
+  const offset: number = await gamePanel(page).evaluate((panel) => {
+    const dice = panel.querySelector<HTMLElement>(".game-panel__roll");
+    if (!dice) throw new Error("HUD dice button is missing");
+    return dice.getBoundingClientRect().top - panel.getBoundingClientRect().top;
+  });
+  const slot = inventoryItem(page, itemName).first();
+  await slot.getByRole("button").click();
+  const card = gamePanel(page).getByRole("dialog", { name: itemName, exact: true });
+  await card.getByRole("button", { name: "使う", exact: true }).click();
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  // Focus returns to the staged slot; it must already be in view, so the panel must not have scrolled.
+  await expect(slot.getByRole("button")).toBeFocused();
+  expect(await gamePanel(page).evaluate((panel) => panel.scrollTop)).toBe(0);
+  return offset;
+}
 
 async function scenario(page: import("@playwright/test").Page, name: Parameters<typeof itemScenario>[0], bundle: import("./fixtures/bundle").RailwayBundle): Promise<void> {
   await page.goto("/");
@@ -173,4 +279,186 @@ test("desktop card hides its own hover tooltip, keeps other slot hover, and clos
   await page.keyboard.press("Tab");
   await expect(card).toBeHidden();
   await expect(firstOpener).not.toBeFocused();
+});
+
+test.describe("S23 populated responsive HUD", () => {
+  test.use({ dataset: "real", reducedMotion: "reduce" });
+  // The first test in each worker scans real-data seeds for the populated save, and each test checks several viewports.
+  test.describe.configure({ timeout: 90_000 });
+
+  test("desktop populated HUD fits without scrolling", async ({ page, railwayBundle }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await buildPopulatedState(page, railwayBundle);
+    const measurements = await gamePanel(page).evaluate((panel) => {
+      const inside = (selector: string): boolean => {
+        const element = panel.querySelector<HTMLElement>(selector);
+        if (!element) return false;
+        const parent = panel.getBoundingClientRect();
+        const box = element.getBoundingClientRect();
+        return box.top >= parent.top - 1 && box.bottom <= parent.bottom + 1;
+      };
+      return {
+        scrollHeight: panel.scrollHeight,
+        clientHeight: panel.clientHeight,
+        dice: inside(".game-panel__roll"),
+        slots: [...panel.querySelectorAll<HTMLElement>(".item-slot")].every((slot) => inside(`.item-slot:nth-child(${[...slot.parentElement!.children].indexOf(slot) + 1})`)),
+        staged: inside(".item-staged-summary"),
+        triggers: inside(".game-panel__log-trigger") && inside(".game-panel__menu-trigger"),
+      };
+    });
+    expect(measurements.scrollHeight).toBeLessThanOrEqual(measurements.clientHeight + 1);
+    expect(measurements).toMatchObject({ dice: true, slots: true, staged: true, triggers: true });
+  });
+
+  test("phone populated layout keeps controls reachable at four widths", async ({ page, railwayBundle }) => {
+    const populated = await buildPopulatedState(page, railwayBundle);
+    const widths: Array<{ width: number; height: number }> = [
+      { width: 320, height: 568 }, { width: 390, height: 844 }, { width: 400, height: 800 }, { width: 412, height: 915 },
+    ];
+    for (const viewport of widths) {
+      await page.setViewportSize(viewport);
+      const idleDiceOffset: number = await measureIdleDiceOffset(page, populated.itemName);
+      const panel = gamePanel(page);
+      await expect.poll(() => panel.evaluate((element) => element.scrollTop)).toBe(0);
+      const result = await page.evaluate(() => {
+        const panel = document.querySelector<HTMLElement>(".game-panel");
+        const map = document.querySelector<HTMLElement>(".map-container");
+        const station = document.querySelector<HTMLElement>('[data-stat="station"]');
+        const ride = document.querySelector<HTMLElement>('[data-stat="ride"]');
+        const chips = document.querySelector<HTMLElement>(".game-panel .effect-chips");
+        const dice = document.querySelector<HTMLElement>(".game-panel__roll");
+        const zoom = document.querySelector<HTMLElement>('.maplibregl-ctrl-zoom-in');
+        if (!panel || !map || !station || !ride || !chips || !dice || !zoom) throw new Error("phone layout elements missing");
+        const box = (element: HTMLElement): DOMRect => element.getBoundingClientRect();
+        const p = box(panel);
+        const inPanel = (element: HTMLElement): boolean => box(element).top >= p.top - 1 && box(element).bottom <= p.bottom + 1;
+        const overlap = (a: DOMRect, b: DOMRect): boolean => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        const buttons = [...panel.querySelectorAll<HTMLButtonElement>("button")].filter((button) => button.getClientRects().length > 0);
+        const offenders = buttons.filter((button) => box(button).width < 44 || box(button).height < 44)
+          .map((button) => `${button.textContent?.trim()}:${Math.round(box(button).width)}x${Math.round(box(button).height)}`);
+        const slots = [...panel.querySelectorAll<HTMLElement>(".item-slot")];
+        const chipStyle = getComputedStyle(chips);
+        const chipScrolls = chips.scrollWidth > chips.clientWidth + 1;
+        chips.scrollLeft = chips.scrollWidth;
+        const chipScrollLeft = chips.scrollLeft;
+        const chipList = [...chips.querySelectorAll<HTMLElement>(".effect-chip")];
+        const lastChip = chipList.at(-1);
+        const lastChipInside = Boolean(lastChip && box(lastChip).left >= box(chips).left - 1 && box(lastChip).right <= box(chips).right + 1);
+        chips.scrollLeft = 0;
+        return {
+          panelHeight: p.height, panelShare: (p.width * p.height) / (box(map).width * box(map).height),
+          horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+          stationInside: inPanel(station), slotsInside: slots.length === 3 && slots.every(inPanel),
+          chipOverflowX: chipStyle.overflowX, chipWrap: chipStyle.flexWrap, chipCount: chipList.length,
+          chipScrollLeft, lastChipInside, chipScrolls, offenders, rideFits: ride.scrollWidth <= ride.clientWidth,
+          rideText: ride.textContent ?? "", rideTitle: ride.title,
+          badgeOverlap: overlap(box(panel.querySelector<HTMLElement>(".line-badge")!), box(ride)),
+          zoomOverlap: overlap(box(zoom), p), diceOffset: box(dice).top - p.top,
+          gridAreas: getComputedStyle(panel).gridTemplateAreas, gridRows: getComputedStyle(panel).gridTemplateRows,
+        };
+      });
+      expect(result.panelHeight).toBeLessThanOrEqual(viewport.height * 0.45 + 1);
+      expect(result.panelShare).toBeLessThan(0.5);
+      expect(result.horizontalOverflow).toBe(false);
+      expect(result.stationInside).toBe(true);
+      expect(result.slotsInside).toBe(true);
+      // One horizontally scrollable chip row; the last chip can be scrolled fully into view.
+      expect(["auto", "scroll"]).toContain(result.chipOverflowX);
+      expect(result.chipWrap).toBe("nowrap");
+      if (viewport.width === 320) expect(result.chipScrolls, `${result.chipCount} chips should overflow at 320px`).toBe(true);
+      if (result.chipScrolls) expect(result.chipScrollLeft).toBeGreaterThan(0);
+      expect(result.lastChipInside).toBe(true);
+      expect(result.offenders, `undersized buttons at ${viewport.width}: ${result.offenders.join(", ")}`).toEqual([]);
+      expect(result.rideFits).toBe(true);
+      expect(result.rideTitle).toBe(result.rideText);
+      expect(result.badgeOverlap).toBe(false);
+      expect(result.zoomOverlap).toBe(false);
+      expect(Math.abs(result.diceOffset - idleDiceOffset), `${viewport.width}px idle ${idleDiceOffset}, staged ${result.diceOffset}, grid ${result.gridRows}`).toBeLessThanOrEqual(1);
+      test.info().annotations.push({ type: `phone-grid-${viewport.width}`, description: `${result.gridAreas}; rows ${result.gridRows}` });
+    }
+    const selectedButton = inventoryItem(page, populated.itemName).first().getByRole("button");
+    await diceButton(page).focus();
+    for (let tabCount: number = 0; tabCount < 6; tabCount += 1) {
+      if (await selectedButton.evaluate((element) => element === document.activeElement)) break;
+      await page.keyboard.press("Tab");
+    }
+    await expect(selectedButton).toBeFocused();
+    const focusStyle = await selectedButton.evaluate((element) => ({ style: getComputedStyle(element).outlineStyle, width: Number.parseFloat(getComputedStyle(element).outlineWidth) }));
+    expect(focusStyle.style).not.toBe("none");
+    expect(focusStyle.width).toBeGreaterThanOrEqual(2);
+    await expect(inventoryItem(page, populated.itemName).first()).toHaveClass(/item-slot--selected/);
+    const borderColor = await selectedButton.evaluate((element) => getComputedStyle(element).borderTopColor);
+    expect(borderColor).toBe("rgb(217, 80, 47)");
+    const tapHighlight = await selectedButton.evaluate((element) => ({ supported: CSS.supports("-webkit-tap-highlight-color", "transparent"), value: getComputedStyle(element).getPropertyValue("-webkit-tap-highlight-color") }));
+    if (tapHighlight.supported) expect(tapHighlight.value).toBe("rgba(0, 0, 0, 0)");
+  });
+
+  test("short landscape keeps staged slots visible and card reachable", async ({ page, railwayBundle }, testInfo) => {
+    const populated = await buildPopulatedState(page, railwayBundle);
+    for (const viewport of [{ width: 667, height: 375 }, { width: 640, height: 400 }]) {
+      await page.setViewportSize(viewport);
+      const idleOffset: number = await measureIdleDiceOffset(page, populated.itemName);
+      const panel = gamePanel(page);
+      const result = await panel.evaluate((element) => {
+        const rect = (selector: string): DOMRect => {
+          const target = element.querySelector<HTMLElement>(selector);
+          if (!target) throw new Error(`missing ${selector}`);
+          return target.getBoundingClientRect();
+        };
+        const p = element.getBoundingClientRect();
+        const station = rect('[data-stat="station"]');
+        const slots = [...element.querySelectorAll<HTMLElement>(".item-slot")].map((slot) => slot.getBoundingClientRect());
+        const dice = rect(".game-panel__roll");
+        return {
+          panelHeight: p.height, scrollTop: element.scrollTop,
+          stationInside: station.top >= p.top && station.bottom <= p.bottom,
+          slotsInside: slots.length === 3 && slots.every((slot) => slot.top >= p.top && slot.bottom <= p.bottom),
+          diceOffset: dice.top - p.top,
+          diceOverflow: (element.querySelector<HTMLElement>(".game-panel__roll")?.scrollHeight ?? 0)
+            > (element.querySelector<HTMLElement>(".game-panel__roll")?.clientHeight ?? 0) + 1,
+          zoomOverlap: (() => {
+            const zoom = document.querySelector<HTMLElement>(".maplibregl-ctrl-zoom-in")?.getBoundingClientRect();
+            return Boolean(zoom && zoom.left < p.right && zoom.right > p.left && zoom.top < p.bottom && zoom.bottom > p.top);
+          })(),
+          gridAreas: getComputedStyle(element).gridTemplateAreas, gridRows: getComputedStyle(element).gridTemplateRows,
+        };
+      });
+      expect(result.panelHeight).toBeLessThanOrEqual(viewport.height * 0.75 + 1);
+      expect(result.scrollTop).toBe(0);
+      expect(result.stationInside).toBe(true);
+      expect(result.slotsInside).toBe(true);
+      expect(result.diceOverflow).toBe(false);
+      expect(result.zoomOverlap).toBe(false);
+      expect(Math.abs(result.diceOffset - idleOffset), `${viewport.width}px idle ${idleOffset}, staged ${result.diceOffset}, grid ${result.gridRows}`).toBeLessThanOrEqual(1);
+      testInfo.annotations.push({ type: `landscape-grid-${viewport.width}`, description: `${result.gridAreas}; rows ${result.gridRows}` });
+
+      const slot = inventoryItem(page, populated.itemName).first();
+      const opener = slot.getByRole("button");
+      if (testInfo.project.use.hasTouch) await opener.tap();
+      else await opener.click();
+      const card = gamePanel(page).getByRole("dialog", { name: populated.itemName, exact: true });
+      await expect(card).toBeVisible();
+      const cardFits = await card.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight;
+      });
+      expect(cardFits).toBe(true);
+      const close = card.getByRole("button", { name: "閉じる", exact: true });
+      await expect(close).toBeVisible();
+      const hitTests = await close.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === element;
+      });
+      expect(hitTests).toBe(true);
+      const openerHitTest = await opener.evaluate((element) => {
+        const box = element.getBoundingClientRect();
+        return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest("button") === element;
+      });
+      expect(openerHitTest).toBe(true);
+      if (testInfo.project.use.hasTouch) await close.tap();
+      else await close.click();
+      await expect(card).toBeHidden();
+      await expect(opener).toBeFocused();
+    }
+  });
 });

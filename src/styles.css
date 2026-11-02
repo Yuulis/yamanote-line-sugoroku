@@ -1009,7 +1009,7 @@ button[aria-disabled="true"] {
 }
 
 .item-staged-summary button {
-  min-height: 36px;
+  min-height: 44px;
   margin-left: auto;
   padding: 2px 8px;
 }
@@ -1407,6 +1407,20 @@ button[aria-disabled="true"] {
   min-height: 44px;
 }
 
+.item-slot__button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-panel__stats .line-badge {
+  flex: 0 0 auto;
+}
+
+.item-card-popover--sheet .item-card-popover__close {
+  position: sticky;
+  bottom: 0;
+  background: var(--color-surface);
+}
+
 .item-adjustment .dialog__actions button {
   min-height: 44px;
   width: 100%;
@@ -1432,9 +1446,24 @@ button[aria-disabled="true"] {
   }
 
   .game-panel {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "stats"
+      "actions"
+      "inventory"
+      "staged"
+      "chips"
+      "save"
+      "disclosures";
+    /* max-content rows: a fixed-height grid would otherwise stretch auto rows
+       (moving the dice) or collapse scroll containers such as the chips row. */
+    grid-template-rows: repeat(7, max-content);
+    align-content: start;
+    row-gap: 0;
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     width: auto;
     height: 45%;
     max-height: 45%;
@@ -1475,16 +1504,71 @@ button[aria-disabled="true"] {
   }
 
   .game-panel__stats {
+    grid-area: stats;
     grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-    margin-bottom: 6px;
+    grid-template-rows: repeat(4, 24px);
+    gap: 0 6px;
+    margin: 0;
   }
 
-  /* The saved mark overlays the top-right corner: keep the first row's last
-     value (乗車中 in the four-column phone grid) clear of it. */
-  .game-panel__stats dd:nth-of-type(2) {
+  .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(1) { grid-column: 2; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(4) { grid-column: 3; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(4) { grid-column: 4; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(2) { grid-column: 1; grid-row: 2; }
+  .game-panel__stats dd:nth-of-type(2) { grid-column: 2 / 5; grid-row: 2; }
+  .game-panel__stats dt:nth-of-type(3) { grid-column: 1; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(3) { grid-column: 2; grid-row: 3; }
+  .game-panel__stats dt:nth-of-type(6) { grid-column: 3; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(6) { grid-column: 4; grid-row: 3; }
+  .game-panel__stats dt:nth-of-type(5) { grid-column: 1; grid-row: 4; }
+  .game-panel__stats dd:nth-of-type(5) { grid-column: 2 / 5; grid-row: 4; }
+  .game-panel__stats dd:nth-of-type(4) {
     padding-right: 24px;
     box-sizing: border-box;
   }
+
+  .game-panel__actions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    margin-bottom: 4px;
+    align-items: stretch;
+    align-content: start;
+  }
+
+  .game-panel__actions button {
+    min-height: 44px;
+    height: 56px;
+    max-height: 56px;
+    box-sizing: border-box;
+    align-self: stretch;
+    margin: 0;
+  }
+
+  .game-panel__actions .game-panel__roll {
+    line-height: 1.2;
+    white-space: normal;
+    overflow: hidden;
+  }
+
+  .item-inventory { grid-area: inventory; margin: 0 0 4px; }
+  .item-inventory__label { margin: 0 0 2px; padding: 0; line-height: 16px; }
+  .item-staged-summary { grid-area: staged; margin: 0 0 4px; padding: 2px 2px 2px 8px; }
+  .game-panel .effect-chips {
+    grid-area: chips;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    margin: 0 0 4px;
+    scrollbar-width: thin;
+  }
+  .game-panel .effect-chip { flex: 0 0 auto; }
+  .game-panel__save { grid-area: save; margin: 0 0 4px; }
+  .game-panel__disclosures { grid-area: disclosures; }
 
   .game-panel__legend {
     margin-top: 4px;
@@ -1635,17 +1719,22 @@ button[aria-disabled="true"] {
 @media (min-width: 601px) and (max-height: 500px) {
   .game-panel {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(194px, 0.9fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      "stats actions"
+      "stats stats"
+      "actions inventory"
+      "staged staged"
       "log-trigger menu-trigger"
       "lottery lottery"
       "chips chips"
       "save save"
       "legend legend";
+    grid-template-rows: repeat(8, max-content);
+    align-content: start;
     align-items: start;
-    column-gap: 12px;
-    row-gap: 4px;
+    --hud-column-gap: 12px;
+    column-gap: var(--hud-column-gap);
+    row-gap: 0;
     left: 12px;
     bottom: 8px;
     width: min(440px, calc(100vw - 192px));
@@ -1688,19 +1777,93 @@ button[aria-disabled="true"] {
 
   .game-panel__stats {
     grid-area: stats;
-    margin: 0;
-    grid-template-columns: auto minmax(0, 1fr);
+    margin: 0 0 4px;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-rows: repeat(3, 24px);
+    gap: 0 6px;
   }
 
-  .game-panel__stats dd:first-of-type {
+  .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(1) { grid-column: 2; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(2) { grid-column: 3; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(2) { grid-column: 4; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(3) { grid-column: 1; grid-row: 2; }
+  .game-panel__stats dd:nth-of-type(3) { grid-column: 2; grid-row: 2; }
+  .game-panel__stats dt:nth-of-type(4) { grid-column: 3; grid-row: 2; }
+  .game-panel__stats dd:nth-of-type(4) { grid-column: 4; grid-row: 2; }
+  .game-panel__stats dt:nth-of-type(5) { grid-column: 1; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(5) { grid-column: 2; grid-row: 3; }
+  .game-panel__stats dt:nth-of-type(6) { grid-column: 3; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(6) { grid-column: 4; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(2) {
     padding-right: 24px;
     box-sizing: border-box;
   }
 
   .game-panel__actions {
     grid-area: actions;
-    align-self: center;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-self: start;
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    margin: 0 0 4px;
+    align-items: stretch;
+    align-content: start;
   }
+
+  .game-panel__actions button {
+    min-width: 0;
+    min-height: 44px;
+    height: 56px;
+    max-height: 56px;
+    box-sizing: border-box;
+    align-self: stretch;
+    margin: 0;
+  }
+
+  .game-panel__actions .game-panel__roll {
+    line-height: 1.2;
+    white-space: normal;
+    overflow: hidden;
+  }
+
+  .game-panel__actions button:last-child {
+    white-space: nowrap;
+    padding-inline: 2px;
+    font-size: 12px;
+  }
+
+  .item-inventory {
+    grid-area: inventory;
+    min-width: 0;
+    margin: 0 0 4px;
+  }
+
+  .item-inventory__label { margin: 0 0 2px; padding: 0; line-height: 16px; }
+  .item-staged-summary { grid-area: staged; margin: 0 0 4px; padding: 2px 2px 2px 8px; }
+  /* Below the slots (above them it would cover the dice), widened across both
+     columns so the text stays short enough to fit inside the panel. */
+  .item-slot__tooltip { top: 100%; bottom: auto; left: calc(-100% - var(--hud-column-gap, 12px)); right: 0; }
+  .game-panel .effect-chips {
+    grid-area: chips;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    margin: 0 0 4px;
+    scrollbar-width: thin;
+  }
+  .game-panel .effect-chip { flex: 0 0 auto; }
+  .game-panel__log-trigger,
+  .game-panel__menu-trigger { margin: 0 0 4px; }
+  .game-panel__log { margin: 0 0 4px; }
+  .game-panel__options { margin: 0 0 4px; }
+  .game-panel__legend-section { margin-top: 0; }
+  .game-panel__disclosures { row-gap: 0; }
+  .game-panel__menu { min-width: 0; }
+  .game-panel__menu[hidden] { display: none; }
+  .game-panel__lottery { min-height: 0; }
 
   .game-panel__options {
     grid-area: lottery;
@@ -1772,7 +1935,7 @@ button[aria-disabled="true"] {
 
   .game-panel__save {
     grid-area: save;
-    margin: 0;
+    margin: 0 0 4px;
   }
 
   .game-panel .effect-chips {
@@ -1780,11 +1943,6 @@ button[aria-disabled="true"] {
     margin-top: 0;
   }
 
-  /* The inventory ends the left column here; the dice sits in the right column, so open upwards. */
-  .item-slot__tooltip {
-    top: auto;
-    bottom: 100%;
-  }
 }
 
 .clear-screen__paging {
