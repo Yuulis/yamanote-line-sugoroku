@@ -233,8 +233,35 @@ test("full inventory survives reload and reports the player's chosen discard", a
   const dialog = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
   await expect(dialog.getByRole("button")).toHaveCount(4);
   const pending = await itemSave(page);
+  if (pending.pending?.kind !== "discard") throw new Error("Expected pending discard");
+  const pendingName = ITEM_DESCRIPTIONS[pending.pending.item.kind].name;
+  const checkDiscardCards = async (): Promise<void> => {
+    const groups = dialog.getByRole("group");
+    await expect(groups).toHaveCount(4);
+    const newCard = dialog.locator(".item-card:has(.item-card__marker--new)");
+    await expect(newCard).toHaveCount(1);
+    await expect(newCard.getByRole("heading", { name: pendingName, exact: true })).toBeVisible();
+    for (const button of await dialog.getByRole("button").all()) {
+      await expect(button).toHaveAccessibleName("このアイテムを捨てる");
+    }
+    await expect(dialog.locator("button button")).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "閉じる" })).toHaveCount(0);
+  };
+  await checkDiscardCards();
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(dialog.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+  await checkDiscardCards();
+  expect((await itemSave(page)).pending).toEqual(pending.pending);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  expect((await itemSave(page)).pending).toEqual(pending.pending);
+  // A quick second Escape without user activation is a forced close request in Chromium; the choice stays.
+  await dialog.getByRole("button").first().focus();
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
   expect((await itemSave(page)).pending).toEqual(pending.pending);
   const discarded = base.inventory[0]!;
   await dialog.getByRole("button").first().click();

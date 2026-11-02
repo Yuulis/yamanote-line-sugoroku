@@ -703,15 +703,102 @@ describe("item controls", () => {
     const mount = mountReact(createElement(DiscardChoice, { decision, onDiscard }));
     mounted.push(mount);
 
-    expect(mount.container.querySelectorAll(".item-discard__choice")).toHaveLength(4);
+    const cards = [...mount.container.querySelectorAll<HTMLElement>(".item-discard .item-card")];
+    expect(cards).toHaveLength(4);
     expect(mount.container.textContent).toContain("新しく拾った");
+    expect(mount.container.querySelectorAll(".item-card__action")).toHaveLength(4);
+    expect([...mount.container.querySelectorAll<HTMLButtonElement>(".item-card__action")].every((button) => button.textContent === "このアイテムを捨てる")).toBe(true);
     expect(mount.container.querySelectorAll("button")).toHaveLength(4);
+    expect(mount.container.querySelectorAll("button button")).toHaveLength(0);
+    expect([...mount.container.querySelectorAll("button")].some((button) => button.textContent?.includes("閉じる"))).toBe(false);
+    expect(mount.container.querySelectorAll(".item-card__marker--new")).toHaveLength(1);
+    expect(cards[3]?.querySelector(".item-card__name")?.textContent).toBe(ITEM_DESCRIPTIONS["route-ticket"].name);
+    expect(cards[3]?.querySelector(".item-card__marker--new")?.textContent).toBe("新しく拾った");
+    const groups = [...mount.container.querySelectorAll<HTMLElement>("[role=group]")];
+    expect(groups).toHaveLength(4);
+    expect(groups.map((group) => group.querySelector("h3")?.textContent)).toEqual(
+      decision.candidates.map((item) => ITEM_DESCRIPTIONS[item.kind].name),
+    );
+    expect(groups.every((group) => group.getAttribute("aria-labelledby") === group.querySelector("h3")?.id)).toBe(true);
+    const ids = [...mount.container.querySelectorAll<HTMLElement>("[id]")].map((element) => element.id);
+    expect(new Set(ids).size).toBe(ids.length);
     const escape = new Event("cancel", { cancelable: true });
     dispatchReactEvent(mount.container.querySelector("dialog")!, escape);
     expect(escape.defaultPrevented).toBe(true);
     expect(onDiscard).not.toHaveBeenCalled();
     dispatchReactEvent(mount.container.querySelectorAll("button")[3]!, new MouseEvent("click", { bubbles: true }));
     expect(onDiscard).toHaveBeenCalledWith("new-item");
+    const secondMount = mountReact(createElement(DiscardChoice, { decision, onDiscard }));
+    mounted.push(secondMount);
+    dispatchReactEvent(secondMount.container.querySelectorAll<HTMLButtonElement>(".item-card__action")[0]!, new MouseEvent("click", { bubbles: true }));
+    expect(onDiscard).toHaveBeenLastCalledWith("held-a");
+  });
+
+  it("opens focused discard choices with unchanged hints and optional announcement", () => {
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    const decision = {
+      kind: "discard" as const,
+      turn: 1,
+      newItemInstanceId: "new-item",
+      candidates: [
+        { id: "held-a", kind: "double" as const },
+        { id: "held-b", kind: "rapid" as const },
+        { id: "held-c", kind: "direction-ticket" as const },
+        { id: "new-item", kind: "route-ticket" as const },
+      ],
+    };
+    let mount: ReturnType<typeof mountReact>;
+    try {
+      mount = mountReact(createElement(DiscardChoice, { decision, onDiscard: vi.fn(), announcement: "新しいアイテムを拾いました" }));
+      mounted.push(mount);
+      expect(showModal).toHaveBeenCalledTimes(1);
+    } finally {
+      showModal.mockRestore();
+    }
+    expect(document.activeElement).toBe(mount.container.querySelector("h2"));
+    expect(mount.container.textContent).toContain("持ち物がいっぱいです。4つのうち1つを選んでください。");
+    expect(mount.container.textContent).toContain("選ぶまでターンは確定しません。");
+    expect(mount.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(mount.container.querySelector('[role="status"]')?.textContent).toBe("新しいアイテムを拾いました");
+
+    const withoutAnnouncement = mountReact(createElement(DiscardChoice, { decision, onDiscard: vi.fn() }));
+    mounted.push(withoutAnnouncement);
+    expect(withoutAnnouncement.container.querySelectorAll('[role="status"]')).toHaveLength(0);
+  });
+
+  it("reopens the discard dialog when the browser forces it closed, but not after unmount", () => {
+    const decision = {
+      kind: "discard" as const,
+      turn: 1,
+      newItemInstanceId: "new-item",
+      candidates: [
+        { id: "held-a", kind: "double" as const },
+        { id: "held-b", kind: "rapid" as const },
+        { id: "held-c", kind: "direction-ticket" as const },
+        { id: "new-item", kind: "route-ticket" as const },
+      ],
+    };
+    const onDiscard = vi.fn();
+    const mount = mountReact(createElement(DiscardChoice, { decision, onDiscard }));
+    const dialog = mount.container.querySelector("dialog")!;
+    const title = mount.container.querySelector("h2")!;
+    mount.container.querySelector<HTMLButtonElement>(".item-card__action")!.focus();
+
+    // A forced close request skips `cancel` and closes the modal directly.
+    dialog.close();
+    dispatchReactEvent(dialog, new Event("close"));
+
+    expect(dialog.open).toBe(true);
+    expect(document.activeElement).toBe(title);
+    expect(onDiscard).not.toHaveBeenCalled();
+
+    mount.cleanup();
+    expect(dialog.open).toBe(false);
+    // The close event of the unmount cleanup arrives later and must not reopen the released dialog.
+    document.body.append(dialog);
+    dialog.dispatchEvent(new Event("close"));
+    expect(dialog.open).toBe(false);
+    dialog.remove();
   });
 });
 

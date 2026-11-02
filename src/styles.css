@@ -1219,50 +1219,38 @@ button[aria-disabled="true"] {
 
 .item-discard__list {
   display: grid;
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 8px;
   margin: 8px 0;
   padding: 0;
   list-style: none;
 }
 
-.item-discard__choice {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 8px;
-  text-align: left;
-  border: 1px solid #aaaaaa;
-  border-radius: 4px;
-  background: #ffffff;
-  overflow-wrap: anywhere;
+.item-discard {
+  width: min(640px, calc(100% - 32px));
 }
 
-.item-discard__name {
+.item-discard .item-card p {
+  margin: 6px 0 0;
+}
+
+.item-discard__group {
+  height: 100%;
+}
+
+.item-discard__group > .item-card {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  font-weight: bold;
+  height: 100%;
+  flex-direction: column;
 }
 
-.item-discard__new {
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: var(--color-brand-tint);
-  color: var(--color-brand-strong);
-  font-size: 12px;
+/* `margin-top: auto` aligns the actions in a row; the last text line keeps the card's 8px gap above the action. */
+.item-discard__group > .item-card .item-card__action {
+  margin-top: auto;
 }
 
-.item-discard__effect,
-.item-discard__action {
-  font-size: 12px;
-  line-height: 1.45;
-}
-
-.item-discard__action {
-  font-weight: bold;
-  color: #7f0000;
+.item-discard__group > .item-card p:last-of-type {
+  margin-bottom: 8px;
 }
 
 .item-card {

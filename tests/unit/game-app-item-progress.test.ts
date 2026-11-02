@@ -112,7 +112,7 @@ function rollUntilToast(): string {
     click("サイコロを振る");
     const adjustment = mounted!.container.querySelector<HTMLButtonElement>(".item-adjustment .dialog__actions button");
     if (adjustment) dispatchReactEvent(adjustment, new MouseEvent("click", { bubbles: true }));
-    const discard = mounted!.container.querySelector<HTMLButtonElement>(".item-discard__choice");
+    const discard = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
     if (discard) dispatchReactEvent(discard, new MouseEvent("click", { bubbles: true }));
     const saved = JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
     const record = saved.movementHistory.at(-1);
@@ -135,7 +135,7 @@ function rollTurn(): void {
   click("サイコロを振る");
   const adjustment = mounted!.container.querySelector<HTMLButtonElement>(".item-adjustment .dialog__actions button");
   if (adjustment) dispatchReactEvent(adjustment, new MouseEvent("click", { bubbles: true }));
-  const discard = mounted!.container.querySelector<HTMLButtonElement>(".item-discard__choice");
+  const discard = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
   if (discard) dispatchReactEvent(discard, new MouseEvent("click", { bubbles: true }));
   click("スキップ");
 }
@@ -223,7 +223,7 @@ describe("item progress in GameApp", () => {
     expect(turnToasts(1, itemLastMove(pending.pending.record, network), network)).toHaveLength(1);
     openApp(pending);
     expect(mounted!.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
-    const choice = mounted!.container.querySelector<HTMLButtonElement>(".item-discard__choice");
+    const choice = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
     if (!choice) throw new Error("Expected the resumed discard choices");
     dispatchReactEvent(choice, new MouseEvent("click", { bubbles: true }));
     await flushReact();
@@ -378,7 +378,7 @@ describe("item progress in GameApp", () => {
     expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
     advanceTime(10000);
     expect([...mounted!.container.querySelectorAll(".toast-host__toast")].map((toast) => toast.textContent)).toContain(toastText);
-    const choice = mounted!.container.querySelector<HTMLButtonElement>(".item-discard__choice");
+    const choice = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
     if (!choice) throw new Error("Expected engine-built discard choices");
     dispatchReactEvent(choice, new MouseEvent("click", { bubbles: true }));
     click("スキップ");
