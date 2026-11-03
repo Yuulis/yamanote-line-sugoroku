@@ -154,6 +154,46 @@ No E2E in this step.
 
 ---
 
+## S3: Shared movement, ride, and log publication model
+
+Implement plan `### S3` exactly. Files: new `src/features/game/turnMomentPresentation.ts`, new
+`tests/unit/turn-moment-presentation.test.ts` (plus the handoff row). Nothing is wired into production.
+
+- Pure TypeScript, no React. Inputs: the session (whatever `GameApp`/`GamePanel` already pass to the existing
+  helpers), the existing `AnimationView` / `displayedProgress` result (`src/features/game/displayedProgress.ts`),
+  the S2 pre-move attempt (`RollAttempt | null` from `animation/turnMoments.ts`), and the post-move reveal state
+  (current `TurnRevealStageKey | "waiting" | "done"` plus whether the record is restored/omitted). Define one
+  small input interface for this; do not add another gameplay model.
+- Derive one publication phase (e.g. `pre-move` → `moving` → `arrival` → `lottery-flip` → `lottery-settle` →
+  `published`, plus `restored`/`omitted` = published immediately) and from it the architecture's movement/ride/log
+  subset of `TurnMomentDisplay`: `turn`, `progress`, `ride`, `compactRoll`, `rollText`, `arrivalText`,
+  `lotteryText`, `candidateRows`, `showClear`. Leave item/decision/announcement/toast/overlay/flash fields to S4+
+  (do not stub them; define only what S3 owns, in a way S4 can extend).
+- Reuse the existing helpers for the final values (`displayedRide`, `landingText`, `lastRollText`, candidate-row
+  resolver, `compactRollFor`, `displayedProgress`, …) — find them in `src/features/game/presentation.ts`,
+  `hudPresentation.ts`, `displayedProgress.ts` and `components/GamePanel.tsx`. Before publication, the values
+  are the origin ride / previous turn's text; the detailed roll text (physical hops, unused pips) is withheld
+  until arrival; tumble shows a placeholder, then the raw face, then published modifier wording.
+- Before lottery publication the marker/platform input is the ridden service's arrival platform, not the next
+  service's; HUD ride, upcoming-station input, map highlight, lottery text and candidates publish together at the
+  end of settle; forced rides (no draw) publish when arrival ends; goal `showClear` stays false through arrival.
+- Tests: every bullet of plan `### S3` → Tests, with engine-built records/sessions (build them through the
+  real engine/session helpers used by `tests/unit/game-presentation.test.ts` or `game-app-item-progress.test.ts`
+  fixtures) and independent literal expected values — never values computed by the function under test.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moment-presentation.test.ts tests/unit/animation.test.ts tests/unit/game-presentation.test.ts
+npx vitest run
+npm run build
+```
+
+No E2E in this step.
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`
