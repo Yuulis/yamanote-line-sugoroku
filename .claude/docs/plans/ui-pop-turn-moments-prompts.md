@@ -285,6 +285,48 @@ No E2E in this step (production behaviour unchanged).
 
 ---
 
+## S6: Adopt the shared display model across consumers
+
+Implement plan `### S6` exactly. Files: modify `src/app/GameApp.tsx` and
+`src/features/game/components/GamePanel.tsx` (and child components only where a prop must change type, e.g.
+`GameHud.tsx` / `InventoryPanel.tsx`, keeping their markup contracts); modify `tests/unit/game-hud.test.ts` and
+the affected `tests/unit/item-controls.test.ts` fixtures; new `tests/unit/game-app-turn-moments.test.ts` (plus
+the handoff row).
+
+- Production computes `deriveTurnMomentDisplay(...)` (S3/S4, `src/features/game/turnMomentPresentation.ts`) once
+  per render in `GameApp` and passes the resulting display model down. Every visible value comes from it: HUD
+  station/ride/direction/turn/progress/compact roll, upcoming stations, map progress + highlighted service +
+  marker at rest, log (arrival/lottery/roll text), candidate disclosure, remaining sections (from displayed
+  progress), inventory/effect chips/hints, item notice, decision mounting + card closing, the single live region
+  text, toast acceptance input (then the existing resume-baseline filtering), and ClearScreen eligibility.
+  Remove the corresponding independent raw-session calls (`displayedRide(session)`, `landingText(lastMove)`,
+  `itemTurnAnnouncement(...)`, direct `session.lastMove`/`itemView` reads for display) from these consumers.
+- Do NOT connect the S5 pre-move sequence or gate yet: pass `attempt: null`; reveal stage from the existing
+  `useRevealSequence` (production stages stay `NO_REVEAL_STAGES`, so it is `done`/`waiting` as today);
+  `restoredOrOmitted` from the existing resume/reduced-motion facts. Behaviour, timing and every visible string
+  must stay identical to P1 (this step changes the source, not the experience). If an existing string would change,
+  stop and report it instead of changing an assertion.
+- Keep the dice/Skip semantics as today (`canRoll`/`canSkip` must equal today's enabled states when no attempt
+  exists — verify; if they differ, keep today's semantics and report).
+- Direct component tests (`game-hud`, `item-controls`) get a coherent display model fixture; never weaken an
+  assertion. New `game-app-turn-moments.test.ts`: mounted composition reads injected publication boundaries
+  consistently (inject a fake reveal stage/attempt through the props or a test seam you add to the display input
+  path — keep any seam minimal and production-neutral), remaining sections use displayed progress, no consumer
+  reads hidden landing/item outcomes, toast resume filtering and save-failure visibility intact, toast-expiry
+  render counts unchanged.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/game-app-turn-moments.test.ts tests/unit/game-app-item-progress.test.ts tests/unit/game-hud.test.ts tests/unit/item-controls.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/hud-layout.spec.ts tests/e2e/lottery.spec.ts tests/e2e/items.spec.ts --project=desktop-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

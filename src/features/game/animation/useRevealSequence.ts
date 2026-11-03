@@ -6,6 +6,7 @@ export interface RevealObservation {
   recordTurn: number | null;
   gameTurn: number;
   pendingDecisionTurn: number | null;
+  pendingDecisionKind?: "adjust" | "discard" | null;
   movementComplete: boolean;
 }
 
@@ -58,7 +59,7 @@ function baselineFor(observation: RevealObservation): number {
   return Math.max(
     observation.gameTurn,
     observation.recordTurn ?? 0,
-    observation.pendingDecisionTurn ?? 0,
+    observation.pendingDecisionKind === "adjust" ? 0 : observation.pendingDecisionTurn ?? 0,
   );
 }
 
@@ -118,12 +119,12 @@ export function revealReducer(state: RevealState, action: RevealAction): RevealS
  */
 export function useRevealSequence({ observation, stages, reducedMotion, skipRequested = false }: UseRevealSequenceOptions): RevealSequence {
   const [state, dispatch] = useReducer(revealReducer, INITIAL_STATE);
-  const { sessionId, recordTurn, gameTurn, pendingDecisionTurn, movementComplete } = observation;
+  const { sessionId, recordTurn, gameTurn, pendingDecisionTurn, pendingDecisionKind, movementComplete } = observation;
   const stageCount = stages.length;
 
   const observeAction: RevealAction = {
     type: "observe",
-    observation: { sessionId, recordTurn, gameTurn, pendingDecisionTurn, movementComplete },
+    observation: { sessionId, recordTurn, gameTurn, pendingDecisionTurn, pendingDecisionKind, movementComplete },
     stageCount,
     omit: reducedMotion || skipRequested,
   };

@@ -134,6 +134,14 @@ describe("turnMomentsReducer", () => {
     expect(state.attempt?.stage).toBe("released");
   });
 
+  it("moves from tumble to waiting-record when acknowledgement has not arrived", () => {
+    const pending = start();
+    const attempt = pending.attempt!;
+    let state: TurnMomentsState = { ...pending, attempt: { ...attempt, stage: "tumble", rawRoll: 4 } };
+    state = turnMomentsReducer(state, { type: "advance", key: "7:roll:1:3", expectedStage: "tumble" });
+    expect(state.attempt?.stage).toBe("waiting-record");
+  });
+
   it("completes the full modifier path through stamps", () => {
     let state = observe(start(), { record: ride({ command: { items: [{ kind: "double", instanceId: "double-a" }] } }) });
     state = turnMomentsReducer(state, { type: "advance", key: "7:roll:1:3", expectedStage: "tumble" });
