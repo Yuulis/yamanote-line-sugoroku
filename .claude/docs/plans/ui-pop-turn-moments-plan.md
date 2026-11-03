@@ -6,7 +6,7 @@ Implement the approved architecture in 17 independently verifiable steps. Land p
 
 - **Baseline:** `70decd6`, P0+P1, v0.11.0.
 - **Complexity:** COMPLEX.
-- **Architecture:** `.claude/logs/codex/20261103T131001Z-p2-architecture.md`.
+- **Architecture:** `.claude/docs/plans/ui-pop-turn-moments-architecture.md`.
 - **Inputs:** `.claude/docs/research/feature-ui-pop-turn-moments-{brief,codebase}.md`, `.claude/logs/codex/20261103T130704Z-p2-scope.md`.
 - **Handoff:** `.claude/docs/plans/ui-pop-turn-moments-handoff.md`, maintained by the lead after every step.
 - **Status:** Implementation plan only. No implementation, application tests, build, or browser verification was performed while preparing this document.

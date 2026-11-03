@@ -123,7 +123,7 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Goal: per-turn presentation moments — pseudo-3D dice tumble + modifier stamps, arrival banner + completed-segment flash, split-flap lottery board at the map centre settling into the HUD, item pickup flight before DiscardChoice; goal turn banner then ClearScreen. Presentation only: engine/RNG/save/src/types/network.ts/public data unchanged.
 - Branch: feature/ui-pop-turn-moments (from origin/develop 70decd6, v0.11.0)
 - Plan: .claude/docs/plans/ui-pop-turn-moments-plan.md (S1–S17 + S10b, Codex validated PASS); handoff: .claude/docs/plans/ui-pop-turn-moments-handoff.md
-- Research: .claude/docs/research/feature-ui-pop-turn-moments-{brief,codebase}.md; architecture: .claude/logs/codex/20261103T131001Z-p2-architecture.md
+- Research: .claude/docs/research/feature-ui-pop-turn-moments-{brief,codebase}.md; architecture: .claude/docs/plans/ui-pop-turn-moments-architecture.md
 - Dependencies: none new
 - Complexity: COMPLEX (18 steps)
 

@@ -41,7 +41,7 @@ Read first:
 - `.claude/docs/plans/ui-pop-turn-moments-plan.md` — Summary (hard scope boundaries, incremental activation,
   execution contract) and the step's `### {STEP}` section. That section is binding: its file list, tests and
   acceptance commands define the step.
-- `.claude/logs/codex/20261103T131001Z-p2-architecture.md` — interfaces, data flow, Skip and publication rules.
+- `.claude/docs/plans/ui-pop-turn-moments-architecture.md` — interfaces, data flow, Skip and publication rules.
 - `.claude/docs/plans/ui-pop-turn-moments-handoff.md` — previous steps' notes and open findings.
 - `.claude/rules/coding-principles.md`, `.claude/rules/testing.md`.
 
@@ -121,7 +121,7 @@ No E2E in this step.
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`
 in `/home/yuulis/yamanote-line-sugoroku` (read-only). Read the plan Summary and its `### {STEP}` section, the
 `## {STEP}:` section of `.claude/docs/plans/ui-pop-turn-moments-prompts.md`, the architecture
-`.claude/logs/codex/20261103T131001Z-p2-architecture.md` where relevant, and `git diff HEAD` plus untracked files.
+`.claude/docs/plans/ui-pop-turn-moments-architecture.md` where relevant, and `git diff HEAD` plus untracked files.
 Check: the step's requirements are fully met (no stubs/TODO); only owned files changed; no forbidden path; no
 weakened, skipped or deleted assertion and expected values unchanged; production never runs an invisible timed
 stage before its activation step; no result published before its boundary; reduced-motion and resume omission;

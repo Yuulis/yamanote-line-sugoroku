@@ -14,7 +14,7 @@ engine/RNG/save/`src/types/network.ts`/public-data change.
 
 - Plan (Codex validated PASS): `.claude/docs/plans/ui-pop-turn-moments-plan.md`
 - Brief / scan: `.claude/docs/research/feature-ui-pop-turn-moments-{brief,codebase}.md`
-- Architecture: `.claude/logs/codex/20261103T131001Z-p2-architecture.md`
+- Architecture: `.claude/docs/plans/ui-pop-turn-moments-architecture.md`
 - Design rows: `.claude/docs/DESIGN.md` (2026-11-03 UI pop P2 rows)
 
 ## Decisions (user, 2026-11-03)
