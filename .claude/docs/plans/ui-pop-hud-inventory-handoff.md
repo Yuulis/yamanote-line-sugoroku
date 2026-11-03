@@ -120,6 +120,14 @@ when S1 started.
   only the specs it touched on `desktop-chromium` + `phone-chromium` and never the full suite (it timed out in its
   own full run in S23). The full local run is optional at S25. Keep `LOCAL_WORKERS = 2` (4 workers crashed on the
   7 GB host).
+- S24 follow-up (CI run 41562427505, `904cf5b`): desktop-webkit failed deterministically in `ui-pop.spec.ts` "tab order
+  follows the visual inventory, staged, effects, and disclosure order" at 320px. The trace showed WebKit tabbing through
+  every panel control in the expected order (slots → 選択を解除 → ログ → メニュー), then to the map canvas: the
+  overflowing `.effect-chips` row (no tabindex) is a tab stop in Chromium (keyboard-focusable scrollers) and Firefox but
+  not in WebKit/Safari, and the test expected it in every engine. Fix: the test expects that stop only outside WebKit;
+  every other stop, the sequence, the geometry and the Shift+Tab reversal stay strict everywhere. No product change (the
+  full chip texts are also in ログ). Sol low ACCEPT (`.claude/logs/codex/*uipop-s24-webkitfix-review.md`); local
+  `ui-pop` + `accessibility` × 3 projects 109 passed, 5 skipped; WebKit itself is verified by CI only.
 - `verify.sh` (run at S1) is red only on pytest: `tests/data_pipeline/` 4 failed + 5 errors ("audited output
   hash is stale" in the local N02 staging handoff); ruff/ty pass. S1 touches no Python, `scripts/` or data, so
   this is unrelated to the UI work; pytest was not run at `81454df` to prove it pre-existed.

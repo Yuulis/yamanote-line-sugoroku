@@ -608,8 +608,13 @@ test.describe("S23 populated responsive HUD", () => {
     await expect(dialog).toBeHidden();
   });
 
-  test("tab order follows the visual inventory, staged, effects, and disclosure order", async ({ page, railwayBundle }, testInfo) => {
+  test("tab order follows the visual inventory, staged, effects, and disclosure order", async ({ page, railwayBundle, browserName }, testInfo) => {
     await buildPopulatedState(page, railwayBundle);
+    // An overflowing chips row has no tabindex: Chromium (keyboard-focusable scrollers) and Firefox
+    // make such a scroller a tab stop, WebKit (like Safari) does not add it automatically, so it is
+    // expected only where the engine adds it.
+    // Every other stop and the order are asserted identically in all engines.
+    const scrollersAreTabStops: boolean = browserName !== "webkit";
     for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 1280, height: 800 }]) {
       await page.setViewportSize(viewport);
       const panel = gamePanel(page);
@@ -617,7 +622,7 @@ test.describe("S23 populated responsive HUD", () => {
       const visited: Array<{ name: string; top: number; left: number }> = [];
       const effectsScrollable = await panel.locator(".effect-chips").evaluate((element) => element.scrollWidth > element.clientWidth);
       const expectedSlots = await panel.locator(".item-slot:not(.item-slot--empty) h3").allTextContents();
-      const expected = [...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable ? ["effects"] : []), "ログ", "メニュー"];
+      const expected = [...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), "ログ", "メニュー"];
       for (let index = 0; index < expected.length; index += 1) {
         await page.keyboard.press("Tab");
         const active = await page.evaluate(() => {
