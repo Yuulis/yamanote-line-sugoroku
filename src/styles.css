@@ -47,7 +47,7 @@ body {
 .toast-host {
   position: fixed;
   z-index: var(--layer-toast);
-  top: max(12px, env(safe-area-inset-top));
+  top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
   left: 50%;
   display: flex;
   width: min(420px, calc(100vw - 120px));
@@ -123,12 +123,21 @@ body {
 /* Short landscape: the panel rises to 75vh on the left with the dice in its
    top-right column, so a top-centre stack would cover it. Use the map column
    right of the panel (same width formula as .game-panel), below the zoom
-   controls and above the bottom-right attribution. */
+   controls. The attribution sits top-left above the panel here (see
+   RailwayMap), clear of this column. A second or third toast may pass over the
+   overview buttons for its reading time; toasts never take pointer events. */
 @media (min-width: 601px) and (max-height: 500px) {
+  .maplibregl-ctrl-top-left .maplibregl-ctrl-attrib {
+    box-sizing: border-box;
+    max-width: calc(100vw - 72px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  }
+
   .toast-host {
-    top: 76px;
-    right: 8px;
-    left: calc(12px + min(440px, calc(100vw - 192px)) + 8px);
+    /* Below the zoom group (10px margin + two buttons 44px tall through the
+       global button min-height) plus an 8px gap. */
+    top: calc(106px + env(safe-area-inset-top, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    left: calc(12px + env(safe-area-inset-left, 0px) + min(440px, calc(100vw - 192px)) + 8px);
     width: auto;
     transform: none;
   }
@@ -137,6 +146,63 @@ body {
     font-size: 13px;
   }
 }
+
+/* Phones: the attribution sits top-left. RailwayMap publishes its bottom edge
+   (--map-attribution-bottom, collapsed 44px toggle or expanded credit) and the
+   stack starts 8px below it, aligned with its left edge. The column ends left of
+   the zoom group and the overview buttons (10px + ~70px + 4px gap), so the stack
+   clears the attribution, the zoom group and 全体 / 目標路線 at any length. */
+@media (max-width: 600px) {
+  .toast-host {
+    top: max(calc(env(safe-area-inset-top, 0px) + 12px), calc(var(--map-attribution-bottom, 0px) + 8px));
+    right: calc(84px + env(safe-area-inset-right, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    width: auto;
+    max-width: 420px;
+    transform: none;
+  }
+}
+
+/* Top-left attribution (phones and short landscape only, see RailwayMap): it
+   starts collapsed there, so its toggle gets a 44×44px target; the expanded
+   credit text starts right of it. `.map-container` outranks MapLibre's own
+   equal-specificity rules whatever the stylesheet order. */
+.map-container .maplibregl-ctrl-top-left > .maplibregl-ctrl-attrib.maplibregl-compact {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 2px 44px 2px 0;
+  border-radius: 22px;
+}
+
+.map-container .maplibregl-ctrl-top-left > .maplibregl-ctrl-attrib.maplibregl-compact-show {
+  padding: 2px 8px 2px 48px;
+  border-radius: 12px;
+}
+
+.map-container .maplibregl-ctrl-top-left .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* viewport-fit=cover: keep every map control corner out of the notch. MapLibre
+   already gives each control a 10px margin, so the corner adds only the inset.
+   Both horizontal insets apply to every corner so a wide (wrapping) attribution
+   never stretches under the opposite notch either. */
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-top-right,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  margin-right: env(safe-area-inset-right, 0px);
+  margin-left: env(safe-area-inset-left, 0px);
+}
+
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-top-right { margin-top: env(safe-area-inset-top, 0px); }
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right { margin-bottom: env(safe-area-inset-bottom, 0px); }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -247,7 +313,7 @@ button[aria-disabled="true"] {
 .map-error {
   position: fixed;
   z-index: var(--layer-map-error);
-  top: 48px;
+  top: calc(48px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -275,8 +341,8 @@ button[aria-disabled="true"] {
   --hud-row-height: 24px;
   position: fixed;
   z-index: var(--layer-panel);
-  left: 12px;
-  bottom: 28px;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   width: 310px;
   /* A fixed height (not content-sized) keeps the panel top, and so the dice
      button, in the same place whatever the lower content is. */
@@ -726,7 +792,10 @@ button[aria-disabled="true"] {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: calc(16px + env(safe-area-inset-top, 0px))
+    calc(16px + env(safe-area-inset-right, 0px))
+    calc(16px + env(safe-area-inset-bottom, 0px))
+    calc(16px + env(safe-area-inset-left, 0px));
   overflow-y: auto;
   background: rgb(0 0 0 / 35%);
 }
@@ -843,7 +912,7 @@ button[aria-disabled="true"] {
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(440px, calc(100% - 24px));
-  max-height: calc(100% - 80px);
+  max-height: calc(100% - 80px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   padding: 16px 20px;
   border-radius: 10px;
@@ -947,6 +1016,7 @@ button[aria-disabled="true"] {
 .dialog {
   box-sizing: border-box;
   width: min(380px, calc(100% - 32px));
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
   padding: 0;
   border: none;
   border-radius: 8px;
@@ -1135,7 +1205,7 @@ button[aria-disabled="true"] {
 .item-slot--empty .item-slot__empty { line-height: 1.2; }
 
 .item-dialog {
-  max-height: min(82vh, 720px);
+  max-height: min(82vh, 720px, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px));
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -1388,7 +1458,7 @@ button[aria-disabled="true"] {
   max-height: min(70vh, calc(100vh - 16px));
   max-height: min(70dvh, calc(100dvh - 16px));
   border-radius: var(--radius-lg);
-  padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
 }
 
 .item-card-popover--inline {
@@ -1415,10 +1485,34 @@ button[aria-disabled="true"] {
   flex: 0 0 auto;
 }
 
-.item-card-popover--sheet .item-card-popover__close {
+/* Sheet placement (phones, short landscape): the card body scrolls inside the
+   sheet while its action (使う / 選択中・変更する) stays pinned to the bottom of
+   that scrollport and 閉じる sits below it, outside the scroller, so both are
+   always visible (user decision 2026-11-03). The surface-coloured shadow band
+   hides text scrolling under the pinned action and the card's bottom padding. */
+/* Only while open: a closed popover must keep the UA `display: none`. */
+.item-card-popover--sheet:popover-open {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.item-card-popover--sheet > .item-card {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.item-card-popover--sheet .item-card__action {
   position: sticky;
+  z-index: 1;
   bottom: 0;
-  background: var(--color-surface);
+  box-shadow: 0 -8px 0 var(--color-surface), 0 10px 0 var(--color-surface);
+}
+
+.item-card-popover--sheet .item-card-popover__close {
+  flex: 0 0 auto;
 }
 
 .item-adjustment .dialog__actions button {
@@ -1440,9 +1534,13 @@ button[aria-disabled="true"] {
     height: 44px;
   }
 
-  /* Leave room for the zoom buttons on the right. */
+  /* Leave room for the zoom buttons on the right: 10px margin + 44px buttons +
+     10px margin + an 8px gap. Border-box, because MapLibre pads the expanded
+     control (28px left for its toggle), which would otherwise push the credit
+     text under the zoom buttons. */
   .maplibregl-ctrl-top-left .maplibregl-ctrl-attrib {
-    max-width: calc(100vw - 80px);
+    box-sizing: border-box;
+    max-width: calc(100vw - 72px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   }
 
   .game-panel {
@@ -1577,7 +1675,10 @@ button[aria-disabled="true"] {
 
   .title-screen {
     align-items: start;
-    padding: 8px;
+    padding: calc(8px + env(safe-area-inset-top, 0px))
+      calc(8px + env(safe-area-inset-right, 0px))
+      calc(8px + env(safe-area-inset-bottom, 0px))
+      calc(8px + env(safe-area-inset-left, 0px));
   }
 
   .title-screen__card {
@@ -1591,9 +1692,9 @@ button[aria-disabled="true"] {
   /* Bottom sheet above the attribution button, map visible above it. */
   .clear-screen {
     top: auto;
-    bottom: 8px;
-    left: 8px;
-    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
     transform: none;
     width: auto;
     max-height: 60%;
@@ -1608,8 +1709,8 @@ button[aria-disabled="true"] {
 .map-overview {
   position: fixed;
   z-index: var(--layer-panel);
-  top: 156px;
-  right: 10px;
+  top: calc(156px + env(safe-area-inset-top, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
   display: grid;
   gap: 4px;
 }
@@ -1724,10 +1825,10 @@ button[aria-disabled="true"] {
       "stats stats"
       "actions inventory"
       "staged staged"
-      "log-trigger menu-trigger"
-      "lottery lottery"
       "chips chips"
       "save save"
+      "log-trigger menu-trigger"
+      "lottery lottery"
       "legend legend";
     grid-template-rows: repeat(8, max-content);
     align-content: start;
@@ -1735,8 +1836,8 @@ button[aria-disabled="true"] {
     --hud-column-gap: 12px;
     column-gap: var(--hud-column-gap);
     row-gap: 0;
-    left: 12px;
-    bottom: 8px;
+    left: calc(12px + env(safe-area-inset-left, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     width: min(440px, calc(100vw - 192px));
     height: min(75vh, calc(100% - 16px));
     max-height: min(75vh, calc(100% - 16px));

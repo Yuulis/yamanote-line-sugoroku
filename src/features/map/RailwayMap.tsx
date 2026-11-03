@@ -12,7 +12,7 @@ import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
 import type { LivePosition } from "../game/animation/livePosition";
 import type { PresentationResolver } from "../game/presentationResolver";
-import { buildDataAttribution } from "./attribution";
+import { ATTRIBUTION_SELECTOR, buildDataAttribution, watchCompactAttribution } from "./attribution";
 import { exposeMapForE2E } from "./e2eHook";
 import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import { indexServiceGeometry } from "./serviceGeometry";
@@ -127,8 +127,16 @@ const NO_LIVE_POSITION: LivePosition = {
 const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
 const ZERO_MAP_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
 
-function attributionPosition(onPhone: boolean): "top-left" | "bottom-right" {
-  return onPhone ? "top-left" : "bottom-right";
+function attributionPosition(atTop: boolean): "top-left" | "bottom-right" {
+  return atTop ? "top-left" : "bottom-right";
+}
+
+/**
+ * Phones and short landscape: the panel covers the bottom (or the bottom-left
+ * and centre), so the attribution goes top-left and starts collapsed.
+ */
+function usesCompactAttribution(): boolean {
+  return usesBottomPanelCameraPadding();
 }
 
 /** Fit all service platforms above/beside the panel without retaining camera padding. */
@@ -277,22 +285,36 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
       return;
     }
     setUnsupported(false);
-    // On phones the control panel spans the bottom edge, so the attribution
-    // goes to the top where it stays readable (spec 6.2). The corner follows
-    // the media query so a resize or rotation never leaves it under the panel.
+    // On phones and short landscape the control panel covers the bottom edge,
+    // so the attribution goes to the top where it stays readable (spec 6.2) and
+    // starts collapsed (one tap opens the full credit). The corner follows the
+    // media queries so a resize or rotation never leaves it under the panel; a
+    // reattached control is a fresh container, so it is watched again.
     const attributionControl = new AttributionControl({ compact: true, customAttribution });
-    let attributionOnPhone = isPhoneWidth();
-    map.addControl(attributionControl, attributionPosition(attributionOnPhone));
-    const phoneQuery =
-      typeof window.matchMedia === "function" ? window.matchMedia(PHONE_MEDIA_QUERY) : null;
-    const onPhoneQueryChange = () => {
-      const onPhone = isPhoneWidth();
-      if (onPhone === attributionOnPhone) return;
-      attributionOnPhone = onPhone;
-      map.removeControl(attributionControl);
-      map.addControl(attributionControl, attributionPosition(onPhone));
+    let attributionAtTop = usesCompactAttribution();
+    let stopCompactAttribution: (() => void) | null = null;
+    const watchAttribution = (compact: boolean): void => {
+      stopCompactAttribution?.();
+      stopCompactAttribution = null;
+      if (!compact) return;
+      const element = container.querySelector<HTMLElement>(ATTRIBUTION_SELECTOR);
+      if (element) stopCompactAttribution = watchCompactAttribution(element);
     };
-    phoneQuery?.addEventListener("change", onPhoneQueryChange);
+    map.addControl(attributionControl, attributionPosition(attributionAtTop));
+    watchAttribution(attributionAtTop);
+    const attributionQueries = typeof window.matchMedia === "function"
+      ? [window.matchMedia(PHONE_MEDIA_QUERY), window.matchMedia(COMPACT_VIEWPORT_QUERY)]
+      : [];
+    const onAttributionQueryChange = () => {
+      const atTop = usesCompactAttribution();
+      if (atTop === attributionAtTop) return;
+      attributionAtTop = atTop;
+      watchAttribution(false);
+      map.removeControl(attributionControl);
+      map.addControl(attributionControl, attributionPosition(atTop));
+      watchAttribution(atTop);
+    };
+    for (const query of attributionQueries) query.addEventListener("change", onAttributionQueryChange);
     map.addControl(new NavigationControl({ showCompass: false }));
 
     // Fatal until the basemap has rendered completely once ("load"): a failed
@@ -341,7 +363,8 @@ export function RailwayMap({ data, presentation, progress, livePosition = NO_LIV
     });
 
     return () => {
-      phoneQuery?.removeEventListener("change", onPhoneQueryChange);
+      for (const query of attributionQueries) query.removeEventListener("change", onAttributionQueryChange);
+      watchAttribution(false);
       exposeMapForE2E(null);
       setLoadedMap(null);
       map.remove();

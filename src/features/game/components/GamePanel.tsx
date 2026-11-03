@@ -261,6 +261,17 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   return (
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <GameHud
+        inventory={<>
+          {props.itemView && <InventoryPanel view={props.itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem} />}
+          {draftItem && props.itemView && <div className="item-staged-summary">
+            <span className="item-staged-summary__label">選択中：</span>
+            <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
+            {draftItem.kind === "route-ticket" && <span>（{serviceName(network, draftItem.serviceId, presentation)}。向きは抽選）</span>}
+            {draftItem.kind === "direction-ticket" && <span>（{directionLabel(network, props.itemView.position.currentServiceId, draftItem.direction)}）</span>}
+            <button type="button" onClick={clearDraft} disabled={phase !== "idle"}>選択を解除</button>
+            <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
+          </div>}
+        </>}
         title={display.title}
         subtitle={display.subtitle}
         headingRef={headingRef}
@@ -282,15 +293,6 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onSkip={props.onSkip}
         effects={effectModels}
       />
-      {draftItem && props.itemView && <div className="item-staged-summary">
-        <span className="item-staged-summary__label">選択中：</span>
-        <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
-        {draftItem.kind === "route-ticket" && <span>（{serviceName(network, draftItem.serviceId, presentation)}。向きは抽選）</span>}
-        {draftItem.kind === "direction-ticket" && <span>（{directionLabel(network, props.itemView.position.currentServiceId, draftItem.direction)}）</span>}
-        <button type="button" onClick={clearDraft} disabled={phase !== "idle"}>選択を解除</button>
-        <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
-      </div>}
-      {props.itemView && <InventoryPanel view={props.itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem} />}
       <div className="game-panel__disclosures">
         <TurnLogDrawer
           expanded={activeSurface === "log"}

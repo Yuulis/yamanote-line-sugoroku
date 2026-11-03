@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 import type { SaveWriteResult } from "../store/persistence";
 import type { LineBadgeModel } from "../lineBadge";
 import type { EffectChipModel } from "../hudPresentation";
@@ -7,6 +7,7 @@ import { LineBadge } from "./LineBadge";
 import { TargetProgressBar } from "./TargetProgressBar";
 
 export interface GameHudProps {
+  inventory?: ReactNode;
   title: string;
   subtitle: string;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -42,6 +43,7 @@ function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element
 }
 
 export function GameHud({
+  inventory,
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, compactRoll, saveStatus, saveStatusMessage,
   canRoll, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
@@ -83,6 +85,7 @@ export function GameHud({
         </button>
         <button type="button" onClick={onSkip} disabled={!animating}>スキップ</button>
       </div>
+      {inventory}
       <EffectChips models={effects} />
       {!saveMark && <p
         className={`game-panel__save${failed ? " game-panel__save--warning" : ""}`}

@@ -3,7 +3,7 @@ import { itemScenario } from "./fixtures/itemScenarios";
 import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
-import { diceButton, gamePanel, inventoryItem, readSaveText, writeSaveText } from "./support/app";
+import { diceButton, gamePanel, inventoryItem, readSaveText, revealUnadjustedRoll, writeSaveText } from "./support/app";
 import type { RailwayBundle } from "./fixtures/bundle";
 
 test.use({ dataset: "fixture" });
@@ -395,7 +395,7 @@ test.describe("S23 populated responsive HUD", () => {
 
   test("short landscape keeps staged slots visible and card reachable", async ({ page, railwayBundle }, testInfo) => {
     const populated = await buildPopulatedState(page, railwayBundle);
-    for (const viewport of [{ width: 667, height: 375 }, { width: 640, height: 400 }]) {
+    for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 667, height: 375 }, { width: 640, height: 400 }]) {
       await page.setViewportSize(viewport);
       const idleOffset: number = await measureIdleDiceOffset(page, populated.itemName);
       const panel = gamePanel(page);
@@ -432,19 +432,71 @@ test.describe("S23 populated responsive HUD", () => {
       expect(Math.abs(result.diceOffset - idleOffset), `${viewport.width}px idle ${idleOffset}, staged ${result.diceOffset}, grid ${result.gridRows}`).toBeLessThanOrEqual(1);
       testInfo.annotations.push({ type: `landscape-grid-${viewport.width}`, description: `${result.gridAreas}; rows ${result.gridRows}` });
 
+      // Effect chips with the item staged: fully inside the visible panel,
+      // scrolling the panel if needed (user decision 2026-11-03).
+      const chips = panel.locator(".effect-chips");
+      await expect(chips).toBeVisible();
+      await chips.scrollIntoViewIfNeeded();
+      const chipsGeometry = await panel.evaluate((element) => {
+        const chipsElement = element.querySelector<HTMLElement>(".effect-chips")!;
+        const panelRect = element.getBoundingClientRect();
+        const chipsRect = chipsElement.getBoundingClientRect();
+        return {
+          panel: { top: panelRect.top, bottom: panelRect.bottom },
+          chips: { top: chipsRect.top, bottom: chipsRect.bottom },
+          inside: chipsRect.height > 0 && chipsRect.top >= panelRect.top && chipsRect.bottom <= panelRect.bottom,
+        };
+      });
+      expect(chipsGeometry.inside, `${viewport.width}x${viewport.height} chips inside the visible panel: ${JSON.stringify(chipsGeometry)}`).toBe(true);
+      testInfo.annotations.push({ type: "chips-geometry", description: `${viewport.width}x${viewport.height}: ${JSON.stringify(chipsGeometry)}` });
+      await panel.evaluate((element) => { element.scrollTop = 0; });
+
       const slot = inventoryItem(page, populated.itemName).first();
       const opener = slot.getByRole("button");
+      const card = gamePanel(page).getByRole("dialog", { name: populated.itemName, exact: true });
+      const close = card.getByRole("button", { name: "閉じる", exact: true });
+      // Sheet placement: the card action and 閉じる both stay visible and
+      // hit-testable at the bottom of the card (user decision 2026-11-03).
+      const expectSheetActionsVisible = async (actionName: string): Promise<void> => {
+        const action = card.getByRole("button", { name: actionName, exact: true });
+        await expect(action).toBeVisible();
+        const geometry = await card.evaluate((element) => {
+          const actionElement = element.querySelector<HTMLElement>(".item-card__action")!;
+          const closeElement = element.querySelector<HTMLElement>(".item-card-popover__close")!;
+          const cardRect = element.getBoundingClientRect();
+          const visible = (target: HTMLElement): boolean => {
+            const rect = target.getBoundingClientRect();
+            const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+            return rect.top >= cardRect.top && rect.bottom <= cardRect.bottom && rect.bottom <= innerHeight && hit === target;
+          };
+          const body = element.querySelector<HTMLElement>(".item-card")!;
+          const actionStyle = getComputedStyle(actionElement);
+          return {
+            action: { top: actionElement.getBoundingClientRect().top, bottom: actionElement.getBoundingClientRect().bottom },
+            close: { top: closeElement.getBoundingClientRect().top, bottom: closeElement.getBoundingClientRect().bottom },
+            // The card body scrolls (the sheet or the card itself is the scroller).
+            overflows: element.scrollHeight > element.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1,
+            actionVisible: visible(actionElement),
+            closeVisible: visible(closeElement),
+            // The pinned action keeps its own fill: its label must not match its background.
+            actionLabelVisible: actionStyle.color !== actionStyle.backgroundColor,
+          };
+        });
+        expect(geometry, `${viewport.width}x${viewport.height} ${actionName}`).toMatchObject({ actionVisible: true, closeVisible: true, actionLabelVisible: true });
+        if (viewport.width > 600) expect(geometry.overflows, `${viewport.width}x${viewport.height} card body overflows its sheet`).toBe(true);
+        testInfo.annotations.push({ type: "sheet-action-geometry", description: `${viewport.width}x${viewport.height} ${actionName}: ${JSON.stringify(geometry)}` });
+      };
+
       if (testInfo.project.use.hasTouch) await opener.tap();
       else await opener.click();
-      const card = gamePanel(page).getByRole("dialog", { name: populated.itemName, exact: true });
       await expect(card).toBeVisible();
       const cardFits = await card.evaluate((element) => {
         const box = element.getBoundingClientRect();
         return box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight;
       });
       expect(cardFits).toBe(true);
-      const close = card.getByRole("button", { name: "閉じる", exact: true });
       await expect(close).toBeVisible();
+      await expectSheetActionsVisible("選択中・変更する");
       const hitTests = await close.evaluate((element) => {
         const box = element.getBoundingClientRect();
         return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === element;
@@ -459,6 +511,149 @@ test.describe("S23 populated responsive HUD", () => {
       else await close.click();
       await expect(card).toBeHidden();
       await expect(opener).toBeFocused();
+
+      // Unstaged, the action reads 使う and works without scrolling first.
+      await panel.locator(".item-staged-summary").getByRole("button", { name: "選択を解除" }).click();
+      if (testInfo.project.use.hasTouch) await opener.tap();
+      else await opener.click();
+      await expect(card).toBeVisible();
+      await expectSheetActionsVisible("使う");
+      const use = card.getByRole("button", { name: "使う", exact: true });
+      if (testInfo.project.use.hasTouch) await use.tap();
+      else await use.click();
+      await expect(card).toBeHidden();
+      await expect(slot).toHaveClass(/item-slot--selected/);
+    }
+  });
+
+  test("toasts clear attribution and map controls across layouts in both attribution states", async ({ page, railwayBundle }, testInfo) => {
+    await buildPopulatedState(page, railwayBundle);
+    // Ordinary toasts expire after 4 s, so per-toast rects cover the sticky failure toast and the
+    // toast stack itself (fixed top/left/right, growing downwards) is checked independently of its length.
+    const assertToastClearance = async (width: number, height: number, expanded: boolean): Promise<void> => {
+      await page.setViewportSize({ width, height });
+      const attribution = page.locator(".maplibregl-ctrl-attrib");
+      const isExpanded = async (): Promise<boolean> => attribution.evaluate((element) => element.classList.contains("maplibregl-compact-show"));
+      if (await isExpanded() !== expanded) await attribution.locator(".maplibregl-ctrl-attrib-button").click();
+      await expect.poll(isExpanded).toBe(expanded);
+      const label = `${width}x${height} ${expanded ? "expanded" : "collapsed"}`;
+      const geometry = await page.evaluate((phone) => {
+        const box = (element: Element) => {
+          const rect = element.getBoundingClientRect();
+          return { top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom };
+        };
+        const overlaps = (a: ReturnType<typeof box>, b: ReturnType<typeof box>): boolean =>
+          a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+        const targets = [
+          ...document.querySelectorAll<HTMLElement>(".maplibregl-ctrl-attrib"),
+          ...document.querySelectorAll<HTMLElement>(".maplibregl-ctrl-top-right .maplibregl-ctrl-group"),
+          // Phones: the overview buttons too. In short landscape a later toast may pass over them (accepted).
+          ...(phone ? document.querySelectorAll<HTMLElement>(".map-overview button") : []),
+          ...document.querySelectorAll<HTMLElement>(".game-panel"),
+        ].map((element) => ({ name: element.className, box: box(element) }));
+        const toasts = [...document.querySelectorAll<HTMLElement>(".toast-host__toast")].map((toast) => ({
+          text: toast.textContent?.trim() ?? "", box: box(toast),
+        }));
+        const host = box(document.querySelector(".toast-host")!);
+        const attributionBox = box(document.querySelector(".maplibregl-ctrl-attrib")!);
+        const zoom = document.querySelector(".maplibregl-ctrl-top-right .maplibregl-ctrl-group");
+        const toggle = document.querySelector(".maplibregl-ctrl-attrib-button")!.getBoundingClientRect();
+        return {
+          toggleSize: { width: toggle.width, height: toggle.height },
+          // The credit text never runs under the zoom buttons (licence text stays readable).
+          attributionClearsZoom: !zoom || !overlaps(attributionBox, box(zoom)),
+          toastCount: toasts.length,
+          toastOverlaps: toasts.flatMap((toast) => targets.filter((target) => overlaps(toast.box, target.box))
+            .map((target) => `${toast.text} × ${target.name}`)),
+          // Top-left attribution (phones, short landscape): the stack starts below it or beside it,
+          // whatever its length. A bottom attribution (desktop) is covered by the per-toast check.
+          stackClearsAttribution: attributionBox.top > innerHeight / 2 || host.top >= attributionBox.bottom
+            || host.left >= attributionBox.right || host.right <= attributionBox.left,
+          host, attribution: attributionBox, toasts,
+        };
+      }, width <= 600);
+      expect(geometry.toastCount, label).toBeGreaterThan(0);
+      expect(geometry.toastOverlaps, label).toEqual([]);
+      expect(geometry.attributionClearsZoom, `${label} attribution vs zoom`).toBe(true);
+      // Phones and short landscape start collapsed, so the toggle is a required 44×44px target.
+      if (width <= 600 || height <= 500) {
+        expect(geometry.toggleSize.width, `${label} toggle width`).toBeGreaterThanOrEqual(44);
+        expect(geometry.toggleSize.height, `${label} toggle height`).toBeGreaterThanOrEqual(44);
+      }
+      expect(geometry.stackClearsAttribution, `${label}: ${JSON.stringify({ host: geometry.host, attribution: geometry.attribution })}`).toBe(true);
+      testInfo.annotations.push({ type: "toast-geometry", description: `${label}: ${JSON.stringify(geometry)}` });
+    };
+    for (const viewport of [{ width: 320, height: 568 }, { width: 412, height: 915 }, { width: 667, height: 375 }, { width: 640, height: 400 }, { width: 1280, height: 800 }]) {
+      for (const expanded of [false, true]) await assertToastClearance(viewport.width, viewport.height, expanded);
+    }
+  });
+
+  test("short landscape discard choices stay reachable inside the dialog scrollport", async ({ page, railwayBundle }) => {
+    await scenario(page, "discard", railwayBundle);
+    await page.setViewportSize({ width: 667, height: 375 });
+    await revealUnadjustedRoll(page);
+    const dialog = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    await expect(dialog).toBeVisible();
+    const action = dialog.getByRole("button", { name: "このアイテムを捨てる" }).first();
+    await action.scrollIntoViewIfNeeded();
+    await expect(action).toBeVisible();
+    const hit = await action.evaluate((element) => {
+      const box = element.getBoundingClientRect();
+      const dialogBox = element.closest("dialog")!.getBoundingClientRect();
+      return box.top >= dialogBox.top && box.bottom <= dialogBox.bottom
+        && document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === element;
+    });
+    expect(hit).toBe(true);
+    await action.click();
+    await expect(dialog).toBeHidden();
+  });
+
+  test("tab order follows the visual inventory, staged, effects, and disclosure order", async ({ page, railwayBundle }, testInfo) => {
+    await buildPopulatedState(page, railwayBundle);
+    for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 1280, height: 800 }]) {
+      await page.setViewportSize(viewport);
+      const panel = gamePanel(page);
+      await diceButton(page).focus();
+      const visited: Array<{ name: string; top: number; left: number }> = [];
+      const effectsScrollable = await panel.locator(".effect-chips").evaluate((element) => element.scrollWidth > element.clientWidth);
+      const expectedSlots = await panel.locator(".item-slot:not(.item-slot--empty) h3").allTextContents();
+      const expected = [...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable ? ["effects"] : []), "ログ", "メニュー"];
+      for (let index = 0; index < expected.length; index += 1) {
+        await page.keyboard.press("Tab");
+        const active = await page.evaluate(() => {
+          const element = document.activeElement as HTMLElement | null;
+          if (!element) throw new Error("no focused element");
+          const slot = element.closest<HTMLElement>(".item-slot");
+          const name = slot?.querySelector("h3")?.textContent?.trim()
+            ?? (element.matches(".effect-chips") ? "effects" : element.textContent?.trim() ?? "");
+          const rect = element.getBoundingClientRect();
+          const panel = element.closest<HTMLElement>(".game-panel");
+          return { name, top: rect.top + (panel?.scrollTop ?? 0), left: rect.left,
+            inPanel: Boolean(element.closest(".game-panel")), className: element.className };
+        });
+        expect(active.inPanel, `${viewport.width}px ${active.name} stays in the game panel`).toBe(true);
+        visited.push(active);
+      }
+      expect(visited.map((entry) => entry.name)).toEqual(expected);
+      if (viewport.width === 667) {
+        testInfo.annotations.push({ type: "landscape-disclosure-positions", description: JSON.stringify(visited.slice(-2)) });
+      }
+      for (let index = 1; index < visited.length; index += 1) {
+        expect(visited[index]!.top).toBeGreaterThanOrEqual(visited[index - 1]!.top - 1);
+        if (Math.abs(visited[index]!.top - visited[index - 1]!.top) <= 1) {
+          expect(visited[index]!.left).toBeGreaterThanOrEqual(visited[index - 1]!.left);
+        }
+      }
+      const reversed: string[] = [];
+      for (let index = 0; index < visited.length; index += 1) {
+        await page.keyboard.press("Shift+Tab");
+        reversed.push(await page.evaluate(() => {
+          const element = document.activeElement as HTMLElement;
+          return element.closest<HTMLElement>(".item-slot")?.querySelector("h3")?.textContent?.trim()
+            ?? (element.matches(".effect-chips") ? "effects" : element.textContent?.trim() ?? "");
+        }));
+      }
+      expect(reversed).toEqual([...expected.slice(0, -1)].reverse().concat((await diceButton(page).innerText()).trim()));
     }
   });
 });
