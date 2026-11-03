@@ -194,6 +194,97 @@ No E2E in this step.
 
 ---
 
+## S4: Safe item view, decisions, and announcements
+
+Implement plan `### S4` exactly. Files: modify `src/features/game/turnMomentPresentation.ts` and
+`src/features/game/presentation.ts`; new `tests/unit/turn-moment-items.test.ts`; modify
+`tests/unit/game-presentation.test.ts` (plus the handoff row). Nothing is wired into production.
+
+- Extend the S3 `TurnMomentDisplay` (do not fork it) with the architecture's remaining non-visual fields:
+  `itemView`, `decision`, `effectModels`, `showItemNotice`, `announcement`, `toastInputs`, `canRoll`, `canSkip`,
+  `itemUseLocked`. Overlay/flash fields stay for later steps. Extend the input minimally (e.g. the reveal stage
+  already covers `pickup`; add the raw toast inputs or item events the existing toast conversion consumes —
+  reuse `toastQueue.ts`/existing converters, do not reimplement toast wording).
+- Safe item view (architecture "Shared displayed model" → "For the initial implementation"): build it from the
+  attempt's origin `itemView` snapshot and explicit boundaries — keep safe origin hints while locked; remove
+  known pre-move consumed items when stamps finish (or at release when there are no stamps); hold arrival
+  effects, certificate consumption and the retained pickup until the item-results boundary; publish the final
+  item state when `pickup` completes, or at reveal completion when there is no pickup stage. Removing only the
+  new instance is not enough: effects, certificate removal, hints and availability must not leak. Keep live action
+  identity for callbacks without exposing final contents. Do not invent a new domain unavailable-reason value.
+- Decisions: the adjust decision is presented only from `awaiting-adjust` (after the tumble); the discard
+  decision only when the pickup stage has completed (published). Before that `decision` is `null`.
+- Permissions: `canRoll` false whenever any presentation is pending (pre-move stage before `released`,
+  animating, or a reveal stage active) even if the engine phase is `idle`; `canSkip` true exactly while there is
+  something to skip; `itemUseLocked` true while presentation is active. Restored/omitted results: no lock.
+- Announcements (architecture "Announcements"): add one stage-aware helper in `presentation.ts` that reuses the
+  existing canonical text helpers; tumble = neutral wording without the face; adjust = the existing raw-roll
+  instruction once the dialog is presented; movement = published face/modifiers only; arrival/lottery = arrival
+  wording + `抽選結果を表示しています` without the next ride; lottery done = canonical landing wording; pickup done
+  = canonical item outcome and any discard instruction; ready = the existing full announcement + `サイコロを振れます`.
+  When `showClear` is true the panel announcement is empty — ClearScreen owns the completion wording (no
+  duplicate).
+- Toasts: `toastInputs` is empty until the item-results boundary; a same-turn discard update (appended events on
+  the same record turn) exposes the new notices/toasts without changing the phase or stage plan.
+- Tests: every bullet of plan `### S4` → Tests, engine-built sessions/records as input (reuse the fixture style of
+  `tests/unit/turn-moment-presentation.test.ts` / `game-app-item-progress.test.ts`), and LITERAL expected values
+  (item names/ids, exact announcement strings, booleans) — never values computed by the functions under test.
+  Existing `game-presentation.test.ts` assertions stay unchanged; only add cases for the new helper.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moment-items.test.ts tests/unit/turn-moment-presentation.test.ts tests/unit/game-presentation.test.ts tests/unit/toast.test.ts
+npx vitest run
+npm run build
+```
+
+No E2E in this step.
+
+---
+
+## S5: Movement start gate and sequence hook
+
+Implement plan `### S5` exactly. Files: modify `src/features/game/animation/useMoveAnimation.ts`; new
+`src/features/game/animation/useTurnMoments.ts`; new `tests/unit/move-animation-gate.test.ts`; new
+`tests/unit/turn-moment-hooks.test.ts` (plus the handoff row). Production callers keep the default behaviour
+(no caller passes the new option yet; `GameApp` is not touched).
+
+- `useMoveAnimation(animation, network, geometry, stepMs, onFinished, options?)` with
+  `MoveAnimationOptions { startAllowed?: boolean }` defaulting to `true`. While closed: keep the plan and the
+  `AnimationView` for the current animation (`frame: null`), empty live position, no runner start and no frame
+  request; opening starts the runner exactly once. Never substitute `null` for the animation input.
+- `useTurnMoments(...)`: a thin hook that owns the S2 `turnMomentsReducer` (current-stage timer only, keyed by
+  attempt key + expected stage), delegates post-move sequencing to `useRevealSequence` (pass `skipRequested`
+  from the latched attempt, per S1), accepts the production stage list as an input (production will pass an
+  empty list until S12), freezes timing at the accepted attempt and the stage configuration at the reveal key,
+  and exposes stable callbacks (`begin`, `skip`, …) reading current identity through refs. It returns what the
+  S3/S4 `deriveTurnMomentDisplay` input needs (attempt, reveal stage, restored/omitted flag) plus
+  `movementStartAllowed`. A latched Skip finishes an animation that appears later (after adjustment/save) by
+  calling the provided finish callback with its full identity, without running it. Reduced motion turning on
+  mid-turn omits both sequences irreversibly and releases instant movement; turning it off never replays.
+  A restored pending-adjust resolution is a fresh arrival (no tumble replay). Reset on session change.
+- S2 non-blocking carry-over: add tests for reduced motion on→off mid-stage and for `advance(tumble)` →
+  `waiting-record` (in `tests/unit/turn-moment-hooks.test.ts` or `turn-moments.test.ts`).
+- Tests: every bullet of plan `### S5` → Tests, with stable `Harness` components
+  (`act(() => mount.root.render(createElement(Harness, props)))`), `vi.useFakeTimers()`, a fake
+  `requestAnimationFrame` like `tests/unit/animation.test.ts` uses, `vi.getTimerCount()` for timer evidence,
+  and commits recorded through `useLayoutEffect`. Literal expected values.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/move-animation-gate.test.ts tests/unit/turn-moment-hooks.test.ts tests/unit/turn-moments.test.ts tests/unit/reveal-sequence.test.ts tests/unit/animation.test.ts
+npx vitest run
+npm run build
+```
+
+No E2E in this step (production behaviour unchanged).
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

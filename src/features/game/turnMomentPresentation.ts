@@ -4,11 +4,14 @@ import { platformPosition, targetSegmentIds } from "./engine";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import type { TurnRevealStageKey, RollAttempt } from "./animation/turnMoments";
 import type { GameSession, LastMove } from "./gameSession";
-import { compactRollFor, compactRollText } from "./hudPresentation";
-import { arrivalLogText, displayedRide, landingText, lastRollText } from "./presentation";
+import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel } from "./hudPresentation";
+import { arrivalLogText, displayedRide, landingText, lastRollText, turnMomentAnnouncement } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
+import type { ItemSessionView } from "./itemSession";
+import { turnToasts, type ToastInput } from "./toastQueue";
+import { maskTurnMomentItemView } from "./turnMomentItems";
 
-export type TurnPublicationPhase = "pre-move" | "moving" | "arrival" | "lottery-flip" | "lottery-settle" | "published";
+export type TurnPublicationPhase = "pre-move" | "moving" | "arrival" | "lottery-flip" | "lottery-settle" | "pickup" | "published";
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
 export type TurnRevealState = TurnRevealStageKey | "waiting" | "done";
 
@@ -21,9 +24,10 @@ export interface TurnMomentDisplayInput {
   attempt: RollAttempt | null;
   revealStage: TurnRevealState;
   restoredOrOmitted: boolean;
+  itemView?: ItemSessionView | null;
 }
 
-/** The S3-owned portion of the shared display model. Later steps extend this interface. */
+/** Shared gameplay values and permissions; visual moment models are added in later steps. */
 export interface TurnMomentDisplay {
   phase: TurnPublicationPhase;
   turn: number;
@@ -35,6 +39,15 @@ export interface TurnMomentDisplay {
   lotteryText: string;
   candidateRows: readonly PresentationCandidateRow[];
   showClear: boolean;
+  itemView: ItemSessionView | null;
+  decision: ItemSessionView["decision"];
+  effectModels: readonly EffectChipModel[];
+  showItemNotice: boolean;
+  announcement: string;
+  toastInputs: readonly ToastInput[];
+  canRoll: boolean;
+  canSkip: boolean;
+  itemUseLocked: boolean;
 }
 
 const PRE_MOVE_STAGES = new Set<RollAttempt["stage"]>(["waiting-roll", "tumble", "awaiting-adjust", "waiting-record", "stamps"]);
@@ -45,6 +58,7 @@ function publicationPhase(input: TurnMomentDisplayInput): TurnPublicationPhase {
   if (input.session.phase === "animating") return "moving";
   if (input.revealStage === "lottery-flip") return "lottery-flip";
   if (input.revealStage === "lottery-settle") return "lottery-settle";
+  if (input.revealStage === "pickup" && hasPickup(input.session.lastMove)) return "pickup";
   if (input.revealStage === "done") return "published";
   if (input.revealStage === "arrival" || input.revealStage === "waiting") return "arrival";
   return "published";
@@ -80,11 +94,31 @@ function visibleLastMove(input: TurnMomentDisplayInput, phase: TurnPublicationPh
   return phase === "pre-move" || phase === "moving" ? previousLastMove(input) : input.session.lastMove;
 }
 
-function visibleProgress(input: TurnMomentDisplayInput, phase: TurnPublicationPhase): DisplayedProgress {
+function visibleProgress(input: TurnMomentDisplayInput, phase: TurnPublicationPhase, lotteryPublished: boolean): DisplayedProgress {
   if (phase === "pre-move") return originProgress(input);
   if (phase === "moving") return input.progress;
-  if (phase === "arrival" || phase === "lottery-flip" || phase === "lottery-settle") return arrivalProgress(input);
-  return input.progress;
+  return lotteryPublished ? input.progress : arrivalProgress(input);
+}
+
+function visibleRide(input: TurnMomentDisplayInput, phase: TurnPublicationPhase, lotteryPublished: boolean): TurnMomentDisplay["ride"] {
+  if (lotteryPublished) return displayedRide(input.session);
+  if (phase === "pre-move" || phase === "moving") {
+    const originRide = input.attempt?.origin.ride;
+    if (originRide) return originRide;
+  }
+  const move = input.session.lastMove;
+  if (move) return { serviceId: move.serviceId, direction: move.direction };
+  return input.attempt?.origin.ride ?? displayedRide(input.session);
+}
+
+function visibleDecision(
+  view: ItemSessionView | null, attempt: RollAttempt | null, active: boolean, resultPublished: boolean,
+): ItemSessionView["decision"] {
+  const decision = view?.decision ?? null;
+  if (!active) return decision;
+  if (attempt?.stage === "awaiting-adjust" && decision?.kind === "adjust") return decision;
+  if (resultPublished && decision?.kind === "discard") return decision;
+  return null;
 }
 
 function visibleCandidates(move: LastMove | null, presentation: PresentationResolver): PresentationCandidateRow[] {
@@ -97,13 +131,9 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const phase = publicationPhase(input);
   const isBeforeArrival = phase === "pre-move" || phase === "moving";
   const isPublished = phase === "published";
-  const progress = visibleProgress(input, phase);
-  const ride = isPublished ? displayedRide(input.session)
-    : isBeforeArrival ? input.attempt?.origin.ride ?? (current
-      ? { serviceId: current.serviceId, direction: current.direction }
-      : displayedRide(input.session))
-      : current ? { serviceId: current.serviceId, direction: current.direction }
-        : input.attempt?.origin.ride ?? displayedRide(input.session);
+  const lotteryPublished = isPublished || phase === "pickup";
+  const progress = visibleProgress(input, phase, lotteryPublished);
+  const ride = visibleRide(input, phase, lotteryPublished);
   const lastMove = visibleLastMove(input, phase);
   const attempt = input.attempt;
   let compactRoll = compactRollText(compactRollFor(lastMove));
@@ -127,7 +157,6 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     input.network,
     input.presentation,
   );
-  const lotteryPublished = isPublished;
   const lotteryText = lotteryPublished && current
     ? landingText(current, input.network, input.presentation)
     : landingText(previousLastMove(input), input.network, input.presentation);
@@ -136,6 +165,29 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     : visibleCandidates(previousLastMove(input), input.presentation);
   const goal = input.session.game.status === "completed";
   const showClear = goal && isPublished;
+  const liveView = input.itemView ?? null;
+  const preMoveActive = Boolean(attempt && PRE_MOVE_STAGES.has(attempt.stage));
+  const revealActive = input.revealStage !== "done" && input.revealStage !== "waiting";
+  const active = !input.restoredOrOmitted && (preMoveActive || input.session.phase === "animating" || revealActive);
+  const resultPublished = isPublished;
+  const originView = attempt?.origin.itemView ?? liveView;
+  const observedRecord = input.session.lastMove?.itemRecord;
+  const record = observedRecord && (!attempt || observedRecord.turn === attempt.recordTurn) ? observedRecord : null;
+  const consumedIds = attempt?.stage === "released" && record?.kind === "item-ride"
+    ? record.itemEvents.filter((event) => event.type === "consumed").map((event) => event.item.id) : [];
+  const itemView = resultPublished ? liveView : maskTurnMomentItemView(originView, liveView, consumedIds);
+  const decision = visibleDecision(liveView, attempt, active, resultPublished);
+  const turn = record?.turn ?? input.session.game.turn;
+  const effectTurn = resultPublished ? turn : attempt?.origin.turn ?? turn;
+  const effectModels = itemView ? effectChipModels(itemView.effects, effectTurn, input.network, input.presentation) : [];
+  const showItemNotice = resultPublished && Boolean(record?.itemEvents.length);
+  const toastInputs = resultPublished && input.session.lastMove && (!attempt || record)
+    ? turnToasts(input.session.sessionId, input.session.lastMove, input.network, input.presentation) : [];
+  const canRoll = !active && input.session.phase === "idle" && input.session.game.status === "playing";
+  const announcement = turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
+    stage: getAnnouncementStage(input, phase, showClear, decision), canRoll,
+    completedCount, requiredCount, network: input.network, presentation: input.presentation });
+  const canSkip = active && (preMoveActive || input.session.phase === "animating" || revealActive);
 
   return {
     phase,
@@ -149,5 +201,44 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     lotteryText,
     candidateRows,
     showClear,
+    itemView,
+    decision,
+    effectModels,
+    showItemNotice,
+    announcement,
+    toastInputs,
+    canRoll,
+    canSkip,
+    itemUseLocked: active,
   };
+}
+
+type AnnouncementStage = Parameters<typeof turnMomentAnnouncement>[0]["stage"];
+
+function getAnnouncementStage(
+  input: TurnMomentDisplayInput,
+  phase: TurnPublicationPhase,
+  showClear: boolean,
+  decision: ItemSessionView["decision"],
+): AnnouncementStage {
+  if (showClear) return "goal";
+  if (input.session.phase === "awaiting-adjust" && decision?.kind === "adjust") return "awaiting-adjust";
+  if (input.restoredOrOmitted) return "restored";
+  if (input.attempt?.stage === "waiting-roll") return "waiting-roll";
+  if (input.attempt?.stage === "tumble") return "tumble";
+  if (input.attempt?.stage === "awaiting-adjust") return "awaiting-adjust";
+  if (input.attempt?.stage === "waiting-record" || input.session.phase === "committing" || input.session.phase === "resolving") return "waiting-record";
+  if (input.attempt?.stage === "stamps") return "stamps";
+  if (phase === "moving") return "movement";
+  if (input.revealStage === "arrival" || input.revealStage === "waiting") return "arrival";
+  if (input.revealStage === "lottery-flip") return "lottery-flip";
+  if (input.revealStage === "lottery-settle") return "lottery-settle";
+  if (input.revealStage === "pickup") return "pickup";
+  if (input.revealStage === "done" && hasPickup(input.session.lastMove)) return "pickup-done";
+  return "ready";
+}
+
+function hasPickup(move: LastMove | null): boolean {
+  return move?.itemRecord?.kind === "item-ride" && move.itemRecord.itemEvents.some((event) =>
+    event.type === "pickup-retained" || event.type === "pickup-pending-discard");
 }

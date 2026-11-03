@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildRailwayNetwork, createGame, moveByRoll, playTurn } from "../../src/features/game/engine";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import type { LastMove } from "../../src/features/game/gameSession";
-import { arrivalLogText, displayedRide, landingText, landingTransitionText, lastRollText } from "../../src/features/game/presentation";
+import { arrivalLogText, displayedRide, landingText, landingTransitionText, lastRollText, turnMomentAnnouncement } from "../../src/features/game/presentation";
 import { earlyStopNote, summarizeGame } from "../../src/features/game/gameSummary";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import type { UiPresentation } from "../../src/types/data";
@@ -253,6 +253,36 @@ describe("S6 presentation metadata", () => {
 });
 
 describe("verified item notices", () => {
+  it("uses stage-aware canonical copy without leaking future outcomes", () => {
+    const session = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, 91);
+    const base = { session, view: null, decision: null, completedCount: 0, requiredCount: 30, network, canRoll: false };
+    expect(turnMomentAnnouncement({ ...base, stage: "tumble" })).toBe("サイコロを振っています。移動の準備中です。");
+    expect(turnMomentAnnouncement({ ...base, stage: "movement" })).toBe("回送列車で移動します。移動中です。スキップできます。");
+    expect(turnMomentAnnouncement({ ...base, stage: "arrival" })).toBe("到着しました。抽選結果を表示しています");
+    expect(turnMomentAnnouncement({ ...base, stage: "ready" })).toBe("");
+  });
+
+  it.each(["ready", "pickup-done", "restored"] as const)("keeps canonical outcomes at %s and gates only the ready instruction", async (stage) => {
+    const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+    const { playItemTurn } = await import("../../src/features/game/engine");
+    const { itemSessionView } = await import("../../src/features/game/itemSession");
+    const session = resumeSession(playItemTurn(itemScenario("delay", network), {}, network).state, network, 92);
+    const view = itemSessionView(session, network)!;
+    const input = { session, view, decision: null, stage, completedCount: 18, requiredCount: 30, network };
+    expect(turnMomentAnnouncement({ ...input, canRoll: false })).toBe("5ターン目：出目3（3マス、3駅移動）、巣鴨に到着。山手線のみ ／ 外回りに固定。踏破 18/30。遅延：8ターン目に発動（あと3ターン）。出目が1になります");
+    expect(turnMomentAnnouncement({ ...input, canRoll: true })).toBe("5ターン目：出目3（3マス、3駅移動）、巣鴨に到着。山手線のみ ／ 外回りに固定。踏破 18/30。遅延：8ターン目に発動（あと3ターン）。出目が1になります。サイコロを振れます");
+  });
+
+  it.each(["lottery-done", "pickup"] as const)("announces only the published landing during %s", async (stage) => {
+    const { itemScenario } = await import("../e2e/fixtures/itemScenarios");
+    const { playItemTurn } = await import("../../src/features/game/engine");
+    const { itemSessionView } = await import("../../src/features/game/itemSession");
+    const session = resumeSession(playItemTurn(itemScenario("rapid-long", network), {}, network).state, network, 93);
+    const view = itemSessionView(session, network)!;
+    expect(turnMomentAnnouncement({ session, view, decision: null, stage, completedCount: 22,
+      requiredCount: 30, network, canRoll: false })).toBe("山手線のみ ／ 外回りに固定");
+  });
+
   it("keeps pickup, cancellation, chosen discard, countdown and activation copy precise", async () => {
     const { itemEventTexts, activeItemEffectTexts } = await import("../../src/features/game/presentation");
     expect(itemEventTexts([
