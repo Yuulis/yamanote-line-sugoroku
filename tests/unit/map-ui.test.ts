@@ -162,6 +162,31 @@ describe("watchCompactAttribution", () => {
     stop();
   });
 
+  it("republishes once the native <summary> opens the details after MapLibre flipped the class", async () => {
+    // A trusted click runs MapLibre's handler (class flip) and lets observers run
+    // before the <summary> activation sets `open`; the credit renders only then.
+    const { container, toggle } = fakeAttribution("collapsed");
+    container.getBoundingClientRect = () => isExpanded(container) && container.hasAttribute("open")
+      ? new DOMRect(10, 10, 200, EXPANDED_BOTTOM_PX - 10)
+      : new DOMRect(10, 10, 44, COLLAPSED_BOTTOM_PX - 10);
+    const stop = watchCompactAttribution(container);
+    // The user's click runs the listeners (MapLibre's class flip); the <summary> activation is
+    // cancelled for this event and applied separately below, after the observers have run, which
+    // is the order a trusted click produces in a browser.
+    const deferActivation = (event: Event): void => event.preventDefault();
+    container.addEventListener("click", deferActivation, { once: true });
+    toggle.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    await flushObservers();
+    expect(isExpanded(container)).toBe(true);
+    expect(publishedBottom()).toBe(`${COLLAPSED_BOTTOM_PX}px`);
+
+    container.setAttribute("open", "");
+    await flushObservers();
+
+    expect(publishedBottom()).toBe(`${EXPANDED_BOTTOM_PX}px`);
+    stop();
+  });
+
   it("republishes the bottom edge on a window resize that only moves the control", () => {
     const { container } = fakeAttribution("collapsed");
     const stop = watchCompactAttribution(container);

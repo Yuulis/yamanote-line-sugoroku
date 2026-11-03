@@ -532,7 +532,14 @@ test.describe("S23 populated responsive HUD", () => {
     // toast stack itself (fixed top/left/right, growing downwards) is checked independently of its length.
     const assertToastClearance = async (width: number, height: number, expanded: boolean): Promise<void> => {
       await page.setViewportSize({ width, height });
-      const attribution = page.locator(".maplibregl-ctrl-attrib");
+      // Crossing the compact/desktop boundary reattaches the control in the other corner from a
+      // media-query change event, which an engine may deliver after setViewportSize resolves. Wait
+      // for the corner the product guarantees for this viewport, and only toggle that control, so
+      // the test never reads or clicks the outgoing one.
+      const corner: string = width <= 600 || height <= 500 ? "top-left" : "bottom-right";
+      await expect(page.locator(".maplibregl-ctrl-attrib")).toHaveCount(1);
+      const attribution = page.locator(`.maplibregl-ctrl-${corner} > .maplibregl-ctrl-attrib.maplibregl-compact`);
+      await expect(attribution).toHaveCount(1);
       const isExpanded = async (): Promise<boolean> => attribution.evaluate((element) => element.classList.contains("maplibregl-compact-show"));
       if (await isExpanded() !== expanded) await attribution.locator(".maplibregl-ctrl-attrib-button").click();
       await expect.poll(isExpanded).toBe(expanded);

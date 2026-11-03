@@ -72,8 +72,12 @@ export function watchCompactAttribution(
     publishBottom();
   };
 
+  // MapLibre's click handler flips the class first; the native <summary> toggles
+  // `open` (which renders the credit) only afterwards, so a class-only observer
+  // would publish the collapsed bottom for an expanding control until the next
+  // ResizeObserver delivery. Observing `open` too settles it in the same task.
   const mutationObserver = new MutationObserver(update);
-  mutationObserver.observe(container, { attributes: true, attributeFilter: ["class"] });
+  mutationObserver.observe(container, { attributes: true, attributeFilter: ["class", "open"] });
   const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publishBottom);
   resizeObserver?.observe(container);
   container.addEventListener("click", onClick, true);
