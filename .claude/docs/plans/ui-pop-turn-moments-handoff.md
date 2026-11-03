@@ -31,7 +31,7 @@ engine/RNG/save/`src/types/network.ts`/public-data change.
 
 | Step | Title | Status | Commit | Notes |
 |---|---|---|---|---|
-| S1 | First-commit omission and future-key Skip support | pending | | |
+| S1 | First-commit omission and future-key Skip support | done | (this commit) | Luna high (`.claude/logs/codex/20261103T135325Z-p2-s1.md`): `useRevealSequence` gains optional `skipRequested`; `observe` takes `omit = reducedMotion || skipRequested` in both new-key and same-key branches; the post-commit reduced-motion effect is removed, so an omitted key commits `stage: "done"`, `busy: false`, `ready: movementComplete` from its first render; completion is sticky per key. Callers must hold `skipRequested` until the record key appears and reset it for the next roll (S5). +5 tests in `U/reveal-sequence.test.ts` (30 total). Review Sol low ACCEPT, 0 blocking (non-blocking: the new deadline test only counts timers; the existing stage-identity test proves the deadline). Lead: typecheck PASS; `npx vitest run` 62 files / 1,238 passed, 1 skipped; build PASS (existing >500 kB chunk warning); forbidden-path audit empty; `verify_delegation` 0 actionable (3 deletions = replaced effect + this row). Production still passes empty stages: no behaviour change. Baseline screenshot `.claude/logs/screenshots/p2-s01-desktop-baseline.png` (turn 3, 品川). Next: S2. |
 | S2 | Pure timing, accepted facts, and roll-attempt reducer | pending | | |
 | S3 | Shared movement, ride, and log publication model | pending | | |
 | S4 | Safe item view, decisions, and announcements | pending | | |
@@ -53,3 +53,4 @@ engine/RNG/save/`src/types/network.ts`/public-data change.
 ## Current
 
 - 2026-11-03: plan approved by the user (pause after every step, S1–S17 including invisible plumbing). Next: S1.
+- 2026-11-03: S1 done; paused for user review. Capture helper: `scratchpad/p2-shot.spec.ts` copied to `tests/e2e/zz-p2-shot.spec.ts`, run with `P2_SHOT=<png>` on desktop-chromium, then removed (never committed).
