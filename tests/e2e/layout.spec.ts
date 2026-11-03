@@ -1,7 +1,10 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
+  closeGameMenu,
   gamePanel,
   loadManifestSource,
+  openGameMenu,
   openTitle,
   readMap,
   startNewGame,
@@ -17,6 +20,75 @@ const MAX_PANEL_SHARE_OF_MAP = 0.5;
 
 test.use({ dataset: "fixture" });
 
+/** Rules (any media block) whose selector names `selector` and whose body uses a safe-area inset with a 0px fallback. */
+async function safeAreaRules(page: Page, selector: string): Promise<string[]> {
+  return page.evaluate((wanted) => {
+    const rules: CSSStyleRule[] = [];
+    const collect = (list: CSSRuleList): void => {
+      for (const rule of [...list]) {
+        if (rule instanceof CSSStyleRule) rules.push(rule);
+        else if (rule instanceof CSSGroupingRule) collect(rule.cssRules);
+      }
+    };
+    for (const sheet of [...document.styleSheets]) {
+      try { collect(sheet.cssRules); } catch { /* cross-origin sheet */ }
+    }
+    return rules
+      .filter((rule) => rule.selectorText.split(",").some((part) => part.trim() === wanted))
+      .map((rule) => rule.cssText)
+      .filter((text) => /env\(safe-area-inset-(top|right|bottom|left),\s*0px\)/.test(text));
+  }, selector);
+}
+
+const SAFE_AREA_SELECTORS = [
+  ".maplibregl-ctrl-top-left", ".maplibregl-ctrl-top-right", ".maplibregl-ctrl-bottom-right",
+  ".map-overview", ".toast-host", ".game-panel",
+] as const;
+
+test("viewport-fit=cover is set and fixed overlays stay inside safe-area insets", async ({ page, browserName }, testInfo) => {
+  await openTitle(page);
+  await startNewGame(page);
+  const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute("content");
+  expect(viewportMeta).toContain("viewport-fit=cover");
+  for (const selector of SAFE_AREA_SELECTORS) {
+    expect(await safeAreaRules(page, selector), `${selector} uses env(safe-area-inset-*, 0px)`).not.toEqual([]);
+  }
+  // Inset emulation is Chromium-only (CDP); other engines keep the static checks above.
+  if (browserName !== "chromium") return;
+  const cases = [
+    { name: "portrait", width: 390, height: 844, insets: { top: 47, left: 0, right: 0, bottom: 34 } },
+    { name: "landscape", width: 844, height: 390, insets: { top: 0, left: 47, right: 47, bottom: 21 } },
+  ];
+  const cdp = await page.context().newCDPSession(page);
+  for (const entry of cases) {
+    await page.setViewportSize({ width: entry.width, height: entry.height });
+    await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: entry.insets });
+    const safe = { top: entry.insets.top, left: entry.insets.left, right: entry.width - entry.insets.right, bottom: entry.height - entry.insets.bottom };
+    const rects = await page.evaluate(() => {
+      const box = (selector: string) => {
+        const rect = document.querySelector<HTMLElement>(selector)?.getBoundingClientRect();
+        return rect && rect.width > 0 ? { selector, top: rect.top, left: rect.left, right: rect.right, bottom: rect.bottom } : null;
+      };
+      return [
+        box(".maplibregl-ctrl-zoom-in"), box(".maplibregl-ctrl-zoom-out"), box(".maplibregl-ctrl-attrib"),
+        box(".map-overview"), box(".game-panel"),
+      ].filter((rect) => rect !== null);
+    });
+    const toastTop = await page.locator(".toast-host").evaluate((element) => getComputedStyle(element).top);
+    expect(rects.length, `${entry.name} measured overlays`).toBe(5);
+    for (const rect of rects) {
+      expect(rect.top, `${entry.name} ${rect.selector} top`).toBeGreaterThanOrEqual(safe.top);
+      expect(rect.left, `${entry.name} ${rect.selector} left`).toBeGreaterThanOrEqual(safe.left);
+      expect(rect.right, `${entry.name} ${rect.selector} right`).toBeLessThanOrEqual(safe.right);
+      expect(rect.bottom, `${entry.name} ${rect.selector} bottom`).toBeLessThanOrEqual(safe.bottom);
+    }
+    expect(Number.parseFloat(toastTop), `${entry.name} toast host top`).toBeGreaterThanOrEqual(safe.top);
+    testInfo.annotations.push({ type: `safe-area-${entry.name}`, description: JSON.stringify(rects) });
+  }
+  await cdp.send("Emulation.setSafeAreaInsetsOverride", { insets: { top: 0, left: 0, right: 0, bottom: 0 } });
+  await cdp.detach();
+});
+
 test("[8.3-1] title, then map and controls are visible without hiding the map", async ({
   page,
 }) => {
@@ -30,9 +102,11 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
   await expect(map).toBeVisible();
   await expect(titleScreen(page)).toBeHidden();
   const panel = gamePanel(page);
+  await openGameMenu(page);
   await expect(panel.getByRole("button", { name: "サイコロを振る" })).toBeEnabled();
   await expect(panel.getByRole("button", { name: "スキップ" })).toBeVisible();
   await expect(panel.getByRole("button", { name: /追尾/ })).toBeVisible();
+  await closeGameMenu(page);
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   await expect(page.getByRole("alert")).toHaveCount(0);
 
@@ -64,7 +138,7 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
 test("[8.3-8] data and map attribution are reachable on the title and play screens", async ({
   page,
   railwayBundle,
-}) => {
+}, testInfo) => {
   // The data credit comes from the shipped manifest, so the test follows the data.
   const source = await loadManifestSource(railwayBundle);
   await openTitle(page);
@@ -108,8 +182,33 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   // (the stub mirrors OpenFreeMap's TileJSON); asserting it proves the app's
   // custom attribution does not suppress the provider's credit.
   const attribution = page.locator(".maplibregl-ctrl-attrib");
-  const toggle = attribution.getByRole("button", { name: /attribution/i });
-  if (await toggle.isVisible()) await toggle.click();
+  const toggle = attribution.locator(".maplibregl-ctrl-attrib-button");
+  if (testInfo.project.use.hasTouch) {
+    await expect(attribution).toHaveClass(/maplibregl-compact/);
+    await expect(attribution).not.toHaveClass(/maplibregl-compact-show/);
+    const toggleBox = await toggle.boundingBox();
+    expect(toggleBox?.width ?? 0).toBeGreaterThanOrEqual(44);
+    expect(toggleBox?.height ?? 0).toBeGreaterThanOrEqual(44);
+    await toggle.focus();
+    await page.keyboard.press("Enter");
+    await expect(attribution).toHaveClass(/maplibregl-compact-show/);
+    // Every credit link is reachable by keyboard, in order, from the toggle.
+    const links = attribution.locator(".maplibregl-ctrl-attrib-inner a");
+    const linkCount = await links.count();
+    expect(linkCount).toBeGreaterThanOrEqual(3);
+    for (let index = 0; index < linkCount; index += 1) {
+      await page.keyboard.press("Tab");
+      await expect(links.nth(index)).toBeFocused();
+    }
+    await toggle.focus();
+    await page.keyboard.press("Space");
+    await expect(attribution).not.toHaveClass(/maplibregl-compact-show/);
+    await page.keyboard.press("Space");
+    await expect(attribution).toHaveClass(/maplibregl-compact-show/);
+  } else {
+    const expanded = await attribution.evaluate((element) => element.classList.contains("maplibregl-compact-show"));
+    if (!expanded) await toggle.click();
+  }
   const inner = attribution.locator(".maplibregl-ctrl-attrib-inner");
   await expect(inner).toContainText(source.attribution);
   await expect(inner).toContainText(source.license);
@@ -122,6 +221,7 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   await expect(inner).toBeInViewport();
 
   // The full credits stay one click away from the play screen.
+  await openGameMenu(page);
   await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
   await titleScreen(page).getByRole("button", { name: "クレジット" }).click();
   await expect(credits).toBeVisible();

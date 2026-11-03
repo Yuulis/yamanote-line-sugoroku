@@ -1,19 +1,49 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
+import { itemScenario } from "./fixtures/itemScenarios";
+import { playItemTurn, serializeGame } from "../../src/features/game/engine";
 import {
+  closeGameMenu,
   diceButton,
   gamePanel,
+  openGameMenu,
+  openGameLog,
   openTitle,
   panelStat,
   readMap,
   readSave,
+  readSaveText,
   rollOnce,
   titleScreen,
   writeSaveText,
+  useInventoryItem,
 } from "./support/app";
 
 test.use({ dataset: "real", gameSeed: PRODUCT_HUB_GAME_SEED });
+
+test("item card Escape closes before the staged draft can be cleared", async ({ page, railwayBundle }) => {
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(itemScenario("double", railwayBundle.network)));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  const saveBefore = await readSaveText(page);
+  await useInventoryItem(page, "倍速券");
+  const slot = gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name: "倍速券" }) });
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
+  await slot.getByRole("button").click();
+  const card = gamePanel(page).getByRole("dialog", { name: "倍速券" });
+  await expect(card).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(card).toBeHidden();
+  await expect(slot.getByRole("button")).toBeFocused();
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  await expect(gamePanel(page).getByRole("status")).toContainText("倍速券を選択中");
+  expect(await readSaveText(page)).toBe(saveBefore);
+  await page.keyboard.press("Escape");
+  await expect(gamePanel(page).locator(".item-staged-summary")).toHaveCount(0);
+});
 
 test.describe("animated roll focus", () => {
   test.use({ reducedMotion: "no-preference" });
@@ -53,6 +83,7 @@ test.describe("game accessibility and text navigation", () => {
     expect(mapAfterPanel).toBe(true);
 
     await rollOnce(page);
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
     const titleHeading = titleScreen(page).getByRole("heading", { name: "山手線すごろく" });
     await expect(titleHeading).toBeFocused();
@@ -100,7 +131,9 @@ test.describe("game accessibility and text navigation", () => {
       (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;
     });
 
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "追尾: ON" }).click();
+    await closeGameMenu(page);
     await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(0);
 
     for (let turn = 1; turn <= 5; turn += 1) {
@@ -121,6 +154,7 @@ test.describe("game accessibility and text navigation", () => {
     const lastSummary = await summary.innerText();
     expect(lastSummary).toContain("5ターン目");
     expect(lastSummary).not.toContain("4ターン目");
+    await openGameLog(page);
     await expect(gamePanel(page).locator(".game-panel__lottery")).not.toHaveAttribute("aria-live", /.+/);
   });
 
@@ -132,6 +166,7 @@ test.describe("game accessibility and text navigation", () => {
     await rollOnce(page);
     await expect(summary).toContainText("2ターン目");
 
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "新規" }).click();
     await page.getByRole("alertdialog", { name: "新しく始めますか？" }).getByRole("button", { name: "新しく始める" }).click();
     await expect(panelStat(page, "ターン数")).toHaveText("0");
@@ -167,7 +202,9 @@ test.describe("game accessibility and text navigation", () => {
       (window as unknown as { __announcementChanges?: string[] }).__announcementChanges = changes;
     });
 
+    await openGameMenu(page);
     await gamePanel(page).getByRole("button", { name: "追尾: ON" }).click();
+    await closeGameMenu(page);
     await expect.poll(() => page.evaluate(() => (window as unknown as { __announcementChanges?: string[] }).__announcementChanges?.length ?? -1)).toBe(0);
     await rollOnce(page);
     await expect(summary).toContainText("2ターン目");
@@ -180,6 +217,7 @@ test.describe("game accessibility and text navigation", () => {
   test("the text route view lists remaining Yamanote sections and upcoming stations", async ({ page, railwayBundle }) => {
     await openTitle(page);
     await page.getByRole("button", { name: "はじめから" }).click();
+    await openGameLog(page);
     const route = gamePanel(page).locator(".game-panel__route-summary");
     await route.getByText("地図なしで確認").click();
 
@@ -214,6 +252,208 @@ test.describe("game accessibility and text navigation", () => {
   });
 });
 
+test.describe("game menu disclosure", () => {
+  test.use({ dataset: "fixture", reducedMotion: "reduce" });
+
+  test("starts closed and keeps hidden menu controls out of keyboard navigation", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const region = panel.locator("section.game-panel__menu");
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await expect(region).toBeHidden();
+    await trigger.focus();
+    for (let tabIndex = 0; tabIndex < 12; tabIndex += 1) {
+      await page.keyboard.press("Tab");
+      expect(await page.evaluate(() => Boolean(document.activeElement?.closest(".game-panel__menu")))).toBe(false);
+    }
+  });
+
+  test("opens with Enter and Space, closes on Escape, and restores visible keyboard focus", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const region = panel.getByRole("region", { name: "メニュー", exact: true });
+    for (const key of ["Enter", "Escape", "Space", "Escape"]) {
+      await trigger.focus();
+      await page.keyboard.press(key);
+      const isOpen = key === "Enter" || key === "Space";
+      await expect(trigger).toHaveAttribute("aria-expanded", String(isOpen));
+      if (isOpen) {
+        await expect(region).toBeVisible();
+        await expect(trigger).toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(panel.getByRole("button", { name: "追尾: ON" })).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(trigger).toHaveAttribute("aria-expanded", "false");
+        await expect(trigger).toBeFocused();
+        expect(await trigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+      }
+    }
+  });
+
+  test("keeps legend expansion and filter state after the menu closes", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await openGameMenu(page);
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const legendToggle = panel.locator(".game-panel__legend-toggle").first();
+    const operator = panel.locator(".game-panel__legend-operator").first();
+    await operator.locator("summary").click();
+    const groupFilter = operator.getByRole("checkbox").last();
+    await groupFilter.uncheck();
+    await expect(groupFilter).not.toBeChecked();
+    const initial = await legendToggle.getAttribute("aria-expanded");
+    await legendToggle.click();
+    const expanded = await legendToggle.getAttribute("aria-expanded");
+    expect(expanded).not.toBe(initial);
+    await closeGameMenu(page);
+    await openGameMenu(page);
+    await expect(legendToggle).toHaveAttribute("aria-expanded", expanded!);
+    if (expanded !== "true") await legendToggle.click();
+    if (!(await operator.evaluate((element) => (element as HTMLDetailsElement).open))) {
+      await operator.locator("summary").click();
+    }
+    await expect(operator.getByRole("checkbox").last()).not.toBeChecked();
+    await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("returns keyboard focus visibly to the menu trigger after cancelling 新規", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await rollOnce(page);
+    const panel = gamePanel(page);
+    await openGameMenu(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const newGame = panel.getByRole("button", { name: "新規", exact: true });
+    await newGame.focus();
+    await page.keyboard.press("Enter");
+    const confirmation = page.getByRole("alertdialog", { name: "新しく始めますか？" });
+    await expect(confirmation).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(trigger).toBeFocused();
+    expect(await trigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+  });
+
+  test("Escape closes a native adjust dialog before the open menu", async ({ page, railwayBundle }) => {
+    const game = itemScenario("adjust", railwayBundle.network);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const panel = gamePanel(page);
+    await openGameMenu(page);
+    await diceButton(page).click();
+    const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await expect(adjustment).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(adjustment).toBeHidden();
+    await expect(panel.getByRole("button", { name: "メニュー", exact: true })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("新規 confirmation Escape preserves the staged item before the next Escape clears it", async ({ page, railwayBundle }) => {
+    const game = itemScenario("double", railwayBundle.network);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const panel = gamePanel(page);
+    const trigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const slot = panel.locator(".item-slot").filter({ has: page.getByRole("heading", { name: "倍速券", exact: true }) });
+    await useInventoryItem(page, "倍速券");
+    await expect(slot).toHaveClass(/item-slot--selected/);
+    await expect(panel.getByText("倍速券を選択中")).toBeVisible();
+    await openGameMenu(page);
+    const newGame = panel.getByRole("button", { name: "新規", exact: true });
+    await newGame.focus();
+    await page.keyboard.press("Enter");
+    const confirmation = page.getByRole("alertdialog", { name: "新しく始めますか？" });
+    await expect(confirmation).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(confirmation).toBeHidden();
+    await expect(panel.getByText("倍速券を選択中")).toBeVisible();
+    await expect(trigger).toBeFocused();
+    expect(await trigger.evaluate((element) => element.matches(":focus-visible"))).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(panel.getByText("倍速券を選択中")).toBeHidden();
+  });
+});
+
+test.describe("turn log disclosure", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("shows canonical countdown sentences as visible log text", async ({ page, railwayBundle }) => {
+    const game = playItemTurn(itemScenario("delay", railwayBundle.network), {}, railwayBundle.network).state;
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
+    await openGameLog(page);
+    const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
+    const explanation = log.getByRole("region", { name: "効果の説明", exact: true });
+    await expect(explanation).toContainText("遅延：8ターン目に発動（あと3ターン）");
+    await expect(explanation).toBeVisible();
+    await expect(explanation.locator("[hidden], .visually-hidden")).toHaveCount(0);
+  });
+
+  test("shows the pending oversleep sentence as visible log text, not only in the chip tooltip", async ({ page, railwayBundle }) => {
+    // The adjust fixture's next plain turn picks up 寝過ごし (pending at turn 9).
+    const game = playItemTurn(itemScenario("adjust", railwayBundle.network), {}, railwayBundle.network).state;
+    expect(game.effects.oversleepPending).toBe(true);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page).locator(".effect-chip__label")).toContainText(["寝過ごし"]);
+    await openGameLog(page);
+    const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
+    const explanation = log.getByRole("region", { name: "効果の説明", exact: true });
+    await expect(explanation.getByText("寝過ごし：次のターンは終点まで（環状線は6駅）進みます", { exact: true })).toBeVisible();
+    await expect(explanation.locator("[hidden], .visually-hidden")).toHaveCount(0);
+  });
+
+  test("starts closed, toggles by keyboard, restores focus, and excludes the menu", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    const panel = gamePanel(page);
+    const logTrigger = panel.getByRole("button", { name: "ログ", exact: true });
+    const menuTrigger = panel.getByRole("button", { name: "メニュー", exact: true });
+    const log = panel.locator(".game-panel__log");
+    await expect(logTrigger).toHaveAttribute("aria-expanded", "false");
+    await expect(log).toBeHidden();
+    const logId = await log.getAttribute("id");
+    if (!logId) throw new Error("the turn log region id is missing");
+    await expect(logTrigger).toHaveAttribute("aria-controls", logId);
+    await logTrigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(log).toBeVisible();
+    await expect(panel.getByRole("region", { name: "ターンのログ", exact: true })).toBeVisible();
+    await expect(logTrigger).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(log).toBeHidden();
+    await expect(logTrigger).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(menuTrigger).toBeFocused();
+    await logTrigger.focus();
+    await page.keyboard.press("Enter");
+    await expect(log).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(log).toBeHidden();
+    await expect(logTrigger).toBeFocused();
+    await openGameMenu(page);
+    await expect(logTrigger).toHaveAttribute("aria-expanded", "false");
+    await expect(menuTrigger).toHaveAttribute("aria-expanded", "true");
+    await openGameLog(page);
+    await expect(menuTrigger).toHaveAttribute("aria-expanded", "false");
+    await expect(logTrigger).toHaveAttribute("aria-expanded", "true");
+    await expect(panel.locator("[role=status]")).toHaveCount(1);
+    await expect(log.locator("[role=status], [aria-live]")).toHaveCount(0);
+  });
+});
+
 test.describe("compact layouts and map follow padding", () => {
   test.use({ reducedMotion: "reduce" });
 
@@ -224,26 +464,38 @@ test.describe("compact layouts and map follow padding", () => {
     await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
 
     const panel = gamePanel(page);
-    const assertCompactControlsVisible = async () => {
+    const assertCompactLotteryVisible = async () => {
       const viewport = page.viewportSize();
       const panelBox = await panel.boundingBox();
       const lotteryBox = await panel.locator(".game-panel__lottery").boundingBox();
-      const optionsBox = await panel.locator(".game-panel__options").boundingBox();
-      if (!viewport || !panelBox || !lotteryBox || !optionsBox) throw new Error("compact panel boxes are missing");
+      if (!viewport || !panelBox || !lotteryBox) throw new Error("compact log boxes are missing");
       expect(panelBox.height).toBeLessThanOrEqual(viewport.height * 0.75 + 1);
       expect(lotteryBox.y).toBeGreaterThanOrEqual(panelBox.y);
       expect(lotteryBox.y + lotteryBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height);
+      await expect(panel.locator(".game-panel__lottery")).toBeInViewport();
+      expect(await panel.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+    };
+    const assertCompactOptionsVisible = async () => {
+      const viewport = page.viewportSize();
+      const panelBox = await panel.boundingBox();
+      const optionsBox = await panel.locator(".game-panel__options").boundingBox();
+      if (!viewport || !panelBox || !optionsBox) throw new Error("compact menu boxes are missing");
+      expect(panelBox.height).toBeLessThanOrEqual(viewport.height * 0.75 + 1);
       expect(optionsBox.y).toBeGreaterThanOrEqual(panelBox.y);
       expect(optionsBox.y + optionsBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height);
-      await expect(panel.locator(".game-panel__lottery")).toBeInViewport();
       await expect(panel.locator(".game-panel__options")).toBeInViewport();
       expect(await panel.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
       await expect(panel.locator(".game-panel__options button")).toHaveCount(4);
     };
 
-    await assertCompactControlsVisible();
+    await openGameLog(page);
+    await assertCompactLotteryVisible();
+    await openGameMenu(page);
+    await assertCompactOptionsVisible();
     await page.setViewportSize({ width: 640, height: 400 });
-    await assertCompactControlsVisible();
+    await assertCompactOptionsVisible();
+    await openGameLog(page);
+    await assertCompactLotteryVisible();
   });
 
   test("follow camera leaves the marker above the bottom panel on phone and compact landscape", async ({ page }) => {
@@ -318,9 +570,75 @@ test.describe("compact layouts and map follow padding", () => {
 
     await page.setViewportSize({ width: 812, height: 375 });
     await expect.poll(markerAbovePanel).toBe(true);
+    await openGameLog(page);
     await gamePanel(page).locator(".game-panel__route-summary > summary").click();
     await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
     await expect.poll(markerAbovePanel).toBe(true);
+  });
+
+  // Integration check: after a new game and a resume the follow padding tracks the replacement panel and the
+  // map is reused. The panel has a fixed height since S10b, so the test resizes it directly. Follow is off at
+  // turn 0 and on the title screen, which also rebinds the observer; the `panelKey`-specific rebinding is
+  // pinned by `tests/unit/map-panel-observer.test.ts`.
+  test("follow padding rebinds to replacement panels without recreating the map", async ({ page }) => {
+    await page.setViewportSize({ width: 812, height: 375 });
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+
+    const preserveMapIdentity = async () => page.evaluate(() => {
+      const hook = (window as unknown as { __sugorokuE2E?: { map?: object | null; originalMap?: object } }).__sugorokuE2E;
+      if (!hook?.map) throw new Error("MapLibre instance is missing");
+      hook.originalMap = hook.map;
+    });
+    const sameMapInstance = async () => page.evaluate(() => {
+      const hook = (window as unknown as { __sugorokuE2E?: { map?: object | null; originalMap?: object } }).__sugorokuE2E;
+      return Boolean(hook?.map && hook.originalMap === hook.map);
+    });
+    const hasExpandedPanelPadding = async () => page.evaluate(() => {
+      interface PaddedMap { getPadding(): { bottom: number } }
+      const map = (window as unknown as { __sugorokuE2E?: { map?: PaddedMap | null } }).__sugorokuE2E?.map;
+      return (map?.getPadding().bottom ?? 0) > 250;
+    });
+    const markerAbovePanel = async () => page.evaluate(async () => {
+      interface CameraMap {
+        getSource(id: string): { getData(): Promise<{ features: { geometry: { coordinates: [number, number] } }[] }> } | undefined;
+        project(position: [number, number]): { x: number; y: number };
+      }
+      const map = (window as unknown as { __sugorokuE2E?: { map?: CameraMap | null } }).__sugorokuE2E?.map;
+      const panel = document.querySelector<HTMLElement>(".game-panel");
+      const source = await map?.getSource("game-current-position")?.getData();
+      const coordinates = source?.features[0]?.geometry.coordinates;
+      return Boolean(map && panel && coordinates && map.project(coordinates).y < panel.getBoundingClientRect().top - 12);
+    });
+    const verifyReplacementPanel = async () => {
+      await expect.poll(markerAbovePanel).toBe(true);
+      await gamePanel(page).evaluate((panel) => { panel.style.height = "65%"; });
+      await expect.poll(hasExpandedPanelPadding).toBe(true);
+      await expect.poll(markerAbovePanel).toBe(true);
+      await openGameLog(page);
+      await gamePanel(page).locator(".game-panel__route-summary > summary").click();
+      await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
+      await expect.poll(markerAbovePanel).toBe(true);
+      await expect.poll(sameMapInstance).toBe(true);
+    };
+
+    await preserveMapIdentity();
+    await rollOnce(page);
+    await openGameMenu(page);
+    await gamePanel(page).getByRole("button", { name: "新規" }).click();
+    await page.getByRole("alertdialog", { name: "新しく始めますか？" }).getByRole("button", { name: "新しく始める" }).click();
+    await expect(panelStat(page, "ターン数")).toHaveText("0");
+    await rollOnce(page);
+    await verifyReplacementPanel();
+
+    await openGameMenu(page);
+    await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
+    await expect(titleScreen(page)).toBeVisible();
+    await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await rollOnce(page);
+    await verifyReplacementPanel();
   });
 
   test("a desktop panel resize leaves a camera moved off the marker where it is", async ({ page }) => {
@@ -355,8 +673,14 @@ test.describe("compact layouts and map follow padding", () => {
       return target;
     });
     // Desktop follow padding is zero, so growing the panel changes no camera layout.
+    const logRegion = gamePanel(page).locator(".game-panel__log");
+    const closedLogHeight = await logRegion.evaluate((element) => element.getBoundingClientRect().height);
+    expect(closedLogHeight).toBe(0);
+    await openGameLog(page);
     await gamePanel(page).locator(".game-panel__route-summary > summary").click();
     await expect(gamePanel(page).getByRole("region", { name: "山手線の未踏破区間" })).toBeVisible();
+    const openLogHeight = await logRegion.evaluate((element) => element.getBoundingClientRect().height);
+    expect(openLogHeight).toBeGreaterThan(closedLogHeight);
 
     // Let the resize observer, its animation frame and the React effects run.
     const LAYOUT_SETTLE_FRAMES = 10;

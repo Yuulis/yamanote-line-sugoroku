@@ -12,37 +12,274 @@ body {
 /* Stacking order: map < panel < screens < map error < data banner.
    The confirmation <dialog> sits in the browser's top layer above all. */
 :root {
+  --color-brand: #d9502f;
+  --color-brand-strong: #b83f24;
+  --color-brand-tint: #fbe9e3;
+  --color-ink: #263238;
+  --color-cream: #faf7ef;
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-text: #263238;
+  --color-text-muted: #555555;
+  --color-border: #c7c7c7;
+  --color-good: #236b2a;
+  --color-bad: #b71c1c;
+  --color-warning: #8a3b00;
+  --color-focus-ring: #b83f24;
+  --color-surface-disabled: #eeeeee;
+  --color-text-disabled: #6b6b6b;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 4px rgb(0 0 0 / 20%);
+  --shadow-md: 0 1px 6px rgb(0 0 0 / 30%);
+  --motion-fast: 120ms;
+  --motion-normal: 200ms;
+  --motion-slow: 300ms;
   --layer-panel: 10;
   --layer-screen: 20;
   --layer-map-error: 25;
+  --layer-toast: 30;
   --layer-banner: 40;
+}
+
+.toast-host {
+  position: fixed;
+  z-index: var(--layer-toast);
+  top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
+  left: 50%;
+  display: flex;
+  width: min(420px, calc(100vw - 120px));
+  flex-direction: column;
+  gap: 8px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast-host__toast {
+  display: flex;
+  min-height: 44px;
+  box-sizing: border-box;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--toast-accent, var(--color-ink));
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+
+.toast-host__toast--good {
+  --toast-accent: var(--color-good);
+}
+
+.toast-host__toast--bad {
+  --toast-accent: var(--color-bad);
+}
+
+.toast-host__toast--neutral {
+  --toast-accent: var(--color-ink);
+}
+
+.toast-host__toast--sticky {
+  border-width: 2px 2px 2px 5px;
+  font-weight: 700;
+}
+
+.toast-host__icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-host__text {
+  min-width: 0;
+}
+
+.toast-host__toast--motion {
+  animation: toast-host-enter var(--motion-fast) ease-out both;
+}
+
+@keyframes toast-host-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Short landscape: the panel rises to 75vh on the left with the dice in its
+   top-right column, so a top-centre stack would cover it. Use the map column
+   right of the panel (same width formula as .game-panel), below the zoom
+   controls. The attribution sits top-left above the panel here (see
+   RailwayMap), clear of this column. A second or third toast may pass over the
+   overview buttons for its reading time; toasts never take pointer events. */
+@media (min-width: 601px) and (max-height: 500px) {
+  .maplibregl-ctrl-top-left .maplibregl-ctrl-attrib {
+    box-sizing: border-box;
+    max-width: calc(100vw - 72px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  }
+
+  .toast-host {
+    /* Below the zoom group (10px margin + two buttons 44px tall through the
+       global button min-height) plus an 8px gap. */
+    top: calc(106px + env(safe-area-inset-top, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    left: calc(12px + env(safe-area-inset-left, 0px) + min(440px, calc(100vw - 192px)) + 8px);
+    width: auto;
+    transform: none;
+  }
+
+  .toast-host__toast {
+    font-size: 13px;
+  }
+}
+
+/* Phones: the attribution sits top-left. RailwayMap publishes its bottom edge
+   (--map-attribution-bottom, collapsed 44px toggle or expanded credit) and the
+   stack starts 8px below it, aligned with its left edge. The column ends left of
+   the zoom group and the overview buttons (10px + ~70px + 4px gap), so the stack
+   clears the attribution, the zoom group and 全体 / 目標路線 at any length. */
+@media (max-width: 600px) {
+  .toast-host {
+    top: max(calc(env(safe-area-inset-top, 0px) + 12px), calc(var(--map-attribution-bottom, 0px) + 8px));
+    right: calc(84px + env(safe-area-inset-right, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    width: auto;
+    max-width: 420px;
+    transform: none;
+  }
+}
+
+/* Top-left attribution (phones and short landscape only, see RailwayMap): it
+   starts collapsed there, so its toggle gets a 44×44px target; the expanded
+   credit text starts right of it. `.map-container` outranks MapLibre's own
+   equal-specificity rules whatever the stylesheet order. */
+.map-container .maplibregl-ctrl-top-left > .maplibregl-ctrl-attrib.maplibregl-compact {
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 2px 44px 2px 0;
+  border-radius: 22px;
+}
+
+.map-container .maplibregl-ctrl-top-left > .maplibregl-ctrl-attrib.maplibregl-compact-show {
+  padding: 2px 8px 2px 48px;
+  border-radius: 12px;
+}
+
+.map-container .maplibregl-ctrl-top-left .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* viewport-fit=cover: keep every map control corner out of the notch. MapLibre
+   already gives each control a 10px margin, so the corner adds only the inset.
+   Both horizontal insets apply to every corner so a wide (wrapping) attribution
+   never stretches under the opposite notch either. */
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-top-right,
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right {
+  margin-right: env(safe-area-inset-right, 0px);
+  margin-left: env(safe-area-inset-left, 0px);
+}
+
+.maplibregl-ctrl-top-left,
+.maplibregl-ctrl-top-right { margin-top: env(safe-area-inset-top, 0px); }
+.maplibregl-ctrl-bottom-left,
+.maplibregl-ctrl-bottom-right { margin-bottom: env(safe-area-inset-bottom, 0px); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-normal: 0ms;
+    --motion-slow: 0ms;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-host__toast--motion {
+    animation: none;
+    transition: none;
+  }
 }
 
 button {
   min-height: 44px;
   font-size: 14px;
   cursor: pointer;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  transition: background-color var(--motion-fast), border-color var(--motion-fast), transform var(--motion-fast);
 }
 
-button:disabled {
-  cursor: default;
+/* :where() keeps this at (0,1,1) so filled button classes keep their own pressed fill. */
+button:active:where(:not(:disabled):not([aria-disabled="true"])) {
+  transform: translateY(1px);
+  background-color: var(--color-cream);
 }
 
+button:focus-visible,
+.edition-picker select:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* The base rule sets an author colour, so disabled buttons need their own muted look. */
+button:disabled,
 button[aria-disabled="true"] {
   cursor: default;
+  background: var(--color-surface-disabled);
+  color: var(--color-text-disabled);
 }
 
 .button-primary {
   font-weight: bold;
-  background: #2e7d32;
-  color: #ffffff;
-  border: 1px solid #1b5e20;
-  border-radius: 4px;
+  background: var(--color-brand-strong);
+  color: var(--color-surface);
+  border: 1px solid var(--color-brand-strong);
 }
 
-.button-primary:disabled {
-  background: #9e9e9e;
-  border-color: #8a8a8a;
+.button-primary:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--color-brand-strong);
+}
+
+.button-cta {
+  min-height: 44px;
+  background: var(--color-brand);
+  color: var(--color-surface);
+  border: 1px solid var(--color-brand);
+  font-size: 18.7px;
+  font-weight: 700;
+}
+
+.button-cta:active:not(:disabled):not([aria-disabled="true"]) {
+  background: var(--color-brand-strong);
+}
+
+.button-primary:disabled,
+.button-cta:disabled,
+.button-cta[aria-disabled="true"] {
+  background: var(--color-surface-disabled);
+  color: var(--color-text-disabled);
+  border-color: var(--color-border);
 }
 
 .map-container {
@@ -76,7 +313,7 @@ button[aria-disabled="true"] {
 .map-error {
   position: fixed;
   z-index: var(--layer-map-error);
-  top: 48px;
+  top: calc(48px + env(safe-area-inset-top, 0px));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -101,11 +338,15 @@ button[aria-disabled="true"] {
 
 /* Game control panel: bottom-left, compact so the map stays visible. */
 .game-panel {
+  --hud-row-height: 24px;
   position: fixed;
   z-index: var(--layer-panel);
-  left: 12px;
-  bottom: 28px;
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
   width: 310px;
+  /* A fixed height (not content-sized) keeps the panel top, and so the dice
+     button, in the same place whatever the lower content is. */
+  height: calc(100% - 120px);
   max-height: calc(100% - 120px);
   overflow-y: auto;
   padding: 10px 12px;
@@ -129,41 +370,140 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__title {
-  margin: 0 0 6px;
+  min-width: 0;
+  margin: 0;
   font-size: 16px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 24px;
+  min-width: 0;
 }
 
 .game-panel__stats {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 2px 10px;
   margin: 0 0 8px;
 }
 
 .game-panel__stats dt {
+  height: var(--hud-row-height, 24px);
+  line-height: var(--hud-row-height, 24px);
   color: #555555;
+  white-space: nowrap;
 }
 
 .game-panel__stats dd {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--hud-row-height, 24px);
   margin: 0;
   font-weight: bold;
   min-width: 0;
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.hud-stat__value {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.game-panel__stats dd:has(.target-progress) .hud-stat__value {
+  flex: 0 1 auto;
+}
+
+.game-panel__stats .target-progress {
+  flex: 1 1 auto;
+  min-width: 42px;
+  width: auto;
+}
+
+.target-progress {
+  width: 100%;
+}
+
+.target-progress__segments {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 2px;
+  width: 100%;
+  min-height: 8px;
+}
+
+.target-progress__segment {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 8px;
+  background: var(--color-border);
+  transition: background-color var(--motion-normal);
+}
+
+.target-progress__segment--completed {
+  background: var(--color-brand);
+}
+
+.effect-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.game-panel .effect-chips {
+  margin-top: 4px;
+}
+
+.effect-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  color: var(--color-text);
+}
+
+.effect-chip__label {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.effect-chip__countdown {
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .target-progress__segment {
+    transition: none;
+  }
 }
 
 .game-panel__subtitle {
+  height: 18px;
   margin: 0 0 6px;
   color: #555555;
   font-size: 12px;
-}
-
-.service-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 4px;
-  border: 1px solid rgb(0 0 0 / 25%);
-  border-radius: 2px;
+  line-height: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .game-panel__lottery {
@@ -211,7 +551,7 @@ button[aria-disabled="true"] {
 }
 
 .edition-picker select:focus-visible {
-  outline: 3px solid #1565c0;
+  outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
@@ -241,21 +581,150 @@ button[aria-disabled="true"] {
   margin-top: 6px;
 }
 
+.game-panel__menu {
+  display: block;
+}
+
+/* Must stay more specific than every .game-panel__menu display rule (incl. the
+   short-landscape `display: contents`), so a closed menu is never rendered. */
+.game-panel__menu[hidden] {
+  display: none;
+}
+
+.game-panel__log-trigger,
+.game-panel__menu-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.game-panel__disclosures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas:
+    "log-trigger menu-trigger"
+    "log log"
+    "menu menu";
+  gap: 0 8px;
+}
+
+.game-panel__log-trigger {
+  grid-area: log-trigger;
+}
+
+.game-panel__menu-trigger {
+  grid-area: menu-trigger;
+}
+
+.game-panel__log {
+  grid-area: log;
+  min-width: 0;
+}
+
+.game-panel__log[hidden] {
+  display: none;
+}
+
+.game-panel__menu {
+  grid-area: menu;
+  min-width: 0;
+}
+
+.game-panel__turn-facts {
+  margin: 0 0 8px;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  color: var(--color-text);
+}
+
+.game-panel__turn-facts h2 {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+}
+
+.game-panel__turn-facts dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 8px;
+  margin: 0;
+}
+
+.game-panel__turn-facts dd {
+  min-width: 0;
+  margin: 0;
+}
+
+.game-panel__log-value {
+  overflow-wrap: anywhere;
+  color: var(--color-text);
+}
+
+.game-panel__effect-texts {
+  font-size: 12px;
+}
+
+.game-panel__effect-texts h2 {
+  margin: 8px 0 2px;
+  font-size: 12px;
+}
+
+.game-panel__effect-texts ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.5;
+}
+
+.game-panel__log-icon,
+.game-panel__log-chevron,
+.game-panel__menu-icon,
+.game-panel__menu-chevron {
+  flex: 0 0 auto;
+  color: currentColor;
+}
+
+.game-panel__log-chevron,
+.game-panel__menu-chevron {
+  margin-left: auto;
+}
+
 .game-panel__options button {
   padding: 0 2px;
   font-size: 12px;
 }
 
 .game-panel__options button[aria-pressed="true"] {
-  background: #e3f2e1;
-  border: 1px solid #2e7d32;
-  border-radius: 4px;
+  background: var(--color-brand-tint);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-sm);
 }
 
 .game-panel__save {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin: 6px 0 0;
   font-size: 12px;
   color: #555555;
+  overflow-wrap: anywhere;
+}
+
+.game-panel__save-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+}
+
+.game-panel__save--inline {
+  flex: 0 0 16px;
+  justify-content: center;
+  margin: 0;
+  font-size: 12px;
 }
 
 .game-panel__save--warning {
@@ -323,7 +792,10 @@ button[aria-disabled="true"] {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: calc(16px + env(safe-area-inset-top, 0px))
+    calc(16px + env(safe-area-inset-right, 0px))
+    calc(16px + env(safe-area-inset-bottom, 0px))
+    calc(16px + env(safe-area-inset-left, 0px));
   overflow-y: auto;
   background: rgb(0 0 0 / 35%);
 }
@@ -440,7 +912,7 @@ button[aria-disabled="true"] {
   left: 50%;
   transform: translate(-50%, -50%);
   width: min(440px, calc(100% - 24px));
-  max-height: calc(100% - 80px);
+  max-height: calc(100% - 80px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   overflow-y: auto;
   padding: 16px 20px;
   border-radius: 10px;
@@ -516,7 +988,7 @@ button[aria-disabled="true"] {
 
 .clear-screen__share button:focus-visible,
 .clear-screen__share-fallback textarea:focus-visible {
-  outline: 3px solid #1565c0;
+  outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 
@@ -544,6 +1016,7 @@ button[aria-disabled="true"] {
 .dialog {
   box-sizing: border-box;
   width: min(380px, calc(100% - 32px));
+  max-height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
   padding: 0;
   border: none;
   border-radius: 8px;
@@ -587,6 +1060,10 @@ button[aria-disabled="true"] {
   border-radius: 4px;
 }
 
+.dialog__confirm:active:not(:disabled) {
+  background: var(--color-bad);
+}
+
 /* Item controls stay text-first and wrap inside the narrow game panel. */
 .item-staged-summary {
   display: flex;
@@ -595,14 +1072,14 @@ button[aria-disabled="true"] {
   gap: 4px 6px;
   margin: 6px 0;
   padding: 6px;
-  border: 1px solid #2e7d32;
-  border-radius: 4px;
-  background: #f1f8ef;
+  border: 1px solid var(--color-brand);
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-tint);
   overflow-wrap: anywhere;
 }
 
 .item-staged-summary button {
-  min-height: 36px;
+  min-height: 44px;
   margin-left: auto;
   padding: 2px 8px;
 }
@@ -612,97 +1089,123 @@ button[aria-disabled="true"] {
   min-width: 0;
 }
 
-.item-inventory__heading {
+.item-inventory__header {
+  display: flex;
+  align-items: center;
+}
+
+.item-inventory__label {
   margin: 0 0 4px;
-  font-size: 14px;
+  color: var(--color-ink);
+  font-size: 13px;
+  font-weight: bold;
 }
 
 .item-inventory__slots {
+  position: relative;
   display: grid;
-  gap: 5px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .item-slot {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
+  position: static;
   min-width: 0;
-  box-sizing: border-box;
-  padding: 6px;
-  border: 1px solid #c7c7c7;
-  border-radius: 5px;
-  background: #ffffff;
 }
 
-.item-slot--selected {
-  border: 2px solid #2e7d32;
-  padding: 5px;
-  background: #f1f8ef;
+.item-slot__button,
+.item-slot--empty {
+  width: 100%;
+  height: 56px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.item-slot__button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.item-slot--good .item-slot__icon { --item-icon-accent: var(--color-good); }
+.item-slot--bad .item-slot__icon { --item-icon-accent: var(--color-bad); }
+
+.item-slot__short {
+  font-size: 12px;
+  font-weight: bold;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.item-slot--selected .item-slot__button {
+  border: 2px solid var(--color-brand);
+  padding: 3px;
+  background: var(--color-brand-tint);
+  color: var(--color-text);
+}
+
+.item-slot--unavailable .item-slot__icon { opacity: 0.72; }
+
+.item-slot--passive .item-slot__button {
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
 }
 
 .item-slot--empty {
-  min-height: 38px;
+  display: flex;
   align-items: center;
-  color: #666666;
-}
-
-.item-slot__number {
-  flex: 0 0 22px;
-  color: #555555;
+  justify-content: center;
+  border-style: dashed;
+  color: var(--color-text-muted);
   font-size: 12px;
-  font-weight: bold;
 }
 
-.item-slot__body {
-  min-width: 0;
-  flex: 1;
-  overflow-wrap: anywhere;
-}
-
-.item-slot__name {
+.item-slot__tooltip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* Below the slots: above them the tooltip would cover the dice button. */
+  top: 100%;
+  z-index: 2;
   margin: 0;
-  font-size: 13px;
-}
-
-.item-slot__effect,
-.item-slot__timing,
-.item-slot__hint,
-.item-slot__reason,
-.item-slot__availability {
-  margin: 2px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  font-size: 12px;
   line-height: 1.45;
+  overflow-wrap: anywhere;
+  /* Never blocks the controls it covers; InventoryPanel keeps it open while the pointer is over it. */
+  pointer-events: none;
 }
 
-.item-slot__timing,
-.item-slot__availability {
-  color: #555555;
-  font-size: 12px;
-}
-
-.item-slot__hint {
-  color: #1b5e20;
-  font-size: 12px;
-}
-
-.item-slot__hint--caution,
-.item-slot__reason {
-  color: #8a3b00;
-  font-size: 12px;
-}
-
-.item-slot__select {
-  width: 100%;
-  min-height: 40px;
-  margin-top: 4px;
-  padding: 4px 8px;
-  text-align: left;
-}
+.item-slot__tooltip p { margin: 2px 0 0; }
+.item-slot__tooltip-name { font-size: 13px; font-weight: bold; }
+.item-slot__tooltip-timing,
+.item-slot__tooltip-note { color: var(--color-text-muted); }
+.item-slot__tooltip-hint { color: var(--color-good); }
+.item-slot__tooltip-hint--caution,
+.item-slot__tooltip-reason { color: var(--color-warning); }
+.item-slot--empty .item-slot__empty { line-height: 1.2; }
 
 .item-dialog {
-  max-height: min(82vh, 720px);
+  max-height: min(82vh, 720px, calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px));
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -713,7 +1216,7 @@ button[aria-disabled="true"] {
 
 .item-dialog__hint--target {
   font-weight: bold;
-  color: #1b5e20;
+  color: var(--color-good);
 }
 
 .item-dialog__group {
@@ -746,7 +1249,7 @@ button[aria-disabled="true"] {
 
 .item-route-option--target {
   border-radius: 3px;
-  background: #eef7e8;
+  background: var(--color-brand-tint);
 }
 
 .item-route-option input,
@@ -757,7 +1260,7 @@ button[aria-disabled="true"] {
   height: 20px;
   min-height: 20px;
   margin: 2px 0 0;
-  accent-color: #2e7d32;
+  accent-color: var(--color-brand);
 }
 
 .item-route-option__copy,
@@ -786,50 +1289,250 @@ button[aria-disabled="true"] {
 
 .item-discard__list {
   display: grid;
-  gap: 6px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 8px;
   margin: 8px 0;
   padding: 0;
   list-style: none;
 }
 
-.item-discard__choice {
-  display: grid;
-  gap: 4px;
-  width: 100%;
-  min-width: 0;
-  padding: 8px;
-  text-align: left;
-  border: 1px solid #aaaaaa;
-  border-radius: 4px;
-  background: #ffffff;
-  overflow-wrap: anywhere;
+.item-discard {
+  width: min(640px, calc(100% - 32px));
 }
 
-.item-discard__name {
+.item-discard .item-card p {
+  margin: 6px 0 0;
+}
+
+.item-discard__group {
+  height: 100%;
+}
+
+.item-discard__group > .item-card {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+/* `margin-top: auto` aligns the actions in a row; the last text line keeps the card's 8px gap above the action. */
+.item-discard__group > .item-card .item-card__action {
+  margin-top: auto;
+}
+
+.item-discard__group > .item-card p:last-of-type {
+  margin-bottom: 8px;
+}
+
+.item-card {
+  --item-card-accent: var(--color-good);
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--item-card-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.item-card--good {
+  --item-card-accent: var(--color-good);
+}
+
+.item-card--bad {
+  --item-card-accent: var(--color-bad);
+}
+
+.item-card--selected {
+  border-color: var(--color-brand);
+  background: var(--color-brand-tint);
+}
+
+.item-card__header {
   display: flex;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.item-card__icon {
+  --item-icon-accent: var(--item-card-accent);
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.item-card__name {
+  min-width: 0;
+  margin: 0;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.item-card__name:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.item-card__markers {
+  display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 4px;
+  margin: 6px 0 0;
+}
+
+.item-card__marker {
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--color-brand-tint);
+  color: var(--color-brand-strong);
+  font-size: 12px;
   font-weight: bold;
 }
 
-.item-discard__new {
-  padding: 1px 5px;
-  border-radius: 3px;
-  background: #e3f2e1;
-  color: #1b5e20;
-  font-size: 12px;
+/* The selected card already uses the tint, so its markers sit on the surface colour. */
+.item-card--selected .item-card__marker {
+  background: var(--color-surface);
 }
 
-.item-discard__effect,
-.item-discard__action {
-  font-size: 12px;
-  line-height: 1.45;
+.item-card__effect,
+.item-card__timing,
+.item-card__hint,
+.item-card__note,
+.item-card__reason {
+  margin: 6px 0 0;
 }
 
-.item-discard__action {
-  font-weight: bold;
-  color: #7f0000;
+.item-card__timing,
+.item-card__note {
+  color: var(--color-text-muted);
+}
+
+.item-card__hint {
+  color: var(--color-good);
+}
+
+.item-card__hint--caution,
+.item-card__reason {
+  color: var(--color-warning);
+}
+
+.item-card__action {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.item-card-popover {
+  box-sizing: border-box;
+  padding: 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.item-card-popover--native {
+  position: fixed;
+  margin: 0;
+  inset: auto;
+}
+
+.item-card-popover--anchored {
+  width: min(320px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+}
+
+.item-card-popover--sheet {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  width: 100%;
+  max-width: none;
+  max-height: min(70vh, calc(100vh - 16px));
+  max-height: min(70dvh, calc(100dvh - 16px));
+  border-radius: var(--radius-lg);
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+.item-card-popover--inline {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.item-card-popover--inline[hidden] {
+  display: none;
+}
+
+.item-card-popover__close {
+  display: block;
+  margin: 8px 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.item-slot__button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.game-panel__stats .line-badge {
+  flex: 0 0 auto;
+}
+
+.item-card__body .item-card__markers {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
+
+/* Keep sheet actions outside the body scrollport in their DOM/keyboard order. */
+.item-card__footer {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.item-card__footer .item-card__action {
+  flex: 1 1 auto;
+  min-width: 44px;
+  width: auto;
+  margin: 0;
+}
+
+.item-card__footer .item-card-popover__close {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
+
+/* Only while open: a closed popover must keep the UA `display: none`. */
+.item-card-popover--sheet:popover-open {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.item-card-popover--sheet > .item-card {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.item-card-popover--sheet .item-card__body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.item-card-popover--sheet .item-card__footer {
+  flex: 0 0 auto;
 }
 
 .item-adjustment .dialog__actions button {
@@ -838,15 +1541,6 @@ button[aria-disabled="true"] {
 }
 
 @media (max-width: 360px) {
-  .item-slot {
-    gap: 5px;
-    padding: 5px;
-  }
-
-  .item-slot__number {
-    flex-basis: 18px;
-  }
-
   .dialog__body {
     padding: 12px;
   }
@@ -860,16 +1554,36 @@ button[aria-disabled="true"] {
     height: 44px;
   }
 
-  /* Leave room for the zoom buttons on the right. */
+  /* Leave room for the zoom buttons on the right: 10px margin + 44px buttons +
+     10px margin + an 8px gap. Border-box, because MapLibre pads the expanded
+     control (28px left for its toggle), which would otherwise push the credit
+     text under the zoom buttons. */
   .maplibregl-ctrl-top-left .maplibregl-ctrl-attrib {
-    max-width: calc(100vw - 80px);
+    box-sizing: border-box;
+    max-width: calc(100vw - 72px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
   }
 
   .game-panel {
-    left: 8px;
-    right: 8px;
-    bottom: 8px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "stats"
+      "actions"
+      "inventory"
+      "staged"
+      "chips"
+      "save"
+      "disclosures";
+    /* max-content rows: a fixed-height grid would otherwise stretch auto rows
+       (moving the dice) or collapse scroll containers such as the chips row. */
+    grid-template-rows: repeat(7, max-content);
+    align-content: start;
+    row-gap: 0;
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     width: auto;
+    height: 45%;
     max-height: 45%;
     padding: 8px 10px;
     font-size: 13px;
@@ -887,14 +1601,92 @@ button[aria-disabled="true"] {
     border: 0;
   }
 
+  .game-panel__header {
+    position: absolute;
+    z-index: 1;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 0;
+    justify-content: flex-end;
+  }
+
+  .game-panel__save--inline {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
   .game-panel__subtitle {
     display: none;
   }
 
   .game-panel__stats {
+    grid-area: stats;
     grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-    margin-bottom: 6px;
+    grid-template-rows: repeat(4, 24px);
+    gap: 0 6px;
+    margin: 0;
   }
+
+  .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(1) { grid-column: 2; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(4) { grid-column: 3; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(4) { grid-column: 4; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(2) { grid-column: 1; grid-row: 2; }
+  .game-panel__stats dd:nth-of-type(2) { grid-column: 2 / 5; grid-row: 2; }
+  .game-panel__stats dt:nth-of-type(3) { grid-column: 1; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(3) { grid-column: 2; grid-row: 3; }
+  .game-panel__stats dt:nth-of-type(6) { grid-column: 3; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(6) { grid-column: 4; grid-row: 3; }
+  .game-panel__stats dt:nth-of-type(5) { grid-column: 1; grid-row: 4; }
+  .game-panel__stats dd:nth-of-type(5) { grid-column: 2 / 5; grid-row: 4; }
+  .game-panel__stats dd:nth-of-type(4) {
+    padding-right: 24px;
+    box-sizing: border-box;
+  }
+
+  .game-panel__actions {
+    grid-area: actions;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    margin-bottom: 4px;
+    align-items: stretch;
+    align-content: start;
+  }
+
+  .game-panel__actions button {
+    min-height: 44px;
+    height: 56px;
+    max-height: 56px;
+    box-sizing: border-box;
+    align-self: stretch;
+    margin: 0;
+  }
+
+  .game-panel__actions .game-panel__roll {
+    line-height: 1.2;
+    white-space: normal;
+    overflow: hidden;
+  }
+
+  .item-inventory { grid-area: inventory; margin: 0 0 4px; }
+  .item-inventory__label { margin: 0 0 2px; padding: 0; line-height: 16px; }
+  .item-staged-summary { grid-area: staged; margin: 0 0 4px; padding: 2px 2px 2px 8px; }
+  .game-panel .effect-chips {
+    grid-area: chips;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    margin: 0 0 4px;
+    scrollbar-width: thin;
+  }
+  .game-panel .effect-chip { flex: 0 0 auto; }
+  .game-panel__save { grid-area: save; margin: 0 0 4px; }
+  .game-panel__disclosures { grid-area: disclosures; }
 
   .game-panel__legend {
     margin-top: 4px;
@@ -903,7 +1695,10 @@ button[aria-disabled="true"] {
 
   .title-screen {
     align-items: start;
-    padding: 8px;
+    padding: calc(8px + env(safe-area-inset-top, 0px))
+      calc(8px + env(safe-area-inset-right, 0px))
+      calc(8px + env(safe-area-inset-bottom, 0px))
+      calc(8px + env(safe-area-inset-left, 0px));
   }
 
   .title-screen__card {
@@ -917,9 +1712,9 @@ button[aria-disabled="true"] {
   /* Bottom sheet above the attribution button, map visible above it. */
   .clear-screen {
     top: auto;
-    bottom: 8px;
-    left: 8px;
-    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
     transform: none;
     width: auto;
     max-height: 60%;
@@ -934,8 +1729,8 @@ button[aria-disabled="true"] {
 .map-overview {
   position: fixed;
   z-index: var(--layer-panel);
-  top: 156px;
-  right: 10px;
+  top: calc(156px + env(safe-area-inset-top, 0px));
+  right: calc(10px + env(safe-area-inset-right, 0px));
   display: grid;
   gap: 4px;
 }
@@ -949,9 +1744,9 @@ button[aria-disabled="true"] {
 .game-panel__legend-toggle {
   display: block;
   width: calc(100% - 82px);
-  min-height: 32px;
+  min-height: 44px;
   margin-top: 8px;
-  padding: 2px 8px;
+  padding: 4px 8px;
   font-size: 12px;
   text-align: left;
   background: #ffffff;
@@ -962,9 +1757,9 @@ button[aria-disabled="true"] {
 .game-panel__legend-reset {
   float: right;
   width: 76px;
-  min-height: 32px;
-  margin-top: -32px;
-  padding: 2px 4px;
+  min-height: 44px;
+  margin-top: -44px;
+  padding: 4px;
   font-size: 12px;
   background: #ffffff;
   border: 1px solid #aaaaaa;
@@ -983,8 +1778,10 @@ button[aria-disabled="true"] {
 
 .game-panel summary {
   cursor: pointer;
-  min-height: 32px;
-  line-height: 32px;
+  min-height: 44px;
+  padding-block: 12px;
+  box-sizing: border-box;
+  line-height: 20px;
 }
 
 .game-panel__legend-operator ul,
@@ -1002,7 +1799,7 @@ button[aria-disabled="true"] {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: 44px;
   cursor: pointer;
 }
 
@@ -1010,7 +1807,7 @@ button[aria-disabled="true"] {
   width: 18px;
   height: 18px;
   margin: 0;
-  accent-color: #2e7d32;
+  accent-color: var(--color-brand);
 }
 
 .game-panel__legend-select-all {
@@ -1043,20 +1840,26 @@ button[aria-disabled="true"] {
 @media (min-width: 601px) and (max-height: 500px) {
   .game-panel {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(194px, 0.9fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      "stats actions"
-      "lottery options"
+      "stats stats"
+      "actions inventory"
+      "staged staged"
+      "chips chips"
       "save save"
-      "candidates candidates"
-      "route route"
+      "log-trigger menu-trigger"
+      "lottery lottery"
       "legend legend";
+    grid-template-rows: repeat(8, max-content);
+    align-content: start;
     align-items: start;
-    column-gap: 12px;
-    row-gap: 4px;
-    left: 12px;
-    bottom: 8px;
+    --hud-column-gap: 12px;
+    column-gap: var(--hud-column-gap);
+    row-gap: 0;
+    left: calc(12px + env(safe-area-inset-left, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
     width: min(440px, calc(100vw - 192px));
+    height: min(75vh, calc(100% - 16px));
     max-height: min(75vh, calc(100% - 16px));
     padding: 8px 10px;
   }
@@ -1073,23 +1876,118 @@ button[aria-disabled="true"] {
     border: 0;
   }
 
+  .game-panel__header {
+    position: absolute;
+    z-index: 1;
+    top: 6px;
+    right: 8px;
+    width: 24px;
+    height: 0;
+    justify-content: flex-end;
+  }
+
+  .game-panel__save--inline {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
   .game-panel__subtitle {
     display: none;
   }
 
   .game-panel__stats {
     grid-area: stats;
-    margin: 0;
-    grid-template-columns: auto minmax(0, 1fr);
+    margin: 0 0 4px;
+    grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
+    grid-template-rows: repeat(3, 24px);
+    gap: 0 6px;
+  }
+
+  .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(1) { grid-column: 2; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(2) { grid-column: 3; grid-row: 1; }
+  .game-panel__stats dd:nth-of-type(2) { grid-column: 4; grid-row: 1; }
+  .game-panel__stats dt:nth-of-type(3) { grid-column: 1; grid-row: 2; }
+  .game-panel__stats dd:nth-of-type(3) { grid-column: 2; grid-row: 2; }
+  .game-panel__stats dt:nth-of-type(4) { grid-column: 3; grid-row: 2; }
+  .game-panel__stats dd:nth-of-type(4) { grid-column: 4; grid-row: 2; }
+  .game-panel__stats dt:nth-of-type(5) { grid-column: 1; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(5) { grid-column: 2; grid-row: 3; }
+  .game-panel__stats dt:nth-of-type(6) { grid-column: 3; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(6) { grid-column: 4; grid-row: 3; }
+  .game-panel__stats dd:nth-of-type(2) {
+    padding-right: 24px;
+    box-sizing: border-box;
   }
 
   .game-panel__actions {
     grid-area: actions;
-    align-self: center;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-self: start;
+    height: 56px;
+    min-height: 56px;
+    max-height: 56px;
+    margin: 0 0 4px;
+    align-items: stretch;
+    align-content: start;
   }
 
+  .game-panel__actions button {
+    min-width: 0;
+    min-height: 44px;
+    height: 56px;
+    max-height: 56px;
+    box-sizing: border-box;
+    align-self: stretch;
+    margin: 0;
+  }
+
+  .game-panel__actions .game-panel__roll {
+    line-height: 1.2;
+    white-space: normal;
+    overflow: hidden;
+  }
+
+  .game-panel__actions button:last-child {
+    white-space: nowrap;
+    padding-inline: 2px;
+    font-size: 12px;
+  }
+
+  .item-inventory {
+    grid-area: inventory;
+    min-width: 0;
+    margin: 0 0 4px;
+  }
+
+  .item-inventory__label { margin: 0 0 2px; padding: 0; line-height: 16px; }
+  .item-staged-summary { grid-area: staged; margin: 0 0 4px; padding: 2px 2px 2px 8px; }
+  /* Below the slots (above them it would cover the dice), widened across both
+     columns so the text stays short enough to fit inside the panel. */
+  .item-slot__tooltip { top: 100%; bottom: auto; left: calc(-100% - var(--hud-column-gap, 12px)); right: 0; }
+  .game-panel .effect-chips {
+    grid-area: chips;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    min-width: 0;
+    margin: 0 0 4px;
+    scrollbar-width: thin;
+  }
+  .game-panel .effect-chip { flex: 0 0 auto; }
+  .game-panel__log-trigger,
+  .game-panel__menu-trigger { margin: 0 0 4px; }
+  .game-panel__log { margin: 0 0 4px; }
+  .game-panel__options { margin: 0 0 4px; }
+  .game-panel__legend-section { margin-top: 0; }
+  .game-panel__disclosures { row-gap: 0; }
+  .game-panel__menu { min-width: 0; }
+  .game-panel__menu[hidden] { display: none; }
+  .game-panel__lottery { min-height: 0; }
+
   .game-panel__options {
-    grid-area: options;
+    grid-area: lottery;
     margin-top: 0;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -1101,29 +1999,71 @@ button[aria-disabled="true"] {
   }
 
   .game-panel__lottery {
-    grid-area: lottery;
     margin: 0;
     align-self: center;
     line-height: 1.3;
   }
 
-  .game-panel__save {
-    grid-area: save;
+  .game-panel__disclosures {
+    display: contents;
+  }
+
+  .game-panel__log-trigger,
+  .game-panel__menu-trigger {
+    grid-area: menu-trigger;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  .game-panel__log-trigger {
+    grid-area: log-trigger;
+  }
+
+  .game-panel__log {
+    grid-area: lottery;
+    min-height: 0;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  .game-panel__turn-facts {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0 0 4px;
+    padding: 4px;
+  }
+
+  .game-panel__turn-facts h2 {
+    flex: 0 0 auto;
     margin: 0;
   }
 
-  .game-panel__candidates {
-    grid-area: candidates;
+  .game-panel__turn-facts dl {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
   }
 
-  .game-panel__route-summary {
-    grid-area: route;
-    margin-top: 0;
+  /* Short landscape only: the open menu's options and legend take their own grid areas. */
+  .game-panel__menu {
+    display: contents;
   }
 
   .game-panel__legend-section {
     grid-area: legend;
   }
+
+  .game-panel__save {
+    grid-area: save;
+    margin: 0 0 4px;
+  }
+
+  .game-panel .effect-chips {
+    grid-area: chips;
+    margin-top: 0;
+  }
+
 }
 
 .clear-screen__paging {
@@ -1142,3 +2082,52 @@ button[aria-disabled="true"] {
 .item-event-notice h2 { font-size: 1rem; margin-block: .6rem .3rem; }
 .item-event-notice ul { padding-inline-start: 1.3rem; margin-block: .3rem; }
 .item-event-notice li + li { margin-block-start: .35rem; }
+
+.line-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  vertical-align: middle;
+}
+
+.line-badge__mark {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 24px;
+  padding: 2px 9px 2px 11px;
+  box-sizing: border-box;
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 0 100%);
+}
+
+.line-badge__code {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.line-badge__name {
+  min-width: 0;
+  color: var(--color-text);
+}
+
+.line-badge--sm .line-badge__mark { min-width: 30px; min-height: 20px; padding-inline: 8px 7px; }
+.line-badge--sm .line-badge__code { font-size: 11px; }
+.line-badge--sm .line-badge__name { font-size: 12px; }
+.line-badge--lg .line-badge__mark { min-width: 44px; min-height: 30px; padding-inline: 12px 10px; }
+.line-badge--lg .line-badge__code { font-size: 15px; }
+.line-badge--lg .line-badge__name { font-size: 16px; }
+
+.item-icon {
+  display: inline-block;
+  flex: 0 0 auto;
+  color: currentColor;
+  vertical-align: middle;
+}
+
+/* Callers may set --item-icon-accent on any ancestor; the brand colour is the default. */
+.item-icon__accent { fill: var(--item-icon-accent, var(--color-brand)); stroke: var(--item-icon-accent, var(--color-brand)); }
+.item-icon__accent-stroke { stroke: var(--item-icon-accent, var(--color-brand)); }

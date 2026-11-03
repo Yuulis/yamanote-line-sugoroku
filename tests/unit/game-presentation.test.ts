@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildRailwayNetwork, createGame, moveByRoll, playTurn } from "../../src/features/game/engine";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import type { LastMove } from "../../src/features/game/gameSession";
-import { displayedRide, landingText, landingTransitionText, lastRollText } from "../../src/features/game/presentation";
+import { arrivalLogText, displayedRide, landingText, landingTransitionText, lastRollText } from "../../src/features/game/presentation";
 import { earlyStopNote, summarizeGame } from "../../src/features/game/gameSummary";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import type { UiPresentation } from "../../src/types/data";
@@ -271,6 +271,14 @@ describe("verified item notices", () => {
       "寄り道：次に別の路線へ乗り換えられる駅で発動します", "寝過ごし：次のターンは終点まで（環状線は6駅）進みます",
     ]);
     expect(activeItemEffectTexts(effects, 8, network)[0]).toContain("あと2ターン");
+  });
+
+  it("keeps arrival log text separate from the lottery and roll", () => {
+    const last = { roll: 3, unusedPips: 0, stopReason: "roll" as const, stopStationId: "shimbashi",
+      serviceId: "jr-yamanote", direction: 1 as const, endpointKind: null, landing: null };
+    expect(arrivalLogText(1, last, 2, 30, network)).toBe("1ターン目：新橋に到着。踏破 2/30");
+    expect(arrivalLogText(1, { ...last, stopReason: "goal" }, 30, 30, network)).toBe("1ターン目：新橋に到着。ゴールに到着しました。踏破 30/30");
+    expect(arrivalLogText(2, { ...last, roll: null, stopReason: "relocation" }, 2, 30, network)).toBe("2ターン目：新橋に到着。踏破 2/30");
   });
 
   it("never calls a null landing a goal unless the recorded stop reason is goal", async () => {

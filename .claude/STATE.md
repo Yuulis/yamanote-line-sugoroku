@@ -84,3 +84,31 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Lottery: Yamanote 1/2 at its stations + toward-Yamanote direction 2:1 (v1 MC: 63/154/271 turns): user 2026-10-13.
 - Goal unchanged; split through-running at junctions; equal weights; 久留里線 to 久留里; weekday; 東京(京葉)/武蔵小杉/浜川崎 one station; subtitle JR東日本 1都3県版: user 2026-10-13.
 - 23-ward edition already in production; new work branches from develop.
+
+---
+
+## Current Feature: UI pop overhaul P0+P1 (HUD, inventory, badges)
+<!-- orchestra:block-id: ui-pop-overhaul-p0-p1-hud-inventory-badges -->
+
+### Context
+
+- Goal: make the in-game UI pop/game-like: brand tokens, line badges, item icons, toast host, reveal-sequence foundation (P0); sidebar to HUD with log/menu disclosures, icon inventory with item cards, 30-segment progress bar, phone layout (P1). Presentation only; engine/RNG/save/public data unchanged.
+- Branch: feature/ui-pop-hud-inventory (from develop 4368673)
+- Plan: .claude/docs/plans/ui-pop-hud-inventory-plan.md; prompts: ui-pop-hud-inventory-prompts.md; handoff: ui-pop-hud-inventory-handoff.md
+- Research: .claude/docs/research/ui-pop-overhaul-audit.md, official-line-symbols-usage.md, feature-ui-pop-hud-inventory-{brief,codebase}.md
+- Dependencies: none new
+- Complexity: COMPLEX (25 steps S1-S25; P2 split-flap lottery and dice tumble deferred)
+
+### Architecture
+
+- GamePanel stays the coordinator (<main class="game-panel">); log/menu are inline disclosures, mounted and hidden when closed.
+- HUD keeps the six <dt> labels with data-stat value spans so panelStat() is fixed once.
+- Item card via native Popover API with inline fallback; inspect and use are separate actions.
+- Reveal hook keyed by sessionId:itemRecord.turn with empty production stages in P0/P1.
+- Toast host visual-only, max 3, 4 s, sticky save failure, paused while dialogs are open.
+
+### Decisions
+
+- Pause after every step for user judgment (user 2026-10-28).
+- Line badges: original shape, official letter code + colour, colour-only for 21 uncoded lines; one Tokyo-side code for dual-coded lines; partial-route codes shown (user 2026-10-28).
+- Codex lanes: Luna high implements, Sol low reviews, lead verifies; S2A badge mapping on Sol high with live web.

@@ -155,6 +155,15 @@ export function activeItemEffectTexts(
   ];
 }
 
+export function arrivalLogText(
+  turn: number, lastMove: LastMove, completedCount: number, requiredCount: number,
+  network: RailwayNetwork, presentation?: PresentationResolver,
+): string {
+  const arrival: string = stationName(network, lastMove.stopStationId, presentation);
+  const goal: string = lastMove.stopReason === "goal" ? "。ゴールに到着しました" : "";
+  return `${turn}ターン目：${arrival}に到着${goal}。踏破 ${completedCount}/${requiredCount}`;
+}
+
 export function arrivalSummary(
   turn: number, lastMove: LastMove, completedCount: number, requiredCount: number,
   network: RailwayNetwork, presentation?: PresentationResolver,
