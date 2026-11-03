@@ -3,6 +3,7 @@
 Date: 2026-11-03. Branch: `feature/ui-pop-hud-inventory`.
 S25 base: `6fd56590542210f0a554cf05505f4c57b0097a04`.
 Feature base (`UI_POP_BASE`): `81454df`.
+Implementation commit: `94a4a6009b739caf9f9dc4db3c7971db81d98245`.
 
 ## Scope and decisions
 
@@ -126,7 +127,24 @@ Before S25, commit `6fd5659` passed all four CI E2E projects in
 desktop Chromium 108 passed / 3 skipped (4.6 min), phone Chromium 108 / 3 (6.3 min),
 desktop Firefox 108 / 3 (3.3 min), desktop WebKit 108 / 3 (4.4 min).
 These results establish the starting state and do not verify the S25 changes.
-S25 WebKit: pending CI.
+
+S25 implementation `94a4a60` passed the complete CI workflow in
+[run 41583743291](https://github.com/Yuulis/yamanote-line-sugoroku/actions/runs/41583743291):
+
+| E2E project | Result | Reported test-run duration |
+| --- | --- | --- |
+| Desktop Chromium | 110 passed, 3 existing skipped | 4.6 min |
+| Phone Chromium | 110 passed, 3 existing skipped | 5.1 min |
+| Desktop Firefox | 110 passed, 3 existing skipped | 4.2 min |
+| Desktop WebKit | 110 passed, 3 existing skipped | 5.7 min |
+
+All 440 browser cases passed without failed or flaky cases; 12 existing cases
+were skipped. The aggregate E2E gate also passed. Frontend typecheck, build and
+62 Vitest files (1,233 passed, 1 existing skipped; 15.96 s) passed. The data
+pipeline's ruff, formatting, type checking and committed-bundle validation
+passed; pytest reported 647 passed / 68 skipped in 66.50 s. Full metadata and
+output are in `ci-source.json` and `ci-source.log` under the evidence directory.
+WebKit is verified for the S25 implementation, not pending.
 
 ## Forbidden-path audit
 
@@ -138,7 +156,9 @@ git diff --exit-code 81454df -- src/features/game/engine/ \
 ```
 
 Initial and integrated-tree audit: exit 0, empty output. `git diff --check`
-also passed. Package manifests, DESIGN.md and STATE.md are unchanged.
+also passed. The repeated audit after committing the implementation also
+exited 0 with empty output in 0.008 s (`forbidden-audit.json`,
+`forbidden-audit.log`). Package manifests, DESIGN.md and STATE.md are unchanged.
 
 ## Limits
 
