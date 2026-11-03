@@ -79,13 +79,10 @@ Hard constraints:
 When done, update the step's row in `.claude/docs/plans/ui-pop-turn-moments-handoff.md` (status
 `implemented — pending lead verification`, commands you ran with pass/fail counts, open findings). Do not commit.
 
-Output format (markdown, exactly these sections):
-## Summary
-## Files Changed (path — new/modify — one line)
-## Tests Added or Changed (exact test names; for E2E re-pointing list old → new checkpoint and confirm the expected value is unchanged)
-## Commands Run (command → result with counts)
-## Deviations and Assumptions
-## Open Issues
+Output format (markdown, exactly these level-2 sections, in this order): `Summary`; `Files Changed` (path — new/modify —
+one line); `Tests Added or Changed` (exact test names; for E2E re-pointing list old → new checkpoint and confirm the
+expected value is unchanged); `Commands Run` (command → result with counts); `Deviations and Assumptions`;
+`Open Issues`.
 
 ---
 
@@ -108,6 +105,47 @@ Acceptance (run all; report counts):
 ```bash
 npm run typecheck
 npx vitest run tests/unit/reveal-sequence.test.ts
+npx vitest run
+npm run build
+```
+
+No E2E in this step.
+
+---
+
+## S2: Pure timing, accepted facts, and roll-attempt reducer
+
+Implement plan `### S2` exactly. Files: new `src/features/game/animation/turnMoments.ts`, new
+`tests/unit/turn-moments.test.ts` (plus the handoff row). Nothing else; nothing is wired into production.
+
+- Pure TypeScript only: no React import, no timers, no DOM. Reuse existing domain types (`ItemSessionView`,
+  `LastMove`, `Direction`, item records/events, `ANIMATION_SPEEDS`) by import; do not copy their definitions.
+- Export the architecture's interfaces (architecture "Interface Design"): `PreMoveStage`, `TurnRevealStageKey`
+  (reserved; no production stage planning yet), `TurnMomentTiming`, `TurnOrigin`, `RollAttempt`,
+  `TurnMomentsState`, `TurnMomentsAction` (discriminated union `begin` / `observe` / `advance` / `skip` /
+  `reset`), `turnMomentTiming(stepMs)`, `turnMomentsReducer(state, action)`, plus a pure observation adapter
+  (e.g. `observeTurnFacts(...)`) that normalises session facts. Name additional helpers clearly; keep the file
+  within ~300 lines.
+- Timing: factor = stepMs / normal stepMs from the `"normal"` entry of `ANIMATION_SPEEDS` (do not hard-code 450);
+  `Math.round(base * factor)`; normal bases tumble 600, stamps 240, arrival 800, lottery flip 1,600, settle 400,
+  pickup 500 ms.
+- Identity: attempt key `${sessionId}:roll:${game.turn + 1}:${decisionRevision}`, expected record turn stored on
+  the attempt; a later record with that session and turn attaches to the attempt and never starts a second
+  tumble. Raw roll is read only from an acknowledged `awaiting-adjust` decision or an accepted record — never
+  from `pending.rawRoll` while committing.
+- Skip intent latches on the attempt and survives adjustment, record creation and movement until the next
+  accepted `begin` or a `reset`/session change. Restored pending rolls (`source: "restored-roll"`) omit the
+  tumble; a subsequently created arrival record is still new. Reduced motion sets `motionOmitted`.
+- Deadhead (no die) skips tumble/stamps. A delay activated when the raw roll was already 1 still needs stamps.
+  Newly completed segment IDs are restricted to target (Yamanote outer) segments completed by this move.
+- Stale `advance` (wrong key or expected stage) and duplicate `observe` return the same state object.
+- Tests: every bullet of plan `### S2` → Tests as table-driven cases; assert exact timings at slow/normal/fast.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moments.test.ts tests/unit/reveal-sequence.test.ts
 npx vitest run
 npm run build
 ```

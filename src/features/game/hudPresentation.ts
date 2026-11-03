@@ -50,14 +50,25 @@ export function compactRollFor(lastMove: LastMove | null): CompactRollModel {
 function compactItemRoll(record: DeepReadonly<ItemRideRecord>): CompactRollModel {
   const face: number = record.effectiveFace;
   if (record.movementMode === "oversleep") return { face, label: "寝過ごし", modifier: null };
+  const modifier = itemRideModifierWording(record);
   // Rapid spends pips on transfer stops only; its budget is a physical station count.
-  if (record.movementMode === "rapid") return { face, label: `${record.hopBudget}駅`, modifier: "快速" };
-  const label = `${record.pips}マス`;
-  if (record.adjustment) return { face, label, modifier: record.adjustment.delta > 0 ? "調整+1" : "調整-1" };
-  if (record.command.items.some((item) => item.kind === "double")) return { face, label, modifier: "×2" };
+  if (record.movementMode === "rapid") return { face, label: `${record.hopBudget}駅`, modifier };
+  return { face, label: `${record.pips}マス`, modifier };
+}
+
+/** Compact-roll modifier wording, shared with the turn-moment stamp decision. */
+export function itemRideModifierWording(record: DeepReadonly<ItemRideRecord>): string | null {
+  if (record.movementMode === "oversleep") return null;
+  if (record.movementMode === "rapid") return "快速";
+  if (record.adjustment !== null) return record.adjustment.delta > 0 ? "調整+1" : "調整-1";
+  if (record.command.items.some((item) => item.kind === "double")) return "×2";
   // A due delay forces the effective face to 1 without an adjustment ticket.
-  if (record.effectiveFace !== record.rawRoll) return { face, label, modifier: "遅延" };
-  return { face, label, modifier: null };
+  if (record.effectiveFace !== record.rawRoll) return "遅延";
+  return null;
+}
+
+export function itemRideHasModifierWording(record: DeepReadonly<ItemRideRecord>): boolean {
+  return itemRideModifierWording(record) !== null;
 }
 
 export function progressSegments(completedCount: number, requiredCount: number): readonly ProgressSegment[] {
