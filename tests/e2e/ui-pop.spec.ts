@@ -3,7 +3,7 @@ import { itemScenario } from "./fixtures/itemScenarios";
 import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
-import { diceButton, gamePanel, inventoryItem, readSaveText, revealUnadjustedRoll, writeSaveText } from "./support/app";
+import { diceButton, freezeClock, gamePanel, inventoryItem, openGameLog, openGameMenu, readSaveText, revealUnadjustedRoll, writeSaveText } from "./support/app";
 import type { RailwayBundle } from "./fixtures/bundle";
 
 test.use({ dataset: "fixture" });
@@ -134,6 +134,42 @@ test("opening an item card inspects without changing the save or draft", async (
   await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
 });
 
+test("menu, log, and item card transitions preserve a selected draft", async ({ page, railwayBundle }) => {
+  await scenario(page, "double", railwayBundle);
+  const slot = inventoryItem(page, "倍速券");
+  const opener = slot.getByRole("button");
+  await opener.click();
+  const card = gamePanel(page).getByRole("dialog", { name: "倍速券", exact: true });
+  await card.getByRole("button", { name: "使う", exact: true }).click();
+  await expect(card).toBeHidden();
+  await expect(slot).toHaveClass(/item-slot--selected/);
+  const staged = gamePanel(page).locator(".item-staged-summary");
+  await expect(staged).toContainText("倍速券");
+
+  const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
+  const menu = gamePanel(page).getByRole("region", { name: "メニュー", exact: true });
+  await openGameMenu(page);
+  await expect(log).toBeHidden();
+  await expect(card).toBeHidden();
+  await expect(staged).toContainText("倍速券");
+  await openGameLog(page);
+  await expect(menu).toBeHidden();
+  await expect(card).toBeHidden();
+  await expect(staged).toContainText("倍速券");
+
+  await opener.click();
+  await expect(log).toBeHidden();
+  await expect(menu).toBeHidden();
+  await expect(card).toBeVisible();
+  await expect(card.getByRole("button", { name: "選択中・変更する", exact: true })).toBeVisible();
+  await expect(staged).toContainText("倍速券");
+  await openGameMenu(page);
+  await expect(card).toBeHidden();
+  await expect(log).toBeHidden();
+  await expect(staged).toContainText("倍速券");
+  await expect(slot).toHaveClass(/item-slot--selected/);
+});
+
 test("reclicking the open slot closes it and switching slots opens the other card", async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "pointer click contract runs on desktop projects");
   await scenario(page, "discard", railwayBundle);
@@ -204,12 +240,54 @@ test("unusable and passive items remain inspectable with the right card actions"
   await expect(adjustCard.getByRole("button", { name: "使う" })).toBeDisabled();
   await expect(adjustCard).toContainText("出目が出た後に使えるアイテムです");
   await scenario(page, "certificate", railwayBundle);
+  await page.setViewportSize({ width: 667, height: 375 });
   const certificate = inventoryItem(page, "遅延証明書");
   await certificate.getByRole("button").click();
   const certificateCard = gamePanel(page).getByRole("dialog", { name: "遅延証明書" });
   await expect(certificateCard).toContainText("持っているだけで効く");
   await expect(certificateCard.getByRole("button", { name: "使う" })).toHaveCount(0);
   await expect(certificateCard).not.toContainText("持っているだけで効くアイテムです");
+  for (const viewport of [{ width: 667, height: 375 }, { width: 640, height: 400 }]) {
+    await page.setViewportSize(viewport);
+    const passiveGeometry = await certificateCard.evaluate((element) => {
+      const body = element.querySelector<HTMLElement>(".item-card__body");
+      const effect = element.querySelector<HTMLElement>(".item-card__effect");
+      const footer = element.querySelector<HTMLElement>(".item-card__footer");
+      const close = element.querySelector<HTMLElement>(".item-card-popover__close");
+      if (!body || !effect || !footer || !close || close.parentElement !== footer) throw new Error("passive sheet card structure is incomplete");
+      const bodyBox = body.getBoundingClientRect();
+      const effectBox = effect.getBoundingClientRect();
+      const closeBox = close.getBoundingClientRect();
+      const cardBox = element.getBoundingClientRect();
+      const closeHit = (box: DOMRect): boolean => document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === close;
+      const beforeScroll = {
+        effectInsideBody: effectBox.top >= bodyBox.top - 1 && effectBox.bottom <= bodyBox.bottom + 1,
+        closeHit: closeHit(closeBox),
+        closeInsideCard: closeBox.top >= cardBox.top && closeBox.bottom <= cardBox.bottom && closeBox.bottom <= innerHeight,
+        closeWidth: closeBox.width,
+        closeHeight: closeBox.height,
+        bodyScrollTop: body.scrollTop,
+      };
+      body.scrollTop = body.scrollHeight;
+      const afterBox = close.getBoundingClientRect();
+      const afterScroll = {
+        closeHit: closeHit(afterBox),
+        closeInsideCard: afterBox.top >= element.getBoundingClientRect().top && afterBox.bottom <= element.getBoundingClientRect().bottom,
+        bodyScrollTop: body.scrollTop,
+        bodyOverflows: body.scrollHeight > body.clientHeight + 1,
+      };
+      body.scrollTop = 0;
+      return { beforeScroll, afterScroll };
+    });
+    expect(passiveGeometry.beforeScroll, `${viewport.width}x${viewport.height} passive card`).toMatchObject({
+      effectInsideBody: true, closeHit: true, closeInsideCard: true, bodyScrollTop: 0,
+    });
+    expect(passiveGeometry.beforeScroll.closeWidth, `${viewport.width}x${viewport.height} passive close width`).toBeGreaterThanOrEqual(44);
+    expect(passiveGeometry.beforeScroll.closeHeight, `${viewport.width}x${viewport.height} passive close height`).toBeGreaterThanOrEqual(44);
+    expect(passiveGeometry.afterScroll, `${viewport.width}x${viewport.height} passive footer after body scroll`).toMatchObject({ closeHit: true, closeInsideCard: true });
+    if (passiveGeometry.afterScroll.bodyOverflows) expect(passiveGeometry.afterScroll.bodyScrollTop).toBeGreaterThan(0);
+    else expect(passiveGeometry.afterScroll.bodyScrollTop).toBe(0);
+  }
 });
 
 test("keyboard opening, Escape focus return, and light dismiss keep the slot tooltip out of the card", async ({ page, railwayBundle }) => {
@@ -281,6 +359,58 @@ test("desktop card hides its own hover tooltip, keeps other slot hover, and clos
   await expect(firstOpener).not.toBeFocused();
 });
 
+test.describe("S25 failed-save toast expiry", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("ordinary item toast expires while failed-save status remains visible", async ({ page, railwayBundle }) => {
+    await page.clock.install();
+    await scenario(page, "double", railwayBundle);
+    await freezeClock(page);
+
+    const slot = inventoryItem(page, "倍速券");
+    await slot.getByRole("button").click();
+    const card = gamePanel(page).getByRole("dialog", { name: "倍速券", exact: true });
+    await card.getByRole("button", { name: "使う", exact: true }).click();
+    await expect(slot).toHaveClass(/item-slot--selected/);
+
+    await page.evaluate(() => {
+      const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+      storage.originalSetItem = storage.setItem;
+      storage.setItem = function (key: string, value: string): void {
+        if (key.includes("save")) throw new Error("quota");
+        storage.originalSetItem?.call(this, key, value);
+      };
+    });
+
+    await diceButton(page).click();
+    const ordinaryToast = page.locator(".toast-host__toast", { hasText: "倍速券を使った" });
+    const failureToast = page.locator(".toast-host__toast", { hasText: "保存に失敗しました" });
+    const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    const skip = gamePanel(page).getByRole("button", { name: "スキップ", exact: true });
+
+    await expect.poll(async () => await adjustment.isVisible() || await discard.isVisible()
+      || await ordinaryToast.isVisible() || await skip.isEnabled()).toBe(true);
+    if (await adjustment.isVisible()) {
+      await adjustment.getByRole("button", { name: "そのまま続ける", exact: true }).click();
+    }
+    if (await discard.isVisible()) {
+      await discard.locator(".item-discard__group")
+        .filter({ hasText: "新しく拾った" })
+        .getByRole("button", { name: "このアイテムを捨てる", exact: true }).click();
+    }
+    if (await skip.isEnabled()) await skip.click();
+
+    await expect(ordinaryToast).toBeVisible();
+    await expect(failureToast).toBeVisible();
+    await expect(gamePanel(page).locator(".game-panel__save")).toContainText("失敗");
+    await page.clock.runFor(4_200);
+    await expect(ordinaryToast).toHaveCount(0);
+    await expect(failureToast).toBeVisible();
+    await expect(gamePanel(page).locator(".game-panel__save")).toContainText("失敗");
+  });
+});
+
 test.describe("S23 populated responsive HUD", () => {
   test.use({ dataset: "real", reducedMotion: "reduce" });
   // The first test in each worker scans real-data seeds for the populated save, and each test checks several viewports.
@@ -310,7 +440,7 @@ test.describe("S23 populated responsive HUD", () => {
     expect(measurements).toMatchObject({ dice: true, slots: true, staged: true, triggers: true });
   });
 
-  test("phone populated layout keeps controls reachable at four widths", async ({ page, railwayBundle }) => {
+  test("phone populated layout keeps controls reachable at four widths", async ({ page, railwayBundle }, testInfo) => {
     const populated = await buildPopulatedState(page, railwayBundle);
     const widths: Array<{ width: number; height: number }> = [
       { width: 320, height: 568 }, { width: 390, height: 844 }, { width: 400, height: 800 }, { width: 412, height: 915 },
@@ -391,6 +521,16 @@ test.describe("S23 populated responsive HUD", () => {
     expect(borderColor).toBe("rgb(217, 80, 47)");
     const tapHighlight = await selectedButton.evaluate((element) => ({ supported: CSS.supports("-webkit-tap-highlight-color", "transparent"), value: getComputedStyle(element).getPropertyValue("-webkit-tap-highlight-color") }));
     if (tapHighlight.supported) expect(tapHighlight.value).toBe("rgba(0, 0, 0, 0)");
+    if (testInfo.project.use.hasTouch) {
+      const slot = inventoryItem(page, populated.itemName).first();
+      await slot.getByRole("button").tap();
+      const card = gamePanel(page).getByRole("dialog", { name: populated.itemName, exact: true });
+      await expect(card).toBeVisible();
+      await expect(card.getByRole("button", { name: "選択中・変更する", exact: true })).toBeVisible();
+      await card.getByRole("button", { name: "閉じる", exact: true }).tap();
+      await expect(card).toBeHidden();
+      await expect(slot).toHaveClass(/item-slot--selected/);
+    }
   });
 
   test("short landscape keeps staged slots visible and card reachable", async ({ page, railwayBundle }, testInfo) => {
@@ -457,33 +597,67 @@ test.describe("S23 populated responsive HUD", () => {
       const close = card.getByRole("button", { name: "閉じる", exact: true });
       // Sheet placement: the card action and 閉じる both stay visible and
       // hit-testable at the bottom of the card (user decision 2026-11-03).
-      const expectSheetActionsVisible = async (actionName: string): Promise<void> => {
+      const expectSheetActionsVisible = async (actionName: string, afterScroll: boolean = false): Promise<void> => {
         const action = card.getByRole("button", { name: actionName, exact: true });
         await expect(action).toBeVisible();
         const geometry = await card.evaluate((element) => {
           const actionElement = element.querySelector<HTMLElement>(".item-card__action")!;
           const closeElement = element.querySelector<HTMLElement>(".item-card-popover__close")!;
+          const footer = element.querySelector<HTMLElement>(".item-card__footer")!;
+          const body = element.querySelector<HTMLElement>(".item-card__body")!;
+          const effect = element.querySelector<HTMLElement>(".item-card__effect")!;
           const cardRect = element.getBoundingClientRect();
           const visible = (target: HTMLElement): boolean => {
             const rect = target.getBoundingClientRect();
             const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
             return rect.top >= cardRect.top && rect.bottom <= cardRect.bottom && rect.bottom <= innerHeight && hit === target;
           };
-          const body = element.querySelector<HTMLElement>(".item-card")!;
+          const footerBox = footer.getBoundingClientRect();
+          const actionBox = actionElement.getBoundingClientRect();
+          const closeBox = closeElement.getBoundingClientRect();
+          const bodyBox = body.getBoundingClientRect();
+          const effectBox = effect.getBoundingClientRect();
           const actionStyle = getComputedStyle(actionElement);
           return {
-            action: { top: actionElement.getBoundingClientRect().top, bottom: actionElement.getBoundingClientRect().bottom },
-            close: { top: closeElement.getBoundingClientRect().top, bottom: closeElement.getBoundingClientRect().bottom },
-            // The card body scrolls (the sheet or the card itself is the scroller).
-            overflows: element.scrollHeight > element.clientHeight + 1 || body.scrollHeight > body.clientHeight + 1,
+            action: { top: actionBox.top, bottom: actionBox.bottom },
+            close: { top: closeBox.top, bottom: closeBox.bottom },
+            // The body is the scrollport; its footer stays outside it.
+            overflows: body.scrollHeight > body.clientHeight + 1,
+            bodyScrollTop: body.scrollTop,
+            effectInsideBody: effectBox.top >= bodyBox.top - 1 && effectBox.bottom <= bodyBox.bottom + 1,
+            footerOwnsBothButtons: actionElement.parentElement === footer && closeElement.parentElement === footer,
+            footerFitsCard: footerBox.top >= cardRect.top && footerBox.bottom <= cardRect.bottom && footerBox.bottom <= innerHeight,
+            sameFooterRow: Math.abs(actionBox.top - closeBox.top) <= 1 && Math.abs(actionBox.bottom - closeBox.bottom) <= 1,
+            actionWidth: actionBox.width,
+            actionHeight: actionBox.height,
+            closeWidth: closeBox.width,
+            closeHeight: closeBox.height,
             actionVisible: visible(actionElement),
             closeVisible: visible(closeElement),
             // The pinned action keeps its own fill: its label must not match its background.
             actionLabelVisible: actionStyle.color !== actionStyle.backgroundColor,
           };
         });
-        expect(geometry, `${viewport.width}x${viewport.height} ${actionName}`).toMatchObject({ actionVisible: true, closeVisible: true, actionLabelVisible: true });
-        if (viewport.width > 600) expect(geometry.overflows, `${viewport.width}x${viewport.height} card body overflows its sheet`).toBe(true);
+        expect(geometry, `${viewport.width}x${viewport.height} ${actionName}`).toMatchObject({
+          actionVisible: true,
+          closeVisible: true,
+          actionLabelVisible: true,
+          footerOwnsBothButtons: true,
+          footerFitsCard: true,
+          sameFooterRow: true,
+        });
+        expect(geometry.actionWidth, `${viewport.width}x${viewport.height} action width`).toBeGreaterThanOrEqual(44);
+        expect(geometry.actionHeight, `${viewport.width}x${viewport.height} action height`).toBeGreaterThanOrEqual(44);
+        expect(geometry.closeWidth, `${viewport.width}x${viewport.height} close width`).toBeGreaterThanOrEqual(44);
+        expect(geometry.closeHeight, `${viewport.width}x${viewport.height} close height`).toBeGreaterThanOrEqual(44);
+        if (!afterScroll) {
+          expect(geometry.bodyScrollTop, `${viewport.width}x${viewport.height} body starts unscrolled`).toBe(0);
+          expect(geometry.effectInsideBody, `${viewport.width}x${viewport.height} initial effect text is inside the clipped body`).toBe(true);
+        } else if (geometry.overflows) {
+          expect(geometry.bodyScrollTop, `${viewport.width}x${viewport.height} overflowing body was scrolled`).toBeGreaterThan(0);
+        } else {
+          expect(geometry.bodyScrollTop, `${viewport.width}x${viewport.height} non-overflowing body remains at its top`).toBe(0);
+        }
         testInfo.annotations.push({ type: "sheet-action-geometry", description: `${viewport.width}x${viewport.height} ${actionName}: ${JSON.stringify(geometry)}` });
       };
 
@@ -497,6 +671,10 @@ test.describe("S23 populated responsive HUD", () => {
       expect(cardFits).toBe(true);
       await expect(close).toBeVisible();
       await expectSheetActionsVisible("選択中・変更する");
+      const body = card.locator(".item-card__body");
+      await body.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      await expectSheetActionsVisible("選択中・変更する", true);
+      await body.evaluate((element) => { element.scrollTop = 0; });
       const hitTests = await close.evaluate((element) => {
         const box = element.getBoundingClientRect();
         return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2) === element;
@@ -518,6 +696,9 @@ test.describe("S23 populated responsive HUD", () => {
       else await opener.click();
       await expect(card).toBeVisible();
       await expectSheetActionsVisible("使う");
+      await body.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      await expectSheetActionsVisible("使う", true);
+      await body.evaluate((element) => { element.scrollTop = 0; });
       const use = card.getByRole("button", { name: "使う", exact: true });
       if (testInfo.project.use.hasTouch) await use.tap();
       else await use.click();

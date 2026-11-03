@@ -1485,11 +1485,31 @@ button[aria-disabled="true"] {
   flex: 0 0 auto;
 }
 
-/* Sheet placement (phones, short landscape): the card body scrolls inside the
-   sheet while its action (使う / 選択中・変更する) stays pinned to the bottom of
-   that scrollport and 閉じる sits below it, outside the scroller, so both are
-   always visible (user decision 2026-11-03). The surface-coloured shadow band
-   hides text scrolling under the pinned action and the card's bottom padding. */
+.item-card__body .item-card__markers {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
+
+/* Keep sheet actions outside the body scrollport in their DOM/keyboard order. */
+.item-card__footer {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.item-card__footer .item-card__action {
+  flex: 1 1 auto;
+  min-width: 44px;
+  width: auto;
+  margin: 0;
+}
+
+.item-card__footer .item-card-popover__close {
+  flex: 0 0 auto;
+  margin: 0 0 0 auto;
+}
+
 /* Only while open: a closed popover must keep the UA `display: none`. */
 .item-card-popover--sheet:popover-open {
   display: flex;
@@ -1498,20 +1518,20 @@ button[aria-disabled="true"] {
 }
 
 .item-card-popover--sheet > .item-card {
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.item-card-popover--sheet .item-card__body {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
 }
 
-.item-card-popover--sheet .item-card__action {
-  position: sticky;
-  z-index: 1;
-  bottom: 0;
-  box-shadow: 0 -8px 0 var(--color-surface), 0 10px 0 var(--color-surface);
-}
-
-.item-card-popover--sheet .item-card-popover__close {
+.item-card-popover--sheet .item-card__footer {
   flex: 0 0 auto;
 }
 

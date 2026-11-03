@@ -47,6 +47,38 @@ describe("ItemCard", () => {
     expect(container.textContent).not.toContain("持っているだけで効くアイテムです");
   });
 
+  it("keeps composed actions after the scrollable content in use-then-close order", () => {
+    const container: HTMLDivElement = document.createElement("div");
+    container.innerHTML = markup("rapid", {
+      selected: true,
+      unavailableReason: "after-roll",
+      action: { label: "選択中・変更する", disabled: true, onActivate: () => undefined },
+      footer: createElement("button", { type: "button" }, "閉じる"),
+    });
+    const body = container.querySelector(".item-card__body");
+    const footer = container.querySelector(".item-card__footer");
+    expect(body?.nextElementSibling).toBe(footer);
+    expect(body?.querySelector(".item-card__effect")?.textContent).toBe(ITEM_DESCRIPTIONS.rapid.effect);
+    expect(body?.querySelector(".item-card__header .item-card__marker")?.textContent).toBe("選択中");
+    expect(body?.querySelector("button")).toBeNull();
+    expect([...footer!.querySelectorAll("button")].map((button) => button.textContent)).toEqual(["選択中・変更する", "閉じる"]);
+    const use = footer?.querySelector("button");
+    expect(use?.disabled).toBe(true);
+    expect(body?.querySelector(`[id="${use?.getAttribute("aria-describedby")}"]`)?.textContent).toBe("出目が出た後に使えるアイテムです");
+  });
+
+  it("composes a passive certificate with only close in its footer", () => {
+    const container: HTMLDivElement = document.createElement("div");
+    container.innerHTML = markup("delay-certificate", {
+      unavailableReason: "passive",
+      footer: createElement("button", { type: "button" }, "閉じる"),
+    });
+    expect(container.querySelectorAll("button")).toHaveLength(1);
+    expect(container.querySelector(".item-card__footer button")?.textContent).toBe("閉じる");
+    expect(container.querySelector(".item-card__body .item-card__effect")?.textContent).toBe(ITEM_DESCRIPTIONS["delay-certificate"].effect);
+    expect(container.querySelector(".item-card__reason")).toBeNull();
+  });
+
   it("describes an after-roll action with its unavailable reason", () => {
     const container: HTMLDivElement = document.createElement("div");
     container.innerHTML = markup("roll-adjust", {
@@ -230,7 +262,7 @@ function Harness({ open, anchorPresent, onClose, popoverPresent = true, external
     anchorPresent && createElement("button", { ref: setAnchor }, "slot"),
     popoverPresent && createElement(ItemCardPopover, {
       ...popoverProps,
-      children: createElement(ItemCard, { kind: "rapid", headingId: "popover-heading", action: { label: "使う", disabled: false, onActivate: () => undefined } }),
+      children: (closeButton) => createElement(ItemCard, { kind: "rapid", headingId: "popover-heading", footer: closeButton, action: { label: "使う", disabled: false, onActivate: () => undefined } }),
     }));
 }
 

@@ -45,7 +45,7 @@ function InventoryItemPopover({
     ?? (openItemId && lastKnownItem?.id === openItemId ? lastKnownItem.kind : undefined);
   if (!openItemId || !kind) return <ItemCardPopover
     id={`item-card-${generatedId}`} open={false} anchor={null} labelledBy={headingId} onClose={onClose}
-  >{null}</ItemCardPopover>;
+  >{() => null}</ItemCardPopover>;
 
   const usable = view.usableItems.find((candidate) => candidate.instanceId === openItemId);
   const action = kind === "delay-certificate" ? undefined : {
@@ -59,9 +59,9 @@ function InventoryItemPopover({
     anchor={anchor}
     labelledBy={headingId}
     onClose={onClose}
-  ><ItemCard kind={kind} headingId={headingId} selected={usable?.selected ?? false}
+  >{(closeButton) => <ItemCard kind={kind} headingId={headingId} selected={usable?.selected ?? false}
     hint={itemHint(kind, view.hints)} unavailableReason={usable?.reason ?? null}
-    replacesSelection={usable?.usable === true && !usable.selected && view.draft.items.length > 0} action={action} />
+    replacesSelection={usable?.usable === true && !usable.selected && view.draft.items.length > 0} action={action} footer={closeButton} />}
   </ItemCardPopover>;
 }
 

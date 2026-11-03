@@ -19,7 +19,7 @@ export interface ItemCardPopoverProps {
   open: boolean;
   anchor: HTMLElement | null;
   onClose: () => void;
-  children: React.ReactNode;
+  children: (closeButton: React.ReactNode) => React.ReactNode;
   labelledBy: string;
   id?: string;
 }
@@ -267,8 +267,7 @@ export function ItemCardPopover({ open, anchor, onClose, children, labelledBy, i
     {...(nativeSupported ? { popover: "auto" as const } : { hidden: !open })}
     style={inlineStyle}
   >
-    {children}
-    <button type="button" className="item-card-popover__close" onClick={() => requestClose("anchor")}>閉じる</button>
+    {children(<button type="button" className="item-card-popover__close" onClick={() => requestClose("anchor")}>閉じる</button>)}
   </div>;
 }
 
@@ -287,11 +286,12 @@ export interface ItemCardProps {
   hint?: ItemHint | null;
   replacesSelection?: boolean;
   action?: ItemCardAction;
+  footer?: React.ReactNode;
 }
 
 export function ItemCard({
   kind, headingId, selected = false, isNew = false, unavailableReason = null,
-  hint = null, replacesSelection = false, action,
+  hint = null, replacesSelection = false, action, footer,
 }: ItemCardProps): React.JSX.Element {
   const generatedId: string = useId();
   const actualHeadingId: string = headingId ?? `item-card-heading-${generatedId}`;
@@ -299,28 +299,38 @@ export function ItemCard({
   const description = ITEM_DESCRIPTIONS[kind];
   const unavailableText: string | null = itemUnavailableText(kind, unavailableReason);
 
-  return (
-    <div className={`item-card item-card--${itemTone(kind)}${selected ? " item-card--selected" : ""}`}>
+  const markers: React.ReactNode = (selected || isNew) && <p className="item-card__markers">
+        {selected && <span className="item-card__marker item-card__marker--selected">選択中</span>}
+        {isNew && <span className="item-card__marker item-card__marker--new">新しく拾った</span>}
+      </p>;
+
+  const body: React.ReactNode = <>
       <div className="item-card__header">
         <span className="item-card__icon"><ItemIcon kind={kind} size={32} /></span>
         <h3 className="item-card__name" id={actualHeadingId} tabIndex={-1}>{description.name}</h3>
+        {footer && markers}
       </div>
-      {(selected || isNew) && <p className="item-card__markers">
-        {selected && <span className="item-card__marker item-card__marker--selected">選択中</span>}
-        {isNew && <span className="item-card__marker item-card__marker--new">新しく拾った</span>}
-      </p>}
+      {!footer && markers}
       <p className="item-card__effect">{description.effect}</p>
       <p className="item-card__timing">{itemTiming(kind)}</p>
       {hint && <p className={`item-card__hint${hint.caution ? " item-card__hint--caution" : ""}`}>{hint.text}</p>}
       {replacesSelection && !selected && <p className="item-card__note">{ITEM_REPLACEMENT_NOTE}</p>}
       {unavailableText && <p className="item-card__reason" id={reasonId}>{unavailableText}</p>}
-      {action && <button
-        type="button"
-        className="button-primary item-card__action"
-        disabled={action.disabled}
-        aria-describedby={unavailableText ? reasonId : undefined}
-        onClick={() => action.onActivate()}
-      >{action.label}</button>}
+  </>;
+  const actionButton: React.ReactNode = action && <button
+    type="button"
+    className="button-primary item-card__action"
+    disabled={action.disabled}
+    aria-describedby={unavailableText ? reasonId : undefined}
+    onClick={() => action.onActivate()}
+  >{action.label}</button>;
+
+  return (
+    <div className={`item-card item-card--${itemTone(kind)}${selected ? " item-card--selected" : ""}`}>
+      {footer ? <>
+        <div className="item-card__body">{body}</div>
+        <div className="item-card__footer">{actionButton}{footer}</div>
+      </> : <>{body}{actionButton}</>}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement, createRef, useEffect, useState } from "react";
+import { act, createElement, createRef, memo, useEffect, useState } from "react";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { GameHud } from "../../src/features/game/components/GameHud";
@@ -7,14 +7,44 @@ import type { GameHudProps } from "../../src/features/game/components/GameHud";
 import { GameMenu } from "../../src/features/game/components/GameMenu";
 import type { GameMenuProps } from "../../src/features/game/components/GameMenu";
 import { GamePanel } from "../../src/features/game/components/GamePanel";
-import { buildRailwayNetwork, createItemGame, playItemTurn } from "../../src/features/game/engine";
+import { buildRailwayNetwork, createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import { resumeSession } from "../../src/features/game/gameSession";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
-import { itemSessionView } from "../../src/features/game/itemSession";
+import { itemLastMove, itemSessionView } from "../../src/features/game/itemSession";
 import { landingText, lastRollText } from "../../src/features/game/presentation";
 import { compactRollFor, compactRollText } from "../../src/features/game/hudPresentation";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
+import { GameApp } from "../../src/app/GameApp";
+import { loadRailwayData } from "../../src/data/loaders";
+import { EDITIONS } from "../../src/features/editions/registry";
+import { networkFromData } from "../../src/features/game/networkFromData";
+import { turnToasts } from "../../src/features/game/toastQueue";
+
+const renderCounts = vi.hoisted(() => ({ hud: 0, legend: 0 }));
+vi.mock("../../src/features/map/RailwayMap", () => ({
+  RailwayMap: function RailwayMapStub(): React.JSX.Element { return createElement("div"); },
+}));
+vi.mock("../../src/features/game/components/GameHud", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/features/game/components/GameHud")>();
+  return { ...actual, GameHud: function CountedGameHud(value: GameHudProps): React.JSX.Element {
+    renderCounts.hud += 1;
+    return createElement(actual.GameHud, value);
+  } };
+});
+vi.mock("../../src/features/game/components/GameLegend", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/features/game/components/GameLegend")>();
+  // Preserve the production memo boundary while counting renders of the real legend implementation.
+  const RealLegend = actual.GameLegend.type;
+  return { ...actual, GameLegend: memo(function CountedGameLegend(value: React.ComponentProps<typeof RealLegend>): React.JSX.Element {
+    renderCounts.legend += 1;
+    return createElement(RealLegend, value);
+  }) };
+});
+
+function ProductionAppHarness(value: React.ComponentProps<typeof GameApp>): React.JSX.Element {
+  return createElement(GameApp, value);
+}
 
 function props(overrides: Partial<GameHudProps> = {}): GameHudProps {
   return {
@@ -443,5 +473,67 @@ it("keeps the turn log mounted, mutually exclusive, keyboard closable, and retai
     }
   } finally {
     mount.cleanup();
+  }
+});
+
+
+it("expires an ordinary toast in production GameApp without rendering HUD or legend again", async () => {
+  const data = await loadRailwayData("", async (file) =>
+    JSON.parse(readFileSync(`tests/e2e/fixtures/data/${file}`, "utf8")));
+  const result = networkFromData(data);
+  if (!result.ok) throw new Error(result.reason);
+  const network = result.network;
+  const edition = EDITIONS[0];
+  let game = createItemGame(edition.config, "production-toast-render-count", network);
+  let expectedToast: string | undefined;
+  for (let turn = 0; turn < 48 && !expectedToast; turn += 1) {
+    const next = playItemTurn(game, {}, network).state;
+    const record = next.movementHistory.at(-1);
+    const toasts = next.pending === null && record ? turnToasts(1, itemLastMove(record, network), network) : [];
+    if (toasts.length === 1) expectedToast = toasts[0]?.text;
+    else game = next.pending?.kind === "discard" ? resolveItemDiscard(next, next.pending.item.id).state : next;
+  }
+  expect(expectedToast).toBeTruthy();
+  vi.useFakeTimers();
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  localStorage.setItem(edition.saveKey, serializeGame(game));
+  const mount = mountReact(createElement(ProductionAppHarness, {
+    data, network, edition, picker: {
+      editions: EDITIONS, editionId: edition.id, onEditionChange: vi.fn(),
+      focusPicker: false, onPickerFocusRestored: vi.fn(),
+    },
+  }));
+  const click = (label: string): void => {
+    const button = [...mount.container.querySelectorAll("button")].find((candidate) => candidate.textContent?.includes(label));
+    if (!button) throw new Error(`Missing production button: ${label}`);
+    dispatchReactEvent(button, new MouseEvent("click", { bubbles: true }));
+  };
+  try {
+    const beforeResume = { ...renderCounts };
+    click("つづきから");
+    expect(renderCounts.hud).toBeGreaterThan(beforeResume.hud);
+    expect(renderCounts.legend).toBeGreaterThan(beforeResume.legend);
+    expect(mount.container.querySelector(".game-panel__stats")).not.toBeNull();
+    expect(mount.container.querySelector(".game-panel__legend")).not.toBeNull();
+    expect(mount.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
+    const resumedHudCount = renderCounts.hud;
+    click("サイコロを振る");
+    click("スキップ");
+    const toast = mount.container.querySelector(".toast-host__toast");
+    expect(toast?.textContent).toBe(expectedToast);
+    const settledCounts = { ...renderCounts };
+    expect(settledCounts.hud).toBeGreaterThan(resumedHudCount);
+    expect(settledCounts.legend).toBeGreaterThan(beforeResume.legend);
+    act(() => vi.advanceTimersByTime(3999));
+    expect(mount.container.querySelector(".toast-host__toast")).toBe(toast);
+    act(() => vi.advanceTimersByTime(1));
+    expect(mount.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
+    expect(renderCounts).toEqual(settledCounts);
+  } finally {
+    mount.cleanup();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+    localStorage.clear();
   }
 });
