@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { expect, test } from "./fixtures";
-import { gamePanel, openTitle, readMap, startNewGame } from "./support/app";
+import { closeGameMenu, gamePanel, openGameMenu, openTitle, readMap, startNewGame } from "./support/app";
 
 // S6V: the 1都3県 network must stay readable. Real data, both form factors.
 test.use({ dataset: "real" });
@@ -182,8 +182,10 @@ test("phone 全体 fits the collapsed-legend map area and remains clear when exp
   const maxBottomGap = 16 + Math.ceil(page.viewportSize()!.height * 0.1);
 
   const toggle = gamePanel(page).getByRole("button", { name: /路線の凡例/ });
+  await openGameMenu(page);
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await closeGameMenu(page);
   await page.getByRole("button", { name: "全体", exact: true }).click();
   await expect(async () => { await expectInFreeArea(page, allPoints); }).toPass();
   await screenshotAt(page, JRCR_S7_SCREENSHOT_DIR, "after-expanded.png");
@@ -282,6 +284,7 @@ test("real Japanese labels follow overview and zoom density at station hubs on d
 
 test("the service legend collapses; 山手線 progress and 現在地 stay visible", async ({ page }) => {
   await startReadyGame(page);
+  await openGameMenu(page);
   const panel = gamePanel(page);
   const legend = panel.getByRole("list", { name: "凡例" });
   const toggle = panel.getByRole("button", { name: /路線の凡例/ });

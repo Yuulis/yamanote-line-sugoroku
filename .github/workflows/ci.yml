@@ -169,7 +169,9 @@ jobs:
     name: E2E leg (${{ matrix.project }})
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to ubuntu-26.04 (2026-10-30) and Playwright's
+    # WebKit build there fails to load libicudata.so.74.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -196,7 +198,7 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
+          key: playwright-${{ runner.os }}-${{ env.ImageOS }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
       # OS dependencies are not cached, so they are always installed; a cache
       # hit only skips the browser download. Playwright always adds its
       # "tools" group (xvfb, CJK fonts) whichever browser is named.

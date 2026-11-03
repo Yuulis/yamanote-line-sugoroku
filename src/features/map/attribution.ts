@@ -1,5 +1,99 @@
 import type { Manifest } from "../../types/data";
 
+/** MapLibre's attribution control container and its compact toggle (public DOM classes). */
+export const ATTRIBUTION_SELECTOR = ".maplibregl-ctrl-attrib";
+const ATTRIBUTION_TOGGLE_SELECTOR = ".maplibregl-ctrl-attrib-button";
+const COMPACT_CLASS = "maplibregl-compact";
+const EXPANDED_CLASS = "maplibregl-compact-show";
+
+/**
+ * Bottom edge (viewport px) of the top-left attribution (phones and short
+ * landscape), collapsed or expanded, published on the document root so the
+ * phone toast stack can start below it. Unset while no control is watched.
+ */
+export const ATTRIBUTION_BOTTOM_PROPERTY = "--map-attribution-bottom";
+
+function isExpandedAttribution(container: HTMLElement): boolean {
+  return container.classList.contains(COMPACT_CLASS) && container.classList.contains(EXPANDED_CLASS);
+}
+
+/**
+ * Collapse MapLibre's compact attribution by activating its own toggle, only
+ * when it is currently expanded. Returns whether it collapsed it.
+ */
+export function collapseAttributionOnce(container: HTMLElement): boolean {
+  if (!isExpandedAttribution(container)) return false;
+  const toggle = container.querySelector<HTMLElement>(ATTRIBUTION_TOGGLE_SELECTOR);
+  if (!toggle) return false;
+  toggle.click();
+  return true;
+}
+
+/**
+ * Phone and short-landscape behaviour for one attached attribution control:
+ * collapse it once as soon as it shows expanded (at attach time, or when its
+ * content first populates), never after the user has used the toggle, and
+ * publish its bottom edge (collapsed or expanded). Returns the cleanup for
+ * detach/unmount.
+ */
+export function watchCompactAttribution(
+  container: HTMLElement,
+  root: HTMLElement = document.documentElement,
+): () => void {
+  let collapsePending = true;
+  let autoToggling = false;
+
+  const publishBottom = (): void => {
+    if (!container.isConnected) {
+      root.style.removeProperty(ATTRIBUTION_BOTTOM_PROPERTY);
+      return;
+    }
+    const bottom: number = Math.ceil(container.getBoundingClientRect().bottom);
+    root.style.setProperty(ATTRIBUTION_BOTTOM_PROPERTY, `${bottom}px`);
+  };
+  const attemptCollapse = (): void => {
+    if (!collapsePending) return;
+    autoToggling = true;
+    try {
+      if (collapseAttributionOnce(container)) collapsePending = false;
+    } finally {
+      autoToggling = false;
+    }
+  };
+  // Capture phase: runs before MapLibre's own toggle handler on the summary.
+  const onClick = (event: MouseEvent): void => {
+    if (autoToggling) return;
+    if (event.target instanceof Element && event.target.closest(ATTRIBUTION_TOGGLE_SELECTOR)) {
+      collapsePending = false;
+    }
+  };
+  const update = (): void => {
+    attemptCollapse();
+    publishBottom();
+  };
+
+  // MapLibre's click handler flips the class first; the native <summary> toggles
+  // `open` (which renders the credit) only afterwards, so a class-only observer
+  // would publish the collapsed bottom for an expanding control until the next
+  // ResizeObserver delivery. Observing `open` too settles it in the same task.
+  const mutationObserver = new MutationObserver(update);
+  mutationObserver.observe(container, { attributes: true, attributeFilter: ["class", "open"] });
+  const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(publishBottom);
+  resizeObserver?.observe(container);
+  container.addEventListener("click", onClick, true);
+  // A rotation can move the control (safe-area insets) without resizing it.
+  window.addEventListener("resize", publishBottom);
+  update();
+
+  return () => {
+    mutationObserver.disconnect();
+    resizeObserver?.disconnect();
+    container.removeEventListener("click", onClick, true);
+    window.removeEventListener("resize", publishBottom);
+    root.style.removeProperty(ATTRIBUTION_BOTTOM_PROPERTY);
+  };
+}
+
 const HTML_ESCAPES: Record<string, string> = {
   "&": "&amp;",
   "<": "&lt;",
