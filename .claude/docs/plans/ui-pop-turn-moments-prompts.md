@@ -360,6 +360,60 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/accessibility.spec.ts tests
 
 ---
 
+## S8: Overlay placement and animation target refs
+
+Implement plan `### S8` exactly. Files: new `src/features/game/components/TurnMomentHost.tsx`; modify
+`src/features/game/components/GameHud.tsx`, `InventoryPanel.tsx`, `GamePanel.tsx`, `src/styles.css`; new
+`tests/unit/turn-moment-components.test.ts` (plus the handoff row). `src/app/GameApp.tsx` is NOT in this step:
+the host is built and tested but not mounted in production; no visible moment, no timer, no new stage.
+
+- Pure placement helper, exported from `TurnMomentHost.tsx` (keep it with the host): inputs are the viewport,
+  the map rectangle and the panel rectangle (either may be missing); it clips both to the viewport and returns the
+  largest free rectangle above, beside (left/right) or below the panel inside the visible map, with its centre
+  (= visible map centre for the board). Deterministic tie-break order, documented in a comment. Missing/zero-area
+  input → a documented fallback (whole clipped map, else viewport); never NaN, never negative sizes.
+- Pure settle-motion helper: given a source rectangle and an optional measured target rectangle, return a
+  transform/opacity flight, or a local fade fallback when the target is missing, zero-sized or off-viewport.
+- `TurnMomentHost` component: fixed-position host rendered as a sibling of `.game-panel` (like `ToastHost`), whole
+  subtree `aria-hidden="true"`, no focusable descendants (no `button`/`a`/`tabindex`), never calls `focus()` or
+  `showModal()`. Host `pointer-events: none`; only a visible card has `pointer-events: auto` and invokes an optional
+  `onTap` (Skip); its `pointerdown`/`mousedown` handler calls `preventDefault()` so keyboard focus does not move.
+  With nothing to show it renders no card. Content model is minimal and typed (e.g. a `children`/card slot); the
+  real moment visuals arrive in S10+ — do not build dice/board/banner here.
+- Measurement hook (in the same file or `TurnMomentHost.tsx`-local): measures map and panel rectangles via
+  `getBoundingClientRect`, re-measures on `resize`, `scroll` (capture) and `ResizeObserver`; every listener and
+  observer is removed on unmount (test with spies). Measurement must never write styles to the panel.
+- Target refs: optional, typed props threaded `GamePanel` → `GameHud` (ride/service and direction values) and
+  `GamePanel` → `InventoryPanel` (each slot by index, and the inventory header). Use callback refs or `RefObject`s
+  on existing elements, or a wrapper that does not change layout (`display: contents` is NOT measurable — measure a
+  real box). Keep every `<dt>`/`<dd>`, `data-stat`, slot count/order and class contract unchanged; absent props =
+  today's DOM exactly.
+- CSS in `src/styles.css`: new layer token `--layer-turn-moment` between `--layer-panel` (10) and
+  `--layer-screen` (20) (so ClearScreen, map errors, toasts and the banner stay above it); `.turn-moment-host`
+  (fixed, `inset: 0`, `pointer-events: none`) and a card class with `pointer-events: auto`; colours via tokens;
+  `@media (prefers-reduced-motion: reduce)` disables transitions. No change to panel/HUD dimensions.
+- Tests (`tests/unit/turn-moment-components.test.ts`, `// @vitest-environment jsdom` for rendering): table-driven
+  placement for desktop (map full-screen, panel bottom-right), phone (panel bottom sheet), short landscape (panel
+  on a side → free space beside, not above), viewport clipping, long panel content (panel taller than half the
+  viewport), missing map/panel rectangles; settle helper flight vs fade fallback (missing, zero-size, off-viewport
+  target); host outside `.game-panel`, `position: fixed` class, `aria-hidden`, zero focusable descendants; only the
+  card receives pointer events (class contract) and `onTap` fires from it; pointer-down `defaultPrevented`;
+  listeners/observers cleaned up on unmount; target refs resolve to the expected elements when passed and the
+  rendered HUD/inventory markup is unchanged when absent (compare against literal expectations, not a snapshot of
+  the new code). Literal expected numbers in placement tables.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moment-components.test.ts tests/unit/game-hud.test.ts tests/unit/item-controls.test.ts tests/unit/map-panel-observer.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/layout.spec.ts tests/e2e/hud-layout.spec.ts --project=desktop-chromium --project=phone-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`
