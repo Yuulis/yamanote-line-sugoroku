@@ -17,6 +17,59 @@ engine/RNG/save/`src/types/network.ts`/public-data change.
 - Architecture: `.claude/docs/plans/ui-pop-turn-moments-architecture.md`
 - Design rows: `.claude/docs/DESIGN.md` (2026-11-03 UI pop P2 rows)
 
+## Resume in a Claude cloud session (read this first)
+
+State on 2026-11-05: branch `feature/ui-pop-turn-moments` at `f808d70` (pushed; CI 41959515378 green on all four
+E2E legs). S1–S6 done; **next is S7**. No PR is open yet (flow: feature → PR → `develop` → PR → `master`; rulesets
+block direct pushes to `develop`/`master`; never merge to `master` without the user's explicit approval).
+
+What a cloud session does NOT have, and the substitute:
+- `.claude/logs/**` is gitignored: the Codex prompts/reviews cited in the Step Status rows (`*-p2-s*.md`) and the
+  screenshots are not in the clone. Everything binding is tracked: plan (`ui-pop-turn-moments-plan.md`),
+  architecture (`ui-pop-turn-moments-architecture.md`), executor prompts (`ui-pop-turn-moments-prompts.md`; §0 +
+  the step section, already written for S7), brief/scan (`.claude/docs/research/feature-ui-pop-turn-moments-*.md`),
+  and the decisions in `.claude/docs/DESIGN.md` (2026-11-03 UI pop P2 rows).
+- The user's local Claude memories are not available. The ones that matter here:
+  - Pacing: P2 ran "pause after every step" for S1–S3, continuous for S4–S5, and the user asked to stop after S6.
+    **Ask the user which pacing to use before starting S7.**
+  - Per step: implement → independent review → lead verification → commit → push → check CI → update this handoff.
+    Check CI after every push (`gh run list --branch feature/ui-pop-turn-moments --limit 3`) and read failing logs.
+  - Local E2E: run only the affected specs (`--project=desktop-chromium --workers=2`; on WSL prefix
+    `env -u WAYLAND_DISPLAY`); the full four-browser matrix is CI's job. WebKit is CI-only.
+    **Lesson from S6:** whenever a step touches the live region or display paths, include
+    `tests/e2e/accessibility.spec.ts` (S6's first CI run failed there, though the targeted specs passed).
+  - User-facing screenshots go to `.claude/logs/screenshots/` (the user cannot open `/tmp`); in a cloud session,
+    describe them or attach them in the report instead.
+- Codex CLI may be unavailable. Executor lanes used so far: Codex Luna high implements, Codex Sol low reviews, and
+  the lead verifies. When Codex is unavailable, use Claude subagents instead (Sonnet implements from the built
+  prompt file, Opus reviews with the `## R:` reviewer prompt). Guardrail: re-delegate a failed step once; after a
+  second failed review, stop and ask the user (S4 and S6 both needed this — the user then chose Codex Sol).
+
+Gates for every step (from `ui-pop-turn-moments-prompts.md` §0): `npm run typecheck`, `npx vitest run`,
+`npm run build`, the step's targeted Playwright specs, and the forbidden-path audit (must print nothing):
+`git diff --exit-code 70decd6 -- src/features/game/engine src/features/game/store src/features/game/gameSession.ts src/features/game/itemSession.ts src/features/game/useGameApp.ts src/types/network.ts public/data`.
+Do not weaken, skip or re-value an existing assertion; production keeps `NO_REVEAL_STAGES` until S12.
+
+Screenshot helper (gitignored copy at `.claude/logs/p2-shot.spec.ts`; recreate if missing, copy to
+`tests/e2e/zz-p2-shot.spec.ts`, run with `P2_SHOT=<png> [P2_SHOT_LOG=<png>]` on desktop-chromium, then delete it — never commit):
+
+```ts
+import { expect, test } from "./fixtures";
+import { gamePanel, openGameLog, openTitle, rollOnce, startNewGame } from "./support/app";
+const OUT = process.env.P2_SHOT ?? ".claude/logs/screenshots/p2-shot.png";
+test("capture P2 checkpoint", async ({ page }) => {
+  await openTitle(page);
+  await startNewGame(page);
+  for (let i = 0; i < 3; i += 1) await rollOnce(page);
+  await expect(gamePanel(page)).toBeVisible();
+  await page.screenshot({ path: OUT, fullPage: false });
+  if (process.env.P2_SHOT_LOG) { await openGameLog(page); await page.screenshot({ path: process.env.P2_SHOT_LOG, fullPage: false }); }
+});
+```
+
+Start S7: read plan `### S7` and prompts `## S7:`, build the prompt (prompts doc header shows the `awk` command),
+delegate, review with `## R:` (STEP=S7), verify, commit, push, check CI, then update the S7 row below.
+
 ## Decisions (user, 2026-11-03)
 
 - All four moments are in P2. Durations scale with 速度 (factor = stepMs / 450, captured at the roll).
