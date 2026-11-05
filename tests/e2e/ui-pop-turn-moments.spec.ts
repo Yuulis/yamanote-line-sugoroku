@@ -12,15 +12,18 @@ import {
   expectAcceptedSave,
   freezeClock,
   gamePanel,
+  openGameMenu,
   openTitle,
   panelStat,
   readMap,
   readSave,
   stampsExpected,
   startNewGame,
+  targetCompletedIds,
+  targetFeatureIds,
   writeSaveText,
 } from "./support/app";
-import { advanceMovement, advanceStamps, advanceTumble, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
+import { advanceArrival, advanceMovement, advanceStamps, advanceTumble, awaitStage, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { directionLabel } from "../../src/features/game/presentation";
 import type { RailwayBundle } from "./fixtures/bundle";
@@ -30,6 +33,7 @@ import type { RailwayBundle } from "./fixtures/bundle";
 // the saved raw roll, and every result equals the engine replay of the save.
 // S12: the arrival banner after the movement. Lottery and pickup moments arrive
 // with S14-S15; until then their results publish when the arrival ends.
+// S13: the completed-segment map flash, concurrent with the arrival.
 
 test.use({ dataset: "fixture", reducedMotion: "no-preference" });
 
@@ -129,6 +133,7 @@ test("the cube lands on the saved raw roll, the adjustment follows the one tumbl
   expect((await readMap(page))?.marker).toEqual(originMarker);
 
   // Clock time inside the stamps stage moves nothing: the movement is still gated.
+  await awaitStage(page, "stamps");
   await page.clock.runFor(stageDurationMs("stamps") - 1);
   await expect(diceMoment(page)).toHaveAttribute("data-stage", "stamps");
   expect((await readMap(page))?.marker).toEqual(originMarker);
@@ -345,6 +350,7 @@ test("the arrival banner holds the ridden service, platform and the turn's resul
 
   // The arrival's own duration, nothing earlier. Its timer starts in the frame that ended the movement, which is at
   // most the helper's one trailing frame (FRAME_MS) before now.
+  await awaitStage(page, "arrival");
   await page.clock.runFor(stageDurationMs("arrival") - FRAME_MS - 1);
   await expect(arrivalBanner(page)).toBeVisible();
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
@@ -429,3 +435,99 @@ test("the arrival card stays clear of the panel and the map controls", async ({ 
     expect(overlaps(cardBox, box), `card ${JSON.stringify(cardBox)} overlaps ${JSON.stringify(box)}`).toBe(false);
   }
 });
+
+// ---------------------------------------------------------------------------
+// S13: the completed-segment flash, concurrent with the arrival banner.
+// ---------------------------------------------------------------------------
+
+/**
+ * Oracle: geometry features of the target segments the saved record newly completed (traversed and not completed
+ * before the turn), cross-checked against the saved completion difference.
+ */
+function newlyCompletedFlashIds(bundle: RailwayBundle, base: ItemGameState, after: ItemGameState): string[] {
+  const record = after.movementHistory.at(-1)!;
+  const before = new Set(base.completedSegmentIds);
+  const fresh = targetCompletedIds({ completedSegmentIds: record.traversedSegmentIds }).filter((id) => !before.has(id));
+  const difference = targetCompletedIds(after).filter((id) => !before.has(id));
+  expect([...new Set(fresh)].sort()).toEqual([...difference].sort());
+  return targetFeatureIds({ completedSegmentIds: difference }, bundle).sort();
+}
+
+/** Resume the "delay" scenario frozen with the map loaded and play its turn up to the end of the movement. */
+async function playDelayTurnToArrival(page: Page, bundle: RailwayBundle): Promise<{ base: ItemGameState; flashIds: string[] }> {
+  const base = itemScenario("delay", bundle.network);
+  await page.clock.install();
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(base));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await freezeClock(page);
+  // Initialised empty and transparent.
+  expect((await readMap(page))?.flashFilterIds).toEqual([]);
+  expect((await readMap(page))?.flashOpacity).toBe(0);
+  const turnBefore = await clickDice(page);
+  await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+  await advanceTumble(page);
+  await waitForRollOutcome(page, turnBefore);
+  await expectAcceptedSave(page, base.turn + 1);
+  const expected = playItemTurn(base, {}, bundle.network);
+  expect(await readSave(page)).toEqual(expected.state);
+  if (stampsExpected(expected.state.movementHistory.at(-1)!)) await advanceStamps(page);
+  await expect(diceMoment(page)).toHaveCount(0);
+  const flashIds = newlyCompletedFlashIds(bundle, base, expected.state);
+  expect(flashIds.length).toBeGreaterThan(0);
+  // Movement: segments complete hop by hop on the completed layer, but nothing flashes yet.
+  await advanceMovement(page, NORMAL_STEP_MS / 2);
+  expect((await readMap(page))?.flashFilterIds).toEqual([]);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  await expect(arrivalBanner(page)).toBeVisible();
+  return { base, flashIds };
+}
+
+test("the arrival flashes exactly the record's newly completed target segments, in one pulse, then empties", async ({ page, railwayBundle }) => {
+  const { base, flashIds } = await playDelayTurnToArrival(page, railwayBundle);
+  const arrival = await readMap(page);
+  expect([...arrival!.flashFilterIds].sort()).toEqual(flashIds);
+  // Only the new segments: the completed layer also holds the ones completed before this turn.
+  const earlier = targetFeatureIds(base, railwayBundle);
+  expect(earlier.length).toBeGreaterThan(0);
+  expect(arrival!.flashFilterIds.some((id) => earlier.includes(id))).toBe(false);
+  expect(arrival!.completedFilterIds).toEqual(expect.arrayContaining([...earlier, ...flashIds]));
+
+  // Mid-arrival the single pulse is near its peak; the banner and the flash share the arrival's duration.
+  await awaitStage(page, "arrival");
+  await page.clock.runFor(stageDurationMs("arrival") / 2 - FRAME_MS);
+  const middle = await readMap(page);
+  expect([...middle!.flashFilterIds].sort()).toEqual(flashIds);
+  expect(middle!.flashOpacity).toBeGreaterThan(0.5);
+  expect(middle!.flashOpacity).toBeLessThanOrEqual(0.85);
+
+  await advanceArrival(page);
+  await expect(arrivalBanner(page)).toHaveCount(0);
+  await expect.poll(async () => (await readMap(page))?.flashFilterIds).toEqual([]);
+  expect((await readMap(page))?.flashOpacity).toBe(0);
+  await page.clock.runFor(stageDurationMs("arrival"));
+  expect((await readMap(page))?.flashFilterIds).toEqual([]);
+});
+
+for (const end of ["スキップ", "タイトル"] as const) {
+  test(`${end} during the arrival empties the flash at once and nothing lingers`, async ({ page, railwayBundle }) => {
+    const { flashIds } = await playDelayTurnToArrival(page, railwayBundle);
+    expect([...(await readMap(page))!.flashFilterIds].sort()).toEqual(flashIds);
+    if (end === "スキップ") {
+      await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+      await expect(arrivalBanner(page)).toHaveCount(0);
+    } else {
+      await openGameMenu(page);
+      await gamePanel(page).getByRole("button", { name: "タイトル" }).click();
+      await expect(gamePanel(page)).toHaveCount(0);
+    }
+    await expect.poll(async () => (await readMap(page))?.flashFilterIds).toEqual([]);
+    expect((await readMap(page))?.flashOpacity).toBe(0);
+    await page.clock.runFor(stageDurationMs("arrival"));
+    expect((await readMap(page))?.flashFilterIds).toEqual([]);
+    expect((await readMap(page))?.flashOpacity).toBe(0);
+  });
+}

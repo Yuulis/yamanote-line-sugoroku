@@ -644,6 +644,54 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts
 
 ---
 
+## S13: Concurrent completed-segment flash
+
+Implement plan `### S13` exactly and the architecture's "Map flash" section. Files: modify
+`src/features/map/mapConfig.ts`, `src/features/map/railwayLayers.ts`, `src/features/map/RailwayMap.tsx`,
+`src/app/GameApp.tsx`; `src/features/game/turnMomentPresentation.ts` (and `animation/turnMoments.ts` only if the
+accepted facts need the IDs) to produce `display.segmentFlash: SegmentFlashRequest | null` — `src/**` has no such
+field yet; new `tests/unit/map-flash.test.ts`; modify `tests/unit/map-station-markers.test.ts`, the affected mocks in
+`tests/unit/capital-region-scaling.test.ts`, `tests/e2e/support/app.ts` (map observation), and
+`tests/e2e/ui-pop-turn-moments.spec.ts` (plus the handoff row). No new stage: the flash runs concurrently with
+`arrival` and adds no delay; arrival without new target segments keeps its banner and has no flash.
+
+- Flash request (`{ key, featureIds, durationMs }`): `key` = the reveal key; `featureIds` = **newly completed target
+  segment IDs captured from the accepted record's movement events** (not a React-to-React progress diff, which also
+  changes during hops, Skip, resume and session replacement); `durationMs` = the attempt's captured `arrivalMs`.
+  Non-null only while the presented stage is `arrival` with at least one new ID; null for restored/omitted results,
+  reduced motion, Skip, classic mode, and after arrival ends.
+- Map: exactly one new layer (e.g. `railway-segments-flash`) above completed segments and below stations, reusing
+  the segments source and the target-scoped feature-ID filter helper; the completed layer's ID and filter shape
+  unchanged. Initialised with an empty filter and opacity 0. Pure `segmentFlashOpacity(elapsedMs, durationMs)`
+  envelope (one bounded pulse, 0 at both ends, no strobe; table-tested with literals). `RailwayMap` owns a local rAF
+  loop keyed by the request key: check layer existence before every write; cancel and clear filter/opacity on null
+  request, Skip, screen change and teardown; reapply current state on `layersRevision` (style reload) without
+  restarting — keep the original deadline; if the deadline expired during reload, the new layer stays empty. A missing
+  map/layer never blocks stages or decisions.
+- Tests: layer count 10 → **11** with the exact new order asserted (update every mock that asserts the count/order;
+  never loosen to "at least"); empty init; one bounded pulse; only new target IDs; null/Skip/reduced motion/screen
+  change/teardown clear it; style reload reapplies without resetting the deadline; reload after expiry leaves it empty;
+  missing map/layer never blocks. Real-GameApp tests (as S11/S12): flash IDs for a turn completing segments, none for
+  a no-new-segment turn, none after resume, none under reduced motion toggled mid-turn, cleared by Skip.
+- E2E: extend map observation in `support/app.ts` (flash layer filter/opacity) and add a case in
+  `ui-pop-turn-moments.spec.ts`: during arrival the flash filter holds exactly the record's newly completed target
+  IDs; after `advanceArrival` / Skip / screen change it is empty. Keep every existing `map-visual`/`capital-region`
+  assertion and value.
+- Screenshot: `.claude/logs/screenshots/p2-s13-desktop-arrival-flash.png` (frozen clock mid-arrival).
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/map-flash.test.ts tests/unit/map-station-markers.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/map-panel-observer.test.ts tests/unit/game-app-turn-moments.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/map-visual.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/dice.spec.ts tests/e2e/layout.spec.ts --project=desktop-chromium --workers=2
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts --project=phone-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

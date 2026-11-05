@@ -6,7 +6,7 @@ import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
-import { advanceArrival, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 test.use({ dataset: "fixture" });
 
@@ -446,10 +446,9 @@ test.describe("long rapid goal arrival", () => {
     await advanceStamps(page);
     await expect(diceMoment(page)).toHaveCount(0);
     // Establish the first animation timestamp, then simulate a delayed frame.
-    // Fast-forward avoids rendering hundreds of WebGL frames in software.
-    await page.clock.runFor(32);
-    await page.clock.fastForward(6_100);
-    await page.clock.runFor(32);
+    // Fast-forward avoids rendering hundreds of WebGL frames in software. The helper first waits until the released
+    // movement has requested its first frame, so the priming frame is never lost.
+    await advanceMovement(page, 6_100);
     // Goal banner checkpoint (S12): the capped movement is over (dice label back), the arrival banner shows the goal
     // station on the still-mounted panel with the dice locked and Skip available, and ClearScreen is not mounted.
     const goalBanner = page.locator(".turn-moment-host .arrival-banner");

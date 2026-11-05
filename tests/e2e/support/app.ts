@@ -39,6 +39,10 @@ export interface MapSnapshot {
   /** Paint that tells the two layers apart (spec 6.2: colour and line style). */
   completedPaint: LinePaint;
   pendingPaint: LinePaint;
+  /** Geometry feature ids in the arrival flash layer's `in` filter literal (S13); empty when nothing flashes. */
+  flashFilterIds: string[];
+  /** The flash layer's `line-opacity`; null when the layer is missing. */
+  flashOpacity: number | null;
 }
 
 export interface LinePaint {
@@ -342,6 +346,11 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       });
       // Target-scoped v3 filter: ["all", target, ["in", ["get", "featureId"], ["literal", ids]]]
       const filter = map.getFilter(layers.completed) as [string, unknown, [string, unknown, [string, string[]]]];
+      // The flash layer uses the same target-scoped filter shape.
+      const flashFilter = map.getLayer(layers.flash)
+        ? map.getFilter(layers.flash) as [string, unknown, [string, unknown, [string, string[]]]]
+        : null;
+      const flashOpacity = map.getLayer(layers.flash) ? map.getPaintProperty(layers.flash, "line-opacity") : null;
       return {
         styleLoaded: Boolean(map.isStyleLoaded()),
         highlightedFeatureIds: (map.getFilter(layers.highlighted) as [string, unknown, [string, string[]]])?.[2]?.[1] ?? [],
@@ -358,6 +367,8 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         pendingRenderedIds: renderedIds(layers.pending),
         completedPaint: paint(layers.completed),
         pendingPaint: paint(layers.pending),
+        flashFilterIds: flashFilter?.[2]?.[2]?.[1] ?? [],
+        flashOpacity: typeof flashOpacity === "number" ? flashOpacity : null,
       };
     },
     {
@@ -365,6 +376,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         highlighted: LAYER_IDS.currentService,
         completed: LAYER_IDS.segmentsCompleted,
         pending: LAYER_IDS.segmentsPending,
+        flash: LAYER_IDS.segmentsFlash,
         marker: LAYER_IDS.currentPosition,
       },
       markerSourceId: SOURCE_IDS.currentPosition,

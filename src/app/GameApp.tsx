@@ -219,7 +219,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     itemView,
     restoredHistory,
     previousClassicAnnouncement: classicAnnouncement.current.text,
-  }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, presentedRevealStage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory]);
+    revealKey: reveal.key,
+  }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, presentedRevealStage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory, reveal.key]);
   if (!itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
     classicAnnouncement.current.text = turnDisplay.announcement;
   }
@@ -448,6 +449,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         targetServiceId={edition.config.targetServiceId}
         presentation={presentation}
         progress={progress}
+        segmentFlash={turnDisplay?.segmentFlash ?? null}
         livePosition={livePosition}
         follow={mapFollow}
         panelKey={session && shown && !showClear ? session.sessionId : undefined}

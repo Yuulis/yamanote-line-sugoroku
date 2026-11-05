@@ -34,6 +34,10 @@ import {
   PENDING_SEGMENT_COLOR,
   PENDING_SEGMENT_DASH,
   PENDING_SEGMENT_WIDTH,
+  SEGMENT_FLASH_COLOR,
+  SEGMENT_FLASH_LINE_BLUR,
+  SEGMENT_FLASH_LINE_WIDTH,
+  SEGMENT_FLASH_MAX_OPACITY,
   SEGMENT_LINE_WIDTH,
   SOURCE_IDS,
   STATION_FILL_COLOR,
@@ -53,6 +57,17 @@ export interface MapProgress {
   completedFeatureIds: readonly string[];
   currentPosition: Position | null;
   highlightedServiceId?: string;
+}
+
+/**
+ * One arrival's flash of newly completed target segments. `key` is the reveal key (one flash per arrival),
+ * `featureIds` the geometry features of the segments the accepted record newly completed, and `durationMs` the
+ * arrival duration captured with the roll.
+ */
+export interface SegmentFlashRequest {
+  key: string;
+  featureIds: readonly string[];
+  durationMs: number;
 }
 
 export interface RailwayLayerInput {
@@ -135,6 +150,20 @@ export function addRailwayLayers(
       paint: {
         "line-color": buildLineColorExpression(services, presentation),
         "line-width": SEGMENT_LINE_WIDTH,
+      },
+    });
+    // Above the completed line, below the stations: starts empty and transparent until an arrival flashes.
+    map.addLayer({
+      id: LAYER_IDS.segmentsFlash,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: completedSegmentFilter([], targetServiceId),
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": SEGMENT_FLASH_COLOR,
+        "line-width": SEGMENT_FLASH_LINE_WIDTH,
+        "line-blur": SEGMENT_FLASH_LINE_BLUR,
+        "line-opacity": 0,
       },
     });
   }
@@ -260,4 +289,35 @@ export function updateHighlightedService(map: MapLibreMap, featureIds: readonly 
   if (!map.getLayer(LAYER_IDS.currentService)) return;
   map.setFilter(LAYER_IDS.currentService, ["in", ["get", "featureId"], ["literal", [...featureIds]]]);
   map.setPaintProperty(LAYER_IDS.currentService, "line-color", color);
+}
+
+/**
+ * Opacity of the arrival flash `elapsedMs` into a `durationMs` flash: one half-sine pulse, 0 at both ends and
+ * outside them, peaking once at SEGMENT_FLASH_MAX_OPACITY in the middle. Never repeats, so it cannot strobe.
+ */
+export function segmentFlashOpacity(elapsedMs: number, durationMs: number): number {
+  if (!(durationMs > 0) || !(elapsedMs > 0) || elapsedMs >= durationMs) return 0;
+  return SEGMENT_FLASH_MAX_OPACITY * Math.sin((Math.PI * elapsedMs) / durationMs);
+}
+
+/** Point the flash layer at `featureIds` (target-scoped like the completed layer); skipped while it is missing. */
+export function setSegmentFlashFeatures(
+  map: MapLibreMap,
+  featureIds: readonly string[],
+  targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
+): void {
+  if (!map.getLayer(LAYER_IDS.segmentsFlash)) return;
+  map.setFilter(LAYER_IDS.segmentsFlash, completedSegmentFilter(featureIds, targetServiceId));
+}
+
+/** Set the flash layer's opacity; skipped while it is missing (failed map, replaced style). */
+export function setSegmentFlashOpacity(map: MapLibreMap, opacity: number): void {
+  if (!map.getLayer(LAYER_IDS.segmentsFlash)) return;
+  map.setPaintProperty(LAYER_IDS.segmentsFlash, "line-opacity", opacity);
+}
+
+/** Empty, transparent flash layer: its initial state, and the state after every flash. */
+export function clearSegmentFlash(map: MapLibreMap, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId): void {
+  setSegmentFlashOpacity(map, 0);
+  setSegmentFlashFeatures(map, [], targetServiceId);
 }

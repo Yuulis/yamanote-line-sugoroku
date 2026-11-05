@@ -1,5 +1,5 @@
-import type { Page } from "@playwright/test";
-import { gamePanel } from "./app";
+import { expect, type Page } from "@playwright/test";
+import { diceMoment, gamePanel } from "./app";
 
 // Explicit frozen-clock checkpoint helpers for the "turn moments" (dice tumble,
 // modifier stamps, movement, arrival banner, lottery flip + settle, item
@@ -22,6 +22,8 @@ import { gamePanel } from "./app";
 //   - A helper never presses スキップ. Skipping is a separate, explicitly named
 //     helper (`pressSkip`) that a test has to choose on purpose.
 //
+// Active stages (tumble, stamps, arrival) are awaited before the clock moves
+// (`awaitStage`), so a caller can never advance a stage that has not started.
 // Until the step that activates a stage lands, that stage does not exist in
 // production: calling its helper only advances the page clock. That leaves the
 // saved game (rolls, turns, history, pending records) unchanged; on-screen
@@ -61,28 +63,81 @@ async function advanceStage(page: Page, stage: TurnMomentStage, factor: number):
   await page.clock.runFor(stageDurationMs(stage, factor));
 }
 
+/** Stages that are active in production and have a visible marker of being presented. */
+export type PresentedStage = "tumble" | "stamps" | "arrival";
+
 /**
- * Dice tumble (before any adjustment dialog or the movement). Activated by S11;
- * absent before that, so this only advances the clock.
+ * Let the page run every task already queued, without moving the (frozen) page
+ * clock. The app arms a stage's timer in a React effect after the render that
+ * shows the stage; React's scheduler posts that work as a MessageChannel task,
+ * which Playwright's clock does not fake. A message posted now is delivered
+ * after it, so once this resolves the stage's timer exists. Not a sleep: no
+ * real or page time is waited for.
+ */
+async function flushQueuedTasks(page: Page): Promise<void> {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    const channel = new MessageChannel();
+    channel.port1.onmessage = () => {
+      channel.port1.close();
+      resolve();
+    };
+    channel.port2.postMessage(null);
+  }));
+}
+
+/**
+ * Wait until `stage` is presented and its timer is armed. Under a frozen clock a
+ * stage starts only after an asynchronous step (the accepted save for the
+ * tumble, the tumble's own end for the stamps, the movement's final frame for
+ * the arrival); advancing the clock before that is silently lost and the stage
+ * never ends. Every stage helper below calls this first, so callers never race it.
+ */
+export async function awaitStage(page: Page, stage: PresentedStage): Promise<void> {
+  if (stage === "arrival") {
+    await expect(page.locator(".turn-moment-host .arrival-banner")).toBeVisible();
+  } else {
+    await expect(diceMoment(page)).toHaveAttribute("data-stage", stage);
+  }
+  await flushQueuedTasks(page);
+}
+
+/**
+ * Dice tumble (before any adjustment dialog or the movement). Waits for the
+ * tumble to be presented first (it starts once the saved roll is observed).
  */
 export async function advanceTumble(page: Page, factor: number = 1): Promise<void> {
+  await awaitStage(page, "tumble");
   await advanceStage(page, "tumble", factor);
 }
 
 /**
- * Modifier stamps after the tumble (and after an adjustment, if any). Activated
- * by S11; shown only for turns with modifier wording.
+ * Modifier stamps after the tumble (and after an adjustment, if any); shown
+ * only for turns with modifier wording. Waits for the stamps to be presented.
  */
 export async function advanceStamps(page: Page, factor: number = 1): Promise<void> {
+  await awaitStage(page, "stamps");
   await advanceStage(page, "stamps", factor);
+}
+
+/**
+ * Wait until the pre-move moment has ended and the released movement has
+ * requested its first animation frame. The release renders asynchronously after
+ * the clock advance that ended the tumble or stamps, and the frame is requested
+ * in an effect after that render; priming before then would be lost.
+ */
+export async function awaitMovementRelease(page: Page): Promise<void> {
+  await expect(diceMoment(page)).toHaveCount(0);
+  await flushQueuedTasks(page);
 }
 
 /**
  * Prime the movement animation's first requestAnimationFrame. The movement
  * clock starts on its first frame, so a duration advanced before that frame is
- * lost. Harmless when no movement is running.
+ * lost, so this first waits for the release (`awaitMovementRelease`). Harmless
+ * when no movement is running.
  */
 export async function primeMovementFrame(page: Page): Promise<void> {
+  await awaitMovementRelease(page);
   await page.clock.runFor(FRAME_MS);
 }
 
@@ -96,8 +151,8 @@ export async function primeMovementFrame(page: Page): Promise<void> {
  * was already advanced". Hop time is distance-based (about 300-1,200 ms at
  * normal speed) and the whole movement is capped at 6,000 ms, so it is never
  * `physicalHops * stepMs`. The priming and trailing frames add 32 ms on top of
- * `durationMs`. Movement is active in production today; the pre-move gate
- * arrives with S11.
+ * `durationMs`. The pre-move gate (S11) holds the movement while the dice
+ * moment is shown, so this first waits for that moment to end.
  */
 export async function advanceMovement(page: Page, durationMs: number): Promise<void> {
   await primeMovementFrame(page);
@@ -107,9 +162,11 @@ export async function advanceMovement(page: Page, durationMs: number): Promise<v
 
 /**
  * Arrival banner after the movement (and the goal turn's banner before
- * ClearScreen). Activated by S12.
+ * ClearScreen). Waits for the banner first: the arrival starts on the frame
+ * that ends the movement.
  */
 export async function advanceArrival(page: Page, factor: number = 1): Promise<void> {
+  await awaitStage(page, "arrival");
   await advanceStage(page, "arrival", factor);
 }
 

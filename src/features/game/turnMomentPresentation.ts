@@ -1,6 +1,7 @@
 import type { Direction } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
 import { platformPosition, targetSegmentIds } from "./engine";
+import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import type { TurnRevealStageKey, RollAttempt } from "./animation/turnMoments";
 import type { GameSession, LastMove } from "./gameSession";
@@ -29,6 +30,8 @@ export interface TurnMomentDisplayInput {
   restoredHistory?: boolean;
   /** P1 retains the last completed classic summary while the next move runs. */
   previousClassicAnnouncement?: string;
+  /** Key of the reveal being presented; it keys the arrival's segment flash. */
+  revealKey?: string | null;
 }
 
 /** Shared gameplay values and permissions; visual moment models are added in later steps. */
@@ -58,6 +61,8 @@ export interface TurnMomentDisplay {
   canRoll: boolean;
   canSkip: boolean;
   itemUseLocked: boolean;
+  /** Map flash of the segments this arrival newly completed; non-null only while `arrival` is presented. */
+  segmentFlash: SegmentFlashRequest | null;
 }
 
 const PRE_MOVE_STAGES = new Set<RollAttempt["stage"]>(["waiting-roll", "tumble", "awaiting-adjust", "waiting-record", "stamps"]);
@@ -220,6 +225,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const clearAnnouncement = showClear && liveView
     ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation, false) : "";
   const canSkip = input.session.phase === "animating" || (active && (preMoveActive || revealActive));
+  const segmentFlash = arrivalSegmentFlash(input, phase, record, targetIds);
 
   return {
     phase,
@@ -247,7 +253,31 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     canRoll,
     canSkip,
     itemUseLocked: active,
+    segmentFlash,
   };
+}
+
+/**
+ * The presented arrival's flash: the target segments its own accepted record newly completed, captured from the
+ * movement events by the attempt (never a diff of displayed progress, which also changes on hops, Skip, resume and
+ * session replacement), for the attempt's captured arrival duration. Null outside a presented `arrival` stage,
+ * for restored, omitted (reduced motion, Skip, deadhead) and classic results, and when nothing new was completed.
+ */
+function arrivalSegmentFlash(
+  input: TurnMomentDisplayInput,
+  phase: TurnPublicationPhase,
+  record: LastMove["itemRecord"] | null,
+  targetIds: readonly string[],
+): SegmentFlashRequest | null {
+  const { attempt, revealKey } = input;
+  if (phase !== "arrival" || input.revealStage !== "arrival" || !revealKey) return null;
+  if (!attempt || attempt.motionOmitted || attempt.skipRequested || !record || record.turn !== attempt.recordTurn) return null;
+  const required = new Set(targetIds);
+  const featureIds = [...new Set(attempt.newlyCompletedTargetSegmentIds
+    .filter((id) => required.has(id))
+    .flatMap((id) => input.network.segmentsById.get(id)?.geometryFeatureIds ?? []))];
+  if (featureIds.length === 0) return null;
+  return { key: revealKey, featureIds, durationMs: attempt.timing.arrivalMs };
 }
 
 const MOVING_ANNOUNCEMENT = "移動中です。スキップできます。";

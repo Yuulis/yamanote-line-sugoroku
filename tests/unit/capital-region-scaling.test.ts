@@ -17,7 +17,7 @@ import { platformPosition } from "../../src/features/game/engine";
 import { initialOverviewServices } from "../../src/features/map/camera";
 import { buildTrackColorExpression } from "../../src/features/map/lineColor";
 import { indexServiceGeometry } from "../../src/features/map/serviceGeometry";
-import { addRailwayLayers, updateHighlightedService } from "../../src/features/map/railwayLayers";
+import { addRailwayLayers, setSegmentFlashFeatures, updateHighlightedService } from "../../src/features/map/railwayLayers";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { CAPITAL_BRANCH_SEED, CAPITAL_GAME_SEED, CAPITAL_SCENARIO_TURNS } from "../e2e/fixtures/capital-region/seeds";
@@ -168,10 +168,15 @@ describe("scaled map and presentation", () => {
     expect(layers[LAYER_IDS.base]?.paint).toMatchObject({ "line-color": buildTrackColorExpression(services.lines) });
     expect(layers[LAYER_IDS.services]?.paint).not.toHaveProperty("line-offset");
     expect(layers[LAYER_IDS.segmentsPending]?.filter).toEqual(expect.arrayContaining([["==", ["get", "serviceId"], "custom-target"]]));
+    // S13: the flash layer is scoped to the configured target, empty and transparent until an arrival flashes.
+    expect(layers[LAYER_IDS.segmentsFlash]?.filter).toEqual(["all", ["==", ["get", "serviceId"], "custom-target"], ["in", ["get", "featureId"], ["literal", []]]]);
+    expect(layers[LAYER_IDS.segmentsFlash]?.paint).toMatchObject({ "line-opacity": 0 });
     const ids = indexServiceGeometry(segments).get("capital-rapid")!;
     updateHighlightedService(map, ids, "#EE2222");
     expect(filters[LAYER_IDS.currentService]).toEqual(["in", ["get", "featureId"], ["literal", ids]]);
     expect(paints[`${LAYER_IDS.currentService}:line-color`]).toBe("#EE2222");
+    setSegmentFlashFeatures(map, ids, "custom-target");
+    expect(filters[LAYER_IDS.segmentsFlash]).toEqual(["all", ["==", ["get", "serviceId"], "custom-target"], ["in", ["get", "featureId"], ["literal", ids]]]);
   });
 
   it("keeps the legacy fixture overview and starts the live product map on the target", async () => {
