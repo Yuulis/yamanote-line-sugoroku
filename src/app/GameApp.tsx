@@ -20,12 +20,12 @@ import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
 import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
-import type { TurnRevealState } from "../features/game/turnMomentPresentation";
+import type { TurnMomentDisplay, TurnRevealState } from "../features/game/turnMomentPresentation";
 import type { RollAttempt } from "../features/game/animation/turnMoments";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
-import type { GameState, LineMetadata } from "../types/network";
+import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
@@ -162,6 +162,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   if (!app.itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
     classicAnnouncement.current.text = turnDisplay.announcement;
   }
+  // Presented permissions, read at call time so a direct or stale invocation cannot bypass them.
+  const turnDisplayRef = useRef<TurnMomentDisplay | null>(null);
+  turnDisplayRef.current = turnDisplay;
   const toastInputs = turnDisplay?.toastInputs ?? [];
   useEffect(() => {
     if (toastBaseline.current.sessionId !== toastSessionId) {
@@ -211,7 +214,20 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   );
 
   // Callbacks passed to the memoised panel keep their identity between turns.
-  const { newGame, saveLookup, finishAnimation, showTitle: showTitleScreen } = app;
+  const { newGame, saveLookup, finishAnimation, showTitle: showTitleScreen, roll, editItemDraft, adjustItemRoll, discardItem } = app;
+  const guardedRoll = useCallback(() => {
+    if (turnDisplayRef.current?.canRoll) roll();
+  }, [roll]);
+  const guardedEditItemDraft = useCallback((command: ItemTurnCommand) => {
+    const presented = turnDisplayRef.current;
+    if (presented && !presented.itemUseLocked) editItemDraft(command);
+  }, [editItemDraft]);
+  const guardedAdjustItemRoll = useCallback((adjustment: ItemRollAdjustment | null) => {
+    if (turnDisplayRef.current?.decision?.kind === "adjust") adjustItemRoll(adjustment);
+  }, [adjustItemRoll]);
+  const guardedDiscardItem = useCallback((instanceId: string) => {
+    if (turnDisplayRef.current?.decision?.kind === "discard") discardItem(instanceId);
+  }, [discardItem]);
   const startNewGame = useCallback(() => {
     setConfirm(null);
     setNotice(null);
@@ -291,10 +307,10 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           follow={follow}
           speedLabel={speed?.label ?? ""}
           reducedMotion={reducedMotion}
-          onRoll={app.roll}
-          onEditItemDraft={app.editItemDraft}
-          onAdjustItemRoll={app.adjustItemRoll}
-          onDiscardItem={app.discardItem}
+          onRoll={guardedRoll}
+          onEditItemDraft={guardedEditItemDraft}
+          onAdjustItemRoll={guardedAdjustItemRoll}
+          onDiscardItem={guardedDiscardItem}
           onSkip={skip}
           onToggleFollow={toggleFollow}
           onCycleSpeed={cycleSpeed}

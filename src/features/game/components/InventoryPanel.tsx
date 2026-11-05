@@ -10,12 +10,17 @@ import { modalDialogOpen } from "./GameMenu";
 import { ItemCard, ItemCardPopover } from "./ItemCard";
 
 const INVENTORY_SLOT_COUNT: number = 3;
+export const ITEM_USE_LOCKED_LABEL: string = "演出中は使えません";
 
 export interface InventoryPanelProps {
   view: ItemSessionView;
   openItemId: string | null;
   onOpenItemChange: (id: string | null) => void;
   onUse: (instanceId: string, kind: ItemKind, opener: HTMLElement) => void;
+  /** A turn presentation is running: inspection stays available, use does not. */
+  itemUseLocked?: boolean;
+  /** The presented decision (not the raw session decision) hides the card; defaults to the view's decision. */
+  decisionOpen?: boolean;
 }
 
 interface DescriptionPart {
@@ -31,11 +36,13 @@ interface InventoryItemPopoverProps {
   anchor: HTMLElement | null;
   lastKnownItem: { id: string; kind: ItemKind } | null;
   onUse: InventoryPanelProps["onUse"];
+  itemUseLocked: boolean;
+  decisionOpen: boolean;
   onClose: () => void;
 }
 
 function InventoryItemPopover({
-  generatedId, openItemId, view, anchor, lastKnownItem, onUse, onClose,
+  generatedId, openItemId, view, anchor, lastKnownItem, onUse, itemUseLocked, decisionOpen, onClose,
 }: InventoryItemPopoverProps): React.JSX.Element {
   const headingId: string = `item-card-heading-${generatedId}`;
   const instance = openItemId ? view.inventory.find((item) => item.id === openItemId) : undefined;
@@ -49,13 +56,13 @@ function InventoryItemPopover({
 
   const usable = view.usableItems.find((candidate) => candidate.instanceId === openItemId);
   const action = kind === "delay-certificate" ? undefined : {
-    label: usable?.selected ? "選択中・変更する" : "使う",
-    disabled: usable?.usable !== true,
-    onActivate: () => { if (anchor) onUse(openItemId, kind, anchor); },
+    label: itemUseLocked ? ITEM_USE_LOCKED_LABEL : usable?.selected ? "選択中・変更する" : "使う",
+    disabled: itemUseLocked || usable?.usable !== true,
+    onActivate: () => { if (anchor && !itemUseLocked) onUse(openItemId, kind, anchor); },
   };
   return <ItemCardPopover
     id={`item-card-${generatedId}`}
-    open={!view.decision}
+    open={!decisionOpen}
     anchor={anchor}
     labelledBy={headingId}
     onClose={onClose}
@@ -75,7 +82,9 @@ function pointInside(element: Element | null, x: number, y: number): boolean {
   return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
 }
 
-export function InventoryPanel({ view, openItemId, onOpenItemChange, onUse }: InventoryPanelProps): React.JSX.Element {
+export function InventoryPanel({
+  view, openItemId, onOpenItemChange, onUse, itemUseLocked = false, decisionOpen = view.decision !== null,
+}: InventoryPanelProps): React.JSX.Element {
   const generatedId: string = useId();
   const headingId: string = `item-inventory-heading-${generatedId}`;
   // Tooltip state follows the item instance (ids are never reused), not the slot position: when items shift or a
@@ -288,6 +297,8 @@ export function InventoryPanel({ view, openItemId, onOpenItemChange, onUse }: In
         anchor={openItemId ? openerRefs.current.get(openItemId) ?? null : null}
         lastKnownItem={openItemId ? lastOpenItemRef.current : null}
         onUse={onUse}
+        itemUseLocked={itemUseLocked}
+        decisionOpen={decisionOpen}
         onClose={() => {
           if (openItemId) {
             closedItemIdRef.current = openItemId;

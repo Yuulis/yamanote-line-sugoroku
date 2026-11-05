@@ -187,6 +187,77 @@ describe("GameHud", () => {
     }
   });
 
+  it("enables Skip from canSkip alone and keeps the locked dice focusable with a guarded handler", () => {
+    const onRoll = vi.fn();
+    const onSkip = vi.fn();
+    const initial = props({ onRoll, onSkip, canRoll: false, canSkip: true, animating: false });
+    const mount = mountReact(createElement(Harness, { value: initial }));
+    try {
+      const dice = mount.container.querySelector<HTMLButtonElement>(".game-panel__roll")!;
+      const skip = [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "スキップ")!;
+      expect(skip.disabled).toBe(false);
+      expect(dice.disabled).toBe(false);
+      expect(dice.getAttribute("aria-disabled")).toBe("true");
+      expect(dice.textContent).toMatch(/サイコロを振る|移動中…/);
+      dice.focus();
+      expect(document.activeElement).toBe(dice);
+      dispatchReactEvent(dice, new MouseEvent("click", { bubbles: true }));
+      expect(onRoll).not.toHaveBeenCalled();
+      dispatchReactEvent(skip, new MouseEvent("click", { bubbles: true }));
+      expect(onSkip).toHaveBeenCalledTimes(1);
+      act(() => mount.root.render(createElement(Harness, { value: { ...initial, canSkip: false, animating: true } })));
+      expect(skip.disabled).toBe(true);
+      expect(dice.textContent).toBe("移動中…");
+      act(() => mount.root.render(createElement(Harness, { value: { ...initial, canRoll: true, canSkip: false } })));
+      expect(dice.getAttribute("aria-disabled")).toBe("false");
+      expect(skip.disabled).toBe(true);
+      dispatchReactEvent(dice, new MouseEvent("click", { bubbles: true }));
+      expect(onRoll).toHaveBeenCalledTimes(1);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("locks dice and draft clearing in the panel when the display forbids actions although the engine is idle", () => {
+    const network = buildRailwayNetwork(multiServiceInput());
+    const game = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "panel-lock", network);
+    const session = resumeSession(game, network);
+    expect(session.phase).toBe("idle");
+    const itemView = { ...itemSessionView(session, network)!, draft: { items: [{ kind: "double" as const, instanceId: "double-1" }] } };
+    const idle = displayFor(session, network, game.currentStationId, [], itemView);
+    const onRoll = vi.fn();
+    const onSkip = vi.fn();
+    const onEditItemDraft = vi.fn();
+    const value: Parameters<typeof GamePanel>[0] = {
+      network, lines: [], session, turnDisplay: idle, onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true,
+      speedLabel: "標準", reducedMotion: false, onRoll, onSkip, onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
+      onNewGame: vi.fn(), onShowTitle: vi.fn(),
+    };
+    function PanelHarness({ panel }: { panel: Parameters<typeof GamePanel>[0] }): React.JSX.Element {
+      return createElement(GamePanel, panel);
+    }
+    const mount = mountReact(createElement(PanelHarness, { panel: value }));
+    try {
+      const clear = (): HTMLButtonElement => [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "選択を解除")!;
+      const dice = mount.container.querySelector<HTMLButtonElement>(".game-panel__roll")!;
+      const skip = (): HTMLButtonElement => [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "スキップ")!;
+      expect([dice.getAttribute("aria-disabled"), clear().disabled, skip().disabled]).toEqual(["false", false, true]);
+      act(() => mount.root.render(createElement(PanelHarness, { panel: { ...value,
+        turnDisplay: { ...idle, canRoll: false, canSkip: true, itemUseLocked: true } } })));
+      expect([dice.getAttribute("aria-disabled"), dice.disabled, clear().disabled, skip().disabled]).toEqual(["true", false, true, false]);
+      dispatchReactEvent(dice, new MouseEvent("click", { bubbles: true }));
+      expect(onRoll).not.toHaveBeenCalled();
+      const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+      act(() => window.dispatchEvent(escape));
+      expect(escape.defaultPrevented).toBe(false);
+      expect(onEditItemDraft).not.toHaveBeenCalled();
+      dispatchReactEvent(skip(), new MouseEvent("click", { bubbles: true }));
+      expect(onSkip).toHaveBeenCalledTimes(1);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
   it("shows full save text, hiding only the successful indicator label", () => {
     const saved = mountReact(createElement(GameHud, props({ saveStatus: "saved", saveStatusMessage: "自動保存済み" })));
     const failed = mountReact(createElement(GameHud, props({ saveStatus: "failed", saveStatusMessage: "保存に失敗しました（この進行は未保存です）" })));

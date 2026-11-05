@@ -358,3 +358,77 @@ describe("GameApp decision and empty-event publication", () => {
     expect(mounted!.container.querySelector(".item-event-notice")).not.toBeNull();
   });
 });
+
+function reactOnClick(element: Element): () => void {
+  const key = Object.keys(element).find((name) => name.startsWith("__reactProps"))!;
+  return (element as unknown as Record<string, { onClick: () => void }>)[key]!.onClick;
+}
+
+describe("GameApp presented-decision handoffs and action guards", () => {
+  it("ignores a roll callback captured before the lock when the display forbids rolling", () => {
+    const origin = resumeSession(itemScenario("delay", network), network, 31);
+    inject(origin); render(propsFor());
+    const dice = mounted!.container.querySelector<HTMLButtonElement>(".game-panel__roll")!;
+    expect(dice.getAttribute("aria-disabled")).toBe("false");
+    const staleRoll = reactOnClick(dice);
+    render(propsFor({ attempt: { ...attemptFor(origin), stage: "tumble" }, revealStage: "waiting", restoredOrOmitted: false }));
+    expect(origin.phase).toBe("idle");
+    expect(dice.getAttribute("aria-disabled")).toBe("true");
+    act(() => staleRoll());
+    expect(injection.app!.roll).not.toHaveBeenCalled();
+    render(propsFor());
+    expect(dice.getAttribute("aria-disabled")).toBe("false");
+    act(() => staleRoll());
+    expect(injection.app!.roll).toHaveBeenCalledTimes(1);
+  });
+  it("ignores a stale discard callback unless the discard decision is presented", () => {
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, 31);
+    inject(origin); render(propsFor());
+    const result = resumeSession(playItemTurn(base, {}, network).state, network, 31);
+    const attempt = attemptFor(origin);
+    inject(result); render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+    const choose = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action")!;
+    const staleDiscard = reactOnClick(choose);
+    render(propsFor({ attempt, revealStage: "pickup", restoredOrOmitted: false }));
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    act(() => staleDiscard());
+    expect(injection.app!.discardItem).not.toHaveBeenCalled();
+    render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+    act(() => staleDiscard());
+    expect(injection.app!.discardItem).toHaveBeenCalledTimes(1);
+  });
+  it("hands the single live region and toast obscuration to the discard dialog in one render", () => {
+    vi.useFakeTimers();
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, 31);
+    inject(origin); render(propsFor());
+    const resultGame = playItemTurn(base, {}, network).state;
+    const result = resumeSession(resultGame, network, 31);
+    const attempt = attemptFor(origin);
+    inject(result); render(propsFor({ attempt, revealStage: "pickup", restoredOrOmitted: false }));
+    expect(mounted!.container.querySelectorAll(".game-panel > [role=status]")).toHaveLength(1);
+    expect(status()).toBe("山手線のみ ／ 外回りに固定");
+    const opener = mounted!.container.querySelector<HTMLButtonElement>(".item-slot button")!;
+    act(() => opener.click());
+    expect(opener.getAttribute("aria-expanded")).toBe("true");
+    expect(mounted!.container.querySelector(".toast-host")?.textContent).toBe("");
+    render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+    expect(opener.getAttribute("aria-expanded")).toBe("false");
+    expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
+    expect(mounted!.container.querySelectorAll(".game-panel > [role=status]")).toHaveLength(0);
+    expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(mounted!.container.querySelectorAll(".item-discard [role=status]")).toHaveLength(1);
+    const toastText = mounted!.container.querySelector(".toast-host")?.textContent;
+    expect(toastText).toContain("遅延証明書");
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(mounted!.container.querySelector(".toast-host")?.textContent).toBe(toastText);
+    const pending = resultGame.pending;
+    if (pending?.kind !== "discard") throw new Error("Expected a pending discard");
+    const resolved = resumeSession(resolveItemDiscard(resultGame, pending.item.id).state, network, 31);
+    inject(resolved); render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(mounted!.container.querySelector(".toast-host")?.textContent).toBe("");
+  });
+});

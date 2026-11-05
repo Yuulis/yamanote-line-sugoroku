@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../../../types/network";
+import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata, PreRollItemCommand } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
@@ -159,9 +159,13 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const rollButtonRef = useRef<HTMLButtonElement>(null);
   const restoreRollFocusRef = useRef(false);
   const draftItem = itemView?.draft.items[0];
+  const presentedDecision = turnDisplay.decision;
+  // Always read the latest presentation lock, so a callback captured earlier is a no-op once a lock starts.
+  const itemUseLockedRef = useRef<boolean>(turnDisplay.itemUseLocked);
+  itemUseLockedRef.current = turnDisplay.itemUseLocked;
 
   const selectItem = useCallback((instanceId: string, kind: ItemKind) => {
-    if (!itemView || itemView.phase !== "idle" || turnDisplay.itemUseLocked) return;
+    if (!itemView || itemView.phase !== "idle" || itemUseLockedRef.current) return;
     if (kind === "route-ticket" || kind === "direction-ticket") {
       setItemDialog({ kind, instanceId });
       return;
@@ -169,37 +173,44 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     if (kind === "double" || kind === "rapid" || kind === "deadhead") {
       props.onEditItemDraft?.({ items: [{ kind, instanceId }] });
     }
-  }, [itemView, props.onEditItemDraft, turnDisplay.itemUseLocked]);
+  }, [itemView, props.onEditItemDraft]);
 
   const activateInventoryItem = useCallback((instanceId: string, kind: ItemKind, opener: HTMLElement) => {
     const current = itemView;
     const usable = current?.usableItems.find((item) => item.instanceId === instanceId);
-    if (!current || current.phase !== "idle" || current.decision || usable?.usable !== true || turnDisplay.itemUseLocked) return;
+    if (!current || current.phase !== "idle" || current.decision || usable?.usable !== true || itemUseLockedRef.current) return;
     setOpenItemCard(null);
     itemDialogOpenerRef.current = opener;
     opener.focus({ preventScroll: true });
     selectItem(instanceId, kind);
-  }, [selectItem, turnDisplay.itemUseLocked]);
+  }, [itemView, selectItem, setOpenItemCard]);
   const restoreItemDialogFocus = useCallback(() => {
     const opener = itemDialogOpenerRef.current;
     itemDialogOpenerRef.current = null;
     if (opener?.isConnected) opener.focus({ preventScroll: true });
   }, []);
+  const chooseItemDialogCommand = useCallback((command: PreRollItemCommand) => {
+    if (itemUseLockedRef.current) return;
+    props.onEditItemDraft?.({ items: [command] });
+    setItemDialog(null);
+    restoreItemDialogFocus();
+  }, [props.onEditItemDraft, restoreItemDialogFocus]);
 
+  // The presented decision (not the raw session decision) closes any open item card.
   useEffect(() => {
-    if (!itemView?.decision || !openCardId) return;
+    if (!presentedDecision || !openCardId) return;
     setOpenCardId(null);
     setActiveSurface((current) => current === "card" ? null : current);
-  }, [itemView?.decision, openCardId]);
+  }, [presentedDecision, openCardId]);
 
   const clearDraft = useCallback(() => {
-    if (itemView?.phase === "idle" && !turnDisplay.itemUseLocked) props.onEditItemDraft?.({ items: [] });
-  }, [itemView?.phase, props.onEditItemDraft, turnDisplay.itemUseLocked]);
+    if (itemView?.phase === "idle" && !itemUseLockedRef.current) props.onEditItemDraft?.({ items: [] });
+  }, [itemView?.phase, props.onEditItemDraft]);
 
   useEffect(() => {
     if (!itemView || itemView.phase !== "idle" || !draftItem || itemDialog || turnDisplay.itemUseLocked) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (event.key !== "Escape" || event.defaultPrevented || itemUseLockedRef.current) return;
       // e.g. the 新規 confirmation: its Escape must close it, not clear the draft behind it.
       if (modalDialogOpen()) return;
       event.preventDefault();
@@ -209,28 +220,39 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [itemView, draftItem, itemDialog, clearDraft, turnDisplay.itemUseLocked]);
 
+  // A presented decision arms the final dice focus. It is spent only once interaction is available; while the
+  // presentation still runs, a modal teardown that would drop focus on <body> parks it on the aria-disabled dice.
   useEffect(() => {
-    if (itemView?.decision) {
+    if (presentedDecision) {
       restoreRollFocusRef.current = true;
       return;
     }
-    if (restoreRollFocusRef.current && itemView?.phase === "idle") {
+    if (!restoreRollFocusRef.current) return;
+    const dice = rollButtonRef.current;
+    if (!dice) return;
+    if (turnDisplay.canRoll) {
       restoreRollFocusRef.current = false;
-      rollButtonRef.current?.focus({ preventScroll: true });
+      dice.focus({ preventScroll: true });
+      return;
     }
-  }, [itemView?.decision, itemView?.phase]);
+    const active = document.activeElement;
+    if (!active || active === document.body) dice.focus({ preventScroll: true });
+  }, [presentedDecision, turnDisplay.canRoll]);
 
   useLayoutEffect(() => {
     if (!panelRef.current || !headingRef.current) return;
     panelRef.current.scrollTop = 0;
-    if (!itemView?.decision) headingRef.current.focus({ preventScroll: true });
+    if (!presentedDecision) headingRef.current.focus({ preventScroll: true });
   }, []);
 
   return (
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <GameHud
         inventory={<>
-          {itemView && <InventoryPanel view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem} />}
+          {itemView && <InventoryPanel
+            view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem}
+            itemUseLocked={turnDisplay.itemUseLocked} decisionOpen={presentedDecision !== null}
+          />}
           {draftItem && itemView && <div className="item-staged-summary">
             <span className="item-staged-summary__label">選択中：</span>
             <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
@@ -322,11 +344,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           view={itemView}
           network={network}
           presentation={presentation}
-          onChoose={(command) => {
-            props.onEditItemDraft?.({ items: [command] });
-            setItemDialog(null);
-            restoreItemDialogFocus();
-          }}
+          onChoose={chooseItemDialogCommand}
           onClose={() => { setItemDialog(null); restoreItemDialogFocus(); }}
         />
       )}
