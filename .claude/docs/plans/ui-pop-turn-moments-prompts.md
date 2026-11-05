@@ -414,6 +414,48 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/layout.spec.ts tests/e2e/hu
 
 ---
 
+## S9: E2E readiness and explicit checkpoint helpers
+
+Implement plan `### S9` exactly, including every row of the plan's `## E2E Re-pointing Map` whose Step column
+names S9 (`support/app.ts` `rollOnce()` and `revealUnadjustedRoll()`, `accessibility.spec.ts` dice focus). Files:
+modify `tests/e2e/support/app.ts`; new `tests/e2e/support/turnMoments.ts`; modify `tests/e2e/dice.spec.ts` and
+`tests/e2e/accessibility.spec.ts` only where a readiness assertion depends on text alone (plus the handoff row).
+**No production change** (`src/**` untouched), no unit-test change, no new moment, no screenshot.
+
+- `rollOnce()`: after the saved result (keep the existing save-turn assertion) and any **presented** discard
+  dialog (the real `role=dialog`, not a saved pending record), wait until the dice has `aria-disabled="false"`
+  or ClearScreen is shown. A visible `サイコロを振る` label is not readiness (a post-reveal disabled dice keeps it).
+  Ordinary helpers must stay usable under reduced motion and with a real clock.
+- `revealUnadjustedRoll()`: wait for the actual adjustment dialog before continuing (no assumption that a saved
+  pending adjust means it is mounted). Frozen-clock callers will advance the tumble first (S11) — document it.
+- `turnMoments.ts`: explicit frozen-clock checkpoint helpers for later steps, built on Playwright `page.clock`
+  (`install` / `runFor` / `pauseAt` as already used by `freezeClock`), each advancing exactly one timed stage:
+  tumble, modifier stamps, movement (prime movement rAF explicitly, then advance by an explicit duration), arrival,
+  lottery flip + settle, pickup. Timings are **independently specified constants** in the helper (normal speed:
+  tumble 600, stamps 240, arrival 800, lottery 1,600 + settle 400, pickup 500 ms; scale by `stepMs / 450` via an
+  explicit factor argument) — never imported from `src/**` and never computed through the production planner.
+  No helper silently presses スキップ; a separate, explicitly named Skip helper may exist. Each helper documents
+  which step activates its stage; until then calling it must not change gameplay results (stage absent → advancing
+  the clock is harmless) — say so in a comment, do not add production hooks.
+- `accessibility.spec.ts` dice-focus test (baseline `:51`): replace the real-clock 7-second window with explicit
+  frozen-clock checkpoints (pre-move, movement, post) asserting focus at each, ending with an enabled dice
+  (`aria-disabled="false"`). Keep every existing expected value; list old → new checkpoint in your report.
+- `dice.spec.ts`: only change readiness that currently depends on dice text alone; keep both browser-click and
+  same-task `.click()` cases and every baseline assertion. Larger dice re-pointing is S10b/S11 — do not start it.
+- Never `fastForward()` across a chain of newly scheduled timers; advance and assert each boundary.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/e2e-fixture-seeds.test.ts tests/unit/game-hud.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/dice.spec.ts tests/e2e/lottery.spec.ts tests/e2e/items.spec.ts tests/e2e/resume.spec.ts tests/e2e/accessibility.spec.ts --project=desktop-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`
