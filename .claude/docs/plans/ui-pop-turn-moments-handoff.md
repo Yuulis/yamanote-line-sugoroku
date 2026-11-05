@@ -53,7 +53,7 @@ engine/RNG/save/`src/types/network.ts`/public-data change.
 ## Current
 
 - 2026-11-03: plan approved by the user (pause after every step, S1–S17 including invisible plumbing). Next: S1.
-- 2026-11-03: S1 done; paused for user review. Capture helper: `scratchpad/p2-shot.spec.ts` copied to `tests/e2e/zz-p2-shot.spec.ts`, run with `P2_SHOT=<png>` on desktop-chromium, then removed (never committed).
+- 2026-11-03: S1 done; paused for user review. Capture helper: `.claude/logs/p2-shot.spec.ts` (gitignored; the scratchpad is wiped between sessions) copied to `tests/e2e/zz-p2-shot.spec.ts`, run with `P2_SHOT=<png>` on desktop-chromium, then removed (never committed).
 - 2026-11-03: S1 CI 41649779582 success (4 E2E legs). S2 done; paused for user review.
 - 2026-11-03: S2 CI 41651944687 success. S3 done; paused for user review.
 - 2026-11-03: user switched to continuous mode during S4 ("こちらから指示があるまで作業を続けてほしい"). S3 CI 41655460264 success.
