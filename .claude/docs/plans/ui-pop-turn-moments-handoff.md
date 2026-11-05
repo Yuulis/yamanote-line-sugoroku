@@ -19,7 +19,7 @@ engine/RNG/save/`src/types/network.ts`/public-data change.
 
 ## Resume locally after the cloud session (read this first)
 
-State at the end of the 2026-11-05 cloud session: S1–S13 done. The work is on branch
+State at the end of the 2026-11-05 cloud session: S1–S13 done; last code commit `558f23a`, CI 41996460431 green on all four E2E legs. The work is on branch
 **`claude/ui-pop-turn-moments-clfnuo`** (pushed). `feature/ui-pop-turn-moments` on the remote is still at `f808d70`
 (S6); the cloud branch is a fast-forward of it. **Next is S14** (lottery flip, settle and atomic ride publication).
 No PR is open.
@@ -169,4 +169,4 @@ delegate, review with `## R:` (STEP=S7), verify, commit, push, check CI, then up
 - 2026-11-05 (cloud session): S10 CI pending at the S10b commit. S10b done (Sonnet, Opus ACCEPT, lead verified); this commit also carries the lead-authored `## S11:` prompt section. Next: S11 (implementer: Claude Opus, given the integration risk).
 - 2026-11-05 (cloud session): S10b CI pending at the S11 commit. S11 done (Opus implemented, Opus review round 1 CHANGES_REQUIRED → round 2 ACCEPT, lead verified). First visible moment (dice tumble, adjustment after tumble, stamps, one Skip) is live in production. Next: S12.
 - 2026-11-05 (cloud session): S11 CI 41982390588 success (all 4 E2E legs incl. Firefox/WebKit). S12 done (Opus implemented, Opus ACCEPT, lead verified); this commit carries the `## S12:` prompt section. Next: S13.
-- 2026-11-05 (cloud session): S12 CI 41988878174 FAILED on desktop-chromium (`ui-pop-turn-moments.spec.ts:143`, `:243`: frozen-clock tumble advance raced the timer effect). Fixed in the S13 commit (see S13 row). S13 done (Opus implemented, Opus ACCEPT, lead verified; stress `ui-pop-turn-moments --workers=4 --repeat-each=3` 39 passed). User ended the cloud session after S13 and asked to prepare a local handoff: see "Resume locally after the cloud session" at the top. CI for the S13 commit: check it first when resuming.
+- 2026-11-05 (cloud session): S12 CI 41988878174 FAILED on desktop-chromium (`ui-pop-turn-moments.spec.ts:143`, `:243`: frozen-clock tumble advance raced the timer effect). Fixed in the S13 commit (see S13 row). S13 done (Opus implemented, Opus ACCEPT, lead verified; stress `ui-pop-turn-moments --workers=4 --repeat-each=3` 39 passed). User ended the cloud session after S13 and asked to prepare a local handoff: see "Resume locally after the cloud session" at the top. S13 commit `558f23a`: CI 41996460431 success on all 4 E2E legs (confirms the S12 race fix).
