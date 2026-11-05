@@ -21,7 +21,9 @@ export interface UseTurnMomentsOptions {
   sessionId: number;
   gameTurn: number;
   decisionRevision: number;
-  origin: TurnOrigin;
+  /** Origin snapshot captured by `begin`; null (classic mode, no session) makes `begin` a no-op. */
+  origin: TurnOrigin | null;
+  /** Selected 速度 step; the attempt captures its timing (and movement step) at `begin`. */
   stepMs: number;
   reducedMotion: boolean;
   observation: TurnMomentObservation;
@@ -37,6 +39,11 @@ export interface TurnMoments {
   reveal: RevealSequence;
   restoredOrOmitted: boolean;
   movementStartAllowed: boolean;
+  /**
+   * Reduced motion was on at some render of the current attempt. Sticky for the attempt key: the attempt's own
+   * movement must then finish instantly even if the preference is turned off again before it starts.
+   */
+  attemptMotionReduced: boolean;
   begin: (source?: "click" | "restored-roll") => void;
   skip: () => void;
   advance: (expectedStage: PreMoveStage) => void;
@@ -48,6 +55,15 @@ interface FrozenStages {
 }
 
 const EMPTY_STAGES: readonly RevealStage[] = [];
+
+/**
+ * Whether `animation` is the movement of `attempt`. A turn ending in a pending discard animates under the prior
+ * engine turn (`recordTurn - 1`); the previous turn's own movement has always finished before a roll is accepted.
+ */
+export function attemptOwnsAnimation(attempt: RollAttempt | null, animation: MoveAnimation | null): boolean {
+  if (!attempt || !animation || animation.sessionId !== attempt.sessionId) return false;
+  return animation.turn === attempt.recordTurn || animation.turn === attempt.recordTurn - 1;
+}
 
 function durationForStage(stage: RevealStage, attempt: RollAttempt | null): RevealStage {
   if (!attempt) return stage;
@@ -91,7 +107,10 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
   const revealOmissionRef = useRef<{ key: string; omitted: boolean }>({ key: revealKey, omitted: false });
   if (revealOmissionRef.current.key !== revealKey) revealOmissionRef.current = { key: revealKey, omitted: false };
   if (options.reducedMotion && options.revealObservation.recordTurn !== null) revealOmissionRef.current.omitted = true;
-  const revealMotionOmitted = revealOmissionRef.current.omitted;
+  // The latch belongs to the record it was taken on: a newer attempt (whose record does not exist yet, while lastMove
+  // still holds the previous one) must not inherit that record's omission.
+  const revealMotionOmitted = revealOmissionRef.current.omitted &&
+    (attempt === null || attempt.recordTurn === options.revealObservation.recordTurn);
   const reducedOmissionRef = useRef<{ key: string | null; omitted: boolean }>({ key: null, omitted: false });
   if (attempt === null || reducedOmissionRef.current.key !== attempt.key) {
     reducedOmissionRef.current = { key: attempt?.key ?? null, omitted: false };
@@ -114,6 +133,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
 
   const begin = useCallback((source: "click" | "restored-roll" = "click") => {
     const current = optionsRef.current;
+    if (current.origin === null) return;
     const key = `${current.sessionId}:roll:${current.gameTurn + 1}:${current.decisionRevision}`;
     reducedOmissionRef.current = { key, omitted: current.reducedMotion };
     dispatch({ type: "begin", sessionId: current.sessionId, turn: current.gameTurn,
@@ -157,7 +177,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
   useEffect(() => {
     if (attempt?.skipRequested !== true || options.animation === null) return;
     const animation = options.animation;
-    if (animation.sessionId !== attempt.sessionId || animation.turn !== attempt.recordTurn) return;
+    if (!attemptOwnsAnimation(attempt, animation)) return;
     const signature = `${animation.sessionId}:${animation.turn}:${animation.decisionRevision ?? "classic"}`;
     if (finishedRef.current.has(signature)) return;
     finishedRef.current.add(signature);
@@ -179,6 +199,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
     reveal: sequence,
     restoredOrOmitted,
     movementStartAllowed,
+    attemptMotionReduced: reducedMotionOmitted,
     begin,
     skip,
     advance,

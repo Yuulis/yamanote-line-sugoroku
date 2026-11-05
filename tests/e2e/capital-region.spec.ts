@@ -18,7 +18,8 @@ import {
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
-import { closeGameLog, closeGameMenu, diceButton, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, revealUnadjustedRoll, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
+import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
+import { advanceStamps, advanceTumble } from "./support/turnMoments";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -97,6 +98,22 @@ async function focusMapOnYokohama(page: Page, bundle: RailwayBundle): Promise<vo
     const map = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E.map;
     map.jumpTo({ center: coordinates, zoom: 10.5 });
   }, center);
+}
+
+/**
+ * Frozen-clock roll that completes the pre-move moment (S11): click, advance the
+ * tumble, decline any adjustment, then advance the stamps when the saved record
+ * has modifiers. The movement is released but has not drawn a frame yet.
+ */
+async function rollThroughPreMove(page: Page): Promise<void> {
+  const turnBefore = await clickDice(page);
+  await expect(diceMoment(page)).toBeVisible();
+  await advanceTumble(page);
+  await waitForRollOutcome(page, turnBefore);
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(turnBefore + 1);
+  const record = (await readSave(page))!.movementHistory.at(-1)!;
+  if (stampsExpected(record)) await advanceStamps(page);
+  await expect(diceMoment(page)).toHaveCount(0);
 }
 
 async function resumeSavedGame(page: Page, game: ItemGameState): Promise<void> {
@@ -228,7 +245,8 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await revealUnadjustedRoll(page);
+      // S11: the 16 ms frame and the composed-hop clock below start after the tumble/stamps.
+      await rollThroughPreMove(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.forward);
       const forwardCommitted = (await readSave(page))!;
       expect(forwardCommitted).toEqual(forwardResult.state);
@@ -269,7 +287,8 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await revealUnadjustedRoll(page);
+      // S11: the 16 ms frame and the composed-hop clock below start after the tumble/stamps.
+      await rollThroughPreMove(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);
@@ -312,7 +331,8 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await revealUnadjustedRoll(page);
+      // S11: the 16 ms frame and the composed-hop clock below start after the tumble/stamps.
+      await rollThroughPreMove(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);

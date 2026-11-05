@@ -358,6 +358,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         announcement={turnDisplay.announcement}
         decision={turnDisplay.decision}
         onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
+        onSkip={props.onSkip}
+        canSkip={turnDisplay.canSkip}
       />}
       {turnDisplay.decision?.kind === "discard" && <DiscardChoice
         announcement={turnDisplay.announcement}

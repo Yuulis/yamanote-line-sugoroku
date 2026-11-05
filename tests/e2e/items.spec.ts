@@ -5,7 +5,8 @@ import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/featu
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { closeGameLog, diceButton, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, useInventoryItem, writeSaveText } from "./support/app";
+import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
+import { advanceStamps, advanceTumble } from "./support/turnMoments";
 
 test.use({ dataset: "fixture" });
 
@@ -345,9 +346,14 @@ test.describe("animated item turns", () => {
       if (record.kind !== "item-ride") throw new Error("Expected ride");
       expect(record.movementMode).toBe(name);
       if (name === "rapid") expect(record.physicalHops).toBeGreaterThan(record.pips);
+      // Pre-move lock (S11): the tumble of the saved raw roll holds the dice disabled.
+      await expect(diceMoment(page)).toHaveAttribute("data-raw-roll", String(record.rawRoll));
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
       await diceButton(page).click({ force: true, clickCount: 3 });
       expect(await itemSave(page)).toEqual(committed);
+      // One Skip ends the tumble, the stamps and the movement together.
       await gamePanel(page).getByRole("button", { name: "スキップ" }).click();
+      await expect(diceMoment(page)).toHaveCount(0);
       await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
       expect(await itemSave(page)).toEqual(committed);
     });
@@ -396,6 +402,8 @@ for (const name of ["rapid", "oversleep"] as const) {
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
     await expect.poll(() => itemSave(page)).toEqual(expected);
     await expect(gamePanel(page).getByRole("button", { name: "スキップ" })).toBeDisabled();
+    // No moment overlay is ever mounted under reduced motion.
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
     await expect(gamePanel(page).getByRole("status")).toContainText(name === "rapid" ? "快速券を使いました" : "寝過ごしが発動しました");
   });
 }
@@ -431,6 +439,12 @@ test.describe("long rapid goal arrival", () => {
     const record = committed.movementHistory.at(-1)!;
     if (record.kind !== "item-ride") throw new Error("Expected rapid ride");
     expect(record.physicalHops).toBeGreaterThan(record.pips);
+    // S11: the tumble and the 快速 stamps run before the movement clock starts.
+    expect(stampsExpected(record)).toBe(true);
+    await advanceTumble(page);
+    await expect(diceMoment(page)).toHaveAttribute("data-stage", "stamps");
+    await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
     // Establish the first animation timestamp, then simulate a delayed frame.
     // Fast-forward avoids rendering hundreds of WebGL frames in software.
     await page.clock.runFor(32);

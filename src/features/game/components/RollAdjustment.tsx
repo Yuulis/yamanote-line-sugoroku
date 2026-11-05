@@ -3,15 +3,22 @@ import type { ItemRollAdjustment } from "../../../types/network";
 import type { ItemSessionView } from "../itemSession";
 import { adjustedPips } from "../itemPresentation";
 
-interface RollAdjustmentProps {
+export interface RollAdjustmentProps {
   announcement?: string;
   decision: Extract<NonNullable<ItemSessionView["decision"]>, { kind: "adjust" }>;
   onContinue: (adjustment: ItemRollAdjustment | null) => void;
+  /**
+   * The shared presentation Skip. The native modal makes the panel's スキップ inert, so the dialog offers the same
+   * action. It ends the presentation only: the chosen radio stays and Continue is still required.
+   */
+  onSkip?: () => void;
+  /** Whether a presentation is still running; otherwise the Skip button stays focusable but `aria-disabled`. */
+  canSkip?: boolean;
 }
 
 type AdjustmentChoice = -1 | 0 | 1;
 
-export function RollAdjustment({ decision, onContinue, announcement }: RollAdjustmentProps) {
+export function RollAdjustment({ decision, onContinue, announcement, onSkip, canSkip = false }: RollAdjustmentProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
@@ -75,6 +82,7 @@ export function RollAdjustment({ decision, onContinue, announcement }: RollAdjus
           <button type="button" className="button-primary" onClick={() => continueTurn(choice)}>
             {choice === 0 ? "そのまま続ける" : `出目${adjustedPips(decision.rawRoll, choice)}で続ける`}
           </button>
+          {onSkip && <button type="button" aria-disabled={!canSkip} onClick={() => { if (canSkip) onSkip(); }}>スキップ</button>}
         </div>
       </div>
     </dialog>

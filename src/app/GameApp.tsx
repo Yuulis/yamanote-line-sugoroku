@@ -21,7 +21,11 @@ import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotio
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
 import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
 import type { TurnMomentDisplay, TurnRevealState } from "../features/game/turnMomentPresentation";
-import type { RollAttempt } from "../features/game/animation/turnMoments";
+import type { RollAttempt, TurnMomentObservation, TurnOrigin } from "../features/game/animation/turnMoments";
+import { attemptOwnsAnimation, useTurnMoments } from "../features/game/animation/useTurnMoments";
+import { TurnMomentHost, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
+import { DiceTumble } from "../features/game/components/DiceTumble";
+import type { GameSession } from "../features/game/gameSession";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
@@ -30,7 +34,7 @@ import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
 import { summarizeGame } from "../features/game/gameSummary";
-import { useRevealSequence, type RevealStage } from "../features/game/animation/useRevealSequence";
+import type { RevealStage } from "../features/game/animation/useRevealSequence";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
 
@@ -53,7 +57,11 @@ type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-sa
 
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
+/** Post-move stages stay empty until their moments are rendered (S12-S15): nothing waits for an unrendered stage. */
 const NO_REVEAL_STAGES: readonly RevealStage[] = [];
+const NO_MOVE_EVENTS: TurnMomentObservation["movementEvents"] = [];
+/** Phases in which `lastMove` still describes the previous turn: the current record is not yet save-attempted. */
+const PRE_RECORD_PHASES: ReadonlySet<GameSession["phase"]> = new Set(["committing", "awaiting-adjust", "resolving"]);
 
 /** Toast keys of the record a session was entered with; they are never shown (no replay on resume). */
 interface ToastBaseline {
@@ -100,19 +108,52 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   );
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
-  const reveal = useRevealSequence({
+  const speed = speedById(speedId);
+  const itemView = app.itemView;
+  // Item mode only: the attempt snapshot of what is on screen when the roll is accepted.
+  const turnOrigin = useMemo<TurnOrigin | null>(() => session && itemView ? {
+    stationId: session.game.currentStationId,
+    ride: { serviceId: session.game.currentServiceId, direction: session.game.direction },
+    completedSegmentIds: session.game.completedSegmentIds,
+    turn: session.game.turn,
+    itemView,
+    previousLastMove: session.lastMove,
+  } : null, [session, itemView]);
+  const animation = session?.animation ?? null;
+  // The current turn's record exists for presentation only once its save was attempted.
+  const acceptedRecord = session && !PRE_RECORD_PHASES.has(session.phase) ? session.lastMove?.itemRecord ?? null : null;
+  const moments = useTurnMoments({
+    sessionId: session?.sessionId ?? 0,
+    gameTurn: game?.turn ?? 0,
+    decisionRevision: session?.item?.decisionRevision ?? 0,
+    origin: turnOrigin,
+    stepMs: speed?.stepMs ?? 0,
+    reducedMotion,
     observation: {
+      decision: itemView?.decision ?? null,
+      // Read-only use: the reducer never mutates the observed record.
+      record: acceptedRecord as TurnMomentObservation["record"],
+      movementEvents: animation?.events ?? NO_MOVE_EVENTS,
+      // While animating, the animation and lastMove come from the same save attempt (a pending discard animates
+      // under the prior engine turn), so the movement belongs to the accepted record's turn.
+      movementSessionId: animation?.sessionId,
+      movementTurn: animation && acceptedRecord ? acceptedRecord.turn : undefined,
+      targetServiceId: game?.config.targetServiceId ?? "",
+    },
+    revealObservation: {
       sessionId: session?.sessionId ?? 0,
       recordTurn: session?.lastMove?.itemRecord?.turn ?? null,
       gameTurn: game?.turn ?? 0,
-      pendingDecisionTurn: app.itemView?.decision ? game?.turn ?? null : null,
+      pendingDecisionTurn: itemView?.decision ? game?.turn ?? null : null,
       movementComplete: session?.phase !== "animating",
     },
-    stages: NO_REVEAL_STAGES,
-    reducedMotion,
+    revealStages: NO_REVEAL_STAGES,
+    animation,
+    finishAnimation: app.finishAnimation,
   });
-  const revealSkipRef = useRef(reveal.skip);
-  revealSkipRef.current = reveal.skip;
+  const reveal = moments.reveal;
+  const liveAttempt = moments.attempt;
+  const presentedAttempt = turnMomentBoundary ? turnMomentBoundary.attempt : liveAttempt;
   const toastSessionId = session?.sessionId ?? null;
   const toastBaseline = useRef<ToastBaseline>(NO_TOAST_BASELINE);
   const processedToastInputs = useRef<readonly ToastInput[] | null>(null);
@@ -125,14 +166,18 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const resumeSaved = useCallback((saved: GameState) => {
     app.resume(app.saveLookup?.kind === "valid" ? app.saveLookup.game : saved);
   }, [app.resume, app.saveLookup]);
-  const speed = speedById(speedId);
-  const stepMs = reducedMotion ? 0 : speed?.stepMs ?? 0;
+  // The attempt's movement runs at the speed captured with its roll and only once its pre-move moment released it.
+  const ownsAnimation = attemptOwnsAnimation(liveAttempt, animation);
+  // Reduced motion seen at any point of the attempt finishes its movement instantly, even if turned off again since.
+  const stepMs = reducedMotion || (ownsAnimation && moments.attemptMotionReduced) ? 0
+    : ownsAnimation && liveAttempt ? liveAttempt.timing.stepMs : speed?.stepMs ?? 0;
   const { view, livePosition } = useMoveAnimation(
-    session?.animation ?? null,
+    animation,
     network,
     geometry,
     stepMs,
     app.finishAnimation,
+    { startAllowed: !ownsAnimation || moments.movementStartAllowed },
   );
   const shown = useMemo(
     () => (presentationGame ? displayedProgress(presentationGame, network, view) : null),
@@ -147,19 +192,23 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     classicAnnouncement.current = { sessionId: session?.sessionId, text: "" };
   }
   const restoredHistory = (game?.turn ?? 0) <= (resumeBaseline.current?.turn ?? 0);
+  // The record the session was entered with stays published, until an attempt for a newer turn takes over.
+  const baselineTurn = resumeBaseline.current?.turn ?? 0;
+  const restoredRecordShown = reveal.key !== null && Number(reveal.key.split(":").at(-1)) <= baselineTurn
+    && !(liveAttempt !== null && liveAttempt.recordTurn > baselineTurn);
   const turnDisplay = useMemo(() => session && shown ? deriveTurnMomentDisplay({
     session,
     network,
     presentation,
     progress: shown,
-    attempt: turnMomentBoundary?.attempt ?? null,
+    attempt: presentedAttempt,
     revealStage: turnMomentBoundary?.revealStage ?? (reveal.stage === "done" ? "done" : "waiting"),
-    restoredOrOmitted: turnMomentBoundary?.restoredOrOmitted ?? (reducedMotion || (reveal.key !== null && Number(reveal.key.split(":").at(-1)) <= (resumeBaseline.current?.turn ?? 0))),
-    itemView: app.itemView,
+    restoredOrOmitted: turnMomentBoundary?.restoredOrOmitted ?? (moments.restoredOrOmitted || restoredRecordShown),
+    itemView,
     restoredHistory,
     previousClassicAnnouncement: classicAnnouncement.current.text,
-  }) : null, [session, shown, network, presentation, turnMomentBoundary, reveal.stage, reveal.key, reducedMotion, app.itemView, restoredHistory]);
-  if (!app.itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
+  }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, reveal.stage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory]);
+  if (!itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
     classicAnnouncement.current.text = turnDisplay.announcement;
   }
   // Presented permissions, read at call time so a direct or stale invocation cannot bypass them.
@@ -215,9 +264,13 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
 
   // Callbacks passed to the memoised panel keep their identity between turns.
   const { newGame, saveLookup, finishAnimation, showTitle: showTitleScreen, roll, editItemDraft, adjustItemRoll, discardItem } = app;
+  const { begin: beginTurnMoment, skip: skipTurnMoment } = moments;
+  // One accepted handler begins the presentation attempt (capturing timing and movement speed) and commits the roll.
   const guardedRoll = useCallback(() => {
-    if (turnDisplayRef.current?.canRoll) roll();
-  }, [roll]);
+    if (!turnDisplayRef.current?.canRoll) return;
+    beginTurnMoment("click");
+    roll();
+  }, [roll, beginTurnMoment]);
   const guardedEditItemDraft = useCallback((command: ItemTurnCommand) => {
     const presented = turnDisplayRef.current;
     if (presented && !presented.itemUseLocked) editItemDraft(command);
@@ -252,14 +305,26 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     setNotice(app.removeSave() ? "セーブデータを削除しました。" : "セーブデータを削除できませんでした。");
   };
 
-  const currentAnimation = session?.animation;
-  const currentAnimationRef = useRef(currentAnimation);
-  currentAnimationRef.current = currentAnimation;
+  const currentAnimationRef = useRef(animation);
+  currentAnimationRef.current = animation;
+  // The one shared Skip (panel, card tap, adjustment dialog): ends tumble, stamps, movement and reveal together.
   const skip = useCallback(() => {
-    revealSkipRef.current();
-    const animation = currentAnimationRef.current;
-    if (animation) finishAnimation(animation);
-  }, [finishAnimation]);
+    if (!turnDisplayRef.current?.canSkip) return;
+    skipTurnMoment();
+    const current = currentAnimationRef.current;
+    if (current) finishAnimation(current);
+  }, [finishAnimation, skipTurnMoment]);
+
+  // A game resumed at its pending adjustment never tumbles: the restored attempt keeps the saved die as published.
+  const restoredRollSession = useRef<number | null>(null);
+  const sessionId = session?.sessionId ?? null;
+  const enteredAwaitingAdjust = session?.phase === "awaiting-adjust";
+  useEffect(() => {
+    if (sessionId === null || restoredRollSession.current === sessionId) return;
+    restoredRollSession.current = sessionId;
+    if (enteredAwaitingAdjust) beginTurnMoment("restored-roll");
+  }, [sessionId, enteredAwaitingAdjust, beginTurnMoment]);
+  const diceModel = session ? turnMomentDiceModel(presentedAttempt, acceptedRecord, reducedMotion) : null;
 
   const showTitle = useCallback(() => {
     setNotice(null);
@@ -318,6 +383,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           onShowTitle={showTitle}
           onItemDialogOpenChange={setItemDialogOpen}
         />
+      )}
+      {session && shown && turnDisplay && !showClear && diceModel && (
+        <TurnMomentHost onTap={skip}>
+          <DiceTumble model={diceModel} />
+        </TurnMomentHost>
       )}
       <ToastHost
         sessionId={toastSessionId}

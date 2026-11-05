@@ -1,5 +1,8 @@
 import { Children, useLayoutEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode, RefCallback, RefObject } from "react";
+import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
+import type { RollAttempt } from "../animation/turnMoments";
+import { diceTumbleModelFor, isDiceFace, type DiceTumbleModel } from "./DiceTumble";
 
 /** A plain rectangle in viewport (CSS pixel) coordinates. */
 export interface RectBox {
@@ -152,6 +155,69 @@ export function chooseSettleMotion(
   };
 }
 
+/**
+ * Space kept free next to a viewport edge for the MapLibre controls while the card takes pointer events: the
+ * zoom group and the 全体 / 目標路線 column on the right (10px margin + ~70px + 4px, the toast column uses the same
+ * 84px), the compact attribution toggle top-left and the attribution text bottom-right (10px margin + 44px).
+ */
+export const MAP_CONTROL_CLEARANCE_PX: Readonly<{ top: number; right: number; bottom: number; left: number }> = {
+  top: 56, right: 84, bottom: 56, left: 56,
+};
+/** Smallest card region worth keeping; below it the clearance shrinks proportionally instead of vanishing. */
+export const MIN_CARD_REGION_PX: number = 112;
+/** A region edge closer than this to the viewport edge counts as touching it. */
+const EDGE_TOLERANCE_PX: number = 1;
+
+function edgeInsets(size: number, wantStart: number, wantEnd: number): readonly [number, number] {
+  const wanted: number = wantStart + wantEnd;
+  if (wanted <= 0 || size - wanted >= MIN_CARD_REGION_PX) return [wantStart, wantEnd];
+  const scale: number = Math.max(0, size - MIN_CARD_REGION_PX) / wanted;
+  return [wantStart * scale, wantEnd * scale];
+}
+
+export interface EdgeInsets {
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+  readonly left: number;
+}
+
+/**
+ * Padding that keeps a content-sized card, centred in the placement rectangle, away from every viewport edge the
+ * rectangle touches, so the card (which takes pointer events) stays clear of the map controls along those edges.
+ * Edges next to the panel get no padding. When the rectangle is too small to keep `MIN_CARD_REGION_PX`, the
+ * padding shrinks proportionally; it is never negative. The rectangle itself is unchanged.
+ */
+export function mapControlInsets(rect: RectBox, viewport: RectBox): EdgeInsets {
+  const touchesLeft: boolean = rect.left <= viewport.left + EDGE_TOLERANCE_PX;
+  const touchesTop: boolean = rect.top <= viewport.top + EDGE_TOLERANCE_PX;
+  const touchesRight: boolean = rect.left + rect.width >= viewport.left + viewport.width - EDGE_TOLERANCE_PX;
+  const touchesBottom: boolean = rect.top + rect.height >= viewport.top + viewport.height - EDGE_TOLERANCE_PX;
+  const [left, right] = edgeInsets(rect.width, touchesLeft ? MAP_CONTROL_CLEARANCE_PX.left : 0,
+    touchesRight ? MAP_CONTROL_CLEARANCE_PX.right : 0);
+  const [top, bottom] = edgeInsets(rect.height, touchesTop ? MAP_CONTROL_CLEARANCE_PX.top : 0,
+    touchesBottom ? MAP_CONTROL_CLEARANCE_PX.bottom : 0);
+  return { top, right, bottom, left };
+}
+
+/**
+ * The dice card for the current pre-move stage, or null when nothing is shown. The face is the attempt's saved raw
+ * roll (from the saved adjustment decision or the accepted record); stamp labels come only from the accepted record
+ * of this attempt. Omitted or skipped attempts and every other stage show no die.
+ */
+export function turnMomentDiceModel(
+  attempt: RollAttempt | null,
+  record: DeepReadonly<ItemTurnRecord> | null | undefined,
+  reducedMotion: boolean,
+): DiceTumbleModel | null {
+  if (!attempt || attempt.motionOmitted || attempt.skipRequested) return null;
+  if (attempt.stage !== "tumble" && attempt.stage !== "stamps") return null;
+  if (!isDiceFace(attempt.rawRoll)) return null;
+  const accepted = record && record.turn === attempt.recordTurn ? record : null;
+  const stageMs: number = attempt.stage === "tumble" ? attempt.timing.tumbleMs : attempt.timing.stampsMs;
+  return { ...diceTumbleModelFor(accepted, attempt.stage, stageMs, reducedMotion), rawRoll: attempt.rawRoll };
+}
+
 export interface TurnMomentRects {
   readonly viewport: RectBox;
   readonly map: RectBox | null;
@@ -235,20 +301,27 @@ function preventFocusMove(event: { preventDefault: () => void }): void {
 export function TurnMomentHost({ children, onTap, resolveMap, resolvePanel }: TurnMomentHostProps): React.JSX.Element {
   const hasCard: boolean = Children.toArray(children).length > 0;
   const rects: TurnMomentRects | null = useTurnMomentRects(hasCard, { resolveMap, resolvePanel });
-  const placement: TurnMomentPlacement | null = useMemo(
-    () => !hasCard ? null : chooseTurnMomentPlacement(rects?.viewport ?? viewportBox(), rects?.map, rects?.panel),
+  const layout: { placement: TurnMomentPlacement; insets: EdgeInsets } | null = useMemo(
+    () => {
+      if (!hasCard) return null;
+      const viewport: RectBox = rects?.viewport ?? viewportBox();
+      const chosen: TurnMomentPlacement = chooseTurnMomentPlacement(viewport, rects?.map, rects?.panel);
+      return { placement: chosen, insets: mapControlInsets(chosen.rect, viewport) };
+    },
     [hasCard, rects],
   );
   return (
     <div className="turn-moment-host" aria-hidden="true">
-      {placement && <div
+      {layout && <div
         className="turn-moment-host__region"
-        data-region={placement.region}
+        data-region={layout.placement.region}
         style={{
-          left: placement.rect.left,
-          top: placement.rect.top,
-          width: placement.rect.width,
-          height: placement.rect.height,
+          left: layout.placement.rect.left,
+          top: layout.placement.rect.top,
+          width: layout.placement.rect.width,
+          height: layout.placement.rect.height,
+          boxSizing: "border-box",
+          padding: `${layout.insets.top}px ${layout.insets.right}px ${layout.insets.bottom}px ${layout.insets.left}px`,
         } satisfies CSSProperties}
       >
         <div

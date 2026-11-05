@@ -92,6 +92,21 @@ function click(label: string): void {
   dispatchReactEvent(button, new MouseEvent("click", { bubbles: true }));
 }
 
+/**
+ * S11: an adjustment dialog is presented only after the dice tumble. When the click saved a pending roll, end the
+ * tumble with the shared スキップ (it consumes no clock time, so toast reading clocks are untouched) and return the
+ * presented dialog's Continue button; null when the turn needs no adjustment.
+ */
+function reachPresentedAdjustment(): HTMLButtonElement | null {
+  const saved = JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
+  if (saved.pending?.kind !== "roll") return null;
+  expect(mounted!.container.querySelector(".item-adjustment")).toBeNull();
+  click("スキップ");
+  const proceed = mounted!.container.querySelector<HTMLButtonElement>(".item-adjustment .dialog__actions button");
+  expect(proceed?.textContent).toBe("そのまま続ける");
+  return proceed;
+}
+
 function openApp(game: ItemGameState): void {
   localStorage.setItem(edition.saveKey, serializeGame(game));
   vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
@@ -105,6 +120,29 @@ function openApp(game: ItemGameState): void {
   click("つづきから");
 }
 
+/** Normal-speed (450 ms/hop) and はやい (300 ms/hop) tumble durations, written down from the specification. */
+const NORMAL_TUMBLE_MS = 600;
+const FAST_TUMBLE_MS = 400;
+
+/** S11 pre-move checkpoint: run the dice tumble's stage timer (callers install fake setTimeout first). */
+function advanceTumble(milliseconds: number): void {
+  act(() => vi.advanceTimersByTime(milliseconds));
+}
+
+/**
+ * Fixture guard for the pre-move checkpoint: the next turn of `game` (engine-built) shows no modifier stamps, so
+ * the movement is released by the end of the tumble alone.
+ */
+function expectNoStampsNext(game: ItemGameState): void {
+  const record = playItemTurn(game, {}, network).record;
+  if (record?.kind !== "item-ride") throw new Error("Expected a plain ride record");
+  expect({
+    movementMode: record.movementMode, adjustment: record.adjustment, items: record.command.items.length,
+    forced: record.effectiveFace !== record.rawRoll,
+    delay: record.itemEvents.some((event) => event.type === "effect-activated" && event.effect === "delay"),
+  }).toEqual({ movementMode: "normal", adjustment: null, items: 0, forced: false, delay: false });
+}
+
 function advanceTime(milliseconds: number): void {
   act(() => vi.advanceTimersByTime(milliseconds));
 }
@@ -113,7 +151,7 @@ function rollUntilToast(): string {
   for (let turn = 0; turn < 12; turn += 1) {
     const before = JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
     click("サイコロを振る");
-    const adjustment = mounted!.container.querySelector<HTMLButtonElement>(".item-adjustment .dialog__actions button");
+    const adjustment = reachPresentedAdjustment();
     if (adjustment) dispatchReactEvent(adjustment, new MouseEvent("click", { bubbles: true }));
     const discard = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
     if (discard) dispatchReactEvent(discard, new MouseEvent("click", { bubbles: true }));
@@ -136,7 +174,7 @@ function rollUntilToast(): string {
 /** One settled engine turn through the UI, declining adjustment and discarding the first choice. */
 function rollTurn(): void {
   click("サイコロを振る");
-  const adjustment = mounted!.container.querySelector<HTMLButtonElement>(".item-adjustment .dialog__actions button");
+  const adjustment = reachPresentedAdjustment();
   if (adjustment) dispatchReactEvent(adjustment, new MouseEvent("click", { bubbles: true }));
   const discard = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
   if (discard) dispatchReactEvent(discard, new MouseEvent("click", { bubbles: true }));
@@ -355,6 +393,8 @@ describe("item progress in GameApp", () => {
     const toastText = rollUntilToast();
     advanceTime(1500);
     click("サイコロを振る");
+    // S11: the dialog is presented after the tumble; Skip ends the tumble without consuming reading time.
+    reachPresentedAdjustment();
     expect(mounted!.container.querySelector(".item-adjustment")).not.toBeNull();
     advanceTime(10000);
     expect([...mounted!.container.querySelectorAll(".toast-host__toast")].map((toast) => toast.textContent)).toContain(toastText);
@@ -374,7 +414,7 @@ describe("item progress in GameApp", () => {
     for (let turn = 0; turn < 3 && !mounted!.container.querySelector(".item-discard"); turn += 1) {
       click("サイコロを振る");
       if (mounted!.container.querySelector(".item-discard")) break;
-      const adjustment = mounted!.container.querySelector<HTMLButtonElement>(".item-adjustment .dialog__actions button");
+      const adjustment = reachPresentedAdjustment();
       if (adjustment) dispatchReactEvent(adjustment, new MouseEvent("click", { bubbles: true }));
       click("スキップ");
     }
@@ -392,6 +432,8 @@ describe("item progress in GameApp", () => {
   });
 
   it.each(["saved", "failed"] as const)("keeps the origin visible until the %s movement save attempt", (outcome) => {
+    // S11: the tumble's stage timer must be controllable; the stubbed animation frames stay stubbed.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const game = createItemGame(edition.config, "review-order", network);
     localStorage.setItem(edition.saveKey, serializeGame(game));
     // Hold the first frame so the post-save animation start is observable.
@@ -422,6 +464,11 @@ describe("item progress in GameApp", () => {
     expect(duringSave).toEqual([{ station: "新橋", progress: "0/30" }]);
     expect(stat("現在駅")).toBe("新橋");
     expect(stat("踏破区間")).toBe("0/30");
+    // S11 re-point: no movement frame while the tumble gates the move, then the frame after its release.
+    expectNoStampsNext(game);
+    expect(window.requestAnimationFrame).not.toHaveBeenCalled();
+    advanceTumble(NORMAL_TUMBLE_MS);
+    expect(stat("現在駅")).toBe("新橋");
     expect(window.requestAnimationFrame).toHaveBeenCalled();
     click("スキップ");
     expect(stat("現在駅")).toBe("浜松町");
@@ -488,6 +535,11 @@ function observeWrites(failOnResolved: boolean): ObservedWrite[] {
   const writes: ObservedWrite[] = [];
   const write = Storage.prototype.setItem;
   vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+    // Only game saves are observed; any other storage key passes through untouched.
+    if (key !== edition.saveKey) {
+      write.call(this, key, value);
+      return;
+    }
     const saved = JSON.parse(value) as ItemGameState;
     writes.push({ turn: saved.turn, pending: saved.pending?.kind ?? null, screen: readScreen() });
     if (failOnResolved && saved.pending === null && saved.turn > 0) throw new Error("quota");
@@ -514,10 +566,24 @@ function movementMs(game: ItemGameState, stepMs: number): number {
 
 /** S11 switch: before the pre-move gate, an accepted roll shows the origin and locks the dice with the old label. */
 const LOCKED_BEFORE_ACCEPTANCE = { station: "新橋", progress: "0/30", dice: "サイコロを振る", diceDisabled: "true", frames: 0 };
+/** S11: after the save attempt the dice tumbles; the move is staged (dice label 移動中…) but gated: no frame yet. */
+const TUMBLING_AFTER_SAVE_ATTEMPT = { station: "新橋", progress: "0/30", dice: "移動中…", diceDisabled: "true", frames: 0 };
+/** S11: the tumble released the move: exactly one movement frame, still from the origin. */
+const MOVING_AFTER_SAVE_ATTEMPT = { station: "新橋", progress: "0/30", dice: "移動中…", diceDisabled: "true", frames: 1 };
+
+/** The saved raw roll of the plain turn 1, from the engine (the cube's final face). */
+function plainRawRoll(): number {
+  const record = playItemTurn(createItemGame(edition.config, PLAIN_SEED, network), {}, network).record;
+  if (record?.kind !== "item-ride") throw new Error("Expected a plain ride record");
+  return record.rawRoll;
+}
 
 describe("S10b accepted-save boundary", () => {
   it.each(["saved", "failed"] as const)("observes the %s turn-1 write before any movement frame, then starts one movement", (outcome) => {
-    openApp(createItemGame(edition.config, PLAIN_SEED, network));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const origin = createItemGame(edition.config, PLAIN_SEED, network);
+    expectNoStampsNext(origin);
+    openApp(origin);
     const writes = observeWrites(outcome === "failed");
 
     click("サイコロを振る");
@@ -526,8 +592,18 @@ describe("S10b accepted-save boundary", () => {
       { turn: 0, pending: "roll", screen: LOCKED_BEFORE_ACCEPTANCE },
       { turn: 1, pending: null, screen: LOCKED_BEFORE_ACCEPTANCE },
     ]);
-    // Acknowledged: the movement starts exactly once, from the origin.
-    expect(readScreen()).toEqual({ station: "新橋", progress: "0/30", dice: "移動中…", diceDisabled: "true", frames: 1 });
+    // Save attempted (saved or failed alike): the tumble lands on the saved raw roll while the move stays gated.
+    expect(readScreen()).toEqual(TUMBLING_AFTER_SAVE_ATTEMPT);
+    expect(mounted!.container.querySelector(".dice-tumble")?.getAttribute("data-raw-roll")).toBe(String(plainRawRoll()));
+    // A failed save does not advance the sequence: up to the last millisecond of the tumble there is no extra
+    // write and no frame, and the die keeps the same face.
+    advanceTumble(NORMAL_TUMBLE_MS - 1);
+    expect(writes).toHaveLength(2);
+    expect(readScreen()).toEqual(TUMBLING_AFTER_SAVE_ATTEMPT);
+    // Released by the end of the tumble: the movement starts exactly once, from the origin.
+    advanceTumble(1);
+    expect(readScreen()).toEqual(MOVING_AFTER_SAVE_ATTEMPT);
+    expect(mounted!.container.querySelector(".dice-tumble, .turn-moment-host")).toBeNull();
     if (outcome === "saved") {
       expect(storedSave()).toEqual({ turn: 1, pending: null, history: 1 });
       expect(saveStatusText()).toBe("セーブ: 自動保存済み");
@@ -573,6 +649,7 @@ describe("S10b accepted-save boundary", () => {
 
 describe("S10b same-task duplicate clicks", () => {
   it.each(["native-click", "stale-handler"] as const)("accepts exactly one turn for three %s calls in one task", (kind) => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     openApp(createItemGame(edition.config, PLAIN_SEED, network));
     const writes = observeWrites(false);
     const dice = diceButton();
@@ -587,14 +664,23 @@ describe("S10b same-task duplicate clicks", () => {
 
     expect(writes.filter((entry) => entry.pending === null)).toHaveLength(1);
     expect(storedSave()).toEqual({ turn: 1, pending: null, history: 1 });
-    expect(readScreen()).toEqual({ station: "新橋", progress: "0/30", dice: "移動中…", diceDisabled: "true", frames: 1 });
+    // S11 re-point: one tumble, gated; its release starts exactly one movement.
+    expect(readScreen()).toEqual(TUMBLING_AFTER_SAVE_ATTEMPT);
+    expect(mounted!.container.querySelectorAll(".dice-tumble")).toHaveLength(1);
+    advanceTumble(NORMAL_TUMBLE_MS);
+    expect(readScreen()).toEqual(MOVING_AFTER_SAVE_ATTEMPT);
+    expect(storedSave()).toEqual({ turn: 1, pending: null, history: 1 });
   });
 });
 
 describe("S10b speed capture", () => {
-  it("keeps the speed read at the start of a move and applies a 速度 change from the next turn", () => {
+  /** Plain two-turn fixture with a frame queue; the tumble timer is faked, animation frames run by hand. */
+  function speedFixture() {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const first = createItemGame(edition.config, PLAIN_SEED, network);
     const second = playTurn(first, network).state;
+    expectNoStampsNext(first);
+    expectNoStampsNext(second);
     openApp(first);
     const frames: FrameRequestCallback[] = [];
     vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => frames.push(callback)));
@@ -609,8 +695,15 @@ describe("S10b speed capture", () => {
     // Uncapped, so the 450 ms and 300 ms plans differ.
     expect(normalFirst).toBeLessThan(MAX_MOVE_DURATION_MS);
     expect(normalFirst).toBeGreaterThan(fastFirst + 1);
+    return { frames, runFrame, normalFirst, fastFirst, fastSecond };
+  }
+
+  it("keeps the speed read at the start of a move and applies a 速度 change from the next turn", () => {
+    const { runFrame, normalFirst, fastFirst, fastSecond } = speedFixture();
 
     click("サイコロを振る");
+    // S11: the move starts when the tumble releases it.
+    advanceTumble(NORMAL_TUMBLE_MS);
     runFrame(1_000);
     click("速度");
     expect(mounted!.container.textContent).toContain("速度: はやい");
@@ -621,11 +714,33 @@ describe("S10b speed capture", () => {
     expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
 
     click("サイコロを振る");
+    // The next roll captured はやい: its tumble is shorter too.
+    advanceTumble(FAST_TUMBLE_MS);
     runFrame(5_000);
     runFrame(5_000 + fastSecond - 1);
     expect(readScreen().dice).toBe("移動中…");
     runFrame(5_000 + fastSecond + 1);
     expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
     expect(storedSave()).toMatchObject({ turn: 2, pending: null, history: 2 });
+  });
+
+  it("keeps the roll's captured speed when 速度 changes during the tumble", () => {
+    const { frames, runFrame, normalFirst, fastFirst } = speedFixture();
+
+    click("サイコロを振る");
+    click("速度");
+    expect(mounted!.container.textContent).toContain("速度: はやい");
+    // The はやい tumble would be over by now; the captured normal tumble still holds the move.
+    advanceTumble(FAST_TUMBLE_MS);
+    expect(frames).toHaveLength(0);
+    expect(readScreen()).toEqual(TUMBLING_AFTER_SAVE_ATTEMPT);
+    advanceTumble(NORMAL_TUMBLE_MS - FAST_TUMBLE_MS);
+    expect(frames).toHaveLength(1);
+    runFrame(1_000);
+    // Past the whole move at 300 ms per hop, still moving: the movement uses the 450 ms captured with the roll.
+    runFrame(1_000 + fastFirst + 1);
+    expect(readScreen().dice).toBe("移動中…");
+    runFrame(1_000 + normalFirst + 1);
+    expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
   });
 });

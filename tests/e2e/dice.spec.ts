@@ -5,6 +5,7 @@ import { createGame, playTurn } from "./fixtures/productGame";
 import {
   clickDice,
   diceButton,
+  diceMoment,
   expectAcceptedSave,
   freezeClock,
   gamePanel,
@@ -21,10 +22,11 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  stampsExpected,
   targetFeatureIds,
   waitForRollOutcome,
 } from "./support/app";
-import { advanceMovement } from "./support/turnMoments";
+import { advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 // Spec 8.3 items covered here:
 //   [8.3-2] Rolling the dice updates the current position on the map.
@@ -131,6 +133,25 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
 });
 
 /**
+ * Pre-move checkpoint for a frozen clock (S11): the dice stays locked through the
+ * tumble of the saved raw roll (and the stamps when the record has modifiers), a
+ * forced click changes nothing, and the moment card is gone when the move starts.
+ */
+async function expectLockedThroughPreMove(page: Page, turn: number): Promise<void> {
+  const record = (await readSave(page))?.movementHistory.at(-1);
+  if (!record || record.kind !== "item-ride") throw new Error("the accepted turn has no ride record");
+  await expect(diceMoment(page)).toHaveAttribute("data-raw-roll", String(record.rawRoll));
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+  await diceButton(page).click({ force: true });
+  await advanceTumble(page);
+  if (stampsExpected(record)) await advanceStamps(page);
+  await expect(diceMoment(page)).toHaveCount(0);
+  // P2 publishes the turn count with the arrival: until then the HUD keeps the origin turn.
+  await expect(panelStat(page, "ターン数")).toHaveText(String(turn - 1));
+  await expectAcceptedSave(page, turn);
+}
+
+/**
  * Movement checkpoint for a frozen clock: half a hop in, the dice is still locked
  * and a forced click neither advances the turn nor changes the stored save.
  */
@@ -139,7 +160,8 @@ async function expectLockedThroughMovement(page: Page, turn: number): Promise<vo
   await expect(diceButton(page)).toHaveText("移動中…");
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
   await diceButton(page).click({ force: true });
-  await expect(panelStat(page, "ターン数")).toHaveText(String(turn));
+  // S11 re-point: `ターン数 = turn` moved to the published checkpoint after スキップ (callers assert it there).
+  await expect(panelStat(page, "ターン数")).toHaveText(String(turn - 1));
   await expectAcceptedSave(page, turn);
 }
 
@@ -159,19 +181,22 @@ test.describe("with move animation", () => {
     await diceButton(page).click({ clickCount: 3 });
     // Accepted-save checkpoint: exactly one turn is stored, however many clicks landed.
     await expectAcceptedSave(page, 1);
-    // S11 inserts advanceTumble / advanceStamps here; the dice stays locked through them.
     await expect(diceButton(page)).toHaveText("移動中…");
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
     await expect(diceButton(page)).toHaveJSProperty("disabled", false);
-    await expect(panelStat(page, "ターン数")).toHaveText("1");
+    // P2: the turn count is published with the arrival; during the tumble the HUD keeps the origin turn.
+    await expect(panelStat(page, "ターン数")).toHaveText("0");
     // The focused button stays available to keyboard users, but ignores clicks while moving.
     await diceButton(page).click({ force: true });
     await diceButton(page).dblclick({ force: true });
-    await expect(panelStat(page, "ターン数")).toHaveText("1");
+    await expectAcceptedSave(page, 1);
+    await expectLockedThroughPreMove(page, 1);
     await expectLockedThroughMovement(page, 1);
     await skip.click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+    // Published checkpoint. S11 folds three in-move `ターン数 = 1` checks into this one (same value): the one after the
+    // accepted save, the one after the forced clicks, and expectLockedThroughMovement's.
     await expect(panelStat(page, "ターン数")).toHaveText("1");
     expect((await readSave(page))?.turn).toBe(1);
 
@@ -182,12 +207,13 @@ test.describe("with move animation", () => {
       button.click();
     });
     await expectAcceptedSave(page, 2);
-    // S11 inserts advanceTumble / advanceStamps here as well.
     await expect(diceButton(page)).toHaveText("移動中…");
+    await expectLockedThroughPreMove(page, 2);
     await expectLockedThroughMovement(page, 2);
     await skip.click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+    // Published checkpoint; S11 folds expectLockedThroughMovement's in-move `ターン数 = 2` into it (same value).
     await expect(panelStat(page, "ターン数")).toHaveText("2");
     const save = await readSave(page);
     expect(save?.turn).toBe(2);
@@ -207,13 +233,19 @@ test.describe("with move animation", () => {
     await freezeClock(page);
 
     const turnBefore = await clickDice(page);
-    // S11 inserts advanceTumble here: the origin stays shown and the dice locked.
+    // Pre-move checkpoint (S11): during the tumble the origin stays shown and the dice locked.
+    await expect(diceMoment(page)).toBeVisible();
+    await expect(panelStat(page, "現在駅")).toHaveText("新橋");
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+    expect((await readMap(page))?.marker).toEqual(start);
+    await advanceTumble(page);
     await waitForRollOutcome(page, turnBefore);
-    // S11 inserts advanceStamps here for turns with modifier wording.
     await expect(diceButton(page)).toHaveText("移動中…");
     const save = await readSave(page);
     const move = save?.movementHistory[0];
     if (!save || !move) throw new Error("the roll was not committed");
+    if (stampsExpected(move)) await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
     // Oracle for the movement length: replay the turn offline (P1 planner, capped
     // like the app) and make sure it is the move the app made.
     const expected = playTurn(createGame(DEFAULT_GAME_CONFIG, save.rngSeed, railwayBundle.network), railwayBundle.network);

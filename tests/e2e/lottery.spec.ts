@@ -1,6 +1,7 @@
 import { expect, test } from "./fixtures";
 import { FIXTURE_GAME_SEED, FIXTURE_SCENARIO_TURNS } from "./fixtures/seeds";
-import { closeGameLog, diceButton, freezeClock, gamePanel, markerPosition, openGameLog, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame } from "./support/app";
+import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openGameLog, openTitle, panelStat, readMap, readSave, rollOnce, stampsExpected, startNewGame } from "./support/app";
+import { advanceStamps, advanceTumble, primeMovementFrame } from "./support/turnMoments";
 
 test.use({ dataset: "fixture" });
 
@@ -53,6 +54,11 @@ test.describe("lottery reveal after animation", () => {
     expect(committed.currentServiceId).toBe("fixture-south");
     await expect(panelStat(page, "乗車中")).toHaveText("山手線");
     await expect(panelStat(page, "進行方向")).toHaveText("外回り");
+    // S11 re-point: reach the actual movement (after the tumble and any stamps) before the exact moving text.
+    await advanceTumble(page);
+    if (stampsExpected(committed.movementHistory.at(-1)!)) await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
+    await primeMovementFrame(page);
     await openGameLog(page);
     await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
     await gamePanel(page).getByRole("button", { name: "スキップ" }).click();
@@ -62,6 +68,8 @@ test.describe("lottery reveal after animation", () => {
     await page.reload();
     await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
     await expect(panelStat(page, "乗車中")).toHaveText("テスト南線");
+    // Resumed results replay no moment.
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
     await openGameLog(page);
     await expect(gamePanel(page).locator(".game-panel__lottery")).toContainText("抽選 → テスト南線");
     expect(await readSave(page)).toEqual(committed);

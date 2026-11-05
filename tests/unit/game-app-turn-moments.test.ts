@@ -15,8 +15,11 @@ import { itemScenario } from "../e2e/fixtures/itemScenarios";
 
 import { resumeSession, startSession, reduceGameSession, type GameSession } from "../../src/features/game/gameSession";
 import {
-  INITIAL_TURN_MOMENTS_STATE, turnMomentsReducer, turnMomentTiming, type RollAttempt, type TurnMomentObservation,
+  INITIAL_TURN_MOMENTS_STATE, observeTurnFacts, turnMomentsReducer, turnMomentTiming, type RollAttempt, type TurnMomentObservation,
 } from "../../src/features/game/animation/turnMoments";
+import { diceStampLabels } from "../../src/features/game/components/DiceTumble";
+import { mapControlInsets, turnMomentDiceModel } from "../../src/features/game/components/TurnMomentHost";
+import type { ItemGameState, ItemTurnRecord } from "../../src/types/network";
 import type { useGameApp } from "../../src/features/game/useGameApp";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
@@ -454,12 +457,14 @@ function plainOrigin(): GameSession {
  * `committing` (pending roll being saved), `resolving` (resolved turn being
  * saved) and `accepted` (the resolved save acknowledged, movement staged).
  */
-function saveBoundarySessions(): Record<"committing" | "resolving" | "accepted", GameSession> {
+function saveBoundarySessions(): Record<"committing" | "resolving" | "accepted" | "save-attempted", GameSession> {
   const step = (session: GameSession, type: "item-commit" | "item-save-attempted"): GameSession =>
     reduceGameSession(session, { type, ...itemActionIdentity(session) }, ITEM_GAME_CONFIG, network);
   const committing = step(plainOrigin(), "item-commit");
   const resolving = step(committing, "item-save-attempted");
-  return { committing, resolving, accepted: step(resolving, "item-save-attempted") };
+  const accepted = step(resolving, "item-save-attempted");
+  // A failed write is still a save attempt: the session state is the same as an accepted save.
+  return { committing, resolving, accepted, "save-attempted": accepted };
 }
 
 interface BoundaryReading { station: string | null; dice: string | null; diceDisabled: string | null; frames: number }
@@ -484,11 +489,13 @@ function restoredAdjustAttempt(origin: GameSession): RollAttempt {
 }
 
 describe("S10b accepted-save boundary in GameApp", () => {
+  // Injected sessions with no accepted dice click: no roll attempt exists, so a staged move is not gated (the
+  // attempt-less path, as for a restored roll resolved without a decision). The click-driven S11 gate follows below.
   it.each([
     { phase: "committing", failed: false, dice: "サイコロを振る", frames: 0 },
     { phase: "resolving", failed: false, dice: "サイコロを振る", frames: 0 },
     { phase: "accepted", failed: false, dice: "移動中…", frames: 1 },
-    { phase: "accepted", failed: true, dice: "移動中…", frames: 1 },
+    { phase: "save-attempted", failed: true, dice: "移動中…", frames: 1 },
   ] as const)("shows the origin and locked dice for $phase (failed save: $failed), moving only once accepted", ({ phase, failed, dice, frames }) => {
     vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
@@ -519,6 +526,8 @@ describe("S10b pending-adjust resume", () => {
     { name: "today (no attempt)", boundary: () => propsFor({ attempt: null, revealStage: "waiting", restoredOrOmitted: true }) },
     { name: "S11 restored attempt", boundary: (session: GameSession) => propsFor({
       attempt: restoredAdjustAttempt(session), revealStage: "waiting", restoredOrOmitted: true }) },
+    // S11 switch: production builds the restored attempt itself from the resumed pending adjustment.
+    { name: "S11 production restored attempt", boundary: () => propsFor() },
   ])("presents the adjustment dialog with no tumble layer: $name", ({ boundary }) => {
     const session = pendingAdjustSession();
     inject(session);
@@ -586,5 +595,537 @@ describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
     expect(next.attempt?.timing).toEqual({ stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
       lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333 });
     expect(normal.attempt?.timing.tumbleMs).toBe(600);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S11 activation: tumble, adjustment after the tumble, stamps, and one Skip.
+// Real GameApp + useGameApp + storage unless a test injects the app.
+// ---------------------------------------------------------------------------
+
+/** Stage durations at normal speed (450 ms/hop), written down from the specification. */
+const TUMBLE_MS = 600;
+const STAMPS_MS = 240;
+
+/** Controllable `prefers-reduced-motion`; returns a setter that notifies the app like a media-query change. */
+function motionPreference(initial: boolean): (reduce: boolean) => void {
+  let matches = initial;
+  const listeners = new Set<() => void>();
+  vi.stubGlobal("matchMedia", vi.fn(() => ({
+    get matches(): boolean { return matches; },
+    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+  })));
+  return (reduce: boolean) => act(() => { matches = reduce; listeners.forEach((listener) => listener()); });
+}
+
+/** Resume `game` through the title screen with a fake stage clock and counted (never run) animation frames. */
+function openSaved(game: ItemGameState): void {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  localStorage.setItem(edition.saveKey, serializeGame(game));
+  render(propsFor());
+  click("つづきから");
+}
+
+function advance(milliseconds: number): void {
+  act(() => { vi.advanceTimersByTime(milliseconds); });
+}
+
+function frames(): number {
+  return vi.mocked(window.requestAnimationFrame).mock.calls.length;
+}
+
+function storedGame(): ItemGameState {
+  return JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
+}
+
+function dice(): HTMLElement {
+  return mounted!.container.querySelector<HTMLElement>(".game-panel__roll")!;
+}
+
+function tumble(): { stage: string | null; raw: string | null; stamps: string[] } | null {
+  const root = mounted!.container.querySelector(".dice-tumble");
+  if (!root) return null;
+  return { stage: root.getAttribute("data-stage"), raw: root.getAttribute("data-raw-roll"),
+    stamps: [...root.querySelectorAll(".dice-tumble__stamp")].map((stamp) => stamp.textContent ?? "") };
+}
+
+function adjustmentDialog(): HTMLElement | null {
+  return mounted!.container.querySelector<HTMLElement>(".item-adjustment");
+}
+
+function dialogSkip(): HTMLButtonElement {
+  return [...adjustmentDialog()!.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "スキップ")!;
+}
+
+function panelSkip(): HTMLButtonElement {
+  return [...mounted!.container.querySelectorAll<HTMLButtonElement>(".game-panel button")]
+    .find((button) => button.textContent === "スキップ" && !button.closest("dialog"))!;
+}
+
+function press(element: Element): void {
+  dispatchReactEvent(element, new MouseEvent("click", { bubbles: true }));
+}
+
+/** Choose the +1 (or else −1) radio of the presented adjustment and return the chosen delta. */
+function chooseAdjustment(): 1 | -1 {
+  const radios = [...adjustmentDialog()!.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+  const plus = radios.find((radio) => radio.value === "1");
+  const chosen = plus ?? radios.find((radio) => radio.value === "-1")!;
+  press(chosen);
+  return chosen.value === "1" ? 1 : -1;
+}
+
+function continueButton(): HTMLButtonElement {
+  return adjustmentDialog()!.querySelector<HTMLButtonElement>(".button-primary")!;
+}
+
+describe("S11 tumble, adjustment and stamps in GameApp", () => {
+  it("lands one tumble on the saved raw roll, presents the adjustment only after it, then stamps before any movement frame", () => {
+    openSaved(itemScenario("adjust", network));
+    click("サイコロを振る");
+
+    const pending = storedGame().pending;
+    if (pending?.kind !== "roll") throw new Error("Expected the saved pending adjustment");
+    expect(tumble()).toEqual({ stage: "tumble", raw: String(pending.rawRoll), stamps: [] });
+    expect(adjustmentDialog()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    expect(status()).toBe("サイコロを振っています。移動の準備中です。");
+    expect(document.activeElement?.closest(".turn-moment-host")).toBeNull();
+    advance(TUMBLE_MS - 1);
+    expect(adjustmentDialog()).toBeNull();
+    expect(tumble()?.stage).toBe("tumble");
+
+    advance(1);
+    expect(tumble()).toBeNull();
+    expect(adjustmentDialog()).not.toBeNull();
+    expect(document.activeElement?.textContent).toBe("出目を調整しますか？");
+    expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    const delta = chooseAdjustment();
+    press(continueButton());
+
+    // The resulting record attaches to the same attempt: stamps on the raw face, never a second tumble.
+    expect(storedGame().pending).toBeNull();
+    expect(tumble()).toEqual({ stage: "stamps", raw: String(pending.rawRoll), stamps: [delta > 0 ? "調整+1" : "調整-1"] });
+    expect(frames()).toBe(0);
+    advance(STAMPS_MS - 1);
+    expect(frames()).toBe(0);
+    advance(1);
+    expect(tumble()).toBeNull();
+    expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+    expect(frames()).toBe(1);
+    expect(dice().textContent).toBe("移動中…");
+  });
+
+  it.each([
+    { point: "the tumble with the move staged", scenario: "route", before: () => {} },
+    { point: "the movement", scenario: "route", before: () => advance(TUMBLE_MS) },
+  ] as const)("ends tumble and movement with one Skip during $point", ({ scenario, before }) => {
+    openSaved(itemScenario(scenario, network));
+    click("サイコロを振る");
+    before();
+    const framesBefore = frames();
+    press(panelSkip());
+
+    expect(tumble()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    expect(dice().textContent).toBe("サイコロを振る");
+    expect(frames()).toBe(framesBefore);
+    expect(storedGame()).toMatchObject({ turn: itemScenario(scenario, network).turn + 1, pending: null });
+  });
+
+  it("keeps a Skip pressed during the tumble through the adjustment, which stays mandatory", () => {
+    openSaved(itemScenario("adjust", network));
+    click("サイコロを振る");
+    press(panelSkip());
+
+    // The tumble ends at once and the decision is presented; the rest of the turn is already skipped.
+    expect(tumble()).toBeNull();
+    expect(adjustmentDialog()).not.toBeNull();
+    expect(dialogSkip().getAttribute("aria-disabled")).toBe("true");
+    press(continueButton());
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("offers the same Skip inside the adjustment: the chosen radio and Continue stay, then nothing more plays", () => {
+    openSaved(itemScenario("adjust", network));
+    click("サイコロを振る");
+    advance(TUMBLE_MS);
+    const delta = chooseAdjustment();
+    const label = continueButton().textContent;
+    const skipButton = dialogSkip();
+    expect(skipButton.getAttribute("aria-disabled")).toBe("false");
+    skipButton.focus();
+    press(skipButton);
+
+    expect(adjustmentDialog()).not.toBeNull();
+    expect(adjustmentDialog()!.querySelector<HTMLInputElement>(`input[value="${delta}"]`)!.checked).toBe(true);
+    expect(continueButton().textContent).toBe(label);
+    // Focusable but inert once the presentation is skipped; focus stays inside the dialog.
+    expect(skipButton.getAttribute("aria-disabled")).toBe("true");
+    expect(document.activeElement).toBe(skipButton);
+    expect(storedGame().pending?.kind).toBe("roll");
+    press(continueButton());
+
+    expect(storedGame().pending).toBeNull();
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("ends the stamps and the staged movement with one Skip", () => {
+    openSaved(itemScenario("adjust", network));
+    click("サイコロを振る");
+    advance(TUMBLE_MS);
+    chooseAdjustment();
+    press(continueButton());
+    expect(tumble()?.stage).toBe("stamps");
+    press(panelSkip());
+
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("ends the turn when the dice card is tapped, without moving focus", () => {
+    openSaved(itemScenario("route", network));
+    dice().focus();
+    click("サイコロを振る");
+    const card = mounted!.container.querySelector(".turn-moment-host__card")!;
+    expect(card.closest("[aria-hidden='true']")).not.toBeNull();
+    expect(card.querySelector("button, [tabindex], a, input")).toBeNull();
+    press(card);
+
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    expect(document.activeElement).toBe(dice());
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("keeps a Skip pressed before the save attempt until the accepted animation exists", () => {
+    const sessions = saveBoundarySessions();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    const origin = plainOrigin();
+    inject(origin); render(propsFor());
+    click("サイコロを振る");
+    expect(injection.app!.roll).toHaveBeenCalledTimes(1);
+    inject(sessions.committing); render(propsFor());
+    press(panelSkip());
+    inject(sessions.resolving); render(propsFor());
+    expect(injection.app!.finishAnimation).not.toHaveBeenCalled();
+    inject(sessions.accepted); render(propsFor());
+
+    expect(injection.app!.finishAnimation).toHaveBeenCalledExactlyOnceWith(sessions.accepted.animation);
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    render(propsFor());
+    expect(injection.app!.finishAnimation).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts the accepted movement exactly once after the tumble when the save attempt failed", () => {
+    const sessions = saveBoundarySessions();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    inject(plainOrigin()); render(propsFor());
+    click("サイコロを振る");
+    inject(sessions.committing, true); render(propsFor());
+    inject(sessions.resolving, true); render(propsFor());
+    inject(sessions["save-attempted"], true); render(propsFor());
+
+    expect(tumble()?.stage).toBe("tumble");
+    expect(saveText()).toBe("セーブ: 保存に失敗しました（この進行は未保存です）");
+    render(propsFor());
+    advance(TUMBLE_MS - 1);
+    expect(frames()).toBe(0);
+    advance(1);
+    expect(frames()).toBe(1);
+    render(propsFor());
+    expect(frames()).toBe(1);
+    expect(tumble()).toBeNull();
+  });
+});
+
+describe("S11 omission: reduced motion and restored rolls", () => {
+  it("never tumbles under reduced motion: the adjustment is presented at once", () => {
+    motionPreference(true);
+    openSaved(itemScenario("adjust", network));
+    click("サイコロを振る");
+    expect(tumble()).toBeNull();
+    expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+    expect(adjustmentDialog()).not.toBeNull();
+  });
+
+  it("does not replay the tumble when reduced motion turns on while the save is pending and off again", () => {
+    const setReduced = motionPreference(false);
+    const sessions = saveBoundarySessions();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    inject(plainOrigin()); render(propsFor());
+    click("サイコロを振る");
+    inject(sessions.committing); render(propsFor());
+    setReduced(true);
+    inject(sessions.resolving); render(propsFor());
+    inject(sessions.accepted); render(propsFor());
+    expect(tumble()).toBeNull();
+    // Reduced motion finishes the accepted move at once, without a frame.
+    expect(injection.app!.finishAnimation).toHaveBeenCalledWith(sessions.accepted.animation);
+    expect(frames()).toBe(0);
+    inject({ ...sessions.accepted, phase: "idle", animation: null }); render(propsFor());
+    setReduced(false);
+    advance(TUMBLE_MS + STAMPS_MS);
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it.each([
+    { point: "the tumble", setup: () => {} },
+    { point: "the movement", setup: () => advance(TUMBLE_MS) },
+  ] as const)("ends the turn when reduced motion turns on during $point and never replays it", ({ setup }) => {
+    const setReduced = motionPreference(false);
+    openSaved(itemScenario("route", network));
+    click("サイコロを振る");
+    setup();
+    const framesBefore = frames();
+    setReduced(true);
+    expect(tumble()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    setReduced(false);
+    advance(TUMBLE_MS + STAMPS_MS);
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(framesBefore);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+describe("S11 review round 2: reduced-motion latches and discard turns", () => {
+  it("keeps the next tumble masked after reduced motion was toggled on and off while idle", () => {
+    const setReduced = motionPreference(false);
+    openSaved(itemScenario("adjust", network));
+    setReduced(true);
+    setReduced(false);
+    click("サイコロを振る");
+
+    expect(tumble()?.stage).toBe("tumble");
+    expect(adjustmentDialog()).toBeNull();
+    expect(status()).toBe("サイコロを振っています。移動の準備中です。");
+    advance(TUMBLE_MS - 1);
+    expect(adjustmentDialog()).toBeNull();
+    expect(status()).toBe("サイコロを振っています。移動の準備中です。");
+    advance(1);
+    expect(adjustmentDialog()).not.toBeNull();
+  });
+
+  it("finishes the movement at once when reduced motion was toggled on and off with the adjustment open", () => {
+    const setReduced = motionPreference(false);
+    openSaved(itemScenario("adjust", network));
+    click("サイコロを振る");
+    advance(TUMBLE_MS);
+    expect(adjustmentDialog()).not.toBeNull();
+    setReduced(true);
+    setReduced(false);
+    press(continueButton());
+
+    // No animated movement under published values: the move completed instantly, with one live region.
+    expect(frames()).toBe(0);
+    expect(tumble()).toBeNull();
+    expect(dice().textContent).toBe("サイコロを振る");
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    advance(TUMBLE_MS + STAMPS_MS);
+    expect(frames()).toBe(0);
+  });
+
+  it("finishes the accepted movement at once when reduced motion was toggled on and off before the save attempt", () => {
+    const setReduced = motionPreference(false);
+    const sessions = saveBoundarySessions();
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    inject(plainOrigin()); render(propsFor());
+    click("サイコロを振る");
+    inject(sessions.committing); render(propsFor());
+    setReduced(true);
+    setReduced(false);
+    inject(sessions.resolving); render(propsFor());
+    inject(sessions.accepted); render(propsFor());
+
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    expect(injection.app!.finishAnimation).toHaveBeenCalledExactlyOnceWith(sessions.accepted.animation);
+    advance(TUMBLE_MS + STAMPS_MS);
+    expect(frames()).toBe(0);
+  });
+
+  it("holds a discard turn's movement behind the tumble and finishes it with the latched Skip", () => {
+    // The engine-built discard turn first asks for an adjustment (its full inventory holds a ticket).
+    openSaved(itemScenario("discard", network));
+    click("サイコロを振る");
+    expect(storedGame().pending?.kind).toBe("roll");
+    expect(tumble()?.stage).toBe("tumble");
+    expect(frames()).toBe(0);
+    press(panelSkip());
+    expect(adjustmentDialog()).not.toBeNull();
+    press(continueButton());
+
+    // The pending discard animates under the prior engine turn; it still belongs to this attempt, so the latched
+    // Skip finishes it without a frame and the discard decision is presented.
+    const saved = storedGame();
+    expect(saved.pending?.kind).toBe("discard");
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(0);
+    expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
+    expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    advance(TUMBLE_MS + STAMPS_MS);
+    expect(frames()).toBe(0);
+    expect(storedGame()).toEqual(saved);
+  });
+
+  it("gates a discard turn's movement until its pre-move moment ends", () => {
+    openSaved(itemScenario("discard", network));
+    click("サイコロを振る");
+    advance(TUMBLE_MS - 1);
+    expect(frames()).toBe(0);
+    advance(1);
+    press(continueButton());
+    expect(storedGame().pending?.kind).toBe("discard");
+    // Declined adjustment, no modifier: no stamps, so the end of the tumble released the move (one frame) and the
+    // discard decision waits for the movement.
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(1);
+    expect(dice().textContent).toBe("移動中…");
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    press(panelSkip());
+    expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
+  });
+});
+
+describe("S11 carry-over guards", () => {
+  /** Props of the memoised GamePanel, read from its fiber: the exact callbacks GameApp hands down. */
+  function panelProps(): { onEditItemDraft: (command: { items: never[] }) => void } {
+    const element = mounted!.container.querySelector(".game-panel")!;
+    const key = Object.keys(element).find((name) => name.startsWith("__reactFiber"))!;
+    let fiber = (element as unknown as Record<string, { return: unknown; memoizedProps: Record<string, unknown> } | null>)[key];
+    while (fiber && typeof fiber.memoizedProps?.onEditItemDraft !== "function") {
+      fiber = fiber.return as typeof fiber;
+    }
+    if (!fiber) throw new Error("GamePanel props not found");
+    return fiber.memoizedProps as unknown as ReturnType<typeof panelProps>;
+  }
+
+  it("ignores a stale adjustment Continue once the presented decision is withdrawn", () => {
+    const pending = beginItemTurn(itemScenario("adjust", network), { items: [] }, network).state;
+    const session = reduceGameSession(resumeSession(pending, network, 31), { type: "item-save-attempted",
+      ...itemActionIdentity(resumeSession(pending, network, 31)) }, ITEM_GAME_CONFIG, network);
+    const attempt: RollAttempt = { ...attemptFor(resumeSession(itemScenario("adjust", network), network, 31)),
+      stage: "awaiting-adjust", recordAccepted: false, adjustObserved: true, rawRoll: pending.pending?.kind === "roll" ? pending.pending.rawRoll : null };
+    inject(session);
+    render(propsFor({ attempt, revealStage: "waiting", restoredOrOmitted: false }));
+    const staleContinue = reactOnClick(continueButton());
+    render(propsFor({ attempt: { ...attempt, stage: "tumble" }, revealStage: "waiting", restoredOrOmitted: false }));
+    expect(adjustmentDialog()).toBeNull();
+    act(() => staleContinue());
+    expect(injection.app!.adjustItemRoll).not.toHaveBeenCalled();
+    render(propsFor({ attempt, revealStage: "waiting", restoredOrOmitted: false }));
+    act(() => staleContinue());
+    expect(injection.app!.adjustItemRoll).toHaveBeenCalledExactlyOnceWith(null);
+  });
+
+  it("ignores a stale draft edit while the presentation locks item use", () => {
+    const origin = resumeSession(itemScenario("double", network), network, 31);
+    inject(origin); render(propsFor());
+    const staleEdit = panelProps().onEditItemDraft;
+    render(propsFor({ attempt: { ...attemptFor(origin), stage: "tumble" }, revealStage: "waiting", restoredOrOmitted: false }));
+    act(() => staleEdit({ items: [] }));
+    expect(injection.app!.editItemDraft).not.toHaveBeenCalled();
+    render(propsFor());
+    act(() => staleEdit({ items: [] }));
+    expect(injection.app!.editItemDraft).toHaveBeenCalledExactlyOnceWith({ items: [] });
+  });
+
+  it("shows unique stamp labels exactly when the attempt requires stamps", () => {
+    const records: ItemTurnRecord[] = [];
+    for (const name of ["route", "rapid", "double", "discard", "certificate", "delay", "adjust", "oversleep", "deadhead", "direction"] as const) {
+      const game = itemScenario(name, network);
+      const ticket = (kind: string) => game.inventory.find((item) => item.kind === kind);
+      const commands = [{}, ...(["double", "rapid", "deadhead"] as const).flatMap((kind) => ticket(kind)
+        ? [{ command: { items: [{ kind, instanceId: ticket(kind)!.id }] } }] : [])];
+      for (const options of commands) {
+        const record = playItemTurn(game, options, network).record;
+        if (record) records.push(record);
+      }
+      const adjusted = beginItemTurn(game, { items: [] }, network).state;
+      const adjustTicket = adjusted.inventory.find((item) => item.kind === "roll-adjust");
+      if (adjusted.pending?.kind === "roll" && adjustTicket) {
+        for (const delta of [-1, 1] as const) {
+          const raw = adjusted.pending.rawRoll + delta;
+          if (raw < 1 || raw > 6) continue;
+          const record = playItemTurn(game, { adjustment: { instanceId: adjustTicket.id, delta } }, network).record;
+          if (record) records.push(record);
+        }
+      }
+    }
+    const rides = records.filter((record) => record.kind === "item-ride");
+    const forcedDelayOnOne = rides.map((record) => ({ ...record, rawRoll: 1, effectiveFace: 1, itemEvents: [
+      ...record.itemEvents, { type: "effect-activated" as const, effect: "delay" as const } as never] }));
+    const all = [...records, ...forcedDelayOnOne];
+    // The table spans plain rides, every modifier kind, deadhead and the delay-on-raw-1 case.
+    expect(new Set(all.map((record) => record.kind === "item-ride" ? diceStampLabels(record).join("+") || "none" : "deadhead")))
+      .toEqual(new Set(["none", "deadhead", "×2", "快速", "寝過ごし", "遅延", "調整+1", "調整-1", ...all
+        .filter((record) => record.kind === "item-ride" && diceStampLabels(record).length > 1)
+        .map((record) => diceStampLabels(record).join("+"))]));
+    for (const record of all) {
+      const labels = diceStampLabels(record);
+      const facts = observeTurnFacts({ decision: null, record, movementEvents: [], targetServiceId: "jr-yamanote" });
+      expect({ turn: record.turn, kind: record.kind, stamps: labels.length > 0 })
+        .toEqual({ turn: record.turn, kind: record.kind, stamps: facts.stampsRequired });
+      expect(new Set(labels).size).toBe(labels.length);
+    }
+  });
+});
+
+describe("S11 host helpers", () => {
+  const VIEWPORT = { left: 0, top: 0, width: 1280, height: 800 };
+  it.each([
+    { name: "desktop strip right of the panel", rect: { left: 460, top: 0, width: 820, height: 800 },
+      insets: { top: 56, right: 84, bottom: 56, left: 0 } },
+    { name: "phone strip above the panel", rect: { left: 0, top: 0, width: 1280, height: 400 },
+      insets: { top: 56, right: 84, bottom: 0, left: 56 } },
+    { name: "inner rectangle touching no edge", rect: { left: 100, top: 100, width: 300, height: 300 },
+      insets: { top: 0, right: 0, bottom: 0, left: 0 } },
+    // 152 wide on the right edge: only 40 px are spare above the 112 px minimum, so the 84 px inset shrinks to 40.
+    { name: "narrow right strip shrinks to keep the minimum", rect: { left: 1128, top: 0, width: 152, height: 800 },
+      insets: { top: 56, right: 40, bottom: 56, left: 0 } },
+    { name: "strip at the minimum keeps no inset", rect: { left: 1168, top: 0, width: 112, height: 112 },
+      insets: { top: 0, right: 0, bottom: 0, left: 0 } },
+  ])("pads the card region away from touched viewport edges: $name", ({ rect, insets }) => {
+    expect(mapControlInsets(rect, VIEWPORT)).toEqual(insets);
+  });
+
+  it("selects the dice card only for live tumble/stamps stages, always on the saved raw roll", () => {
+    const origin = resumeSession(itemScenario("route", network), network, 31);
+    const base: RollAttempt = { ...attemptFor(origin), rawRoll: 4, recordTurn: 3 };
+    const record = { ...origin.lastMove!.itemRecord!, turn: 3, rawRoll: 4 } as ItemTurnRecord;
+    expect(turnMomentDiceModel({ ...base, stage: "tumble" }, null, false)).toEqual({
+      stage: "tumble", rawRoll: 4, stampLabels: [], stageMs: 600, reducedMotion: false });
+    expect(turnMomentDiceModel({ ...base, stage: "stamps" }, record, true)).toMatchObject({
+      stage: "stamps", rawRoll: 4, stageMs: 240, reducedMotion: true });
+    // A record from another turn never lends its stamps.
+    expect(turnMomentDiceModel({ ...base, stage: "stamps" }, { ...record, turn: 2 }, false)?.stampLabels).toEqual([]);
+    for (const stage of ["waiting-roll", "awaiting-adjust", "waiting-record", "released"] as const) {
+      expect(turnMomentDiceModel({ ...base, stage }, record, false)).toBeNull();
+    }
+    expect(turnMomentDiceModel({ ...base, stage: "tumble", motionOmitted: true }, record, false)).toBeNull();
+    expect(turnMomentDiceModel({ ...base, stage: "tumble", skipRequested: true }, record, false)).toBeNull();
+    expect(turnMomentDiceModel({ ...base, stage: "tumble", rawRoll: null }, record, false)).toBeNull();
+    expect(turnMomentDiceModel(null, record, false)).toBeNull();
   });
 });

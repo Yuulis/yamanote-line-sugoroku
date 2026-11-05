@@ -5,6 +5,7 @@ import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import {
   clickDice,
   diceButton,
+  diceMoment,
   expectAcceptedSave,
   freezeClock,
   gamePanel,
@@ -18,12 +19,13 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  stampsExpected,
   targetFeatureIds,
   titleScreen,
   waitForRollOutcome,
   writeSaveText,
 } from "./support/app";
-import { advanceMovement, NORMAL_STEP_MS } from "./support/turnMoments";
+import { advanceMovement, advanceStamps, advanceTumble, NORMAL_STEP_MS } from "./support/turnMoments";
 
 // Spec 8.3 item covered here:
 //   [8.3-4] The game resumes correctly after a page reload.
@@ -87,13 +89,18 @@ test.describe("with move animation", () => {
     await freezeClock(page);
 
     const turnBefore = await clickDice(page);
-    // S11 inserts advanceTumble here, before the adjustment dialog or movement.
+    // Pre-move checkpoint (S11): the tumble runs before any adjustment dialog or movement.
+    await expect(diceMoment(page)).toBeVisible();
+    await advanceTumble(page);
     await waitForRollOutcome(page, turnBefore);
-    // S11 inserts advanceStamps here for turns with modifier wording.
     await expect(diceButton(page)).toHaveText("移動中…");
     const committed = await readSave(page);
     expect(committed?.turn).toBe(1);
     await expectAcceptedSave(page, 1);
+    const record = committed?.movementHistory.at(-1);
+    if (!record) throw new Error("the accepted turn has no record");
+    if (stampsExpected(record)) await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
     // Establish the movement (first frame primed, half a hop in) so the reload
     // really interrupts a running move, as the baseline did.
     await advanceMovement(page, NORMAL_STEP_MS / 2);

@@ -189,9 +189,29 @@ export async function rollOnce(page: Page): Promise<void> {
 }
 
 /**
+ * Whether the saved record shows modifier stamps after the tumble (S11), read
+ * from the record's own fields rather than the production predicate: rapid,
+ * oversleep, a roll adjustment, a double ticket, a forced (delayed) face or an
+ * activated delay. Deadhead turns have no die and no stamps. Frozen-clock
+ * callers advance `advanceStamps` exactly when this is true.
+ */
+export function stampsExpected(record: SavedMove): boolean {
+  if (record.kind !== "item-ride") return false;
+  return record.movementMode !== "normal" || record.adjustment !== null
+    || record.command.items.some((item) => item.kind === "double") || record.effectiveFace !== record.rawRoll
+    || record.itemEvents.some((event) => event.type === "effect-activated" && event.effect === "delay");
+}
+
+/** The dice tumble / stamps card of the turn-moment overlay (S11). */
+export function diceMoment(page: Page): Locator {
+  return page.locator(".turn-moment-host .dice-tumble");
+}
+
+/**
  * Click the dice once and return the saved turn number from just before the
  * click. Pair it with `waitForRollOutcome`; between the two, a frozen-clock test
- * advances the tumble (`advanceTumble`, S11) and stamps (`advanceStamps`, S11).
+ * advances the tumble (`advanceTumble`); after the outcome it advances the
+ * stamps (`advanceStamps`) when `stampsExpected` holds for the saved record.
  */
 export async function clickDice(page: Page): Promise<number> {
   const turnBefore = (await readSave(page))?.turn ?? 0;
@@ -222,7 +242,8 @@ export async function waitForRollOutcome(page: Page, turnBefore: number): Promis
  * Reveal a die, explicitly declining adjustment; leave movement/discard visible.
  * Composes `clickDice` and `waitForRollOutcome`, so it is only usable with a real
  * clock or reduced motion; a frozen-clock caller calls the two steps itself and
- * advances the tumble between them (S11).
+ * advances the tumble between them (S11: an adjustment dialog appears only after
+ * the tumble).
  */
 export async function revealUnadjustedRoll(page: Page): Promise<void> {
   await waitForRollOutcome(page, await clickDice(page));
@@ -245,6 +266,9 @@ export async function observeSave(page: Page): Promise<SaveObservation | null> {
  * Wait until storage holds the acknowledged save of `turn`: that turn is
  * committed with no pending decision and one history record per turn. A pending
  * roll/discard record, or the previous turn after a failed write, does not pass.
+ * The poll stops at the first matching read; "exactly one turn" is proven by
+ * `history === turn` (one record per turn), and callers that must exclude a
+ * later extra turn assert again after their next checkpoint.
  */
 export async function expectAcceptedSave(page: Page, turn: number): Promise<void> {
   await expect.poll(() => observeSave(page)).toEqual({ turn, pendingKind: null, history: turn });

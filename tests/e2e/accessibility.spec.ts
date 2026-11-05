@@ -10,6 +10,7 @@ import { createGame, playTurn } from "./fixtures/productGame";
 import {
   closeGameMenu,
   diceButton,
+  diceMoment,
   freezeClock,
   gamePanel,
   openGameMenu,
@@ -20,11 +21,12 @@ import {
   readSave,
   readSaveText,
   rollOnce,
+  stampsExpected,
   titleScreen,
   writeSaveText,
   useInventoryItem,
 } from "./support/app";
-import { advanceMovement } from "./support/turnMoments";
+import { advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 /** Per-hop duration of the default animation speed. */
 const STEP_MS =
@@ -87,7 +89,13 @@ test.describe("animated roll focus", () => {
     expect({ rawRoll: move.rawRoll, toStationId: move.toStationId })
       .toEqual({ rawRoll: expected.record.rawRoll, toStationId: expected.record.toStationId });
 
-    // S11 inserts advanceTumble / advanceStamps here, before the movement.
+    // Pre-move checkpoint (S11): the tumble overlay never takes focus; the dice keeps it through the stages.
+    await expect(diceMoment(page)).toBeVisible();
+    await advanceTumble(page);
+    if (stampsExpected(move)) await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
+    await expect(dice).toHaveAttribute("aria-disabled", "true");
+    await expect(dice).toBeFocused();
 
     // Movement checkpoint: half a hop in, still moving, focus unchanged.
     await advanceMovement(page, STEP_MS / 2);

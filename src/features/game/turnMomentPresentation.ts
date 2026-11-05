@@ -202,8 +202,9 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     : !liveView && !attempt && input.session.phase !== "idle" ? input.previousClassicAnnouncement ?? ""
     : !liveView && phase === "published" && current
       ? arrivalSummary(current.itemRecord?.turn ?? input.session.game.turn, current, completedCount, requiredCount, input.network, input.presentation)
-      // Attempt-less item mode (no P2 sequence running) is exactly P1: the real session phase decides the copy.
-      : liveView && (phase === "moving" || (!attempt && !revealActive && !showClear))
+      // Attempt-less item mode, or an attempt whose moments are omitted (reduced motion, Skip, restored roll,
+      // deadhead), is exactly P1 when no reveal runs: the real session phase decides the copy.
+      : liveView && (phase === "moving" || ((!attempt || attempt.motionOmitted) && !revealActive && !showClear))
         ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation)
         : turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
           stage: announcementStage, canRoll, completedCount, requiredCount, network: input.network, presentation: input.presentation });
