@@ -3,6 +3,20 @@ import { act, createElement, createRef } from "react";
 import type { ReactNode, RefObject } from "react";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  DICE_DELAY_STAMP_LABEL,
+  DICE_TUMBLE_HOLD_FRACTION,
+  DICE_TUMBLE_SETTLE_PERCENT,
+  DiceTumble,
+  diceFinalOrientation,
+  dicePipCells,
+  diceRawRollFor,
+  diceStampLabels,
+  diceTumbleModelFor,
+  type DiceFace,
+  type DiceTumbleModel,
+  type DiceTumbleProps,
+} from "../../src/features/game/components/DiceTumble";
 import { GameHud, type GameHudProps } from "../../src/features/game/components/GameHud";
 import { GamePanel, type GamePanelProps } from "../../src/features/game/components/GamePanel";
 import { InventoryPanel } from "../../src/features/game/components/InventoryPanel";
@@ -19,6 +33,7 @@ import { buildRailwayNetwork, createItemGame, platformPosition } from "../../src
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { createItemSession, itemSessionView, type ItemSessionView } from "../../src/features/game/itemSession";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import type { ItemDeadheadRecord, ItemEvent, ItemRideRecord } from "../../src/types/network";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { dispatchReactEvent, mountReact, type MountedReact } from "./helpers/reactDom";
@@ -712,5 +727,371 @@ describe("GamePanel target ref threading", () => {
     expect(without.container.querySelector('[data-stat="ride"]')!.hasAttribute("ref")).toBe(false);
     expect(withEmpty.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_")).toBe(without.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_"));
     expect(withTargets.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_")).toBe(without.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_"));
+  });
+});
+
+function rideRecord(overrides: Partial<ItemRideRecord> = {}): ItemRideRecord {
+  return {
+    kind: "item-ride", turn: 1, fromStationId: "a", toStationId: "b", command: { items: [] },
+    traversedSegmentIds: [], landing: null, landingSnapshot: null, itemEvents: [], discardedInstanceId: null,
+    resolvedRide: { serviceId: "line-a", direction: 1 }, rawRoll: 3, effectiveFace: 3, adjustment: null,
+    movementMode: "normal", pips: 3, hopBudget: 3, physicalHops: 3, unusedPips: 0, stopReason: "roll", ...overrides,
+  };
+}
+
+function deadheadRecord(): ItemDeadheadRecord {
+  return {
+    kind: "deadhead", turn: 1, fromStationId: "a", toStationId: "b", command: { items: [] },
+    traversedSegmentIds: [], landing: null, landingSnapshot: null, itemEvents: [], discardedInstanceId: null,
+    resolvedRide: null, rawRoll: null, effectiveFace: null, adjustment: null, movementMode: "deadhead",
+    pips: null, hopBudget: null, physicalHops: 0, unusedPips: null, stopReason: "relocation",
+    relocation: { fromStationId: "a", toStationId: "b", serviceId: "line-a", direction: 1, distance: 2 },
+  };
+}
+
+const DELAY_EVENT: ItemEvent = { type: "effect-activated", effect: "delay" };
+const OVERSLEEP_EVENT: ItemEvent = { type: "effect-activated", effect: "oversleep" };
+const DOUBLE_COMMAND: ItemRideRecord["command"] = { items: [{ kind: "double", instanceId: "double-1" }] };
+
+function modelOf(overrides: Partial<DiceTumbleModel> = {}): DiceTumbleModel {
+  return { stage: "tumble", rawRoll: 4, stampLabels: [], stageMs: 600, reducedMotion: false, ...overrides };
+}
+
+/** Stable identity for lifecycle assertions: updates go through `mount.root.render(createElement(DiceHarness, …))`. */
+function DiceHarness(props: DiceTumbleProps): React.JSX.Element {
+  return createElement(DiceTumble, props);
+}
+
+function mountDice(model: DiceTumbleModel): MountedReact {
+  const mount = mountReact(createElement(DiceHarness, { model }));
+  mounted.push(mount);
+  return mount;
+}
+
+function diceRoot(mount: MountedReact): HTMLElement | null {
+  return mount.container.querySelector<HTMLElement>(".dice-tumble");
+}
+
+function stampTexts(mount: MountedReact): string[] {
+  return [...mount.container.querySelectorAll(".dice-tumble__stamp")].map((stamp) => stamp.textContent ?? "");
+}
+
+interface OrientationRow {
+  readonly roll: DiceFace;
+  readonly xDeg: number;
+  readonly yDeg: number;
+}
+
+const ORIENTATION_ROWS: readonly OrientationRow[] = [
+  { roll: 1, xDeg: 0, yDeg: 0 },
+  { roll: 2, xDeg: 0, yDeg: -90 },
+  { roll: 3, xDeg: -90, yDeg: 0 },
+  { roll: 4, xDeg: 90, yDeg: 0 },
+  { roll: 5, xDeg: 0, yDeg: 90 },
+  { roll: 6, xDeg: 0, yDeg: 180 },
+];
+
+describe("diceFinalOrientation", () => {
+  it.each(ORIENTATION_ROWS)("raw roll $roll lands on rotateX($xDeg) rotateY($yDeg)", ({ roll, xDeg, yDeg }) => {
+    expect(diceFinalOrientation(roll)).toEqual({ xDeg, yDeg });
+  });
+
+  it.each(ORIENTATION_ROWS)("raw roll $roll shows that number on the front face with the matching pips", ({ roll, xDeg, yDeg }) => {
+    const mount = mountDice(modelOf({ rawRoll: roll }));
+
+    const root = diceRoot(mount)!;
+    expect(root.dataset["rawRoll"]).toBe(String(roll));
+    expect(root.style.getPropertyValue("--dice-final-x")).toBe(`${xDeg}deg`);
+    expect(root.style.getPropertyValue("--dice-final-y")).toBe(`${yDeg}deg`);
+    const finals = root.querySelectorAll(".dice-tumble__face--final");
+    expect(finals).toHaveLength(1);
+    expect((finals[0] as HTMLElement).dataset["face"]).toBe(String(roll));
+    expect(finals[0]!.querySelectorAll(".dice-tumble__pip")).toHaveLength(roll);
+  });
+
+  it("renders six fixed faces whose opposite faces sum to 7 and whose pips match their number", () => {
+    const mount = mountDice(modelOf());
+
+    const faces = [...mount.container.querySelectorAll<HTMLElement>(".dice-tumble__face")];
+    expect(faces.map((face) => face.dataset["face"])).toEqual(["1", "2", "3", "4", "5", "6"]);
+    expect(faces.map((face) => face.querySelectorAll(".dice-tumble__pip").length)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(dicePipCells(6)).toEqual([1, 3, 4, 6, 7, 9]);
+    expect(dicePipCells(5)).toEqual([1, 3, 5, 7, 9]);
+  });
+
+  it("uses the inverse of each face placement in styles.css", () => {
+    const css: string = readFileSync("src/styles.css", "utf8");
+    const normalize = (degrees: number): number => ((degrees % 360) + 360) % 360;
+
+    for (const { roll, xDeg, yDeg } of ORIENTATION_ROWS) {
+      const placement: string = css.match(new RegExp(`\\.dice-tumble__face\\[data-face="${roll}"\\] \\{ transform: ([^;]*);`))![1]!;
+      const placedX: number = Number(placement.match(/rotateX\((-?\d+)deg\)/)?.[1] ?? 0);
+      const placedY: number = Number(placement.match(/rotateY\((-?\d+)deg\)/)?.[1] ?? 0);
+      expect(normalize(xDeg), `face ${roll} x`).toBe(normalize(0 - placedX));
+      expect(normalize(yDeg), `face ${roll} y`).toBe(normalize(0 - placedY));
+    }
+  });
+});
+
+describe("diceRawRollFor", () => {
+  it("lands on the saved raw roll, never the effective face", () => {
+    const forced = rideRecord({ rawRoll: 4, effectiveFace: 1, pips: 1, hopBudget: 1 });
+    const adjusted = rideRecord({
+      rawRoll: 2, effectiveFace: 3, adjustment: { instanceId: "adjust-1", delta: 1 },
+    });
+
+    expect(diceRawRollFor(forced)).toBe(4);
+    expect(diceRawRollFor(adjusted)).toBe(2);
+    expect(diceTumbleModelFor(forced, "tumble", 600, false).rawRoll).toBe(4);
+    expect(diceTumbleModelFor(adjusted, "stamps", 240, false).rawRoll).toBe(2);
+  });
+
+  it.each([[null], [undefined], [deadheadRecord()]])("has no die for %j", (record) => {
+    expect(diceRawRollFor(record)).toBeNull();
+  });
+});
+
+describe("diceStampLabels", () => {
+  interface LabelRow {
+    readonly name: string;
+    readonly record: ItemRideRecord;
+    readonly labels: readonly string[];
+  }
+
+  const LABEL_ROWS: readonly LabelRow[] = [
+    { name: "plain ride", record: rideRecord(), labels: [] },
+    { name: "double", record: rideRecord({ command: DOUBLE_COMMAND, rawRoll: 2, effectiveFace: 2, pips: 4 }), labels: ["×2"] },
+    {
+      name: "adjustment +1",
+      record: rideRecord({ rawRoll: 3, effectiveFace: 4, adjustment: { instanceId: "adjust-1", delta: 1 } }),
+      labels: ["調整+1"],
+    },
+    {
+      name: "adjustment -1",
+      record: rideRecord({ rawRoll: 3, effectiveFace: 2, adjustment: { instanceId: "adjust-1", delta: -1 } }),
+      labels: ["調整-1"],
+    },
+    { name: "rapid", record: rideRecord({ movementMode: "rapid", hopBudget: 3 }), labels: ["快速"] },
+    {
+      name: "oversleep",
+      record: rideRecord({ movementMode: "oversleep", itemEvents: [OVERSLEEP_EVENT] }),
+      labels: ["寝過ごし"],
+    },
+    {
+      name: "delay forcing the face to 1",
+      record: rideRecord({ rawRoll: 4, effectiveFace: 1, pips: 1, hopBudget: 1, itemEvents: [DELAY_EVENT] }),
+      labels: ["遅延"],
+    },
+    {
+      name: "delay forced face without an event",
+      record: rideRecord({ rawRoll: 4, effectiveFace: 1, pips: 1, hopBudget: 1 }),
+      labels: ["遅延"],
+    },
+    {
+      name: "delay activated on a raw 1 (event only)",
+      record: rideRecord({ rawRoll: 1, effectiveFace: 1, pips: 1, hopBudget: 1, itemEvents: [DELAY_EVENT] }),
+      labels: ["遅延"],
+    },
+    {
+      name: "double together with a delay on a raw 1",
+      record: rideRecord({ rawRoll: 1, effectiveFace: 1, command: DOUBLE_COMMAND, itemEvents: [DELAY_EVENT] }),
+      labels: ["×2", "遅延"],
+    },
+    {
+      name: "rapid together with a forced face has no duplicate delay stamp",
+      record: rideRecord({ movementMode: "rapid", rawRoll: 4, effectiveFace: 1, itemEvents: [DELAY_EVENT] }),
+      labels: ["快速", "遅延"],
+    },
+    {
+      name: "a non-delay effect event on a raw 1 adds nothing",
+      record: rideRecord({ rawRoll: 1, effectiveFace: 1, itemEvents: [{ type: "effect-activated", effect: "detour" }] }),
+      labels: [],
+    },
+  ];
+
+  it.each(LABEL_ROWS)("$name", ({ record, labels }) => {
+    expect(diceStampLabels(record)).toEqual(labels);
+  });
+
+  it("keeps the delay label equal to the wording helper's forced-face wording", () => {
+    expect(DICE_DELAY_STAMP_LABEL).toBe("遅延");
+    expect(diceStampLabels(rideRecord({ rawRoll: 5, effectiveFace: 1 }))).toEqual([DICE_DELAY_STAMP_LABEL]);
+  });
+
+  it("has no stamps for deadhead, a missing record, or nothing", () => {
+    expect(diceStampLabels(deadheadRecord())).toEqual([]);
+    expect(diceStampLabels(null)).toEqual([]);
+    expect(diceStampLabels(undefined)).toEqual([]);
+  });
+});
+
+describe("DiceTumble stages", () => {
+  it("shows no stamps during the tumble even when labels are given", () => {
+    const mount = mountDice(modelOf({ stage: "tumble", stampLabels: ["×2"] }));
+
+    expect(diceRoot(mount)!.dataset["stage"]).toBe("tumble");
+    expect(diceRoot(mount)!.className).toBe("dice-tumble dice-tumble--tumble");
+    expect(stampTexts(mount)).toEqual([]);
+  });
+
+  it("shows each stamp label once during the stamps stage, with the cube at its final pose", () => {
+    const mount = mountDice(modelOf({ stage: "stamps", stampLabels: ["×2", "遅延"], stageMs: 240 }));
+
+    expect(diceRoot(mount)!.className).toBe("dice-tumble dice-tumble--stamps");
+    expect(stampTexts(mount)).toEqual(["×2", "遅延"]);
+    expect(mount.container.querySelectorAll(".dice-tumble__face--final")).toHaveLength(1);
+  });
+
+  it("renders the cube without a stamp row when the stamps stage has no labels", () => {
+    const mount = mountDice(modelOf({ stage: "stamps", stampLabels: [] }));
+
+    expect(diceRoot(mount)).not.toBeNull();
+    expect(mount.container.querySelector(".dice-tumble__stamps")).toBeNull();
+  });
+
+  it.each([
+    ["deadhead", diceTumbleModelFor(deadheadRecord(), "stamps", 240, false)],
+    ["a missing raw roll while stamping", modelOf({ stage: "stamps", rawRoll: null, stampLabels: ["×2"] })],
+    ["a missing raw roll while tumbling", modelOf({ stage: "tumble", rawRoll: null })],
+    ["an out-of-range raw roll", modelOf({ rawRoll: 7 })],
+    ["a fractional raw roll", modelOf({ rawRoll: 2.5 })],
+  ])("renders nothing for %s", (_name, model) => {
+    const mount = mountDice(model);
+
+    expect(mount.container.childElementCount).toBe(0);
+  });
+
+  it.each([
+    [800, "800ms"], [600, "600ms"], [400, "400ms"], [240, "240ms"], [160, "160ms"],
+    [0, "0ms"], [-5, "0ms"], [Number.NaN, "0ms"], [Number.POSITIVE_INFINITY, "0ms"],
+  ])("sets --dice-stage-ms for a %s ms stage to %s", (stageMs, literal) => {
+    const mount = mountDice(modelOf({ stageMs }));
+
+    expect(diceRoot(mount)!.style.getPropertyValue("--dice-stage-ms")).toBe(literal);
+  });
+
+  it("marks the reduced-motion flag as a modifier class", () => {
+    const mount = mountDice(modelOf({ reducedMotion: true }));
+
+    expect(diceRoot(mount)!.className).toBe("dice-tumble dice-tumble--tumble dice-tumble--reduced");
+  });
+
+  it("updates in place when the stage changes", () => {
+    const mount = mountDice(modelOf());
+    const root = diceRoot(mount)!;
+
+    act(() => mount.root.render(createElement(DiceHarness, { model: modelOf({ stage: "stamps", stampLabels: ["快速"], stageMs: 240 }) })));
+
+    expect(diceRoot(mount)).toBe(root);
+    expect(stampTexts(mount)).toEqual(["快速"]);
+    expect(root.style.getPropertyValue("--dice-stage-ms")).toBe("240ms");
+  });
+});
+
+describe("DiceTumble independence from timers and animation events", () => {
+  const source: string = readFileSync("src/features/game/components/DiceTumble.tsx", "utf8");
+
+  it("uses no presentation randomness, timers or animation-end hooks in its source", () => {
+    expect(source).not.toContain("Math.random");
+    expect(source).not.toMatch(/animationend|transitionend|onAnimationEnd|onTransitionEnd/i);
+    expect(source).not.toMatch(/setTimeout|setInterval|requestAnimationFrame|useEffect|useLayoutEffect/);
+  });
+
+  it("registers no animationend or transitionend listener and draws no random number while rendering", () => {
+    const mount = mountDice(modelOf({ rawRoll: null }));
+    const add = vi.spyOn(EventTarget.prototype, "addEventListener");
+    const random = vi.spyOn(Math, "random");
+
+    act(() => mount.root.render(createElement(DiceHarness, { model: modelOf({ stage: "tumble" }) })));
+    act(() => mount.root.render(createElement(DiceHarness, { model: modelOf({ stage: "stamps", stampLabels: ["×2"], stageMs: 240 }) })));
+
+    const types: string[] = add.mock.calls.map(([type]) => type);
+    expect(types).not.toContain("animationend");
+    expect(types).not.toContain("transitionend");
+    expect(random).not.toHaveBeenCalled();
+    expect(diceRoot(mount)).not.toBeNull();
+  });
+});
+
+describe("DiceTumble decorative accessibility", () => {
+  it.each(["tumble", "stamps"] as const)("is aria-hidden with no focusable descendants or live region in the %s stage", (stage) => {
+    const mount = mountDice(modelOf({ stage, stampLabels: ["×2", "遅延"] }));
+
+    const root = diceRoot(mount)!;
+    expect(root.getAttribute("aria-hidden")).toBe("true");
+    expect(root.querySelectorAll(FOCUSABLE_SELECTOR)).toHaveLength(0);
+    expect(root.querySelectorAll("[role], [aria-live], [aria-label], [aria-labelledby]")).toHaveLength(0);
+  });
+
+  it("has no text on the faces, so nothing repeats the panel announcement", () => {
+    const mount = mountDice(modelOf({ stage: "tumble", rawRoll: 5 }));
+
+    expect(diceRoot(mount)!.textContent).toBe("");
+  });
+});
+
+describe("dice css contract", () => {
+  const css: string = readFileSync("src/styles.css", "utf8");
+
+  function block(selector: string): string {
+    const start: number = css.indexOf(`${selector} {`);
+    expect(start, `block ${selector}`).toBeGreaterThanOrEqual(0);
+    return css.slice(start, css.indexOf("\n}", start));
+  }
+
+  it("builds a pseudo-3D cube from six absolutely placed faces", () => {
+    expect(block(".dice-tumble__cube")).toContain("transform-style: preserve-3d;");
+    expect(block(".dice-tumble__cube")).toContain("transform: rotateX(var(--dice-final-x, 0deg)) rotateY(var(--dice-final-y, 0deg));");
+    expect(block(".dice-tumble__scene")).toContain("perspective: 480px;");
+    expect(block(".dice-tumble__face")).toContain("position: absolute;");
+    expect(css.match(/\.dice-tumble__face\[data-face="[1-6]"\] \{ transform: /g)).toHaveLength(6);
+  });
+
+  it("derives both animation durations from the stage custom property and adds no delay", () => {
+    expect(css).toContain("animation: dice-tumble-spin var(--dice-stage-ms, 600ms) cubic-bezier(0.22, 0.61, 0.36, 1) both;");
+    expect(css).toContain("animation: dice-stamp-in var(--dice-stage-ms, 240ms) ease-out both;");
+    expect(css).not.toContain("animation-delay");
+  });
+
+  it("reaches the final pose at the settle percentage and holds it for the rest of the same duration", () => {
+    expect(DICE_TUMBLE_SETTLE_PERCENT).toBe(75);
+    expect(DICE_TUMBLE_HOLD_FRACTION).toBe(0.25);
+    expect(DICE_TUMBLE_SETTLE_PERCENT / 100 + DICE_TUMBLE_HOLD_FRACTION).toBe(1);
+    const keyframes: string = block("@keyframes dice-tumble-spin");
+    expect(keyframes).toContain("75%, 100% { transform: rotateX(var(--dice-final-x, 0deg)) rotateY(var(--dice-final-y, 0deg)); }");
+    expect(keyframes).toMatch(/0% \{ transform: rotateX\(calc\(var\(--dice-final-x, 0deg\) - 720deg\)\)/);
+  });
+
+  it("animates only transform and opacity", () => {
+    const frames: string = `${block("@keyframes dice-tumble-spin")}${block("@keyframes dice-stamp-in")}`;
+    const properties: string[] = [...frames.matchAll(/\{\s*([a-z-]+):/g)].map((match) => match[1]!);
+    expect(new Set(properties)).toEqual(new Set(["transform", "opacity"]));
+  });
+
+  it("falls back to a flat final face when 3D transforms are unsupported", () => {
+    const fallback: string = block("@supports not (transform-style: preserve-3d)");
+    expect(fallback).toContain("transform: none;");
+    expect(fallback).toContain("animation: none;");
+    expect(fallback).toMatch(/\.dice-tumble__face\[data-face\] \{\s*transform: none;\s*display: none;/);
+    expect(fallback).toMatch(/\.dice-tumble__face--final\[data-face\] \{\s*display: grid;/);
+  });
+
+  it("shows the end state without animation under the reduced-motion flag and the system preference", () => {
+    expect(css).toMatch(/\.dice-tumble--reduced \.dice-tumble__cube,\s*\.dice-tumble--reduced \.dice-tumble__stamp \{\s*animation: none;/);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.dice-tumble \.dice-tumble__cube,\s*\.dice-tumble \.dice-tumble__stamp \{\s*animation: none;/);
+  });
+
+  it("places the dice rules after the first reduced-motion block that ui-contrast reads", () => {
+    expect(css.indexOf("@media (prefers-reduced-motion: reduce)")).toBeLessThan(css.indexOf(".dice-tumble {"));
+  });
+
+  it("keeps the base rules at the final state so a missing animation changes nothing", () => {
+    expect(block(".dice-tumble__stamp")).toContain("transform: rotate(var(--dice-stamp-tilt));");
+    expect(block(".dice-tumble__stamp")).not.toContain("opacity");
+  });
+
+  it("uses colour tokens only inside the dice rules", () => {
+    const dice: string = css.slice(css.indexOf(".dice-tumble {"), css.indexOf("@supports not (transform-style"));
+    expect(dice).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgb\(/);
   });
 });

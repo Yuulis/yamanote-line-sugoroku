@@ -456,6 +456,90 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/dice.spec.ts tests/e2e/lott
 
 ---
 
+## S10: Dice cube and modifier visuals, unmounted
+
+Implement plan `### S10` exactly. Files: new `src/features/game/components/DiceTumble.tsx`; modify
+`src/styles.css` and `tests/unit/turn-moment-components.test.ts` (plus the handoff row). The component is **not
+mounted** anywhere in production (`GameApp`, `GamePanel`, `TurnMomentHost` callers unchanged); it owns no timer,
+no sequence progression, no `animationend`/`transitionend` listener — S11 mounts it and drives it.
+
+- Pure helpers exported from `DiceTumble.tsx` (table-tested):
+  - `diceFinalOrientation(rawRoll: 1 | … | 6)` → the fixed rotation that brings that face to the front of a six-face
+    CSS cube (standard die: opposite faces sum to 7). Deterministic; no `Math.random`, no presentation RNG.
+  - Stamp labels from accepted facts: reuse `itemRideModifierWording()` / `compactRollFor()` wording from
+    `src/features/game/hudPresentation.ts` (do not duplicate the strings): `×2`, `調整+1`, `調整-1`, `快速`, `遅延`,
+    and `寝過ごし` for oversleep (its compact label; S2 decided 寝過ごし also gets a stamp). Additionally, an
+    accepted `effect-activated` delay event for this turn yields `遅延` even when `rawRoll === effectiveFace === 1`
+    (the wording helper cannot see it). No duplicate stamps. Deadhead / relocation → no die and no stamps.
+  - The cube always lands on the saved **raw** roll, never the effective face (plan risk).
+- `DiceTumble` component (`DiceTumbleProps` in the same file): a typed model with the stage (`"tumble"` |
+  `"stamps"`), raw roll, stamp labels, stage duration in ms (sets a CSS custom property; animation durations come
+  from it), and reduced-motion flag. Six fixed face elements with pips or numerals; transform/opacity animation only.
+  The tumble keyframes reach the final orientation before the end and **hold the final pose for the last part of the
+  same duration** (document the fraction; no extra time). Stamps animate in during the `stamps` stage. Root
+  `aria-hidden="true"`, no focusable descendants, no live region, no text that duplicates the panel announcement
+  semantics. Renders nothing for deadhead or a missing raw roll during `stamps`.
+- CSS in `src/styles.css` (global BEM, colour tokens, existing layer token from S8 if needed): cube with
+  `transform-style: preserve-3d`; `@supports not (transform-style: preserve-3d)` fallback shows a flat final face;
+  `@media (prefers-reduced-motion: reduce)` and the reduced-motion flag show the final face/stamps with no animation.
+  CSS capability must never block completion (nothing waits on CSS). Respect the existing first reduced-motion block
+  that `tests/unit/ui-contrast.test.ts` reads — add new rules after it.
+- Tests (extend `tests/unit/turn-moment-components.test.ts`, literal expectations): all six raw rolls → expected
+  final rotation literals (and the front face shows that number); hold-fraction/duration custom property literals;
+  labels for ×2, ±1, rapid, oversleep, delay (forced face) and delay on raw 1 via the effect event; deadhead renders
+  no die; source has no `Math.random` and registers no `animationend`/`transitionend` listener (spy
+  `addEventListener`); reduced-motion and `@supports` fallback rules exist in `styles.css` (read the file like the
+  S8 tests do); decorative accessibility (`aria-hidden`, zero focusable descendants).
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moment-components.test.ts tests/unit/turn-moments.test.ts tests/unit/hud-presentation.test.ts tests/unit/ui-contrast.test.ts
+npx vitest run
+npm run build
+```
+
+---
+
+## S10b: Integration fixtures and timing-sensitive test preparation
+
+Implement plan `### S10b` exactly, plus the `## E2E Re-pointing Map` rows whose Step column names S10b
+(`dice.spec.ts` repeated clicks / half-hop / natural completion, `resume.spec.ts` reload during movement,
+`save-errors.spec.ts`) — **preparation only**: production stage lists stay empty, no production delay, no `src/**`
+change. Files: modify `tests/unit/game-app-turn-moments.test.ts`, `tests/unit/game-app-item-progress.test.ts`,
+`tests/e2e/support/app.ts`, `tests/e2e/support/turnMoments.ts`, `tests/e2e/dice.spec.ts`,
+`tests/e2e/resume.spec.ts`, `tests/e2e/save-errors.spec.ts` (plus the handoff row).
+
+- Unit fixtures/assertions (reusable, named, documented, with literal expectations): accepted-save observation tied
+  to the acknowledged save boundary (distinct from pending `committing` and from save failure); pending-adjust
+  resume without a tumble replay; save failure stays visible and does not start an accepted sequence twice; speed
+  captured for the active attempt, a 速度 change applies to the next turn; same-task duplicate clicks accept exactly
+  one turn. Where production has no attempt yet (`attempt: null`), assert today's behaviour and leave a clearly
+  named fixture S11 can switch on — do not fake an attempt in production code.
+- E2E helpers (S9 open finding): split `revealUnadjustedRoll()` into a click step and an outcome-wait step (e.g.
+  `clickDice(page)` + `waitForRollOutcome(page)`), so frozen-clock callers can advance the tumble between them from
+  S11; `revealUnadjustedRoll()` keeps its current behaviour by composing the two. Export whatever S9 checkpoint
+  helpers the specs below need; keep `turnMoments.ts` free of `src/**` imports and its timings independent.
+- Specs: re-point the S10b rows to explicit S9 checkpoints while **retaining every baseline assertion and expected
+  value**; keep both browser-click and same-task `.click()` cases in `dice.spec.ts`; no silent Skip in a
+  natural-completion test; movement durations are exact (distance-based via P1 `buildMovePlan` + `hopDurationMs`,
+  capped at `MAX_MOVE_DURATION_MS`, as `accessibility.spec.ts` and `capital-region.spec.ts` do), never
+  `physicalHops × STEP_MS`. Mark with a comment where S11 inserts `advanceTumble`/`advanceStamps`.
+- Report every old → new checkpoint and confirm the expected value is unchanged. Run each changed spec twice.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/game-app-turn-moments.test.ts tests/unit/game-app-item-progress.test.ts tests/unit/turn-moment-hooks.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/dice.spec.ts tests/e2e/resume.spec.ts tests/e2e/save-errors.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/capital-region.spec.ts --project=desktop-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`
