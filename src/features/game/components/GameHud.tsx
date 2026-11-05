@@ -2,6 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import type { SaveWriteResult } from "../store/persistence";
 import type { LineBadgeModel } from "../lineBadge";
 import type { EffectChipModel } from "../hudPresentation";
+import { setTargetRef, type TurnMomentTargetRef } from "./TurnMomentHost";
 import { EffectChips } from "./EffectChips";
 import { LineBadge } from "./LineBadge";
 import { TargetProgressBar } from "./TargetProgressBar";
@@ -29,6 +30,9 @@ export interface GameHudProps {
   onRoll: () => void;
   onSkip: () => void;
   effects: readonly EffectChipModel[];
+  /** Optional animation targets; measured only, they add no elements and change no markup. */
+  rideTargetRef?: TurnMomentTargetRef;
+  directionTargetRef?: TurnMomentTargetRef;
 }
 
 function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element {
@@ -48,6 +52,7 @@ export function GameHud({
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, compactRoll, saveStatus, saveStatusMessage,
   canRoll, canSkip, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
+  rideTargetRef, directionTargetRef,
 }: GameHudProps): React.JSX.Element {
   const failed: boolean = saveStatus === "failed" || saveStatus === "unavailable";
   const saveMark: boolean = saveStatus === "saved";
@@ -64,9 +69,9 @@ export function GameHud({
         <dt>現在駅</dt>
         <dd><span className="hud-stat__value" data-stat="station" title={station}>{station}</span></dd>
         <dt>乗車中</dt>
-        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride" title={ride}>{ride}</span></dd>
+        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride" title={ride} ref={rideTargetRef ? (element: HTMLSpanElement | null) => setTargetRef(rideTargetRef, element) : undefined}>{ride}</span></dd>
         <dt>進行方向</dt>
-        <dd><span className="hud-stat__value" data-stat="direction" title={direction}>{direction}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="direction" title={direction} ref={directionTargetRef ? (element: HTMLSpanElement | null) => setTargetRef(directionTargetRef, element) : undefined}>{direction}</span></dd>
         <dt>ターン数</dt>
         <dd><span className="hud-stat__value" data-stat="turn" title={String(turn)}>{turn}</span></dd>
         <dt>踏破区間</dt>

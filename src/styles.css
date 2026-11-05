@@ -9,7 +9,7 @@ body {
   font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
 
-/* Stacking order: map < panel < screens < map error < data banner.
+/* Stacking order: map < panel < turn moment < screens < map error < data banner.
    The confirmation <dialog> sits in the browser's top layer above all. */
 :root {
   --color-brand: #d9502f;
@@ -38,10 +38,41 @@ body {
   --motion-normal: 200ms;
   --motion-slow: 300ms;
   --layer-panel: 10;
+  --layer-turn-moment: 15;
   --layer-screen: 20;
   --layer-map-error: 25;
   --layer-toast: 30;
   --layer-banner: 40;
+}
+
+/* Turn-moment overlay: visual only, fixed, and transparent to pointers. The region follows the free rectangle
+   chosen in TurnMomentHost; only the content-sized card takes pointer events (a tap there is Skip). */
+.turn-moment-host {
+  position: fixed;
+  z-index: var(--layer-turn-moment);
+  inset: 0;
+  pointer-events: none;
+}
+
+.turn-moment-host__region {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.turn-moment-host__card {
+  box-sizing: border-box;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-lg);
+  background: var(--color-cream);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  pointer-events: auto;
+  transition: opacity var(--motion-normal) ease-out, transform var(--motion-normal) ease-out;
 }
 
 .toast-host {
@@ -215,6 +246,12 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .toast-host__toast--motion {
     animation: none;
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turn-moment-host__card {
     transition: none;
   }
 }

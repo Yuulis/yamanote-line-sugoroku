@@ -24,6 +24,7 @@ import type { TurnMomentDisplay } from "../turnMomentPresentation";
 import { lineBadgeFor } from "../lineBadge";
 import { InventoryPanel } from "./InventoryPanel";
 import { GameHud } from "./GameHud";
+import type { TurnMomentTargets } from "./TurnMomentHost";
 import { ItemUseDialog } from "./ItemUseDialog";
 import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
@@ -54,6 +55,8 @@ export interface GamePanelProps {
   onAdjustItemRoll?: (adjustment: ItemRollAdjustment | null) => void;
   onDiscardItem?: (instanceId: string) => void;
   onItemDialogOpenChange?: (open: boolean) => void;
+  /** Optional animation target refs for the turn moments; absent = today's markup. */
+  turnMomentTargets?: TurnMomentTargets;
 }
 
 function showAllLineGroups(): void {
@@ -252,6 +255,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           {itemView && <InventoryPanel
             view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem}
             itemUseLocked={turnDisplay.itemUseLocked} decisionOpen={presentedDecision !== null}
+            slotTargetRefs={props.turnMomentTargets?.slots} headerTargetRef={props.turnMomentTargets?.inventoryHeader}
           />}
           {draftItem && itemView && <div className="item-staged-summary">
             <span className="item-staged-summary__label">選択中：</span>
@@ -283,6 +287,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onSkip={props.onSkip}
         effects={effectModels}
         canSkip={turnDisplay.canSkip}
+        rideTargetRef={props.turnMomentTargets?.ride}
+        directionTargetRef={props.turnMomentTargets?.direction}
       />
       <div className="game-panel__disclosures">
         <TurnLogDrawer

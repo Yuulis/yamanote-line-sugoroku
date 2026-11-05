@@ -8,6 +8,7 @@ import {
 import { ItemIcon } from "./ItemIcon";
 import { modalDialogOpen } from "./GameMenu";
 import { ItemCard, ItemCardPopover } from "./ItemCard";
+import { setTargetRef, type TurnMomentTargetRef } from "./TurnMomentHost";
 
 const INVENTORY_SLOT_COUNT: number = 3;
 export const ITEM_USE_LOCKED_LABEL: string = "演出中は使えません";
@@ -21,6 +22,10 @@ export interface InventoryPanelProps {
   itemUseLocked?: boolean;
   /** The presented decision (not the raw session decision) hides the card; defaults to the view's decision. */
   decisionOpen?: boolean;
+  /** Optional animation targets by slot index (empty slots included); measured only. */
+  slotTargetRefs?: readonly (TurnMomentTargetRef | null | undefined)[];
+  /** Optional animation target on the inventory header box. */
+  headerTargetRef?: TurnMomentTargetRef;
 }
 
 interface DescriptionPart {
@@ -84,6 +89,7 @@ function pointInside(element: Element | null, x: number, y: number): boolean {
 
 export function InventoryPanel({
   view, openItemId, onOpenItemChange, onUse, itemUseLocked = false, decisionOpen = view.decision !== null,
+  slotTargetRefs, headerTargetRef,
 }: InventoryPanelProps): React.JSX.Element {
   const generatedId: string = useId();
   const headingId: string = `item-inventory-heading-${generatedId}`;
@@ -187,15 +193,20 @@ export function InventoryPanel({
 
   return (
     <section className="item-inventory" aria-labelledby={headingId}>
-      <div className="item-inventory__header">
+      <div
+        className="item-inventory__header"
+        ref={headerTargetRef ? (element: HTMLDivElement | null) => setTargetRef(headerTargetRef, element) : undefined}
+      >
         <h2 id={headingId} className="visually-hidden">アイテム（3枠）</h2>
         <p className="item-inventory__label" aria-hidden="true">持ち物</p>
       </div>
       <ol className="item-inventory__slots">
         {Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => {
           const item = view.inventory[index];
+          const slotTarget = slotTargetRefs?.[index];
+          const slotRef = slotTarget ? (element: HTMLLIElement | null) => setTargetRef(slotTarget, element) : undefined;
           if (!item) {
-            return <li key={`empty-${index}`} className="item-slot item-slot--empty">
+            return <li key={`empty-${index}`} ref={slotRef} className="item-slot item-slot--empty">
               <span className="item-slot__empty">空き枠</span>
             </li>;
           }
@@ -221,6 +232,7 @@ export function InventoryPanel({
 
           return <li
             key={item.id}
+            ref={slotRef}
             className={slotClass}
             onPointerEnter={(event: React.PointerEvent<HTMLLIElement>) => {
               if (event.pointerType === "touch") return;
