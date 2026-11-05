@@ -149,6 +149,7 @@ test.describe("with move animation", () => {
     await expect(panelStat(page, "ターン数")).toHaveText("1");
     await skip.click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
     await expect(panelStat(page, "ターン数")).toHaveText("1");
     expect((await readSave(page))?.turn).toBe(1);
 
@@ -161,6 +162,7 @@ test.describe("with move animation", () => {
     await expect(diceButton(page)).toHaveText("移動中…");
     await skip.click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
     await expect(panelStat(page, "ターン数")).toHaveText("2");
     const save = await readSave(page);
     expect(save?.turn).toBe(2);
@@ -205,6 +207,7 @@ test.describe("with move animation", () => {
       timeout: move.physicalHops * STEP_MS + MOVE_SETTLE_TIMEOUT_MS,
     });
     await expect(diceButton(page)).toBeEnabled();
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
     await expect(panelStat(page, "現在駅")).toHaveText(end?.name ?? "?");
     await expect(panelStat(page, "踏破区間")).toHaveText(`${move.rawRoll}/${REQUIRED_SEGMENTS}`);
     await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, (await readSave(page))!));

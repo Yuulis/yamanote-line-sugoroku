@@ -152,7 +152,21 @@ export async function startNewGame(page: Page): Promise<void> {
   await expect(panelStat(page, "ターン数")).toHaveText("0");
 }
 
-/** Roll once and wait until the move has settled (idle panel or clear screen). */
+/**
+ * The dice once it accepts a roll: it keeps its label while a post-move reveal
+ * disables it, so readiness is `aria-disabled="false"`, never the label alone.
+ */
+export function diceReady(page: Page): Locator {
+  return diceButton(page).and(page.locator('[aria-disabled="false"]'));
+}
+
+/**
+ * Roll once and wait until the move has settled: the saved turn, any presented
+ * discard dialog resolved, then an enabled dice (or the clear screen).
+ *
+ * Works under reduced motion and with a real clock. Under a frozen clock the
+ * caller must advance every active stage first (see `./turnMoments`).
+ */
 export async function rollOnce(page: Page): Promise<void> {
   const turnBefore = (await readSave(page))?.turn ?? 0;
   await revealUnadjustedRoll(page);
@@ -161,20 +175,35 @@ export async function rollOnce(page: Page): Promise<void> {
     return save?.pending?.kind === "discard" || save?.turn === turnBefore + 1;
   }).toBe(true);
   if ((await readSave(page))?.pending?.kind === "discard") {
-    await page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" }).getByRole("button").last().click();
+    // A saved pending record is not proof the dialog is mounted: wait for it.
+    const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    await expect(discard).toBeVisible();
+    await discard.getByRole("button").last().click();
   }
   await expect.poll(async () => (await readSave(page))?.turn).toBe(turnBefore + 1);
   const clear = page.getByRole("heading", { name: "クリア！" });
-  await expect(diceButton(page).filter({ hasText: "サイコロを振る" }).or(clear)).toBeVisible();
+  await expect(diceReady(page).or(clear)).toBeVisible();
 }
 
-/** Reveal a die, explicitly declining adjustment; leave movement/discard visible. */
+/**
+ * Reveal a die, explicitly declining adjustment; leave movement/discard visible.
+ *
+ * A saved pending roll (`pending.kind === "roll"`) only means an adjustment
+ * decision exists, not that its dialog is mounted, so the helper waits for the
+ * actual `role=dialog`. Limitation: the click and the dialog wait are one call,
+ * so under a frozen clock this helper is not usable once the tumble is active
+ * (S11): the dialog cannot appear until the tumble is advanced, and the tumble
+ * only starts at the click inside. S11 must split the click from the dialog
+ * wait or add an advance hook before frozen-clock callers (capital-region,
+ * ui-pop) can use it.
+ */
 export async function revealUnadjustedRoll(page: Page): Promise<void> {
   const turnBefore = (await readSave(page))?.turn ?? 0;
   await diceButton(page).click();
   const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
   await expect.poll(async () => {
     const save = await readSave(page);
+    if (save?.pending?.kind === "roll") return await adjustment.isVisible();
     return await adjustment.isVisible() || save?.pending?.kind === "discard" || save?.turn === turnBefore + 1;
   }).toBe(true);
   if (await adjustment.isVisible()) await adjustment.getByRole("button", { name: "そのまま続ける" }).click();
