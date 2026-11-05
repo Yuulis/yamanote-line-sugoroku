@@ -4,14 +4,8 @@ import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine"
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
 import {
-  arrivalLogText,
-  arrivalSummary,
-  itemTurnAnnouncement,
   directionLabel,
-  displayedRide,
-  landingText,
   LOTTERY_INLINE_LIMIT,
-  lastRollText,
   serviceName,
   stationName,
 } from "../presentation";
@@ -25,9 +19,8 @@ import {
 import { GameMenu, modalDialogOpen } from "./GameMenu";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
-import type { ItemSessionView } from "../itemSession";
 import { ITEM_DESCRIPTIONS } from "../itemPresentation";
-import { compactRollFor, compactRollText, effectChipModels } from "../hudPresentation";
+import type { TurnMomentDisplay } from "../turnMomentPresentation";
 import { lineBadgeFor } from "../lineBadge";
 import { InventoryPanel } from "./InventoryPanel";
 import { GameHud } from "./GameHud";
@@ -41,13 +34,11 @@ const UPCOMING_STATION_COUNT = 5;
 
 export interface GamePanelProps {
   session: GameSession;
+  turnDisplay: TurnMomentDisplay;
   network: RailwayNetwork;
   presentation?: PresentationResolver;
   display?: EditionDisplay;
   lines: readonly LineMetadata[];
-  /** Station the marker has reached (follows the animation). */
-  displayedStationId: string;
-  displayedCompletedCount: number;
   requiredCount: number;
   saveStatus: SaveWriteResult | null;
   follow: boolean;
@@ -59,7 +50,6 @@ export interface GamePanelProps {
   onCycleSpeed: () => void;
   onNewGame: () => void;
   onShowTitle: () => void;
-  itemView?: ItemSessionView | null;
   onEditItemDraft?: (command: ItemTurnCommand) => void;
   onAdjustItemRoll?: (adjustment: ItemRollAdjustment | null) => void;
   onDiscardItem?: (instanceId: string) => void;
@@ -72,30 +62,25 @@ function showAllLineGroups(): void {
 
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
 export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
-  const { session, network, saveStatus, follow, reducedMotion, lines } = props;
+  const { session, network, saveStatus, follow, reducedMotion, lines, turnDisplay } = props;
   const presentation = useMemo(
     () => props.presentation ?? createPresentationResolver(network),
     [props.presentation, network],
   );
   const { game, phase } = session;
-  const arrived = "pending" in game && game.pending?.kind === "discard" && phase === "awaiting-discard"
-    ? game.pending.position : game;
+  const itemView = turnDisplay.itemView;
   const display = props.display ?? EDITIONS[0]!.display;
   const animating = phase === "animating";
-  const canRoll = game.status === "playing" && phase === "idle";
-  const ride = displayedRide(session);
+  const canRoll = turnDisplay.canRoll;
+  const ride = turnDisplay.ride;
   const currentService = network.servicesById.get(ride.serviceId);
   const currentRideName = serviceName(network, ride.serviceId, presentation);
   const lineBadge = lineBadgeFor(ride.serviceId, presentation, currentService?.color);
-  const effectsVisible = Boolean(props.itemView && (phase === "idle" || phase === "awaiting-discard"));
-  const effectTurn: number = session.lastMove?.itemRecord?.turn ?? game.turn;
-  const effectModels = effectsVisible && props.itemView
-    ? effectChipModels(props.itemView.effects, effectTurn, network, presentation)
-    : [];
+  const effectModels = turnDisplay.effectModels;
   const selectedGroupIds = useVisibleLineGroupIds();
   const targetColor = presentation.lineGroupColor(game.config.targetServiceId)
     ?? network.servicesById.get(game.config.targetServiceId)?.color;
-  const candidates = session.lastMove?.landing?.serviceCandidates ?? [];
+  const candidates = turnDisplay.candidateRows;
   const legendGroups = useMemo(
     () => buildMapPresentationGroups(
       [...network.servicesById.values()],
@@ -113,7 +98,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const allGroupIds = useMemo(() => legendGroups.map((group) => group.id), [legendGroups]);
   const requiredTargetIds = useMemo(() => targetSegmentIds(game.config, network), [game.config, network]);
   const remainingSections = useMemo(() => {
-    const completed = new Set(arrived.completedSegmentIds);
+    const completed = new Set(turnDisplay.progress.completedSegmentIds);
     return requiredTargetIds.flatMap((id) => {
       if (completed.has(id)) return [];
       const segment = network.segmentsById.get(id);
@@ -124,10 +109,10 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         to: presentation.serviceStationName(game.config.targetServiceId, segment.to),
       }];
     });
-  }, [arrived.completedSegmentIds, game.config, network, presentation, requiredTargetIds]);
+  }, [turnDisplay.progress.completedSegmentIds, game.config, network, presentation, requiredTargetIds]);
   const upcomingStations = useMemo(() => {
     const ids: string[] = [];
-    let current = props.displayedStationId;
+    let current = turnDisplay.progress.stationId;
     for (let index = 0; index < UPCOMING_STATION_COUNT; index += 1) {
       const next = nextStationId(network, ride.serviceId, current, ride.direction);
       if (!next) break;
@@ -135,9 +120,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       current = next;
     }
     return ids;
-  }, [network, props.displayedStationId, ride.direction, ride.serviceId]);
-  const knownTurn = useRef(game.turn);
-  const [turnSummary, setTurnSummary] = useState("");
+  }, [network, turnDisplay.progress.stationId, ride.direction, ride.serviceId]);
   const panelRef = useRef<HTMLElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const toggleGroup = useCallback((groupId: string, checked: boolean) => {
@@ -154,8 +137,6 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   // One disclosure surface at a time; both disclosures start closed.
   const [activeSurface, setActiveSurface] = useState<"log" | "menu" | "card" | null>(null);
   const [openCardId, setOpenCardId] = useState<string | null>(null);
-  const itemViewRef = useRef(props.itemView);
-  itemViewRef.current = props.itemView;
   const itemDialogOpenerRef = useRef<HTMLElement | null>(null);
   const setOpenItemCard = useCallback((id: string | null) => {
     setOpenCardId(id);
@@ -169,7 +150,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     if (expanded) { setOpenCardId(null); setActiveSurface("menu"); }
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
-  const itemDialogOpen = Boolean(props.itemView && itemDialog);
+  const itemDialogOpen = Boolean(itemView && itemDialog);
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
     props.onItemDialogOpenChange(itemDialogOpen);
@@ -177,10 +158,10 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   }, [itemDialogOpen, props.onItemDialogOpenChange]);
   const rollButtonRef = useRef<HTMLButtonElement>(null);
   const restoreRollFocusRef = useRef(false);
-  const draftItem = props.itemView?.draft.items[0];
+  const draftItem = itemView?.draft.items[0];
 
   const selectItem = useCallback((instanceId: string, kind: ItemKind) => {
-    if (!props.itemView || props.itemView.phase !== "idle") return;
+    if (!itemView || itemView.phase !== "idle" || turnDisplay.itemUseLocked) return;
     if (kind === "route-ticket" || kind === "direction-ticket") {
       setItemDialog({ kind, instanceId });
       return;
@@ -188,17 +169,17 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     if (kind === "double" || kind === "rapid" || kind === "deadhead") {
       props.onEditItemDraft?.({ items: [{ kind, instanceId }] });
     }
-  }, [props.itemView, props.onEditItemDraft]);
+  }, [itemView, props.onEditItemDraft, turnDisplay.itemUseLocked]);
 
   const activateInventoryItem = useCallback((instanceId: string, kind: ItemKind, opener: HTMLElement) => {
-    const current = itemViewRef.current;
+    const current = itemView;
     const usable = current?.usableItems.find((item) => item.instanceId === instanceId);
-    if (!current || current.phase !== "idle" || current.decision || usable?.usable !== true) return;
+    if (!current || current.phase !== "idle" || current.decision || usable?.usable !== true || turnDisplay.itemUseLocked) return;
     setOpenItemCard(null);
     itemDialogOpenerRef.current = opener;
     opener.focus({ preventScroll: true });
     selectItem(instanceId, kind);
-  }, [selectItem]);
+  }, [selectItem, turnDisplay.itemUseLocked]);
   const restoreItemDialogFocus = useCallback(() => {
     const opener = itemDialogOpenerRef.current;
     itemDialogOpenerRef.current = null;
@@ -206,17 +187,17 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   }, []);
 
   useEffect(() => {
-    if (!props.itemView?.decision || !openCardId) return;
+    if (!itemView?.decision || !openCardId) return;
     setOpenCardId(null);
     setActiveSurface((current) => current === "card" ? null : current);
-  }, [props.itemView?.decision, openCardId]);
+  }, [itemView?.decision, openCardId]);
 
   const clearDraft = useCallback(() => {
-    if (props.itemView?.phase === "idle") props.onEditItemDraft?.({ items: [] });
-  }, [props.itemView?.phase, props.onEditItemDraft]);
+    if (itemView?.phase === "idle" && !turnDisplay.itemUseLocked) props.onEditItemDraft?.({ items: [] });
+  }, [itemView?.phase, props.onEditItemDraft, turnDisplay.itemUseLocked]);
 
   useEffect(() => {
-    if (!props.itemView || props.itemView.phase !== "idle" || !draftItem || itemDialog) return;
+    if (!itemView || itemView.phase !== "idle" || !draftItem || itemDialog || turnDisplay.itemUseLocked) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
       // e.g. the 新規 confirmation: its Escape must close it, not clear the draft behind it.
@@ -226,63 +207,50 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [props.itemView, draftItem, itemDialog, clearDraft]);
+  }, [itemView, draftItem, itemDialog, clearDraft, turnDisplay.itemUseLocked]);
 
   useEffect(() => {
-    if (props.itemView?.decision) {
+    if (itemView?.decision) {
       restoreRollFocusRef.current = true;
       return;
     }
-    if (restoreRollFocusRef.current && props.itemView?.phase === "idle") {
+    if (restoreRollFocusRef.current && itemView?.phase === "idle") {
       restoreRollFocusRef.current = false;
       rollButtonRef.current?.focus({ preventScroll: true });
     }
-  }, [props.itemView?.decision, props.itemView?.phase]);
-
-  useEffect(() => {
-    if (props.itemView) return;
-    if (phase !== "idle" || !session.lastMove || game.turn <= knownTurn.current) return;
-    knownTurn.current = game.turn;
-    setTurnSummary(arrivalSummary(game.turn, session.lastMove, props.displayedCompletedCount,
-      props.requiredCount, network, presentation));
-  }, [game.turn, network, phase, presentation, props.itemView,
-    props.displayedCompletedCount, props.requiredCount, session.lastMove]);
-
-  const announcement = props.itemView
-    ? itemTurnAnnouncement(session, props.itemView, props.displayedCompletedCount, props.requiredCount, network, presentation)
-    : turnSummary;
+  }, [itemView?.decision, itemView?.phase]);
 
   useLayoutEffect(() => {
     if (!panelRef.current || !headingRef.current) return;
     panelRef.current.scrollTop = 0;
-    if (!props.itemView?.decision) headingRef.current.focus({ preventScroll: true });
+    if (!itemView?.decision) headingRef.current.focus({ preventScroll: true });
   }, []);
 
   return (
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <GameHud
         inventory={<>
-          {props.itemView && <InventoryPanel view={props.itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem} />}
-          {draftItem && props.itemView && <div className="item-staged-summary">
+          {itemView && <InventoryPanel view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem} />}
+          {draftItem && itemView && <div className="item-staged-summary">
             <span className="item-staged-summary__label">選択中：</span>
             <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
             {draftItem.kind === "route-ticket" && <span>（{serviceName(network, draftItem.serviceId, presentation)}。向きは抽選）</span>}
-            {draftItem.kind === "direction-ticket" && <span>（{directionLabel(network, props.itemView.position.currentServiceId, draftItem.direction)}）</span>}
-            <button type="button" onClick={clearDraft} disabled={phase !== "idle"}>選択を解除</button>
+            {draftItem.kind === "direction-ticket" && <span>（{directionLabel(network, itemView.position.currentServiceId, draftItem.direction)}）</span>}
+            <button type="button" onClick={clearDraft} disabled={phase !== "idle" || turnDisplay.itemUseLocked}>選択を解除</button>
             <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
           </div>}
         </>}
         title={display.title}
         subtitle={display.subtitle}
         headingRef={headingRef}
-        station={stationName(network, props.displayedStationId, presentation)}
+        station={stationName(network, turnDisplay.progress.stationId, presentation)}
         ride={currentRideName}
         lineBadge={lineBadge}
         direction={directionLabel(network, ride.serviceId, ride.direction)}
-        turn={arrived.turn}
-        completed={props.displayedCompletedCount}
+        turn={turnDisplay.turn}
+        completed={turnDisplay.progress.completedSegmentIds.filter((id) => requiredTargetIds.includes(id)).length}
         required={props.requiredCount}
-        compactRoll={compactRollText(compactRollFor(session.lastMove))}
+        compactRoll={turnDisplay.compactRoll}
         saveStatus={saveStatus}
         saveStatusMessage={saveStatusMessage(saveStatus)}
         canRoll={canRoll}
@@ -292,18 +260,17 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onRoll={props.onRoll}
         onSkip={props.onSkip}
         effects={effectModels}
+        canSkip={turnDisplay.canSkip}
       />
       <div className="game-panel__disclosures">
         <TurnLogDrawer
           expanded={activeSurface === "log"}
           onExpandedChange={setLogExpanded}
-          arrival={props.itemView && session.lastMove && phase === "idle" ? arrivalLogText(
-            session.lastMove.itemRecord?.turn ?? game.turn, session.lastMove, props.displayedCompletedCount,
-            props.requiredCount, network, presentation) : null}
-          roll={lastRollText(session.lastMove, network, presentation)}
-          lottery={<p className="game-panel__lottery"><span>抽選: </span>{animating ? "移動中…" : landingText(session.lastMove, network, presentation)}</p>}
-          notice={props.itemView && (phase === "idle" || phase === "awaiting-discard") ? <ItemEventNotice
-            view={props.itemView} lastMove={session.lastMove} turn={game.turn} network={network} presentation={presentation} showEffects={false}
+          arrival={itemView ? turnDisplay.arrivalText : null}
+          roll={turnDisplay.rollText}
+          lottery={<p className="game-panel__lottery"><span>抽選: </span>{turnDisplay.lotteryDisplayText}</p>}
+          notice={itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
+            view={itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation} showEffects={false}
           /> : null}
           effectTexts={effectModels.map((model) => model.text)}
           routeSummary={<details className="game-panel__route-summary">
@@ -322,10 +289,10 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
               ) : <p>この路線に次の駅はありません。</p>}
             </section>
           </details>}
-          candidates={!animating && candidates.length > LOTTERY_INLINE_LIMIT ? (
+          candidates={turnDisplay.candidateDrawSlotCount > LOTTERY_INLINE_LIMIT ? (
             <details className="game-panel__candidates" key={game.turn}>
-              <summary>抽選候補をすべて表示（{candidates.length}抽選枠）</summary>
-              <ul>{presentation.candidateRows(candidates).map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
+              <summary>抽選候補をすべて表示（{turnDisplay.candidateDrawSlotCount}抽選枠）</summary>
+              <ul>{candidates.map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
             </details>
           ) : null}
         />
@@ -347,12 +314,12 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onShowAll={showAllLineGroups}
         />
       </div>
-      {!props.itemView?.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
-      {props.itemView && itemDialog && (
+      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{turnDisplay.announcement}</p>}
+      {itemView && itemDialog && (
         <ItemUseDialog
           kind={itemDialog.kind}
           instanceId={itemDialog.instanceId}
-          view={props.itemView}
+          view={itemView}
           network={network}
           presentation={presentation}
           onChoose={(command) => {
@@ -363,14 +330,14 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onClose={() => { setItemDialog(null); restoreItemDialogFocus(); }}
         />
       )}
-      {props.itemView?.decision?.kind === "adjust" && <RollAdjustment
-        announcement={announcement}
-        decision={props.itemView.decision}
+      {turnDisplay.decision?.kind === "adjust" && <RollAdjustment
+        announcement={turnDisplay.announcement}
+        decision={turnDisplay.decision}
         onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
       />}
-      {props.itemView?.decision?.kind === "discard" && <DiscardChoice
-        announcement={announcement}
-        decision={props.itemView.decision}
+      {turnDisplay.decision?.kind === "discard" && <DiscardChoice
+        announcement={turnDisplay.announcement}
+        decision={turnDisplay.decision}
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
       />}
     </main>

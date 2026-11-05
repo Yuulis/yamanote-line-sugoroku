@@ -8,12 +8,13 @@ import { GamePanel, type GamePanelProps } from "../../src/features/game/componen
 import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
 import { ItemUseDialog } from "../../src/features/game/components/ItemUseDialog";
 import { RollAdjustment } from "../../src/features/game/components/RollAdjustment";
-import { buildRailwayNetwork, createItemGame } from "../../src/features/game/engine";
+import { buildRailwayNetwork, createItemGame, platformPosition, targetSegmentIds } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemSessionView } from "../../src/features/game/itemSession";
 import type { ItemKind } from "../../src/types/network";
 import { createItemSession, itemSessionView } from "../../src/features/game/itemSession";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import { M_LINE, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { dispatchReactEvent, mountReact, type MountedReact } from "./helpers/reactDom";
 
@@ -60,6 +61,15 @@ function itemView(overrides: Partial<ItemSessionView> = {}): ItemSessionView {
     events: [],
     ...overrides,
   } as ItemSessionView;
+}
+
+function displayFor(session: GamePanelProps["session"], network: GamePanelProps["network"], stationId = session.game.currentStationId,
+  completedSegmentIds = session.game.completedSegmentIds, view: ItemSessionView | null = itemSessionView(session, network), restoredOrOmitted = true): NonNullable<GamePanelProps["turnDisplay"]> {
+  return deriveTurnMomentDisplay({
+    session, network, presentation: createPresentationResolver(network),
+    progress: { stationId, position: platformPosition(network, session.game.currentServiceId, stationId), completedSegmentIds, stepsCompleted: 0 },
+    attempt: null, revealStage: "done", restoredOrOmitted, itemView: view,
+  });
 }
 
 function routeDialogFixture(kind: "route-ticket" | "direction-ticket") {
@@ -811,11 +821,11 @@ function GamePanelHarness({ value }: GamePanelHarnessProps): React.JSX.Element {
 function panelValue(): GamePanelProps {
   const fixture = routeDialogFixture("route-ticket");
   return {
-    session: fixture.session, network: fixture.network, lines: [],
-    displayedStationId: fixture.session.game.currentStationId, displayedCompletedCount: 0, requiredCount: 4,
+    session: fixture.session, network: fixture.network, lines: [], turnDisplay: displayFor(fixture.session, fixture.network,
+      fixture.session.game.currentStationId, fixture.session.game.completedSegmentIds, fixture.view), requiredCount: 4,
     saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
-    onEditItemDraft: vi.fn(), itemView: fixture.view,
+    onEditItemDraft: vi.fn(),
   };
 }
 
@@ -847,7 +857,7 @@ describe("GamePanel item card integration", () => {
     mounted.push(mount);
     const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
     act(() => opener.click());
-    const updated: GamePanelProps = { ...value, itemView: { ...value.itemView!, phase: "animating" } };
+    const updated: GamePanelProps = { ...value, turnDisplay: { ...value.turnDisplay, itemView: { ...value.turnDisplay.itemView!, phase: "animating" } } };
     renderGamePanel(mount, updated);
     const action = mount.container.querySelector<HTMLButtonElement>(".item-card__action")!;
     expect(action.disabled).toBe(false);
@@ -872,11 +882,11 @@ describe("GamePanel item card integration", () => {
       },
     });
     try {
-      const adjustedView: ItemSessionView = { ...value.itemView!, decision: {
+      const adjustedView: ItemSessionView = { ...value.turnDisplay.itemView!, decision: {
         kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
         allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
       } };
-      renderGamePanel(mount, { ...value, itemView: adjustedView });
+      renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: adjustedView, decision: adjustedView.decision } });
       expect(seenHidden).toEqual([true]);
       expect(document.activeElement).not.toBe(opener);
       expect(opener.getAttribute("aria-expanded")).toBe("false");
@@ -896,21 +906,21 @@ describe("GamePanel item card integration", () => {
     act(() => mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.click());
     expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
     expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.getAttribute("aria-expanded")).toBe("true");
-    const decisionView: ItemSessionView = { ...value.itemView!, decision: {
+    const decisionView: ItemSessionView = { ...value.turnDisplay.itemView!, decision: {
       kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
       allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
     } };
-    renderGamePanel(mount, { ...value, itemView: decisionView });
+    renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: decisionView, decision: decisionView.decision } });
     expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.getAttribute("aria-expanded")).toBe("true");
     renderGamePanel(mount, value);
     act(() => mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")?.click());
     expect(mount.container.querySelector<HTMLElement>(".game-panel__log")?.hidden).toBe(true);
     expect(mount.container.querySelector<HTMLElement>(".game-panel__menu")?.hidden).toBe(false);
-    const menuDecisionView: ItemSessionView = { ...value.itemView!, decision: {
+    const menuDecisionView: ItemSessionView = { ...value.turnDisplay.itemView!, decision: {
       kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
       allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
     } };
-    renderGamePanel(mount, { ...value, itemView: menuDecisionView });
+    renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: menuDecisionView, decision: menuDecisionView.decision } });
     expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")?.getAttribute("aria-expanded")).toBe("true");
     renderGamePanel(mount, value);
     act(() => opener.click());
@@ -925,8 +935,8 @@ describe("GamePanel item card integration", () => {
     mounted.push(mount);
     const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
     act(() => opener.click());
-    const removedView: ItemSessionView = { ...value.itemView!, inventory: [], usableItems: [] };
-    renderGamePanel(mount, { ...value, itemView: removedView });
+    const removedView: ItemSessionView = { ...value.turnDisplay.itemView!, inventory: [], usableItems: [] };
+    renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: removedView } });
     expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
     expect(mount.container.querySelector(".game-panel__roll")).toBe(document.activeElement);
   });
@@ -942,17 +952,19 @@ it("coordinates the modal announcement, focuses the adjustment heading, then res
   const base = { ...createItemGame(config, "focus-adjust", network), inventory: [{ id: "adjust", kind: "roll-adjust" as const }] };
   const pending = beginItemTurn(base, { items: [] }, network).state;
   const session = resumeSession(pending, network);
-  const common = { network, lines: [], displayedStationId: base.currentStationId, displayedCompletedCount: 0,
+  const common = { network, lines: [],
     requiredCount: 4, saveStatus: "saved" as const, follow: true, speedLabel: "省略", reducedMotion: true,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
-  const mount = mountReact(createElement(GamePanel, { ...common, session, itemView: itemSessionView(session, network) }));
+  const view = itemSessionView(session, network);
+  const mount = mountReact(createElement(GamePanel, { ...common, session, turnDisplay: displayFor(session, network, session.game.currentStationId, [], view) }));
   mounted.push(mount);
   expect(document.activeElement?.textContent).toBe("出目を調整しますか？");
   expect(mount.container.querySelectorAll("[role=status]")).toHaveLength(1);
   expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
   expect(mount.container.querySelector("dialog [role=status]")?.textContent).toContain("出目は");
   const completed = resumeSession(finishItemTurn(pending, null, network).state, network);
-  act(() => mount.root.render(createElement(GamePanel, { ...common, session: completed, itemView: itemSessionView(completed, network) })));
+  const completedView = itemSessionView(completed, network);
+  act(() => mount.root.render(createElement(GamePanel, { ...common, session: completed, turnDisplay: displayFor(completed, network, completed.game.currentStationId, [], completedView) })));
   expect(document.activeElement).toBe(mount.container.querySelector(".game-panel__roll"));
   expect(mount.container.querySelectorAll("[role=status]")).toHaveLength(1);
   expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
@@ -967,7 +979,7 @@ it("keeps exactly one game-panel status region in legacy mode", async () => {
   const game = createGame(multiConfig(), "legacy-status", network);
   const session = resumeSession(game, network);
   const mount = mountReact(createElement(GamePanel, {
-    network, lines: [], session, displayedStationId: game.currentStationId, displayedCompletedCount: 0,
+    network, lines: [], session, turnDisplay: displayFor(session, network),
     requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
   }));
@@ -985,18 +997,25 @@ it("feeds the HUD displayed values and the supplied required count, and hides ch
   const base = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "hud-displayed", network);
   const game = { ...base, effects: { delayDueTurns: [3], suspensions: [], detourPending: true, oversleepPending: true } };
   const idle = resumeSession(game, network);
-  const common = { network, lines: [], displayedStationId: "a", displayedCompletedCount: 2, requiredCount: 4,
+  const common = { network, lines: [], requiredCount: 4,
     saveStatus: "saved" as const, follow: true, speedLabel: "標準", reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
   type PanelProps = Parameters<typeof GamePanel>[0];
   function Harness({ value }: { value: PanelProps }): React.JSX.Element {
     return createElement(GamePanel, value);
   }
-  const mount = mountReact(createElement(Harness, { value: { ...common, session: idle, itemView: itemSessionView(idle, network) } }));
+  const idleView = itemSessionView(idle, network);
+  const mount = mountReact(createElement(Harness, { value: { ...common, session: idle,
+    turnDisplay: displayFor(idle, network, "a", targetSegmentIds(idle.game.config, network).slice(0, 2), idleView) } }));
   mounted.push(mount);
   const stat = (name: string): string | null | undefined => mount.container.querySelector(`[data-stat=${name}]`)?.textContent;
   expect(stat("station")).toBe("駅a");
   expect(stat("progress")).toBe("2/4");
+  const logTrigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")!;
+  dispatchReactEvent(logTrigger, new MouseEvent("click", { bubbles: true }));
+  const routeSummary = mount.container.querySelector<HTMLDetailsElement>(".game-panel__route-summary")!;
+  routeSummary.open = true;
+  expect(routeSummary.querySelector("h2")?.textContent).toBe("山手線の未踏破区間（4）");
   const bars = mount.container.querySelectorAll(".game-panel [role=progressbar]");
   expect(bars).toHaveLength(1);
   expect([bars[0]!.getAttribute("aria-valuenow"), bars[0]!.getAttribute("aria-valuemax")]).toEqual(["2", "4"]);
@@ -1016,8 +1035,8 @@ it("feeds the HUD displayed values and the supplied required count, and hides ch
   expect(mount.container.querySelectorAll("[aria-label='続いている効果']")).toHaveLength(1);
   const moving = { ...idle, phase: "animating" as const };
   const roll = mount.container.querySelector(".game-panel__roll");
-  act(() => mount.root.render(createElement(Harness, { value: { ...common, session: moving, itemView: itemSessionView(moving, network),
-    displayedStationId: "b", displayedCompletedCount: 3 } })));
+  const movingView = itemSessionView(moving, network);
+  act(() => mount.root.render(createElement(Harness, { value: { ...common, session: moving, turnDisplay: displayFor(moving, network, "b", targetSegmentIds(moving.game.config, network).slice(0, 3), movingView, false) } })));
   expect(mount.container.querySelector(".game-panel__roll")).toBe(roll);
   expect(stat("station")).toBe("駅b");
   expect(stat("progress")).toBe("3/4");

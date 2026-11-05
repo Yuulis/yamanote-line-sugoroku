@@ -327,6 +327,39 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/hud-layout.spec.ts tests/e2
 
 ---
 
+## S7: Presented-decision handoffs and action guards
+
+Implement plan `### S7` exactly. Files: modify `src/features/game/components/GamePanel.tsx`, `GameHud.tsx`,
+`InventoryPanel.tsx`, `src/app/GameApp.tsx`; modify `tests/unit/game-app-turn-moments.test.ts`,
+`tests/unit/game-hud.test.ts`, `tests/unit/item-controls.test.ts` (plus the handoff row). New moments stay
+inactive (no pre-move sequence wired; production reveal stages still empty).
+
+- `GameHud` gets an independent `canSkip` prop (Skip enabled by it, not by engine `animating` alone). The dice stays
+  a focusable `<button>` with `aria-disabled="true"` when `!canRoll` (never the native `disabled` attribute while a
+  presentation lock is active — keep today's native-disabled behaviour only where P1 already used it and a test
+  depends on it; report which), a guarded click handler, and its accessible name within `/サイコロを振る|移動中…/`.
+- Guard every item action while `itemUseLocked`: use, draft editing, draft clearing (button and Escape), and
+  route/direction selection — in the handlers/callbacks themselves, not only by disabling buttons, so a direct or
+  stale invocation is a no-op. Inspection of already-public items (incl. passive/unusable) stays available; the card's
+  使う action is disabled with the wording `演出中は使えません` during a lock.
+- One presented decision (`display.decision`) drives the dialog mount, the single gameplay live region handoff
+  (panel ↔ dialog ↔ ClearScreen: exactly one `role=status` at any time), item-card closing, and toast obscuration.
+- Adjustment teardown: if focus would fall to `document.body`, it goes to the (aria-disabled) dice; the pending final
+  focus restoration is kept until interaction becomes available. Automatic decisions keep P1 menu/log behaviour.
+- Tests: every bullet of plan `### S7` → Tests, literal expectations; inject the lock through the display model.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/game-app-turn-moments.test.ts tests/unit/game-hud.test.ts tests/unit/item-controls.test.ts tests/unit/item-card.test.ts tests/unit/toast.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/accessibility.spec.ts tests/e2e/ui-pop.spec.ts tests/e2e/items.spec.ts --project=desktop-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

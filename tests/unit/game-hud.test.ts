@@ -7,7 +7,7 @@ import type { GameHudProps } from "../../src/features/game/components/GameHud";
 import { GameMenu } from "../../src/features/game/components/GameMenu";
 import type { GameMenuProps } from "../../src/features/game/components/GameMenu";
 import { GamePanel } from "../../src/features/game/components/GamePanel";
-import { buildRailwayNetwork, createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { buildRailwayNetwork, createItemGame, playItemTurn, resolveItemDiscard, serializeGame, platformPosition } from "../../src/features/game/engine";
 import { resumeSession } from "../../src/features/game/gameSession";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { itemLastMove, itemSessionView } from "../../src/features/game/itemSession";
@@ -20,8 +20,17 @@ import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import { turnToasts } from "../../src/features/game/toastQueue";
+import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 
 const renderCounts = vi.hoisted(() => ({ hud: 0, legend: 0 }));
+
+function displayFor(session: Parameters<typeof deriveTurnMomentDisplay>[0]["session"], network: Parameters<typeof deriveTurnMomentDisplay>[0]["network"],
+  stationId = session.game.currentStationId, completedSegmentIds = session.game.completedSegmentIds, view: ReturnType<typeof itemSessionView> = itemSessionView(session, network)) {
+  return deriveTurnMomentDisplay({ session, network, presentation: createPresentationResolver(network),
+    progress: { stationId, position: platformPosition(network, session.game.currentServiceId, stationId), completedSegmentIds, stepsCompleted: 0 },
+    attempt: null, revealStage: "done", restoredOrOmitted: true, itemView: view });
+}
 vi.mock("../../src/features/map/RailwayMap", () => ({
   RailwayMap: function RailwayMapStub(): React.JSX.Element { return createElement("div"); },
 }));
@@ -51,7 +60,7 @@ function props(overrides: Partial<GameHudProps> = {}): GameHudProps {
     title: "山手線すごろく", subtitle: "東京近郊版", headingRef: createRef<HTMLHeadingElement>(),
     station: "東京", ride: "山手線", lineBadge: { groupId: "jr-yamanote", code: "JY", color: "#80c241", name: "山手線", textColor: "#000000" },
     direction: "外回り", turn: 5, completed: 3, required: 30, compactRoll: "3マス", saveStatus: null,
-    saveStatusMessage: "未保存", canRoll: true, animating: false, draftSelected: false,
+    saveStatusMessage: "未保存", canRoll: true, canSkip: false, animating: false, draftSelected: false,
     rollButtonRef: createRef<HTMLButtonElement>(), onRoll: vi.fn(), onSkip: vi.fn(), effects: [], ...overrides,
   };
 }
@@ -104,11 +113,11 @@ describe("GameHud", () => {
       const itemView = itemSessionView(session, fixtureNetwork);
       if (!itemView) throw new Error("Expected item session view");
       const value: Parameters<typeof GamePanel>[0] = {
-        session, network: fixtureNetwork, lines: [], displayedStationId: session.game.currentStationId,
-        displayedCompletedCount: session.game.completedSegmentIds.length, requiredCount: 30,
+        session, network: fixtureNetwork, lines: [], turnDisplay: displayFor(session, fixtureNetwork, session.game.currentStationId,
+          session.game.completedSegmentIds, itemView), requiredCount: 30,
         saveStatus: null, follow: true, speedLabel: "標準", reducedMotion: false,
         onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
-        onNewGame: vi.fn(), onShowTitle: vi.fn(), itemView,
+        onNewGame: vi.fn(), onShowTitle: vi.fn() ,
       };
       const mount = mountReact(createElement(GamePanel, value));
       try {
@@ -324,8 +333,7 @@ describe("GameMenu", () => {
     const itemView = { ...itemSessionView(session, network)!, draft: { items: [{ kind: "double" as const, instanceId: "double-1" }] } };
     const onEditItemDraft = vi.fn();
     const mount = mountReact(createElement(GamePanel, {
-      network, lines: [], session, itemView, onEditItemDraft, displayedStationId: game.currentStationId,
-      displayedCompletedCount: 0, requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
+      network, lines: [], session , turnDisplay: displayFor(session, network, game.currentStationId, [], itemView), onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
       onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
     }));
     const dialog = document.createElement("dialog");
@@ -409,7 +417,7 @@ it("keeps the turn log mounted, mutually exclusive, keyboard closable, and retai
   const network = buildRailwayNetwork(multiServiceInput());
   const game = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "log-disclosure", network);
   const session = resumeSession(game, network);
-  const common = { network, lines: [], displayedStationId: "a", displayedCompletedCount: 0, requiredCount: 4,
+  const common = { network, lines: [], turnDisplay: displayFor(session, network, "a", []), requiredCount: 4,
     saveStatus: "saved" as const, follow: true, speedLabel: "標準", reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
   type PanelProps = Parameters<typeof GamePanel>[0];

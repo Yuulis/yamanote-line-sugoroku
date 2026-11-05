@@ -5,7 +5,7 @@ import type { DisplayedProgress } from "./animation/displayedProgress";
 import type { TurnRevealStageKey, RollAttempt } from "./animation/turnMoments";
 import type { GameSession, LastMove } from "./gameSession";
 import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel } from "./hudPresentation";
-import { arrivalLogText, displayedRide, landingText, lastRollText, turnMomentAnnouncement } from "./presentation";
+import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, turnMomentAnnouncement } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
 import type { ItemSessionView } from "./itemSession";
 import { turnToasts, type ToastInput } from "./toastQueue";
@@ -25,6 +25,10 @@ export interface TurnMomentDisplayInput {
   revealStage: TurnRevealState;
   restoredOrOmitted: boolean;
   itemView?: ItemSessionView | null;
+  /** Session-entry history is distinct from a fresh result with motion omitted. */
+  restoredHistory?: boolean;
+  /** P1 retains the last completed classic summary while the next move runs. */
+  previousClassicAnnouncement?: string;
 }
 
 /** Shared gameplay values and permissions; visual moment models are added in later steps. */
@@ -37,13 +41,19 @@ export interface TurnMomentDisplay {
   rollText: string;
   arrivalText: string | null;
   lotteryText: string;
+  lotteryDisplayText: string;
   candidateRows: readonly PresentationCandidateRow[];
+  candidateDrawSlotCount: number;
   showClear: boolean;
   itemView: ItemSessionView | null;
   decision: ItemSessionView["decision"];
   effectModels: readonly EffectChipModel[];
   showItemNotice: boolean;
+  /** Publication permits fallback/completion copy even when there are no item events. */
+  itemNoticePublished: boolean;
+  itemNoticeMove: LastMove | null;
   announcement: string;
+  clearAnnouncement: string;
   toastInputs: readonly ToastInput[];
   canRoll: boolean;
   canSkip: boolean;
@@ -91,7 +101,8 @@ function arrivalProgress(input: TurnMomentDisplayInput): DisplayedProgress {
 }
 
 function visibleLastMove(input: TurnMomentDisplayInput, phase: TurnPublicationPhase): LastMove | null {
-  return phase === "pre-move" || phase === "moving" ? previousLastMove(input) : input.session.lastMove;
+  return phase === "pre-move" ? previousLastMove(input)
+    : phase === "moving" && input.attempt ? previousLastMove(input) : input.session.lastMove;
 }
 
 function visibleProgress(input: TurnMomentDisplayInput, phase: TurnPublicationPhase, lotteryPublished: boolean): DisplayedProgress {
@@ -160,9 +171,10 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const lotteryText = lotteryPublished && current
     ? landingText(current, input.network, input.presentation)
     : landingText(previousLastMove(input), input.network, input.presentation);
-  const candidateRows = lotteryPublished
-    ? visibleCandidates(current, input.presentation)
-    : visibleCandidates(previousLastMove(input), input.presentation);
+  const lotteryDisplayText = phase === "moving" ? "移動中…" : lotteryText;
+  const candidateMove = lotteryPublished ? current : previousLastMove(input);
+  const candidateRows = visibleCandidates(candidateMove, input.presentation);
+  const candidateDrawSlotCount = candidateMove?.landing?.serviceCandidates.length ?? 0;
   const goal = input.session.game.status === "completed";
   const showClear = goal && isPublished;
   const liveView = input.itemView ?? null;
@@ -179,15 +191,24 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const decision = visibleDecision(liveView, attempt, active, resultPublished);
   const turn = record?.turn ?? input.session.game.turn;
   const effectTurn = resultPublished ? turn : attempt?.origin.turn ?? turn;
-  const effectModels = itemView ? effectChipModels(itemView.effects, effectTurn, input.network, input.presentation) : [];
+  const effectModels = itemView && phase !== "moving"
+    ? effectChipModels(itemView.effects, effectTurn, input.network, input.presentation) : [];
   const showItemNotice = resultPublished && Boolean(record?.itemEvents.length);
   const toastInputs = resultPublished && input.session.lastMove && (!attempt || record)
     ? turnToasts(input.session.sessionId, input.session.lastMove, input.network, input.presentation) : [];
   const canRoll = !active && input.session.phase === "idle" && input.session.game.status === "playing";
-  const announcement = turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
-    stage: getAnnouncementStage(input, phase, showClear, decision), canRoll,
-    completedCount, requiredCount, network: input.network, presentation: input.presentation });
-  const canSkip = active && (preMoveActive || input.session.phase === "animating" || revealActive);
+  const announcementStage = getAnnouncementStage(input, phase, showClear, decision);
+  const announcement = !liveView && input.restoredHistory ? ""
+    : !liveView && !attempt && input.session.phase !== "idle" ? input.previousClassicAnnouncement ?? ""
+    : !liveView && phase === "published" && current
+      ? arrivalSummary(current.itemRecord?.turn ?? input.session.game.turn, current, completedCount, requiredCount, input.network, input.presentation)
+      : liveView && phase === "moving"
+        ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation)
+        : turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
+          stage: announcementStage, canRoll, completedCount, requiredCount, network: input.network, presentation: input.presentation });
+  const clearAnnouncement = showClear && liveView
+    ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation, false) : "";
+  const canSkip = input.session.phase === "animating" || (active && (preMoveActive || revealActive));
 
   return {
     phase,
@@ -199,13 +220,18 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     rollText,
     arrivalText,
     lotteryText,
+    lotteryDisplayText,
     candidateRows,
+    candidateDrawSlotCount,
     showClear,
     itemView,
     decision,
     effectModels,
     showItemNotice,
+    itemNoticePublished: resultPublished,
+    itemNoticeMove: resultPublished ? input.session.lastMove : null,
     announcement,
+    clearAnnouncement,
     toastInputs,
     canRoll,
     canSkip,

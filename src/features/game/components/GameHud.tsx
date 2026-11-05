@@ -22,6 +22,7 @@ export interface GameHudProps {
   saveStatus: SaveWriteResult | null;
   saveStatusMessage: string;
   canRoll: boolean;
+  canSkip: boolean;
   animating: boolean;
   draftSelected: boolean;
   rollButtonRef: RefObject<HTMLButtonElement | null>;
@@ -46,7 +47,7 @@ export function GameHud({
   inventory,
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, compactRoll, saveStatus, saveStatusMessage,
-  canRoll, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
+  canRoll, canSkip, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
 }: GameHudProps): React.JSX.Element {
   const failed: boolean = saveStatus === "failed" || saveStatus === "unavailable";
   const saveMark: boolean = saveStatus === "saved";
@@ -83,7 +84,7 @@ export function GameHud({
         >
           {animating ? "移動中…" : draftSelected ? "この内容でサイコロを振る" : "サイコロを振る"}
         </button>
-        <button type="button" onClick={onSkip} disabled={!animating}>スキップ</button>
+        <button type="button" onClick={onSkip} disabled={!canSkip}>スキップ</button>
       </div>
       {inventory}
       <EffectChips models={effects} />

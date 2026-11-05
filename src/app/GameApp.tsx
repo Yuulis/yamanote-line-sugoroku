@@ -19,7 +19,9 @@ import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
-import { itemTurnAnnouncement, displayedRide } from "../features/game/presentation";
+import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
+import type { TurnRevealState } from "../features/game/turnMomentPresentation";
+import type { RollAttempt } from "../features/game/animation/turnMoments";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
@@ -30,7 +32,7 @@ import { hasGameProgress } from "../features/game/gameSession";
 import { summarizeGame } from "../features/game/gameSummary";
 import { useRevealSequence, type RevealStage } from "../features/game/animation/useRevealSequence";
 import { ToastHost } from "../features/game/components/ToastHost";
-import { turnToasts, type ToastInput } from "../features/game/toastQueue";
+import type { ToastInput } from "../features/game/toastQueue";
 
 interface GameAppProps {
   data: RailwayData;
@@ -43,6 +45,8 @@ interface GameAppProps {
     focusPicker: boolean;
     onPickerFocusRestored: () => void;
   };
+  /** Narrow input seam for mounted publication-boundary tests; production leaves it unset. */
+  turnMomentBoundary?: Readonly<{ attempt: RollAttempt | null; revealStage: TurnRevealState; restoredOrOmitted: boolean }>;
 }
 
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
@@ -70,7 +74,7 @@ function nextSpeedId(id: AnimationSpeedId): AnimationSpeedId {
 }
 
 /** Title, play and clear screens over one persistent map. */
-export function GameApp({ data, network, edition, picker }: GameAppProps) {
+export function GameApp({ data, network, edition, picker, turnMomentBoundary }: GameAppProps) {
   const storage = useMemo(getBrowserStorage, []);
   const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
   const presentation = useMemo(
@@ -110,30 +114,9 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
   const revealSkipRef = useRef(reveal.skip);
   revealSkipRef.current = reveal.skip;
   const toastSessionId = session?.sessionId ?? null;
-  const toastInputs = useMemo(
-    () => reveal.ready && session ? turnToasts(session.sessionId, session.lastMove, network, presentation) : [],
-    [reveal.ready, session, network, presentation],
-  );
   const toastBaseline = useRef<ToastBaseline>(NO_TOAST_BASELINE);
   const processedToastInputs = useRef<readonly ToastInput[] | null>(null);
   const [acceptedToastInputs, setAcceptedToastInputs] = useState<readonly ToastInput[]>([]);
-  useEffect(() => {
-    if (toastBaseline.current.sessionId !== toastSessionId) {
-      toastBaseline.current = {
-        sessionId: toastSessionId,
-        keys: new Set(turnToasts(session?.sessionId ?? 0, session?.lastMove ?? null, network, presentation).map((input) => input.key)),
-      };
-      processedToastInputs.current = toastInputs;
-      setAcceptedToastInputs([]);
-      setItemDialogOpen(false);
-      return;
-    }
-    if (!reveal.ready || !reveal.key) return;
-    if (toastInputs !== processedToastInputs.current) {
-      processedToastInputs.current = toastInputs;
-      setAcceptedToastInputs(toastInputs.filter((input) => !toastBaseline.current.keys.has(input.key)));
-    }
-  }, [toastSessionId, reveal.key, reveal.ready, toastInputs, session, network, presentation]);
   const presentationGame = useMemo(() => session ? sessionProgress(session) : null, [session]);
   const titleSave: SaveLookup | null = app.saveLookup?.kind === "valid"
     ? { kind: "valid", game: isItemSave(app.saveLookup.game)
@@ -155,18 +138,60 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
     () => (presentationGame ? displayedProgress(presentationGame, network, view) : null),
     [presentationGame, network, view],
   );
+  const resumeBaseline = useRef<{ sessionId: number | null; turn: number } | null>(null);
+  if (resumeBaseline.current?.sessionId !== (session?.sessionId ?? null)) {
+    resumeBaseline.current = { sessionId: session?.sessionId ?? null, turn: game?.turn ?? 0 };
+  }
+  const classicAnnouncement = useRef({ sessionId: session?.sessionId, text: "" });
+  if (classicAnnouncement.current.sessionId !== session?.sessionId) {
+    classicAnnouncement.current = { sessionId: session?.sessionId, text: "" };
+  }
+  const restoredHistory = (game?.turn ?? 0) <= (resumeBaseline.current?.turn ?? 0);
+  const turnDisplay = useMemo(() => session && shown ? deriveTurnMomentDisplay({
+    session,
+    network,
+    presentation,
+    progress: shown,
+    attempt: turnMomentBoundary?.attempt ?? null,
+    revealStage: turnMomentBoundary?.revealStage ?? (reveal.stage === "done" ? "done" : "waiting"),
+    restoredOrOmitted: turnMomentBoundary?.restoredOrOmitted ?? (reducedMotion || (reveal.key !== null && Number(reveal.key.split(":").at(-1)) <= (resumeBaseline.current?.turn ?? 0))),
+    itemView: app.itemView,
+    restoredHistory,
+    previousClassicAnnouncement: classicAnnouncement.current.text,
+  }) : null, [session, shown, network, presentation, turnMomentBoundary, reveal.stage, reveal.key, reducedMotion, app.itemView, restoredHistory]);
+  if (!app.itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
+    classicAnnouncement.current.text = turnDisplay.announcement;
+  }
+  const toastInputs = turnDisplay?.toastInputs ?? [];
+  useEffect(() => {
+    if (toastBaseline.current.sessionId !== toastSessionId) {
+      toastBaseline.current = {
+        sessionId: toastSessionId,
+        keys: new Set(toastInputs.map((input) => input.key)),
+      };
+      processedToastInputs.current = toastInputs;
+      setAcceptedToastInputs([]);
+      setItemDialogOpen(false);
+      return;
+    }
+    if (!reveal.ready || !reveal.key) return;
+    if (toastInputs !== processedToastInputs.current) {
+      processedToastInputs.current = toastInputs;
+      setAcceptedToastInputs(toastInputs.filter((input) => !toastBaseline.current.keys.has(input.key)));
+    }
+  }, [toastSessionId, reveal.key, reveal.ready, toastInputs]);
   const progress = useMemo<MapProgress>(
     () =>
-      shown
+      turnDisplay
         ? {
-            completedFeatureIds: shown.completedSegmentIds.filter((id) => requiredIds.has(id)).flatMap(
+            completedFeatureIds: turnDisplay.progress.completedSegmentIds.filter((id) => requiredIds.has(id)).flatMap(
               (id) => network.segmentsById.get(id)!.geometryFeatureIds,
             ),
-            currentPosition: shown.position,
-            highlightedServiceId: session ? displayedRide(session).serviceId : undefined,
+            currentPosition: turnDisplay.progress.position,
+            highlightedServiceId: turnDisplay?.ride.serviceId,
           }
         : NO_PROGRESS,
-    [shown, requiredIds, network, session],
+    [requiredIds, network, turnDisplay],
   );
 
   const stopFollowing = useCallback(() => setFollow(false), []);
@@ -225,7 +250,7 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
     showTitleScreen();
   }, [showTitleScreen]);
 
-  const showClear = session?.game.status === "completed" && session.phase === "idle";
+  const showClear = turnDisplay?.showClear ?? false;
   const reportedClear = useRef(-1);
   useEffect(() => {
     if (!showClear || !session || !presentationGame || reportedClear.current === session.sessionId) return;
@@ -252,23 +277,21 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
           onDeleteSave={() => setConfirm({ kind: "delete-save" })}
         />
       )}
-      {session && shown && !showClear && (
+      {session && shown && turnDisplay && !showClear && (
         <GamePanel
           key={session.sessionId}
           session={session}
+          turnDisplay={turnDisplay}
           network={network}
           presentation={presentation}
           display={edition.display}
           lines={data.services.ok ? data.services.value.lines : NO_LINES}
-          displayedStationId={shown.stationId}
-          displayedCompletedCount={shown.completedSegmentIds.filter((id) => requiredIds.has(id)).length}
           requiredCount={requiredIds.size}
           saveStatus={app.saveStatus}
           follow={follow}
           speedLabel={speed?.label ?? ""}
           reducedMotion={reducedMotion}
           onRoll={app.roll}
-          itemView={app.itemView}
           onEditItemDraft={app.editItemDraft}
           onAdjustItemRoll={app.adjustItemRoll}
           onDiscardItem={app.discardItem}
@@ -284,16 +307,15 @@ export function GameApp({ data, network, edition, picker }: GameAppProps) {
         sessionId={toastSessionId}
         inputs={acceptedToastInputs}
         saveFailed={app.saveStatus === "failed"}
-        obscured={confirm !== null || app.itemView?.decision != null || itemDialogOpen}
+        obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen}
         reducedMotion={reducedMotion}
       />
-      {session && showClear && presentationGame && (
+      {session && turnDisplay?.showClear && presentationGame && (
         <ClearScreen
           game={session.game}
-          itemNotice={app.itemView ? <ItemEventNotice
-            view={app.itemView} lastMove={session.lastMove} turn={session.game.turn} network={network} presentation={presentation}
-            completionAnnouncement={itemTurnAnnouncement(session, app.itemView, shown?.completedSegmentIds.filter((id) => requiredIds.has(id)).length ?? 0,
-              requiredIds.size, network, presentation)}
+          itemNotice={turnDisplay.itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
+            view={turnDisplay.itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation}
+            completionAnnouncement={turnDisplay.clearAnnouncement}
           /> : undefined}
           network={network}
           presentation={presentation}

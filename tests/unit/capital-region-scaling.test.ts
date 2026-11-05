@@ -11,6 +11,9 @@ import { displayedProgress } from "../../src/features/game/animation/displayedPr
 import { lastMoveOf, reduceGameSession, startSession } from "../../src/features/game/gameSession";
 import { displayedRide, landingText } from "../../src/features/game/presentation";
 import { GamePanel } from "../../src/features/game/components/GamePanel";
+import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import { platformPosition } from "../../src/features/game/engine";
 import { initialOverviewServices } from "../../src/features/map/camera";
 import { buildTrackColorExpression } from "../../src/features/map/lineColor";
 import { indexServiceGeometry } from "../../src/features/map/serviceGeometry";
@@ -110,12 +113,13 @@ describe("legacy capital-region fixture and pinned seeds", () => {
 });
 
 describe("scaled map and presentation", () => {
-  const legendMarkup = (): string => renderToStaticMarkup(createElement(GamePanel, {
-    session: startSession(LEGACY_CAPITAL_REGION_CONFIG, CAPITAL_GAME_SEED, network, 1),
+  const legendMarkup = (): string => {
+    const session = startSession(LEGACY_CAPITAL_REGION_CONFIG, CAPITAL_GAME_SEED, network, 1);
+    const turnDisplay = deriveTurnMomentDisplay({ session, network, presentation: createPresentationResolver(network), progress: { stationId: session.game.currentStationId, position: platformPosition(network, session.game.currentServiceId, session.game.currentStationId), completedSegmentIds: session.game.completedSegmentIds, stepsCompleted: 0 }, attempt: null, revealStage: "done", restoredOrOmitted: true });
+    return renderToStaticMarkup(createElement(GamePanel, {
+    session, turnDisplay,
     network,
     lines: services.lines,
-    displayedStationId: fresh.currentStationId,
-    displayedCompletedCount: 0,
     requiredCount: 30,
     saveStatus: null,
     follow: true,
@@ -128,6 +132,7 @@ describe("scaled map and presentation", () => {
     onNewGame: () => {},
     onShowTitle: () => {},
   }));
+  };
 
   it("renders a single-service UI group as one checkbox legend row", () => {
     const markup = legendMarkup();
