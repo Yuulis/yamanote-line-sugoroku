@@ -1,11 +1,16 @@
-import { ANIMATION_SPEEDS, DEFAULT_ANIMATION_SPEED } from "../../src/features/game/gameConfig";
+import { ANIMATION_SPEEDS, DEFAULT_ANIMATION_SPEED, DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
+import { createGame, playTurn } from "./fixtures/productGame";
 import {
+  clickDice,
   diceButton,
+  expectAcceptedSave,
   freezeClock,
   gamePanel,
   loadStations,
   markerPosition,
+  movementDurationMs,
   targetCompletedIds,
   openTitle,
   openGameLog,
@@ -17,7 +22,9 @@ import {
   rollOnce,
   startNewGame,
   targetFeatureIds,
+  waitForRollOutcome,
 } from "./support/app";
+import { advanceMovement } from "./support/turnMoments";
 
 // Spec 8.3 items covered here:
 //   [8.3-2] Rolling the dice updates the current position on the map.
@@ -27,8 +34,6 @@ import {
 /** Per-hop duration of the default animation speed. */
 const STEP_MS =
   ANIMATION_SPEEDS.find((speed) => speed.id === DEFAULT_ANIMATION_SPEED)?.stepMs ?? 0;
-/** Extra wait for a real-time move to settle on a loaded, software-rendered page. */
-const MOVE_SETTLE_TIMEOUT_MS = 7_000;
 
 function sorted(ids: readonly string[]): string[] {
   return [...ids].sort();
@@ -125,6 +130,19 @@ test("[8.3-3] completed segments are told apart by legend, line style and colour
   expect(map.completedPaint.color).not.toEqual(map.pendingPaint.color);
 });
 
+/**
+ * Movement checkpoint for a frozen clock: half a hop in, the dice is still locked
+ * and a forced click neither advances the turn nor changes the stored save.
+ */
+async function expectLockedThroughMovement(page: Page, turn: number): Promise<void> {
+  await advanceMovement(page, STEP_MS / 2);
+  await expect(diceButton(page)).toHaveText("移動中…");
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+  await diceButton(page).click({ force: true });
+  await expect(panelStat(page, "ターン数")).toHaveText(String(turn));
+  await expectAcceptedSave(page, turn);
+}
+
 test.describe("with move animation", () => {
   // The animation must be running for "clicks during a move" to mean anything.
   test.use({ reducedMotion: "no-preference" });
@@ -139,6 +157,9 @@ test.describe("with move animation", () => {
     const skip = gamePanel(page).getByRole("button", { name: "スキップ" });
 
     await diceButton(page).click({ clickCount: 3 });
+    // Accepted-save checkpoint: exactly one turn is stored, however many clicks landed.
+    await expectAcceptedSave(page, 1);
+    // S11 inserts advanceTumble / advanceStamps here; the dice stays locked through them.
     await expect(diceButton(page)).toHaveText("移動中…");
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
     await expect(diceButton(page)).toHaveJSProperty("disabled", false);
@@ -147,6 +168,7 @@ test.describe("with move animation", () => {
     await diceButton(page).click({ force: true });
     await diceButton(page).dblclick({ force: true });
     await expect(panelStat(page, "ターン数")).toHaveText("1");
+    await expectLockedThroughMovement(page, 1);
     await skip.click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
@@ -159,7 +181,10 @@ test.describe("with move animation", () => {
       button.click();
       button.click();
     });
+    await expectAcceptedSave(page, 2);
+    // S11 inserts advanceTumble / advanceStamps here as well.
     await expect(diceButton(page)).toHaveText("移動中…");
+    await expectLockedThroughMovement(page, 2);
     await skip.click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
@@ -181,15 +206,25 @@ test.describe("with move animation", () => {
     await expect.poll(async () => (await readMap(page))?.marker).toEqual(start);
     await freezeClock(page);
 
-    await diceButton(page).click();
+    const turnBefore = await clickDice(page);
+    // S11 inserts advanceTumble here: the origin stays shown and the dice locked.
+    await waitForRollOutcome(page, turnBefore);
+    // S11 inserts advanceStamps here for turns with modifier wording.
     await expect(diceButton(page)).toHaveText("移動中…");
-    const move = (await readSave(page))?.movementHistory[0];
-    if (!move) throw new Error("the roll was not committed");
+    const save = await readSave(page);
+    const move = save?.movementHistory[0];
+    if (!save || !move) throw new Error("the roll was not committed");
+    // Oracle for the movement length: replay the turn offline (P1 planner, capped
+    // like the app) and make sure it is the move the app made.
+    const expected = playTurn(createGame(DEFAULT_GAME_CONFIG, save.rngSeed, railwayBundle.network), railwayBundle.network);
+    expect({ rawRoll: move.rawRoll, toStationId: move.toStationId })
+      .toEqual({ rawRoll: expected.record.rawRoll, toStationId: expected.record.toStationId });
+    const moveMs = movementDurationMs(railwayBundle, expected.events, STEP_MS);
     const end = stations.get(move.toStationId);
     await expect(panelStat(page, "現在駅")).toHaveText("新橋");
 
     // Half a hop in, the marker is between stations: neither start nor end.
-    await page.clock.runFor(STEP_MS / 2);
+    await advanceMovement(page, STEP_MS / 2);
     await expect
       .poll(async () => {
         const marker = (await readMap(page))?.marker;
@@ -199,13 +234,13 @@ test.describe("with move animation", () => {
     expect((await readMap(page))?.marker).not.toEqual(end?.coordinates);
     await expect(diceButton(page)).toHaveText("移動中…");
 
-    // Time alone finishes the move: no スキップ, no reload. The clock runs in
-    // real time from here (stepping every fake frame would re-render the map
-    // in software ~170 times); the whole move takes at most 6 hops.
-    await page.clock.resume();
-    await expect(diceButton(page)).toHaveText("サイコロを振る", {
-      timeout: move.physicalHops * STEP_MS + MOVE_SETTLE_TIMEOUT_MS,
-    });
+    // Time alone finishes the move: no スキップ, no reload. Advance exactly the
+    // rest of the movement (total minus the half hop already advanced); the
+    // helper's priming and trailing frames add only 32 ms of overshoot.
+    await advanceMovement(page, moveMs - STEP_MS / 2);
+    // S12-S15 insert advanceArrival / advanceLotteryFlip / advanceLotterySettle /
+    // advancePickup here, each followed by its own assertion, before readiness.
+    await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(diceButton(page)).toBeEnabled();
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
     await expect(panelStat(page, "現在駅")).toHaveText(end?.name ?? "?");

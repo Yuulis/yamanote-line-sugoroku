@@ -2,6 +2,9 @@ import { expect, type APIRequestContext, type Locator, type Page } from "@playwr
 import type { ItemGameState, ItemTurnRecord } from "../../../src/types/network";
 import type { RailwayBundle } from "../fixtures/bundle";
 import { LAYER_IDS, SOURCE_IDS } from "../../../src/features/map/mapConfig";
+import type { MoveEvent } from "../../../src/features/game/engine";
+import { buildGeometryIndex, buildMovePlan } from "../../../src/features/game/animation/movePath";
+import { hopDurationMs, MAX_MOVE_DURATION_MS } from "../../../src/features/game/animation/timeline";
 
 // Page helpers shared by the specs. Selectors are role / accessible-name
 // based; the game state is read from the app's own save (localStorage) and
@@ -186,20 +189,26 @@ export async function rollOnce(page: Page): Promise<void> {
 }
 
 /**
- * Reveal a die, explicitly declining adjustment; leave movement/discard visible.
+ * Click the dice once and return the saved turn number from just before the
+ * click. Pair it with `waitForRollOutcome`; between the two, a frozen-clock test
+ * advances the tumble (`advanceTumble`, S11) and stamps (`advanceStamps`, S11).
+ */
+export async function clickDice(page: Page): Promise<number> {
+  const turnBefore = (await readSave(page))?.turn ?? 0;
+  await diceButton(page).click();
+  return turnBefore;
+}
+
+/**
+ * Wait for the outcome of a dice click made at `turnBefore` and explicitly
+ * decline adjustment; leave movement/discard visible.
  *
  * A saved pending roll (`pending.kind === "roll"`) only means an adjustment
  * decision exists, not that its dialog is mounted, so the helper waits for the
- * actual `role=dialog`. Limitation: the click and the dialog wait are one call,
- * so under a frozen clock this helper is not usable once the tumble is active
- * (S11): the dialog cannot appear until the tumble is advanced, and the tumble
- * only starts at the click inside. S11 must split the click from the dialog
- * wait or add an advance hook before frozen-clock callers (capital-region,
- * ui-pop) can use it.
+ * actual `role=dialog`. Under a frozen clock the dialog cannot appear until the
+ * tumble is advanced (S11), which is why this wait is separate from the click.
  */
-export async function revealUnadjustedRoll(page: Page): Promise<void> {
-  const turnBefore = (await readSave(page))?.turn ?? 0;
-  await diceButton(page).click();
+export async function waitForRollOutcome(page: Page, turnBefore: number): Promise<void> {
   const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
   await expect.poll(async () => {
     const save = await readSave(page);
@@ -207,6 +216,38 @@ export async function revealUnadjustedRoll(page: Page): Promise<void> {
     return await adjustment.isVisible() || save?.pending?.kind === "discard" || save?.turn === turnBefore + 1;
   }).toBe(true);
   if (await adjustment.isVisible()) await adjustment.getByRole("button", { name: "そのまま続ける" }).click();
+}
+
+/**
+ * Reveal a die, explicitly declining adjustment; leave movement/discard visible.
+ * Composes `clickDice` and `waitForRollOutcome`, so it is only usable with a real
+ * clock or reduced motion; a frozen-clock caller calls the two steps itself and
+ * advances the tumble between them (S11).
+ */
+export async function revealUnadjustedRoll(page: Page): Promise<void> {
+  await waitForRollOutcome(page, await clickDice(page));
+}
+
+/** The part of the saved game that tells an accepted save from a pending or failed one. */
+export interface SaveObservation {
+  turn: number;
+  pendingKind: "roll" | "discard" | null;
+  history: number;
+}
+
+/** Read the stored save as a `SaveObservation`; null when nothing is stored. */
+export async function observeSave(page: Page): Promise<SaveObservation | null> {
+  const save = await readSave(page);
+  return save === null ? null : { turn: save.turn, pendingKind: save.pending?.kind ?? null, history: save.movementHistory.length };
+}
+
+/**
+ * Wait until storage holds the acknowledged save of `turn`: that turn is
+ * committed with no pending decision and one history record per turn. A pending
+ * roll/discard record, or the previous turn after a failed write, does not pass.
+ */
+export async function expectAcceptedSave(page: Page, turn: number): Promise<void> {
+  await expect.poll(() => observeSave(page)).toEqual({ turn, pendingKind: null, history: turn });
 }
 
 /**
@@ -305,6 +346,18 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       markerSourceId: SOURCE_IDS.currentPosition,
     },
   );
+}
+
+/**
+ * Exact natural movement time of a replayed turn: the sum of the distance-based
+ * hop durations (P1 planner) at `stepMs`, capped like the app. It is never
+ * `physicalHops * stepMs`. Callers replay the turn offline and check the replay
+ * against the saved record before trusting the number.
+ */
+export function movementDurationMs(bundle: RailwayBundle, events: readonly MoveEvent[], stepMs: number): number {
+  const geometry = buildGeometryIndex(bundle.data.geometry.ok ? bundle.data.geometry.value : undefined);
+  const plan = buildMovePlan(events, bundle.network, geometry);
+  return Math.min(plan.reduce((sum, step) => sum + hopDurationMs(step, stepMs), 0), MAX_MOVE_DURATION_MS);
 }
 
 /** Stations from the app's own data (served by `vite preview`). */

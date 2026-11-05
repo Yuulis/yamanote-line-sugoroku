@@ -5,8 +5,8 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
-import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
-import { itemSessionView, itemLastMove } from "../../src/features/game/itemSession";
+import { beginItemTurn, createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { itemActionIdentity, itemSessionView, itemLastMove } from "../../src/features/game/itemSession";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { serviceName, stationName } from "../../src/features/game/presentation";
@@ -14,7 +14,9 @@ import { dispatchReactEvent, mountReact, type MountedReact } from "./helpers/rea
 import { itemScenario } from "../e2e/fixtures/itemScenarios";
 
 import { resumeSession, startSession, reduceGameSession, type GameSession } from "../../src/features/game/gameSession";
-import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
+import {
+  INITIAL_TURN_MOMENTS_STATE, turnMomentsReducer, turnMomentTiming, type RollAttempt, type TurnMomentObservation,
+} from "../../src/features/game/animation/turnMoments";
 import type { useGameApp } from "../../src/features/game/useGameApp";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
@@ -430,5 +432,159 @@ describe("GameApp presented-decision handoffs and action guards", () => {
     expect(mounted!.container.querySelector(".item-discard")).toBeNull();
     act(() => { vi.advanceTimersByTime(60_000); });
     expect(mounted!.container.querySelector(".toast-host")?.textContent).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S10b fixtures for the S11 activation. Production passes `attempt: null`, so
+// the GameApp rows assert today's behaviour; the attempt fixtures below drive
+// the real turn-moment reducer, and `restoredAdjustAttempt` is the boundary S11
+// feeds GameApp once it builds attempts itself.
+// ---------------------------------------------------------------------------
+
+/** Plain turn-1 game: no adjustment, no discard, so every save boundary is observable. */
+const PLAIN_SEED = "review-order";
+
+function plainOrigin(): GameSession {
+  return resumeSession(createItemGame(ITEM_GAME_CONFIG, PLAIN_SEED, network), network, 31);
+}
+
+/**
+ * The save boundaries of one plain turn, built with the real session reducers:
+ * `committing` (pending roll being saved), `resolving` (resolved turn being
+ * saved) and `accepted` (the resolved save acknowledged, movement staged).
+ */
+function saveBoundarySessions(): Record<"committing" | "resolving" | "accepted", GameSession> {
+  const step = (session: GameSession, type: "item-commit" | "item-save-attempted"): GameSession =>
+    reduceGameSession(session, { type, ...itemActionIdentity(session) }, ITEM_GAME_CONFIG, network);
+  const committing = step(plainOrigin(), "item-commit");
+  const resolving = step(committing, "item-save-attempted");
+  return { committing, resolving, accepted: step(resolving, "item-save-attempted") };
+}
+
+interface BoundaryReading { station: string | null; dice: string | null; diceDisabled: string | null; frames: number }
+
+function boundaryReading(): BoundaryReading {
+  const dice = mounted!.container.querySelector(".game-panel__roll");
+  return {
+    station: mounted!.container.querySelector('[data-stat="station"]')?.textContent ?? null,
+    dice: dice?.textContent ?? null, diceDisabled: dice?.getAttribute("aria-disabled") ?? null,
+    frames: vi.mocked(window.requestAnimationFrame).mock.calls.length,
+  };
+}
+
+function saveText(): string | null {
+  return mounted!.container.querySelector(".game-panel__save")?.textContent ?? null;
+}
+
+/** A restored pending adjustment as an attempt: motion omitted, record not yet accepted. */
+function restoredAdjustAttempt(origin: GameSession): RollAttempt {
+  return { ...attemptFor(origin), source: "restored-roll", stage: "waiting-record", tumbleCompleted: true,
+    motionOmitted: true, adjustObserved: true, recordAccepted: false, recordTurn: origin.game.turn + 1 };
+}
+
+describe("S10b accepted-save boundary in GameApp", () => {
+  it.each([
+    { phase: "committing", failed: false, dice: "サイコロを振る", frames: 0 },
+    { phase: "resolving", failed: false, dice: "サイコロを振る", frames: 0 },
+    { phase: "accepted", failed: false, dice: "移動中…", frames: 1 },
+    { phase: "accepted", failed: true, dice: "移動中…", frames: 1 },
+  ] as const)("shows the origin and locked dice for $phase (failed save: $failed), moving only once accepted", ({ phase, failed, dice, frames }) => {
+    vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    inject(saveBoundarySessions()[phase], failed);
+    render(propsFor());
+
+    expect(boundaryReading()).toEqual({ station: "新橋", dice, diceDisabled: "true", frames });
+    expect(saveText()).toBe(failed ? "セーブ: 保存に失敗しました（この進行は未保存です）" : "セーブ: 自動保存済み");
+    expect(mounted!.container.querySelector(".toast-host")?.textContent).toBe(failed ? "保存に失敗しました" : "");
+    status(); // exactly one live region at every boundary
+    // Rendering the same failed session again neither starts a second movement nor unlocks the dice.
+    render(propsFor());
+    expect(boundaryReading().frames).toBe(frames);
+    expect(boundaryReading().diceDisabled).toBe("true");
+    click(dice);
+    expect(injection.app!.roll).not.toHaveBeenCalled();
+  });
+});
+
+describe("S10b pending-adjust resume", () => {
+  function pendingAdjustSession(): GameSession {
+    const pending = beginItemTurn(itemScenario("adjust", network), { items: [] }, network).state;
+    if (pending.pending?.kind !== "roll") throw new Error("Expected an engine-built pending adjustment");
+    return resumeSession(pending, network, 31);
+  }
+
+  it.each([
+    { name: "today (no attempt)", boundary: () => propsFor({ attempt: null, revealStage: "waiting", restoredOrOmitted: true }) },
+    { name: "S11 restored attempt", boundary: (session: GameSession) => propsFor({
+      attempt: restoredAdjustAttempt(session), revealStage: "waiting", restoredOrOmitted: true }) },
+  ])("presents the adjustment dialog with no tumble layer: $name", ({ boundary }) => {
+    const session = pendingAdjustSession();
+    inject(session);
+    render(boundary(session));
+
+    expect(session.phase).toBe("awaiting-adjust");
+    expect(mounted!.container.querySelector(".item-adjustment")).not.toBeNull();
+    expect(mounted!.container.querySelector(".dice-tumble, .turn-moment-host")).toBeNull();
+    expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    click("そのまま続ける");
+    expect(injection.app!.adjustItemRoll).toHaveBeenCalledExactlyOnceWith(null);
+    expect(mounted!.container.querySelector(".dice-tumble, .turn-moment-host")).toBeNull();
+  });
+});
+
+describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
+  const base = attemptFor(plainOrigin()).origin;
+  type State = typeof INITIAL_TURN_MOMENTS_STATE;
+  const begin = (state: State = INITIAL_TURN_MOMENTS_STATE, stepMs = 450, turn = 0, source?: "restored-roll") =>
+    turnMomentsReducer(state, { type: "begin", sessionId: 31, turn, decisionRevision: 0, origin: base,
+      timing: turnMomentTiming(stepMs), source });
+  const acceptedRecord = (): TurnMomentObservation => {
+    const record = playItemTurn(createItemGame(ITEM_GAME_CONFIG, PLAIN_SEED, network), {}, network).record;
+    if (record?.kind !== "item-ride") throw new Error("Expected a plain ride record");
+    return { decision: null, record, movementEvents: [], movementSessionId: 31, movementTurn: 1, targetServiceId: "jr-yamanote" };
+  };
+  const observe = (state: State, facts: TurnMomentObservation) => turnMomentsReducer(state, { type: "observe", sessionId: 31, facts });
+  const advance = (state: State, expectedStage: "tumble" | "stamps") =>
+    turnMomentsReducer(state, { type: "advance", key: "31:roll:1:0", expectedStage });
+
+  it("releases only an accepted record, and exactly once however often it is observed", () => {
+    const started = begin();
+    expect(started.attempt).toMatchObject({ key: "31:roll:1:0", stage: "waiting-roll", recordAccepted: false });
+    // A failed save yields no accepted record: nothing is observed, nothing starts or advances.
+    expect(observe(started, { decision: null, record: null, movementEvents: [], targetServiceId: "jr-yamanote" })).toBe(started);
+    expect(advance(started, "tumble")).toBe(started);
+    expect(begin(started)).toBe(started);
+
+    const tumbling = observe(started, acceptedRecord());
+    expect(tumbling.attempt).toMatchObject({ stage: "tumble", recordAccepted: true, rawRoll: 1, stampsRequired: false });
+    expect(observe(tumbling, acceptedRecord())).toBe(tumbling);
+    const released = advance(tumbling, "tumble");
+    expect(released.attempt).toMatchObject({ stage: "released", tumbleCompleted: true });
+    expect(advance(released, "tumble")).toBe(released);
+    expect(observe(released, acceptedRecord())).toBe(released);
+  });
+
+  it("resumes a restored pending roll without ever entering the tumble stage", () => {
+    const restored = begin(INITIAL_TURN_MOMENTS_STATE, 450, 0, "restored-roll");
+    expect(restored.attempt).toMatchObject({ source: "restored-roll", stage: "waiting-record",
+      tumbleCompleted: true, motionOmitted: true, recordAccepted: false });
+    expect(advance(restored, "tumble")).toBe(restored);
+    const released = observe(restored, acceptedRecord());
+    expect(released.attempt).toMatchObject({ stage: "released", recordAccepted: true, motionOmitted: true });
+  });
+
+  it("captures the speed per attempt key; a later speed applies to the next turn only", () => {
+    const normal = begin();
+    expect(normal.attempt?.timing).toEqual({ stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800,
+      lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 });
+    // The speed menu changed to はやい while this attempt is active: the same key keeps its captured timing.
+    expect(begin(normal, 300)).toBe(normal);
+    const next = begin(normal, 300, 1);
+    expect(next.attempt).toMatchObject({ key: "31:roll:2:0" });
+    expect(next.attempt?.timing).toEqual({ stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
+      lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333 });
+    expect(normal.attempt?.timing.tumbleMs).toBe(600);
   });
 });

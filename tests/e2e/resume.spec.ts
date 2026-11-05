@@ -3,7 +3,9 @@ import { playItemTurn } from "../../src/features/game/engine";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import {
+  clickDice,
   diceButton,
+  expectAcceptedSave,
   freezeClock,
   gamePanel,
   loadStations,
@@ -18,8 +20,10 @@ import {
   startNewGame,
   targetFeatureIds,
   titleScreen,
+  waitForRollOutcome,
   writeSaveText,
 } from "./support/app";
+import { advanceMovement, NORMAL_STEP_MS } from "./support/turnMoments";
 
 // Spec 8.3 item covered here:
 //   [8.3-4] The game resumes correctly after a page reload.
@@ -82,10 +86,18 @@ test.describe("with move animation", () => {
     await startNewGame(page);
     await freezeClock(page);
 
-    await diceButton(page).click();
+    const turnBefore = await clickDice(page);
+    // S11 inserts advanceTumble here, before the adjustment dialog or movement.
+    await waitForRollOutcome(page, turnBefore);
+    // S11 inserts advanceStamps here for turns with modifier wording.
     await expect(diceButton(page)).toHaveText("移動中…");
     const committed = await readSave(page);
     expect(committed?.turn).toBe(1);
+    await expectAcceptedSave(page, 1);
+    // Establish the movement (first frame primed, half a hop in) so the reload
+    // really interrupts a running move, as the baseline did.
+    await advanceMovement(page, NORMAL_STEP_MS / 2);
+    await expect(diceButton(page)).toHaveText("移動中…");
 
     await page.reload();
     await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();

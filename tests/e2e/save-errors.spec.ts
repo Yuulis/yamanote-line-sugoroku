@@ -4,6 +4,8 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
   diceButton,
+  expectAcceptedSave,
+  observeSave,
   openTitle,
   readSave,
   readSaveText,
@@ -209,6 +211,10 @@ test.describe("save failure toast", () => {
     await expect(page.locator(".game-panel__save")).toContainText("失敗");
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
+    // Failure checkpoint, distinct from an accepted save: every write threw, so
+    // storage still holds the new game (turn 0), not the rolled turn.
+    // S11 verifies here that the accepted sequence has not advanced past the gate.
+    expect(await observeSave(page)).toEqual({ turn: 0, pendingKind: null, history: 0 });
     await page.waitForTimeout(4200);
     await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
 
@@ -220,5 +226,8 @@ test.describe("save failure toast", () => {
     await diceButton(page).click();
     await expect(page.locator(".game-panel__save")).toContainText("自動保存済み");
     await expect(page.locator(".toast-host__toast", { hasText: "保存に失敗しました" })).toHaveCount(0);
+    // Accepted-save checkpoint: the retry's write is the acknowledged boundary.
+    // The failed turn stays committed in memory, so the retry saves turn 2 with both records.
+    await expectAcceptedSave(page, 2);
   });
 });

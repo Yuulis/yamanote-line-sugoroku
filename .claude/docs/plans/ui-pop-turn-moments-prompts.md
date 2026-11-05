@@ -540,6 +540,59 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/dice.spec.ts tests/e2e/resu
 
 ---
 
+## S11: Enable tumble, adjustment, stamps, and one Skip
+
+Implement plan `### S11` exactly — the first visible production moment — plus every `## E2E Re-pointing Map` row and
+the "Additional unit re-pointing required in S11" list whose Step column includes S11. Files: modify
+`src/app/GameApp.tsx`, `src/features/game/animation/useTurnMoments.ts`, `src/features/game/turnMomentPresentation.ts`
+(only as needed), `src/features/game/components/TurnMomentHost.tsx`, `RollAdjustment.tsx`, `GamePanel.tsx` wiring;
+tests `tests/unit/game-app-turn-moments.test.ts` (+ the S10b fixtures), `tests/unit/game-app-item-progress.test.ts`
+(the `:422` rAF re-point), new `tests/e2e/ui-pop-turn-moments.spec.ts`, and the S11 re-points in
+`tests/e2e/dice.spec.ts`, `capital-region.spec.ts`, `resume.spec.ts`, `items.spec.ts`, `accessibility.spec.ts`,
+`lottery.spec.ts` (`:57`), `save-errors.spec.ts` (plus the handoff row). Post-move stages stay empty
+(`NO_REVEAL_STAGES`): arrival/lottery/pickup are S12–S15; the app must never wait for an unrendered stage.
+
+- `GameApp`: wrap the roll — `begin` the attempt and call `app.roll()` in the same accepted handler; capture timing
+  (`turnMomentTiming(stepMs)`) and movement `stepMs` at that moment. Pass the S5 hook's `attempt` into
+  `deriveTurnMomentDisplay` (no longer `attempt: null`) and `movementStartAllowed` into `useMoveAnimation(..., {
+  startAllowed })`, keeping `session.animation` supplied while gated. Mount `TurnMomentHost` as a sibling of
+  `.game-panel` (like `ToastHost`) with `DiceTumble` built by `diceTumbleModelFor(...)` from the **saved raw roll**
+  during `tumble`/`stamps`; card tap and スキップ call the one shared Skip.
+- Adjustment only after tumble (display model already gates `decision` at `awaiting-adjust`); `RollAdjustment` gets
+  an optional shared Skip button that preserves the chosen radio and still requires Continue (Skip ends the
+  presentation, not the decision). Focus rules from S7 stay.
+- Reduced motion and restored pending rolls omit tumble; one Skip covers waiting-for-save, tumble, stamps, inside
+  adjustment and movement; a pending-save Skip survives until the accepted animation exists; double/triple clicks
+  commit one turn; reduced motion toggled mid-attempt never replays; save failure does not advance, a successful
+  retry advances exactly once; a 速度 change during tumble does not change that turn's movement speed.
+- Carry-overs recorded in the handoff for S11 (S7–S10b rows) — resolve each and list it: `guardedAdjustItemRoll` /
+  `guardedEditItemDraft` failing-without tests; stable target refs (no inline callback ref churn); host placement must
+  not cover MapLibre zoom/attribution controls while the card is `pointer-events: auto`; stamp key uniqueness; a table
+  test tying `diceStampLabels(r).length > 0` to the S2 stamps predicate; frozen-clock callers of
+  `revealUnadjustedRoll()` use the S10b split helpers with `advanceTumble` between click and dialog wait.
+- E2E: new `ui-pop-turn-moments.spec.ts` with motion enabled and saved records as the oracle (cube final face =
+  saved `rawRoll`; no movement frame and no adjustment dialog before tumble ends; one tumble across adjustment;
+  stamps precede movement; modal Skip; reload during tumble / pending adjust does not replay). Re-pointed specs keep
+  every baseline assertion and expected value; movement durations exact (P1 `buildMovePlan` + `hopDurationMs`,
+  capped); no silent Skip in natural-completion tests. Report old → new for every re-point.
+- Screenshots (cloud: use the helper in the handoff with `E2E_HOST=127.0.0.1`, delete the temporary spec after):
+  `.claude/logs/screenshots/p2-s11-desktop-dice-landed.png`, `p2-s11-desktop-adjust-after-tumble.png`,
+  `p2-s11-phone-stamp.png` (frozen clock at the named checkpoint).
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moments.test.ts tests/unit/turn-moment-hooks.test.ts tests/unit/move-animation-gate.test.ts tests/unit/turn-moment-components.test.ts tests/unit/game-app-turn-moments.test.ts tests/unit/game-app-item-progress.test.ts tests/unit/game-hud.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/dice.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/resume.spec.ts tests/e2e/items.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/lottery.spec.ts tests/e2e/hud-layout.spec.ts tests/e2e/ui-pop.spec.ts --project=desktop-chromium --workers=2
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/save-errors.spec.ts --project=desktop-chromium
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts --project=phone-chromium
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

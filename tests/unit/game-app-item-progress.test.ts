@@ -5,7 +5,9 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
-import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { beginItemTurn, createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { buildGeometryIndex, buildMovePlan } from "../../src/features/game/animation/movePath";
+import { hopDurationMs, MAX_MOVE_DURATION_MS } from "../../src/features/game/animation/timeline";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import type { ItemGameState } from "../../src/types/network";
@@ -13,6 +15,7 @@ import { turnToasts } from "../../src/features/game/toastQueue";
 import { itemLastMove } from "../../src/features/game/itemSession";
 import { dispatchReactEvent, flushReact, mountReact, type MountedReact } from "./helpers/reactDom";
 import { itemScenario, ITEM_SCENARIOS } from "../e2e/fixtures/itemScenarios";
+import { playTurn } from "../e2e/fixtures/productGame";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 
 const { railwayMapProps } = vi.hoisted(() => ({ railwayMapProps: vi.fn() }));
@@ -423,5 +426,206 @@ describe("item progress in GameApp", () => {
     click("スキップ");
     expect(stat("現在駅")).toBe("浜松町");
     expect(stat("踏破区間")).toBe("1/30");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S10b integration fixtures. They describe today's behaviour (no tumble, no
+// attempt in production) through the real GameApp + useGameApp + storage path,
+// so S11 can re-point their literals instead of rebuilding the fixtures.
+// ---------------------------------------------------------------------------
+
+/** Fixed seed whose turn 1 and turn 2 need neither adjustment nor discard. */
+const PLAIN_SEED = "review-order";
+/** Hop-time scale of each ANIMATION_SPEEDS entry, in ms per hop. */
+const NORMAL_STEP_MS = 450;
+const FAST_STEP_MS = 300;
+
+/** What the screen shows at one instant; `frames` counts requestAnimationFrame calls so far. */
+interface ScreenReading {
+  station: string | null;
+  progress: string | null;
+  dice: string | null;
+  diceDisabled: string | null;
+  frames: number;
+}
+
+function readScreen(): ScreenReading {
+  const dice = mounted!.container.querySelector(".game-panel__roll");
+  return {
+    station: stat("現在駅"), progress: stat("踏破区間"), dice: dice?.textContent ?? null,
+    diceDisabled: dice?.getAttribute("aria-disabled") ?? null,
+    frames: vi.mocked(window.requestAnimationFrame).mock.calls.length,
+  };
+}
+
+function saveStatusText(): string | null {
+  return mounted!.container.querySelector(".game-panel__save")?.textContent ?? null;
+}
+
+/** What the browser storage holds right now: the last write that returned successfully. */
+function storedSave(): { turn: number; pending: string | null; history: number } {
+  const stored = JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
+  return { turn: stored.turn, pending: stored.pending?.kind ?? null, history: stored.movementHistory.length };
+}
+
+interface ObservedWrite {
+  turn: number;
+  pending: string | null;
+  /** Taken inside the storage call, before the write returns or throws: not yet acknowledged. */
+  screen: ScreenReading;
+}
+
+/**
+ * Accepted-save observation fixture. Records the screen inside every game write
+ * (a pending `committing` write has `pending: "roll"`; the write that carries
+ * the resolved turn has `pending: null`). The write only counts as acknowledged
+ * once the call returns, so a reading taken after the click sits on the other
+ * side of that boundary. `failOnResolved` makes the resolved-turn write throw,
+ * which is the save-failure case.
+ */
+function observeWrites(failOnResolved: boolean): ObservedWrite[] {
+  const writes: ObservedWrite[] = [];
+  const write = Storage.prototype.setItem;
+  vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
+    const saved = JSON.parse(value) as ItemGameState;
+    writes.push({ turn: saved.turn, pending: saved.pending?.kind ?? null, screen: readScreen() });
+    if (failOnResolved && saved.pending === null && saved.turn > 0) throw new Error("quota");
+    write.call(this, key, value);
+  });
+  return writes;
+}
+
+function diceButton(): HTMLElement {
+  return mounted!.container.querySelector<HTMLElement>(".game-panel__roll")!;
+}
+
+function reactOnClick(element: Element): () => void {
+  const key = Object.keys(element).find((name) => name.startsWith("__reactProps"))!;
+  return (element as unknown as Record<string, { onClick: () => void }>)[key]!.onClick;
+}
+
+/** Natural movement time at `stepMs`, from the same P1 planner and cap the app uses. */
+function movementMs(game: ItemGameState, stepMs: number): number {
+  const geometry = buildGeometryIndex(data.geometry.ok ? data.geometry.value : undefined);
+  const plan = buildMovePlan(playTurn(game, network).events, network, geometry);
+  return Math.min(plan.reduce((sum, step) => sum + hopDurationMs(step, stepMs), 0), MAX_MOVE_DURATION_MS);
+}
+
+/** S11 switch: before the pre-move gate, an accepted roll shows the origin and locks the dice with the old label. */
+const LOCKED_BEFORE_ACCEPTANCE = { station: "新橋", progress: "0/30", dice: "サイコロを振る", diceDisabled: "true", frames: 0 };
+
+describe("S10b accepted-save boundary", () => {
+  it.each(["saved", "failed"] as const)("observes the %s turn-1 write before any movement frame, then starts one movement", (outcome) => {
+    openApp(createItemGame(edition.config, PLAIN_SEED, network));
+    const writes = observeWrites(outcome === "failed");
+
+    click("サイコロを振る");
+
+    expect(writes).toEqual([
+      { turn: 0, pending: "roll", screen: LOCKED_BEFORE_ACCEPTANCE },
+      { turn: 1, pending: null, screen: LOCKED_BEFORE_ACCEPTANCE },
+    ]);
+    // Acknowledged: the movement starts exactly once, from the origin.
+    expect(readScreen()).toEqual({ station: "新橋", progress: "0/30", dice: "移動中…", diceDisabled: "true", frames: 1 });
+    if (outcome === "saved") {
+      expect(storedSave()).toEqual({ turn: 1, pending: null, history: 1 });
+      expect(saveStatusText()).toBe("セーブ: 自動保存済み");
+    } else {
+      // The failed write left the pending roll behind; the failure stays visible.
+      expect(storedSave()).toEqual({ turn: 0, pending: "roll", history: 0 });
+      expect(saveStatusText()).toContain("保存に失敗しました（この進行は未保存です）");
+      expect(mounted!.container.querySelector(".toast-host")?.textContent).toContain("保存に失敗しました");
+    }
+
+    click("スキップ");
+
+    expect(writes).toHaveLength(2);
+    expect(readScreen()).toEqual({ station: "浜松町", progress: "1/30", dice: "サイコロを振る", diceDisabled: "false", frames: 1 });
+    if (outcome === "failed") {
+      expect(saveStatusText()).toContain("保存に失敗しました（この進行は未保存です）");
+      expect(mounted!.container.querySelector(".toast-host")?.textContent).toContain("保存に失敗しました");
+    }
+  });
+
+  it("resumes a pending adjustment at its dialog with no movement and no moment layer", () => {
+    const pending = beginItemTurn(itemScenario("adjust", network), { items: [] }, network).state;
+    if (pending.pending?.kind !== "roll") throw new Error("Expected an engine-built pending adjustment");
+    openApp(pending);
+    const writes = observeWrites(false);
+
+    expect(mounted!.container.querySelector(".item-adjustment")).not.toBeNull();
+    expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "true", frames: 0 });
+    expect(mounted!.container.querySelector(".dice-tumble, .turn-moment-host")).toBeNull();
+    expect(mounted!.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
+    expect(storedSave()).toMatchObject({ turn: pending.turn, pending: "roll" });
+
+    click("そのまま続ける");
+
+    // S11: the restored roll keeps omitting the tumble; only the dialog decision is new here.
+    expect(mounted!.container.querySelector(".dice-tumble, .turn-moment-host")).toBeNull();
+    expect(writes.map(({ turn, pending: kind }) => ({ turn, kind }))).toEqual([{ turn: pending.turn + 1, kind: null }]);
+    expect(storedSave()).toMatchObject({ turn: pending.turn + 1, pending: null });
+    expect(readScreen().frames).toBe(1);
+    expect(readScreen().dice).toBe("移動中…");
+  });
+});
+
+describe("S10b same-task duplicate clicks", () => {
+  it.each(["native-click", "stale-handler"] as const)("accepts exactly one turn for three %s calls in one task", (kind) => {
+    openApp(createItemGame(edition.config, PLAIN_SEED, network));
+    const writes = observeWrites(false);
+    const dice = diceButton();
+    const stale = reactOnClick(dice);
+
+    act(() => {
+      for (let call = 0; call < 3; call += 1) {
+        if (kind === "native-click") dice.click();
+        else stale();
+      }
+    });
+
+    expect(writes.filter((entry) => entry.pending === null)).toHaveLength(1);
+    expect(storedSave()).toEqual({ turn: 1, pending: null, history: 1 });
+    expect(readScreen()).toEqual({ station: "新橋", progress: "0/30", dice: "移動中…", diceDisabled: "true", frames: 1 });
+  });
+});
+
+describe("S10b speed capture", () => {
+  it("keeps the speed read at the start of a move and applies a 速度 change from the next turn", () => {
+    const first = createItemGame(edition.config, PLAIN_SEED, network);
+    const second = playTurn(first, network).state;
+    openApp(first);
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => frames.push(callback)));
+    const runFrame = (now: number): void => {
+      const callback = frames.pop();
+      if (!callback) throw new Error("No pending animation frame");
+      act(() => callback(now));
+    };
+    const normalFirst = movementMs(first, NORMAL_STEP_MS);
+    const fastFirst = movementMs(first, FAST_STEP_MS);
+    const fastSecond = movementMs(second, FAST_STEP_MS);
+    // Uncapped, so the 450 ms and 300 ms plans differ.
+    expect(normalFirst).toBeLessThan(MAX_MOVE_DURATION_MS);
+    expect(normalFirst).toBeGreaterThan(fastFirst + 1);
+
+    click("サイコロを振る");
+    runFrame(1_000);
+    click("速度");
+    expect(mounted!.container.textContent).toContain("速度: はやい");
+    // Past the whole move at 300 ms per hop, still moving: 450 ms was captured at the start.
+    runFrame(1_000 + fastFirst + 1);
+    expect(readScreen().dice).toBe("移動中…");
+    runFrame(1_000 + normalFirst + 1);
+    expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
+
+    click("サイコロを振る");
+    runFrame(5_000);
+    runFrame(5_000 + fastSecond - 1);
+    expect(readScreen().dice).toBe("移動中…");
+    runFrame(5_000 + fastSecond + 1);
+    expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
+    expect(storedSave()).toMatchObject({ turn: 2, pending: null, history: 2 });
   });
 });
