@@ -1,5 +1,5 @@
 import { ANIMATION_SPEEDS, DEFAULT_ANIMATION_SPEED, DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { createGame, playTurn } from "./fixtures/productGame";
 import {
@@ -26,7 +26,7 @@ import {
   targetFeatureIds,
   waitForRollOutcome,
 } from "./support/app";
-import { advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 // Spec 8.3 items covered here:
 //   [8.3-2] Rolling the dice updates the current position on the map.
@@ -36,6 +36,11 @@ import { advanceMovement, advanceStamps, advanceTumble } from "./support/turnMom
 /** Per-hop duration of the default animation speed. */
 const STEP_MS =
   ANIMATION_SPEEDS.find((speed) => speed.id === DEFAULT_ANIMATION_SPEED)?.stepMs ?? 0;
+
+/** The arrival banner card of the turn-moment overlay (S12). */
+function arrivalBanner(page: Page): Locator {
+  return page.locator(".turn-moment-host .arrival-banner");
+}
 
 function sorted(ids: readonly string[]): string[] {
   return [...ids].sort();
@@ -270,8 +275,19 @@ test.describe("with move animation", () => {
     // rest of the movement (total minus the half hop already advanced); the
     // helper's priming and trailing frames add only 32 ms of overshoot.
     await advanceMovement(page, moveMs - STEP_MS / 2);
-    // S12-S15 insert advanceArrival / advanceLotteryFlip / advanceLotterySettle /
-    // advancePickup here, each followed by its own assertion, before readiness.
+    // Arrival checkpoint (S12): the move ended by itself and the arrival banner
+    // holds the result. The arrival station is shown, the dice stays locked, and
+    // the marker sits on the ridden service's platform until publication.
+    // S14-S15 insert advanceLotteryFlip / advanceLotterySettle / advancePickup
+    // after the arrival, each followed by its own assertion, before readiness.
+    await expect(arrivalBanner(page)).toHaveText(`到着${end?.name ?? "?"}`);
+    await expect(panelStat(page, "現在駅")).toHaveText(end?.name ?? "?");
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+    expect(move.resolvedRide).not.toBeNull();
+    await expect.poll(async () => (await readMap(page))?.marker)
+      .toEqual(markerPosition(railwayBundle, { ...save, currentServiceId: move.resolvedRide!.serviceId, currentStationId: move.toStationId }));
+    await advanceArrival(page);
+    await expect(arrivalBanner(page)).toHaveCount(0);
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(diceButton(page)).toBeEnabled();
     await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");

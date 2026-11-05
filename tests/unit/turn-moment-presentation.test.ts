@@ -3,6 +3,7 @@ import { createGame, playItemTurn, playTurn, targetSegmentIds } from "../../src/
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
+import { itemSessionView } from "../../src/features/game/itemSession";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import type { GameSession } from "../../src/features/game/gameSession";
@@ -259,5 +260,55 @@ describe("shared turn moment publication", () => {
     expect(display.ride).toEqual({ serviceId: "fixture-south", direction: 1 });
     expect(display.lotteryText).toBe("品川：山手線・テスト南線から抽選 → テスト南線 ／ 乗車方向は大森方面のみ");
     expect(display.showClear).toBe(false);
+  });
+});
+
+describe("S12 arrival and goal publication", () => {
+  const base = itemScenario("rapid-long", network);
+  const ticket = base.inventory.find((entry) => entry.kind === "rapid")!;
+  const goalState = playItemTurn(base, { command: { items: [{ kind: "rapid", instanceId: ticket.id }] } }, network).state;
+  const origin = resumeSession(base, network, 81);
+  const goal = resumeSession(goalState, network, 81);
+  const derive = (session: GameSession, revealStage: "waiting" | "arrival" | "done") => deriveTurnMomentDisplay({
+    session, network, presentation: resolver, progress: progressFor(session), attempt: attemptFor(origin, "released"),
+    revealStage, restoredOrOmitted: false, itemView: itemSessionView(session, network),
+  });
+
+  it("announces the raw face and published modifiers during movement, never hops, unused pips or the landing", () => {
+    expect(goalState.status).toBe("completed");
+    const moving = derive({ ...goal, phase: "animating" }, "waiting");
+    expect(moving.phase).toBe("moving");
+    // 77駅 is the rapid hop budget the HUD compact roll already shows during movement (the record moved 13 stations).
+    expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。スキップできます。");
+    expect(moving.announcement).not.toMatch(/駅移動|使わず|到着|ゴール/);
+  });
+
+  it("keeps the goal banner on the panel: no ClearScreen, locked dice and items, Skip available, no goal announcement", () => {
+    const arrival = derive(goal, "arrival");
+    expect(arrival.phase).toBe("arrival");
+    expect(arrival.showClear).toBe(false);
+    expect(arrival.canRoll).toBe(false);
+    expect(arrival.itemUseLocked).toBe(true);
+    expect(arrival.canSkip).toBe(true);
+    expect(arrival.announcement).toBe("8ターン目：新橋に到着。踏破 30/30");
+    expect(arrival.clearAnnouncement).toBe("");
+    expect(arrival.toastInputs).toEqual([]);
+
+    // The rapid ticket staged at the roll is spent: no 「この内容で…」 draft comes back during the banner.
+    const staged = attemptFor(origin, "released");
+    staged.origin = { ...staged.origin, itemView: { ...itemSessionView(origin, network)!,
+      draft: { items: [{ kind: "rapid", instanceId: ticket.id }] } } };
+    const stagedArrival = deriveTurnMomentDisplay({ session: goal, network, presentation: resolver, progress: progressFor(goal),
+      attempt: staged, revealStage: "arrival", restoredOrOmitted: false, itemView: itemSessionView(goal, network) });
+    expect(stagedArrival.phase).toBe("arrival");
+    expect(stagedArrival.itemView?.draft.items).toEqual([]);
+    expect(stagedArrival.itemView?.inventory.map((item) => item.id)).not.toContain(ticket.id);
+
+    const published = derive(goal, "done");
+    expect(published.showClear).toBe(true);
+    expect(published.canSkip).toBe(false);
+    // ClearScreen owns the goal announcement; the panel (being replaced) announces nothing more.
+    expect(published.announcement).toBe("");
+    expect(published.clearAnnouncement).toContain("ゴールに到着しました");
   });
 });

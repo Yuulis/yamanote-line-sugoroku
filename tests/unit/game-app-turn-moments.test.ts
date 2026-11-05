@@ -9,7 +9,7 @@ import { beginItemTurn, createItemGame, playItemTurn, resolveItemDiscard, serial
 import { itemActionIdentity, itemSessionView, itemLastMove } from "../../src/features/game/itemSession";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
-import { serviceName, stationName } from "../../src/features/game/presentation";
+import { directionLabel, serviceName, stationName } from "../../src/features/game/presentation";
 import { dispatchReactEvent, mountReact, type MountedReact } from "./helpers/reactDom";
 import { itemScenario } from "../e2e/fixtures/itemScenarios";
 
@@ -25,8 +25,12 @@ import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
 
-const { railwayMapProps, injection, commits } = vi.hoisted(() => ({
+const { railwayMapProps, injection, commits, trackEvent } = vi.hoisted(() => ({
   railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null }, commits: [] as string[],
+  trackEvent: vi.fn(),
+}));
+vi.mock("../../src/features/analytics/analytics", async (original) => ({
+  ...await original<typeof import("../../src/features/analytics/analytics")>(), trackEvent,
 }));
 vi.mock("../../src/features/game/useGameApp", async (original) => {
   const actual = await original<typeof import("../../src/features/game/useGameApp")>();
@@ -60,6 +64,7 @@ beforeAll(() => {
 });
 afterEach(() => {
   injection.app = null;
+  trackEvent.mockClear();
   commits.length = 0;
   railwayMapProps.mockClear();
   vi.restoreAllMocks();
@@ -349,7 +354,10 @@ describe("GameApp decision and empty-event publication", () => {
     const attempt = attemptFor(origin);
     inject(result); render(propsFor({ attempt, revealStage: "arrival", restoredOrOmitted: false }));
     expect(mounted!.container.querySelector(".clear-screen")).toBeNull();
-    expect(status()).toBe("10ターン目：新橋に到着。ゴールに到着しました。踏破 30/30。抽選結果を表示しています");
+    // S12 (prompt: "Goal announcement is owned by ClearScreen only, no duplicate before replacement"): the goal banner
+    // announces the arrival without the goal sentence that ClearScreen announces next, and a goal turn draws no lottery.
+    // Was: "10ターン目：新橋に到着。ゴールに到着しました。踏破 30/30。抽選結果を表示しています".
+    expect(status()).toBe("10ターン目：新橋に到着。踏破 30/30");
     render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
     expect(mounted!.container.querySelector(".clear-screen")).not.toBeNull();
     expect(mounted!.container.querySelector(".item-event-notice [role=status]")?.textContent).toBe("10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
@@ -1127,5 +1135,302 @@ describe("S11 host helpers", () => {
     expect(turnMomentDiceModel({ ...base, stage: "tumble", skipRequested: true }, record, false)).toBeNull();
     expect(turnMomentDiceModel({ ...base, stage: "tumble", rawRoll: null }, record, false)).toBeNull();
     expect(turnMomentDiceModel(null, record, false)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// S12 activation: the arrival banner after the movement and the delayed goal.
+// Real GameApp + useGameApp + storage; animation frames are queued and run by hand.
+// ---------------------------------------------------------------------------
+
+/** Arrival stage at normal speed, written down from the specification. */
+const ARRIVAL_MS = 800;
+const queuedFrames: FrameRequestCallback[] = [];
+
+/** `openSaved`, with animation frames queued so a test can finish the movement naturally. */
+function openWithFrames(game: ItemGameState): void {
+  openSaved(game);
+  queuedFrames.length = 0;
+  vi.stubGlobal("requestAnimationFrame", vi.fn((callback: FrameRequestCallback) => queuedFrames.push(callback)));
+}
+
+/** Run the queued movement frames: the first one starts the clock, the next one is far past the 6,000 ms cap. */
+function finishMovement(): void {
+  let now = 1_000;
+  for (let guard = 0; queuedFrames.length > 0; guard += 1) {
+    if (guard > 10) throw new Error("The movement did not finish");
+    const callback = queuedFrames.shift()!;
+    act(() => callback(now));
+    now += 100_000;
+  }
+}
+
+function banner(): string | null {
+  const element = mounted!.container.querySelector(".arrival-banner");
+  if (!element) return null;
+  expect(element.closest(".turn-moment-host[aria-hidden='true']")).not.toBeNull();
+  expect(element.closest(".turn-moment-host")!.querySelector("button, [tabindex], a, input")).toBeNull();
+  return element.querySelector(".arrival-banner__station")?.textContent ?? null;
+}
+
+function rideStat(): string | null {
+  return mounted!.container.querySelector('[data-stat="ride"]')?.textContent ?? null;
+}
+
+function gameClearEvents(): unknown[][] {
+  return trackEvent.mock.calls.filter(([name]) => name === "game_clear");
+}
+
+/** Click the dice, run the tumble (declining an adjustment if one is offered) and finish the movement. */
+function playToArrival(): void {
+  click("サイコロを振る");
+  advance(TUMBLE_MS);
+  if (adjustmentDialog()) press(continueButton());
+  finishMovement();
+}
+
+describe("S12 arrival banner in GameApp", () => {
+  it("shows the arrival after the movement, holds the next ride, then publishes when the arrival ends", () => {
+    openWithFrames(itemScenario("route", network));
+    const origin = storedGame();
+    click("サイコロを振る");
+    expect(status()).toBe("サイコロを振っています。移動の準備中です。");
+    advance(TUMBLE_MS);
+    const record = storedGame().movementHistory.at(-1)!;
+    // The engine-built turn: raw 4, two stations to the area end (two pips unused), a forced reversal, a pickup.
+    expect(record).toMatchObject({ turn: 3, kind: "item-ride", rawRoll: 4, physicalHops: 2, unusedPips: 2,
+      toStationId: "fixture-omori", resolvedRide: { serviceId: "fixture-south", direction: 1 },
+      landing: { serviceId: "fixture-south", direction: -1 }, itemEvents: [{ type: "pickup-retained", item: { kind: "rapid" } }] });
+    // Movement copy: the raw face only (no stamps on this turn), never the hops, unused pips or the landing.
+    expect(status()).toBe("出目は4です。移動中です。スキップできます。");
+    expect(banner()).toBeNull();
+    finishMovement();
+
+    expect(banner()).toBe("大森");
+    expect(mounted!.container.querySelector('[data-stat="station"]')?.textContent).toBe("大森");
+    // The ridden service and direction stay on the HUD and the map until the arrival publishes the next ride.
+    expect(rideStat()).toBe("テスト南線");
+    expect(mounted!.container.querySelector('[data-stat="direction"]')?.textContent).toBe(directionLabel(network, "fixture-south", 1));
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].progress.highlightedServiceId).toBe("fixture-south");
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].progress.currentPosition)
+      .toEqual(network.servicesById.get("fixture-south")!.platformCoordinates["fixture-omori"]);
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).not.toContain("快速券");
+    expect(dice().textContent).toBe("サイコロを振る");
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    expect(panelSkip().disabled).toBe(false);
+    expect(status()).toBe("3ターン目：大森に到着。踏破 4/30。抽選結果を表示しています");
+    advance(ARRIVAL_MS - 1);
+    expect(banner()).toBe("大森");
+    expect(status()).toBe("3ターン目：大森に到着。踏破 4/30。抽選結果を表示しています");
+
+    advance(1);
+    expect(banner()).toBeNull();
+    expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+    expect(mounted!.container.querySelector('[data-stat="direction"]')?.textContent).toBe(directionLabel(network, "fixture-south", -1));
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).toContain("快速券");
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    expect(status()).toBe("3ターン目：出目4（4マス、2駅移動、残り2は使わず）、大森に到着。テスト南線のみ ／ エリア端のため折り返し（品川方面）。"
+      + "踏破 4/30。快速券を拾いました。2路線以上が止まる駅だけを1駅と数えて進む。サイコロを振れます");
+    expect(storedGame().movementHistory).toHaveLength(origin.movementHistory.length + 1);
+  });
+
+  it.each([
+    { via: "the panel Skip", end: () => press(panelSkip()) },
+    { via: "a tap on the banner card", end: () => press(mounted!.container.querySelector(".turn-moment-host__card")!) },
+  ])("completes the arrival at once with $via, keeping focus on the dice, and never replays it", ({ end }) => {
+    openWithFrames(itemScenario("route", network));
+    dice().focus();
+    playToArrival();
+    expect(banner()).not.toBeNull();
+    end();
+
+    expect(banner()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    expect(document.activeElement).toBe(dice());
+    expect(rideStat()).toBe(serviceName(network, storedGame().currentServiceId));
+    advance(ARRIVAL_MS);
+    expect(banner()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("mounts no banner under reduced motion", () => {
+    motionPreference(true);
+    openWithFrames(itemScenario("route", network));
+    click("サイコロを振る");
+    if (adjustmentDialog()) press(continueButton());
+    expect(banner()).toBeNull();
+    expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    advance(TUMBLE_MS + ARRIVAL_MS);
+    expect(banner()).toBeNull();
+    expect(queuedFrames).toHaveLength(0);
+  });
+
+  it("mounts no banner for a restored record, and a reload during the arrival does not replay it", () => {
+    openWithFrames(itemScenario("route", network));
+    advance(ARRIVAL_MS);
+    expect(banner()).toBeNull();
+    playToArrival();
+    expect(banner()).not.toBeNull();
+    const saved = storedGame();
+
+    // Reload: a fresh mount resumes the saved arrival.
+    mounted!.cleanup();
+    mounted = undefined;
+    render(propsFor());
+    click("つづきから");
+    expect(banner()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    advance(ARRIVAL_MS);
+    expect(banner()).toBeNull();
+    expect(storedGame()).toEqual(saved);
+  });
+});
+
+describe("S12 arrival omission: reduced motion before, during and across turns", () => {
+  it.each([
+    { point: "the tumble", toggle: (setReduced: (reduce: boolean) => void) => { setReduced(true); setReduced(false); },
+      afterToggle: () => { advance(TUMBLE_MS); finishMovement(); } },
+    { point: "the movement", toggle: (setReduced: (reduce: boolean) => void) => { setReduced(true); setReduced(false); },
+      before: () => advance(TUMBLE_MS), afterToggle: () => finishMovement() },
+  ])("omits the arrival when reduced motion was toggled on and off during $point", ({ toggle, before, afterToggle }) => {
+    const setReduced = motionPreference(false);
+    openWithFrames(itemScenario("route", network));
+    click("サイコロを振る");
+    before?.();
+    toggle(setReduced);
+    afterToggle();
+    expect(banner()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    advance(ARRIVAL_MS);
+    expect(banner()).toBeNull();
+  });
+
+  it("ends the arrival when reduced motion turns on during it, does not replay it when turned off, and plays the next turn's arrival in full", () => {
+    const setReduced = motionPreference(false);
+    openWithFrames(itemScenario("route", network));
+    playToArrival();
+    expect(banner()).not.toBeNull();
+    setReduced(true);
+    expect(banner()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    const published = status();
+    expect(published).toMatch(/。サイコロを振れます$/);
+    setReduced(false);
+    expect(banner()).toBeNull();
+    advance(ARRIVAL_MS);
+    expect(banner()).toBeNull();
+    expect(status()).toBe(published);
+
+    // Next turn: no latch leaks from the omitted arrival.
+    const turnBefore = storedGame().turn;
+    playToArrival();
+    expect(storedGame().turn).toBe(turnBefore + 1);
+    const next = storedGame().movementHistory.at(-1)!;
+    expect(banner()).toBe(stationName(network, next.toStationId));
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    advance(ARRIVAL_MS - 1);
+    expect(banner()).not.toBeNull();
+    advance(1);
+    expect(banner()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("plays the next turn's arrival in full after a Skip ended the previous one", () => {
+    openWithFrames(itemScenario("route", network));
+    playToArrival();
+    press(panelSkip());
+    expect(banner()).toBeNull();
+    playToArrival();
+    expect(banner()).not.toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    advance(ARRIVAL_MS - 1);
+    expect(banner()).not.toBeNull();
+    advance(1);
+    expect(banner()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+describe("S12 delayed goal presentation", () => {
+  /** The item game one turn before its goal (the same seed as the empty-event goal test above). */
+  function beforeGoal(): ItemGameState {
+    let game = createItemGame(ITEM_GAME_CONFIG, "00000000000000000000000000000004", network);
+    let previous = game;
+    while (game.status === "playing" && game.turn < 500) {
+      previous = game;
+      game = playItemTurn(game, {}, network).state;
+      if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+    }
+    expect(game.status).toBe("completed");
+    return previous;
+  }
+
+  function clearHeading(): HTMLElement | null {
+    return mounted!.container.querySelector<HTMLElement>("#clear-title");
+  }
+
+  function mapInert(): boolean | undefined {
+    return (railwayMapProps.mock.calls.at(-1)?.[0] as { inert?: boolean }).inert;
+  }
+
+  it("shows the goal banner on the panel first; ClearScreen, its focus, map inertness and game_clear follow together", () => {
+    openWithFrames(beforeGoal());
+    dice().focus();
+    playToArrival();
+    expect(storedGame().status).toBe("completed");
+
+    // Goal banner: the engine is complete, but the panel stays with locked dice and an available Skip.
+    expect(banner()).toBe("新橋");
+    expect(clearHeading()).toBeNull();
+    expect(mounted!.container.querySelector(".clear-screen")).toBeNull();
+    expect(mounted!.container.querySelector(".game-panel")).not.toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    expect(panelSkip().disabled).toBe(false);
+    expect(document.activeElement).toBe(dice());
+    expect(mapInert()).toBe(false);
+    expect(gameClearEvents()).toEqual([]);
+    // One live region, with the arrival only: the goal sentence belongs to ClearScreen.
+    expect(status()).toBe("10ターン目：新橋に到着。踏破 30/30");
+    advance(ARRIVAL_MS - 1);
+    expect(clearHeading()).toBeNull();
+    expect(gameClearEvents()).toEqual([]);
+    expect(mapInert()).toBe(false);
+
+    advance(1);
+    expect(banner()).toBeNull();
+    expect(mounted!.container.querySelector(".game-panel")).toBeNull();
+    expect(clearHeading()).not.toBeNull();
+    expect(document.activeElement).toBe(clearHeading());
+    expect(mapInert()).toBe(true);
+    expect(gameClearEvents()).toHaveLength(1);
+    const notices = mounted!.container.querySelectorAll(".item-event-notice [role=status]");
+    expect(notices).toHaveLength(1);
+    expect(notices[0]!.textContent).toContain("ゴールに到着しました");
+    advance(ARRIVAL_MS);
+    expect(gameClearEvents()).toHaveLength(1);
+  });
+
+  it("lets Skip end the goal banner before ClearScreen takes focus", () => {
+    openWithFrames(beforeGoal());
+    playToArrival();
+    expect(banner()).toBe("新橋");
+    expect(clearHeading()).toBeNull();
+    press(panelSkip());
+
+    expect(banner()).toBeNull();
+    expect(document.activeElement).toBe(clearHeading());
+    expect(mapInert()).toBe(true);
+    expect(gameClearEvents()).toHaveLength(1);
+  });
+
+  it("shows ClearScreen at once under reduced motion, with no goal banner", () => {
+    motionPreference(true);
+    openWithFrames(beforeGoal());
+    click("サイコロを振る");
+    if (adjustmentDialog()) press(continueButton());
+    expect(banner()).toBeNull();
+    expect(document.activeElement).toBe(clearHeading());
+    expect(gameClearEvents()).toHaveLength(1);
   });
 });

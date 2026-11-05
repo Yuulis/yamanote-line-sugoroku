@@ -123,6 +123,9 @@ function openApp(game: ItemGameState): void {
 /** Normal-speed (450 ms/hop) and はやい (300 ms/hop) tumble durations, written down from the specification. */
 const NORMAL_TUMBLE_MS = 600;
 const FAST_TUMBLE_MS = 400;
+/** S12 arrival stage at normal and fast speed (800 x 300 / 450, rounded). */
+const NORMAL_ARRIVAL_MS = 800;
+const FAST_ARRIVAL_MS = 533;
 
 /** S11 pre-move checkpoint: run the dice tumble's stage timer (callers install fake setTimeout first). */
 function advanceTumble(milliseconds: number): void {
@@ -711,6 +714,11 @@ describe("S10b speed capture", () => {
     runFrame(1_000 + fastFirst + 1);
     expect(readScreen().dice).toBe("移動中…");
     runFrame(1_000 + normalFirst + 1);
+    // S12 arrival checkpoint: the move is over, the dice waits for the arrival captured at normal speed (800 ms).
+    expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "true" });
+    advanceTumble(FAST_ARRIVAL_MS);
+    expect(readScreen().diceDisabled).toBe("true");
+    advanceTumble(NORMAL_ARRIVAL_MS - FAST_ARRIVAL_MS);
     expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
 
     click("サイコロを振る");
@@ -720,6 +728,11 @@ describe("S10b speed capture", () => {
     runFrame(5_000 + fastSecond - 1);
     expect(readScreen().dice).toBe("移動中…");
     runFrame(5_000 + fastSecond + 1);
+    // S12 arrival checkpoint: this roll captured はやい, so its arrival lasts 533 ms.
+    expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "true" });
+    advanceTumble(FAST_ARRIVAL_MS - 1);
+    expect(readScreen().diceDisabled).toBe("true");
+    advanceTumble(1);
     expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
     expect(storedSave()).toMatchObject({ turn: 2, pending: null, history: 2 });
   });
@@ -741,6 +754,11 @@ describe("S10b speed capture", () => {
     runFrame(1_000 + fastFirst + 1);
     expect(readScreen().dice).toBe("移動中…");
     runFrame(1_000 + normalFirst + 1);
+    // S12 arrival checkpoint: the arrival also keeps the normal speed captured with the roll (800 ms, not 533 ms).
+    expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "true" });
+    advanceTumble(FAST_ARRIVAL_MS);
+    expect(readScreen().diceDisabled).toBe("true");
+    advanceTumble(NORMAL_ARRIVAL_MS - FAST_ARRIVAL_MS);
     expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
   });
 });

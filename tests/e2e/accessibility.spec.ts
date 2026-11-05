@@ -26,7 +26,7 @@ import {
   writeSaveText,
   useInventoryItem,
 } from "./support/app";
-import { advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 /** Per-hop duration of the default animation speed. */
 const STEP_MS =
@@ -109,6 +109,13 @@ test.describe("animated roll focus", () => {
     // S12-S15 add their explicit stage advances (arrival, lottery, pickup)
     // before this point as they activate.
     await advanceMovement(page, moveMs - STEP_MS / 2);
+    // Arrival checkpoint (S12): the banner is decorative and never takes focus;
+    // the dice keeps it, still locked, until the arrival ends.
+    await expect(page.locator(".turn-moment-host .arrival-banner")).toBeVisible();
+    await expect(dice).toHaveAttribute("aria-disabled", "true");
+    await expect(dice).toBeFocused();
+    await advanceArrival(page);
+    await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveCount(0);
     await expect(dice).toHaveText("サイコロを振る");
     await expect(dice).toHaveAttribute("aria-disabled", "false");
     await expect(dice).toBeFocused();

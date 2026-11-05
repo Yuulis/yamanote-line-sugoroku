@@ -19,7 +19,7 @@ import {
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
 import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
-import { advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceArrival, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -343,11 +343,28 @@ test.describe("current product scenarios", () => {
         .toEqual(serviceFeatureIds(railwayBundle, record.resolvedRide!.serviceId));
       const remaining = Math.max(0, timing.totalMs - 16 - timing.beforeTargetMs - timing.targetDurationMs / 2);
       await page.clock.fastForward(remaining + 50);
+      // Arrival checkpoint (S12): the move ended at 池袋 on the ridden rapid. Until the arrival publishes the landing,
+      // the HUD and the map highlight keep the ridden service and the marker sits on its 池袋 platform.
+      const ridden = record.resolvedRide!.serviceId;
+      const ikebukuroName = railwayBundle.network.stationsById.get("ikebukuro")!.name;
+      await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveText(`到着${ikebukuroName}`);
+      await expect(panelStat(page, "現在駅")).toHaveText(ikebukuroName);
+      await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, ridden));
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+        .toEqual(serviceFeatureIds(railwayBundle, ridden));
+      await expect.poll(async () => (await readMap(page))?.marker)
+        .toEqual(markerPosition(railwayBundle, { ...committed, currentServiceId: ridden }));
+      await advanceArrival(page);
+      await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveCount(0);
+      // Published checkpoint: the committed landing service, its highlight and its platform, then readiness.
       await expect(diceButton(page)).toHaveText("サイコロを振る");
       await expect(panelStat(page, "現在駅")).toHaveText(railwayBundle.network.stationsById.get("ikebukuro")!.name);
       await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, "metro-fukutoshin"));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
         .toEqual(serviceFeatureIds(railwayBundle, "metro-fukutoshin"));
+      await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, committed));
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
       expect(await readSave(page)).toEqual(committed);
     });
   });

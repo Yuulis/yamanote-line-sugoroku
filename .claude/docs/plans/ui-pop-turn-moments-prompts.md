@@ -593,6 +593,57 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts
 
 ---
 
+## S12: Enable arrival and delayed goal presentation
+
+Implement plan `### S12` exactly, plus the `## E2E Re-pointing Map` rows whose Step column includes S12
+(`capital-region.spec.ts:325` natural landing, `items.spec.ts:436` long rapid goal, `dice.spec.ts:203` natural
+completion). Files: modify `src/features/game/animation/turnMoments.ts` (add `buildTurnRevealStages()` with the
+arrival stage only), `src/features/game/components/TurnMomentHost.tsx`, `src/features/game/turnMomentPresentation.ts`,
+`src/app/GameApp.tsx`, `src/styles.css`; tests `tests/unit/turn-moments.test.ts`,
+`tests/unit/turn-moment-presentation.test.ts`, `tests/unit/game-app-turn-moments.test.ts`,
+`tests/e2e/ui-pop-turn-moments.spec.ts`, `items.spec.ts`, `dice.spec.ts`, `capital-region.spec.ts` (natural-completion
+case), `accessibility.spec.ts` (post checkpoint) (plus the handoff row).
+
+- Arrival is the **only** production post stage at this step (`buildTurnRevealStages()` returns `["arrival"]` for a
+  fresh item-mode arrival, including deadhead, no-new-segment and goal turns; nothing for classic mode, reduced
+  motion, restored or omitted results). Duration from the attempt's captured timing (normal 800 ms). Lottery and
+  pickup stay unbuilt (S14/S15): publish the next ride, lottery text, candidates and item results when `arrival`
+  ends. The completed-segment flash is S13 — do not add it.
+- Arrival banner in `TurnMomentHost` (decorative, `aria-hidden`, no focusable descendants, card tap = shared Skip,
+  placement as S8/S11 incl. map-control insets): arrival station name; marker on the ridden service's arrival
+  platform until publication (S3 rule).
+- Goal: movement → arrival banner → ClearScreen. During the goal banner `GamePanel` stays mounted although the
+  engine status is completed, dice/items unavailable, Skip available, ClearScreen not mounted and its focus effect
+  not run. ClearScreen mount, map inertness and `game_clear` analytics all key off the same `display.showClear`
+  (grep for every raw `status === "completed"`/clear condition in `GameApp` and route it through the display).
+  Goal announcement is owned by ClearScreen only (no duplicate before replacement).
+- Announcements (architecture "Announcements"): replace the movement-phase P1 `itemTurnAnnouncement` copy (S11
+  carry-over: it leaks physical hops, unused pips such as `2駅移動、残り2は使わず`, and landing) with raw face +
+  published modifiers + movement wording; arrival: arrival wording, no selected next ride; ready after publication:
+  existing full announcement + `サイコロを振れます`. Exactly one gameplay `role=status`, one change per boundary.
+- Omission: reduced motion and restored results mount no banner; reduced motion toggled on/off during arrival
+  omits that arrival without replay; Skip during arrival completes it; a resumed arrival does not replay.
+- E2E: natural-completion tests advance `advanceArrival` explicitly after movement and assert arrival state
+  (arrival station, ridden highlight/platform) before publication, then the existing final assertions — never
+  replace natural completion with Skip; long rapid goal: movement cap, goal banner with no ClearScreen, advance
+  arrival, focused ClearScreen; keep every baseline assertion and value; report old → new.
+- Screenshots (frozen clock, temporary `tests/e2e/zz-p2-shot.spec.ts`, deleted after):
+  `.claude/logs/screenshots/p2-s12-desktop-arrival.png`, `p2-s12-desktop-goal-banner.png`,
+  `p2-s12-desktop-clear-after-banner.png`.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moments.test.ts tests/unit/turn-moment-presentation.test.ts tests/unit/game-app-turn-moments.test.ts tests/unit/analytics.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/dice.spec.ts tests/e2e/items.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/lottery.spec.ts tests/e2e/resume.spec.ts tests/e2e/full-game.spec.ts tests/e2e/save-errors.spec.ts --project=desktop-chromium --workers=2
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/accessibility.spec.ts --project=phone-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

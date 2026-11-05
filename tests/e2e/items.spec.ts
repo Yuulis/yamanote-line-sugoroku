@@ -6,7 +6,7 @@ import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
-import { advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceArrival, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 test.use({ dataset: "fixture" });
 
@@ -450,6 +450,18 @@ test.describe("long rapid goal arrival", () => {
     await page.clock.runFor(32);
     await page.clock.fastForward(6_100);
     await page.clock.runFor(32);
+    // Goal banner checkpoint (S12): the capped movement is over (dice label back), the arrival banner shows the goal
+    // station on the still-mounted panel with the dice locked and Skip available, and ClearScreen is not mounted.
+    const goalBanner = page.locator(".turn-moment-host .arrival-banner");
+    await expect(goalBanner).toHaveText("到着新橋");
+    await expect(panelStat(page, "現在駅")).toHaveText("新橋");
+    await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(gamePanel(page).getByRole("button", { name: "スキップ" })).toBeEnabled();
+    await expect(page.locator(".clear-screen")).toHaveCount(0);
+    expect(await itemSave(page)).toEqual(committed);
+    await advanceArrival(page);
+    await expect(goalBanner).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "クリア！", exact: true })).toBeFocused();
     await expect(notices(page)).toContainText("快速券を使いました");
     await expect(notices(page).getByRole("status")).toContainText("ゴールに到着しました");

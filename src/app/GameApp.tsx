@@ -21,12 +21,13 @@ import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotio
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
 import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
 import type { TurnMomentDisplay, TurnRevealState } from "../features/game/turnMomentPresentation";
-import type { RollAttempt, TurnMomentObservation, TurnOrigin } from "../features/game/animation/turnMoments";
+import { buildTurnRevealStages, turnMomentTiming, type RollAttempt, type TurnMomentObservation, type TurnOrigin } from "../features/game/animation/turnMoments";
 import { attemptOwnsAnimation, useTurnMoments } from "../features/game/animation/useTurnMoments";
-import { TurnMomentHost, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
+import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
 import { DiceTumble } from "../features/game/components/DiceTumble";
 import type { GameSession } from "../features/game/gameSession";
 import { createPresentationResolver } from "../features/game/presentationResolver";
+import { stationName } from "../features/game/presentation";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
@@ -34,7 +35,6 @@ import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
 import { summarizeGame } from "../features/game/gameSummary";
-import type { RevealStage } from "../features/game/animation/useRevealSequence";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
 
@@ -57,8 +57,6 @@ type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-sa
 
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
-/** Post-move stages stay empty until their moments are rendered (S12-S15): nothing waits for an unrendered stage. */
-const NO_REVEAL_STAGES: readonly RevealStage[] = [];
 const NO_MOVE_EVENTS: TurnMomentObservation["movementEvents"] = [];
 /** Phases in which `lastMove` still describes the previous turn: the current record is not yet save-attempted. */
 const PRE_RECORD_PHASES: ReadonlySet<GameSession["phase"]> = new Set(["committing", "awaiting-adjust", "resolving"]);
@@ -122,6 +120,23 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const animation = session?.animation ?? null;
   // The current turn's record exists for presentation only once its save was attempted.
   const acceptedRecord = session && !PRE_RECORD_PHASES.has(session.phase) ? session.lastMove?.itemRecord ?? null : null;
+  // Entry baseline: the turn and record the session was entered with. Records up to it are restored, never revealed.
+  const resumeBaseline = useRef<{ sessionId: number | null; turn: number; recordTurn: number } | null>(null);
+  if (resumeBaseline.current?.sessionId !== (session?.sessionId ?? null)) {
+    resumeBaseline.current = { sessionId: session?.sessionId ?? null, turn: game?.turn ?? 0,
+      recordTurn: session?.lastMove?.itemRecord?.turn ?? 0 };
+  }
+  const latestRecord = session?.lastMove?.itemRecord ?? null;
+  const entryTurn = Math.max(resumeBaseline.current.turn, resumeBaseline.current.recordTurn);
+  const fallbackStepMs = speed?.stepMs ?? 0;
+  // Frozen per reveal key by useTurnMoments (durations from the attempt's captured timing when it owns the record).
+  // The test seam injects the presented stage itself, so the real sequence then times no stage of its own.
+  const seamed = turnMomentBoundary !== undefined;
+  const revealStages = useMemo(() => buildTurnRevealStages({
+    record: seamed ? null : latestRecord,
+    restored: latestRecord !== null && latestRecord.turn <= entryTurn,
+    omitted: reducedMotion,
+  }, turnMomentTiming(fallbackStepMs)), [seamed, latestRecord, entryTurn, reducedMotion, fallbackStepMs]);
   const moments = useTurnMoments({
     sessionId: session?.sessionId ?? 0,
     gameTurn: game?.turn ?? 0,
@@ -147,7 +162,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
       pendingDecisionTurn: itemView?.decision ? game?.turn ?? null : null,
       movementComplete: session?.phase !== "animating",
     },
-    revealStages: NO_REVEAL_STAGES,
+    revealStages,
     animation,
     finishAnimation: app.finishAnimation,
   });
@@ -183,10 +198,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     () => (presentationGame ? displayedProgress(presentationGame, network, view) : null),
     [presentationGame, network, view],
   );
-  const resumeBaseline = useRef<{ sessionId: number | null; turn: number } | null>(null);
-  if (resumeBaseline.current?.sessionId !== (session?.sessionId ?? null)) {
-    resumeBaseline.current = { sessionId: session?.sessionId ?? null, turn: game?.turn ?? 0 };
-  }
   const classicAnnouncement = useRef({ sessionId: session?.sessionId, text: "" });
   if (classicAnnouncement.current.sessionId !== session?.sessionId) {
     classicAnnouncement.current = { sessionId: session?.sessionId, text: "" };
@@ -196,18 +207,19 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const baselineTurn = resumeBaseline.current?.turn ?? 0;
   const restoredRecordShown = reveal.key !== null && Number(reveal.key.split(":").at(-1)) <= baselineTurn
     && !(liveAttempt !== null && liveAttempt.recordTurn > baselineTurn);
+  const presentedRevealStage: TurnRevealState = turnMomentBoundary?.revealStage ?? moments.revealStage;
   const turnDisplay = useMemo(() => session && shown ? deriveTurnMomentDisplay({
     session,
     network,
     presentation,
     progress: shown,
     attempt: presentedAttempt,
-    revealStage: turnMomentBoundary?.revealStage ?? (reveal.stage === "done" ? "done" : "waiting"),
+    revealStage: presentedRevealStage,
     restoredOrOmitted: turnMomentBoundary?.restoredOrOmitted ?? (moments.restoredOrOmitted || restoredRecordShown),
     itemView,
     restoredHistory,
     previousClassicAnnouncement: classicAnnouncement.current.text,
-  }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, reveal.stage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory]);
+  }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, presentedRevealStage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory]);
   if (!itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
     classicAnnouncement.current.text = turnDisplay.announcement;
   }
@@ -325,6 +337,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     if (enteredAwaitingAdjust) beginTurnMoment("restored-roll");
   }, [sessionId, enteredAwaitingAdjust, beginTurnMoment]);
   const diceModel = session ? turnMomentDiceModel(presentedAttempt, acceptedRecord, reducedMotion) : null;
+  const arrivalModel = turnDisplay ? turnMomentArrivalModel(turnDisplay.phase, presentedRevealStage,
+    stationName(network, turnDisplay.progress.stationId, presentation)) : null;
 
   const showTitle = useCallback(() => {
     setNotice(null);
@@ -384,9 +398,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           onItemDialogOpenChange={setItemDialogOpen}
         />
       )}
-      {session && shown && turnDisplay && !showClear && diceModel && (
+      {session && shown && turnDisplay && !showClear && (diceModel || arrivalModel) && (
         <TurnMomentHost onTap={skip}>
-          <DiceTumble model={diceModel} />
+          {diceModel ? <DiceTumble model={diceModel} /> : arrivalModel && <ArrivalBanner model={arrivalModel} />}
         </TurnMomentHost>
       )}
       <ToastHost

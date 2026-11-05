@@ -4,6 +4,8 @@ import type { ItemGameState, ItemRollAdjustment } from "../../src/types/network"
 import { expect, test } from "./fixtures";
 import { itemScenario } from "./fixtures/itemScenarios";
 import {
+  markerPosition,
+  waitForRollOutcome,
   clickDice,
   diceButton,
   diceMoment,
@@ -18,12 +20,16 @@ import {
   startNewGame,
   writeSaveText,
 } from "./support/app";
-import { advanceMovement, advanceTumble, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
+import { advanceMovement, advanceStamps, advanceTumble, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import { directionLabel } from "../../src/features/game/presentation";
+import type { RailwayBundle } from "./fixtures/bundle";
 
 // UI pop P2, S11: the pre-move moment (dice tumble, adjustment after the tumble,
 // modifier stamps, one Skip). Saved records are the oracle: the cube lands on
 // the saved raw roll, and every result equals the engine replay of the save.
-// Post-move moments (arrival, lottery, pickup) arrive with S12-S15.
+// S12: the arrival banner after the movement. Lottery and pickup moments arrive
+// with S14-S15; until then their results publish when the arrival ends.
 
 test.use({ dataset: "fixture", reducedMotion: "no-preference" });
 
@@ -255,4 +261,171 @@ test("a reload while the adjustment is pending resumes at the dialog without a s
   await expect(diceMoment(page)).toHaveCount(0);
   await expectAcceptedSave(page, base.turn + 1);
   expect(await readSave(page)).toEqual(playItemTurn(base, {}, railwayBundle.network).state);
+});
+
+// ---------------------------------------------------------------------------
+// S12: the arrival banner.
+// ---------------------------------------------------------------------------
+
+/** Longer than any movement: the app caps a move at 6,000 ms, so this always lands after its end. */
+const PAST_ANY_MOVEMENT_MS = 6_100;
+
+function arrivalBanner(page: Page): Locator {
+  return page.locator(".turn-moment-host .arrival-banner");
+}
+
+function serviceDisplayName(bundle: RailwayBundle, serviceId: string): string {
+  return createPresentationResolver(bundle.network,
+    bundle.data.manifest.ok ? bundle.data.manifest.value.uiPresentation : undefined).serviceName(serviceId);
+}
+
+function slotNamed(page: Page, name: string): Locator {
+  return gamePanel(page).locator(".item-slot h3", { hasText: name });
+}
+
+/** Resume the route scenario frozen and play its plain turn up to the end of the movement; returns the replay. */
+async function playRouteTurnToArrival(page: Page, bundle: RailwayBundle): Promise<ReturnType<typeof playItemTurn>> {
+  const base = itemScenario("route", bundle.network);
+  await resumeFrozen(page, base);
+  const turnBefore = await clickDice(page);
+  // The tumble timer starts once the saved roll is observed: wait for it before advancing the clock.
+  await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+  await advanceTumble(page);
+  await waitForRollOutcome(page, turnBefore);
+  await expectAcceptedSave(page, base.turn + 1);
+  const expected = playItemTurn(base, {}, bundle.network);
+  expect(await readSave(page)).toEqual(expected.state);
+  const record = expected.state.movementHistory.at(-1)!;
+  if (stampsExpected(record)) await advanceStamps(page);
+  await expect(diceMoment(page)).toHaveCount(0);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  return expected;
+}
+
+test("the arrival banner holds the ridden service, platform and the turn's results, then everything publishes together", async ({ page, railwayBundle }) => {
+  const base = itemScenario("route", railwayBundle.network);
+  await resumeFrozen(page, base);
+  const turnBefore = await clickDice(page);
+  // The tumble timer starts once the saved roll is observed: wait for it before advancing the clock.
+  await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+  await advanceTumble(page);
+  await waitForRollOutcome(page, turnBefore);
+  await expectAcceptedSave(page, base.turn + 1);
+  const expected = playItemTurn(base, {}, railwayBundle.network);
+  expect(await readSave(page)).toEqual(expected.state);
+  const record = expected.state.movementHistory.at(-1)!;
+  if (record.kind !== "item-ride" || !record.resolvedRide || !record.landing) throw new Error("expected a ride with a landing");
+  expect(stampsExpected(record)).toBe(false);
+  // The saved oracle: the ride stops short (unused pips), reverses at the area end and picks up an item.
+  expect(record.unusedPips).toBeGreaterThan(0);
+  expect(record.landing.direction).not.toBe(record.resolvedRide.direction);
+  expect(record.itemEvents.some((event) => event.type === "pickup-retained")).toBe(true);
+  const status = gamePanel(page).getByRole("status");
+  // Movement: the live region says the raw face only, never the hops, unused pips or the landing.
+  await expect(status).toHaveText(`出目は${record.rawRoll}です。移動中です。スキップできます。`);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+
+  // Arrival: the station is public; the ride, direction, highlight and platform are still the ridden ones.
+  const arrived = railwayBundle.network.stationsById.get(record.toStationId)!.name;
+  const ridden = record.resolvedRide;
+  await expect(arrivalBanner(page)).toHaveText(`到着${arrived}`);
+  await expect(page.locator(".turn-moment-host")).toHaveAttribute("aria-hidden", "true");
+  await expect(panelStat(page, "現在駅")).toHaveText(arrived);
+  await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, ridden.serviceId));
+  await expect(panelStat(page, "進行方向")).toHaveText(directionLabel(railwayBundle.network, ridden.serviceId, ridden.direction));
+  await expect.poll(async () => (await readMap(page))?.marker)
+    .toEqual(markerPosition(railwayBundle, { ...expected.state, currentServiceId: ridden.serviceId }));
+  await expect(slotNamed(page, "快速券")).toHaveCount(0);
+  await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+  await expect(diceButton(page)).toHaveText("サイコロを振る");
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+  await expect(gamePanel(page).getByRole("button", { name: "スキップ", exact: true })).toBeEnabled();
+  await expect(status).toHaveText(new RegExp(`^${record.turn}ターン目：${arrived}に到着。踏破 \\d+/30。抽選結果を表示しています$`));
+  expect(await readSave(page)).toEqual(expected.state);
+
+  // The arrival's own duration, nothing earlier. Its timer starts in the frame that ended the movement, which is at
+  // most the helper's one trailing frame (FRAME_MS) before now.
+  await page.clock.runFor(stageDurationMs("arrival") - FRAME_MS - 1);
+  await expect(arrivalBanner(page)).toBeVisible();
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+  await page.clock.runFor(FRAME_MS + 1);
+
+  // Published: next direction, platform, picked-up item, toast and readiness together.
+  await expect(arrivalBanner(page)).toHaveCount(0);
+  await expect(panelStat(page, "進行方向")).toHaveText(directionLabel(railwayBundle.network, record.landing.serviceId, record.landing.direction));
+  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, expected.state));
+  await expect(slotNamed(page, "快速券")).toHaveCount(1);
+  await expect(page.locator(".toast-host__toast").first()).toBeVisible();
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+  await expect(status).toHaveText(/。サイコロを振れます$/);
+  expect(await readSave(page)).toEqual(expected.state);
+});
+
+test("tapping the arrival card is the one Skip: the result publishes at once and nothing replays", async ({ page, railwayBundle }) => {
+  const expected = await playRouteTurnToArrival(page, railwayBundle);
+  await diceButton(page).focus();
+  await expect(arrivalBanner(page)).toBeVisible();
+  await expect(page.locator(".turn-moment-host button, .turn-moment-host [tabindex]")).toHaveCount(0);
+  await page.locator(".turn-moment-host__card").click();
+
+  await expect(arrivalBanner(page)).toHaveCount(0);
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+  await expect(diceButton(page)).toBeFocused();
+  await expect(slotNamed(page, "快速券")).toHaveCount(1);
+  await page.clock.runFor(stageDurationMs("arrival"));
+  await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+  expect(await readSave(page)).toEqual(expected.state);
+});
+
+test("a reload during the arrival resumes the published result with no banner replay", async ({ page, railwayBundle }) => {
+  const expected = await playRouteTurnToArrival(page, railwayBundle);
+  await expect(arrivalBanner(page)).toBeVisible();
+
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+  await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+  await page.clock.runFor(2_000);
+  await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+  await expect(slotNamed(page, "快速券")).toHaveCount(1);
+  expect(await readSave(page)).toEqual(expected.state);
+});
+
+test("the arrival card stays clear of the panel and the map controls", async ({ page, railwayBundle }) => {
+  const base = itemScenario("route", railwayBundle.network);
+  await page.clock.install();
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(base));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await freezeClock(page);
+  const turnBefore = await clickDice(page);
+  // The tumble timer starts once the saved roll is observed: wait for it before advancing the clock.
+  await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+  await advanceTumble(page);
+  await waitForRollOutcome(page, turnBefore);
+  await expectAcceptedSave(page, base.turn + 1);
+  const record = (await readSave(page))!.movementHistory.at(-1)!;
+  if (stampsExpected(record)) await advanceStamps(page);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  const card = page.locator(".turn-moment-host__card");
+  await expect(arrivalBanner(page)).toBeVisible();
+  const cardBox = (await card.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(cardBox.x).toBeGreaterThanOrEqual(0);
+  expect(cardBox.y).toBeGreaterThanOrEqual(0);
+  expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(viewport.width);
+  expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(viewport.height);
+  for (const obstacle of [
+    gamePanel(page),
+    page.locator(".maplibregl-ctrl-top-right .maplibregl-ctrl-group"),
+    page.locator(".map-overview"),
+    page.locator(".maplibregl-ctrl-attrib"),
+  ]) {
+    await expect(obstacle).toBeVisible();
+    const box = (await obstacle.boundingBox())!;
+    expect(overlaps(cardBox, box), `card ${JSON.stringify(cardBox)} overlaps ${JSON.stringify(box)}`).toBe(false);
+  }
 });

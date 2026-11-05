@@ -1,9 +1,10 @@
-import type { Direction, ItemTurnRecord, SegmentId } from "../../../types/network";
+import type { DeepReadonly, Direction, ItemTurnRecord, SegmentId } from "../../../types/network";
 import type { MoveEvent } from "../engine";
 import { itemRideHasModifierWording } from "../hudPresentation";
 import { ANIMATION_SPEEDS } from "../gameConfig";
 import type { ItemSessionView } from "../itemSession";
 import type { LastMove } from "../gameSession";
+import type { RevealStage } from "./useRevealSequence";
 
 export type PreMoveStage = "waiting-roll" | "tumble" | "awaiting-adjust" | "waiting-record" | "stamps" | "released";
 export type TurnRevealStageKey = "arrival" | "lottery-flip" | "lottery-settle" | "pickup";
@@ -119,6 +120,29 @@ export function observeTurnFacts(observation: TurnMomentObservation): AcceptedTu
     stampsRequired: modifierWording || delayActivated || ride?.movementMode === "oversleep",
     newlyCompletedTargetSegmentIds: [...completed],
   };
+}
+
+/** What decides the post-move stages of the latest committed record. */
+export interface TurnRevealFacts {
+  /** The latest committed item record; null in classic mode or before the first turn. */
+  record: DeepReadonly<ItemTurnRecord> | null;
+  /** The record was already committed when the session was entered (resume): it is never revealed again. */
+  restored: boolean;
+  /** Reduced motion: the result publishes at once, with no timed stage. */
+  omitted: boolean;
+}
+
+const NO_REVEAL_STAGES: readonly RevealStage[] = [];
+
+/**
+ * Post-move stages of a fresh item-mode arrival, in order, with their captured durations. Arrival is included for
+ * every fresh arrival (goal, deadhead and turns without newly completed segments too). Lottery and pickup stages
+ * are not built yet (S14/S15), so the next ride, lottery text, candidates and item results publish when `arrival`
+ * ends. Classic mode, reduced motion and restored records get no stage.
+ */
+export function buildTurnRevealStages(facts: TurnRevealFacts, timing: TurnMomentTiming): readonly RevealStage[] {
+  if (facts.record === null || facts.restored || facts.omitted) return NO_REVEAL_STAGES;
+  return [{ key: "arrival", durationMs: timing.arrivalMs }];
 }
 
 export const INITIAL_TURN_MOMENTS_STATE: TurnMomentsState = { sessionId: null, attempt: null };

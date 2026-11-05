@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ANIMATION_SPEEDS } from "../../src/features/game/gameConfig";
 import {
+  buildTurnRevealStages,
   INITIAL_TURN_MOMENTS_STATE,
   observeTurnFacts,
   turnMomentTiming,
@@ -237,5 +238,46 @@ describe("turnMomentsReducer", () => {
     expect(state.attempt?.motionOmitted).toBe(true);
     state = turnMomentsReducer(state, { type: "reset", sessionId: 8 });
     expect(state).toEqual({ sessionId: 8, attempt: null });
+  });
+});
+
+describe("buildTurnRevealStages (S12: arrival is the only post-move stage)", () => {
+  const NORMAL = turnMomentTiming(NORMAL_STEP_MS);
+  const ARRIVAL = [{ key: "arrival", durationMs: 800 }];
+  const DRAW_LANDING = {
+    stationId: "yoyogi", serviceId: "fixture-south", direction: 1, serviceCandidates: ["jr-yamanote", "fixture-south"],
+    serviceDrawRequired: true, directionCandidates: [1, -1], directionDrawRequired: true, changedService: true,
+  } as unknown as ItemRideRecord["landing"];
+  const PICKUP: ItemEvent[] = [{ type: "pickup-retained", item: { id: "double-b", kind: "double" } } as ItemEvent];
+
+  it.each([
+    ["a plain fresh ride", ride(), ARRIVAL],
+    ["a ride with new target segments", ride({ traversedSegmentIds: ["target-segment"] }), ARRIVAL],
+    ["a ride with no new segment", ride({ traversedSegmentIds: [] }), ARRIVAL],
+    ["a goal ride", ride({ stopReason: "goal" }), ARRIVAL],
+    ["a deadhead", deadhead(), ARRIVAL],
+    // Lottery (S14) and pickup (S15) are not built yet: their outcomes publish when the arrival ends.
+    ["a ride that drew a lottery", ride({ landing: DRAW_LANDING }), ARRIVAL],
+    ["a ride that picked up an item", ride({ itemEvents: PICKUP }), ARRIVAL],
+  ] as const)("builds only the arrival for %s", (_label, record, expected) => {
+    expect(buildTurnRevealStages({ record, restored: false, omitted: false }, NORMAL)).toEqual(expected);
+  });
+
+  it.each([
+    ["classic mode (no item record)", { record: null, restored: false, omitted: false }],
+    ["a restored record", { record: ride(), restored: true, omitted: false }],
+    ["reduced motion", { record: ride(), restored: false, omitted: true }],
+    ["a restored deadhead under reduced motion", { record: deadhead(), restored: true, omitted: true }],
+  ] as const)("builds no stage for %s", (_label, facts) => {
+    expect(buildTurnRevealStages(facts, NORMAL)).toEqual([]);
+  });
+
+  it.each([
+    ["slow", 600, 1_067],
+    ["normal", 450, 800],
+    ["fast", 300, 533],
+  ] as const)("takes the arrival duration from the captured %s timing", (_label, stepMs, arrivalMs) => {
+    expect(buildTurnRevealStages({ record: ride(), restored: false, omitted: false }, turnMomentTiming(stepMs)))
+      .toEqual([{ key: "arrival", durationMs: arrivalMs }]);
   });
 });

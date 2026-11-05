@@ -2,6 +2,7 @@ import { Children, useLayoutEffect, useMemo, useState } from "react";
 import type { CSSProperties, ReactNode, RefCallback, RefObject } from "react";
 import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
 import type { RollAttempt } from "../animation/turnMoments";
+import type { TurnPublicationPhase, TurnRevealState } from "../turnMomentPresentation";
 import { diceTumbleModelFor, isDiceFace, type DiceTumbleModel } from "./DiceTumble";
 
 /** A plain rectangle in viewport (CSS pixel) coordinates. */
@@ -216,6 +217,38 @@ export function turnMomentDiceModel(
   const accepted = record && record.turn === attempt.recordTurn ? record : null;
   const stageMs: number = attempt.stage === "tumble" ? attempt.timing.tumbleMs : attempt.timing.stampsMs;
   return { ...diceTumbleModelFor(accepted, attempt.stage, stageMs, reducedMotion), rawRoll: attempt.rawRoll };
+}
+
+/** The arrival banner's content: the arrival station only (the next ride stays unpublished). */
+export interface ArrivalBannerModel {
+  readonly stationName: string;
+}
+
+/**
+ * The arrival banner while the presented turn is in its `arrival` stage, or null. Reduced motion, Skip and restored
+ * results never reach that stage (their display is already published), so they never show a banner.
+ */
+export function turnMomentArrivalModel(
+  phase: TurnPublicationPhase,
+  revealStage: TurnRevealState,
+  stationName: string,
+): ArrivalBannerModel | null {
+  if (phase !== "arrival" || revealStage !== "arrival") return null;
+  return { stationName };
+}
+
+export interface ArrivalBannerProps {
+  model: ArrivalBannerModel;
+}
+
+/** Decorative arrival card; the panel live region carries the announcement. No focusable content. */
+export function ArrivalBanner({ model }: ArrivalBannerProps): React.JSX.Element {
+  return (
+    <div className="arrival-banner">
+      <span className="arrival-banner__kicker">到着</span>
+      <span className="arrival-banner__station">{model.stationName}</span>
+    </div>
+  );
 }
 
 export interface TurnMomentRects {

@@ -5,7 +5,7 @@ import type { DisplayedProgress } from "./animation/displayedProgress";
 import type { TurnRevealStageKey, RollAttempt } from "./animation/turnMoments";
 import type { GameSession, LastMove } from "./gameSession";
 import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel } from "./hudPresentation";
-import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, turnMomentAnnouncement } from "./presentation";
+import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, stationName, turnMomentAnnouncement } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
 import type { ItemSessionView } from "./itemSession";
 import { turnToasts, type ToastInput } from "./toastQueue";
@@ -187,7 +187,10 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const record = observedRecord && (!attempt || observedRecord.turn === attempt.recordTurn) ? observedRecord : null;
   const consumedIds = attempt?.stage === "released" && record?.kind === "item-ride"
     ? record.itemEvents.filter((event) => event.type === "consumed").map((event) => event.item.id) : [];
-  const itemView = resultPublished ? liveView : maskTurnMomentItemView(originView, liveView, consumedIds);
+  const maskedView = resultPublished ? liveView : maskTurnMomentItemView(originView, liveView, consumedIds);
+  // Once this attempt's record exists its staged draft is spent: the origin draft must not reappear (as
+  // 「この内容でサイコロを振る」 or a staged summary) while the arrival is presented.
+  const itemView = maskedView && liveView && record && maskedView !== liveView ? { ...maskedView, draft: liveView.draft } : maskedView;
   const decision = visibleDecision(liveView, attempt, active, resultPublished);
   const turn = record?.turn ?? input.session.game.turn;
   const effectTurn = resultPublished ? turn : attempt?.origin.turn ?? turn;
@@ -202,6 +205,12 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     : !liveView && !attempt && input.session.phase !== "idle" ? input.previousClassicAnnouncement ?? ""
     : !liveView && phase === "published" && current
       ? arrivalSummary(current.itemRecord?.turn ?? input.session.game.turn, current, completedCount, requiredCount, input.network, input.presentation)
+      // A presented movement announces only what is public: the raw face and the stamped modifiers, never the
+      // physical hops, unused pips or landing of the committed record.
+      : liveView && phase === "moving" && attempt && current ? movementAnnouncement(current)
+      // The goal banner announces the arrival only: ClearScreen owns the goal announcement once it replaces the panel.
+      : liveView && phase === "arrival" && goal && current
+        ? goalArrivalAnnouncement(current.itemRecord?.turn ?? input.session.game.turn, current, completedCount, requiredCount, input.network, input.presentation)
       // Attempt-less item mode, or an attempt whose moments are omitted (reduced motion, Skip, restored roll,
       // deadhead), is exactly P1 when no reveal runs: the real session phase decides the copy.
       : liveView && (phase === "moving" || ((!attempt || attempt.motionOmitted) && !revealActive && !showClear))
@@ -239,6 +248,26 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     canSkip,
     itemUseLocked: active,
   };
+}
+
+const MOVING_ANNOUNCEMENT = "移動中です。スキップできます。";
+
+/** Movement copy of a presented turn: raw face plus published modifier wording, then the movement wording. */
+function movementAnnouncement(move: LastMove): string {
+  const record = move.itemRecord;
+  if (move.stopReason === "relocation" || record?.kind === "deadhead") return `回送列車で移動します。${MOVING_ANNOUNCEMENT}`;
+  if (record?.kind !== "item-ride") return move.roll === null ? MOVING_ANNOUNCEMENT : `出目は${move.roll}です。${MOVING_ANNOUNCEMENT}`;
+  const compact = compactRollText(compactRollFor(move));
+  const roll = compact === `${record.rawRoll}マス` ? String(record.rawRoll) : `${record.rawRoll}、${compact}`;
+  return `出目は${roll}です。${MOVING_ANNOUNCEMENT}`;
+}
+
+/** Arrival wording of the goal banner, without the goal sentence that ClearScreen announces next. */
+function goalArrivalAnnouncement(
+  turn: number, move: LastMove, completedCount: number, requiredCount: number,
+  network: RailwayNetwork, presentation: PresentationResolver,
+): string {
+  return `${turn}ターン目：${stationName(network, move.stopStationId, presentation)}に到着。踏破 ${completedCount}/${requiredCount}`;
 }
 
 type AnnouncementStage = Parameters<typeof turnMomentAnnouncement>[0]["stage"];
