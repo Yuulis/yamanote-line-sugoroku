@@ -138,4 +138,5 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 
 - Scope = all four moments; durations follow 速度; flap at map centre; pseudo-3D cube; dice disabled during reveal; goal banner then ClearScreen (user 2026-11-03).
 - Pause after every step for user review (user 2026-11-03).
+- Status 2026-11-07: S1–S17 done, CI green (S16 run 42346852704); no PR yet. Visual refinements and two product questions deferred (DESIGN.md TODO). Final state: top of the handoff.
 - Codex lanes: Luna high implements, Sol low reviews, lead verifies; targeted local E2E, full 4-browser suite in CI.

@@ -1091,3 +1091,18 @@ These estimates include test authoring, implementation, one normal review/correc
 | S17 | Lead only | 20–35 min | Writer validation and evidence completeness |
 
 The scope assessment’s 1,400–2,200 LOC was an initial estimate. This plan budgets approximately 3,700–4,900 changed LOC across the small commits, including explicit lifecycle, masking, placement, and browser coverage plus intermediate integration edits. That is a planning allowance rather than a target; reuse existing fixtures and helpers, keep diffs minimal, and avoid adding tests that merely mirror implementation.
+
+## Final Status
+
+All steps S1–S17 (and S10b) are done on `feature/ui-pop-turn-moments`; per-step commits, reviews and checks are in
+`.claude/docs/plans/ui-pop-turn-moments-handoff.md`. Approved deviations from this plan:
+
+- Executors: S7–S13 ran in a Claude cloud session (Sonnet / Opus implementers, Opus reviewers) because the Codex CLI was
+  unavailable; S4/S6 rounds 3–4 and S14/S16 used Codex Sol, S15 Codex Luna xhigh (user choices).
+- S16 was planned as verification-only. Its new responsive tests exposed moment cards overlapping the map's overview
+  controls at 320×720, 667×375 and 640×400; the user approved a placement-only fix (measured-control exclusion, a
+  control-free fallback region or no decorative card below 112 px, no scaled ancestor for the fixed pickup flight).
+  No colour, size or timing change.
+- Several steps exceeded the ~400 changed-line guide, mostly in tests.
+- Visual refinements and two product questions were deferred by the user; they are listed in `.claude/docs/DESIGN.md`
+  `## TODO / Open Questions`.
