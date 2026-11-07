@@ -329,3 +329,37 @@ describe("S14 lottery announcement boundaries", () => {
     }
   });
 });
+
+describe("S15 pickup publication boundary", () => {
+  it("publishes the landing ride before pickup while inventory, notice, toast and discard stay masked", () => {
+    const base = itemScenario("route", network);
+    const committed = playItemTurn(base, {}, network).state;
+    const origin = resumeSession(base, network, 95);
+    const session = resumeSession(committed, network, 95);
+    const originView = itemSessionView(origin, network)!;
+    const liveView = itemSessionView(session, network)!;
+    const attempt = attemptFor(origin);
+    attempt.origin = { ...attempt.origin, itemView: originView };
+    const pickupEvent = session.lastMove?.itemRecord?.kind === "item-ride"
+      ? session.lastMove.itemRecord.itemEvents.find((event) => event.type === "pickup-retained") : undefined;
+    if (pickupEvent?.type !== "pickup-retained") throw new Error("Expected an engine-built retained pickup");
+
+    const during = deriveTurnMomentDisplay({ session, itemView: liveView, network, presentation: resolver,
+      progress: progressFor(session), attempt, revealStage: "pickup", restoredOrOmitted: false });
+    expect(during.phase).toBe("pickup");
+    expect(during.ride).toEqual({ serviceId: "fixture-south", direction: -1 });
+    expect(during.itemView?.inventory.map((item) => item.id)).toEqual(originView.inventory.map((item) => item.id));
+    expect(during.itemView?.inventory.map((item) => item.id)).not.toContain(pickupEvent.item.id);
+    expect(during.decision).toBeNull();
+    expect(during.showItemNotice).toBe(false);
+    expect(during.toastInputs).toEqual([]);
+    expect(during.announcement).toBe("テスト南線のみ ／ エリア端のため折り返し（品川方面）");
+
+    const published = deriveTurnMomentDisplay({ session, itemView: liveView, network, presentation: resolver,
+      progress: progressFor(session), attempt, revealStage: "done", restoredOrOmitted: false });
+    expect(published.itemView?.inventory.map((item) => item.id)).toContain(pickupEvent.item.id);
+    expect(published.showItemNotice).toBe(true);
+    expect(published.toastInputs.map((input) => input.text)).toEqual(["快速券を手に入れた！"]);
+    expect(published.announcement).toContain("快速券を拾いました");
+  });
+});

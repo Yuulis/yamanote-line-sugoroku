@@ -26,7 +26,7 @@ import {
   writeSaveText,
   useInventoryItem,
 } from "./support/app";
-import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 /** Per-hop duration of the default animation speed. */
 const STEP_MS =
@@ -122,6 +122,12 @@ test.describe("animated roll focus", () => {
       await expect(dice).toBeFocused();
       await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
       await advanceLotterySettle(page);
+    }
+    if (move.kind === "item-ride" && move.itemEvents.some((event) => event.type === "pickup-retained" || event.type === "pickup-pending-discard")) {
+      await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+      await expect(dice).toHaveAttribute("aria-disabled", "true");
+      await expect(dice).toBeFocused();
+      await advancePickup(page);
     }
     await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveCount(0);
     await expect(dice).toHaveText("サイコロを振る");

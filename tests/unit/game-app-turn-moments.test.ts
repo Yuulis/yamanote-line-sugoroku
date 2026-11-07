@@ -1197,7 +1197,7 @@ function playToArrival(): void {
 }
 
 describe("S12 arrival banner in GameApp", () => {
-  it("shows the arrival after the movement, holds the next ride, then publishes when the arrival ends", () => {
+  it("shows the arrival and pickup after movement, publishing the item at the pickup deadline", () => {
     openWithFrames(itemScenario("route", network));
     const origin = storedGame();
     click("サイコロを振る");
@@ -1232,6 +1232,17 @@ describe("S12 arrival banner in GameApp", () => {
 
     advance(1);
     expect(banner()).toBeNull();
+    const pickup = mounted!.container.querySelector<HTMLElement>('.item-pickup-moment[data-stage="pickup"]');
+    expect(pickup).not.toBeNull();
+    expect(pickup?.closest('.turn-moment-host[aria-hidden="true"]')).not.toBeNull();
+    expect(pickup?.querySelector("button, a, input, [tabindex]")).toBeNull();
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).not.toContain("快速券");
+    expect(mounted!.container.querySelectorAll('.game-panel [role="status"]')).toHaveLength(1);
+    expect(status()).toBe("テスト南線のみ ／ エリア端のため折り返し（品川方面）");
+    advance(499);
+    expect(mounted!.container.querySelector('.item-pickup-moment[data-stage="pickup"]')).not.toBeNull();
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).not.toContain("快速券");
+    advance(1);
     expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
     expect(mounted!.container.querySelector('[data-stat="direction"]')?.textContent).toBe(directionLabel(network, "fixture-south", -1));
     expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).toContain("快速券");

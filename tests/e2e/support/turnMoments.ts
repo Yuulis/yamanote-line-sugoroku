@@ -57,7 +57,7 @@ async function advanceStage(page: Page, stage: TurnMomentStage, factor: number):
 }
 
 /** Stages that are active in production and have a visible marker of being presented. */
-export type PresentedStage = "tumble" | "stamps" | "arrival" | "lottery-flip" | "lottery-settle";
+export type PresentedStage = "tumble" | "stamps" | "arrival" | "lottery-flip" | "lottery-settle" | "pickup";
 
 /**
  * Let the page run every task already queued, without moving the (frozen) page
@@ -88,6 +88,8 @@ async function flushQueuedTasks(page: Page): Promise<void> {
 export async function awaitStage(page: Page, stage: PresentedStage): Promise<void> {
   if (stage === "arrival") {
     await expect(page.locator(".turn-moment-host .arrival-banner")).toBeVisible();
+  } else if (stage === "pickup") {
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
   } else if (stage === "lottery-flip" || stage === "lottery-settle") {
     await expect(page.locator(".lottery-reveal")).toHaveAttribute("data-stage", stage);
   } else {
@@ -188,6 +190,7 @@ export async function advanceLotterySettle(page: Page, factor: number = 1): Prom
  * the turn picks up an item.
  */
 export async function advancePickup(page: Page, factor: number = 1): Promise<void> {
+  await awaitStage(page, "pickup");
   await advanceStage(page, "pickup", factor);
 }
 

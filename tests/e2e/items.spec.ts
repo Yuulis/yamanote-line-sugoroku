@@ -404,6 +404,7 @@ for (const name of ["rapid", "oversleep"] as const) {
     await expect(gamePanel(page).getByRole("button", { name: "スキップ" })).toBeDisabled();
     // No moment overlay is ever mounted under reduced motion.
     await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveCount(0);
     await expect(gamePanel(page).getByRole("status")).toContainText(name === "rapid" ? "快速券を使いました" : "寝過ごしが発動しました");
   });
 }

@@ -72,6 +72,7 @@ function recordWithMove(record: ItemRideRecord, events: readonly MoveEvent[] = [
 
 const SEGMENT_EVENT: MoveEvent = { type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1,
   segmentId: "target-segment", fromStationId: "shimbashi", toStationId: "yoyogi", newlyCompleted: true };
+const PICKUP: ItemEvent[] = [{ type: "pickup-retained", item: { id: "double-b", kind: "double" } } as ItemEvent];
 
 describe("turnMomentTiming", () => {
   it.each(ANIMATION_SPEEDS.map(({ id, stepMs }) => [id, stepMs] as const))("scales all moments at %s", (_id, stepMs) => {
@@ -241,10 +242,9 @@ describe("turnMomentsReducer", () => {
   });
 });
 
-describe("buildTurnRevealStages (arrival and conditional lottery)", () => {
+describe("buildTurnRevealStages (arrival, conditional lottery and pickup)", () => {
   const NORMAL = turnMomentTiming(NORMAL_STEP_MS);
   const ARRIVAL = [{ key: "arrival", durationMs: 800 }];
-  const PICKUP: ItemEvent[] = [{ type: "pickup-retained", item: { id: "double-b", kind: "double" } } as ItemEvent];
 
   it.each([
     ["a plain fresh ride", ride(), ARRIVAL],
@@ -252,8 +252,12 @@ describe("buildTurnRevealStages (arrival and conditional lottery)", () => {
     ["a ride with no new segment", ride({ traversedSegmentIds: [] }), ARRIVAL],
     ["a goal ride", ride({ stopReason: "goal" }), ARRIVAL],
     ["a deadhead", deadhead(), ARRIVAL],
-    ["a ride that picked up an item", ride({ itemEvents: PICKUP }), ARRIVAL],
-  ] as const)("builds only the arrival for %s", (_label, record, expected) => {
+    ["a ride that retained a pickup", ride({ itemEvents: PICKUP }), [...ARRIVAL, { key: "pickup", durationMs: 500 }]],
+    ["a full-inventory pickup", ride({ itemEvents: [{ type: "pickup-pending-discard", item: { id: "double-b", kind: "double" }, candidates: [] } as ItemEvent] }),
+      [...ARRIVAL, { key: "pickup", durationMs: 500 }]],
+    ["a harmful drop", ride({ itemEvents: [{ type: "harmful-scheduled", item: "delay", effect: "delay", dueTurn: 3 }] }), ARRIVAL],
+    ["a certificate cancellation", ride({ itemEvents: [{ type: "cancelled-by-certificate", item: "oversleep", certificate: { id: "cert", kind: "delay-certificate" } }] }), ARRIVAL],
+  ] as const)("builds the expected stages for %s", (_label, record, expected) => {
     expect(buildTurnRevealStages({ record, restored: false, omitted: false }, NORMAL)).toEqual(expected);
   });
 
@@ -277,7 +281,7 @@ describe("buildTurnRevealStages (arrival and conditional lottery)", () => {
 });
 
 
-describe("S14 lottery stage planning", () => {
+describe("S14-S15 lottery and pickup stage planning", () => {
   it.each([false, true])("plans only actual draws, with serviceDraw=%s", (serviceDraw) => {
     for (const directionDraw of [false, true]) {
       for (const stepMs of [300, 450, 600]) {
@@ -288,15 +292,32 @@ describe("S14 lottery stage planning", () => {
           suspensionIgnored: false, detourConsumed: false,
         } });
         const stages = buildTurnRevealStages({ record, restored: false, omitted: false }, timing);
+        const pickedUp = record.itemEvents.some((event) => event.type === "pickup-retained" || event.type === "pickup-pending-discard");
         expect(stages).toEqual([{ key: "arrival", durationMs: timing.arrivalMs }, ...(serviceDraw || directionDraw ? [
           { key: "lottery-flip", durationMs: Math.round(1600 * stepMs / 450) },
           { key: "lottery-settle", durationMs: Math.round(400 * stepMs / 450) },
-        ] : [])]);
+        ] : []), ...(pickedUp ? [{ key: "pickup", durationMs: Math.round(500 * stepMs / 450) }] : [])]);
         expect(buildTurnRevealStages({ record: { ...record, stopReason: "goal" }, restored: false, omitted: false }, timing))
           .toEqual([{ key: "arrival", durationMs: timing.arrivalMs }]);
         expect(buildTurnRevealStages({ record, restored: true, omitted: false }, timing)).toEqual([]);
         expect(buildTurnRevealStages({ record, restored: false, omitted: true }, timing)).toEqual([]);
       }
     }
+  });
+
+  it.each([300, 450, 600])("appends pickup after a lottery at captured stepMs=%i", (stepMs) => {
+    const timing = turnMomentTiming(stepMs);
+    const pickupRecord = ride({
+      itemEvents: PICKUP,
+      landing: { serviceId: "jr-yamanote", direction: 1 },
+      landingSnapshot: { stationId: "yoyogi", services: [
+        { serviceId: "jr-yamanote", weight: 1, directions: [1], directionWeights: [1] },
+        { serviceId: "fixture-south", weight: 1, directions: [1], directionWeights: [1] },
+      ], suspensionIgnored: false, detourConsumed: false },
+    });
+    expect(buildTurnRevealStages({ record: pickupRecord, restored: false, omitted: false }, timing).map(({ key }) => key))
+      .toEqual(["arrival", "lottery-flip", "lottery-settle", "pickup"]);
+    expect(buildTurnRevealStages({ record: pickupRecord, restored: true, omitted: false }, timing)).toEqual([]);
+    expect(buildTurnRevealStages({ record: pickupRecord, restored: false, omitted: true }, timing)).toEqual([]);
   });
 });

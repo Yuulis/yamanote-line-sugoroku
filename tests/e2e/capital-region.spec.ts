@@ -19,7 +19,7 @@ import {
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
 import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
-import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advancePickup, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -363,6 +363,11 @@ test.describe("current product scenarios", () => {
         await advanceLotteryFlip(page);
         await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
         await advanceLotterySettle(page);
+      }
+      if (record.kind === "item-ride" && record.itemEvents.some((event) => event.type === "pickup-retained" || event.type === "pickup-pending-discard")) {
+        await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+        await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+        await advancePickup(page);
       }
       await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveCount(0);
       // Published checkpoint: the committed landing service, its highlight and its platform, then readiness.

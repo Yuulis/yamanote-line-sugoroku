@@ -2360,6 +2360,7 @@ button[aria-disabled="true"] {
 /* The saved lottery result settles into the measured HUD values. */
 .turn-moment-host__region--settling { overflow: visible; }
 .turn-moment-host__card--lottery { background: transparent; box-shadow: none; }
+.turn-moment-host__card--pickup { width: 48px; height: 48px; background: transparent; box-shadow: none; }
 .lottery-reveal {
   width: min(26rem, 100%);
   color: var(--color-text);
@@ -2427,4 +2428,28 @@ button[aria-disabled="true"] {
 @media (prefers-reduced-motion: reduce) {
   .lottery-reveal *, .lottery-reveal *::after { animation: none !important; }
   .lottery-reveal__frame { display: none; }
+}
+
+/* The pickup layer owns no timing: the reveal sequence removes it at the captured pickup deadline. */
+.item-pickup-moment {
+  position: fixed;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  transform-origin: center;
+  pointer-events: auto;
+  user-select: none;
+  animation: item-pickup-flight var(--pickup-ms) cubic-bezier(0.2, 0.7, 0.25, 1) both;
+}
+.item-pickup-moment--fade { animation-name: item-pickup-fade; }
+@keyframes item-pickup-flight {
+  to {
+    transform: translate(var(--pickup-x), var(--pickup-y)) scale(var(--pickup-sx), var(--pickup-sy));
+    opacity: 0;
+  }
+}
+@keyframes item-pickup-fade { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .item-pickup-moment { animation: none; }
 }

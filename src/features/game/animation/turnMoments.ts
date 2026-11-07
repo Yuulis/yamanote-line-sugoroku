@@ -134,17 +134,25 @@ export interface TurnRevealFacts {
 
 const NO_REVEAL_STAGES: readonly RevealStage[] = [];
 
-/** Post-move stages from the accepted snapshot; pickup remains unbuilt until S15. */
+/** Post-move stages from the accepted snapshot. */
 export function buildTurnRevealStages(facts: TurnRevealFacts, timing: TurnMomentTiming): readonly RevealStage[] {
   if (facts.record === null || facts.restored || facts.omitted) return NO_REVEAL_STAGES;
   const record = facts.record;
   const stages: RevealStage[] = [{ key: "arrival", durationMs: timing.arrivalMs }];
-  if (record.kind !== "item-ride" || record.stopReason === "goal" || !record.landing) return stages;
-  const services = record.landingSnapshot?.services ?? [];
-  const selected = services.find((service) => service.serviceId === record.landing?.serviceId);
-  if (!selected || !(services.length > 1 || selected.directions.length > 1)) return stages;
-  return [...stages, { key: "lottery-flip", durationMs: timing.lotteryFlipMs },
-    { key: "lottery-settle", durationMs: timing.lotterySettleMs }];
+  if (record.kind !== "item-ride" || record.stopReason === "goal") return stages;
+  if (record.landing) {
+    const services = record.landingSnapshot?.services ?? [];
+    const selected = services.find((service) => service.serviceId === record.landing?.serviceId);
+    const drawsLottery = selected !== undefined && (services.length > 1 || selected.directions.length > 1);
+    if (drawsLottery) {
+      stages.push({ key: "lottery-flip", durationMs: timing.lotteryFlipMs },
+        { key: "lottery-settle", durationMs: timing.lotterySettleMs });
+    }
+  }
+  const pickedUp = record.itemEvents.some((event) =>
+    event.type === "pickup-retained" || event.type === "pickup-pending-discard");
+  if (pickedUp) stages.push({ key: "pickup", durationMs: timing.pickupMs });
+  return stages;
 }
 
 export const INITIAL_TURN_MOMENTS_STATE: TurnMomentsState = { sessionId: null, attempt: null };

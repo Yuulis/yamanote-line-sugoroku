@@ -127,6 +127,22 @@ const FAST_TUMBLE_MS = 400;
 const NORMAL_ARRIVAL_MS = 800;
 const FAST_ARRIVAL_MS = 533;
 
+/** Finish conditional post-arrival stages in a real engine-built result. */
+function finishLotteryAndPickup(stepMs: number): void {
+  const saved = JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
+  const record = saved.movementHistory.at(-1);
+  if (!record) throw new Error("Expected the accepted turn record");
+  if (mounted!.container.querySelector('.lottery-reveal[data-stage="lottery-flip"]')) {
+    advanceTumble(Math.round(1_600 * stepMs / NORMAL_STEP_MS));
+  }
+  if (mounted!.container.querySelector('.lottery-reveal[data-stage="lottery-settle"]')) {
+    advanceTumble(Math.round(400 * stepMs / NORMAL_STEP_MS));
+  }
+  const pickedUp = record.kind === "item-ride" && record.itemEvents.some((event) =>
+    event.type === "pickup-retained" || event.type === "pickup-pending-discard");
+  if (pickedUp) advanceTumble(Math.round(500 * stepMs / NORMAL_STEP_MS));
+}
+
 /** S11 pre-move checkpoint: run the dice tumble's stage timer (callers install fake setTimeout first). */
 function advanceTumble(milliseconds: number): void {
   act(() => vi.advanceTimersByTime(milliseconds));
@@ -719,6 +735,7 @@ describe("S10b speed capture", () => {
     advanceTumble(FAST_ARRIVAL_MS);
     expect(readScreen().diceDisabled).toBe("true");
     advanceTumble(NORMAL_ARRIVAL_MS - FAST_ARRIVAL_MS);
+    finishLotteryAndPickup(NORMAL_STEP_MS);
     expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
 
     click("サイコロを振る");
@@ -733,6 +750,7 @@ describe("S10b speed capture", () => {
     advanceTumble(FAST_ARRIVAL_MS - 1);
     expect(readScreen().diceDisabled).toBe("true");
     advanceTumble(1);
+    finishLotteryAndPickup(FAST_STEP_MS);
     expect(readScreen()).toMatchObject({ dice: "サイコロを振る", diceDisabled: "false" });
     expect(storedSave()).toMatchObject({ turn: 2, pending: null, history: 2 });
   });

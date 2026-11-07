@@ -4,6 +4,8 @@ import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
 import type { RollAttempt } from "../animation/turnMoments";
 import type { TurnPublicationPhase, TurnRevealState } from "../turnMomentPresentation";
 import { LotteryReveal, type LotteryRevealProps } from "./LotteryReveal";
+import { ItemPickupMoment } from "./ItemPickupMoment";
+import type { ItemPickupMomentProps } from "./ItemPickupMoment";
 import { diceTumbleModelFor, isDiceFace, type DiceTumbleModel } from "./DiceTumble";
 
 /** A plain rectangle in viewport (CSS pixel) coordinates. */
@@ -48,9 +50,9 @@ export interface TurnMomentTargets {
   /** The direction value in the HUD. */
   readonly direction?: TurnMomentTargetRef;
   /** Inventory slot boxes by index (empty slots included). */
-  readonly slots?: readonly (TurnMomentTargetRef | null | undefined)[];
+  readonly slots?: readonly (RefObject<HTMLElement | null> | null | undefined)[];
   /** The inventory header box. */
-  readonly inventoryHeader?: TurnMomentTargetRef;
+  readonly inventoryHeader?: RefObject<HTMLElement | null>;
 }
 
 export const TURN_MOMENT_MAP_SELECTOR: string = ".map-container";
@@ -320,6 +322,7 @@ export interface TurnMomentHostProps extends TurnMomentRectSources {
   /** The card content. Nothing renderable (null, undefined, false) renders no card. */
   children?: ReactNode;
   lottery?: LotteryRevealProps | null;
+  pickup?: Omit<ItemPickupMomentProps, "centerX" | "centerY"> | null;
   /** Called when the visible card is tapped (Skip). Absent: the card only displays. */
   onTap?: () => void;
 }
@@ -333,8 +336,8 @@ function preventFocusMove(event: { preventDefault: () => void }): void {
  * no focusable descendants and never takes focus. The host ignores pointer events; only the visible card receives
  * them, and pressing it does not move keyboard focus.
  */
-export function TurnMomentHost({ children, lottery, onTap, resolveMap, resolvePanel }: TurnMomentHostProps): React.JSX.Element {
-  const hasCard: boolean = Boolean(lottery) || Children.toArray(children).length > 0;
+export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, resolvePanel }: TurnMomentHostProps): React.JSX.Element {
+  const hasCard: boolean = Boolean(lottery || pickup) || Children.toArray(children).length > 0;
   const rects: TurnMomentRects | null = useTurnMomentRects(hasCard, { resolveMap, resolvePanel });
   const layout: { placement: TurnMomentPlacement; insets: EdgeInsets } | null = useMemo(
     () => {
@@ -348,7 +351,7 @@ export function TurnMomentHost({ children, lottery, onTap, resolveMap, resolvePa
   return (
     <div className="turn-moment-host" aria-hidden="true">
       {layout && <div
-        className={`turn-moment-host__region${lottery?.stage === "lottery-settle" ? " turn-moment-host__region--settling" : ""}`}
+        className={`turn-moment-host__region${lottery?.stage === "lottery-settle" || pickup ? " turn-moment-host__region--settling" : ""}`}
         data-region={layout.placement.region}
         style={{
           left: layout.placement.rect.left,
@@ -360,11 +363,13 @@ export function TurnMomentHost({ children, lottery, onTap, resolveMap, resolvePa
         } satisfies CSSProperties}
       >
         <div
-          className={`turn-moment-host__card${lottery ? " turn-moment-host__card--lottery" : ""}`}
+          className={`turn-moment-host__card${lottery ? " turn-moment-host__card--lottery" : ""}${pickup ? " turn-moment-host__card--pickup" : ""}`}
           onPointerDown={preventFocusMove}
           onMouseDown={preventFocusMove}
           onClick={onTap}
-        >{lottery ? <LotteryReveal {...lottery} /> : children}</div>
+        >{lottery ? <LotteryReveal {...lottery} /> : pickup
+          ? <ItemPickupMoment {...pickup} centerX={layout.placement.centerX} centerY={layout.placement.centerY} />
+          : children}</div>
       </div>}
     </div>
   );

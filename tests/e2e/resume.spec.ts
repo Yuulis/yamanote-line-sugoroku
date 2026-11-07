@@ -2,6 +2,7 @@ import { expect, test } from "./fixtures";
 import { playItemTurn } from "../../src/features/game/engine";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
+import type { ItemRideRecord } from "../../src/types/network";
 import {
   clickDice,
   diceButton,
@@ -25,7 +26,7 @@ import {
   waitForRollOutcome,
   writeSaveText,
 } from "./support/app";
-import { advanceArrival, advanceLotteryFlip, advanceMovement, advanceStamps, advanceTumble, NORMAL_STEP_MS } from "./support/turnMoments";
+import { advanceArrival, advanceLotteryFlip, advanceLotterySettle, advanceMovement, advanceStamps, advanceTumble, awaitStage, NORMAL_STEP_MS } from "./support/turnMoments";
 
 // Spec 8.3 item covered here:
 //   [8.3-4] The game resumes correctly after a page reload.
@@ -142,15 +143,74 @@ test.describe("with move animation", () => {
     const livePickup = liveRecord?.itemEvents.find((event) => event.type === "pickup-retained");
     expect(livePickup).toMatchObject({ type: "pickup-retained", item: { kind: pickup.item.kind } });
     await gamePanel(page).getByRole("button", { name: "スキップ" }).click();
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveCount(0);
     await expect(page.locator(".toast-host__toast")).toHaveCount(1);
     await expect(page.locator(".toast-host__toast")).toHaveText(expectedText);
 
     await page.reload();
     await page.getByRole("button", { name: /つづきから/ }).click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveCount(0);
     await expect(page.locator(".toast-host__toast")).toHaveCount(0);
     await page.waitForTimeout(250);
     await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+  });
+});
+
+
+test.describe("S15 full-inventory pickup reload", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("reload during a pending-discard pickup opens the mandatory choice without replay", async ({ page, railwayBundle }) => {
+    const base = itemScenario("discard", railwayBundle.network);
+    const predicted = playItemTurn(base, {}, railwayBundle.network).state;
+    if (predicted.pending?.kind !== "discard") throw new Error("Expected the engine-built full-inventory discard turn");
+    if (predicted.pending.record.kind !== "item-ride" || !predicted.pending.record.itemEvents.some((event) => event.type === "pickup-pending-discard")) {
+      throw new Error("Expected the engine oracle to contain a pending-discard pickup");
+    }
+    const record: ItemRideRecord = structuredClone(predicted.pending.record) as ItemRideRecord;
+
+    await page.clock.install();
+    await page.goto("/");
+    await writeSaveText(page, JSON.stringify(base));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await freezeClock(page);
+    await clickDice(page);
+    await advanceTumble(page);
+    const adjust = gamePanel(page).getByRole("dialog", { name: "出目を調整しますか？" });
+    if (base.inventory.some((item) => item.kind === "roll-adjust")) {
+      await expect(adjust).toBeVisible();
+      await adjust.getByRole("button", { name: "そのまま続ける" }).click();
+    }
+    await expect.poll(async () => {
+      const saved = await readSave(page);
+      return saved?.pending?.kind === "discard" || saved?.movementHistory.length === base.movementHistory.length + 1;
+    }).toBe(true);
+    const committed = (await readSave(page))!;
+    if (stampsExpected(record)) await advanceStamps(page);
+    await advanceMovement(page, 6_100);
+    await advanceArrival(page);
+    const landingCandidates = record.landingSnapshot?.services;
+    if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === record.landing?.serviceId)?.directions.length ?? 0) > 1) {
+      await advanceLotteryFlip(page);
+      await advanceLotterySettle(page);
+    }
+    await awaitStage(page, "pickup");
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+    await expect(gamePanel(page).locator(".item-slot")).toHaveCount(3);
+    await expect(gamePanel(page).locator(".item-discard")).toHaveCount(0);
+    expect(await readSave(page)).toEqual(committed);
+
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const discard = page.locator(".item-discard");
+    await expect(discard).toBeVisible();
+    await expect(discard.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+    expect(await readSave(page)).toEqual(committed);
   });
 });
 

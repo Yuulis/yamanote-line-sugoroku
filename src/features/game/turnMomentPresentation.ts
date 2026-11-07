@@ -186,8 +186,8 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const preMoveActive = Boolean(attempt && PRE_MOVE_STAGES.has(attempt.stage));
   const revealActive = input.revealStage !== "done" && input.revealStage !== "waiting";
   const active = !input.restoredOrOmitted && (preMoveActive || input.session.phase === "animating" || revealActive);
-  // Until pickup is activated, ride and item results share the lottery publication boundary.
-  const resultPublished = lotteryPublished && phase !== "pickup";
+  // Ride results publish after lottery settle; item results have their own later pickup boundary when present.
+  const resultPublished = isPublished;
   const originView = attempt?.origin.itemView ?? liveView;
   const observedRecord = input.session.lastMove?.itemRecord;
   const record = observedRecord && (!attempt || observedRecord.turn === attempt.recordTurn) ? observedRecord : null;

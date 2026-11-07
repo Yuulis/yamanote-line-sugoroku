@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ItemKind } from "../../../types/network";
 import type { ItemSessionView } from "../itemSession";
 import {
@@ -108,6 +108,11 @@ export function InventoryPanel({
   const pressRef = useRef<string | null>(null);
   const suppressFocusTooltipRef = useRef<string | null>(null);
   const lastOpenItemRef = useRef<{ id: string; kind: ItemKind } | null>(null);
+  const headerRef = useCallback((element: HTMLDivElement | null): void => setTargetRef(headerTargetRef, element), [headerTargetRef]);
+  const slotRefs = useMemo(() => Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => {
+    const target = slotTargetRefs?.[index];
+    return target ? (element: HTMLLIElement | null): void => setTargetRef(target, element) : undefined;
+  }), [slotTargetRefs]);
   openItemIdRef.current = openItemId;
   const inventoryKey: string = view.inventory.map((item) => item.id).join(" ");
   // An item used or discarded while its tooltip was shown shows nothing and must not keep owning Escape.
@@ -195,7 +200,7 @@ export function InventoryPanel({
     <section className="item-inventory" aria-labelledby={headingId}>
       <div
         className="item-inventory__header"
-        ref={headerTargetRef ? (element: HTMLDivElement | null) => setTargetRef(headerTargetRef, element) : undefined}
+        ref={headerTargetRef ? headerRef : undefined}
       >
         <h2 id={headingId} className="visually-hidden">アイテム（3枠）</h2>
         <p className="item-inventory__label" aria-hidden="true">持ち物</p>
@@ -203,8 +208,7 @@ export function InventoryPanel({
       <ol className="item-inventory__slots">
         {Array.from({ length: INVENTORY_SLOT_COUNT }, (_, index) => {
           const item = view.inventory[index];
-          const slotTarget = slotTargetRefs?.[index];
-          const slotRef = slotTarget ? (element: HTMLLIElement | null) => setTargetRef(slotTarget, element) : undefined;
+          const slotRef = slotRefs[index];
           if (!item) {
             return <li key={`empty-${index}`} ref={slotRef} className="item-slot item-slot--empty">
               <span className="item-slot__empty">空き枠</span>

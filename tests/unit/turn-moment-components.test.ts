@@ -18,6 +18,7 @@ import {
   type DiceTumbleProps,
 } from "../../src/features/game/components/DiceTumble";
 import { LotteryReveal, type LotteryRevealProps } from "../../src/features/game/components/LotteryReveal";
+import { ItemPickupMoment, type ItemPickupMomentProps } from "../../src/features/game/components/ItemPickupMoment";
 import { GameHud, type GameHudProps } from "../../src/features/game/components/GameHud";
 import { GamePanel, type GamePanelProps } from "../../src/features/game/components/GamePanel";
 import { InventoryPanel } from "../../src/features/game/components/InventoryPanel";
@@ -247,6 +248,10 @@ function HostHarness(props: TurnMomentHostProps): React.JSX.Element {
   return createElement(TurnMomentHost, props);
 }
 
+function PickupHarness(props: ItemPickupMomentProps): React.JSX.Element {
+  return createElement(ItemPickupMoment, props);
+}
+
 function sibling(): HTMLElement {
   const panel = document.createElement("main");
   panel.className = "game-panel";
@@ -302,6 +307,51 @@ describe("css contract", () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.turn-moment-host__card \{\s*transition: none;/);
     expect(css.match(/pointer-events: auto/g)?.length ?? 0).toBeGreaterThan(0);
   });
+
+  it("defines pickup flight and local-fade animations from the captured stage duration", () => {
+    expect(rule(".item-pickup-moment")).toContain("animation: item-pickup-flight var(--pickup-ms)");
+    expect(rule(".item-pickup-moment--fade")).toContain("animation-name: item-pickup-fade;");
+    expect(css).toContain("@keyframes item-pickup-flight");
+    expect(css).toContain("@keyframes item-pickup-fade");
+  });
+});
+
+describe("ItemPickupMoment", () => {
+  function rect(left: number, top: number, width: number, height: number): DOMRect {
+    return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) };
+  }
+
+  it("flies the item icon from the supplied map centre to a measured target", () => {
+    const target = document.createElement("div");
+    target.getBoundingClientRect = () => rect(300, 500, 60, 40);
+    const targetRef = { current: target } as RefObject<HTMLElement | null>;
+    const mount = mountReact(createElement(PickupHarness, { kind: "rapid", durationMs: 500, centerX: 500, centerY: 250, targetRef }));
+    mounted.push(mount);
+
+    const moment = mount.container.querySelector<HTMLElement>('[data-stage="pickup"]')!;
+    expect(moment.dataset["motion"]).toBe("flight");
+    expect(moment.style.left).toBe("476px");
+    expect(moment.style.top).toBe("226px");
+    expect(moment.style.getPropertyValue("--pickup-ms")).toBe("500ms");
+    expect(moment.style.getPropertyValue("--pickup-x")).toBe("-170px");
+    expect(moment.style.getPropertyValue("--pickup-y")).toBe("270px");
+    expect(moment.style.getPropertyValue("--pickup-sx")).toBe("0.5");
+    expect(moment.style.getPropertyValue("--pickup-sy")).toBe("0.5");
+    expect(moment.querySelector("svg")).not.toBeNull();
+    expect(moment.querySelector("button, a, input, [tabindex]")).toBeNull();
+  });
+
+  it.each(["missing", "zero-size"] as const)("uses the local fade with the same deadline for a %s target", (targetCase) => {
+    const target = document.createElement("div");
+    target.getBoundingClientRect = () => rect(300, 500, targetCase === "missing" ? 60 : 0, 40);
+    const targetRef = targetCase === "missing" ? null : { current: target } as RefObject<HTMLElement | null>;
+    const mount = mountReact(createElement(PickupHarness, { kind: "rapid", durationMs: 333, centerX: 500, centerY: 250, targetRef }));
+    mounted.push(mount);
+
+    const moment = mount.container.querySelector<HTMLElement>('[data-stage="pickup"]')!;
+    expect(moment.dataset["motion"]).toBe("fade");
+    expect(moment.style.getPropertyValue("--pickup-ms")).toBe("333ms");
+  });
 });
 
 describe("TurnMomentHost", () => {
@@ -329,6 +379,24 @@ describe("TurnMomentHost", () => {
     expect(host.getAttribute("aria-hidden")).toBe("true");
     expect(host.querySelector(".turn-moment-host__region .turn-moment-host__card .moment-probe")).not.toBeNull();
     expect(host.querySelectorAll(FOCUSABLE_SELECTOR)).toHaveLength(0);
+  });
+
+  it("renders a decorative pickup flight in the map-centred card and maps its tap to shared Skip", () => {
+    const target = document.createElement("div");
+    target.getBoundingClientRect = () => ({ left: 300, top: 500, width: 60, height: 40, right: 360, bottom: 540,
+      x: 300, y: 500, toJSON: () => ({}) });
+    const targetRef = { current: target } as RefObject<HTMLElement | null>;
+    const onTap = vi.fn();
+    const mount = mountHost({ pickup: { kind: "rapid", durationMs: 500, targetRef }, onTap });
+    const host = hostOf(mount);
+    const pickup = host.querySelector<HTMLElement>('[data-stage="pickup"]')!;
+
+    expect(host.getAttribute("aria-hidden")).toBe("true");
+    expect(host.querySelectorAll(FOCUSABLE_SELECTOR)).toHaveLength(0);
+    expect(pickup.dataset["motion"]).toBe("flight");
+    expect(pickup.closest(".turn-moment-host__card")?.classList).toContain("turn-moment-host__card--pickup");
+    act(() => pickup.click());
+    expect(onTap).toHaveBeenCalledTimes(1);
   });
 
   it("never calls focus() or showModal()", () => {
@@ -636,6 +704,28 @@ describe("InventoryPanel target refs", () => {
     const mount = mountInventory({ slotTargetRefs: [null, only] });
 
     expect(only.current).toBe(mount.container.querySelectorAll(".item-inventory__slots > li")[1]);
+  });
+
+  it("keeps memoised target callback refs attached across inventory rerenders", () => {
+    const view = inventoryView([{ id: "double-1", kind: "double" }] as ItemSessionView["inventory"]);
+    const slotCalls: (HTMLElement | null)[] = [];
+    const headerCalls: (HTMLElement | null)[] = [];
+    const slotTarget = (element: HTMLElement | null): void => { slotCalls.push(element); };
+    const headerTarget = (element: HTMLElement | null): void => { headerCalls.push(element); };
+    const slotTargetRefs = [slotTarget];
+    const props = { view, openItemId: null, onOpenItemChange: vi.fn(), onUse: vi.fn(), slotTargetRefs,
+      headerTargetRef: headerTarget } satisfies React.ComponentProps<typeof InventoryPanel>;
+    const mount = mountReact(createElement(InventoryHarness, props));
+    mounted.push(mount);
+    expect(slotCalls.at(-1)).toBe(mount.container.querySelector(".item-inventory__slots > li"));
+    expect(headerCalls.at(-1)).toBe(mount.container.querySelector(".item-inventory__header"));
+
+    slotCalls.length = 0;
+    headerCalls.length = 0;
+    act(() => mount.root.render(createElement(InventoryHarness, { ...props,
+      view: { ...view, identity: { ...view.identity, turn: view.identity.turn + 1 } } })));
+    expect(slotCalls).toEqual([]);
+    expect(headerCalls).toEqual([]);
   });
 
   it("renders the same literal slot and header markup with and without targets", () => {

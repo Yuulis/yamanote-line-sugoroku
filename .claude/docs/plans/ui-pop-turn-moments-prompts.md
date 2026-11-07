@@ -756,6 +756,75 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts
 
 ---
 
+## S15: Enable pickup and delayed discard handoff
+
+Implement plan `### S15` exactly, the architecture's `pickup` stage row, its "Discard path" / pickup paragraphs
+(full-inventory flight to the inventory header, retained flight to the empty target slot, harmful drops and
+certificate cancellation without flight), and the `## E2E Re-pointing Map` rows whose Step column includes S15
+(`dice.spec.ts:203` natural completion, `resume.spec.ts:79` pickup reload case, `resume.spec.ts:118` pickup toast
+after Skip, `capital-region.spec.ts:325` finish pickup before readiness, `items.spec.ts:398` overlay absence,
+`accessibility.spec.ts:51` post checkpoint). Files: new `src/features/game/components/ItemPickupMoment.tsx`; modify
+`src/features/game/components/TurnMomentHost.tsx`, `src/features/game/animation/turnMoments.ts`
+(`buildTurnRevealStages`), `src/features/game/turnMomentPresentation.ts`, `src/features/game/turnMomentItems.ts`
+(only if the masked view needs it), `src/features/game/presentation.ts` (announcement only), `src/app/GameApp.tsx`,
+`src/features/game/components/GamePanel.tsx` / `InventoryPanel.tsx` only to wire stable slot/header target refs,
+`src/styles.css`; tests `tests/unit/turn-moments.test.ts`, `tests/unit/turn-moment-items.test.ts`,
+`tests/unit/turn-moment-presentation.test.ts`, `tests/unit/turn-moment-components.test.ts`,
+`tests/unit/game-app-turn-moments.test.ts`, `tests/unit/game-app-item-progress.test.ts`,
+`tests/unit/item-controls.test.ts`, `tests/unit/game-presentation.test.ts` (expectation updates only where the new
+pickup boundary changes an asserted value — report each old → new with the reason), `tests/e2e/support/turnMoments.ts`,
+`tests/e2e/ui-pop-turn-moments.spec.ts`, `tests/e2e/items.spec.ts`, `tests/e2e/resume.spec.ts`,
+`tests/e2e/dice.spec.ts`, `tests/e2e/capital-region.spec.ts`, `tests/e2e/accessibility.spec.ts` (plus the handoff
+row). Do not modify `DiscardChoice.tsx`, `ToastHost.tsx` or the toast clock (plan Risks).
+
+- Stages: `buildTurnRevealStages()` appends `pickup` (normal 500 ms, scaled by the captured speed) after arrival and
+  any lottery stages, only when the accepted record has a `pickup-retained` or `pickup-pending-discard` item event.
+  Harmful drops, certificate cancellation, goal, deadhead, classic, reduced motion, restored and omitted results get
+  no pickup stage. Freeze the list per reveal key (S5 rule).
+- Publication: ride/lottery still publish at the end of `lottery-settle` (or `arrival` without a draw) — the S14
+  `lotteryPublished` boundary is unchanged. Item results (inventory, effects, hints, notice, item toasts) publish at
+  the end of `pickup` when it exists, otherwise at the same boundary as before. The retained target slot stays empty
+  (no name, icon, hint or card) until landing; a full inventory keeps exactly its three owned slots with no
+  temporary replacement or fourth slot. At pickup end, in one display derivation: final inventory, the discard
+  decision (engine may already be `awaiting-discard`; the displayed decision stays `null` until then), card
+  closure, live-region ownership, toast obscuration and modal focus all change together.
+- `ItemPickupMoment` in `TurnMomentHost`: decorative, `aria-hidden`, `data-stage="pickup"` marker, no focusable
+  descendants, tap = shared Skip; existing `ItemIcon` flies from the board/map centre to the empty target slot
+  (retained) or the inventory header/rail (full inventory). Measure targets with stable `RefObject`s or memoised
+  callbacks keyed per slot (S8 note: inline callback refs re-attach every render). Missing or zero-size target →
+  local fade with the same deadline; the stage end never depends on the target.
+- Announcements: pickup completion gives the canonical item outcome plus any discard instruction; nothing about the
+  item before then. Exactly one gameplay `role=status`, one change per boundary.
+- Toasts: the accepted pickup toast stays paused behind the presented discard dialog; a same-turn discard update adds
+  its toast without replaying any stage.
+- Skip during `pickup` (or earlier stages) reveals the final inventory or opens the mandatory discard dialog;
+  reduced motion toggled on/off during pickup omits it without replay; reload during pickup does not replay
+  (restored pending discard opens the dialog immediately). A full-inventory pickup keeps the mandatory discard through
+  Skip, reduced-motion omission and resume.
+- E2E helper `advancePickup` must `awaitStage(page, "pickup")` first (extend `PresentedStage`; carry-over from S13).
+  Natural-completion tests advance arrival → (flip → settle) → pickup explicitly when present and keep every baseline
+  assertion and value; report old → new for every re-pointed line.
+- Out-of-scope expectation lesson from S14: run the full `npx vitest run` before finishing; if a test in a file not
+  listed above fails only because of this step's intended boundary change, stop and report it with the evidence
+  (do not edit it).
+- Screenshots (frozen clock, temporary `tests/e2e/zz-p2-shot.spec.ts`, deleted after; never committed):
+  `.claude/logs/screenshots/p2-s15-desktop-pickup-flight.png`, `p2-s15-phone-full-inventory-flight.png`,
+  `p2-s15-phone-discard-after-pickup.png`.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moments.test.ts tests/unit/turn-moment-items.test.ts tests/unit/turn-moment-components.test.ts tests/unit/game-app-turn-moments.test.ts tests/unit/game-app-item-progress.test.ts tests/unit/item-controls.test.ts tests/unit/toast.test.ts
+npx vitest run
+npm run build
+git diff --exit-code 70decd6 -- src/features/game/engine src/features/game/store src/features/game/gameSession.ts src/features/game/itemSession.ts src/features/game/useGameApp.ts src/types/network.ts public/data
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/dice.spec.ts tests/e2e/items.spec.ts tests/e2e/resume.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/lottery.spec.ts --project=desktop-chromium --workers=2
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/accessibility.spec.ts --project=phone-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

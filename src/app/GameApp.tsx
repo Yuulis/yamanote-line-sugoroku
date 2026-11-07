@@ -92,7 +92,12 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const reducedMotion = usePrefersReducedMotion();
   const rideTarget = useRef<HTMLElement>(null);
   const directionTarget = useRef<HTMLElement>(null);
-  const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget }), []);
+  const inventorySlot0Target = useRef<HTMLElement>(null);
+  const inventorySlot1Target = useRef<HTMLElement>(null);
+  const inventorySlot2Target = useRef<HTMLElement>(null);
+  const inventoryHeaderTarget = useRef<HTMLElement>(null);
+  const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget,
+    slots: [inventorySlot0Target, inventorySlot1Target, inventorySlot2Target], inventoryHeader: inventoryHeaderTarget }), []);
   const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
   const [follow, setFollow] = useState(true);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
@@ -347,6 +352,17 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
       : moments.attempt?.timing.lotterySettleMs ?? turnMomentTiming(fallbackStepMs).lotterySettleMs,
     network, presentation, rideTarget, directionTarget,
   } : null;
+  const record = session?.lastMove?.itemRecord;
+  const pickupEvent = record?.kind === "item-ride" ? record.itemEvents.find((event) =>
+    event.type === "pickup-retained" || event.type === "pickup-pending-discard") : undefined;
+  const pickup = turnDisplay?.phase === "pickup" && pickupEvent
+    && (pickupEvent.type === "pickup-retained" || pickupEvent.type === "pickup-pending-discard") ? {
+      kind: pickupEvent.item.kind,
+      durationMs: presentedAttempt?.timing.pickupMs ?? turnMomentTiming(fallbackStepMs).pickupMs,
+      targetRef: pickupEvent.type === "pickup-pending-discard"
+        ? turnMomentTargets.inventoryHeader ?? null
+        : turnMomentTargets.slots?.[turnDisplay.itemView?.inventory.length ?? 0] ?? null,
+    } : null;
   const diceModel = session ? turnMomentDiceModel(presentedAttempt, acceptedRecord, reducedMotion) : null;
   const arrivalModel = turnDisplay ? turnMomentArrivalModel(turnDisplay.phase, presentedRevealStage,
     stationName(network, turnDisplay.progress.stationId, presentation)) : null;
@@ -410,8 +426,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           onItemDialogOpenChange={setItemDialogOpen}
         />
       )}
-      {session && shown && turnDisplay && !showClear && (diceModel || arrivalModel || lottery) && (
-        <TurnMomentHost onTap={skip} lottery={lottery}>
+      {session && shown && turnDisplay && !showClear && (diceModel || arrivalModel || lottery || pickup) && (
+        <TurnMomentHost onTap={skip} lottery={lottery} pickup={pickup}>
           {diceModel ? <DiceTumble model={diceModel} /> : arrivalModel && <ArrivalBanner model={arrivalModel} />}
         </TurnMomentHost>
       )}

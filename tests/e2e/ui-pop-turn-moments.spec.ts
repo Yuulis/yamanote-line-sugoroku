@@ -1,6 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import { beginItemTurn, playItemTurn, serializeGame } from "../../src/features/game/engine";
-import type { ItemGameState, ItemRollAdjustment } from "../../src/types/network";
+import type { ItemGameState, ItemRollAdjustment, ItemRideRecord } from "../../src/types/network";
 import { expect, test } from "./fixtures";
 import { itemScenario } from "./fixtures/itemScenarios";
 import {
@@ -24,16 +24,17 @@ import {
   targetFeatureIds,
   writeSaveText,
 } from "./support/app";
-import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advanceStamps, advanceTumble, awaitStage, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble, awaitStage, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { directionLabel } from "../../src/features/game/presentation";
+import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import type { RailwayBundle } from "./fixtures/bundle";
 
 // UI pop P2, S11: the pre-move moment (dice tumble, adjustment after the tumble,
 // modifier stamps, one Skip). Saved records are the oracle: the cube lands on
 // the saved raw roll, and every result equals the engine replay of the save.
-// S12: the arrival banner after the movement. Lottery and pickup moments arrive
-// with S14-S15; until then their results publish when the arrival ends.
+// S12: the arrival banner after the movement. S14 publishes the ride at the
+// lottery boundary; S15 publishes pickup results at the end of its own stage.
 // S13: the completed-segment map flash, concurrent with the arrival.
 
 test.use({ dataset: "fixture", reducedMotion: "no-preference" });
@@ -308,7 +309,48 @@ async function playRouteTurnToArrival(page: Page, bundle: RailwayBundle): Promis
   return expected;
 }
 
-test("the arrival banner holds the ridden service, platform and the turn's results, then everything publishes together", async ({ page, railwayBundle }) => {
+interface DiscardPickupResult {
+  readonly base: ItemGameState;
+  readonly committed: ItemGameState;
+  readonly record: ItemRideRecord;
+}
+
+async function playDiscardTurnToPickup(page: Page, bundle: RailwayBundle): Promise<DiscardPickupResult> {
+  const base: ItemGameState = itemScenario("discard", bundle.network);
+  const predicted = playItemTurn(base, {}, bundle.network).state;
+  if (predicted.pending?.kind !== "discard") throw new Error("Expected an engine-built full-inventory discard turn");
+  if (predicted.pending.record.kind !== "item-ride" || !predicted.pending.record.itemEvents.some((event) => event.type === "pickup-pending-discard")) {
+    throw new Error("Expected the engine oracle to contain a pending-discard pickup");
+  }
+  const record: ItemRideRecord = structuredClone(predicted.pending.record) as ItemRideRecord;
+  await resumeFrozen(page, base);
+  await clickDice(page);
+  await advanceTumble(page);
+  const adjustDialog = adjustmentDialog(page);
+  if (base.inventory.some((item) => item.kind === "roll-adjust")) {
+    await expect(adjustDialog).toBeVisible();
+    await adjustDialog.getByRole("button", { name: "そのまま続ける" }).click();
+  }
+  await expect.poll(async () => {
+    const saved = await readSave(page);
+    return saved?.pending?.kind === "discard" || saved?.movementHistory.length === base.movementHistory.length + 1;
+  }).toBe(true);
+  const committed: ItemGameState | null = await readSave(page);
+  if (!committed) throw new Error("The accepted turn was not saved");
+  expect(committed.pending?.kind).toBe("discard");
+  if (stampsExpected(record)) await advanceStamps(page);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  await advanceArrival(page);
+  const landingCandidates = record.landingSnapshot?.services;
+  if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === record.landing?.serviceId)?.directions.length ?? 0) > 1) {
+    await advanceLotteryFlip(page);
+    await advanceLotterySettle(page);
+  }
+  await awaitStage(page, "pickup");
+  return { base, committed, record };
+}
+
+test("the arrival and pickup stages hold turn results, then publish them together", async ({ page, railwayBundle }) => {
   const base = itemScenario("route", railwayBundle.network);
   await resumeFrozen(page, base);
   const turnBefore = await clickDice(page);
@@ -356,6 +398,22 @@ test("the arrival banner holds the ridden service, platform and the turn's resul
   await expect(arrivalBanner(page)).toBeVisible();
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
   await page.clock.runFor(FRAME_MS + 1);
+
+  const landingCandidates = record.landingSnapshot?.services;
+  if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === record.landing?.serviceId)?.directions.length ?? 0) > 1) {
+    await advanceLotteryFlip(page);
+    await advanceLotterySettle(page);
+  }
+
+  // The ride is published before pickup; inventory, notice, toast and readiness remain held through the flight.
+  await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+  await expect(page.locator('.turn-moment-host')).toHaveAttribute("aria-hidden", "true");
+  await expect(slotNamed(page, "快速券")).toHaveCount(0);
+  await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+  await expect(page.locator(".item-event-notice")).toHaveCount(0);
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+  await expect(status).not.toContainText("快速券");
+  await advancePickup(page);
 
   // Published: next direction, platform, picked-up item, toast and readiness together.
   await expect(arrivalBanner(page)).toHaveCount(0);
@@ -609,3 +667,75 @@ for (const stage of ["lottery-flip", "lottery-settle"] as const) {
     });
   }
 }
+
+test.describe("S15 pickup and delayed discard", () => {
+  test("a full-inventory pickup publishes its choice and paused toast together, then adds the discard toast without replay", async ({ page, railwayBundle }) => {
+    const { committed, record } = await playDiscardTurnToPickup(page, railwayBundle);
+    const pickup = record.itemEvents.find((event) => event.type === "pickup-pending-discard");
+    if (pickup?.type !== "pickup-pending-discard") throw new Error("Expected the full-inventory pickup event");
+    const pickupName = ITEM_DESCRIPTIONS[pickup.item.kind].name;
+    const status = gamePanel(page).getByRole("status");
+
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveAttribute("data-motion", "flight");
+    await expect(gamePanel(page).locator(".item-slot")).toHaveCount(3);
+    await expect(gamePanel(page).locator(".item-discard")).toHaveCount(0);
+    await expect(status).toHaveCount(1);
+    await expect(status).not.toContainText(pickupName);
+    await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+    expect(await readSave(page)).toEqual(committed);
+
+    await advancePickup(page);
+    const dialog = page.locator(".item-discard");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
+    await expect(gamePanel(page).getByRole("status")).toContainText(pickupName);
+    await expect(gamePanel(page).getByRole("status")).toContainText("捨てるアイテムを1つ選んでください");
+    await expect(gamePanel(page).locator(".item-slot")).toHaveCount(3);
+    const pickupToast = page.locator(".toast-host__toast");
+    await expect(pickupToast).toHaveCount(1);
+    await expect(pickupToast).toContainText(`${pickupName}を手に入れた！`);
+    await page.clock.runFor(5_000);
+    await expect(pickupToast).toHaveCount(1);
+
+    await dialog.getByRole("button", { name: "このアイテムを捨てる" }).first().click();
+    await expect(page.locator(".item-discard")).toHaveCount(0);
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveCount(0);
+    await expect.poll(async () => (await readSave(page))?.pending?.kind ?? null).toBe(null);
+    await expect.poll(async () => page.locator(".toast-host__toast").count()).toBe(2);
+    await expect(page.locator(".toast-host__toast").first()).toContainText(`${pickupName}を手に入れた！`);
+    await expect(page.locator(".toast-host__toast").last()).toContainText("を捨てた");
+  });
+
+  test("Skip during a full-inventory pickup keeps the mandatory discard choice", async ({ page, railwayBundle }) => {
+    const { record } = await playDiscardTurnToPickup(page, railwayBundle);
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+    await page.locator(".turn-moment-host__card").click();
+
+    const dialog = page.locator(".item-discard");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect(gamePanel(page).locator(".item-slot")).toHaveCount(3);
+    await expect(gamePanel(page).getByRole("status")).toContainText("捨てるアイテムを1つ選んでください");
+    const pickup = record.itemEvents.find((event) => event.type === "pickup-pending-discard");
+    if (pickup?.type !== "pickup-pending-discard") throw new Error("Expected the full-inventory pickup event");
+    await expect(gamePanel(page).getByRole("status")).toContainText(ITEM_DESCRIPTIONS[pickup.item.kind].name);
+  });
+
+  test("reduced motion during a full-inventory pickup opens discard without replay", async ({ page, railwayBundle }) => {
+    await playDiscardTurnToPickup(page, railwayBundle);
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+    await page.emulateMedia({ reducedMotion: "reduce" });
+
+    const dialog = page.locator(".item-discard");
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await page.clock.runFor(3_000);
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+  });
+});

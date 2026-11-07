@@ -26,7 +26,7 @@ import {
   targetFeatureIds,
   waitForRollOutcome,
 } from "./support/app";
-import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 // Spec 8.3 items covered here:
 //   [8.3-2] Rolling the dice updates the current position on the map.
@@ -292,6 +292,11 @@ test.describe("with move animation", () => {
       await advanceLotteryFlip(page);
       await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
       await advanceLotterySettle(page);
+    }
+    if (move.kind === "item-ride" && move.itemEvents.some((event) => event.type === "pickup-retained" || event.type === "pickup-pending-discard")) {
+      await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+      await advancePickup(page);
     }
     await expect(arrivalBanner(page)).toHaveCount(0);
     await expect(diceButton(page)).toHaveText("サイコロを振る");
