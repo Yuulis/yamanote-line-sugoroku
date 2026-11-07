@@ -13,6 +13,7 @@ import {
   freezeClock,
   gamePanel,
   openGameMenu,
+  openGameLog,
   openTitle,
   panelStat,
   readMap,
@@ -23,7 +24,7 @@ import {
   targetFeatureIds,
   writeSaveText,
 } from "./support/app";
-import { advanceArrival, advanceMovement, advanceStamps, advanceTumble, awaitStage, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advanceStamps, advanceTumble, awaitStage, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { directionLabel } from "../../src/features/game/presentation";
 import type { RailwayBundle } from "./fixtures/bundle";
@@ -345,7 +346,7 @@ test("the arrival banner holds the ridden service, platform and the turn's resul
   await expect(diceButton(page)).toHaveText("サイコロを振る");
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
   await expect(gamePanel(page).getByRole("button", { name: "スキップ", exact: true })).toBeEnabled();
-  await expect(status).toHaveText(new RegExp(`^${record.turn}ターン目：${arrived}に到着。踏破 \\d+/30。抽選結果を表示しています$`));
+  await expect(status).toHaveText(new RegExp(`^${record.turn}ターン目：${arrived}に到着。踏破 \\d+/30$`));
   expect(await readSave(page)).toEqual(expected.state);
 
   // The arrival's own duration, nothing earlier. Its timer starts in the frame that ended the movement, which is at
@@ -530,4 +531,81 @@ for (const end of ["スキップ", "タイトル"] as const) {
     expect((await readMap(page))?.flashFilterIds).toEqual([]);
     expect((await readMap(page))?.flashOpacity).toBe(0);
   });
+}
+
+// S14: explicit lottery boundaries, with the saved result as oracle.
+async function playLotteryToFlip(page: Page): Promise<NonNullable<Awaited<ReturnType<typeof readSave>>>> {
+  await page.clock.install();
+  await openTitle(page); await startNewGame(page);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await freezeClock(page); await clickDice(page); await advanceTumble(page);
+  await expectAcceptedSave(page, 1);
+  const saved = (await readSave(page))!;
+  if (stampsExpected(saved.movementHistory.at(-1)!)) await advanceStamps(page);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS); await advanceArrival(page);
+  await awaitStage(page, "lottery-flip");
+  return saved;
+}
+
+test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stations and item results behind one publication", async ({ page, railwayBundle }) => {
+  const saved = await playLotteryToFlip(page);
+  const record = saved.movementHistory.at(-1)!;
+  if (record.kind !== "item-ride") throw new Error("expected ride");
+  expect(record.landingSnapshot!.services.length).toBeGreaterThan(1);
+  const status = gamePanel(page).getByRole("status");
+  const arrivalCopy = await status.textContent();
+  await expect(status).toContainText("抽選結果を表示しています");
+  await openGameLog(page);
+  await expect(gamePanel(page).locator('section[aria-label="乗車中の次の駅"]')).toHaveCount(1);
+  const oldUpcoming = await gamePanel(page).locator('section[aria-label="乗車中の次の駅"]').textContent();
+  for (const stage of ["lottery-flip", "lottery-settle"] as const) {
+    await awaitStage(page, stage);
+    await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, record.resolvedRide.serviceId));
+    await expect(panelStat(page, "進行方向")).toHaveText(directionLabel(railwayBundle.network, record.resolvedRide.serviceId, record.resolvedRide.direction));
+    await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+      .toEqual([...new Set([...railwayBundle.network.segmentsById.values()].filter((segment) => segment.serviceId === record.resolvedRide.serviceId).flatMap((segment) => segment.geometryFeatureIds))]);
+    await expect.poll(async () => (await readMap(page))?.marker)
+      .toEqual(markerPosition(railwayBundle, { ...saved, currentServiceId: record.resolvedRide.serviceId }));
+    await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: —");
+    await expect(gamePanel(page).locator(".game-panel__candidates")).toHaveCount(0);
+    expect(await gamePanel(page).locator('section[aria-label="乗車中の次の駅"]').textContent()).toBe(oldUpcoming);
+    await expect(status).toHaveText(arrivalCopy!);
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+    await expect(page.locator(".item-event-notice")).toHaveCount(0);
+    await expect(page.locator(".turn-moment-host button, .turn-moment-host [tabindex]")).toHaveCount(0);
+    if (stage === "lottery-flip") await advanceLotteryFlip(page);
+  }
+  const board = page.locator(".lottery-reveal");
+  await expect(board.locator(".lottery-reveal__result").first()).toHaveText(serviceDisplayName(railwayBundle, saved.currentServiceId));
+  await expect(board.locator(".lottery-reveal__result").last()).toHaveText(directionLabel(railwayBundle.network, saved.currentServiceId, saved.direction));
+  await advanceLotterySettle(page);
+  await expect(board).toHaveCount(0);
+  await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, saved.currentServiceId));
+  await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, saved));
+  await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+    .toEqual([...new Set([...railwayBundle.network.segmentsById.values()].filter((segment) => segment.serviceId === saved.currentServiceId).flatMap((segment) => segment.geometryFeatureIds))]);
+  await expect(gamePanel(page).locator(".game-panel__lottery")).toContainText("抽選 → テスト南線");
+  expect(await gamePanel(page).locator('section[aria-label="乗車中の次の駅"]').textContent()).not.toBe(oldUpcoming);
+  await expect(status).toHaveText(/。サイコロを振れます$/);
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+  expect(await readSave(page)).toEqual(saved);
+});
+
+for (const stage of ["lottery-flip", "lottery-settle"] as const) {
+  for (const end of ["Skip", "reduced motion"] as const) {
+    test(`${end} during ${stage} ends the whole presentation without replay`, async ({ page }) => {
+      const saved = await playLotteryToFlip(page);
+      if (stage === "lottery-settle") await advanceLotteryFlip(page);
+      await awaitStage(page, stage);
+      await diceButton(page).focus();
+      if (end === "Skip") await page.locator(".turn-moment-host__card").click();
+      else { await page.emulateMedia({ reducedMotion: "reduce" }); }
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+      await expect(diceButton(page)).toBeFocused();
+      await page.emulateMedia({ reducedMotion: "no-preference" }); await page.clock.runFor(3_000);
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      expect(await readSave(page)).toEqual(saved);
+    });
+  }
 }

@@ -22,14 +22,7 @@ import { diceMoment, gamePanel } from "./app";
 //   - A helper never presses スキップ. Skipping is a separate, explicitly named
 //     helper (`pressSkip`) that a test has to choose on purpose.
 //
-// Active stages (tumble, stamps, arrival) are awaited before the clock moves
-// (`awaitStage`), so a caller can never advance a stage that has not started.
-// Until the step that activates a stage lands, that stage does not exist in
-// production: calling its helper only advances the page clock. That leaves the
-// saved game (rolls, turns, history, pending records) unchanged; on-screen
-// progress of an already running move can move further, and toast lifetimes
-// count down, as they would for any clock advance. No production hook is
-// involved.
+// Active stages wait for their visible checkpoint and timer effect before advancing.
 
 /** Normal ("ふつう") per-hop step; every stage scales by `stepMs / NORMAL_STEP_MS`. */
 export const NORMAL_STEP_MS = 450;
@@ -64,7 +57,7 @@ async function advanceStage(page: Page, stage: TurnMomentStage, factor: number):
 }
 
 /** Stages that are active in production and have a visible marker of being presented. */
-export type PresentedStage = "tumble" | "stamps" | "arrival";
+export type PresentedStage = "tumble" | "stamps" | "arrival" | "lottery-flip" | "lottery-settle";
 
 /**
  * Let the page run every task already queued, without moving the (frozen) page
@@ -95,6 +88,8 @@ async function flushQueuedTasks(page: Page): Promise<void> {
 export async function awaitStage(page: Page, stage: PresentedStage): Promise<void> {
   if (stage === "arrival") {
     await expect(page.locator(".turn-moment-host .arrival-banner")).toBeVisible();
+  } else if (stage === "lottery-flip" || stage === "lottery-settle") {
+    await expect(page.locator(".lottery-reveal")).toHaveAttribute("data-stage", stage);
   } else {
     await expect(diceMoment(page)).toHaveAttribute("data-stage", stage);
   }
@@ -175,6 +170,7 @@ export async function advanceArrival(page: Page, factor: number = 1): Promise<vo
  * when the turn draws a lottery.
  */
 export async function advanceLotteryFlip(page: Page, factor: number = 1): Promise<void> {
+  await awaitStage(page, "lottery-flip");
   await advanceStage(page, "lotteryFlip", factor);
 }
 
@@ -183,6 +179,7 @@ export async function advanceLotteryFlip(page: Page, factor: number = 1): Promis
  * result publishes (ride, lottery text, candidates) at its end.
  */
 export async function advanceLotterySettle(page: Page, factor: number = 1): Promise<void> {
+  await awaitStage(page, "lottery-settle");
   await advanceStage(page, "lotterySettle", factor);
 }
 

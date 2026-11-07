@@ -26,7 +26,7 @@ import {
   targetFeatureIds,
   waitForRollOutcome,
 } from "./support/app";
-import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
 // Spec 8.3 items covered here:
 //   [8.3-2] Rolling the dice updates the current position on the map.
@@ -287,6 +287,12 @@ test.describe("with move animation", () => {
     await expect.poll(async () => (await readMap(page))?.marker)
       .toEqual(markerPosition(railwayBundle, { ...save, currentServiceId: move.resolvedRide!.serviceId, currentStationId: move.toStationId }));
     await advanceArrival(page);
+    const landingCandidates = move.landingSnapshot?.services;
+    if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === move.landing?.serviceId)?.directions.length ?? 0) > 1) {
+      await advanceLotteryFlip(page);
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+      await advanceLotterySettle(page);
+    }
     await expect(arrivalBanner(page)).toHaveCount(0);
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(diceButton(page)).toBeEnabled();

@@ -2356,3 +2356,75 @@ button[aria-disabled="true"] {
 /* Callers may set --item-icon-accent on any ancestor; the brand colour is the default. */
 .item-icon__accent { fill: var(--item-icon-accent, var(--color-brand)); stroke: var(--item-icon-accent, var(--color-brand)); }
 .item-icon__accent-stroke { stroke: var(--item-icon-accent, var(--color-brand)); }
+
+/* The saved lottery result settles into the measured HUD values. */
+.turn-moment-host__region--settling { overflow: visible; }
+.turn-moment-host__card--lottery { background: transparent; box-shadow: none; }
+.lottery-reveal {
+  width: min(26rem, 100%);
+  color: var(--color-text);
+  text-align: center;
+  perspective: 700px;
+}
+.lottery-reveal__heading {
+  margin: 0 0 0.6rem;
+  font-weight: 800;
+}
+.lottery-reveal__row {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 3.5rem;
+  margin: 0.35rem 0;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.45rem;
+  background: var(--color-surface);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  transform-origin: center;
+}
+.lottery-reveal__row::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid var(--color-border);
+  pointer-events: none;
+}
+.lottery-reveal__frame {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: inherit;
+  background: var(--color-surface);
+  opacity: 0;
+  animation: lottery-frame calc(var(--lottery-ms) * 0.84 / var(--frame-count)) linear calc(var(--lottery-ms) * 0.84 * var(--frame-index) / var(--frame-count)) forwards;
+}
+.lottery-reveal__row--flipping .lottery-reveal__result {
+  animation: lottery-result var(--lottery-ms) steps(1, end) both;
+}
+.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row {
+  animation: lottery-settle var(--lottery-ms) ease-in both;
+}
+.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__heading {
+  animation: lottery-fade var(--lottery-ms) ease-in both;
+}
+@keyframes lottery-frame {
+  0% { opacity: 1; transform: rotateX(0deg); }
+  48% { opacity: 1; transform: rotateX(-12deg); }
+  99% { opacity: 1; transform: rotateX(-86deg); }
+  100% { opacity: 0; transform: rotateX(-90deg); }
+}
+@keyframes lottery-result {
+  0% { opacity: 0; }
+  84%, 100% { opacity: 1; }
+}
+@keyframes lottery-settle {
+  to { transform: translate(var(--lottery-x, 0px), var(--lottery-y, 0px)) scale(var(--lottery-sx, 1), var(--lottery-sy, 1)); opacity: 0; }
+}
+@keyframes lottery-fade { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .lottery-reveal *, .lottery-reveal *::after { animation: none !important; }
+  .lottery-reveal__frame { display: none; }
+}

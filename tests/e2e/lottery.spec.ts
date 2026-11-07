@@ -59,9 +59,11 @@ test.describe("lottery reveal after animation", () => {
     if (stampsExpected(committed.movementHistory.at(-1)!)) await advanceStamps(page);
     await expect(diceMoment(page)).toHaveCount(0);
     await primeMovementFrame(page);
+    await expect(page.locator(".lottery-reveal")).toHaveCount(0);
     await openGameLog(page);
     await expect(gamePanel(page).locator(".game-panel__lottery")).toHaveText("抽選: 移動中…");
     await gamePanel(page).getByRole("button", { name: "スキップ" }).click();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
     await expect(panelStat(page, "乗車中")).toHaveText("テスト南線");
     await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, committed));
     expect(await readSave(page)).toEqual(committed);

@@ -17,6 +17,7 @@ import {
   type DiceTumbleModel,
   type DiceTumbleProps,
 } from "../../src/features/game/components/DiceTumble";
+import { LotteryReveal, type LotteryRevealProps } from "../../src/features/game/components/LotteryReveal";
 import { GameHud, type GameHudProps } from "../../src/features/game/components/GameHud";
 import { GamePanel, type GamePanelProps } from "../../src/features/game/components/GamePanel";
 import { InventoryPanel } from "../../src/features/game/components/InventoryPanel";
@@ -1093,5 +1094,51 @@ describe("dice css contract", () => {
   it("uses colour tokens only inside the dice rules", () => {
     const dice: string = css.slice(css.indexOf(".dice-tumble {"), css.indexOf("@supports not (transform-style"));
     expect(dice).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgb\(/);
+  });
+});
+
+// S14: the decorative board uses the saved candidates, never a new draw.
+
+function LotteryHarness(props: LotteryRevealProps): React.JSX.Element {
+  return createElement(LotteryReveal, props);
+}
+
+describe("S14 LotteryReveal", () => {
+  it.each([[true, false], [false, true], [true, true], [false, false]])("flips only drawn rows (service %s, direction %s) and stops on saved values", (serviceDrawRequired, directionDrawRequired) => {
+    const network = buildRailwayNetwork(multiServiceInput());
+    const ids = [...network.servicesById.keys()];
+    const props: LotteryRevealProps = { network, presentation: createPresentationResolver(network), stage: "lottery-flip", durationMs: 1600,
+      landing: { type: "landing-resolved", stationId: "a", serviceId: ids[0]!, direction: 1,
+        serviceCandidates: ids, directionCandidates: [1, -1], serviceDrawRequired, directionDrawRequired, changedService: false },
+      rideTarget: createRef<HTMLElement>(), directionTarget: createRef<HTMLElement>(),
+    };
+    const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
+    const rows = [...mount.container.querySelectorAll(".lottery-reveal__row")];
+    expect(rows.map((row) => row.classList.contains("lottery-reveal__row--flipping"))).toEqual([serviceDrawRequired, directionDrawRequired]);
+    const finalValues = rows.map((row) => row.querySelector(".lottery-reveal__result")!.textContent);
+    expect(finalValues[0]).toBe(props.presentation.serviceName(ids[0]!));
+    expect(mount.container.querySelector("button, a, input, [tabindex], [role=status]")).toBeNull();
+    act(() => mount.root.render(createElement(LotteryHarness, { ...props, stage: "lottery-settle", durationMs: 400 })));
+    expect(mount.container.querySelectorAll(".lottery-reveal__frame")).toHaveLength(0);
+    expect([...mount.container.querySelectorAll(".lottery-reveal__result")].map((row) => row.textContent)).toEqual(finalValues);
+    expect([...mount.container.querySelectorAll(".lottery-reveal__row")].map((row) => row.getAttribute("data-motion"))).toEqual(["fade", "fade"]);
+    expect(mount.container.textContent).not.toMatch(/%|確率|重み/);
+  });
+
+  it("measures both HUD targets for settle without changing either target", () => {
+    const network = buildRailwayNetwork(multiServiceInput());
+    const id = [...network.servicesById.keys()][0]!;
+    const target = document.createElement("span"); document.body.append(target);
+    const rect = { left: 20, top: 30, width: 80, height: 40 } as DOMRect;
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue(rect);
+    const source = vi.spyOn(HTMLDivElement.prototype, "getBoundingClientRect").mockReturnValue({ ...rect, left: 100, top: 120 } as DOMRect);
+    const props: LotteryRevealProps = { network, presentation: createPresentationResolver(network), stage: "lottery-settle", durationMs: 400,
+      landing: { type: "landing-resolved", stationId: "a", serviceId: id, direction: 1, serviceCandidates: [id], directionCandidates: [1, -1],
+        serviceDrawRequired: false, directionDrawRequired: true, changedService: false }, rideTarget: { current: target }, directionTarget: { current: target } };
+    const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
+    expect([...mount.container.querySelectorAll<HTMLElement>(".lottery-reveal__row")].map((row) => [row.dataset["motion"], row.style.getPropertyValue("--lottery-x")]))
+      .toEqual([["flight", "-80px"], ["flight", "-80px"]]);
+    expect(target.getAttribute("style")).toBeNull();
+    expect(source).toHaveBeenCalledTimes(2);
   });
 });

@@ -258,7 +258,7 @@ describe("verified item notices", () => {
     const base = { session, view: null, decision: null, completedCount: 0, requiredCount: 30, network, canRoll: false };
     expect(turnMomentAnnouncement({ ...base, stage: "tumble" })).toBe("サイコロを振っています。移動の準備中です。");
     expect(turnMomentAnnouncement({ ...base, stage: "movement" })).toBe("回送列車で移動します。移動中です。スキップできます。");
-    expect(turnMomentAnnouncement({ ...base, stage: "arrival" })).toBe("到着しました。抽選結果を表示しています");
+    expect(turnMomentAnnouncement({ ...base, stage: "arrival" })).toBe("到着しました。");
     expect(turnMomentAnnouncement({ ...base, stage: "ready" })).toBe("");
   });
 

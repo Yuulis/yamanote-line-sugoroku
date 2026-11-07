@@ -258,7 +258,7 @@ describe("turn moment item publication", () => {
     const delaySession = resumeSession(playItemTurn(delayBase, {}, network).state, network, 66);
     const delayAttempt = releasedAttempt(delayOrigin, delayView);
     const delayDuring = display(delaySession, itemSessionView(delaySession, network)!, delayAttempt, "lottery-settle");
-    expect(delayDuring.announcement).toBe("5ターン目：巣鴨に到着。踏破 18/30。抽選結果を表示しています");
+    expect(delayDuring.announcement).toBe("5ターン目：巣鴨に到着。踏破 18/30");
     const harmful = display(delaySession, itemSessionView(delaySession, network)!, delayAttempt, "done");
     expect(harmful.itemView?.effects.delayDueTurns).toEqual([8]);
     expect(harmful.toastInputs.map((toast) => toast.text)).toEqual(["遅延を拾ってしまった！"]);
@@ -270,7 +270,7 @@ describe("turn moment item publication", () => {
     const certificateSession = resumeSession(playItemTurn(certificateBase, {}, network).state, network, 67);
     const certificateDuring = display(certificateSession, itemSessionView(certificateSession, network)!,
       releasedAttempt(certificateOrigin, certificateView), "arrival");
-    expect(certificateDuring.announcement).toBe("8ターン目：鶯谷に到着。踏破 23/30。抽選結果を表示しています");
+    expect(certificateDuring.announcement).toBe("8ターン目：鶯谷に到着。踏破 23/30");
     const cancelled = display(certificateSession, itemSessionView(certificateSession, network)!,
       releasedAttempt(certificateOrigin, certificateView), "done");
     expect(cancelled.itemView?.inventory.map((item) => item.id)).toEqual(["item-4", "item-5"]);
@@ -352,9 +352,9 @@ describe("turn moment item publication", () => {
     expect(turnMomentAnnouncement({ ...common, stage: "waiting-record" })).toBe("");
     expect(turnMomentAnnouncement({ ...common, stage: "stamps" })).toBe("移動の準備中です。");
     expect(turnMomentAnnouncement({ ...common, stage: "movement" })).toBe("出目は1マス 遅延です。移動中です。スキップできます。");
-    expect(turnMomentAnnouncement({ ...common, stage: "arrival" })).toBe("8ターン目：秋葉原に到着。踏破 0/30。抽選結果を表示しています");
-    expect(turnMomentAnnouncement({ ...common, stage: "lottery-flip" })).toBe("8ターン目：秋葉原に到着。踏破 0/30。抽選結果を表示しています");
-    expect(turnMomentAnnouncement({ ...common, stage: "lottery-settle" })).toBe("8ターン目：秋葉原に到着。踏破 0/30。抽選結果を表示しています");
+    expect(turnMomentAnnouncement({ ...common, stage: "arrival" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
+    expect(turnMomentAnnouncement({ ...common, stage: "lottery-flip" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
+    expect(turnMomentAnnouncement({ ...common, stage: "lottery-settle" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
     expect(turnMomentAnnouncement({ ...common, stage: "ready", canRoll: false })).toBe("");
     expect(turnMomentAnnouncement({ ...common, stage: "ready", canRoll: true })).toBe("");
     expect(turnMomentAnnouncement({ ...common, decision: null, stage: "awaiting-adjust" })).toBe("");

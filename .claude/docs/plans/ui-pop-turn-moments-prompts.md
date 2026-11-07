@@ -692,6 +692,70 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts
 
 ---
 
+## S14: Enable lottery flip, settle, and atomic ride publication
+
+Implement plan `### S14` exactly, the architecture's stage table (`lottery-flip` / `lottery-settle` rows and the
+paragraphs after it), its lottery-board paragraph, and the `## E2E Re-pointing Map` rows whose Step column includes
+S14 (`dice.spec.ts:203` natural completion, `lottery.spec.ts:57`/`:58`, `resume.spec.ts:79` lottery reload case,
+`capital-region.spec.ts:325` natural landing, `items.spec.ts:398` reduced-motion overlay absence,
+`accessibility.spec.ts:51` post checkpoint). Files: new `src/features/game/components/LotteryReveal.tsx`; modify
+`src/features/game/components/TurnMomentHost.tsx`, `src/features/game/animation/turnMoments.ts`
+(`buildTurnRevealStages`), `src/features/game/turnMomentPresentation.ts`, `src/features/game/presentation.ts`
+(announcement only), `src/app/GameApp.tsx` / `src/features/game/components/GamePanel.tsx` /
+`src/features/game/components/GameHud.tsx` only to wire the settle target refs, `src/styles.css`; tests
+`tests/unit/turn-moments.test.ts`, `tests/unit/turn-moment-presentation.test.ts`,
+`tests/unit/turn-moment-components.test.ts`, `tests/unit/game-app-turn-moments.test.ts`,
+`tests/e2e/support/turnMoments.ts`, `tests/e2e/ui-pop-turn-moments.spec.ts`, `tests/e2e/lottery.spec.ts`,
+`tests/e2e/dice.spec.ts`, `tests/e2e/capital-region.spec.ts`, `tests/e2e/resume.spec.ts`, `tests/e2e/items.spec.ts`,
+`tests/e2e/accessibility.spec.ts` (plus the handoff row). Pickup stays unbuilt (S15).
+
+- Stages: `buildTurnRevealStages()` returns `["arrival", "lottery-flip", "lottery-settle"]` only when the accepted
+  record's landing had `serviceDrawRequired || directionDrawRequired`; otherwise `["arrival"]` as at S12. Goal and
+  deadhead never get lottery stages; classic mode, reduced motion, restored or omitted results get nothing.
+  Durations from the attempt's captured timing (normal flip 1,600 ms + settle 400 ms; scaled by the captured speed).
+  Freeze the stage list per reveal key (S5 rule) — no empty stage, no placeholder delay.
+- Publication (one `lotteryPublished` predicate, S4): when lottery stages exist, the next ride, HUD ride row, map
+  highlight, platform marker (ridden service's arrival platform until then — assert separately from the highlight),
+  lottery log text, candidates, upcoming stations and item results publish together at the end of `lottery-settle`;
+  without a draw they still publish at the end of `arrival`. Skip during `lottery-flip` or `lottery-settle`
+  completes the whole presentation at once.
+- `LotteryReveal` in `TurnMomentHost` (decorative, `aria-hidden`, no focusable descendants, card tap = shared Skip,
+  placement at the visible map centre as S8/S11/S12 incl. map-control insets): two rows — existing `LineBadge` +
+  service name, then direction (existing direction resolution/wording). Only a drawn row flips; a forced row is shown
+  stable from the start. Intermediate frames deterministic (derived from the record/candidates, no `Math.random`);
+  the board stops on the saved landing service/direction. No probabilities, weights or invented line codes.
+  `lottery-settle`: the board travels toward the HUD ride row (`TurnMomentTargets.ride` / `direction`); measure with
+  stable `RefObject`s or memoised callbacks (S8 note: inline callback refs re-attach every render). Missing or
+  zero-size target → local fade with the same deadline; the stage end never depends on the target.
+- Announcements: during `lottery-flip`/`lottery-settle` keep the arrival wording and say `抽選結果を表示しています`
+  **only when a draw happened** (`serviceDrawRequired || directionDrawRequired`; carry-over from S12); never name
+  the selected next ride before publication; after settle the existing full landing announcement (+ `サイコロを振れます`
+  when `canRoll`). Exactly one gameplay `role=status`, one change per boundary.
+- Omission: reduced motion toggled on or off during flip or settle omits the rest without replay; reload during
+  lottery does not replay (restored); resolving a restored adjust plays normally.
+- E2E helpers: `advanceLotteryFlip` / `advanceLotterySettle` in `tests/e2e/support/turnMoments.ts` must
+  `awaitStage` their stage first (extend `PresentedStage` and give the board a stage marker such as
+  `data-stage`); natural-completion tests advance arrival → flip → settle explicitly when a draw occurs and keep
+  every baseline assertion and value; report old → new for every re-pointed line.
+- Carry-over for this file only if you touch it: none required in `turn-moment-components.test.ts` beyond the
+  new LotteryReveal cases (the `hasCard`/vacuous-assertion cleanup is S16).
+- Screenshots (frozen clock, temporary `tests/e2e/zz-p2-shot.spec.ts`, deleted after; never committed):
+  `.claude/logs/screenshots/p2-s14-desktop-lottery-flip.png`, `p2-s14-desktop-lottery-settle.png`,
+  `p2-s14-phone-lottery.png`.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moments.test.ts tests/unit/turn-moment-presentation.test.ts tests/unit/turn-moment-components.test.ts tests/unit/game-app-turn-moments.test.ts tests/unit/line-badge.test.ts
+npx vitest run
+npm run build
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/dice.spec.ts tests/e2e/lottery.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/resume.spec.ts tests/e2e/items.spec.ts --project=desktop-chromium --workers=2
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/accessibility.spec.ts --project=phone-chromium --workers=2
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`

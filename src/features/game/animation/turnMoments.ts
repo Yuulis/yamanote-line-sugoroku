@@ -134,15 +134,17 @@ export interface TurnRevealFacts {
 
 const NO_REVEAL_STAGES: readonly RevealStage[] = [];
 
-/**
- * Post-move stages of a fresh item-mode arrival, in order, with their captured durations. Arrival is included for
- * every fresh arrival (goal, deadhead and turns without newly completed segments too). Lottery and pickup stages
- * are not built yet (S14/S15), so the next ride, lottery text, candidates and item results publish when `arrival`
- * ends. Classic mode, reduced motion and restored records get no stage.
- */
+/** Post-move stages from the accepted snapshot; pickup remains unbuilt until S15. */
 export function buildTurnRevealStages(facts: TurnRevealFacts, timing: TurnMomentTiming): readonly RevealStage[] {
   if (facts.record === null || facts.restored || facts.omitted) return NO_REVEAL_STAGES;
-  return [{ key: "arrival", durationMs: timing.arrivalMs }];
+  const record = facts.record;
+  const stages: RevealStage[] = [{ key: "arrival", durationMs: timing.arrivalMs }];
+  if (record.kind !== "item-ride" || record.stopReason === "goal" || !record.landing) return stages;
+  const services = record.landingSnapshot?.services ?? [];
+  const selected = services.find((service) => service.serviceId === record.landing?.serviceId);
+  if (!selected || !(services.length > 1 || selected.directions.length > 1)) return stages;
+  return [...stages, { key: "lottery-flip", durationMs: timing.lotteryFlipMs },
+    { key: "lottery-settle", durationMs: timing.lotterySettleMs }];
 }
 
 export const INITIAL_TURN_MOMENTS_STATE: TurnMomentsState = { sessionId: null, attempt: null };

@@ -241,13 +241,9 @@ describe("turnMomentsReducer", () => {
   });
 });
 
-describe("buildTurnRevealStages (S12: arrival is the only post-move stage)", () => {
+describe("buildTurnRevealStages (arrival and conditional lottery)", () => {
   const NORMAL = turnMomentTiming(NORMAL_STEP_MS);
   const ARRIVAL = [{ key: "arrival", durationMs: 800 }];
-  const DRAW_LANDING = {
-    stationId: "yoyogi", serviceId: "fixture-south", direction: 1, serviceCandidates: ["jr-yamanote", "fixture-south"],
-    serviceDrawRequired: true, directionCandidates: [1, -1], directionDrawRequired: true, changedService: true,
-  } as unknown as ItemRideRecord["landing"];
   const PICKUP: ItemEvent[] = [{ type: "pickup-retained", item: { id: "double-b", kind: "double" } } as ItemEvent];
 
   it.each([
@@ -256,8 +252,6 @@ describe("buildTurnRevealStages (S12: arrival is the only post-move stage)", () 
     ["a ride with no new segment", ride({ traversedSegmentIds: [] }), ARRIVAL],
     ["a goal ride", ride({ stopReason: "goal" }), ARRIVAL],
     ["a deadhead", deadhead(), ARRIVAL],
-    // Lottery (S14) and pickup (S15) are not built yet: their outcomes publish when the arrival ends.
-    ["a ride that drew a lottery", ride({ landing: DRAW_LANDING }), ARRIVAL],
     ["a ride that picked up an item", ride({ itemEvents: PICKUP }), ARRIVAL],
   ] as const)("builds only the arrival for %s", (_label, record, expected) => {
     expect(buildTurnRevealStages({ record, restored: false, omitted: false }, NORMAL)).toEqual(expected);
@@ -279,5 +273,30 @@ describe("buildTurnRevealStages (S12: arrival is the only post-move stage)", () 
   ] as const)("takes the arrival duration from the captured %s timing", (_label, stepMs, arrivalMs) => {
     expect(buildTurnRevealStages({ record: ride(), restored: false, omitted: false }, turnMomentTiming(stepMs)))
       .toEqual([{ key: "arrival", durationMs: arrivalMs }]);
+  });
+});
+
+
+describe("S14 lottery stage planning", () => {
+  it.each([false, true])("plans only actual draws, with serviceDraw=%s", (serviceDraw) => {
+    for (const directionDraw of [false, true]) {
+      for (const stepMs of [300, 450, 600]) {
+        const timing = turnMomentTiming(stepMs);
+        const selected = { serviceId: "jr-yamanote", weight: 1, directions: directionDraw ? [1, -1] as const : [1] as const, directionWeights: [1] };
+        const record = ride({ landing: { serviceId: "jr-yamanote", direction: 1 }, landingSnapshot: {
+          stationId: "yoyogi", services: serviceDraw ? [selected, { ...selected, serviceId: "fixture-south" }] : [selected],
+          suspensionIgnored: false, detourConsumed: false,
+        } });
+        const stages = buildTurnRevealStages({ record, restored: false, omitted: false }, timing);
+        expect(stages).toEqual([{ key: "arrival", durationMs: timing.arrivalMs }, ...(serviceDraw || directionDraw ? [
+          { key: "lottery-flip", durationMs: Math.round(1600 * stepMs / 450) },
+          { key: "lottery-settle", durationMs: Math.round(400 * stepMs / 450) },
+        ] : [])]);
+        expect(buildTurnRevealStages({ record: { ...record, stopReason: "goal" }, restored: false, omitted: false }, timing))
+          .toEqual([{ key: "arrival", durationMs: timing.arrivalMs }]);
+        expect(buildTurnRevealStages({ record, restored: true, omitted: false }, timing)).toEqual([]);
+        expect(buildTurnRevealStages({ record, restored: false, omitted: true }, timing)).toEqual([]);
+      }
+    }
   });
 });

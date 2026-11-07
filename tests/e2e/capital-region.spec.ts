@@ -19,7 +19,7 @@ import {
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
 import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
-import { advanceArrival, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -358,6 +358,12 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.marker)
         .toEqual(markerPosition(railwayBundle, { ...committed, currentServiceId: ridden }));
       await advanceArrival(page);
+      const landingCandidates = record.landingSnapshot?.services;
+      if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === record.landing?.serviceId)?.directions.length ?? 0) > 1) {
+        await advanceLotteryFlip(page);
+        await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+        await advanceLotterySettle(page);
+      }
       await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveCount(0);
       // Published checkpoint: the committed landing service, its highlight and its platform, then readiness.
       await expect(diceButton(page)).toHaveText("サイコロを振る");

@@ -23,11 +23,11 @@ import type { ItemGameState, ItemTurnRecord } from "../../src/types/network";
 import type { useGameApp } from "../../src/features/game/useGameApp";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
-import { LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
+import { FIXTURE_GAME_SEED, LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
 
-const { railwayMapProps, injection, commits, trackEvent } = vi.hoisted(() => ({
+const { railwayMapProps, injection, commits, lotteryCommits, trackEvent } = vi.hoisted(() => ({
   railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null }, commits: [] as string[],
-  trackEvent: vi.fn(),
+  trackEvent: vi.fn(), lotteryCommits: [] as string[],
 }));
 vi.mock("../../src/features/analytics/analytics", async (original) => ({
   ...await original<typeof import("../../src/features/analytics/analytics")>(), trackEvent,
@@ -37,6 +37,13 @@ vi.mock("../../src/features/game/useGameApp", async (original) => {
   return { useGameApp: (...args: Parameters<typeof useGameApp>) => {
     const app = actual.useGameApp(...args);
     return injection.app ?? app;
+  } };
+});
+vi.mock("../../src/features/game/components/GameHud", async (original) => {
+  const actual = await original<typeof import("../../src/features/game/components/GameHud")>();
+  return { GameHud: function RecordedHud(props: React.ComponentProps<typeof actual.GameHud>): React.JSX.Element {
+    useLayoutEffect(() => { lotteryCommits.push(document.querySelector('[role="status"]')?.textContent ?? ""); });
+    return createElement(actual.GameHud, props);
   } };
 });
 vi.mock("../../src/features/map/RailwayMap", () => ({ RailwayMap: (props: { panelKey?: number }) => {
@@ -65,7 +72,7 @@ beforeAll(() => {
 afterEach(() => {
   injection.app = null;
   trackEvent.mockClear();
-  commits.length = 0;
+  commits.length = 0; lotteryCommits.length = 0;
   railwayMapProps.mockClear();
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -220,7 +227,7 @@ describe("GameApp publication lifecycle", () => {
     expect(mounted!.container.querySelectorAll(".item-slot h3")[0]?.textContent).toBe("路線指定券");
     expect(mounted!.container.querySelector(".item-event-notice")).toBeNull();
     expect(mounted!.container.textContent).not.toContain("遅延 あと3");
-    expect(status()).toBe("5ターン目：巣鴨に到着。踏破 18/30。抽選結果を表示しています");
+    expect(status()).toBe("5ターン目：巣鴨に到着。踏破 18/30");
     expect(mounted!.container.querySelector(".game-panel__roll")?.getAttribute("aria-disabled")).toBe("true");
     expect(mounted!.container.querySelector(".game-panel__save")?.textContent).toContain("保存に失敗しました（この進行は未保存です）");
     expect(mounted!.container.querySelector(".toast-host")?.textContent).toContain("保存に失敗しました");
@@ -234,7 +241,7 @@ describe("GameApp publication lifecycle", () => {
     click("サイコロを振る");
     expect(injection.app!.roll).toHaveBeenCalledTimes(1);
     expect(commits.slice(-2)).toEqual([
-      "5ターン目：巣鴨に到着。踏破 18/30。抽選結果を表示しています",
+      "5ターン目：巣鴨に到着。踏破 18/30",
       "5ターン目：出目3（3マス、3駅移動）、巣鴨に到着。山手線のみ ／ 外回りに固定。踏破 18/30。遅延：8ターン目に発動（あと3ターン）。出目が1になります。サイコロを振れます",
     ]);
   });
@@ -1218,10 +1225,10 @@ describe("S12 arrival banner in GameApp", () => {
     expect(dice().textContent).toBe("サイコロを振る");
     expect(dice().getAttribute("aria-disabled")).toBe("true");
     expect(panelSkip().disabled).toBe(false);
-    expect(status()).toBe("3ターン目：大森に到着。踏破 4/30。抽選結果を表示しています");
+    expect(status()).toBe("3ターン目：大森に到着。踏破 4/30");
     advance(ARRIVAL_MS - 1);
     expect(banner()).toBe("大森");
-    expect(status()).toBe("3ターン目：大森に到着。踏破 4/30。抽選結果を表示しています");
+    expect(status()).toBe("3ターン目：大森に到着。踏破 4/30");
 
     advance(1);
     expect(banner()).toBeNull();
@@ -1333,6 +1340,7 @@ describe("S12 arrival omission: reduced motion before, during and across turns",
     expect(banner()).not.toBeNull();
     advance(1);
     expect(banner()).toBeNull();
+    finishLotteryIfPresented();
     expect(dice().getAttribute("aria-disabled")).toBe("false");
   });
 
@@ -1348,6 +1356,7 @@ describe("S12 arrival omission: reduced motion before, during and across turns",
     expect(banner()).not.toBeNull();
     advance(1);
     expect(banner()).toBeNull();
+    finishLotteryIfPresented();
     expect(dice().getAttribute("aria-disabled")).toBe("false");
   });
 });
@@ -1433,4 +1442,100 @@ describe("S12 delayed goal presentation", () => {
     expect(document.activeElement).toBe(clearHeading());
     expect(gameClearEvents()).toHaveLength(1);
   });
+});
+
+function finishLotteryIfPresented(): void {
+  if (mounted!.container.querySelector('.lottery-reveal[data-stage="lottery-flip"]')) advance(1_600);
+  if (mounted!.container.querySelector('.lottery-reveal[data-stage="lottery-settle"]')) advance(400);
+}
+
+function lotteryStage(): string | null {
+  return mounted!.container.querySelector(".lottery-reveal")?.getAttribute("data-stage") ?? null;
+}
+
+describe("S14 lottery publication lifecycle", () => {
+  it("holds all consumers through flip and settle, then publishes once at the captured deadline", () => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    playToArrival();
+    const record = storedGame().movementHistory.at(-1)!;
+    expect(record.landingSnapshot!.services.length).toBeGreaterThan(1);
+    const oldRide = rideStat();
+    const oldPosition = railwayMapProps.mock.calls.at(-1)![0].progress.currentPosition;
+    const oldHighlight = railwayMapProps.mock.calls.at(-1)![0].progress.highlightedServiceId;
+    const arrivalCopy = status();
+    advance(800);
+    expect(lotteryStage()).toBe("lottery-flip");
+    const start = lotteryCommits.length;
+    click("メニュー");
+    click("速度: ふつう");
+    advance(1_599);
+    expect(lotteryStage()).toBe("lottery-flip");
+    advance(1);
+    expect(lotteryStage()).toBe("lottery-settle");
+    advance(399);
+    expect(rideStat()).toBe(oldRide);
+    expect(railwayMapProps.mock.calls.at(-1)![0].progress.currentPosition).toEqual(oldPosition);
+    expect(railwayMapProps.mock.calls.at(-1)![0].progress.highlightedServiceId).toBe(oldHighlight);
+    expect(mounted!.container.querySelector(".item-event-notice")).toBeNull();
+    expect(status()).toBe(arrivalCopy);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    advance(1);
+    expect(lotteryStage()).toBeNull();
+    expect(rideStat()).toBe(serviceName(network, record.landing!.serviceId));
+    expect(railwayMapProps.mock.calls.at(-1)![0].progress.currentPosition)
+      .toEqual(network.servicesById.get(record.landing!.serviceId)!.platformCoordinates[record.toStationId]);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    expect(status()).toMatch(/。サイコロを振れます$/);
+    expect(lotteryCommits.slice(start).filter((copy, index, values) => index === 0 || copy !== values[index - 1]))
+      .toEqual([arrivalCopy, status()]);
+  });
+
+  it.each(["lottery-flip", "lottery-settle"] as const)("omits %s on reduced motion without replay", (stage) => {
+    const setReduced = motionPreference(false);
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    playToArrival(); advance(800);
+    if (stage === "lottery-settle") advance(1_600);
+    expect(lotteryStage()).toBe(stage);
+    setReduced(true);
+    expect(lotteryStage()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    const copy = status();
+    setReduced(false); advance(3_000);
+    expect(lotteryStage()).toBeNull();
+    expect(status()).toBe(copy);
+  });
+
+  it.each(["lottery-flip", "lottery-settle"] as const)("one Skip completes %s with no replay", (stage) => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    playToArrival(); advance(800);
+    if (stage === "lottery-settle") advance(1_600);
+    expect(lotteryStage()).toBe(stage);
+    const saved = storedGame();
+    press(panelSkip());
+    expect(lotteryStage()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    advance(3_000);
+    expect(lotteryStage()).toBeNull();
+    expect(storedGame()).toEqual(saved);
+  });
+});
+
+it("S14 resolving a restored adjustment plays its newly created lottery normally", () => {
+  // This legitimate save holds an adjustment ticket before its next direction draw.
+  const pending = beginItemTurn(itemScenario("deadhead", network), { items: [] }, network).state;
+  expect(pending.pending?.kind).toBe("roll");
+  openWithFrames(pending);
+  expect(adjustmentDialog()).not.toBeNull();
+  expect(tumble()).toBeNull();
+  press(continueButton());
+  expect(tumble()).toBeNull();
+  finishMovement();
+  expect(banner()).toBe(stationName(network, storedGame().currentStationId));
+  advance(800);
+  expect(lotteryStage()).toBe("lottery-flip");
+  advance(1_600);
+  expect(lotteryStage()).toBe("lottery-settle");
+  advance(400);
+  expect(lotteryStage()).toBeNull();
+  expect(dice().getAttribute("aria-disabled")).toBe("false");
 });

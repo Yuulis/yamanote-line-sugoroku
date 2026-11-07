@@ -25,7 +25,7 @@ import {
   waitForRollOutcome,
   writeSaveText,
 } from "./support/app";
-import { advanceMovement, advanceStamps, advanceTumble, NORMAL_STEP_MS } from "./support/turnMoments";
+import { advanceArrival, advanceLotteryFlip, advanceMovement, advanceStamps, advanceTumble, NORMAL_STEP_MS } from "./support/turnMoments";
 
 // Spec 8.3 item covered here:
 //   [8.3-4] The game resumes correctly after a page reload.
@@ -152,4 +152,27 @@ test.describe("with move animation", () => {
     await page.waitForTimeout(250);
     await expect(page.locator(".toast-host__toast")).toHaveCount(0);
   });
+});
+
+
+test.describe("S14 lottery reload", () => {
+  test.use({ reducedMotion: "no-preference" });
+  for (const stage of ["lottery-flip", "lottery-settle"] as const) {
+    test(`reload during ${stage} resumes the committed result without replay`, async ({ page, railwayBundle }) => {
+      await page.clock.install(); await openTitle(page); await startNewGame(page); await freezeClock(page);
+      await clickDice(page); await advanceTumble(page); await expectAcceptedSave(page, 1);
+      const saved = (await readSave(page))!;
+      if (stampsExpected(saved.movementHistory.at(-1)!)) await advanceStamps(page);
+      await advanceMovement(page, 6_100); await advanceArrival(page);
+      if (stage === "lottery-settle") await advanceLotteryFlip(page);
+      await expect(page.locator(".lottery-reveal")).toHaveAttribute("data-stage", stage);
+      await page.reload(); await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, saved));
+      await page.clock.runFor(3_000);
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      expect(await readSave(page)).toEqual(saved);
+    });
+  }
 });

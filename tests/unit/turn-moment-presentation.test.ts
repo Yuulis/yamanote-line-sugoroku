@@ -4,6 +4,7 @@ import { displayedProgress, sessionProgress } from "../../src/features/game/anim
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import { itemSessionView } from "../../src/features/game/itemSession";
+import { turnMomentAnnouncement } from "../../src/features/game/presentation";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import type { GameSession } from "../../src/features/game/gameSession";
@@ -310,5 +311,21 @@ describe("S12 arrival and goal publication", () => {
     // ClearScreen owns the goal announcement; the panel (being replaced) announces nothing more.
     expect(published.announcement).toBe("");
     expect(published.clearAnnouncement).toContain("ゴールに到着しました");
+  });
+});
+
+
+describe("S14 lottery announcement boundaries", () => {
+  it.each(["arrival", "lottery-flip", "lottery-settle"] as const)("keeps arrival wording during %s and mentions a lottery only for draws", (stage) => {
+    const session = resumeSession(playItemTurn(itemScenario("route", network), {}, network).state, network, 91);
+    const view = itemSessionView(session, network);
+    const landing = session.lastMove!.landing!;
+    for (const [serviceDrawRequired, directionDrawRequired] of [[false, false], [true, false], [false, true], [true, true]]) {
+      const announcement = turnMomentAnnouncement({ session: { ...session, lastMove: { ...session.lastMove!, landing: {
+        ...landing, serviceDrawRequired: serviceDrawRequired!, directionDrawRequired: directionDrawRequired!,
+      } } }, view, decision: null, stage, canRoll: false, completedCount: 4, requiredCount: 30, network, presentation: resolver });
+      expect(announcement).toBe(`3ターン目：大森に到着。踏破 4/30${serviceDrawRequired || directionDrawRequired ? "。抽選結果を表示しています" : ""}`);
+      expect(announcement).not.toContain("品川方面");
+    }
   });
 });

@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode, RefCallback, RefObject } from "react";
 import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
 import type { RollAttempt } from "../animation/turnMoments";
 import type { TurnPublicationPhase, TurnRevealState } from "../turnMomentPresentation";
+import { LotteryReveal, type LotteryRevealProps } from "./LotteryReveal";
 import { diceTumbleModelFor, isDiceFace, type DiceTumbleModel } from "./DiceTumble";
 
 /** A plain rectangle in viewport (CSS pixel) coordinates. */
@@ -318,6 +319,7 @@ export function useTurnMomentRects(active: boolean, sources: TurnMomentRectSourc
 export interface TurnMomentHostProps extends TurnMomentRectSources {
   /** The card content. Nothing renderable (null, undefined, false) renders no card. */
   children?: ReactNode;
+  lottery?: LotteryRevealProps | null;
   /** Called when the visible card is tapped (Skip). Absent: the card only displays. */
   onTap?: () => void;
 }
@@ -331,8 +333,8 @@ function preventFocusMove(event: { preventDefault: () => void }): void {
  * no focusable descendants and never takes focus. The host ignores pointer events; only the visible card receives
  * them, and pressing it does not move keyboard focus.
  */
-export function TurnMomentHost({ children, onTap, resolveMap, resolvePanel }: TurnMomentHostProps): React.JSX.Element {
-  const hasCard: boolean = Children.toArray(children).length > 0;
+export function TurnMomentHost({ children, lottery, onTap, resolveMap, resolvePanel }: TurnMomentHostProps): React.JSX.Element {
+  const hasCard: boolean = Boolean(lottery) || Children.toArray(children).length > 0;
   const rects: TurnMomentRects | null = useTurnMomentRects(hasCard, { resolveMap, resolvePanel });
   const layout: { placement: TurnMomentPlacement; insets: EdgeInsets } | null = useMemo(
     () => {
@@ -346,7 +348,7 @@ export function TurnMomentHost({ children, onTap, resolveMap, resolvePanel }: Tu
   return (
     <div className="turn-moment-host" aria-hidden="true">
       {layout && <div
-        className="turn-moment-host__region"
+        className={`turn-moment-host__region${lottery?.stage === "lottery-settle" ? " turn-moment-host__region--settling" : ""}`}
         data-region={layout.placement.region}
         style={{
           left: layout.placement.rect.left,
@@ -358,11 +360,11 @@ export function TurnMomentHost({ children, onTap, resolveMap, resolvePanel }: Tu
         } satisfies CSSProperties}
       >
         <div
-          className="turn-moment-host__card"
+          className={`turn-moment-host__card${lottery ? " turn-moment-host__card--lottery" : ""}`}
           onPointerDown={preventFocusMove}
           onMouseDown={preventFocusMove}
           onClick={onTap}
-        >{children}</div>
+        >{lottery ? <LotteryReveal {...lottery} /> : children}</div>
       </div>}
     </div>
   );

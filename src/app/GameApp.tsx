@@ -90,6 +90,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const config = edition.config;
   const app = useGameApp(network, storage, config, edition.saveKey);
   const reducedMotion = usePrefersReducedMotion();
+  const rideTarget = useRef<HTMLElement>(null);
+  const directionTarget = useRef<HTMLElement>(null);
+  const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget }), []);
   const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
   const [follow, setFollow] = useState(true);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
@@ -337,6 +340,13 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     restoredRollSession.current = sessionId;
     if (enteredAwaitingAdjust) beginTurnMoment("restored-roll");
   }, [sessionId, enteredAwaitingAdjust, beginTurnMoment]);
+  const lotteryStage = turnDisplay?.phase === "lottery-flip" || turnDisplay?.phase === "lottery-settle" ? turnDisplay.phase : null;
+  const lottery = lotteryStage && session?.lastMove?.landing ? {
+    landing: session.lastMove.landing, stage: lotteryStage,
+    durationMs: lotteryStage === "lottery-flip" ? moments.attempt?.timing.lotteryFlipMs ?? turnMomentTiming(fallbackStepMs).lotteryFlipMs
+      : moments.attempt?.timing.lotterySettleMs ?? turnMomentTiming(fallbackStepMs).lotterySettleMs,
+    network, presentation, rideTarget, directionTarget,
+  } : null;
   const diceModel = session ? turnMomentDiceModel(presentedAttempt, acceptedRecord, reducedMotion) : null;
   const arrivalModel = turnDisplay ? turnMomentArrivalModel(turnDisplay.phase, presentedRevealStage,
     stationName(network, turnDisplay.progress.stationId, presentation)) : null;
@@ -378,6 +388,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           key={session.sessionId}
           session={session}
           turnDisplay={turnDisplay}
+          turnMomentTargets={turnMomentTargets}
           network={network}
           presentation={presentation}
           display={edition.display}
@@ -399,8 +410,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           onItemDialogOpenChange={setItemDialogOpen}
         />
       )}
-      {session && shown && turnDisplay && !showClear && (diceModel || arrivalModel) && (
-        <TurnMomentHost onTap={skip}>
+      {session && shown && turnDisplay && !showClear && (diceModel || arrivalModel || lottery) && (
+        <TurnMomentHost onTap={skip} lottery={lottery}>
           {diceModel ? <DiceTumble model={diceModel} /> : arrivalModel && <ArrivalBanner model={arrivalModel} />}
         </TurnMomentHost>
       )}

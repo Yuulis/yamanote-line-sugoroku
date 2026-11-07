@@ -239,8 +239,9 @@ export function turnMomentAnnouncement(input: TurnMomentAnnouncementInput): stri
   }
   if (stage === "arrival" || stage === "lottery-flip" || stage === "lottery-settle") {
     const move = session.lastMove;
-    if (!move) return "到着しました。抽選結果を表示しています";
-    return `${arrivalLogText(move.itemRecord?.turn ?? session.game.turn, move, completedCount, requiredCount, network, presentation)}。抽選結果を表示しています`;
+    if (!move) return "到着しました。";
+    const drawing = move.landing?.serviceDrawRequired || move.landing?.directionDrawRequired;
+    return `${arrivalLogText(move.itemRecord?.turn ?? session.game.turn, move, completedCount, requiredCount, network, presentation)}${drawing ? "。抽選結果を表示しています" : ""}`;
   }
   if (!view) return "";
   if (stage === "lottery-done") return landingText(session.lastMove, network, presentation);
