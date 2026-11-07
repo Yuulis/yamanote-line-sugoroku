@@ -4,14 +4,20 @@ import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import {
   diceButton,
+  diceMoment,
+  expectAcceptedSave,
+  freezeClock,
+  observeSave,
   openTitle,
   readSave,
   readSaveText,
   rollOnce,
+  stampsExpected,
   startNewGame,
   titleScreen,
   writeSaveText,
 } from "./support/app";
+import { advanceStamps, advanceTumble, pressSkip } from "./support/turnMoments";
 
 const OLD_CAPITAL_REGION_SAVE = readFileSync(
   fileURLToPath(new URL("./fixtures/old-capital-region-save.json", import.meta.url)),
@@ -209,6 +215,10 @@ test.describe("save failure toast", () => {
     await expect(page.locator(".game-panel__save")).toContainText("失敗");
     await expect(diceButton(page)).toHaveText("サイコロを振る");
     await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
+    // Failure checkpoint, distinct from an accepted save: every write threw, so
+    // storage still holds the new game (turn 0), not the rolled turn.
+    // The motion-on counterpart (tumble, Skip, retry) is "a failed save adds no stage, write or movement…" below.
+    expect(await observeSave(page)).toEqual({ turn: 0, pendingKind: null, history: 0 });
     await page.waitForTimeout(4200);
     await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
 
@@ -220,5 +230,63 @@ test.describe("save failure toast", () => {
     await diceButton(page).click();
     await expect(page.locator(".game-panel__save")).toContainText("自動保存済み");
     await expect(page.locator(".toast-host__toast", { hasText: "保存に失敗しました" })).toHaveCount(0);
+    // Accepted-save checkpoint: the retry's write is the acknowledged boundary.
+    // The failed turn stays committed in memory, so the retry saves turn 2 with both records.
+    await expectAcceptedSave(page, 2);
+  });
+});
+
+test.describe("save failure with turn moments", () => {
+  test.use({ dataset: "fixture", reducedMotion: "no-preference" });
+
+  test("a failed save adds no stage, write or movement of its own, and the retry turn advances exactly once", async ({ page }) => {
+    await page.clock.install();
+    await openTitle(page);
+    await startNewGame(page);
+    await freezeClock(page);
+    await page.evaluate(() => {
+      const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+      storage.originalSetItem = storage.setItem;
+      storage.setItem = function (key: string, value: string): void {
+        if (key.includes("save")) throw new Error("quota");
+        storage.originalSetItem?.call(this, key, value);
+      };
+    });
+    await diceButton(page).click();
+    await expect(page.locator(".game-panel__save")).toContainText("失敗");
+    await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
+    // Failure checkpoint: storage still holds the new game. The failed write is still a save attempt, so its turn
+    // plays exactly one tumble (held here by the frozen clock): the origin shown and the dice locked.
+    expect(await observeSave(page)).toEqual({ turn: 0, pendingKind: null, history: 0 });
+    await expect(diceMoment(page)).toHaveCount(1);
+    await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+    await expect(page.getByRole("main", { name: "ゲーム操作" }).locator('[data-stat="station"]')).toHaveText("新橋");
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+    // One Skip ends the attempted turn's presentation; the failure stays visible and nothing is written.
+    await pressSkip(page);
+    await expect(diceMoment(page)).toHaveCount(0);
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+    await expect(page.locator(".toast-host__toast")).toHaveText("保存に失敗しました");
+    expect(await observeSave(page)).toEqual({ turn: 0, pendingKind: null, history: 0 });
+
+    await page.evaluate(() => {
+      const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+      if (storage.originalSetItem) storage.setItem = storage.originalSetItem;
+      delete storage.originalSetItem;
+    });
+    await diceButton(page).click();
+    // The retry's write is the acknowledged boundary; its own pre-move moment runs once.
+    await expectAcceptedSave(page, 2);
+    await expect(diceMoment(page)).toHaveCount(1);
+    const retried = (await readSave(page))!.movementHistory.at(-1)!;
+    await advanceTumble(page);
+    if (stampsExpected(retried)) await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
+    await pressSkip(page);
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+    await expect(page.locator(".game-panel__save")).toContainText("自動保存済み");
+    await expect(page.locator(".toast-host__toast", { hasText: "保存に失敗しました" })).toHaveCount(0);
+    await expectAcceptedSave(page, 2);
+    expect((await readSave(page))!.movementHistory.map((record) => record.turn)).toEqual([1, 2]);
   });
 });

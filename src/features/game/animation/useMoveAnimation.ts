@@ -19,6 +19,10 @@ export interface MoveAnimationState {
   livePosition: LivePosition;
 }
 
+export interface MoveAnimationOptions {
+  startAllowed?: boolean;
+}
+
 /** True when `frame` shows nothing new for the panel: same move, same hops finished. */
 export function isSameStep(
   previous: FrameState | null,
@@ -42,6 +46,7 @@ export function useMoveAnimation(
   geometry: GeometryIndex,
   stepMs: number,
   onFinished: (animation: MoveAnimation) => void,
+  options: MoveAnimationOptions = {},
 ): MoveAnimationState {
   const [frameState, setFrameState] = useState<FrameState | null>(null);
   const stepMsRef = useRef(stepMs);
@@ -61,8 +66,13 @@ export function useMoveAnimation(
   // Switching to instant (reduced motion turned on mid-move) restarts the
   // effect, which then finishes the move at once; plain speed changes do not.
   const instant = stepMs <= 0;
+  const startAllowed = options.startAllowed ?? true;
   useEffect(() => {
     if (!animation) return;
+    if (!startAllowed) {
+      livePosition.set(null);
+      return;
+    }
     return runMoveAnimation(
       steps,
       stepMsRef.current,
@@ -74,13 +84,18 @@ export function useMoveAnimation(
       () => onFinishedRef.current(animation),
       animation.maxDurationMs,
     );
-  }, [animation, steps, instant, livePosition]);
+  }, [animation, steps, instant, livePosition, startAllowed]);
 
   // A frame left over from an earlier move must never move the marker back.
   const frame = animation && frameState?.animation === animation ? frameState.frame : null;
   const view = useMemo(
-    () => (animation && steps.length > 0 ? { fromStationId: animation.fromStationId, steps, frame } : null),
-    [animation, steps, frame],
+    () => (animation && (steps.length > 0 || !startAllowed)
+      ? { fromStationId: animation.fromStationId, steps, frame: startAllowed ? frame : null } : null),
+    [animation, steps, frame, startAllowed],
   );
-  return { view, livePosition };
+  const visibleLivePosition = useMemo<LivePosition>(() => startAllowed ? livePosition : {
+    subscribe: livePosition.subscribe,
+    get: () => null,
+  }, [livePosition, startAllowed]);
+  return { view, livePosition: visibleLivePosition };
 }

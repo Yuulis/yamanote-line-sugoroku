@@ -53,6 +53,8 @@ export const LAYER_IDS = {
   segmentsPending: "railway-segments-pending",
   /** Traversed: solid line in the service colour. */
   segmentsCompleted: "railway-segments-completed",
+  /** Arrival flash over the turn's newly completed target segments; empty and transparent otherwise. */
+  segmentsFlash: "railway-segments-flash",
   /** Transfer and target-line stations: marked at every zoom. */
   stationCircles: "railway-stations-circle",
   /** Every other station: marked from ORDINARY_STATION_MIN_ZOOM up. */
@@ -78,6 +80,12 @@ export const NETWORK_FIT_PADDING_DESKTOP = { top: 60, right: 70, bottom: 50, lef
 export const NETWORK_FIT_PADDING_PHONE = { top: 100, right: 60, left: 20 };
 export const PHONE_PANEL_MAX_HEIGHT_SHARE = 0.45;
 export const NETWORK_FIT_PANEL_GAP = 16;
+/** Arrival flash: a soft, wide glow over the completed line, pulsed once (never a strobe). */
+export const SEGMENT_FLASH_COLOR = "#fff59d";
+export const SEGMENT_FLASH_LINE_WIDTH = 11;
+export const SEGMENT_FLASH_LINE_BLUR = 3;
+/** Peak opacity of the single pulse, reached at the middle of the arrival. */
+export const SEGMENT_FLASH_MAX_OPACITY = 0.85;
 export const PENDING_SEGMENT_COLOR = "#8a8a8a";
 export const PENDING_SEGMENT_WIDTH = 3;
 /** Dash and gap lengths, in line widths. */

@@ -6,6 +6,7 @@ import { endpointKindLabel } from "./gameSummary";
 import { itemLastMove, type ItemSessionView } from "./itemSession";
 import type { GameSession, LastMove } from "./gameSession";
 import { ITEM_DESCRIPTIONS } from "./itemPresentation";
+import { compactRollFor, compactRollText } from "./hudPresentation";
 import type { PresentationResolver } from "./presentationResolver";
 
 export function stationName(
@@ -180,6 +181,7 @@ export function arrivalSummary(
 export function itemTurnAnnouncement(
   session: GameSession, view: ItemSessionView, completedCount: number, requiredCount: number,
   network: RailwayNetwork, presentation?: PresentationResolver,
+  canRoll: boolean = session.phase === "idle",
 ): string {
   const { phase, lastMove, game } = session;
   if (phase === "committing" || phase === "resolving") return "";
@@ -201,8 +203,56 @@ export function itemTurnAnnouncement(
   const arrival = lastMove ? arrivalSummary(record?.turn ?? game.turn, lastMove, completedCount, requiredCount, network, presentation) : "";
   const fallback = record?.landingSnapshot?.suspensionIgnored ? "この駅では候補がすべて運休のため、運休を無視して抽選しました" : "";
   const available = view.decision?.kind === "discard" ? "捨てるアイテムを1つ選んでください"
-    : game.status === "playing" && phase === "idle" ? "サイコロを振れます" : "";
+    : game.status === "playing" && canRoll ? "サイコロを振れます" : "";
   return [arrival, ...outcomes, ...effects, fallback, available].filter(Boolean).join("。");
+}
+
+export interface TurnMomentAnnouncementInput {
+  session: GameSession;
+  view: ItemSessionView | null;
+  decision: ItemSessionView["decision"];
+  stage: "waiting-roll" | "tumble" | "awaiting-adjust" | "waiting-record" | "stamps" | "movement"
+    | "arrival" | "lottery-flip" | "lottery-settle" | "pickup" | "lottery-done" | "pickup-done"
+    | "ready" | "restored" | "goal";
+  canRoll: boolean;
+  completedCount: number;
+  requiredCount: number;
+  network: RailwayNetwork;
+  presentation?: PresentationResolver;
+}
+
+/** Stage-aware live copy; each branch reuses the canonical text for its published result. */
+export function turnMomentAnnouncement(input: TurnMomentAnnouncementInput): string {
+  const { session, view, decision, stage, completedCount, requiredCount, network, presentation } = input;
+  if (stage === "goal") return "";
+  if (stage === "waiting-roll") return input.canRoll ? "サイコロを振れます" : "";
+  if (stage === "tumble") return "サイコロを振っています。移動の準備中です。";
+  if (stage === "awaiting-adjust" && decision?.kind === "adjust" && view) {
+    return itemTurnAnnouncement({ ...session, phase: "awaiting-adjust" }, { ...view, decision }, completedCount, requiredCount, network, presentation);
+  }
+  if (stage === "waiting-record") return "";
+  if (stage === "stamps") return "移動の準備中です。";
+  if (stage === "movement") {
+    const roll = compactRollText(compactRollFor(session.lastMove));
+    if (roll === "—" || roll === "回送（サイコロなし）") return "回送列車で移動します。移動中です。スキップできます。";
+    return `出目は${roll}です。移動中です。スキップできます。`;
+  }
+  if (stage === "arrival" || stage === "lottery-flip" || stage === "lottery-settle") {
+    const move = session.lastMove;
+    if (!move) return "到着しました。";
+    const drawing = move.landing?.serviceDrawRequired || move.landing?.directionDrawRequired;
+    return `${arrivalLogText(move.itemRecord?.turn ?? session.game.turn, move, completedCount, requiredCount, network, presentation)}${drawing ? "。抽選結果を表示しています" : ""}`;
+  }
+  if (!view) return "";
+  if (stage === "lottery-done") return landingText(session.lastMove, network, presentation);
+  if (stage === "pickup") return landingText(session.lastMove, network, presentation);
+  if (stage === "pickup-done" || stage === "restored" || stage === "ready") {
+    if (view.decision?.kind === "adjust") return "";
+    const phase = decision?.kind === "discard" ? "awaiting-discard" : "idle";
+    return itemTurnAnnouncement({ ...session, phase }, { ...view, decision }, completedCount, requiredCount,
+      network, presentation, input.canRoll);
+  }
+  return "";
 }
 
 /** Result history uses item pips and snapshots, never classic roll-minus-hops. */

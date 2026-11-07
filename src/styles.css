@@ -9,7 +9,7 @@ body {
   font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
 
-/* Stacking order: map < panel < screens < map error < data banner.
+/* Stacking order: map < panel < turn moment < screens < map error < data banner.
    The confirmation <dialog> sits in the browser's top layer above all. */
 :root {
   --color-brand: #d9502f;
@@ -38,10 +38,42 @@ body {
   --motion-normal: 200ms;
   --motion-slow: 300ms;
   --layer-panel: 10;
+  --layer-turn-moment: 15;
   --layer-screen: 20;
   --layer-map-error: 25;
   --layer-toast: 30;
   --layer-banner: 40;
+}
+
+/* Turn-moment overlay: visual only, fixed, and transparent to pointers. The region follows the free rectangle
+   chosen in TurnMomentHost; only the content-sized card takes pointer events (a tap there is Skip). */
+.turn-moment-host {
+  position: fixed;
+  z-index: var(--layer-turn-moment);
+  inset: 0;
+  pointer-events: none;
+}
+
+.turn-moment-host__region {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.turn-moment-host__card {
+  box-sizing: border-box;
+  min-width: 0;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-lg);
+  background: var(--color-cream);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  pointer-events: auto;
+  transition: opacity var(--motion-normal) ease-out, transform var(--motion-normal) ease-out;
 }
 
 .toast-host {
@@ -216,6 +248,205 @@ body {
   .toast-host__toast--motion {
     animation: none;
     transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .turn-moment-host__card {
+    transition: none;
+  }
+}
+
+/* Dice cube and modifier stamps (visual only; nothing waits on this CSS). The base rules already describe the
+   final state: the cube rests in its final pose and the stamps are fully visible. Animations only decorate the
+   path to it, so a missing 3D transform or a reduced-motion preference simply shows the end state.
+   The component sets --dice-stage-ms and the final rotation (--dice-final-x/-y) on the root. */
+.dice-tumble {
+  --dice-size: 72px;
+  --dice-half: 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  color: var(--color-ink);
+}
+
+.dice-tumble__scene {
+  width: var(--dice-size);
+  height: var(--dice-size);
+  perspective: 480px;
+}
+
+.dice-tumble__cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--dice-final-x, 0deg)) rotateY(var(--dice-final-y, 0deg));
+}
+
+.dice-tumble__face {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: grid;
+  grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+  padding: 10px;
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  backface-visibility: hidden;
+}
+
+/* Standard die: 1 front, 6 back, 2 right, 5 left, 3 top, 4 bottom. */
+.dice-tumble__face[data-face="1"] { transform: translateZ(var(--dice-half)); }
+.dice-tumble__face[data-face="2"] { transform: rotateY(90deg) translateZ(var(--dice-half)); }
+.dice-tumble__face[data-face="3"] { transform: rotateX(90deg) translateZ(var(--dice-half)); }
+.dice-tumble__face[data-face="4"] { transform: rotateX(-90deg) translateZ(var(--dice-half)); }
+.dice-tumble__face[data-face="5"] { transform: rotateY(-90deg) translateZ(var(--dice-half)); }
+.dice-tumble__face[data-face="6"] { transform: rotateY(180deg) translateZ(var(--dice-half)); }
+
+.dice-tumble__pip {
+  place-self: center;
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+}
+
+.dice-tumble__face[data-face="1"] .dice-tumble__pip { background: var(--color-brand); }
+
+.dice-tumble__pip[data-cell="1"] { grid-area: 1 / 1; }
+.dice-tumble__pip[data-cell="2"] { grid-area: 1 / 2; }
+.dice-tumble__pip[data-cell="3"] { grid-area: 1 / 3; }
+.dice-tumble__pip[data-cell="4"] { grid-area: 2 / 1; }
+.dice-tumble__pip[data-cell="5"] { grid-area: 2 / 2; }
+.dice-tumble__pip[data-cell="6"] { grid-area: 2 / 3; }
+.dice-tumble__pip[data-cell="7"] { grid-area: 3 / 1; }
+.dice-tumble__pip[data-cell="8"] { grid-area: 3 / 2; }
+.dice-tumble__pip[data-cell="9"] { grid-area: 3 / 3; }
+
+.dice-tumble__stamps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dice-tumble__stamp {
+  --dice-stamp-tilt: -6deg;
+  padding: 2px 10px;
+  border: 2px solid var(--color-brand-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-brand-tint);
+  color: var(--color-brand-strong);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.4;
+  transform: rotate(var(--dice-stamp-tilt));
+}
+
+.dice-tumble__stamp:nth-child(even) { --dice-stamp-tilt: 5deg; }
+
+/* The tumble reaches the final pose at 75% and holds it for the last 25% of the same duration (no extra time). */
+.dice-tumble--tumble .dice-tumble__cube {
+  animation: dice-tumble-spin var(--dice-stage-ms, 600ms) cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.dice-tumble--stamps .dice-tumble__stamp {
+  animation: dice-stamp-in var(--dice-stage-ms, 240ms) ease-out both;
+}
+
+@keyframes dice-tumble-spin {
+  0% { transform: rotateX(calc(var(--dice-final-x, 0deg) - 720deg)) rotateY(calc(var(--dice-final-y, 0deg) - 540deg)); }
+  75%, 100% { transform: rotateX(var(--dice-final-x, 0deg)) rotateY(var(--dice-final-y, 0deg)); }
+}
+
+@keyframes dice-stamp-in {
+  0% { opacity: 0; transform: rotate(var(--dice-stamp-tilt)) scale(1.8); }
+  60% { opacity: 1; transform: rotate(var(--dice-stamp-tilt)) scale(0.94); }
+  100% { opacity: 1; transform: rotate(var(--dice-stamp-tilt)) scale(1); }
+}
+
+/* No 3D transforms: show a flat final face; the cube does not rotate. */
+@supports not (transform-style: preserve-3d) {
+  .dice-tumble__cube,
+  .dice-tumble--tumble .dice-tumble__cube {
+    animation: none;
+    transform: none;
+  }
+
+  .dice-tumble__face[data-face] {
+    transform: none;
+    display: none;
+  }
+
+  .dice-tumble__face--final[data-face] {
+    display: grid;
+  }
+}
+
+/* Reduced motion (flag or system preference): the final face and stamps appear at once with no animation. */
+.dice-tumble--reduced .dice-tumble__cube,
+.dice-tumble--reduced .dice-tumble__stamp {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dice-tumble .dice-tumble__cube,
+  .dice-tumble .dice-tumble__stamp {
+    animation: none;
+  }
+}
+
+/* Arrival banner (visual only; the arrival stage's timer, not this CSS, ends it). The base rule is the final state,
+   so reduced motion or an interrupted animation simply shows the banner. */
+.turn-moment-host__card:has(> .arrival-banner) {
+  min-width: min(208px, 100%);
+}
+
+.arrival-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  box-sizing: border-box;
+  min-width: min(208px, 100%);
+  max-width: 100%;
+  padding: 14px 24px;
+  border-top: 4px solid var(--color-brand);
+  border-radius: var(--radius-lg);
+  color: var(--color-ink);
+  text-align: center;
+  animation: arrival-banner-in var(--motion-slow) ease-out both;
+}
+
+.arrival-banner__kicker {
+  color: var(--color-brand-strong);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+}
+
+.arrival-banner__station {
+  overflow: hidden;
+  max-width: 100%;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@keyframes arrival-banner-in {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  100% { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arrival-banner {
+    animation: none;
   }
 }
 
@@ -2131,3 +2362,119 @@ button[aria-disabled="true"] {
 /* Callers may set --item-icon-accent on any ancestor; the brand colour is the default. */
 .item-icon__accent { fill: var(--item-icon-accent, var(--color-brand)); stroke: var(--item-icon-accent, var(--color-brand)); }
 .item-icon__accent-stroke { stroke: var(--item-icon-accent, var(--color-brand)); }
+
+/* The saved lottery result settles into the measured HUD values. */
+.turn-moment-host__region--settling { overflow: visible; }
+.turn-moment-host__card--lottery { background: transparent; box-shadow: none; }
+/* Match the viewport-positioned flight origin without creating a fixed-position containing block. */
+.turn-moment-host__card--pickup {
+  position: absolute;
+  left: calc(50% - 24px);
+  top: calc(50% - 24px);
+  width: 48px;
+  height: 48px;
+  background: transparent;
+  box-shadow: none;
+}
+.lottery-reveal {
+  width: min(26rem, 100%);
+  color: var(--color-text);
+  text-align: center;
+  perspective: 700px;
+}
+.lottery-reveal__heading {
+  margin: 0 0 0.6rem;
+  font-weight: 800;
+}
+.lottery-reveal__row {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 3.5rem;
+  margin: 0.35rem 0;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.45rem;
+  background: var(--color-surface);
+  font-weight: 800;
+  min-width: 0;
+  transform-origin: center;
+}
+.lottery-reveal__row::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  border-top: 1px solid var(--color-border);
+  pointer-events: none;
+}
+.lottery-reveal__frame {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: inherit;
+  background: var(--color-surface);
+  opacity: 0;
+  animation: lottery-frame calc(var(--lottery-ms) * 0.84 / var(--frame-count)) linear calc(var(--lottery-ms) * 0.84 * var(--frame-index) / var(--frame-count)) forwards;
+}
+.lottery-reveal__result,
+.lottery-reveal .line-badge {
+  max-width: 100%;
+  min-width: 0;
+}
+.lottery-reveal .line-badge__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lottery-reveal__row--flipping .lottery-reveal__result {
+  animation: lottery-result var(--lottery-ms) steps(1, end) both;
+}
+.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row {
+  animation: lottery-settle var(--lottery-ms) ease-in both;
+}
+.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__heading {
+  animation: lottery-fade var(--lottery-ms) ease-in both;
+}
+@keyframes lottery-frame {
+  0% { opacity: 1; transform: rotateX(0deg); }
+  48% { opacity: 1; transform: rotateX(-12deg); }
+  99% { opacity: 1; transform: rotateX(-86deg); }
+  100% { opacity: 0; transform: rotateX(-90deg); }
+}
+@keyframes lottery-result {
+  0% { opacity: 0; }
+  84%, 100% { opacity: 1; }
+}
+@keyframes lottery-settle {
+  to { transform: translate(var(--lottery-x, 0px), var(--lottery-y, 0px)) scale(var(--lottery-sx, 1), var(--lottery-sy, 1)); opacity: 0; }
+}
+@keyframes lottery-fade { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .lottery-reveal *, .lottery-reveal *::after { animation: none !important; }
+  .lottery-reveal__frame { display: none; }
+}
+
+/* The pickup layer owns no timing: the reveal sequence removes it at the captured pickup deadline. */
+.item-pickup-moment {
+  position: fixed;
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  transform-origin: center;
+  pointer-events: auto;
+  user-select: none;
+  animation: item-pickup-flight var(--pickup-ms) cubic-bezier(0.2, 0.7, 0.25, 1) both;
+}
+.item-pickup-moment--fade { animation-name: item-pickup-fade; }
+@keyframes item-pickup-flight {
+  to {
+    transform: translate(var(--pickup-x), var(--pickup-y)) scale(var(--pickup-sx), var(--pickup-sy));
+    opacity: 0;
+  }
+}
+@keyframes item-pickup-fade { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .item-pickup-moment { animation: none; }
+}

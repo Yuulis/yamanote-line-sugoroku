@@ -132,7 +132,29 @@ describe("shipped network markers", () => {
     const isKeyLabel = ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM];
 
     expect(sources).toEqual(["railway-segments", "railway-stations", "game-current-position"]);
-    expect(order).toHaveLength(10);
+    // S13: 10 -> 11 layers. The arrival flash sits above the completed segments and below every station layer.
+    expect(order).toHaveLength(11);
+    expect(order).toEqual([
+      LAYER_IDS.base,
+      LAYER_IDS.services,
+      LAYER_IDS.currentService,
+      LAYER_IDS.segmentsPending,
+      LAYER_IDS.segmentsCompleted,
+      LAYER_IDS.segmentsFlash,
+      LAYER_IDS.stationCirclesOrdinary,
+      LAYER_IDS.stationCircles,
+      LAYER_IDS.stationLabelsOrdinary,
+      LAYER_IDS.stationLabels,
+      LAYER_IDS.currentPosition,
+    ]);
+    expect(layers[LAYER_IDS.segmentsCompleted]?.filter).toEqual(
+      ["all", ["==", ["get", "serviceId"], TARGET], ["in", ["get", "featureId"], ["literal", []]]],
+    );
+    expect(layers[LAYER_IDS.segmentsFlash]).toMatchObject({
+      source: "railway-segments",
+      filter: ["all", ["==", ["get", "serviceId"], TARGET], ["in", ["get", "featureId"], ["literal", []]]],
+      paint: { "line-opacity": 0 },
+    });
     // Placement runs top-down: key names claim their space before ordinary ones.
     expect(order.indexOf(LAYER_IDS.stationLabelsOrdinary)).toBe(order.indexOf(LAYER_IDS.stationLabels) - 1);
     expect(keyLabels).toMatchObject({ minzoom: 11, filter: isKeyLabel });
