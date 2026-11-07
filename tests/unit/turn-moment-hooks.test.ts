@@ -406,3 +406,23 @@ describe("useTurnMoments", () => {
     harness.mount.cleanup();
   });
 });
+
+it.each(["arrival", "lottery-flip", "lottery-settle", "pickup"] as const)(
+  "replacing the session during %s clears the complete reveal chain without a stale commit", (stage) => {
+    vi.useFakeTimers();
+    const stages = ["arrival", "lottery-flip", "lottery-settle", "pickup"] as const;
+    const harness = mountHarness(options({ revealStages: stages.map((key) => ({ key, durationMs: 100 })) }));
+    harness.update({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    for (let index: number = 0; index < stages.indexOf(stage); index += 1) act(() => vi.advanceTimersByTime(100));
+    expect(harness.moments.revealStage).toBe(stage);
+    expect(vi.getTimerCount()).toBe(1);
+    harness.update({ sessionId: 8, revealObservation: { sessionId: 8, recordTurn: null, gameTurn: 0, pendingDecisionTurn: null, movementComplete: false } });
+    const count: number = harness.commits.length;
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => vi.advanceTimersByTime(10_000));
+    expect(harness.commits).toHaveLength(count);
+    expect(harness.moments.attempt).toBeNull();
+    harness.mount.cleanup();
+    expect(vi.getTimerCount()).toBe(0);
+  },
+);

@@ -2,6 +2,8 @@ import { expect, type APIRequestContext, type Locator, type Page } from "@playwr
 import type { ItemGameState, ItemTurnRecord } from "../../../src/types/network";
 import type { RailwayBundle } from "../fixtures/bundle";
 import { LAYER_IDS, SOURCE_IDS } from "../../../src/features/map/mapConfig";
+import { createItemGame, playItemTurn, resolveItemDiscard } from "../../../src/features/game/engine";
+import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
 import type { MoveEvent } from "../../../src/features/game/engine";
 import { buildGeometryIndex, buildMovePlan } from "../../../src/features/game/animation/movePath";
 import { hopDurationMs, MAX_MOVE_DURATION_MS } from "../../../src/features/game/animation/timeline";
@@ -436,4 +438,14 @@ export function markerPosition(bundle: RailwayBundle, save: SavedGame): [number,
   const point = bundle.network.servicesById.get(save.currentServiceId)?.platformCoordinates[save.currentStationId];
   if (!point) throw new Error("Missing platform point");
   return point;
+}
+
+/** Pinned engine replay: forced oversleep stamps, lottery and full-inventory pickup on turn 11. */
+export function combinedMomentGame(bundle: RailwayBundle): ItemGameState {
+  let game: ItemGameState = createItemGame(ITEM_GAME_CONFIG, "00000000000000000000000000001bdc", bundle.network);
+  while (game.turn < 10) {
+    game = playItemTurn(game, {}, bundle.network).state;
+    if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+  }
+  return game;
 }

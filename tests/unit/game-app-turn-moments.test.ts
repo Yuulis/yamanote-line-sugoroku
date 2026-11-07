@@ -25,9 +25,10 @@ import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { FIXTURE_GAME_SEED, LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
 
-const { railwayMapProps, injection, commits, lotteryCommits, trackEvent } = vi.hoisted(() => ({
+const { railwayMapProps, injection, commits, lotteryCommits, momentCommits, trackEvent } = vi.hoisted(() => ({
   railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null }, commits: [] as string[],
   trackEvent: vi.fn(), lotteryCommits: [] as string[],
+  momentCommits: [] as { statusCount: number; overlay: boolean }[],
 }));
 vi.mock("../../src/features/analytics/analytics", async (original) => ({
   ...await original<typeof import("../../src/features/analytics/analytics")>(), trackEvent,
@@ -42,7 +43,11 @@ vi.mock("../../src/features/game/useGameApp", async (original) => {
 vi.mock("../../src/features/game/components/GameHud", async (original) => {
   const actual = await original<typeof import("../../src/features/game/components/GameHud")>();
   return { GameHud: function RecordedHud(props: React.ComponentProps<typeof actual.GameHud>): React.JSX.Element {
-    useLayoutEffect(() => { lotteryCommits.push(document.querySelector('[role="status"]')?.textContent ?? ""); });
+    useLayoutEffect(() => {
+      lotteryCommits.push(document.querySelector('[role="status"]')?.textContent ?? "");
+      momentCommits.push({ statusCount: document.querySelectorAll('.game-panel [role="status"]').length,
+        overlay: document.querySelector(".turn-moment-host") !== null });
+    });
     return createElement(actual.GameHud, props);
   } };
 });
@@ -72,7 +77,7 @@ beforeAll(() => {
 afterEach(() => {
   injection.app = null;
   trackEvent.mockClear();
-  commits.length = 0; lotteryCommits.length = 0;
+  commits.length = 0; lotteryCommits.length = 0; momentCommits.length = 0;
   railwayMapProps.mockClear();
   vi.restoreAllMocks();
   vi.useRealTimers();
@@ -1549,4 +1554,77 @@ it("S14 resolving a restored adjustment plays its newly created lottery normally
   advance(400);
   expect(lotteryStage()).toBeNull();
   expect(dice().getAttribute("aria-disabled")).toBe("false");
+});
+
+// S16: a legitimate replay with oversleep stamps, a draw and overflow pickup.
+function combinedGame(): ItemGameState {
+  let game: ItemGameState = createItemGame(ITEM_GAME_CONFIG, "00000000000000000000000000001bdc", network);
+  while (game.turn < 10) {
+    game = playItemTurn(game, {}, network).state;
+    if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+  }
+  return game;
+}
+
+describe("S16 combined publication boundaries", () => {
+  it("closes an inspected public item exactly when pickup presents discard", () => {
+    openWithFrames(combinedGame());
+    const start: number = lotteryCommits.length - 1;
+    // The accepted click clears the previous summary at the waiting-roll boundary before acknowledgement.
+    const boundaries: string[] = [status(), ""];
+    click("サイコロを振る");
+    boundaries.push(status());
+    advance(TUMBLE_MS);
+    expect(adjustmentDialog()).toBeNull();
+    expect(tumble()?.stage).toBe("stamps");
+    boundaries.push(status());
+    advance(STAMPS_MS);
+    boundaries.push(status());
+    finishMovement();
+    boundaries.push(status());
+    expect(banner()).not.toBeNull();
+    advance(ARRIVAL_MS);
+    expect(lotteryStage()).toBe("lottery-flip");
+    finishLotteryIfPresented();
+    boundaries.push(status());
+    expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
+    expect(mounted!.container.querySelector(".turn-moment-host")!.closest(".game-panel")).toBeNull();
+    press(mounted!.container.querySelector(".item-slot__button")!);
+    const card: Element = mounted!.container.querySelector(".item-card-popover")!;
+    expect(card.hasAttribute("hidden")).toBe(false);
+    expect(card.textContent).toContain("路線指定券");
+    expect(card.querySelector<HTMLButtonElement>(".item-card__action")?.disabled).toBe(true);
+    advance(499);
+    expect(mounted!.container.querySelector(".item-card-popover")).toBe(card);
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    advance(1);
+    expect(mounted!.container.querySelector(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
+    expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
+    expect(document.activeElement).toBe(mounted!.container.querySelector(".item-discard h2"));
+    expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(1);
+    expect(momentCommits.every((commit) => commit.statusCount === 1)).toBe(true);
+    boundaries.push(status());
+    const changes = (copies: string[]): string[] => copies.filter((copy, index) => index === 0 || copy !== copies[index - 1]);
+    expect(changes(lotteryCommits.slice(start))).toEqual(changes(boundaries));
+  });
+
+  it("omits every moment from the first commit across three reduced-motion turns", () => {
+    motionPreference(true);
+    openWithFrames(combinedGame());
+    for (let turn: number = 0; turn < 3; turn += 1) {
+      const base: ItemGameState = storedGame();
+      click("サイコロを振る");
+      if (adjustmentDialog()) press(continueButton());
+      expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+      const expected: ItemGameState = playItemTurn(base, {}, network).state;
+      expect(storedGame()).toEqual(expected);
+      if (expected.pending?.kind === "discard") {
+        press(mounted!.container.querySelector(".item-discard button")!);
+      }
+      expect(queuedFrames).toHaveLength(0);
+    }
+    expect(lotteryCommits.every((copy: string) => !copy.includes("抽選結果を表示しています"))).toBe(true);
+    expect(momentCommits.length).toBeGreaterThan(3);
+    expect(momentCommits.every((commit) => commit.statusCount === 1 && !commit.overlay)).toBe(true);
+  });
 });

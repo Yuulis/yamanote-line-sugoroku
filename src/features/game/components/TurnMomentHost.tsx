@@ -1,4 +1,4 @@
-import { Children, useLayoutEffect, useMemo, useState } from "react";
+import { Children, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefCallback, RefObject } from "react";
 import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
 import type { RollAttempt } from "../animation/turnMoments";
@@ -171,6 +171,9 @@ export const MAP_CONTROL_CLEARANCE_PX: Readonly<{ top: number; right: number; bo
 export const MIN_CARD_REGION_PX: number = 112;
 /** A region edge closer than this to the viewport edge counts as touching it. */
 const EDGE_TOLERANCE_PX: number = 1;
+const MAP_CONTROL_GAP_PX: number = 4;
+/** Leave a subpixel-rounding guard when fitting a card against the viewport boundary. */
+const CARD_FIT_GAP_PX: number = 1;
 
 function edgeInsets(size: number, wantStart: number, wantEnd: number): readonly [number, number] {
   const wanted: number = wantStart + wantEnd;
@@ -202,6 +205,56 @@ export function mapControlInsets(rect: RectBox, viewport: RectBox): EdgeInsets {
   const [top, bottom] = edgeInsets(rect.height, touchesTop ? MAP_CONTROL_CLEARANCE_PX.top : 0,
     touchesBottom ? MAP_CONTROL_CLEARANCE_PX.bottom : 0);
   return { top, right, bottom, left };
+}
+
+interface CardLayout {
+  readonly placement: TurnMomentPlacement;
+  readonly insets: EdgeInsets;
+  readonly fit: boolean;
+}
+
+/** Free strips around an obstacle; overlapping candidates are intentional (only one will be used). */
+function withoutControl(area: RectBox, control: RectBox): readonly RectBox[] {
+  const blocked: RectBox | null = intersect(area, control);
+  if (!blocked) return [area];
+  return [
+    { ...area, height: blocked.top - area.top },
+    { ...area, top: blocked.top + blocked.height, height: area.top + area.height - blocked.top - blocked.height },
+    { ...area, width: blocked.left - area.left },
+    { ...area, left: blocked.left + blocked.width, width: area.left + area.width - blocked.left - blocked.width },
+  ].filter(isUsableRect);
+}
+
+/**
+ * Preserve the usual geometry if its effective width is at least 112px. Otherwise choose the largest map strip
+ * clear of every measured control (including attribution), with a 4px gap. The alternate strip must provide
+ * at least 112px on both axes; its card is fitted uniformly if necessary. If no such strip exists, omit the
+ * decorative card rather than cover controls or silently reduce the minimum; the panel's Skip remains usable.
+ */
+function cardLayout(chosen: TurnMomentPlacement, viewport: RectBox, controls: readonly RectBox[], attribution: readonly RectBox[]): CardLayout | null {
+  const insets: EdgeInsets = mapControlInsets(chosen.rect, viewport);
+  let right: number = insets.right;
+  for (const control of controls) {
+    if (intersect(chosen.rect, control)) {
+      right = Math.max(right, chosen.rect.left + chosen.rect.width - control.left + MAP_CONTROL_GAP_PX);
+    }
+  }
+  if (chosen.rect.width - insets.left - right >= MIN_CARD_REGION_PX) {
+    return { placement: chosen, insets: { ...insets, right }, fit: false };
+  }
+
+  let candidates: readonly RectBox[] = [chosen.rect];
+  for (const control of [...controls, ...attribution]) {
+    const obstacle: RectBox = {
+      left: control.left - MAP_CONTROL_GAP_PX, top: control.top - MAP_CONTROL_GAP_PX,
+      width: control.width + 2 * MAP_CONTROL_GAP_PX, height: control.height + 2 * MAP_CONTROL_GAP_PX,
+    };
+    candidates = candidates.flatMap((area) => withoutControl(area, obstacle));
+  }
+  const best: RectBox | undefined = candidates
+    .filter((area) => area.width >= MIN_CARD_REGION_PX && area.height >= MIN_CARD_REGION_PX)
+    .sort((a, b) => b.width * b.height - a.width * a.height)[0];
+  return best ? { placement: placementOf(best, chosen.region), insets: { top: 0, right: 0, bottom: 0, left: 0 }, fit: true } : null;
 }
 
 /**
@@ -258,6 +311,8 @@ export interface TurnMomentRects {
   readonly viewport: RectBox;
   readonly map: RectBox | null;
   readonly panel: RectBox | null;
+  readonly controls: readonly RectBox[];
+  readonly attribution: readonly RectBox[];
 }
 
 export interface TurnMomentRectSources {
@@ -281,7 +336,9 @@ function sameBox(a: RectBox | null, b: RectBox | null): boolean {
 }
 
 function sameRects(a: TurnMomentRects | null, b: TurnMomentRects): boolean {
-  return a !== null && sameBox(a.viewport, b.viewport) && sameBox(a.map, b.map) && sameBox(a.panel, b.panel);
+  return a !== null && sameBox(a.viewport, b.viewport) && sameBox(a.map, b.map) && sameBox(a.panel, b.panel)
+    && a.controls.length === b.controls.length && a.controls.every((rect, index) => sameBox(rect, b.controls[index]!))
+    && a.attribution.length === b.attribution.length && a.attribution.every((rect, index) => sameBox(rect, b.attribution[index]!));
 }
 
 /**
@@ -300,7 +357,11 @@ export function useTurnMomentRects(active: boolean, sources: TurnMomentRectSourc
     const mapElement: Element | null = resolveMap ? resolveMap() : document.querySelector(TURN_MOMENT_MAP_SELECTOR);
     const panelElement: Element | null = resolvePanel ? resolvePanel() : document.querySelector(TURN_MOMENT_PANEL_SELECTOR);
     const measure = (): void => {
-      const next: TurnMomentRects = { viewport: viewportBox(), map: boxOf(mapElement), panel: boxOf(panelElement) };
+      const controls: readonly RectBox[] = Array.from(document.querySelectorAll(
+        ".map-overview, .maplibregl-ctrl-top-right .maplibregl-ctrl-group",
+      ), boxOf).filter(isUsableRect);
+      const attribution: readonly RectBox[] = Array.from(document.querySelectorAll(".maplibregl-ctrl-attrib"), boxOf).filter(isUsableRect);
+      const next: TurnMomentRects = { viewport: viewportBox(), map: boxOf(mapElement), panel: boxOf(panelElement), controls, attribution };
       setRects((current: TurnMomentRects | null) => sameRects(current, next) ? current : next);
     };
     measure();
@@ -339,15 +400,40 @@ function preventFocusMove(event: { preventDefault: () => void }): void {
 export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, resolvePanel }: TurnMomentHostProps): React.JSX.Element {
   const hasCard: boolean = Boolean(lottery || pickup) || Children.toArray(children).length > 0;
   const rects: TurnMomentRects | null = useTurnMomentRects(hasCard, { resolveMap, resolvePanel });
-  const layout: { placement: TurnMomentPlacement; insets: EdgeInsets } | null = useMemo(
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardScale, setCardScale] = useState<number>(1);
+  const [cardVisible, setCardVisible] = useState<boolean>(true);
+  const layout: CardLayout | null = useMemo(
     () => {
       if (!hasCard) return null;
       const viewport: RectBox = rects?.viewport ?? viewportBox();
       const chosen: TurnMomentPlacement = chooseTurnMomentPlacement(viewport, rects?.map, rects?.panel);
-      return { placement: chosen, insets: mapControlInsets(chosen.rect, viewport) };
+      return cardLayout(chosen, viewport, rects?.controls ?? [], rects?.attribution ?? []);
     },
     [hasCard, rects],
   );
+  useLayoutEffect(() => {
+    const card: HTMLDivElement | null = cardRef.current;
+    if (pickup || !layout?.fit || !card) return;
+    const fit = (): void => {
+      // Undo our own scale to retain fractional layout pixels (offset sizes round and can overflow the viewport).
+      // The card itself has no decorative animation; its children's transforms do not affect these bounds.
+      const bounds: DOMRect = card.getBoundingClientRect();
+      const appliedScale: number = Number(getComputedStyle(card).scale) || 1;
+      const width: number = bounds.width / appliedScale;
+      const height: number = bounds.height / appliedScale;
+      if (width <= 0 || height <= 0) return;
+      const scale: number = Math.min(1, (layout.placement.rect.width - CARD_FIT_GAP_PX) / width,
+        (layout.placement.rect.height - CARD_FIT_GAP_PX) / height);
+      // Fitted cards must remain legible; the viewport-positioned pickup bypasses fitting.
+      setCardScale(scale);
+      setCardVisible(width * scale >= MIN_CARD_REGION_PX);
+    };
+    fit();
+    const observer: ResizeObserver | null = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
+    observer?.observe(card);
+    return () => observer?.disconnect();
+  }, [layout, children, lottery, pickup]);
   return (
     <div className="turn-moment-host" aria-hidden="true">
       {layout && <div
@@ -363,7 +449,10 @@ export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, r
         } satisfies CSSProperties}
       >
         <div
+          ref={cardRef}
           className={`turn-moment-host__card${lottery ? " turn-moment-host__card--lottery" : ""}${pickup ? " turn-moment-host__card--pickup" : ""}`}
+          style={layout.fit && !pickup ? { width: "100%", maxHeight: "none", flexShrink: 0,
+            scale: cardScale, visibility: cardVisible ? undefined : "hidden" } : undefined}
           onPointerDown={preventFocusMove}
           onMouseDown={preventFocusMove}
           onClick={onTap}

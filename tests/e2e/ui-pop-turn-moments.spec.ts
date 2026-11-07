@@ -1,9 +1,13 @@
 import type { Locator, Page } from "@playwright/test";
-import { beginItemTurn, playItemTurn, serializeGame } from "../../src/features/game/engine";
+import type { MoveEvent } from "../../src/features/game/engine";
+import { beginItemTurn, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import type { ItemGameState, ItemRollAdjustment, ItemRideRecord } from "../../src/types/network";
 import { expect, test } from "./fixtures";
 import { itemScenario } from "./fixtures/itemScenarios";
 import {
+  combinedMomentGame,
+  closeGameMenu,
+  movementDurationMs,
   markerPosition,
   waitForRollOutcome,
   clickDice,
@@ -739,3 +743,318 @@ test.describe("S15 pickup and delayed discard", () => {
     await expect(dialog).toBeVisible();
   });
 });
+
+// S16: cross-feature composition. Adjustment/goal/save-failure boundaries remain
+// in the S11/S12 cases, accessibility.spec.ts and save-errors.spec.ts.
+const SPEED_CASES = [
+  { id: "slow", label: "ゆっくり", clicks: 2, stepMs: 600 },
+  { id: "normal", label: "ふつう", clicks: 0, stepMs: 450 },
+  { id: "fast", label: "はやい", clicks: 1, stepMs: 300 },
+] as const;
+
+async function combinedTo(page: Page, bundle: RailwayBundle, checkpoint: string): Promise<ItemGameState> {
+  const base: ItemGameState = combinedMomentGame(bundle);
+  await resumeFrozen(page, base);
+  const expected: ItemGameState = playItemTurn(base, {}, bundle.network).state;
+  expect(expected.pending?.kind).toBe("discard");
+  await clickDice(page);
+  if (checkpoint === "tumble") return expected;
+  await advanceTumble(page);
+  await awaitStage(page, "stamps");
+  if (checkpoint === "stamps") return expected;
+  await advanceStamps(page);
+  if (checkpoint === "movement") return expected;
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  await awaitStage(page, "arrival");
+  if (checkpoint === "arrival") return expected;
+  await advanceArrival(page);
+  await awaitStage(page, "lottery-flip");
+  if (checkpoint === "lottery-flip") return expected;
+  await advanceLotteryFlip(page);
+  await awaitStage(page, "lottery-settle");
+  if (checkpoint === "lottery-settle") return expected;
+  await advanceLotterySettle(page);
+  await awaitStage(page, "pickup");
+  return expected;
+}
+
+for (const speed of SPEED_CASES) {
+  test(`S16 complete overflow turn at ${speed.id} keeps captured deadlines and one live region`, async ({ page, railwayBundle }) => {
+    // The page clock owns the exact reveal deadlines; allow headroom for software rendering at four workers.
+    test.setTimeout(60_000);
+    const base: ItemGameState = combinedMomentGame(railwayBundle);
+    await resumeFrozen(page, base);
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+    await openGameMenu(page);
+    const speedButton = gamePanel(page).getByRole("button", { name: /^アニメーション速度:/ });
+    for (let index: number = 0; index < speed.clicks; index += 1) await speedButton.click();
+    await expect(speedButton).toContainText(speed.label);
+    await closeGameMenu(page);
+    await page.evaluate(() => {
+      const original: typeof window.setTimeout = window.setTimeout.bind(window);
+      const timers: { stage: string; delay: number; deadline: number }[] = [];
+      (window as unknown as { momentTimers: typeof timers }).momentTimers = timers;
+      window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]): number => {
+        const stage: string | null = document.querySelector(".dice-tumble, .lottery-reveal, .item-pickup-moment")?.getAttribute("data-stage")
+          ?? (document.querySelector(".arrival-banner") ? "arrival" : null);
+        if (stage && delay !== undefined) timers.push({ stage, delay, deadline: Date.now() + delay });
+        return original(handler, delay, ...args);
+      }) as typeof window.setTimeout;
+    });
+    await diceButton(page).focus();
+    await page.keyboard.press("Enter");
+    const expected: ItemGameState = playItemTurn(base, {}, railwayBundle.network).state;
+    expect(expected.pending?.kind).toBe("discard");
+    if (expected.pending?.kind !== "discard") throw new Error("Missing overflow oracle");
+    const record = structuredClone(expected.pending.record) as ItemRideRecord;
+    expect(stampsExpected(record)).toBe(true);
+    expect(record.landingSnapshot!.services.length).toBeGreaterThan(1);
+    // Change the setting while this turn is active; the entire chain keeps its captured speed.
+    await openGameMenu(page);
+    await speedButton.click();
+    await closeGameMenu(page);
+    await diceButton(page).focus();
+    const factor: number = speed.stepMs / NORMAL_STEP_MS;
+    const boundaries: string[] = [];
+    const check = async (): Promise<void> => {
+      await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
+      await expect(page.locator(".turn-moment-host")).toHaveAttribute("aria-hidden", "true");
+      await expect(page.locator(".turn-moment-host button, .turn-moment-host [tabindex], .turn-moment-host [role=status]")).toHaveCount(0);
+      await expect(diceButton(page)).toBeFocused();
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+      boundaries.push((await gamePanel(page).getByRole("status").textContent())!);
+      expect(await readSave(page)).toEqual(expected);
+    };
+    for (const [stage, duration] of [["tumble", "tumble"], ["stamps", "stamps"]] as const) {
+      await awaitStage(page, stage); await check();
+      await page.clock.runFor(stageDurationMs(duration, factor) - 1);
+      await expect(diceMoment(page)).toHaveAttribute("data-stage", stage);
+      await page.clock.runFor(1);
+    }
+    const moveMs: number = movementDurationMs(railwayBundle, playItemTurn(base, {}, railwayBundle.network).events.filter((event): event is MoveEvent => event.type === "segment-traversed" || event.type === "goal-reached" || event.type === "endpoint-reached" || event.type === "landing-resolved"), speed.stepMs);
+    await advanceMovement(page, moveMs * 0.8);
+    await expect(diceButton(page)).toHaveText("移動中…");
+    await expect(arrivalBanner(page)).toHaveCount(0);
+    await advanceMovement(page, moveMs * 0.2);
+    for (const [stage, duration] of [["arrival", "arrival"], ["lottery-flip", "lotteryFlip"], ["lottery-settle", "lotterySettle"], ["pickup", "pickup"]] as const) {
+      await awaitStage(page, stage); await check();
+      const flashIds: string[] = stage === "arrival" ? targetFeatureIds({ completedSegmentIds: record.traversedSegmentIds.filter((id) => !base.completedSegmentIds.includes(id)) }, railwayBundle) : [];
+      if (stage === "arrival") expect(flashIds.length).toBeGreaterThan(0);
+      await expect.poll(async () => [...((await readMap(page))?.flashFilterIds ?? [])].sort()).toEqual(flashIds.sort());
+      const timer = await page.evaluate(({ stage, delay }) => {
+        const timers = (window as unknown as { momentTimers: { stage: string; delay: number; deadline: number }[] }).momentTimers;
+        const timer = timers.find((entry) => entry.stage === stage && entry.delay === delay);
+        return timer ? { ...timer, remaining: timer.deadline - Date.now() } : null;
+      }, { stage, delay: stageDurationMs(duration, factor) });
+      expect(timer?.delay).toBe(stageDurationMs(duration, factor));
+      expect(timer!.remaining).toBeGreaterThan(0);
+      await page.clock.runFor(timer!.remaining - 1);
+      await awaitStage(page, stage);
+      await page.clock.runFor(1);
+    }
+    // Flip/settle share one announcement; pickup publishes the ride before the item.
+    expect(boundaries[2]).toBe(boundaries[3]);
+    expect(boundaries[3]).toBe(boundaries[4]);
+    expect(boundaries[5]).not.toBe(boundaries[4]);
+    const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    await expect(discard.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+    await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await discard.getByRole("button", { name: "このアイテムを捨てる" }).last().click();
+    expect(await readSave(page)).toEqual(resolveItemDiscard(expected, expected.pending.item.id).state);
+    await expect(diceButton(page)).toBeFocused();
+    // The next turn captures the newly selected speed.
+    await diceButton(page).click();
+    await awaitStage(page, "tumble");
+    const nextStep: number = speed.id === "slow" ? 450 : speed.id === "normal" ? 300 : 600;
+    await page.clock.runFor(stageDurationMs("tumble", nextStep / 450) - 1);
+    await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+    await page.clock.runFor(1);
+    await expect(page.locator('.dice-tumble[data-stage="tumble"]')).toHaveCount(0);
+  });
+}
+
+for (const stage of ["tumble", "stamps", "movement", "arrival", "lottery-flip", "lottery-settle", "pickup"] as const) {
+  test(`S16 one Skip during ${stage} reaches the same overflow result`, async ({ page, railwayBundle }) => {
+    const expected = await combinedTo(page, railwayBundle, stage);
+    await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+    await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    expect(await readSave(page)).toEqual(expected);
+    await page.clock.runFor(10_000);
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect.poll(async () => (await readMap(page))?.flashFilterIds).toEqual([]);
+    expect(await readSave(page)).toEqual(expected);
+  });
+}
+
+for (const stage of ["movement", "lottery-flip", "pickup"] as const) {
+  test(`S16 reload during ${stage} restores the same mandatory discard without replay`, async ({ page, railwayBundle }) => {
+    const expected = await combinedTo(page, railwayBundle, stage);
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await page.clock.runFor(10_000);
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    expect(await readSave(page)).toEqual(expected);
+  });
+}
+
+for (const viewport of [{ width: 1280, height: 800 }, { width: 412, height: 839 }, { width: 320, height: 720 }, { width: 667, height: 375 }, { width: 640, height: 400 }]) {
+  test(`S16 usable map placement through all moments at ${viewport.width}x${viewport.height}`, async ({ page, railwayBundle }, testInfo) => {
+    // Six stages plus repeated hit testing can exceed 30 s with touch DPR and software WebGL.
+    test.setTimeout(60_000);
+    await page.setViewportSize(viewport);
+    await combinedTo(page, railwayBundle, "tumble");
+    const verify = async (stage: string): Promise<void> => {
+      const card = page.locator(".turn-moment-host__card");
+      // Arrival content has its own minimum width, so include its overflow in placement checks.
+      const bounds = (await (stage === "arrival" ? arrivalBanner(page) : card).boundingBox())!;
+      const panel = (await gamePanel(page).boundingBox())!;
+      const map = (await page.locator(".map-container").boundingBox())!;
+      const obstacles = [panel];
+      for (const selector of [".maplibregl-ctrl-top-right .maplibregl-ctrl-group", ".map-overview", ".maplibregl-ctrl-attrib"]) {
+        obstacles.push((await page.locator(selector).boundingBox())!);
+      }
+      const fits: boolean = bounds.x >= map.x && bounds.y >= map.y && bounds.x + bounds.width <= viewport.width
+        && bounds.y + bounds.height <= viewport.height && obstacles.every((box) => !overlaps(bounds, box));
+      const effectiveWidth: number = await page.locator(".turn-moment-host__region").evaluate((element) => {
+        const style: CSSStyleDeclaration = getComputedStyle(element);
+        return element.getBoundingClientRect().width - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      });
+      expect.soft(effectiveWidth, `${stage}: usable card region width`).toBeGreaterThanOrEqual(112);
+      if (stage === "arrival" || stage === "lottery") {
+        expect.soft(bounds.width, `${stage}: effective card width`).toBeGreaterThanOrEqual(112);
+      }
+      if (!fits) await page.screenshot({ path: `.claude/logs/screenshots/p2-s16-layout-${viewport.width}-${stage}.png` });
+      expect.soft(fits, `${stage}: ${JSON.stringify({ bounds, obstacles })}`).toBe(true);
+      await page.locator(".turn-moment-host").evaluate((element) => { (element as HTMLElement).hidden = true; });
+      expect(await gamePanel(page).boundingBox()).toEqual(panel);
+      await page.locator(".turn-moment-host").evaluate((element) => { (element as HTMLElement).hidden = false; });
+      await page.getByRole("button", { name: "Zoom in", exact: true }).click({ trial: true });
+      await page.locator(".maplibregl-ctrl-attrib-button").click({ trial: true });
+      testInfo.annotations.push({ type: stage, description: JSON.stringify({ bounds, panel }) });
+    };
+    await verify("tumble"); await advanceTumble(page);
+    await verify("stamps"); await advanceStamps(page);
+    await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+    await awaitStage(page, "arrival"); await verify("arrival"); await advanceArrival(page);
+    await awaitStage(page, "lottery-flip"); await verify("lottery"); await advanceLotteryFlip(page);
+    await advanceLotterySettle(page);
+    await awaitStage(page, "pickup"); await verify("pickup"); await advancePickup(page);
+    const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    await discard.getByRole("button", { name: "このアイテムを捨てる" }).last().click();
+    await expect(page.locator(".toast-host__toast")).toHaveCount(2);
+    await expect(page.locator(".toast-host")).toBeInViewport();
+  });
+}
+
+for (const size of ["normal", "alternative"] as const) {
+  for (const target of ["slot", "header"] as const) {
+    test(`S16 pickup viewport flight to ${target} at ${size} size`, async ({ page, railwayBundle }, testInfo) => {
+      if (size === "alternative") await page.setViewportSize({ width: 640, height: 400 });
+      if (target === "header") await combinedTo(page, railwayBundle, "pickup");
+      else {
+        const expected = await playRouteTurnToArrival(page, railwayBundle);
+        const record = expected.state.movementHistory.at(-1)!;
+        expect(record.itemEvents.some((event) => event.type === "pickup-retained")).toBe(true);
+        await advanceArrival(page);
+        const candidates = record.landingSnapshot?.services;
+        if ((candidates?.length ?? 0) > 1 || (candidates?.find((candidate) => candidate.serviceId === record.landing?.serviceId)?.directions.length ?? 0) > 1) {
+          await advanceLotteryFlip(page);
+          await advanceLotterySettle(page);
+        }
+        await awaitStage(page, "pickup");
+      }
+      const saved = await readSave(page);
+      const pickup = page.locator(".item-pickup-moment");
+      await expect(pickup).toHaveAttribute("data-motion", "flight");
+      await expect(page.locator(".turn-moment-host")).toHaveAttribute("aria-hidden", "true");
+      await expect(page.locator(".turn-moment-host button, .turn-moment-host [tabindex]")).toHaveCount(0);
+      await diceButton(page).focus();
+      // CSS animations have their own timeline. Seek the actual flight without advancing the stage timer.
+      const geometry = await pickup.evaluate((element, targetKind) => {
+        const animation = element.getAnimations().find((candidate) =>
+          candidate instanceof CSSAnimation && candidate.animationName === "item-pickup-flight");
+        if (!animation) throw new Error("Expected the pickup CSS flight");
+        animation.pause();
+        const duration = Number(animation.effect!.getComputedTiming().duration);
+        const box = (node: Element): { x: number; y: number; width: number; height: number } => {
+          const rect = node.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+        };
+        const card = box(element.closest(".turn-moment-host__card")!);
+        const destination = box(document.querySelector(targetKind === "header"
+          ? ".item-inventory__header" : ".item-slot--empty")!);
+        const samples = [0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+          animation.currentTime = duration * fraction;
+          return box(element);
+        });
+        animation.currentTime = 0;
+        return { card, destination, samples, viewport: { width: innerWidth, height: innerHeight } };
+      }, target);
+      await testInfo.attach("pickup-flight-geometry", { body: JSON.stringify(geometry), contentType: "application/json" });
+      const centre = (box: { x: number; y: number; width: number; height: number }): { x: number; y: number } =>
+        ({ x: box.x + box.width / 2, y: box.y + box.height / 2 });
+      const start = centre(geometry.samples[0]!);
+      const end = centre(geometry.samples.at(-1)!);
+      const message = JSON.stringify(geometry);
+      expect.soft(start.x, message).toBeCloseTo(centre(geometry.card).x, 1);
+      expect.soft(start.y, message).toBeCloseTo(centre(geometry.card).y, 1);
+      for (const bounds of geometry.samples) {
+        expect.soft(bounds.x, message).toBeGreaterThanOrEqual(0);
+        expect.soft(bounds.y, message).toBeGreaterThanOrEqual(0);
+        expect.soft(bounds.x + bounds.width, message).toBeLessThanOrEqual(geometry.viewport.width);
+        expect.soft(bounds.y + bounds.height, message).toBeLessThanOrEqual(geometry.viewport.height);
+      }
+      expect.soft(end.x, message).toBeCloseTo(centre(geometry.destination).x, 1);
+      expect.soft(end.y, message).toBeCloseTo(centre(geometry.destination).y, 1);
+      // Tap the measured icon itself; its bubbling click must still Skip without moving focus.
+      await pickup.click();
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      if (target === "header") {
+        await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+      } else {
+        await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+        await expect(diceButton(page)).toBeFocused();
+      }
+      expect(await readSave(page)).toEqual(saved);
+    });
+  }
+}
+
+test("S16 unavailable map does not block pickup, retry or mandatory discard", async ({ page, railwayBundle, mapStub }) => {
+  mapStub.failStyle = true;
+  const expected = await combinedTo(page, railwayBundle, "pickup");
+  const error = page.getByRole("alert").filter({ hasText: "地図の読み込みに失敗しました。" });
+  await expect(error).toBeVisible();
+  mapStub.failStyle = false;
+  await error.getByRole("button", { name: "再試行" }).click();
+  await page.clock.runFor(FRAME_MS);
+  await expect.poll(async () => {
+    await page.clock.runFor(FRAME_MS);
+    return (await readMap(page))?.styleLoaded;
+  }).toBe(true);
+  expect((await readMap(page))?.flashFilterIds).toEqual([]);
+  await advancePickup(page);
+  await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+  expect(await readSave(page)).toEqual(expected);
+});
+
+for (const exit of ["タイトル", "新規"] as const) {
+  test(`S16 ${exit} during lottery removes the host and no old moment reaches the replacement session`, async ({ page, railwayBundle }) => {
+    await combinedTo(page, railwayBundle, "lottery-flip");
+    await openGameMenu(page);
+    await gamePanel(page).getByRole("button", { name: exit, exact: true }).click();
+    if (exit === "タイトル") await page.getByRole("button", { name: "はじめから" }).click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "新しく始める", exact: true }).click();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect(panelStat(page, "ターン数")).toHaveText("0");
+    await page.clock.runFor(10_000);
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    expect((await readMap(page))?.flashFilterIds).toEqual([]);
+    await expect(panelStat(page, "ターン数")).toHaveText("0");
+  });
+}

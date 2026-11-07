@@ -65,6 +65,7 @@ body {
 
 .turn-moment-host__card {
   box-sizing: border-box;
+  min-width: 0;
   max-width: 100%;
   max-height: 100%;
   border-radius: var(--radius-lg);
@@ -401,12 +402,17 @@ body {
 
 /* Arrival banner (visual only; the arrival stage's timer, not this CSS, ends it). The base rule is the final state,
    so reduced motion or an interrupted animation simply shows the banner. */
+.turn-moment-host__card:has(> .arrival-banner) {
+  min-width: min(208px, 100%);
+}
+
 .arrival-banner {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  min-width: 160px;
+  box-sizing: border-box;
+  min-width: min(208px, 100%);
   max-width: 100%;
   padding: 14px 24px;
   border-top: 4px solid var(--color-brand);
@@ -2360,7 +2366,16 @@ button[aria-disabled="true"] {
 /* The saved lottery result settles into the measured HUD values. */
 .turn-moment-host__region--settling { overflow: visible; }
 .turn-moment-host__card--lottery { background: transparent; box-shadow: none; }
-.turn-moment-host__card--pickup { width: 48px; height: 48px; background: transparent; box-shadow: none; }
+/* Match the viewport-positioned flight origin without creating a fixed-position containing block. */
+.turn-moment-host__card--pickup {
+  position: absolute;
+  left: calc(50% - 24px);
+  top: calc(50% - 24px);
+  width: 48px;
+  height: 48px;
+  background: transparent;
+  box-shadow: none;
+}
 .lottery-reveal {
   width: min(26rem, 100%);
   color: var(--color-text);
@@ -2382,7 +2397,7 @@ button[aria-disabled="true"] {
   border-radius: 0.45rem;
   background: var(--color-surface);
   font-weight: 800;
-  overflow-wrap: anywhere;
+  min-width: 0;
   transform-origin: center;
 }
 .lottery-reveal__row::after {
@@ -2401,6 +2416,16 @@ button[aria-disabled="true"] {
   background: var(--color-surface);
   opacity: 0;
   animation: lottery-frame calc(var(--lottery-ms) * 0.84 / var(--frame-count)) linear calc(var(--lottery-ms) * 0.84 * var(--frame-index) / var(--frame-count)) forwards;
+}
+.lottery-reveal__result,
+.lottery-reveal .line-badge {
+  max-width: 100%;
+  min-width: 0;
+}
+.lottery-reveal .line-badge__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .lottery-reveal__row--flipping .lottery-reveal__result {
   animation: lottery-result var(--lottery-ms) steps(1, end) both;

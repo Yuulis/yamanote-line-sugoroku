@@ -25,6 +25,7 @@ import { InventoryPanel } from "../../src/features/game/components/InventoryPane
 import {
   chooseSettleMotion,
   chooseTurnMomentPlacement,
+  MIN_CARD_REGION_PX,
   TurnMomentHost,
   type PlacementRegion,
   type RectBox,
@@ -305,7 +306,8 @@ describe("css contract", () => {
   it("gives only the card pointer events and disables its motion under reduced motion", () => {
     expect(rule(".turn-moment-host__card")).toContain("pointer-events: auto;");
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{\s*\.turn-moment-host__card \{\s*transition: none;/);
-    expect(css.match(/pointer-events: auto/g)?.length ?? 0).toBeGreaterThan(0);
+    expect(rule(".turn-moment-host")).not.toContain("pointer-events: auto;");
+    expect(rule(".turn-moment-host__region")).not.toContain("pointer-events: auto;");
   });
 
   it("defines pickup flight and local-fade animations from the captured stage duration", () => {
@@ -355,9 +357,20 @@ describe("ItemPickupMoment", () => {
 });
 
 describe("TurnMomentHost", () => {
+  it.each([0, ""])("keeps %j as card content", (children) => {
+    const mount = mountHost({ children });
+    expect(cardOf(mount)).not.toBeNull();
+    expect(cardOf(mount)!.textContent).toBe(String(children));
+  });
+
   it("renders an aria-hidden host outside the game panel, with no card when there is nothing to show", () => {
-    document.body.append(sibling());
-    const mount = mountHost({});
+    const panel: HTMLElement = sibling();
+    document.body.append(panel);
+    const mount = mountHost({ children: CARD_CONTENT });
+    expect(cardOf(mount)).not.toBeNull();
+    expect(panel.isConnected).toBe(true);
+    expect(panel.contains(hostOf(mount))).toBe(false);
+    act(() => mount.root.render(createElement(HostHarness, {})));
 
     const host = hostOf(mount);
     expect(host.className).toBe("turn-moment-host");
@@ -434,11 +447,16 @@ describe("TurnMomentHost", () => {
     const outside = document.createElement("button");
     document.body.append(outside);
     outside.focus();
-    const mount = mountHost({ children: CARD_CONTENT, onTap: vi.fn() });
+    expect(document.activeElement).toBe(outside);
+    const onTap = vi.fn();
+    const mount = mountHost({ children: CARD_CONTENT, onTap });
     const event = new Event(type, { bubbles: true, cancelable: true });
+    const preventDefault = vi.spyOn(event, "preventDefault");
 
     dispatchReactEvent(cardOf(mount)!, event);
+    expect(preventDefault).toHaveBeenCalledTimes(1);
 
+    expect(onTap).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(true);
     expect(document.activeElement).toBe(outside);
   });
@@ -488,6 +506,103 @@ describe("TurnMomentHost placement and measurement", () => {
   function regionOf(mount: MountedReact): HTMLElement {
     return mount.container.querySelector<HTMLElement>(".turn-moment-host__region")!;
   }
+
+  function addControl(className: string, rect: RectBox): void {
+    const control: HTMLElement = document.createElement("div");
+    control.className = className;
+    defineRect(control, () => rect);
+    document.body.append(control);
+  }
+
+  it.each([560, 448])("keeps the measured-control minimum at 640x400 when the control starts at %i", (controlLeft) => {
+    vi.stubGlobal("innerWidth", 640);
+    vi.stubGlobal("innerHeight", 400);
+    mapRect = box(0, 0, 640, 400);
+    panelRect = box(12, 92, 440, 300);
+    // 560 leaves only 104px under round 1; 448 exhausts the entire chosen strip's width.
+    addControl("map-overview", box(controlLeft, 156, 630 - controlLeft, 92));
+    addControl("maplibregl-ctrl-top-right", box(0, 0, 0, 0));
+    const zoom: HTMLElement = document.createElement("div");
+    zoom.className = "maplibregl-ctrl-group";
+    defineRect(zoom, () => box(600, 10, 30, 90));
+    document.querySelector(".maplibregl-ctrl-top-right")!.append(zoom);
+    addControl("maplibregl-ctrl-attrib", box(10, 10, 44, 44));
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement): DOMRect {
+      const scale: number = Number(this.style.scale) || 1;
+      const width: number = 188 * scale;
+      const height: number = 197.15625 * scale;
+      return { x: 0, y: 0, left: 0, top: 0, width, height, right: width, bottom: height, toJSON: () => ({}) };
+    });
+    const mount = mountHost({ children: CARD_CONTENT, resolveMap, resolvePanel });
+    const region: HTMLElement = regionOf(mount);
+
+    expect(region.style.left).toBe("452px");
+    expect(region.style.top).toBe("252px");
+    expect(region.style.width).toBe("188px");
+    expect(region.style.height).toBe("148px");
+    expect(region.style.padding).toBe("0px");
+    const scale: number = Number(cardOf(mount)!.style.scale);
+    expect(scale).toBeCloseTo(147 / 197.15625);
+    expect(188 * scale).toBeGreaterThanOrEqual(MIN_CARD_REGION_PX);
+    expect(197.15625 * scale).toBeLessThanOrEqual(148);
+
+    mount.cleanup();
+    mounted.splice(mounted.indexOf(mount), 1);
+    expect(FakeResizeObserver.instances.every((observer) => observer.disconnected)).toBe(true);
+  });
+
+  it("omits the decorative card explicitly when measured controls leave no minimum-sized strip", () => {
+    vi.stubGlobal("innerWidth", 640);
+    vi.stubGlobal("innerHeight", 400);
+    mapRect = box(0, 0, 640, 400);
+    panelRect = box(12, 92, 440, 300);
+    addControl("map-overview", box(452, 0, 188, 400));
+    const mount = mountHost({ children: CARD_CONTENT, resolveMap, resolvePanel });
+
+    expect(mount.container.querySelector(".turn-moment-host")).not.toBeNull();
+    expect(regionOf(mount)).toBeNull();
+    expect(cardOf(mount)).toBeNull();
+  });
+
+  it("also excludes measured attribution from the alternate strip", () => {
+    vi.stubGlobal("innerWidth", 640);
+    vi.stubGlobal("innerHeight", 400);
+    mapRect = box(0, 0, 640, 400);
+    panelRect = box(12, 92, 440, 300);
+    addControl("map-overview", box(560, 156, 70, 92));
+    const zoomHost: HTMLElement = document.createElement("div");
+    zoomHost.className = "maplibregl-ctrl-top-right";
+    const zoom: HTMLElement = document.createElement("div");
+    zoom.className = "maplibregl-ctrl-group";
+    defineRect(zoom, () => box(600, 10, 30, 90));
+    zoomHost.append(zoom);
+    document.body.append(zoomHost);
+    addControl("maplibregl-ctrl-attrib", box(452, 380, 188, 20));
+    const mount = mountHost({ children: CARD_CONTENT, resolveMap, resolvePanel });
+
+    expect(regionOf(mount).style.top).toBe("252px");
+    expect(regionOf(mount).style.height).toBe("124px");
+    expect(regionOf(mount).style.width).toBe("188px");
+  });
+
+  it.each([
+    { width: 1280, height: 800, panel: box(12, 100, 310, 680), region: [322, 0, 958, 800], padding: "56px 84px 56px 0px" },
+    { width: 412, height: 839, panel: box(8, 453.453125, 396, 373.546875), region: [0, 0, 412, 453.453125], padding: "56px 84px 0px 56px" },
+  ])("preserves the usual measured-control geometry at $width x $height", ({ width, height, panel: measuredPanel, region, padding }) => {
+    vi.stubGlobal("innerWidth", width);
+    vi.stubGlobal("innerHeight", height);
+    mapRect = box(0, 0, width, height);
+    panelRect = measuredPanel;
+    addControl("map-overview", box(width - 80, 156, 70, 92));
+    addControl("maplibregl-ctrl-attrib", box(10, 10, 44, 44));
+    const mount = mountHost({ children: CARD_CONTENT, resolveMap, resolvePanel });
+    const actual: HTMLElement = regionOf(mount);
+
+    expect([actual.style.left, actual.style.top, actual.style.width, actual.style.height]).toEqual(region.map((value) => `${value}px`));
+    expect(actual.style.padding).toBe(padding);
+    expect(cardOf(mount)!.style.scale).toBe("");
+    expect(cardOf(mount)!.style.width).toBe("");
+  });
 
   it("places the region in the largest free rectangle and re-measures on resize", () => {
     const mount = mountHost({ children: CARD_CONTENT, resolveMap, resolvePanel });
@@ -815,7 +930,8 @@ describe("GamePanel target ref threading", () => {
 
     expect(without.container.querySelectorAll(".game-panel__stats dt")).toHaveLength(6);
     expect(without.container.querySelectorAll(".item-inventory__slots > li")).toHaveLength(3);
-    expect(without.container.querySelector('[data-stat="ride"]')!.hasAttribute("ref")).toBe(false);
+    expect(without.container.querySelector('[data-stat="ride"]')!.outerHTML).toBe('<span class="hud-stat__value" data-stat="ride" title="m-line">m-line</span>');
+    expect(withTargets.container.querySelector('[data-stat="ride"]')!.outerHTML).toBe('<span class="hud-stat__value" data-stat="ride" title="m-line">m-line</span>');
     expect(withEmpty.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_")).toBe(without.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_"));
     expect(withTargets.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_")).toBe(without.container.innerHTML.replace(/_r_[0-9a-z]+_/g, "_ID_"));
   });

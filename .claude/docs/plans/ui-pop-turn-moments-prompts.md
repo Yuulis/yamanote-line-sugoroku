@@ -825,6 +825,60 @@ env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts
 
 ---
 
+## S16: Combined lifecycle and responsive browser verification
+
+Implement plan `### S16` exactly and the architecture's "Playwright coverage" list, with every moment now active
+(tumble, stamps, movement gate, arrival + flash, lottery flip/settle, pickup + discard handoff). This is a
+verification step: tests first; production changes only for a real defect a new test exposes, kept small (report
+each with the failing test that proves it). **No visual/UX redesign** — the user deferred all look-and-feel changes
+(HUD settle travel distance, phone board coverage, pickup icon size/opacity, flash colour, arrival card overlap).
+Files: extend `tests/e2e/ui-pop-turn-moments.spec.ts`, `tests/unit/game-app-turn-moments.test.ts`,
+`tests/unit/turn-moment-hooks.test.ts`; modify as needed `tests/e2e/layout.spec.ts`, `tests/e2e/accessibility.spec.ts`,
+`tests/e2e/resume.spec.ts`, `tests/e2e/support/turnMoments.ts`, `tests/e2e/support/app.ts`,
+`tests/unit/turn-moment-components.test.ts` (carry-over below); `src/**` only for proven small defects (plus the
+handoff row).
+
+- Combined lifecycle (saved engine outcomes as the oracle, frozen clock + explicit checkpoints, never real sleeps):
+  one complete turn with adjust + stamps + movement + arrival/flash + lottery + full-inventory pickup + discard;
+  one Skip at each pre/move/post point (including inside the adjustment dialog) reaches the same final state;
+  reload during tumble, movement, lottery and pickup restores the committed state without replay; reduced motion
+  from the first commit shows no overlay across a multi-turn run; captured speed: a 速度 change mid-turn applies
+  from the next turn, and the complete turn at all three speeds (`slow`/`normal`/`fast`) uses scaled durations;
+  movement keeps distance scaling and the 6,000 ms cap; goal banner precedes ClearScreen; save failure during an
+  active moment keeps its existing visibility/retry behaviour; map failure, session replacement, title / new-game
+  exit mid-moment clean up the host, flash and timers. Do not duplicate a case an earlier step already covers —
+  extend it only where a cross-feature boundary is untested (list which existing tests you relied on).
+- S15 review carry-over: an open item card closes exactly at the pickup boundary when the discard dialog is
+  presented (unit or E2E). Public item inspection stays available during reveal; use/draft callbacks stay blocked.
+- Responsive (no layout change expected): desktop, phone touch, 320 px wide portrait, 667×375 and 640×400
+  landscape. For each: the moment host stays inside the usable map area (not under the panel/sheet, not over
+  zoom controls or attribution), panel/sheet dimensions are unchanged versus no-moment, attribution, zoom and
+  toasts stay usable. If a viewport genuinely fails one of these, report it with a screenshot rather than redesigning.
+- Accessibility: exactly one gameplay `role=status` and one change per boundary through the combined turn; overlay
+  `aria-hidden` and never focused; dice focus / dialog focus correct at every checkpoint.
+- Carry-over (cloud S8 note) in `tests/unit/turn-moment-components.test.ts`: `hasCard` must treat `0` / `""` as
+  content (only `null`/`undefined`/`false` are empty), and make the 4 vacuous assertions (at S8 numbering
+  `:287`, `:299`, `:359`, `:712`; locate them by intent) actually assert something that fails when broken.
+  Strengthen only; never loosen.
+- Record honestly: software-rendered browser tests do not establish low-end device performance.
+- Screenshots (frozen clock, temporary `tests/e2e/zz-p2-shot.spec.ts`, deleted after; never committed):
+  `.claude/logs/screenshots/p2-s16-phone-320-lottery.png`, `p2-s16-landscape-667-arrival.png`,
+  `p2-s16-landscape-640-pickup.png`, `p2-s16-desktop-map-failure.png`.
+
+Acceptance (run all; report counts):
+
+```bash
+npm run typecheck
+npx vitest run
+npm run build
+git diff --exit-code 70decd6 -- src/features/game/engine src/features/game/store src/features/game/gameSession.ts src/features/game/itemSession.ts src/features/game/useGameApp.ts src/types/network.ts public/data
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/dice.spec.ts tests/e2e/lottery.spec.ts tests/e2e/resume.spec.ts tests/e2e/items.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/layout.spec.ts tests/e2e/save-errors.spec.ts --project=desktop-chromium --workers=2
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts tests/e2e/layout.spec.ts tests/e2e/accessibility.spec.ts --project=phone-chromium --workers=2
+env -u WAYLAND_DISPLAY npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts --project=desktop-chromium --workers=4 --repeat-each=3
+```
+
+---
+
 ## R: Reviewer prompt body (Codex Sol low, read-only)
 
 Objective: Review the uncommitted change for step {STEP} of `.claude/docs/plans/ui-pop-turn-moments-plan.md`
