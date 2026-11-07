@@ -3,9 +3,15 @@ import { expect, test } from "./fixtures";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import { itemScenario } from "./fixtures/itemScenarios";
 import { playItemTurn, serializeGame } from "../../src/features/game/engine";
+import { ANIMATION_SPEEDS, DEFAULT_ANIMATION_SPEED, DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { buildGeometryIndex, buildMovePlan } from "../../src/features/game/animation/movePath";
+import { hopDurationMs, MAX_MOVE_DURATION_MS } from "../../src/features/game/animation/timeline";
+import { createGame, playTurn } from "./fixtures/productGame";
 import {
   closeGameMenu,
   diceButton,
+  diceMoment,
+  freezeClock,
   gamePanel,
   openGameMenu,
   openGameLog,
@@ -15,10 +21,16 @@ import {
   readSave,
   readSaveText,
   rollOnce,
+  stampsExpected,
   titleScreen,
   writeSaveText,
   useInventoryItem,
 } from "./support/app";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble } from "./support/turnMoments";
+
+/** Per-hop duration of the default animation speed. */
+const STEP_MS =
+  ANIMATION_SPEEDS.find((speed) => speed.id === DEFAULT_ANIMATION_SPEED)?.stepMs ?? 0;
 
 test.use({ dataset: "real", gameSeed: PRODUCT_HUB_GAME_SEED });
 
@@ -48,16 +60,78 @@ test("item card Escape closes before the staged draft can be cleared", async ({ 
 test.describe("animated roll focus", () => {
   test.use({ reducedMotion: "no-preference" });
 
-  test("keeps keyboard focus on the dice while a move is running and after it finishes", async ({ page }) => {
+  test("keeps keyboard focus on the dice while a move is running and after it finishes", async ({ page, railwayBundle }) => {
+    // Oracle for the movement length: replay the first turn offline and sum the
+    // distance-based hop durations (P1 movement modules, not the P2 planner),
+    // capped like the app. Hops are not `physicalHops * STEP_MS`.
+    if (!railwayBundle.data.geometry.ok) throw new Error("Product geometry is required for the movement duration");
+    const expected = playTurn(createGame(DEFAULT_GAME_CONFIG, PRODUCT_HUB_GAME_SEED, railwayBundle.network), railwayBundle.network);
+    const plan = buildMovePlan(expected.events, railwayBundle.network, buildGeometryIndex(railwayBundle.data.geometry.value));
+    const moveMs = Math.min(plan.reduce((sum, step) => sum + hopDurationMs(step, STEP_MS), 0), MAX_MOVE_DURATION_MS);
+
+    // Frozen clock: each checkpoint below is reached by advancing time on
+    // purpose, never by waiting out a real-clock window.
+    await page.clock.install();
     await openTitle(page);
     await page.getByRole("button", { name: "はじめから" }).click();
+    await freezeClock(page);
     const dice = gamePanel(page).locator(".game-panel__roll");
     await dice.focus();
     await page.keyboard.press("Enter");
+
+    // Pre-move checkpoint: the roll is accepted, no time has passed.
     await expect(dice).toHaveText("移動中…");
     await expect(dice).toHaveAttribute("aria-disabled", "true");
     await expect(dice).toBeFocused();
+    const move = (await readSave(page))?.movementHistory[0];
+    if (!move) throw new Error("the roll was not committed");
+    // The offline replay must be the move the app made, or moveMs is meaningless.
+    expect({ rawRoll: move.rawRoll, toStationId: move.toStationId })
+      .toEqual({ rawRoll: expected.record.rawRoll, toStationId: expected.record.toStationId });
+
+    // Pre-move checkpoint (S11): the tumble overlay never takes focus; the dice keeps it through the stages.
+    await expect(diceMoment(page)).toBeVisible();
+    await advanceTumble(page);
+    if (stampsExpected(move)) await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
+    await expect(dice).toHaveAttribute("aria-disabled", "true");
+    await expect(dice).toBeFocused();
+
+    // Movement checkpoint: half a hop in, still moving, focus unchanged.
+    await advanceMovement(page, STEP_MS / 2);
+    await expect(dice).toHaveText("移動中…");
+    await expect(dice).toHaveAttribute("aria-disabled", "true");
+    await expect(dice).toBeFocused();
+
+    // Post checkpoint: advance exactly the rest of the movement (total minus the
+    // half hop already advanced). The helper's own priming and trailing frames
+    // add only 32 ms of overshoot, so this lands on the real end, not on slack.
+    // S12-S15 add their explicit stage advances (arrival, lottery, pickup)
+    // before this point as they activate.
+    await advanceMovement(page, moveMs - STEP_MS / 2);
+    // Arrival checkpoint (S12): the banner is decorative and never takes focus;
+    // the dice keeps it, still locked, until the arrival ends.
+    await expect(page.locator(".turn-moment-host .arrival-banner")).toBeVisible();
+    await expect(dice).toHaveAttribute("aria-disabled", "true");
+    await expect(dice).toBeFocused();
+    await advanceArrival(page);
+    const landingCandidates = move.landingSnapshot?.services;
+    if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === move.landing?.serviceId)?.directions.length ?? 0) > 1) {
+      await expect(dice).toBeFocused();
+      await advanceLotteryFlip(page);
+      await expect(dice).toBeFocused();
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+      await advanceLotterySettle(page);
+    }
+    if (move.kind === "item-ride" && move.itemEvents.some((event) => event.type === "pickup-retained" || event.type === "pickup-pending-discard")) {
+      await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+      await expect(dice).toHaveAttribute("aria-disabled", "true");
+      await expect(dice).toBeFocused();
+      await advancePickup(page);
+    }
+    await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveCount(0);
     await expect(dice).toHaveText("サイコロを振る");
+    await expect(dice).toHaveAttribute("aria-disabled", "false");
     await expect(dice).toBeFocused();
   });
 });

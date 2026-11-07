@@ -112,3 +112,31 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Pause after every step for user judgment (user 2026-10-28).
 - Line badges: original shape, official letter code + colour, colour-only for 21 uncoded lines; one Tokyo-side code for dual-coded lines; partial-route codes shown (user 2026-10-28).
 - Codex lanes: Luna high implements, Sol low reviews, lead verifies; S2A badge mapping on Sol high with live web.
+
+---
+
+## Current Feature: UI pop P2 turn moments (dice, arrival, split-flap, pickup)
+<!-- orchestra:block-id: ui-pop-p2-turn-moments-dice-arrival-split-flap-pickup -->
+
+### Context
+
+- Goal: per-turn presentation moments — pseudo-3D dice tumble + modifier stamps, arrival banner + completed-segment flash, split-flap lottery board at the map centre settling into the HUD, item pickup flight before DiscardChoice; goal turn banner then ClearScreen. Presentation only: engine/RNG/save/src/types/network.ts/public data unchanged.
+- Branch: feature/ui-pop-turn-moments (from origin/develop 70decd6, v0.11.0)
+- Plan: .claude/docs/plans/ui-pop-turn-moments-plan.md (S1–S17 + S10b, Codex validated PASS); handoff: .claude/docs/plans/ui-pop-turn-moments-handoff.md
+- Research: .claude/docs/research/feature-ui-pop-turn-moments-{brief,codebase}.md; architecture: .claude/docs/plans/ui-pop-turn-moments-architecture.md
+- Dependencies: none new
+- Complexity: COMPLEX (18 steps)
+
+### Architecture
+
+- Pre-move reducer (roll-attempt key) + useMoveAnimation start gate; post-move stages on useRevealSequence (arrival, lottery-flip, lottery-settle, pickup).
+- Single pure deriveTurnMomentDisplay() feeds HUD, map, log, inventory, decision, live region, toasts, ClearScreen.
+- TurnMomentHost outside .game-panel, aria-hidden, never takes focus; map flash layer railway-segments-flash (11 layers).
+- Durations = base × stepMs/450, captured at roll.
+
+### Decisions
+
+- Scope = all four moments; durations follow 速度; flap at map centre; pseudo-3D cube; dice disabled during reveal; goal banner then ClearScreen (user 2026-11-03).
+- Pause after every step for user review (user 2026-11-03).
+- Status 2026-11-07: S1–S17 done, CI green (S16 run 42346852704); no PR yet. Visual refinements and two product questions deferred (DESIGN.md TODO). Final state: top of the handoff.
+- Codex lanes: Luna high implements, Sol low reviews, lead verifies; targeted local E2E, full 4-browser suite in CI.

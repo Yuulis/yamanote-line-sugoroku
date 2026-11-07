@@ -6,6 +6,7 @@ export interface RevealObservation {
   recordTurn: number | null;
   gameTurn: number;
   pendingDecisionTurn: number | null;
+  pendingDecisionKind?: "adjust" | "discard" | null;
   movementComplete: boolean;
 }
 
@@ -18,6 +19,7 @@ export interface UseRevealSequenceOptions {
   observation: RevealObservation;
   stages: readonly RevealStage[];
   reducedMotion: boolean;
+  skipRequested?: boolean;
 }
 
 export interface RevealSequence {
@@ -38,7 +40,7 @@ export interface RevealState {
 }
 
 export type RevealAction =
-  | { type: "observe"; observation: RevealObservation; stageCount: number }
+  | { type: "observe"; observation: RevealObservation; stageCount: number; omit?: boolean }
   | { type: "reset" }
   | { type: "movementComplete"; key: string }
   | { type: "advance"; key: string; stageIndex: number; stageCount: number }
@@ -57,7 +59,7 @@ function baselineFor(observation: RevealObservation): number {
   return Math.max(
     observation.gameTurn,
     observation.recordTurn ?? 0,
-    observation.pendingDecisionTurn ?? 0,
+    observation.pendingDecisionKind === "adjust" ? 0 : observation.pendingDecisionTurn ?? 0,
   );
 }
 
@@ -65,7 +67,7 @@ export function revealReducer(state: RevealState, action: RevealAction): RevealS
   if (action.type === "reset") return INITIAL_STATE;
 
   if (action.type === "observe") {
-    const { observation, stageCount } = action;
+    const { observation, stageCount, omit = false } = action;
     const sessionChanged = state.sessionId !== observation.sessionId;
     const baselineTurn = sessionChanged ? baselineFor(observation) : state.baselineTurn;
     const key = observation.recordTurn === null
@@ -79,10 +81,10 @@ export function revealReducer(state: RevealState, action: RevealAction): RevealS
         key,
         stageIndex: 0,
         movementComplete: observation.movementComplete,
-        done: alreadySeen || stageCount === 0,
+        done: alreadySeen || stageCount === 0 || omit,
       };
     }
-    const done = state.done || stageCount === 0;
+    const done = state.done || stageCount === 0 || omit;
     if (state.movementComplete === observation.movementComplete && state.done === done) return state;
     return { ...state, movementComplete: observation.movementComplete, done };
   }
@@ -115,15 +117,16 @@ export function revealReducer(state: RevealState, action: RevealAction): RevealS
  * dependency, so a new `stages` array with the same content neither replays a
  * completed key nor restarts the active stage's timer.
  */
-export function useRevealSequence({ observation, stages, reducedMotion }: UseRevealSequenceOptions): RevealSequence {
+export function useRevealSequence({ observation, stages, reducedMotion, skipRequested = false }: UseRevealSequenceOptions): RevealSequence {
   const [state, dispatch] = useReducer(revealReducer, INITIAL_STATE);
-  const { sessionId, recordTurn, gameTurn, pendingDecisionTurn, movementComplete } = observation;
+  const { sessionId, recordTurn, gameTurn, pendingDecisionTurn, pendingDecisionKind, movementComplete } = observation;
   const stageCount = stages.length;
 
   const observeAction: RevealAction = {
     type: "observe",
-    observation: { sessionId, recordTurn, gameTurn, pendingDecisionTurn, movementComplete },
+    observation: { sessionId, recordTurn, gameTurn, pendingDecisionTurn, pendingDecisionKind, movementComplete },
     stageCount,
+    omit: reducedMotion || skipRequested,
   };
   const observed = revealReducer(state, observeAction);
   // Render-phase update of this component's own reducer: React re-renders
@@ -136,21 +139,14 @@ export function useRevealSequence({ observation, stages, reducedMotion }: UseRev
   const pending = key !== null && !done && stageCount > 0;
   const armed = pending && observed.movementComplete;
 
-  // Reduced motion completes the key at once, even while the move is still
-  // running; `ready` still waits for the movement to complete.
   useEffect(() => {
-    if (!pending || !reducedMotion || key === null) return;
-    dispatch({ type: "skip", key });
-  }, [pending, reducedMotion, key]);
-
-  useEffect(() => {
-    if (!armed || reducedMotion || key === null) return;
+    if (!armed || key === null) return;
     if (currentDurationMs === null) return;
     const timer = window.setTimeout(() => {
       dispatch({ type: "advance", key, stageIndex, stageCount });
     }, currentDurationMs);
     return () => window.clearTimeout(timer);
-  }, [armed, key, stageIndex, stageCount, currentDurationMs, reducedMotion]);
+  }, [armed, key, stageIndex, stageCount, currentDurationMs]);
 
   const skip = useCallback(() => {
     if (key === null) return;

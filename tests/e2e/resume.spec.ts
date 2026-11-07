@@ -2,8 +2,12 @@ import { expect, test } from "./fixtures";
 import { playItemTurn } from "../../src/features/game/engine";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
+import type { ItemRideRecord } from "../../src/types/network";
 import {
+  clickDice,
   diceButton,
+  diceMoment,
+  expectAcceptedSave,
   freezeClock,
   gamePanel,
   loadStations,
@@ -16,10 +20,13 @@ import {
   readSave,
   rollOnce,
   startNewGame,
+  stampsExpected,
   targetFeatureIds,
   titleScreen,
+  waitForRollOutcome,
   writeSaveText,
 } from "./support/app";
+import { advanceArrival, advanceLotteryFlip, advanceLotterySettle, advanceMovement, advanceStamps, advanceTumble, awaitStage, NORMAL_STEP_MS } from "./support/turnMoments";
 
 // Spec 8.3 item covered here:
 //   [8.3-4] The game resumes correctly after a page reload.
@@ -82,10 +89,23 @@ test.describe("with move animation", () => {
     await startNewGame(page);
     await freezeClock(page);
 
-    await diceButton(page).click();
+    const turnBefore = await clickDice(page);
+    // Pre-move checkpoint (S11): the tumble runs before any adjustment dialog or movement.
+    await expect(diceMoment(page)).toBeVisible();
+    await advanceTumble(page);
+    await waitForRollOutcome(page, turnBefore);
     await expect(diceButton(page)).toHaveText("移動中…");
     const committed = await readSave(page);
     expect(committed?.turn).toBe(1);
+    await expectAcceptedSave(page, 1);
+    const record = committed?.movementHistory.at(-1);
+    if (!record) throw new Error("the accepted turn has no record");
+    if (stampsExpected(record)) await advanceStamps(page);
+    await expect(diceMoment(page)).toHaveCount(0);
+    // Establish the movement (first frame primed, half a hop in) so the reload
+    // really interrupts a running move, as the baseline did.
+    await advanceMovement(page, NORMAL_STEP_MS / 2);
+    await expect(diceButton(page)).toHaveText("移動中…");
 
     await page.reload();
     await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
@@ -123,14 +143,96 @@ test.describe("with move animation", () => {
     const livePickup = liveRecord?.itemEvents.find((event) => event.type === "pickup-retained");
     expect(livePickup).toMatchObject({ type: "pickup-retained", item: { kind: pickup.item.kind } });
     await gamePanel(page).getByRole("button", { name: "スキップ" }).click();
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveCount(0);
     await expect(page.locator(".toast-host__toast")).toHaveCount(1);
     await expect(page.locator(".toast-host__toast")).toHaveText(expectedText);
 
     await page.reload();
     await page.getByRole("button", { name: /つづきから/ }).click();
     await expect(diceButton(page)).toHaveText("サイコロを振る");
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveCount(0);
     await expect(page.locator(".toast-host__toast")).toHaveCount(0);
     await page.waitForTimeout(250);
     await expect(page.locator(".toast-host__toast")).toHaveCount(0);
   });
+});
+
+
+test.describe("S15 full-inventory pickup reload", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("reload during a pending-discard pickup opens the mandatory choice without replay", async ({ page, railwayBundle }) => {
+    const base = itemScenario("discard", railwayBundle.network);
+    const predicted = playItemTurn(base, {}, railwayBundle.network).state;
+    if (predicted.pending?.kind !== "discard") throw new Error("Expected the engine-built full-inventory discard turn");
+    if (predicted.pending.record.kind !== "item-ride" || !predicted.pending.record.itemEvents.some((event) => event.type === "pickup-pending-discard")) {
+      throw new Error("Expected the engine oracle to contain a pending-discard pickup");
+    }
+    const record: ItemRideRecord = structuredClone(predicted.pending.record) as ItemRideRecord;
+
+    await page.clock.install();
+    await page.goto("/");
+    await writeSaveText(page, JSON.stringify(base));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await freezeClock(page);
+    await clickDice(page);
+    await advanceTumble(page);
+    const adjust = gamePanel(page).getByRole("dialog", { name: "出目を調整しますか？" });
+    if (base.inventory.some((item) => item.kind === "roll-adjust")) {
+      await expect(adjust).toBeVisible();
+      await adjust.getByRole("button", { name: "そのまま続ける" }).click();
+    }
+    await expect.poll(async () => {
+      const saved = await readSave(page);
+      return saved?.pending?.kind === "discard" || saved?.movementHistory.length === base.movementHistory.length + 1;
+    }).toBe(true);
+    const committed = (await readSave(page))!;
+    if (stampsExpected(record)) await advanceStamps(page);
+    await advanceMovement(page, 6_100);
+    await advanceArrival(page);
+    const landingCandidates = record.landingSnapshot?.services;
+    if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === record.landing?.serviceId)?.directions.length ?? 0) > 1) {
+      await advanceLotteryFlip(page);
+      await advanceLotterySettle(page);
+    }
+    await awaitStage(page, "pickup");
+    await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+    await expect(gamePanel(page).locator(".item-slot")).toHaveCount(3);
+    await expect(gamePanel(page).locator(".item-discard")).toHaveCount(0);
+    expect(await readSave(page)).toEqual(committed);
+
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const discard = page.locator(".item-discard");
+    await expect(discard).toBeVisible();
+    await expect(discard.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+    expect(await readSave(page)).toEqual(committed);
+  });
+});
+
+
+test.describe("S14 lottery reload", () => {
+  test.use({ reducedMotion: "no-preference" });
+  for (const stage of ["lottery-flip", "lottery-settle"] as const) {
+    test(`reload during ${stage} resumes the committed result without replay`, async ({ page, railwayBundle }) => {
+      await page.clock.install(); await openTitle(page); await startNewGame(page); await freezeClock(page);
+      await clickDice(page); await advanceTumble(page); await expectAcceptedSave(page, 1);
+      const saved = (await readSave(page))!;
+      if (stampsExpected(saved.movementHistory.at(-1)!)) await advanceStamps(page);
+      await advanceMovement(page, 6_100); await advanceArrival(page);
+      if (stage === "lottery-settle") await advanceLotteryFlip(page);
+      await expect(page.locator(".lottery-reveal")).toHaveAttribute("data-stage", stage);
+      await page.reload(); await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, saved));
+      await page.clock.runFor(3_000);
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      expect(await readSave(page)).toEqual(saved);
+    });
+  }
 });

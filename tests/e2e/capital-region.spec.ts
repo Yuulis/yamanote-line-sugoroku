@@ -18,7 +18,8 @@ import {
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
-import { closeGameLog, closeGameMenu, diceButton, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, revealUnadjustedRoll, REQUIRED_SEGMENTS, rollOnce, startNewGame, targetCompletedIds, writeSaveText } from "./support/app";
+import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advancePickup, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -97,6 +98,24 @@ async function focusMapOnYokohama(page: Page, bundle: RailwayBundle): Promise<vo
     const map = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E.map;
     map.jumpTo({ center: coordinates, zoom: 10.5 });
   }, center);
+}
+
+/**
+ * Frozen-clock roll that completes the pre-move moment (S11): click, advance the
+ * tumble, decline any adjustment, then advance the stamps when the saved record
+ * has modifiers. The movement is released but has not drawn a frame yet.
+ */
+async function rollThroughPreMove(page: Page): Promise<void> {
+  const turnBefore = await clickDice(page);
+  await expect(diceMoment(page)).toBeVisible();
+  await advanceTumble(page);
+  await waitForRollOutcome(page, turnBefore);
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(turnBefore + 1);
+  const record = (await readSave(page))!.movementHistory.at(-1)!;
+  if (stampsExpected(record)) await advanceStamps(page);
+  await expect(diceMoment(page)).toHaveCount(0);
+  // Callers prime the first movement frame next: it must already be requested.
+  await awaitMovementRelease(page);
 }
 
 async function resumeSavedGame(page: Page, game: ItemGameState): Promise<void> {
@@ -228,7 +247,8 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await revealUnadjustedRoll(page);
+      // S11: the 16 ms frame and the composed-hop clock below start after the tumble/stamps.
+      await rollThroughPreMove(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.forward);
       const forwardCommitted = (await readSave(page))!;
       expect(forwardCommitted).toEqual(forwardResult.state);
@@ -269,7 +289,8 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await revealUnadjustedRoll(page);
+      // S11: the 16 ms frame and the composed-hop clock below start after the tumble/stamps.
+      await rollThroughPreMove(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);
@@ -312,7 +333,8 @@ test.describe("current product scenarios", () => {
       await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
       await focusMapOnYokohama(page, railwayBundle);
       await freezeClock(page);
-      await revealUnadjustedRoll(page);
+      // S11: the 16 ms frame and the composed-hop clock below start after the tumble/stamps.
+      await rollThroughPreMove(page);
       await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);
@@ -323,11 +345,39 @@ test.describe("current product scenarios", () => {
         .toEqual(serviceFeatureIds(railwayBundle, record.resolvedRide!.serviceId));
       const remaining = Math.max(0, timing.totalMs - 16 - timing.beforeTargetMs - timing.targetDurationMs / 2);
       await page.clock.fastForward(remaining + 50);
+      // Arrival checkpoint (S12): the move ended at 池袋 on the ridden rapid. Until the arrival publishes the landing,
+      // the HUD and the map highlight keep the ridden service and the marker sits on its 池袋 platform.
+      const ridden = record.resolvedRide!.serviceId;
+      const ikebukuroName = railwayBundle.network.stationsById.get("ikebukuro")!.name;
+      await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveText(`到着${ikebukuroName}`);
+      await expect(panelStat(page, "現在駅")).toHaveText(ikebukuroName);
+      await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, ridden));
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+      await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
+        .toEqual(serviceFeatureIds(railwayBundle, ridden));
+      await expect.poll(async () => (await readMap(page))?.marker)
+        .toEqual(markerPosition(railwayBundle, { ...committed, currentServiceId: ridden }));
+      await advanceArrival(page);
+      const landingCandidates = record.landingSnapshot?.services;
+      if ((landingCandidates?.length ?? 0) > 1 || (landingCandidates?.find((candidate) => candidate.serviceId === record.landing?.serviceId)?.directions.length ?? 0) > 1) {
+        await advanceLotteryFlip(page);
+        await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+        await advanceLotterySettle(page);
+      }
+      if (record.kind === "item-ride" && record.itemEvents.some((event) => event.type === "pickup-retained" || event.type === "pickup-pending-discard")) {
+        await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();
+        await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+        await advancePickup(page);
+      }
+      await expect(page.locator(".turn-moment-host .arrival-banner")).toHaveCount(0);
+      // Published checkpoint: the committed landing service, its highlight and its platform, then readiness.
       await expect(diceButton(page)).toHaveText("サイコロを振る");
       await expect(panelStat(page, "現在駅")).toHaveText(railwayBundle.network.stationsById.get("ikebukuro")!.name);
       await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, "metro-fukutoshin"));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
         .toEqual(serviceFeatureIds(railwayBundle, "metro-fukutoshin"));
+      await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, committed));
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
       expect(await readSave(page)).toEqual(committed);
     });
   });

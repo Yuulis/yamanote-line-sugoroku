@@ -2,6 +2,11 @@ import { expect, type APIRequestContext, type Locator, type Page } from "@playwr
 import type { ItemGameState, ItemTurnRecord } from "../../../src/types/network";
 import type { RailwayBundle } from "../fixtures/bundle";
 import { LAYER_IDS, SOURCE_IDS } from "../../../src/features/map/mapConfig";
+import { createItemGame, playItemTurn, resolveItemDiscard } from "../../../src/features/game/engine";
+import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
+import type { MoveEvent } from "../../../src/features/game/engine";
+import { buildGeometryIndex, buildMovePlan } from "../../../src/features/game/animation/movePath";
+import { hopDurationMs, MAX_MOVE_DURATION_MS } from "../../../src/features/game/animation/timeline";
 
 // Page helpers shared by the specs. Selectors are role / accessible-name
 // based; the game state is read from the app's own save (localStorage) and
@@ -36,6 +41,10 @@ export interface MapSnapshot {
   /** Paint that tells the two layers apart (spec 6.2: colour and line style). */
   completedPaint: LinePaint;
   pendingPaint: LinePaint;
+  /** Geometry feature ids in the arrival flash layer's `in` filter literal (S13); empty when nothing flashes. */
+  flashFilterIds: string[];
+  /** The flash layer's `line-opacity`; null when the layer is missing. */
+  flashOpacity: number | null;
 }
 
 export interface LinePaint {
@@ -152,7 +161,21 @@ export async function startNewGame(page: Page): Promise<void> {
   await expect(panelStat(page, "ターン数")).toHaveText("0");
 }
 
-/** Roll once and wait until the move has settled (idle panel or clear screen). */
+/**
+ * The dice once it accepts a roll: it keeps its label while a post-move reveal
+ * disables it, so readiness is `aria-disabled="false"`, never the label alone.
+ */
+export function diceReady(page: Page): Locator {
+  return diceButton(page).and(page.locator('[aria-disabled="false"]'));
+}
+
+/**
+ * Roll once and wait until the move has settled: the saved turn, any presented
+ * discard dialog resolved, then an enabled dice (or the clear screen).
+ *
+ * Works under reduced motion and with a real clock. Under a frozen clock the
+ * caller must advance every active stage first (see `./turnMoments`).
+ */
 export async function rollOnce(page: Page): Promise<void> {
   const turnBefore = (await readSave(page))?.turn ?? 0;
   await revealUnadjustedRoll(page);
@@ -161,23 +184,100 @@ export async function rollOnce(page: Page): Promise<void> {
     return save?.pending?.kind === "discard" || save?.turn === turnBefore + 1;
   }).toBe(true);
   if ((await readSave(page))?.pending?.kind === "discard") {
-    await page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" }).getByRole("button").last().click();
+    // A saved pending record is not proof the dialog is mounted: wait for it.
+    const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    await expect(discard).toBeVisible();
+    await discard.getByRole("button").last().click();
   }
   await expect.poll(async () => (await readSave(page))?.turn).toBe(turnBefore + 1);
   const clear = page.getByRole("heading", { name: "クリア！" });
-  await expect(diceButton(page).filter({ hasText: "サイコロを振る" }).or(clear)).toBeVisible();
+  await expect(diceReady(page).or(clear)).toBeVisible();
 }
 
-/** Reveal a die, explicitly declining adjustment; leave movement/discard visible. */
-export async function revealUnadjustedRoll(page: Page): Promise<void> {
+/**
+ * Whether the saved record shows modifier stamps after the tumble (S11), read
+ * from the record's own fields rather than the production predicate: rapid,
+ * oversleep, a roll adjustment, a double ticket, a forced (delayed) face or an
+ * activated delay. Deadhead turns have no die and no stamps. Frozen-clock
+ * callers advance `advanceStamps` exactly when this is true.
+ */
+export function stampsExpected(record: SavedMove): boolean {
+  if (record.kind !== "item-ride") return false;
+  return record.movementMode !== "normal" || record.adjustment !== null
+    || record.command.items.some((item) => item.kind === "double") || record.effectiveFace !== record.rawRoll
+    || record.itemEvents.some((event) => event.type === "effect-activated" && event.effect === "delay");
+}
+
+/** The dice tumble / stamps card of the turn-moment overlay (S11). */
+export function diceMoment(page: Page): Locator {
+  return page.locator(".turn-moment-host .dice-tumble");
+}
+
+/**
+ * Click the dice once and return the saved turn number from just before the
+ * click. Pair it with `waitForRollOutcome`; between the two, a frozen-clock test
+ * advances the tumble (`advanceTumble`); after the outcome it advances the
+ * stamps (`advanceStamps`) when `stampsExpected` holds for the saved record.
+ */
+export async function clickDice(page: Page): Promise<number> {
   const turnBefore = (await readSave(page))?.turn ?? 0;
   await diceButton(page).click();
+  return turnBefore;
+}
+
+/**
+ * Wait for the outcome of a dice click made at `turnBefore` and explicitly
+ * decline adjustment; leave movement/discard visible.
+ *
+ * A saved pending roll (`pending.kind === "roll"`) only means an adjustment
+ * decision exists, not that its dialog is mounted, so the helper waits for the
+ * actual `role=dialog`. Under a frozen clock the dialog cannot appear until the
+ * tumble is advanced (S11), which is why this wait is separate from the click.
+ */
+export async function waitForRollOutcome(page: Page, turnBefore: number): Promise<void> {
   const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
   await expect.poll(async () => {
     const save = await readSave(page);
+    if (save?.pending?.kind === "roll") return await adjustment.isVisible();
     return await adjustment.isVisible() || save?.pending?.kind === "discard" || save?.turn === turnBefore + 1;
   }).toBe(true);
   if (await adjustment.isVisible()) await adjustment.getByRole("button", { name: "そのまま続ける" }).click();
+}
+
+/**
+ * Reveal a die, explicitly declining adjustment; leave movement/discard visible.
+ * Composes `clickDice` and `waitForRollOutcome`, so it is only usable with a real
+ * clock or reduced motion; a frozen-clock caller calls the two steps itself and
+ * advances the tumble between them (S11: an adjustment dialog appears only after
+ * the tumble).
+ */
+export async function revealUnadjustedRoll(page: Page): Promise<void> {
+  await waitForRollOutcome(page, await clickDice(page));
+}
+
+/** The part of the saved game that tells an accepted save from a pending or failed one. */
+export interface SaveObservation {
+  turn: number;
+  pendingKind: "roll" | "discard" | null;
+  history: number;
+}
+
+/** Read the stored save as a `SaveObservation`; null when nothing is stored. */
+export async function observeSave(page: Page): Promise<SaveObservation | null> {
+  const save = await readSave(page);
+  return save === null ? null : { turn: save.turn, pendingKind: save.pending?.kind ?? null, history: save.movementHistory.length };
+}
+
+/**
+ * Wait until storage holds the acknowledged save of `turn`: that turn is
+ * committed with no pending decision and one history record per turn. A pending
+ * roll/discard record, or the previous turn after a failed write, does not pass.
+ * The poll stops at the first matching read; "exactly one turn" is proven by
+ * `history === turn` (one record per turn), and callers that must exclude a
+ * later extra turn assert again after their next checkpoint.
+ */
+export async function expectAcceptedSave(page: Page, turn: number): Promise<void> {
+  await expect.poll(() => observeSave(page)).toEqual({ turn, pendingKind: null, history: turn });
 }
 
 /**
@@ -248,6 +348,11 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       });
       // Target-scoped v3 filter: ["all", target, ["in", ["get", "featureId"], ["literal", ids]]]
       const filter = map.getFilter(layers.completed) as [string, unknown, [string, unknown, [string, string[]]]];
+      // The flash layer uses the same target-scoped filter shape.
+      const flashFilter = map.getLayer(layers.flash)
+        ? map.getFilter(layers.flash) as [string, unknown, [string, unknown, [string, string[]]]]
+        : null;
+      const flashOpacity = map.getLayer(layers.flash) ? map.getPaintProperty(layers.flash, "line-opacity") : null;
       return {
         styleLoaded: Boolean(map.isStyleLoaded()),
         highlightedFeatureIds: (map.getFilter(layers.highlighted) as [string, unknown, [string, string[]]])?.[2]?.[1] ?? [],
@@ -264,6 +369,8 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         pendingRenderedIds: renderedIds(layers.pending),
         completedPaint: paint(layers.completed),
         pendingPaint: paint(layers.pending),
+        flashFilterIds: flashFilter?.[2]?.[2]?.[1] ?? [],
+        flashOpacity: typeof flashOpacity === "number" ? flashOpacity : null,
       };
     },
     {
@@ -271,11 +378,24 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         highlighted: LAYER_IDS.currentService,
         completed: LAYER_IDS.segmentsCompleted,
         pending: LAYER_IDS.segmentsPending,
+        flash: LAYER_IDS.segmentsFlash,
         marker: LAYER_IDS.currentPosition,
       },
       markerSourceId: SOURCE_IDS.currentPosition,
     },
   );
+}
+
+/**
+ * Exact natural movement time of a replayed turn: the sum of the distance-based
+ * hop durations (P1 planner) at `stepMs`, capped like the app. It is never
+ * `physicalHops * stepMs`. Callers replay the turn offline and check the replay
+ * against the saved record before trusting the number.
+ */
+export function movementDurationMs(bundle: RailwayBundle, events: readonly MoveEvent[], stepMs: number): number {
+  const geometry = buildGeometryIndex(bundle.data.geometry.ok ? bundle.data.geometry.value : undefined);
+  const plan = buildMovePlan(events, bundle.network, geometry);
+  return Math.min(plan.reduce((sum, step) => sum + hopDurationMs(step, stepMs), 0), MAX_MOVE_DURATION_MS);
 }
 
 /** Stations from the app's own data (served by `vite preview`). */
@@ -318,4 +438,14 @@ export function markerPosition(bundle: RailwayBundle, save: SavedGame): [number,
   const point = bundle.network.servicesById.get(save.currentServiceId)?.platformCoordinates[save.currentStationId];
   if (!point) throw new Error("Missing platform point");
   return point;
+}
+
+/** Pinned engine replay: forced oversleep stamps, lottery and full-inventory pickup on turn 11. */
+export function combinedMomentGame(bundle: RailwayBundle): ItemGameState {
+  let game: ItemGameState = createItemGame(ITEM_GAME_CONFIG, "00000000000000000000000000001bdc", bundle.network);
+  while (game.turn < 10) {
+    game = playItemTurn(game, {}, bundle.network).state;
+    if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+  }
+  return game;
 }

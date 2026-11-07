@@ -38,12 +38,13 @@ interface HarnessProps {
   observation: RevealObservation;
   stages: readonly RevealStage[];
   reducedMotion: boolean;
+  skipRequested?: boolean;
   onChange: (sequence: RevealSequence) => void;
   onCommit: (sequence: RevealSequence) => void;
 }
 
-function Harness({ observation, stages, reducedMotion, onChange, onCommit }: HarnessProps) {
-  const sequence = useRevealSequence({ observation, stages, reducedMotion });
+function Harness({ observation, stages, reducedMotion, skipRequested, onChange, onCommit }: HarnessProps) {
+  const sequence = useRevealSequence({ observation, stages, reducedMotion, skipRequested });
   onChange(sequence);
   // Records only committed values, so a value React discarded is never seen.
   useLayoutEffect(() => onCommit(sequence));
@@ -60,11 +61,12 @@ function mountHarness(
   const onChange = (sequence: RevealSequence) => { latest = sequence; };
   const onCommit = (sequence: RevealSequence) => { commits.push(sequence); };
   const mount = mountReact(createElement(Harness, { observation, stages, reducedMotion, onChange, onCommit }));
-  const update = (nextObservation: RevealObservation, nextStages: readonly RevealStage[], nextReducedMotion: boolean) => {
+  const update = (nextObservation: RevealObservation, nextStages: readonly RevealStage[], nextReducedMotion: boolean, nextSkipRequested = false) => {
     act(() => mount.root.render(createElement(Harness, {
       observation: nextObservation,
       stages: nextStages,
       reducedMotion: nextReducedMotion,
+      skipRequested: nextSkipRequested,
       onChange,
       onCommit,
     })));
@@ -233,6 +235,64 @@ describe("useRevealSequence", () => {
     expect(harness.sequence).toMatchObject({ stage: "done", busy: false, ready: true });
     expect(vi.getTimerCount()).toBe(0);
     harness.mount.cleanup();
+  });
+
+  it("omits a fresh nonempty key under reduced motion on its first commit", () => {
+    vi.useFakeTimers();
+    const harness = mountFreshHarness(OBSERVATION, STAGES, true);
+    const keyCommits = harness.commits.filter(({ key }) => key === "1:2");
+    expect(keyCommits.length).toBeGreaterThan(0);
+    expect(keyCommits[0]).toMatchObject({ stage: "done", busy: false, ready: true });
+    expect(keyCommits.some(({ busy, stage }) => busy || stage === "first" || stage === "second")).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it("keeps an omitted key not ready until movement completes", () => {
+    vi.useFakeTimers();
+    const moving = withObservation({ movementComplete: false });
+    const harness = mountFreshHarness(moving, STAGES, true);
+    expect(harness.sequence).toMatchObject({ stage: "done", busy: false, ready: false });
+    harness.update(OBSERVATION, STAGES, true);
+    expect(harness.sequence.ready).toBe(true);
+    harness.mount.cleanup();
+  });
+
+  it("omits a future key when skip is requested before its record exists", () => {
+    vi.useFakeTimers();
+    const noRecord = withObservation({ recordTurn: null, movementComplete: false });
+    const harness = mountHarness(noRecord, STAGES);
+    harness.update(noRecord, STAGES, false, true);
+    harness.update(withObservation({ movementComplete: false }), STAGES, false, true);
+    expect(harness.sequence).toMatchObject({ key: "1:2", stage: "done", busy: false, ready: false });
+    harness.update(OBSERVATION, STAGES, false, false);
+    expect(harness.sequence).toMatchObject({ stage: "done", busy: false, ready: true });
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it("does not replay an omitted key when reduced motion turns off", () => {
+    vi.useFakeTimers();
+    const harness = mountFreshHarness(OBSERVATION, STAGES, true);
+    harness.update(OBSERVATION, STAGES, false);
+    expect(harness.sequence).toMatchObject({ stage: "done", busy: false, ready: true });
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it("preserves equivalent stage deadlines and leaves no timer after omission or unmount", () => {
+    vi.useFakeTimers();
+    const harness = mountFreshHarness(OBSERVATION, STAGES);
+    act(() => vi.advanceTimersByTime(50));
+    harness.update(OBSERVATION, STAGES.map((stage) => ({ ...stage })), false);
+    expect(vi.getTimerCount()).toBe(1);
+    harness.update(OBSERVATION, STAGES, false, true);
+    expect(harness.sequence).toMatchObject({ stage: "done", busy: false, ready: true });
+    expect(vi.getTimerCount()).toBe(0);
+    harness.update(withObservation({ recordTurn: 3, gameTurn: 3 }), STAGES, false);
+    expect(vi.getTimerCount()).toBe(1);
+    harness.mount.cleanup();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("does not replay a completed key after duplicate observations or stage identity changes", () => {

@@ -1,7 +1,8 @@
-import type { ReactNode, RefObject } from "react";
+import { useCallback, type ReactNode, type RefObject } from "react";
 import type { SaveWriteResult } from "../store/persistence";
 import type { LineBadgeModel } from "../lineBadge";
 import type { EffectChipModel } from "../hudPresentation";
+import { setTargetRef, type TurnMomentTargetRef } from "./TurnMomentHost";
 import { EffectChips } from "./EffectChips";
 import { LineBadge } from "./LineBadge";
 import { TargetProgressBar } from "./TargetProgressBar";
@@ -22,12 +23,16 @@ export interface GameHudProps {
   saveStatus: SaveWriteResult | null;
   saveStatusMessage: string;
   canRoll: boolean;
+  canSkip: boolean;
   animating: boolean;
   draftSelected: boolean;
   rollButtonRef: RefObject<HTMLButtonElement | null>;
   onRoll: () => void;
   onSkip: () => void;
   effects: readonly EffectChipModel[];
+  /** Optional animation targets; measured only, they add no elements and change no markup. */
+  rideTargetRef?: TurnMomentTargetRef;
+  directionTargetRef?: TurnMomentTargetRef;
 }
 
 function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element {
@@ -46,8 +51,11 @@ export function GameHud({
   inventory,
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, compactRoll, saveStatus, saveStatusMessage,
-  canRoll, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
+  canRoll, canSkip, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
+  rideTargetRef, directionTargetRef,
 }: GameHudProps): React.JSX.Element {
+  const rideRef = useCallback((element: HTMLSpanElement | null): void => setTargetRef(rideTargetRef, element), [rideTargetRef]);
+  const directionRef = useCallback((element: HTMLSpanElement | null): void => setTargetRef(directionTargetRef, element), [directionTargetRef]);
   const failed: boolean = saveStatus === "failed" || saveStatus === "unavailable";
   const saveMark: boolean = saveStatus === "saved";
   return (
@@ -63,9 +71,9 @@ export function GameHud({
         <dt>現在駅</dt>
         <dd><span className="hud-stat__value" data-stat="station" title={station}>{station}</span></dd>
         <dt>乗車中</dt>
-        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride" title={ride}>{ride}</span></dd>
+        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride" title={ride} ref={rideRef}>{ride}</span></dd>
         <dt>進行方向</dt>
-        <dd><span className="hud-stat__value" data-stat="direction" title={direction}>{direction}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="direction" title={direction} ref={directionRef}>{direction}</span></dd>
         <dt>ターン数</dt>
         <dd><span className="hud-stat__value" data-stat="turn" title={String(turn)}>{turn}</span></dd>
         <dt>踏破区間</dt>
@@ -83,7 +91,7 @@ export function GameHud({
         >
           {animating ? "移動中…" : draftSelected ? "この内容でサイコロを振る" : "サイコロを振る"}
         </button>
-        <button type="button" onClick={onSkip} disabled={!animating}>スキップ</button>
+        <button type="button" onClick={onSkip} disabled={!canSkip}>スキップ</button>
       </div>
       {inventory}
       <EffectChips models={effects} />
