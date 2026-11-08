@@ -77,7 +77,7 @@ type MenuValue = Omit<GameMenuProps, "expanded" | "onExpandedChange">;
 
 function menuProps(overrides: Partial<MenuValue> = {}): MenuValue {
   return {
-    follow: true, reducedMotion: false, speedLabel: "ふつう", lines: [
+    follow: true, reducedMotion: false, speedLabel: "ふつう", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), lines: [
       { id: "jr-yamanote", name: "山手線", color: "#80c241", operatorId: "JR東日本", serviceIds: ["jr-yamanote"] },
     ], targetColor: "#80c241", selectedGroupIds: null,
     onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
@@ -118,7 +118,7 @@ describe("GameHud", () => {
       const value: Parameters<typeof GamePanel>[0] = {
         session, network: fixtureNetwork, lines: [], turnDisplay: displayFor(session, fixtureNetwork, session.game.currentStationId,
           session.game.completedSegmentIds, itemView), requiredCount: 30,
-        saveStatus: null, follow: true, speedLabel: "標準", reducedMotion: false,
+        saveStatus: null, follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
         onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
         onNewGame: vi.fn(), onShowTitle: vi.fn() ,
       };
@@ -233,7 +233,7 @@ describe("GameHud", () => {
     const onEditItemDraft = vi.fn();
     const value: Parameters<typeof GamePanel>[0] = {
       network, lines: [], session, turnDisplay: idle, onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true,
-      speedLabel: "標準", reducedMotion: false, onRoll, onSkip, onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
+      speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false, onRoll, onSkip, onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
       onNewGame: vi.fn(), onShowTitle: vi.fn(),
     };
     function PanelHarness({ panel }: { panel: Parameters<typeof GamePanel>[0] }): React.JSX.Element {
@@ -293,7 +293,7 @@ describe("GameHud", () => {
 });
 
 describe("GameMenu", () => {
-  it("starts closed with a labelled mounted section, four actions, and the legend inside", () => {
+  it("starts closed with a labelled mounted section, five actions, and the legend inside", () => {
     const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
     try {
       const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
@@ -306,13 +306,31 @@ describe("GameMenu", () => {
       expect(region.hasAttribute("role")).toBe(false);
       expect(region.querySelectorAll('[role="menu"]')).toHaveLength(0);
       expect([...region.querySelectorAll(".game-panel__options button")].map((button) => button.textContent?.trim())).toEqual([
-        "追尾: ON", "速度: ふつう", "新規", "タイトル",
+        "追尾: ON", "速度: ふつう", "演出: すべて", "新規", "タイトル",
       ]);
-      expect(region.querySelectorAll(".game-panel__options button")).toHaveLength(4);
+      expect(region.querySelectorAll(".game-panel__options button")).toHaveLength(5);
       expect(region.querySelector(".game-panel__legend-section")).not.toBeNull();
     } finally {
       mount.cleanup();
     }
+  });
+
+  it("labels the presentation cycle and disables it under OS reduction", () => {
+    const onCyclePresentation = vi.fn();
+    const value = menuProps({ presentationLevel: "important", onCyclePresentation });
+    const mount = mountReact(createElement(MenuHarness, { value }));
+    try {
+      const control = mount.container.querySelector<HTMLButtonElement>('[aria-label="演出: 重要なときだけ（押すと切り替え）"]')!;
+      expect(control.textContent?.trim()).toBe("演出: 重要なときだけ");
+      dispatchReactEvent(control, new MouseEvent("click", { bubbles: true }));
+      expect(onCyclePresentation).toHaveBeenCalledOnce();
+      act(() => mount.root.render(createElement(MenuHarness, { value: { ...value, reducedMotion: true } })));
+      expect(control.textContent?.trim()).toBe("演出: 省略");
+      expect(control.getAttribute("aria-label")).toBe("演出: 省略（押すと切り替え）");
+      expect(control.disabled).toBe(true);
+      dispatchReactEvent(control, new MouseEvent("click", { bubbles: true }));
+      expect(onCyclePresentation).toHaveBeenCalledOnce();
+    } finally { mount.cleanup(); }
   });
 
   it("closes and reopens while restoring focus and retaining legend expansion", () => {
@@ -350,7 +368,7 @@ describe("GameMenu", () => {
     try {
       dispatchReactEvent(mount.container.querySelector(".game-panel__menu-trigger")!, new MouseEvent("click", { bubbles: true }));
       expect(mount.container.querySelector(".game-panel__menu")?.hasAttribute("hidden")).toBe(false);
-      dispatchReactEvent(mount.container.querySelector(".game-panel__options button:nth-child(3)")!, new MouseEvent("click", { bubbles: true }));
+      dispatchReactEvent(mount.container.querySelector(".game-panel__options button:nth-child(4)")!, new MouseEvent("click", { bubbles: true }));
       expect(onNewGame).toHaveBeenCalledOnce();
       expect(triggerSeenAtRequest).toEqual([true]);
       expect(mount.container.querySelector(".game-panel__menu")?.hasAttribute("hidden")).toBe(true);
@@ -407,7 +425,7 @@ describe("GameMenu", () => {
     const itemView = { ...itemSessionView(session, network)!, draft: { items: [{ kind: "double" as const, instanceId: "double-1" }] } };
     const onEditItemDraft = vi.fn();
     const mount = mountReact(createElement(GamePanel, {
-      network, lines: [], session , turnDisplay: displayFor(session, network, game.currentStationId, [], itemView), onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
+      network, lines: [], session , turnDisplay: displayFor(session, network, game.currentStationId, [], itemView), onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
       onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
     }));
     const dialog = document.createElement("dialog");
@@ -492,7 +510,7 @@ it("keeps the turn log mounted, mutually exclusive, keyboard closable, and retai
   const game = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "log-disclosure", network);
   const session = resumeSession(game, network);
   const common = { network, lines: [], turnDisplay: displayFor(session, network, "a", []), requiredCount: 4,
-    saveStatus: "saved" as const, follow: true, speedLabel: "標準", reducedMotion: false,
+    saveStatus: "saved" as const, follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
   type PanelProps = Parameters<typeof GamePanel>[0];
   function Harness({ value }: { value: PanelProps }): React.JSX.Element {

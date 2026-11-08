@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef } from "react";
+import { PRESENTATION_LEVELS, type PresentationLevel } from "../gameSettings";
 import { GameLegend, type LegendLine } from "./GameLegend";
 
 const MENU_ICON_SIZE = 16;
@@ -10,11 +11,13 @@ export interface GameMenuProps {
   follow: boolean;
   reducedMotion: boolean;
   speedLabel: string;
+  presentationLevel: PresentationLevel;
   lines: readonly LegendLine[];
   targetColor: string | undefined;
   selectedGroupIds: ReadonlySet<string> | null;
   onToggleFollow: () => void;
   onCycleSpeed: () => void;
+  onCyclePresentation: () => void;
   onNewGame: () => void;
   onShowTitle: () => void;
   onToggleGroup: (groupId: string, checked: boolean) => void;
@@ -34,11 +37,13 @@ export function GameMenu({
   follow,
   reducedMotion,
   speedLabel,
+  presentationLevel,
   lines,
   targetColor,
   selectedGroupIds,
   onToggleFollow,
   onCycleSpeed,
+  onCyclePresentation,
   onNewGame,
   onShowTitle,
   onToggleGroup,
@@ -47,6 +52,7 @@ export function GameMenu({
 }: GameMenuProps): React.JSX.Element {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const regionId = useId();
+  const presentationLabel = reducedMotion ? "省略" : PRESENTATION_LEVELS.find((level) => level.id === presentationLevel)!.label;
 
   useEffect(() => {
     if (!expanded) return;
@@ -105,6 +111,16 @@ export function GameMenu({
             title={reducedMotion ? "視差効果を減らす設定のためアニメーションは省略されます" : undefined}
           >
             速度: {reducedMotion ? "省略" : speedLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCyclePresentation}
+            disabled={reducedMotion}
+            aria-label={`演出: ${presentationLabel}（押すと切り替え）`}
+            title={reducedMotion ? "視差効果を減らす設定のためアニメーションは省略されます" : undefined}
+            className="game-panel__option--wide"
+          >
+            演出: {presentationLabel}
           </button>
           <button type="button" onClick={startNewGame}>新規</button>
           <button type="button" onClick={onShowTitle}>タイトル</button>

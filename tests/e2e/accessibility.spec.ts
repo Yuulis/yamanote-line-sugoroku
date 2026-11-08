@@ -559,7 +559,7 @@ test.describe("compact layouts and map follow padding", () => {
       expect(optionsBox.y + optionsBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height);
       await expect(panel.locator(".game-panel__options")).toBeInViewport();
       expect(await panel.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
-      await expect(panel.locator(".game-panel__options button")).toHaveCount(4);
+      await expect(panel.locator(".game-panel__options button")).toHaveCount(5);
     };
 
     await openGameLog(page);

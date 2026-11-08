@@ -3,6 +3,7 @@ import type { MoveEvent } from "../../src/features/game/engine";
 import { beginItemTurn, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import type { ItemGameState, ItemRollAdjustment, ItemRideRecord } from "../../src/types/network";
 import { expect, test } from "./fixtures";
+import { seedGameSettings } from "./support/settings";
 import { itemScenario } from "./fixtures/itemScenarios";
 import {
   combinedMomentGame,
@@ -1098,3 +1099,65 @@ for (const exit of ["タイトル", "新規"] as const) {
     await expect(panelStat(page, "ターン数")).toHaveText("0");
   });
 }
+
+
+for (const level of ["important", "none"] as const) {
+  test(`S8 persisted ${level} masks movement and retains only its permitted moments`, async ({ page, railwayBundle }) => {
+    await seedGameSettings(page, { speedId: "normal", follow: true, presentationLevel: level });
+    const base = combinedMomentGame(railwayBundle);
+    await resumeFrozen(page, base);
+    const oldSlots = await page.locator(".item-slot__button").allTextContents();
+    await clickDice(page);
+    const expected = playItemTurn(base, {}, railwayBundle.network).state;
+    expect(expected.pending?.kind).toBe("discard");
+    await expect.poll(() => readSave(page)).toEqual(expected);
+    await expect(diceMoment(page)).toHaveCount(0);
+    await expect(diceButton(page)).toHaveText("移動中…");
+    await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+    expect(await page.locator(".item-slot__button").allTextContents()).toEqual(oldSlots);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    await expect(gamePanel(page).getByRole("status")).not.toContainText(/到着|抽選結果|拾いました|捨てる/);
+    await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+    await expect(arrivalBanner(page)).toHaveCount(0);
+    if (level === "important") {
+      await awaitStage(page, "segment-flash");
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      await advanceStageForSpeed(page, "segment-flash", "normal");
+      await advanceLotteryFlip(page);
+      await advanceLotterySettle(page);
+      await awaitStage(page, "pickup");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await advancePickup(page);
+    } else {
+      await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      await expect.poll(async () => (await readMap(page))?.flashFilterIds).toEqual([]);
+    }
+    await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+    expect(await readSave(page)).toEqual(expected);
+  });
+}
+
+test("S8 a menu presentation change applies only to the next roll", async ({ page }) => {
+  await page.clock.install();
+  await openTitle(page);
+  await startNewGame(page);
+  await freezeClock(page);
+  await clickDice(page);
+  await awaitStage(page, "tumble");
+  await openGameMenu(page);
+  const control = gamePanel(page).getByRole("button", { name: /^演出:/ });
+  await control.click(); await control.click();
+  await expect(control).toHaveText("演出: なし");
+  await closeGameMenu(page);
+  await advanceTumble(page);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  await expect(arrivalBanner(page)).toBeVisible();
+  await advanceArrival(page); await advanceLotteryFlip(page); await advanceLotterySettle(page);
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+  await clickDice(page);
+  await expect(diceMoment(page)).toHaveCount(0);
+  await expect(diceButton(page)).toHaveText("移動中…");
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+});

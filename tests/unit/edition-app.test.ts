@@ -46,7 +46,7 @@ describe("edition app switching", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps global speed and follow when an edition remounts GameApp", async () => {
+  it("keeps global speed, follow and presentation when an edition remounts GameApp", async () => {
     const mounted = mountReact(createElement(App, { editions: FIXTURE_EDITIONS }));
     const click = (label: string): void => {
       const button = [...mounted.container.querySelectorAll("button")].find((entry) => entry.textContent?.includes(label));
@@ -58,8 +58,10 @@ describe("edition app switching", () => {
       click("はじめから");
       click("メニュー");
       click("速度");
+      click("演出:");
       click("追尾");
       expect(mounted.container.textContent).toContain("速度: はやい");
+      expect(mounted.container.textContent).toContain("演出: 重要なときだけ");
       expect(mounted.container.textContent).toContain("追尾: OFF");
       click("タイトル");
       const picker = mounted.container.querySelector("select")!;
@@ -70,9 +72,10 @@ describe("edition app switching", () => {
       click("メニュー");
       expect(mounted.container.textContent).toContain("Fixture B");
       expect(mounted.container.textContent).toContain("速度: はやい");
+      expect(mounted.container.textContent).toContain("演出: 重要なときだけ");
       expect(mounted.container.textContent).toContain("追尾: OFF");
       expect(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY)!)).toEqual({
-        version: 1, speedId: "fast", follow: false, presentationLevel: "all",
+        version: 1, speedId: "fast", follow: false, presentationLevel: "important",
       });
     } finally {
       mounted.cleanup();

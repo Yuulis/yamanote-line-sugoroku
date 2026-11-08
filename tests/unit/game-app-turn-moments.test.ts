@@ -51,7 +51,7 @@ vi.mock("../../src/features/game/useGameApp", async (original) => {
 vi.mock("../../src/features/game/animation/useTurnMoments", async (original) => {
   const actual = await original<typeof import("../../src/features/game/animation/useTurnMoments")>();
   return { ...actual, useTurnMoments: (options: UseTurnMomentsOptions) => actual.useTurnMoments({
-    ...options, presentationLevel: injection.level, speedId: injection.speedId ?? options.speedId,
+    ...options, presentationLevel: injection.level ?? options.presentationLevel, speedId: injection.speedId ?? options.speedId,
   }) };
 });
 vi.mock("../../src/features/game/components/GameHud", async (original) => {
@@ -1888,6 +1888,84 @@ describe.each(["important", "none"] as const)("S7 %s integration", (level) => {
       expect(lotteryStage()).toBe("lottery-flip");
       advance(280); advance(100);
     } else expect(flash).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+
+describe("S8 persisted presentation settings", () => {
+  it("cycles the real menu and preserves the stored choice under a live OS override", () => {
+    const setReduced = motionPreference(false);
+    openWithFrames(itemScenario("route", network));
+    click("メニュー");
+    for (const label of ["重要なときだけ", "なし", "すべて", "重要なときだけ"]) {
+      click("演出:");
+      expect(mounted!.container.textContent).toContain(`演出: ${label}`);
+    }
+    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    expect(JSON.parse(saved!).presentationLevel).toBe("important");
+    const writes = vi.spyOn(Storage.prototype, "setItem");
+    setReduced(true);
+    const control = mounted!.container.querySelector<HTMLButtonElement>('[aria-label^="演出:"]')!;
+    expect(control.textContent?.trim()).toBe("演出: 省略");
+    expect(control.disabled).toBe(true);
+    press(control);
+    expect(writes).not.toHaveBeenCalled();
+    expect(localStorage.getItem(SETTINGS_STORAGE_KEY)).toBe(saved);
+    setReduced(false);
+    expect(control.textContent?.trim()).toBe("演出: 重要なときだけ");
+    expect(control.disabled).toBe(false);
+  });
+
+  it.each(["important", "none"] as const)("uses stored %s with movement masking and mandatory discard", (level) => {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ version: 1, speedId: "very-fast", follow: true, presentationLevel: level }));
+    openWithFrames(combinedGame());
+    const slots = [...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent);
+    click("サイコロを振る");
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    expect(status()).not.toMatch(/到着|抽選結果|拾いました|捨てる/);
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    expect([...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent)).toEqual(slots);
+    press(mounted!.container.querySelector(".item-slot__button")!);
+    expect(mounted!.container.querySelector<HTMLButtonElement>(".item-card__action")?.disabled).toBe(true);
+    finishMovement();
+    expect(banner()).toBeNull();
+    if (level === "important") {
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toMatchObject({ durationMs: 180 });
+      expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+      advance(180);
+      expect(lotteryStage()).toBe("lottery-flip");
+      advance(280); advance(100);
+      expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
+      expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+      advance(140);
+    } else {
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toBeNull();
+      expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+    }
+    expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
+  });
+
+  it("captures a menu change from the next roll without altering the active turn", () => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    click("サイコロを振る");
+    expect(tumble()?.stage).toBe("tumble");
+    click("メニュー"); click("演出:"); click("演出:");
+    expect(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY)!).presentationLevel).toBe("none");
+    expect(tumble()?.stage).toBe("tumble");
+    advance(600);
+    finishMovement();
+    expect(banner()).not.toBeNull();
+    advance(800); advance(1_600); advance(400);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    click("サイコロを振る");
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    finishMovement();
+    expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
     expect(dice().getAttribute("aria-disabled")).toBe("false");
   });
 });

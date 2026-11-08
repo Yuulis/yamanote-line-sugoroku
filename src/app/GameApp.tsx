@@ -93,7 +93,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const inventoryHeaderTarget = useRef<HTMLElement>(null);
   const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget,
     slots: [inventorySlot0Target, inventorySlot1Target, inventorySlot2Target], inventoryHeader: inventoryHeaderTarget }), []);
-  const { settings: { speedId, follow }, cycleSpeed, toggleFollow, stopFollowing } = useGameSettings(storage);
+  const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -136,6 +136,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     decisionRevision: session?.item?.decisionRevision ?? 0,
     origin: turnOrigin,
     speedId,
+    presentationLevel,
     reducedMotion,
     observation: {
       decision: itemView?.decision ?? null,
@@ -398,6 +399,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           saveStatus={app.saveStatus}
           follow={follow}
           speedLabel={speed?.label ?? ""}
+          presentationLevel={presentationLevel}
           reducedMotion={reducedMotion}
           onRoll={guardedRoll}
           onEditItemDraft={guardedEditItemDraft}
@@ -406,6 +408,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           onSkip={skip}
           onToggleFollow={toggleFollow}
           onCycleSpeed={cycleSpeed}
+          onCyclePresentation={cyclePresentation}
           onNewGame={requestNewGame}
           onShowTitle={showTitle}
           onItemDialogOpenChange={setItemDialogOpen}

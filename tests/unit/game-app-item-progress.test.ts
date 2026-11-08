@@ -101,8 +101,9 @@ it("keeps settings for a new game and never persists manual camera panning", () 
   click("つづきから");
   click("メニュー");
   click("速度");
+  click("演出:");
   const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
-  expect(JSON.parse(savedSettings!)).toEqual({ version: 1, speedId: "fast", follow: true, presentationLevel: "all" });
+  expect(JSON.parse(savedSettings!)).toEqual({ version: 1, speedId: "fast", follow: true, presentationLevel: "important" });
   const pan = railwayMapProps.mock.calls.at(-1)?.[0].follow?.onUserCameraMove;
   if (!pan) throw new Error("Expected the camera pan callback");
   act(() => { pan(); pan(); });
@@ -115,9 +116,10 @@ it("keeps settings for a new game and never persists manual camera panning", () 
   click("新しく始める");
   click("メニュー");
   expect(mounted.container.textContent).toContain("速度: はやい");
+  expect(mounted.container.textContent).toContain("演出: 重要なときだけ");
   expect(mounted.container.textContent).toContain("追尾: OFF");
   expect(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY)!)).toEqual({
-    version: 1, speedId: "fast", follow: false, presentationLevel: "all",
+    version: 1, speedId: "fast", follow: false, presentationLevel: "important",
   });
 });
 
