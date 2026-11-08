@@ -1,7 +1,7 @@
 import type { DeepReadonly, Direction, ItemTurnRecord, SegmentId } from "../../../types/network";
 import type { MoveEvent } from "../engine";
 import { itemRideHasModifierWording } from "../hudPresentation";
-import type { TurnMomentTiming, TurnPresentationPolicy } from "./turnMomentPolicy";
+import type { TurnPresentationPolicy } from "./turnMomentPolicy";
 import type { ItemSessionView } from "../itemSession";
 import type { LastMove } from "../gameSession";
 import type { RevealStage } from "./useRevealSequence";
@@ -102,6 +102,8 @@ export interface TurnRevealFacts {
   record: DeepReadonly<ItemTurnRecord> | null;
   /** The record was already committed when the session was entered (resume): it is never revealed again. */
   restored: boolean;
+  /** New target segments captured from this record's accepted movement. */
+  newlyCompletedTargetSegmentIds: readonly SegmentId[];
   /** Reduced motion: the result publishes at once, with no timed stage. */
   omitted: boolean;
 }
@@ -109,9 +111,10 @@ export interface TurnRevealFacts {
 const NO_REVEAL_STAGES: readonly RevealStage[] = [];
 
 /** Post-move stages from the accepted snapshot. */
-export function buildTurnRevealStages(facts: TurnRevealFacts, timing: TurnMomentTiming): readonly RevealStage[] {
+export function buildTurnRevealStages(facts: TurnRevealFacts, policy: TurnPresentationPolicy): readonly RevealStage[] {
   if (facts.record === null || facts.restored || facts.omitted) return NO_REVEAL_STAGES;
   const record = facts.record;
+  const timing = policy.timing;
   const stages: RevealStage[] = timing.arrivalMs === null ? [] : [{ key: "arrival", durationMs: timing.arrivalMs }];
   if (record.kind !== "item-ride" || record.stopReason === "goal") return stages;
   if (record.landing) {

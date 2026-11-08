@@ -18,6 +18,7 @@ import { resumeSession, startSession, reduceGameSession, type GameSession } from
 import {
   INITIAL_TURN_MOMENTS_STATE, observeTurnFacts, turnMomentsReducer, type RollAttempt, type TurnMomentObservation,
 } from "../../src/features/game/animation/turnMoments";
+import * as turnMomentPlanning from "../../src/features/game/animation/turnMoments";
 import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import { diceStampLabels } from "../../src/features/game/components/DiceTumble";
 import { mapControlInsets, turnMomentDiceModel } from "../../src/features/game/components/TurnMomentHost";
@@ -213,6 +214,20 @@ describe("GameApp publication lifecycle", () => {
     inject(resumeSession(moved.game, network, 33)); render(propsFor());
     expect(status()).toBe("");
   });
+  it("keeps the publication boundary seam from scheduling real reveal stages", () => {
+    vi.useFakeTimers();
+    const build = vi.spyOn(turnMomentPlanning, "buildTurnRevealStages");
+    const base = itemScenario("delay", network);
+    const origin = resumeSession(base, network, 31);
+    inject(origin); render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    const result = resumeSession(playItemTurn(base, {}, network).state, network, 31);
+    inject(result); render(propsFor({ attempt: attemptFor(origin), revealStage: "arrival", restoredOrOmitted: false }));
+    expect(build).toHaveBeenLastCalledWith(expect.objectContaining({ record: null }), expect.anything());
+    expect(mounted!.container.querySelector(".arrival-banner")).not.toBeNull();
+    render(propsFor({ attempt: attemptFor(origin), revealStage: "done", restoredOrOmitted: false }));
+    expect(mounted!.container.querySelector(".arrival-banner")).toBeNull();
+  });
+
   it("publishes map, HUD, inventory, effects, log and interaction together after arrival", () => {
     vi.useFakeTimers();
     const base = itemScenario("delay", network);

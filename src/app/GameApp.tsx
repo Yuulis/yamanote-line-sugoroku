@@ -21,8 +21,7 @@ import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotio
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
 import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
 import type { TurnMomentDisplay, TurnRevealState } from "../features/game/turnMomentPresentation";
-import { buildTurnRevealStages, type RollAttempt, type TurnMomentObservation, type TurnOrigin } from "../features/game/animation/turnMoments";
-import { turnMomentTiming } from "../features/game/animation/turnMomentPolicy";
+import type { RollAttempt, TurnMomentObservation, TurnOrigin } from "../features/game/animation/turnMoments";
 import { attemptOwnsAnimation, useTurnMoments } from "../features/game/animation/useTurnMoments";
 import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
 import { DiceTumble } from "../features/game/components/DiceTumble";
@@ -131,14 +130,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   }
   const latestRecord = session?.lastMove?.itemRecord ?? null;
   const entryTurn = Math.max(resumeBaseline.current.turn, resumeBaseline.current.recordTurn);
-  // Frozen per reveal key by useTurnMoments (durations from the attempt's captured timing when it owns the record).
-  // The test seam injects the presented stage itself, so the real sequence then times no stage of its own.
-  const seamed = turnMomentBoundary !== undefined;
-  const revealStages = useMemo(() => buildTurnRevealStages({
-    record: seamed ? null : latestRecord,
-    restored: latestRecord !== null && latestRecord.turn <= entryTurn,
-    omitted: reducedMotion,
-  }, turnMomentTiming(speedId)), [seamed, latestRecord, entryTurn, reducedMotion, speedId]);
   const moments = useTurnMoments({
     sessionId: session?.sessionId ?? 0,
     gameTurn: game?.turn ?? 0,
@@ -164,7 +155,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
       pendingDecisionTurn: itemView?.decision ? game?.turn ?? null : null,
       movementComplete: session?.phase !== "animating",
     },
-    revealStages,
+    latestRecord,
+    restoredRecord: latestRecord !== null && latestRecord.turn <= entryTurn,
+    suppressRevealStages: turnMomentBoundary !== undefined,
     animation,
     finishAnimation: app.finishAnimation,
   });
@@ -339,8 +332,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const lotteryStage = turnDisplay?.phase === "lottery-flip" || turnDisplay?.phase === "lottery-settle" ? turnDisplay.phase : null;
   const lottery = lotteryStage && session?.lastMove?.landing ? {
     landing: session.lastMove.landing, stage: lotteryStage,
-    durationMs: lotteryStage === "lottery-flip" ? moments.attempt?.policy.timing.lotteryFlipMs ?? turnMomentTiming(speedId).lotteryFlipMs
-      : moments.attempt?.policy.timing.lotterySettleMs ?? turnMomentTiming(speedId).lotterySettleMs,
+    durationMs: lotteryStage === "lottery-flip" ? moments.revealTiming.lotteryFlipMs
+      : moments.revealTiming.lotterySettleMs,
     network, presentation, rideTarget, directionTarget,
   } : null;
   const record = session?.lastMove?.itemRecord;
@@ -349,7 +342,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const pickup = turnDisplay?.phase === "pickup" && pickupEvent
     && (pickupEvent.type === "pickup-retained" || pickupEvent.type === "pickup-pending-discard") ? {
       kind: pickupEvent.item.kind,
-      durationMs: presentedAttempt?.policy.timing.pickupMs ?? turnMomentTiming(speedId).pickupMs,
+      durationMs: moments.revealTiming.pickupMs,
       targetRef: pickupEvent.type === "pickup-pending-discard"
         ? turnMomentTargets.inventoryHeader ?? null
         : turnMomentTargets.slots?.[turnDisplay.itemView?.inventory.length ?? 0] ?? null,
