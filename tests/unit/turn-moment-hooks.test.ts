@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MoveAnimation } from "../../src/features/game/gameSession";
 import type { ItemSessionView } from "../../src/features/game/itemSession";
 import { useTurnMoments, type TurnMoments, type UseTurnMomentsOptions } from "../../src/features/game/animation/useTurnMoments";
+import * as turnMomentPolicy from "../../src/features/game/animation/turnMomentPolicy";
+import * as turnMomentPlanning from "../../src/features/game/animation/turnMoments";
 import type { TurnMomentObservation, TurnOrigin } from "../../src/features/game/animation/turnMoments";
 import type { ItemRideRecord } from "../../src/types/network";
 import { buildRailwayNetwork, createGame, moveByRoll } from "../../src/features/game/engine";
@@ -33,7 +35,14 @@ const RECORD: ItemRideRecord = {
 const INITIAL_OBSERVATION: TurnMomentObservation = {
   decision: null, record: null, movementEvents: [], targetServiceId: "jr-yamanote",
 };
-const ARRIVAL = [{ key: "arrival", durationMs: 800 }] as const;
+const REVEAL_RECORD: ItemRideRecord = {
+  ...RECORD,
+  landing: { serviceId: "jr-yamanote", direction: 1 },
+  landingSnapshot: { stationId: "yoyogi", services: [
+    { serviceId: "jr-yamanote", weight: 1, directions: [1, -1], directionWeights: [1, 1] },
+  ], suspensionIgnored: false, detourConsumed: false },
+  itemEvents: [{ type: "pickup-retained", item: { id: "double", kind: "double" } }],
+};
 const NETWORK = buildRailwayNetwork(yamanoteInput());
 const GAME = createGame(DEFAULT_CONFIG, "turn-moments-lifecycle", NETWORK);
 const MOVE: MoveAnimation = {
@@ -55,10 +64,10 @@ function Harness({ options, onCommit }: HarnessProps) {
 
 function options(changes: Partial<UseTurnMomentsOptions> = {}): UseTurnMomentsOptions {
   return {
-    sessionId: 7, gameTurn: 0, decisionRevision: 3, origin: ORIGIN, stepMs: 450, reducedMotion: false,
+    sessionId: 7, gameTurn: 0, decisionRevision: 3, origin: ORIGIN, speedId: "normal", reducedMotion: false,
     observation: INITIAL_OBSERVATION,
     revealObservation: { sessionId: 7, recordTurn: null, gameTurn: 0, pendingDecisionTurn: null, movementComplete: false },
-    revealStages: ARRIVAL, animation: null, finishAnimation: vi.fn(), ...changes,
+    latestRecord: null, restoredRecord: false, suppressRevealStages: false, animation: null, finishAnimation: vi.fn(), ...changes,
   };
 }
 
@@ -69,7 +78,10 @@ function mountHarness(initial: UseTurnMomentsOptions = options()) {
   let current = initial;
   const mount = mountReact(createElement(Harness, { options: current, onCommit }));
   const update = (changes: Partial<UseTurnMomentsOptions>) => {
-    current = { ...current, ...changes };
+    const recordTurn = changes.revealObservation?.recordTurn;
+    current = { ...current,
+      ...(recordTurn !== undefined ? { latestRecord: recordTurn === null ? null : { ...RECORD, turn: recordTurn } } : {}),
+      ...changes };
     act(() => mount.root.render(createElement(Harness, { options: current, onCommit })));
   };
   return { mount, update, commits, get moments(): TurnMoments { return latest!; } };
@@ -79,9 +91,38 @@ function acceptedRecordObservation(): TurnMomentObservation {
   return { ...INITIAL_OBSERVATION, record: RECORD, movementSessionId: 7, movementTurn: 1 };
 }
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("useTurnMoments", () => {
+  it("keeps the very-fast adjustment tumble and stamps deadlines after selecting slow mid-turn", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness(options({ speedId: "very-fast" }));
+    act(() => harness.moments.begin());
+    harness.update({ speedId: "slow", observation: { ...INITIAL_OBSERVATION,
+      decision: { kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
+        allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true },
+    } });
+    expect(harness.moments.attempt?.policy.timing.stepMs).toBe(120);
+    act(() => vi.advanceTimersByTime(159));
+    expect(harness.moments.attempt?.stage).toBe("tumble");
+    expect(harness.moments.movementStartAllowed).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.attempt?.stage).toBe("awaiting-adjust");
+    const record: ItemRideRecord = { ...RECORD, adjustment: { instanceId: "adjust", delta: 1 } };
+    harness.update({ observation: { ...acceptedRecordObservation(), record } });
+    expect(harness.moments.attempt?.stage).toBe("stamps");
+    act(() => vi.advanceTimersByTime(63));
+    expect(harness.moments.movementStartAllowed).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    expect(harness.moments.attempt?.policy.speedId).toBe("very-fast");
+    harness.update({ gameTurn: 1, observation: INITIAL_OBSERVATION });
+    act(() => harness.moments.begin());
+    expect(harness.moments.attempt?.policy.speedId).toBe("slow");
+    expect(harness.moments.attempt?.policy.showArrival).toBe(true);
+    harness.mount.cleanup();
+  });
+
   it("arms only the current pre-move stage timer and cleans each transition", () => {
     vi.useFakeTimers();
     const harness = mountHarness();
@@ -131,8 +172,8 @@ describe("useTurnMoments", () => {
     act(() => harness.moments.begin());
     const decision = { kind: "adjust" as const, turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
       allowedDeltas: [-1, 1] as const, itemInstanceIds: ["adjust"], canContinue: true as const };
-    harness.update({ stepMs: 300, observation: { ...INITIAL_OBSERVATION, decision } });
-    expect(harness.moments.attempt?.timing.stepMs).toBe(450);
+    harness.update({ speedId: "fast", observation: { ...INITIAL_OBSERVATION, decision } });
+    expect(harness.moments.attempt?.policy.timing.stepMs).toBe(450);
     act(() => vi.advanceTimersByTime(600));
     expect(harness.moments.attempt?.stage).toBe("awaiting-adjust");
     const modifierRecord: ItemRideRecord = { ...RECORD, command: { items: [{ kind: "double", instanceId: "double" }] } };
@@ -149,6 +190,38 @@ describe("useTurnMoments", () => {
     act(() => vi.advanceTimersByTime(1));
     expect(harness.moments.attempt?.stage).toBe("released");
     expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it("keeps all captured durations and the movement step after a speed change until the next attempt", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness();
+    act(() => harness.moments.begin());
+    const captured = harness.moments.attempt!.policy;
+    harness.update({ speedId: "fast", observation: { ...acceptedRecordObservation(), record: REVEAL_RECORD } });
+    expect(harness.moments.attempt!.policy).toBe(captured);
+    expect(captured.timing.stepMs).toBe(450);
+    act(() => vi.advanceTimersByTime(599));
+    expect(harness.moments.attempt?.stage).toBe("tumble");
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    harness.update({ latestRecord: REVEAL_RECORD, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    for (const [stage, duration] of [
+      ["arrival", 800], ["lottery-flip", 1600], ["lottery-settle", 400], ["pickup", 500],
+    ] as const) {
+      expect(harness.moments.revealStage).toBe(stage);
+      act(() => vi.advanceTimersByTime(duration - 1));
+      expect(harness.moments.revealStage).toBe(stage);
+      act(() => vi.advanceTimersByTime(1));
+    }
+    expect(harness.moments.revealStage).toBe("done");
+    harness.update({ gameTurn: 1, observation: INITIAL_OBSERVATION });
+    act(() => harness.moments.begin());
+    expect(harness.moments.attempt?.policy).toMatchObject({ speedId: "fast", level: "all",
+      timing: { stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
+        lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333, flashMs: 533 } });
+    expect(captured.timing.stepMs).toBe(450);
     harness.mount.cleanup();
   });
 
@@ -277,7 +350,8 @@ describe("useTurnMoments", () => {
     expect(finishAnimation).toHaveBeenCalledWith(MOVE);
     expect(request).toHaveBeenCalledTimes(0);
     expect(vi.getTimerCount()).toBe(0);
-    render({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    render({ latestRecord: RECORD,
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
     expect(commits.at(-1)?.revealStage).toBe("done");
     expect(commits.at(-1)?.reveal.ready).toBe(true);
     mount.cleanup();
@@ -373,16 +447,16 @@ describe("useTurnMoments", () => {
     vi.useFakeTimers();
     const harness = mountHarness(options({
       revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 0, pendingDecisionTurn: null, movementComplete: true },
-      revealStages: [{ key: "arrival", durationMs: 800 }],
+      latestRecord: RECORD,
     }));
     // Existing records are treated as restored on the first observation.
     expect(harness.moments.revealStage).toBe("done");
     harness.update({ revealObservation: { sessionId: 7, recordTurn: 2, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true },
-      revealStages: [{ key: "arrival", durationMs: 800 }] });
+      latestRecord: { ...RECORD, turn: 2 } });
     expect(harness.moments.revealStage).toBe("arrival");
     expect(vi.getTimerCount()).toBe(1);
     act(() => vi.advanceTimersByTime(200));
-    harness.update({ revealStages: [{ key: "arrival", durationMs: 100 }] });
+    harness.update({ speedId: "fast", latestRecord: { ...REVEAL_RECORD, turn: 2 } });
     expect(vi.getTimerCount()).toBe(1);
     act(() => vi.advanceTimersByTime(600));
     expect(harness.moments.revealStage).toBe("done");
@@ -395,12 +469,114 @@ describe("useTurnMoments", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 
+  it("waits for accepted facts before freezing once from the effective observed attempt", () => {
+    vi.useFakeTimers();
+    const build = vi.spyOn(turnMomentPlanning, "buildTurnRevealStages");
+    const harness = mountHarness();
+    act(() => harness.moments.begin());
+    const captured = harness.moments.attempt!.policy;
+    const revealObservation = { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: false };
+    harness.update({ speedId: "fast", latestRecord: null, revealObservation });
+    expect(build).not.toHaveBeenCalled();
+    harness.update({ latestRecord: REVEAL_RECORD });
+    expect(harness.moments.attempt?.recordAccepted).toBe(false);
+    expect(build).not.toHaveBeenCalled();
+    harness.update({ observation: { ...acceptedRecordObservation(), record: REVEAL_RECORD,
+      movementEvents: [{ type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1,
+        segmentId: "new-segment", fromStationId: "shimbashi", toStationId: "yoyogi", newlyCompleted: true }] } });
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(build).toHaveBeenLastCalledWith(expect.objectContaining({ record: REVEAL_RECORD,
+      newlyCompletedTargetSegmentIds: ["new-segment"] }), captured);
+    expect(harness.moments.revealTiming).toBe(captured.timing);
+    expect(harness.moments.revealStage).toBe("waiting");
+    harness.update({ latestRecord: RECORD, speedId: "slow", revealObservation: { ...revealObservation, movementComplete: true } });
+    expect(build).toHaveBeenCalledTimes(1);
+    for (const [stage, duration] of [["arrival", 800], ["lottery-flip", 1600], ["lottery-settle", 400], ["pickup", 500]] as const) {
+      expect(harness.moments.revealStage).toBe(stage);
+      act(() => vi.advanceTimersByTime(duration));
+    }
+    expect(harness.moments.revealStage).toBe("done");
+    harness.mount.cleanup();
+  });
+
+  it("captures a new unmatched record's fallback once instead of the previous attempt's policy", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness();
+    act(() => harness.moments.begin());
+    harness.update({ reducedMotion: true, observation: acceptedRecordObservation(),
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    act(() => harness.moments.skip());
+    harness.update({ speedId: "fast", reducedMotion: false, latestRecord: { ...REVEAL_RECORD, turn: 2 },
+      revealObservation: { sessionId: 7, recordTurn: 2, gameTurn: 2, pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.revealTiming).toMatchObject({ arrivalMs: 533, lotteryFlipMs: 1067, pickupMs: 333 });
+    expect(harness.moments.revealStage).toBe("arrival");
+    expect(harness.moments.restoredOrOmitted).toBe(false);
+    const timing = harness.moments.revealTiming;
+    act(() => vi.advanceTimersByTime(200));
+    harness.update({ speedId: "slow", latestRecord: { ...RECORD, turn: 2 } });
+    expect(harness.moments.revealTiming).toBe(timing);
+    act(() => vi.advanceTimersByTime(333));
+    expect(harness.moments.revealStage).toBe("lottery-flip");
+    harness.mount.cleanup();
+  });
+
+  it("replaces session ownership even for the same turn after Skip and sticky OS omission", () => {
+    vi.useFakeTimers();
+    const build = vi.spyOn(turnMomentPlanning, "buildTurnRevealStages");
+    const harness = mountHarness();
+    act(() => harness.moments.begin());
+    harness.update({ reducedMotion: true, observation: { ...acceptedRecordObservation(),
+      movementEvents: [{ type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1,
+        segmentId: "old-segment", fromStationId: "shimbashi", toStationId: "yoyogi", newlyCompleted: true }] },
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    act(() => harness.moments.skip());
+    harness.update({ sessionId: 8, gameTurn: 0, speedId: "fast", reducedMotion: false, observation: INITIAL_OBSERVATION,
+      revealObservation: { sessionId: 8, recordTurn: null, gameTurn: 0, pendingDecisionTurn: null, movementComplete: false } });
+    harness.update({ revealObservation: { sessionId: 8, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.attempt).toBeNull();
+    expect(harness.moments.restoredOrOmitted).toBe(false);
+    expect(harness.moments.attemptMotionReduced).toBe(false);
+    expect(harness.moments.revealTiming.arrivalMs).toBe(533);
+    expect(build).toHaveBeenLastCalledWith(expect.objectContaining({ newlyCompletedTargetSegmentIds: [] }),
+      expect.objectContaining({ speedId: "fast" }));
+    expect(harness.moments.revealStage).toBe("arrival");
+    act(() => vi.advanceTimersByTime(533));
+    expect(harness.moments.revealStage).toBe("done");
+    harness.mount.cleanup();
+  });
+
+  it("keeps a record's OS omission sticky when its plan was not eligible yet", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness();
+    const revealObservation = { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: false };
+    harness.update({ reducedMotion: true, latestRecord: null, revealObservation });
+    harness.update({ reducedMotion: false, latestRecord: RECORD,
+      revealObservation: { ...revealObservation, movementComplete: true } });
+    expect(harness.moments.restoredOrOmitted).toBe(true);
+    expect(harness.moments.revealStage).toBe("done");
+    expect(harness.moments.reveal.ready).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it.each(["restored", "boundary seam"] as const)("suppresses real stages for %s", (reason) => {
+    vi.useFakeTimers();
+    const harness = mountHarness();
+    harness.update({ restoredRecord: reason === "restored", suppressRevealStages: reason === "boundary seam",
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.revealStage).toBe("done");
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
   it("keeps callback identities stable while options change", () => {
     vi.useFakeTimers();
     const harness = mountHarness();
     const begin = harness.moments.begin;
     const skip = harness.moments.skip;
-    harness.update({ stepMs: 300 });
+    harness.update({ speedId: "fast" });
     expect(harness.moments.begin).toBe(begin);
     expect(harness.moments.skip).toBe(skip);
     harness.mount.cleanup();
@@ -411,9 +587,11 @@ it.each(["arrival", "lottery-flip", "lottery-settle", "pickup"] as const)(
   "replacing the session during %s clears the complete reveal chain without a stale commit", (stage) => {
     vi.useFakeTimers();
     const stages = ["arrival", "lottery-flip", "lottery-settle", "pickup"] as const;
-    const harness = mountHarness(options({ revealStages: stages.map((key) => ({ key, durationMs: 100 })) }));
-    harness.update({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
-    for (let index: number = 0; index < stages.indexOf(stage); index += 1) act(() => vi.advanceTimersByTime(100));
+    const harness = mountHarness();
+    harness.update({ latestRecord: REVEAL_RECORD,
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    const durations = [800, 1600, 400, 500];
+    for (const duration of durations.slice(0, stages.indexOf(stage))) act(() => vi.advanceTimersByTime(duration));
     expect(harness.moments.revealStage).toBe(stage);
     expect(vi.getTimerCount()).toBe(1);
     harness.update({ sessionId: 8, revealObservation: { sessionId: 8, recordTurn: null, gameTurn: 0, pendingDecisionTurn: null, movementComplete: false } });
@@ -426,3 +604,168 @@ it.each(["arrival", "lottery-flip", "lottery-settle", "pickup"] as const)(
     expect(vi.getTimerCount()).toBe(0);
   },
 );
+
+
+describe("card-less flash lifecycle", () => {
+  function mountCardlessFlash() {
+    vi.useFakeTimers();
+    const normal = turnMomentPolicy.captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+    vi.spyOn(turnMomentPolicy, "captureTurnPresentationPolicy").mockReturnValue({ ...normal, showArrival: false,
+      timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } });
+    const segmentId = "jr-yamanote:shimbashi:hamamatsucho";
+    const harness = mountHarness(options({ segmentFlashGeometry: {
+      segmentsById: NETWORK.segmentsById, targetSegmentIds: [segmentId],
+    } }));
+    act(() => harness.moments.begin());
+    harness.update({ observation: { ...acceptedRecordObservation(), movementEvents: [
+      { type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1, segmentId,
+        fromStationId: "shimbashi", toStationId: "hamamatsucho", newlyCompleted: true },
+    ] }, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: false } });
+    act(() => vi.advanceTimersByTime(600));
+    expect(harness.moments.revealStage).toBe("waiting");
+    harness.update({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    return harness;
+  }
+
+  it.each(["missing geometry", "unmapped segment", "off-target segment", "no new segments"] as const)(
+    "omits the standalone wait for %s", (reason) => {
+      vi.useFakeTimers();
+      const normal = turnMomentPolicy.captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+      vi.spyOn(turnMomentPolicy, "captureTurnPresentationPolicy").mockReturnValue({ ...normal, showArrival: false,
+        timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } });
+      const segmentId = "jr-yamanote:shimbashi:hamamatsucho";
+      const harness = mountHarness(options({ segmentFlashGeometry: reason === "missing geometry" ? undefined : {
+        segmentsById: reason === "unmapped segment" ? new Map() : NETWORK.segmentsById,
+        targetSegmentIds: reason === "off-target segment" ? [] : [segmentId],
+      } }));
+      act(() => harness.moments.begin());
+      harness.update({ observation: { ...acceptedRecordObservation(), movementEvents: reason === "no new segments" ? [] : [
+        { type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1, segmentId,
+          fromStationId: "shimbashi", toStationId: "hamamatsucho", newlyCompleted: true },
+      ] }, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+        pendingDecisionTurn: null, movementComplete: true } });
+      act(() => vi.advanceTimersByTime(600));
+      expect(harness.moments.revealStage).toBe("done");
+      expect(harness.moments.reveal.ready).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+      harness.mount.cleanup();
+    },
+  );
+
+  it("holds the flash for its whole captured duration without committing any arrival frame", () => {
+    const harness = mountCardlessFlash();
+    expect(harness.moments.revealStage).toBe("segment-flash");
+    expect(harness.moments.reveal.ready).toBe(false);
+    act(() => vi.advanceTimersByTime(179));
+    harness.update({ speedId: "fast", observation: acceptedRecordObservation() });
+    expect(harness.moments.revealStage).toBe("segment-flash");
+    expect(harness.moments.attempt?.newlyCompletedTargetSegmentIds).toEqual(["jr-yamanote:shimbashi:hamamatsucho"]);
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.revealStage).toBe("done");
+    expect(harness.moments.reveal.ready).toBe(true);
+    expect(harness.commits.some(({ revealStage }) => revealStage === "arrival")).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it.each(["skip", "replacement", "OS reduction"] as const)("clears the flash on %s without stale timers or replay", (reason) => {
+    const harness = mountCardlessFlash();
+    expect(harness.moments.revealStage).toBe("segment-flash");
+    act(() => vi.advanceTimersByTime(90));
+    if (reason === "skip") act(() => harness.moments.skip());
+    else if (reason === "OS reduction") harness.update({ reducedMotion: true });
+    else harness.update({ sessionId: 8, observation: INITIAL_OBSERVATION,
+      revealObservation: { sessionId: 8, recordTurn: null, gameTurn: 0,
+        pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.revealStage).toBe("done");
+    expect(vi.getTimerCount()).toBe(0);
+    if (reason === "OS reduction") harness.update({ reducedMotion: false });
+    act(() => vi.advanceTimersByTime(180));
+    expect(harness.moments.revealStage).toBe("done");
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+});
+
+describe.each(["important", "none"] as const)("%s captured coordination", (presentationLevel) => {
+  it("publishes an uneventful turn only when movement ends and captures changes for the next roll", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness(options({ presentationLevel, speedId: "very-fast" }));
+    act(() => harness.moments.begin());
+    const policy = harness.moments.attempt!.policy;
+    harness.update({ presentationLevel: "all", speedId: "slow", observation: acceptedRecordObservation(),
+      latestRecord: RECORD, animation: { ...MOVE, turn: 0 },
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 0, pendingDecisionTurn: 1,
+        pendingDecisionKind: "discard", movementComplete: false } });
+    expect(harness.moments.attempt?.policy).toBe(policy);
+    expect(policy.level).toBe(presentationLevel);
+    expect(policy.timing.stepMs).toBe(120);
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    expect(harness.moments.restoredOrOmitted).toBe(false);
+    expect(harness.moments.attemptMotionReduced).toBe(false);
+    expect(harness.moments.reveal.ready).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    harness.update({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.reveal.ready).toBe(true);
+    harness.update({ gameTurn: 1, observation: INITIAL_OBSERVATION });
+    act(() => harness.moments.begin());
+    expect(harness.moments.attempt?.policy).toMatchObject({ level: "all", speedId: "slow" });
+    harness.mount.cleanup();
+  });
+
+  it("restores pending adjustment without tumble, then runs only the captured later stages", () => {
+    vi.useFakeTimers();
+    const decision: NonNullable<ItemSessionView["decision"]> = { kind: "adjust", turn: 1, rawRoll: 4,
+      resolvedRide: RECORD.resolvedRide, allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true };
+    const segmentId = "jr-yamanote:shimbashi:hamamatsucho";
+    const harness = mountHarness(options({ presentationLevel, observation: { ...INITIAL_OBSERVATION, decision },
+      segmentFlashGeometry: { segmentsById: NETWORK.segmentsById, targetSegmentIds: [segmentId] } }));
+    act(() => harness.moments.begin("restored-roll"));
+    expect(harness.moments.attempt?.stage).toBe("awaiting-adjust");
+    expect(vi.getTimerCount()).toBe(0);
+    harness.update({ latestRecord: REVEAL_RECORD, observation: { ...acceptedRecordObservation(), record: REVEAL_RECORD,
+      movementEvents: [{ type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1, segmentId,
+        fromStationId: "shimbashi", toStationId: "hamamatsucho", newlyCompleted: true }] },
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    expect(harness.moments.restoredOrOmitted).toBe(false);
+    if (presentationLevel === "important") {
+      for (const [stage, duration] of [["segment-flash", 800], ["lottery-flip", 1600], ["lottery-settle", 400], ["pickup", 500]] as const) {
+        expect(harness.moments.revealStage).toBe(stage);
+        act(() => vi.advanceTimersByTime(duration));
+      }
+    }
+    expect(harness.moments.revealStage).toBe("done");
+    expect(harness.commits.some(({ attempt }) => attempt?.stage === "tumble" || attempt?.stage === "stamps")).toBe(false);
+    harness.mount.cleanup();
+  });
+
+  it.each(["Skip", "OS override"] as const)("keeps %s authoritative", (reason) => {
+    vi.useFakeTimers();
+    const harness = mountHarness(options({ presentationLevel }));
+    act(() => harness.moments.begin());
+    harness.update({ latestRecord: REVEAL_RECORD, observation: { ...acceptedRecordObservation(), record: REVEAL_RECORD },
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: false } });
+    if (reason === "Skip") act(() => harness.moments.skip());
+    else harness.update({ reducedMotion: true });
+    harness.update({ reducedMotion: false, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.revealStage).toBe("done");
+    expect(harness.moments.attempt?.motionOmitted).toBe(true);
+    expect(harness.moments.attemptMotionReduced).toBe(reason === "OS override");
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+});
+
+it.each(["important", "none"] as const)("leaves classic mode unchanged under %s", (presentationLevel) => {
+  const harness = mountHarness(options({ presentationLevel, origin: null }));
+  act(() => harness.moments.begin());
+  expect(harness.moments.attempt).toBeNull();
+  expect(harness.moments.movementStartAllowed).toBe(true);
+  expect(harness.moments.attemptMotionReduced).toBe(false);
+  harness.mount.cleanup();
+});

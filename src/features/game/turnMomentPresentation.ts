@@ -3,7 +3,7 @@ import type { RailwayNetwork } from "./engine";
 import { platformPosition, targetSegmentIds } from "./engine";
 import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
-import type { TurnRevealStageKey, RollAttempt } from "./animation/turnMoments";
+import { segmentFlashFeatureIds, type TurnRevealStageKey, type RollAttempt } from "./animation/turnMoments";
 import type { GameSession, LastMove } from "./gameSession";
 import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel } from "./hudPresentation";
 import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, stationName, turnMomentAnnouncement } from "./presentation";
@@ -12,7 +12,7 @@ import type { ItemSessionView } from "./itemSession";
 import { turnToasts, type ToastInput } from "./toastQueue";
 import { maskTurnMomentItemView } from "./turnMomentItems";
 
-export type TurnPublicationPhase = "pre-move" | "moving" | "arrival" | "lottery-flip" | "lottery-settle" | "pickup" | "published";
+export type TurnPublicationPhase = "pre-move" | "moving" | TurnRevealStageKey | "published";
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
 export type TurnRevealState = TurnRevealStageKey | "waiting" | "done";
 
@@ -61,7 +61,7 @@ export interface TurnMomentDisplay {
   canRoll: boolean;
   canSkip: boolean;
   itemUseLocked: boolean;
-  /** Map flash of the segments this arrival newly completed; non-null only while `arrival` is presented. */
+  /** Map flash of the segments this arrival newly completed; non-null during `arrival` or `segment-flash`. */
   segmentFlash: SegmentFlashRequest | null;
 }
 
@@ -71,6 +71,7 @@ function publicationPhase(input: TurnMomentDisplayInput): TurnPublicationPhase {
   if (input.restoredOrOmitted) return "published";
   if (input.attempt && PRE_MOVE_STAGES.has(input.attempt.stage)) return "pre-move";
   if (input.session.phase === "animating") return "moving";
+  if (input.revealStage === "segment-flash") return "segment-flash";
   if (input.revealStage === "lottery-flip") return "lottery-flip";
   if (input.revealStage === "lottery-settle") return "lottery-settle";
   if (input.revealStage === "pickup" && hasPickup(input.session.lastMove)) return "pickup";
@@ -215,7 +216,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
       // physical hops, unused pips or landing of the committed record.
       : liveView && phase === "moving" && attempt && current ? movementAnnouncement(current)
       // The goal banner announces the arrival only: ClearScreen owns the goal announcement once it replaces the panel.
-      : liveView && phase === "arrival" && goal && current
+      : liveView && (phase === "arrival" || phase === "segment-flash") && goal && current
         ? goalArrivalAnnouncement(current.itemRecord?.turn ?? input.session.game.turn, current, completedCount, requiredCount, input.network, input.presentation)
       // Attempt-less item mode, or an attempt whose moments are omitted (reduced motion, Skip, restored roll,
       // deadhead), is exactly P1 when no reveal runs: the real session phase decides the copy.
@@ -226,7 +227,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const clearAnnouncement = showClear && liveView
     ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation, false) : "";
   const canSkip = input.session.phase === "animating" || (active && (preMoveActive || revealActive));
-  const segmentFlash = arrivalSegmentFlash(input, phase, record, targetIds);
+  const segmentFlash = turnSegmentFlash(input, phase, record, targetIds);
 
   return {
     phase,
@@ -258,27 +259,20 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   };
 }
 
-/**
- * The presented arrival's flash: the target segments its own accepted record newly completed, captured from the
- * movement events by the attempt (never a diff of displayed progress, which also changes on hops, Skip, resume and
- * session replacement), for the attempt's captured arrival duration. Null outside a presented `arrival` stage,
- * for restored, omitted (reduced motion, Skip, deadhead) and classic results, and when nothing new was completed.
- */
-function arrivalSegmentFlash(
+/** The accepted new target features stay requested for the entire arrival or standalone flash stage. */
+function turnSegmentFlash(
   input: TurnMomentDisplayInput,
   phase: TurnPublicationPhase,
   record: LastMove["itemRecord"] | null,
   targetIds: readonly string[],
 ): SegmentFlashRequest | null {
   const { attempt, revealKey } = input;
-  if (phase !== "arrival" || input.revealStage !== "arrival" || !revealKey) return null;
-  if (!attempt || attempt.motionOmitted || attempt.skipRequested || !record || record.turn !== attempt.recordTurn) return null;
-  const required = new Set(targetIds);
-  const featureIds = [...new Set(attempt.newlyCompletedTargetSegmentIds
-    .filter((id) => required.has(id))
-    .flatMap((id) => input.network.segmentsById.get(id)?.geometryFeatureIds ?? []))];
+  if ((phase !== "arrival" && phase !== "segment-flash") || input.revealStage !== phase || !revealKey) return null;
+  if (!attempt || attempt.sessionId !== input.session.sessionId || attempt.motionOmitted || attempt.skipRequested ||
+    !attempt.policy.showImportantMoments || !record || record.turn !== attempt.recordTurn) return null;
+  const featureIds = segmentFlashFeatureIds(input.network, targetIds, attempt.newlyCompletedTargetSegmentIds);
   if (featureIds.length === 0) return null;
-  return { key: revealKey, featureIds, durationMs: attempt.timing.arrivalMs };
+  return { key: revealKey, featureIds, durationMs: attempt.policy.timing.flashMs };
 }
 
 const MOVING_ANNOUNCEMENT = "移動中です。スキップできます。";
@@ -318,7 +312,7 @@ function getAnnouncementStage(
   if (input.attempt?.stage === "waiting-record" || input.session.phase === "committing" || input.session.phase === "resolving") return "waiting-record";
   if (input.attempt?.stage === "stamps") return "stamps";
   if (phase === "moving") return "movement";
-  if (input.revealStage === "arrival" || input.revealStage === "waiting") return "arrival";
+  if (input.revealStage === "arrival" || input.revealStage === "segment-flash" || input.revealStage === "waiting") return "arrival";
   if (input.revealStage === "lottery-flip") return "lottery-flip";
   if (input.revealStage === "lottery-settle") return "lottery-settle";
   if (input.revealStage === "pickup") return "pickup";

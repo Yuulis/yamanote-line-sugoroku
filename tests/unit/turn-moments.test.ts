@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ANIMATION_SPEEDS } from "../../src/features/game/gameConfig";
+import { captureTurnPresentationPolicy, turnMomentTiming } from "../../src/features/game/animation/turnMomentPolicy";
 import {
   buildTurnRevealStages,
   INITIAL_TURN_MOMENTS_STATE,
   observeTurnFacts,
-  turnMomentTiming,
+  segmentFlashFeatureIds,
   turnMomentsReducer,
   type TurnMomentObservation,
   type TurnMomentsAction,
@@ -13,9 +13,10 @@ import {
 } from "../../src/features/game/animation/turnMoments";
 import type { ItemSessionView } from "../../src/features/game/itemSession";
 import type { ItemDeadheadRecord, ItemEvent, ItemRideRecord } from "../../src/types/network";
+import { buildRailwayNetwork } from "../../src/features/game/engine";
+import { inputWithShuttle, SEGMENT_IDS } from "./fixtures/yamanote";
 import type { MoveEvent } from "../../src/features/game/engine";
 
-const NORMAL_STEP_MS = ANIMATION_SPEEDS.find((speed) => speed.id === "normal")!.stepMs;
 const VIEW = {
   phase: "idle", identity: { sessionId: 7, turn: 0, decisionRevision: 3 }, inventory: [],
   position: { currentStationId: "shimbashi", currentServiceId: "jr-yamanote", direction: 1 },
@@ -57,7 +58,7 @@ function deadhead(): ItemDeadheadRecord {
 function start(state: TurnMomentsState = INITIAL_TURN_MOMENTS_STATE,
   changes: Partial<Extract<TurnMomentsAction, { type: "begin" }>> = {}): TurnMomentsState {
   return turnMomentsReducer(state, { type: "begin", sessionId: 7, turn: 0, decisionRevision: 3,
-    origin: ORIGIN, timing: turnMomentTiming(NORMAL_STEP_MS), ...changes });
+    origin: ORIGIN, policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" }), ...changes });
 }
 
 function observe(state: TurnMomentsState, changes: Partial<TurnMomentObservation> = {}, sessionId = 7): TurnMomentsState {
@@ -75,12 +76,15 @@ const SEGMENT_EVENT: MoveEvent = { type: "segment-traversed", step: 1, serviceId
 const PICKUP: ItemEvent[] = [{ type: "pickup-retained", item: { id: "double-b", kind: "double" } } as ItemEvent];
 
 describe("turnMomentTiming", () => {
-  it.each(ANIMATION_SPEEDS.map(({ id, stepMs }) => [id, stepMs] as const))("scales all moments at %s", (_id, stepMs) => {
-    const factor = stepMs / NORMAL_STEP_MS;
-    expect(turnMomentTiming(stepMs)).toEqual({ stepMs,
-      tumbleMs: Math.round(600 * factor), stampsMs: Math.round(240 * factor), arrivalMs: Math.round(800 * factor),
-      lotteryFlipMs: Math.round(1600 * factor), lotterySettleMs: Math.round(400 * factor), pickupMs: Math.round(500 * factor),
-    });
+  it.each([
+    ["slow", { stepMs: 600, tumbleMs: 800, stampsMs: 320, arrivalMs: 1067,
+      lotteryFlipMs: 2133, lotterySettleMs: 533, pickupMs: 667, flashMs: 1067 }],
+    ["normal", { stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800,
+      lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500, flashMs: 800 }],
+    ["fast", { stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
+      lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333, flashMs: 533 }],
+  ] as const)("preserves all legacy moments at %s", (speedId, expected) => {
+    expect(turnMomentTiming(speedId)).toEqual(expected);
   });
 });
 
@@ -243,7 +247,7 @@ describe("turnMomentsReducer", () => {
 });
 
 describe("buildTurnRevealStages (arrival, conditional lottery and pickup)", () => {
-  const NORMAL = turnMomentTiming(NORMAL_STEP_MS);
+  const NORMAL = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
   const ARRIVAL = [{ key: "arrival", durationMs: 800 }];
 
   it.each([
@@ -258,24 +262,30 @@ describe("buildTurnRevealStages (arrival, conditional lottery and pickup)", () =
     ["a harmful drop", ride({ itemEvents: [{ type: "harmful-scheduled", item: "delay", effect: "delay", dueTurn: 3 }] }), ARRIVAL],
     ["a certificate cancellation", ride({ itemEvents: [{ type: "cancelled-by-certificate", item: "oversleep", certificate: { id: "cert", kind: "delay-certificate" } }] }), ARRIVAL],
   ] as const)("builds the expected stages for %s", (_label, record, expected) => {
-    expect(buildTurnRevealStages({ record, restored: false, omitted: false }, NORMAL)).toEqual(expected);
+    expect(buildTurnRevealStages({ record, restored: false,
+      hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: record.traversedSegmentIds, omitted: false }, NORMAL)).toEqual(expected);
   });
 
   it.each([
-    ["classic mode (no item record)", { record: null, restored: false, omitted: false }],
-    ["a restored record", { record: ride(), restored: true, omitted: false }],
-    ["reduced motion", { record: ride(), restored: false, omitted: true }],
-    ["a restored deadhead under reduced motion", { record: deadhead(), restored: true, omitted: true }],
+    ["classic mode (no item record)", { record: null, restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }],
+    ["a restored record", { record: ride(), restored: true, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }],
+    ["reduced motion", { record: ride(), restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: true }],
+    ["a restored deadhead under reduced motion", { record: deadhead(), restored: true, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: true }],
   ] as const)("builds no stage for %s", (_label, facts) => {
     expect(buildTurnRevealStages(facts, NORMAL)).toEqual([]);
   });
 
+  it("does not construct an arrival stage when the timing has no arrival card", () => {
+    expect(buildTurnRevealStages({ record: ride(), restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false },
+      { ...NORMAL, timing: { ...NORMAL.timing, arrivalMs: null } })).toEqual([]);
+  });
+
   it.each([
-    ["slow", 600, 1_067],
-    ["normal", 450, 800],
-    ["fast", 300, 533],
-  ] as const)("takes the arrival duration from the captured %s timing", (_label, stepMs, arrivalMs) => {
-    expect(buildTurnRevealStages({ record: ride(), restored: false, omitted: false }, turnMomentTiming(stepMs)))
+    ["slow", 1_067],
+    ["normal", 800],
+    ["fast", 533],
+  ] as const)("takes the arrival duration from the captured %s timing", (speedId, arrivalMs) => {
+    expect(buildTurnRevealStages({ record: ride(), restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }, captureTurnPresentationPolicy({ speedId, presentationLevel: "all" })))
       .toEqual([{ key: "arrival", durationMs: arrivalMs }]);
   });
 });
@@ -284,29 +294,31 @@ describe("buildTurnRevealStages (arrival, conditional lottery and pickup)", () =
 describe("S14-S15 lottery and pickup stage planning", () => {
   it.each([false, true])("plans only actual draws, with serviceDraw=%s", (serviceDraw) => {
     for (const directionDraw of [false, true]) {
-      for (const stepMs of [300, 450, 600]) {
-        const timing = turnMomentTiming(stepMs);
+      for (const [speedId, arrivalMs, flipMs, settleMs, pickupMs] of [
+        ["fast", 533, 1067, 267, 333], ["normal", 800, 1600, 400, 500], ["slow", 1067, 2133, 533, 667],
+      ] as const) {
+        const policy = captureTurnPresentationPolicy({ speedId, presentationLevel: "all" });
         const selected = { serviceId: "jr-yamanote", weight: 1, directions: directionDraw ? [1, -1] as const : [1] as const, directionWeights: [1] };
         const record = ride({ landing: { serviceId: "jr-yamanote", direction: 1 }, landingSnapshot: {
           stationId: "yoyogi", services: serviceDraw ? [selected, { ...selected, serviceId: "fixture-south" }] : [selected],
           suspensionIgnored: false, detourConsumed: false,
         } });
-        const stages = buildTurnRevealStages({ record, restored: false, omitted: false }, timing);
+        const stages = buildTurnRevealStages({ record, restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }, policy);
         const pickedUp = record.itemEvents.some((event) => event.type === "pickup-retained" || event.type === "pickup-pending-discard");
-        expect(stages).toEqual([{ key: "arrival", durationMs: timing.arrivalMs }, ...(serviceDraw || directionDraw ? [
-          { key: "lottery-flip", durationMs: Math.round(1600 * stepMs / 450) },
-          { key: "lottery-settle", durationMs: Math.round(400 * stepMs / 450) },
-        ] : []), ...(pickedUp ? [{ key: "pickup", durationMs: Math.round(500 * stepMs / 450) }] : [])]);
-        expect(buildTurnRevealStages({ record: { ...record, stopReason: "goal" }, restored: false, omitted: false }, timing))
-          .toEqual([{ key: "arrival", durationMs: timing.arrivalMs }]);
-        expect(buildTurnRevealStages({ record, restored: true, omitted: false }, timing)).toEqual([]);
-        expect(buildTurnRevealStages({ record, restored: false, omitted: true }, timing)).toEqual([]);
+        expect(stages).toEqual([{ key: "arrival", durationMs: arrivalMs }, ...(serviceDraw || directionDraw ? [
+          { key: "lottery-flip", durationMs: flipMs },
+          { key: "lottery-settle", durationMs: settleMs },
+        ] : []), ...(pickedUp ? [{ key: "pickup", durationMs: pickupMs }] : [])]);
+        expect(buildTurnRevealStages({ record: { ...record, stopReason: "goal" }, restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }, policy))
+          .toEqual([{ key: "arrival", durationMs: arrivalMs }]);
+        expect(buildTurnRevealStages({ record, restored: true, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }, policy)).toEqual([]);
+        expect(buildTurnRevealStages({ record, restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: true }, policy)).toEqual([]);
       }
     }
   });
 
-  it.each([300, 450, 600])("appends pickup after a lottery at captured stepMs=%i", (stepMs) => {
-    const timing = turnMomentTiming(stepMs);
+  it.each(["fast", "normal", "slow"] as const)("appends pickup after a lottery at captured speed=%s", (speedId) => {
+    const policy = captureTurnPresentationPolicy({ speedId, presentationLevel: "all" });
     const pickupRecord = ride({
       itemEvents: PICKUP,
       landing: { serviceId: "jr-yamanote", direction: 1 },
@@ -315,9 +327,123 @@ describe("S14-S15 lottery and pickup stage planning", () => {
         { serviceId: "fixture-south", weight: 1, directions: [1], directionWeights: [1] },
       ], suspensionIgnored: false, detourConsumed: false },
     });
-    expect(buildTurnRevealStages({ record: pickupRecord, restored: false, omitted: false }, timing).map(({ key }) => key))
+    expect(buildTurnRevealStages({ record: pickupRecord, restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }, policy).map(({ key }) => key))
       .toEqual(["arrival", "lottery-flip", "lottery-settle", "pickup"]);
-    expect(buildTurnRevealStages({ record: pickupRecord, restored: true, omitted: false }, timing)).toEqual([]);
-    expect(buildTurnRevealStages({ record: pickupRecord, restored: false, omitted: true }, timing)).toEqual([]);
+    expect(buildTurnRevealStages({ record: pickupRecord, restored: true, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: false }, policy)).toEqual([]);
+    expect(buildTurnRevealStages({ record: pickupRecord, restored: false, hasRenderableNewTargetSegments: false, newlyCompletedTargetSegmentIds: [], omitted: true }, policy)).toEqual([]);
   });
+});
+
+
+describe("card-less segment flash planning", () => {
+  const network = buildRailwayNetwork(inputWithShuttle());
+  const normal = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+  const cardless = { ...normal, showArrival: false, timing: { ...normal.timing, flashMs: 180 } };
+  const facts = { record: ride(), restored: false, omitted: false,
+    newlyCompletedTargetSegmentIds: [SEGMENT_IDS[0]!], hasRenderableNewTargetSegments: true };
+
+  it("selects only new target segments with geometry and deduplicates feature ids", () => {
+    const targetIds = SEGMENT_IDS;
+    expect(segmentFlashFeatureIds(network, targetIds,
+      [SEGMENT_IDS[0]!, SEGMENT_IDS[0]!, "test-shuttle:shimbashi:test-a", "unknown"]))
+      .toEqual([SEGMENT_IDS[0]!]);
+    const withoutGeometry = { ...network, segmentsById: new Map() };
+    expect(segmentFlashFeatureIds(withoutGeometry, targetIds, [SEGMENT_IDS[0]!])).toEqual([]);
+    expect(segmentFlashFeatureIds(network, targetIds, [])).toEqual([]);
+  });
+
+  it("uses the captured flash duration when arrival is disabled", () => {
+    expect(buildTurnRevealStages(facts, cardless)).toEqual([{ key: "segment-flash", durationMs: 180 }]);
+    expect(buildTurnRevealStages(facts, { ...cardless, timing: { ...cardless.timing, arrivalMs: null } }))
+      .toEqual([{ key: "segment-flash", durationMs: 180 }]);
+  });
+
+  it.each([
+    { name: "no new segments", ...facts, newlyCompletedTargetSegmentIds: [] },
+    { name: "no renderable segments", ...facts, hasRenderableNewTargetSegments: false },
+    { name: "restored record", ...facts, restored: true },
+    { name: "omitted record", ...facts, omitted: true },
+  ])("does not add a flash stage for $name", (input) => {
+    expect(buildTurnRevealStages(input, cardless)).toEqual([]);
+  });
+
+  it("keeps the concurrent arrival flash without an additional stage", () => {
+    expect(buildTurnRevealStages(facts, normal)).toEqual([{ key: "arrival", durationMs: 800 }]);
+    expect(buildTurnRevealStages(facts, { ...cardless, showImportantMoments: false })).toEqual([]);
+  });
+
+  it("places flash before lottery and pickup, and keeps a goal flash", () => {
+    const record = ride({ itemEvents: PICKUP, landing: { serviceId: "jr-yamanote", direction: 1 },
+      landingSnapshot: { stationId: "yoyogi", services: [
+        { serviceId: "jr-yamanote", weight: 1, directions: [1, -1], directionWeights: [1, 1] },
+      ], suspensionIgnored: false, detourConsumed: false } });
+    expect(buildTurnRevealStages({ ...facts, record }, cardless).map(({ key }) => key))
+      .toEqual(["segment-flash", "lottery-flip", "lottery-settle", "pickup"]);
+    expect(buildTurnRevealStages({ ...facts, record: ride({ stopReason: "goal" }) }, cardless))
+      .toEqual([{ key: "segment-flash", durationMs: 180 }]);
+  });
+});
+
+
+describe("very-fast reveal planning", () => {
+  const policy = captureTurnPresentationPolicy({ speedId: "very-fast", presentationLevel: "all" });
+  const facts = { record: ride(), restored: false, omitted: false,
+    newlyCompletedTargetSegmentIds: [SEGMENT_IDS[0]!], hasRenderableNewTargetSegments: true };
+
+  it("omits arrival and retains the standalone new-segment flash at 180 ms", () => {
+    expect(buildTurnRevealStages(facts, policy)).toEqual([{ key: "segment-flash", durationMs: 180 }]);
+  });
+
+  it.each([
+    { ...facts, newlyCompletedTargetSegmentIds: [] },
+    { ...facts, hasRenderableNewTargetSegments: false },
+  ])("adds no flash delay without renderable new segments (%j)", (input) => {
+    expect(buildTurnRevealStages(input, policy)).toEqual([]);
+  });
+});
+
+describe.each(["important", "none"] as const)("%s pre-move scheduling", (presentationLevel) => {
+  const policy = captureTurnPresentationPolicy({ speedId: "very-fast", presentationLevel });
+  it.each(["click", "restored-roll"] as const)("keeps %s adjustment usable without hidden timers or motion omission", (source) => {
+    const begun = start(undefined, { policy, source });
+    expect(begun.attempt?.tumbleCompleted).toBe(true);
+    expect(begun.attempt?.motionOmitted).toBe(false);
+    const pending = observe(begun, { decision: DECISION });
+    expect(pending.attempt?.stage).toBe("awaiting-adjust");
+    expect(pending.attempt?.recordAccepted).toBe(false);
+    expect(observe(pending)).toBe(pending);
+    const accepted = observe(pending, { record: ride({ adjustment: { instanceId: "adjust-a", delta: 1 } }) });
+    expect(accepted.attempt?.stage).toBe("released");
+    expect(accepted.attempt?.policy).toBe(policy);
+    expect(accepted.attempt?.motionOmitted).toBe(false);
+  });
+  it.each([
+    ["oversleep", ride({ movementMode: "oversleep" })],
+    ["forced delay", ride({ itemEvents: [{ type: "effect-activated", effect: "delay" }] })],
+    ["deadhead", deadhead()],
+  ] as const)("releases %s without waiting for hidden stamps", (_name, record) => {
+    const accepted = observe(start(undefined, { policy }), { record });
+    expect(accepted.attempt?.stage).toBe("released");
+    expect(accepted.attempt?.tumbleCompleted).toBe(true);
+    expect(accepted.attempt?.motionOmitted).toBe(record.kind === "deadhead");
+  });
+});
+
+it.each(["all", "important", "none"] as const)("selects %s reveal stages and goal boundaries", (presentationLevel) => {
+  const policy = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel });
+  const record = ride({ landing: { serviceId: "jr-yamanote", direction: 1 },
+    landingSnapshot: { stationId: "yoyogi", services: [
+      { serviceId: "jr-yamanote", weight: 1, directions: [1, -1], directionWeights: [1, 1] },
+    ], suspensionIgnored: false, detourConsumed: false }, itemEvents: PICKUP });
+  for (const hasSegments of [false, true]) {
+    const facts = { record, restored: false, omitted: false,
+      newlyCompletedTargetSegmentIds: hasSegments ? ["target-segment"] : [], hasRenderableNewTargetSegments: hasSegments };
+    const prefix = presentationLevel === "all" ? ["arrival"]
+      : presentationLevel === "important" && hasSegments ? ["segment-flash"] : [];
+    expect(buildTurnRevealStages(facts, policy).map(({ key }) => key)).toEqual([
+      ...prefix, ...(presentationLevel === "none" ? [] : ["lottery-flip", "lottery-settle", "pickup"]),
+    ]);
+    expect(buildTurnRevealStages({ ...facts, record: { ...record, stopReason: "goal" } }, policy)
+      .map(({ key }) => key)).toEqual(prefix);
+  }
 });

@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, createElement, useLayoutEffect } from "react";
 import { readFileSync } from "node:fs";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
@@ -15,18 +16,25 @@ import { itemScenario } from "../e2e/fixtures/itemScenarios";
 
 import { resumeSession, startSession, reduceGameSession, type GameSession } from "../../src/features/game/gameSession";
 import {
-  INITIAL_TURN_MOMENTS_STATE, observeTurnFacts, turnMomentsReducer, turnMomentTiming, type RollAttempt, type TurnMomentObservation,
+  INITIAL_TURN_MOMENTS_STATE, observeTurnFacts, turnMomentsReducer, type RollAttempt, type TurnMomentObservation,
 } from "../../src/features/game/animation/turnMoments";
+import * as turnMomentPlanning from "../../src/features/game/animation/turnMoments";
+import type { PresentationLevel } from "../../src/features/game/gameSettings";
+import type { UseTurnMomentsOptions } from "../../src/features/game/animation/useTurnMoments";
+import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import { diceStampLabels } from "../../src/features/game/components/DiceTumble";
 import { mapControlInsets, turnMomentDiceModel } from "../../src/features/game/components/TurnMomentHost";
 import type { ItemGameState, ItemTurnRecord } from "../../src/types/network";
 import type { useGameApp } from "../../src/features/game/useGameApp";
-import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { ITEM_GAME_CONFIG, type AnimationSpeedId } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { FIXTURE_GAME_SEED, LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
 
+beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
+
 const { railwayMapProps, injection, commits, lotteryCommits, momentCommits, trackEvent } = vi.hoisted(() => ({
-  railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null }, commits: [] as string[],
+  railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null,
+    level: undefined as PresentationLevel | undefined, speedId: undefined as AnimationSpeedId | undefined }, commits: [] as string[],
   trackEvent: vi.fn(), lotteryCommits: [] as string[],
   momentCommits: [] as { statusCount: number; overlay: boolean }[],
 }));
@@ -39,6 +47,12 @@ vi.mock("../../src/features/game/useGameApp", async (original) => {
     const app = actual.useGameApp(...args);
     return injection.app ?? app;
   } };
+});
+vi.mock("../../src/features/game/animation/useTurnMoments", async (original) => {
+  const actual = await original<typeof import("../../src/features/game/animation/useTurnMoments")>();
+  return { ...actual, useTurnMoments: (options: UseTurnMomentsOptions) => actual.useTurnMoments({
+    ...options, presentationLevel: injection.level ?? options.presentationLevel, speedId: injection.speedId ?? options.speedId,
+  }) };
 });
 vi.mock("../../src/features/game/components/GameHud", async (original) => {
   const actual = await original<typeof import("../../src/features/game/components/GameHud")>();
@@ -76,6 +90,7 @@ beforeAll(() => {
 });
 afterEach(() => {
   injection.app = null;
+  injection.level = undefined; injection.speedId = undefined;
   trackEvent.mockClear();
   commits.length = 0; lotteryCommits.length = 0; momentCommits.length = 0;
   railwayMapProps.mockClear();
@@ -177,7 +192,7 @@ function attemptFor(origin: GameSession): RollAttempt {
       ride: { serviceId: origin.game.currentServiceId, direction: origin.game.direction },
       completedSegmentIds: origin.game.completedSegmentIds, turn: origin.game.turn,
       itemView: itemSessionView(origin, network)!, previousLastMove: origin.lastMove },
-    timing: { stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800, lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 },
+    policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" }),
     stage: "released", rawRoll: 1, tumbleCompleted: true, skipRequested: false, motionOmitted: false,
     adjustObserved: false, recordAccepted: true, stampsRequired: false, newlyCompletedTargetSegmentIds: [] };
 }
@@ -209,6 +224,20 @@ describe("GameApp publication lifecycle", () => {
     inject(resumeSession(moved.game, network, 33)); render(propsFor());
     expect(status()).toBe("");
   });
+  it("keeps the publication boundary seam from scheduling real reveal stages", () => {
+    vi.useFakeTimers();
+    const build = vi.spyOn(turnMomentPlanning, "buildTurnRevealStages");
+    const base = itemScenario("delay", network);
+    const origin = resumeSession(base, network, 31);
+    inject(origin); render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    const result = resumeSession(playItemTurn(base, {}, network).state, network, 31);
+    inject(result); render(propsFor({ attempt: attemptFor(origin), revealStage: "arrival", restoredOrOmitted: false }));
+    expect(build).toHaveBeenLastCalledWith(expect.objectContaining({ record: null }), expect.anything());
+    expect(mounted!.container.querySelector(".arrival-banner")).not.toBeNull();
+    render(propsFor({ attempt: attemptFor(origin), revealStage: "done", restoredOrOmitted: false }));
+    expect(mounted!.container.querySelector(".arrival-banner")).toBeNull();
+  });
+
   it("publishes map, HUD, inventory, effects, log and interaction together after arrival", () => {
     vi.useFakeTimers();
     const base = itemScenario("delay", network);
@@ -566,9 +595,9 @@ describe("S10b pending-adjust resume", () => {
 describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
   const base = attemptFor(plainOrigin()).origin;
   type State = typeof INITIAL_TURN_MOMENTS_STATE;
-  const begin = (state: State = INITIAL_TURN_MOMENTS_STATE, stepMs = 450, turn = 0, source?: "restored-roll") =>
+  const begin = (state: State = INITIAL_TURN_MOMENTS_STATE, speedId: AnimationSpeedId = "normal", turn = 0, source?: "restored-roll") =>
     turnMomentsReducer(state, { type: "begin", sessionId: 31, turn, decisionRevision: 0, origin: base,
-      timing: turnMomentTiming(stepMs), source });
+      policy: captureTurnPresentationPolicy({ speedId, presentationLevel: "all" }), source });
   const acceptedRecord = (): TurnMomentObservation => {
     const record = playItemTurn(createItemGame(ITEM_GAME_CONFIG, PLAIN_SEED, network), {}, network).record;
     if (record?.kind !== "item-ride") throw new Error("Expected a plain ride record");
@@ -596,7 +625,7 @@ describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
   });
 
   it("resumes a restored pending roll without ever entering the tumble stage", () => {
-    const restored = begin(INITIAL_TURN_MOMENTS_STATE, 450, 0, "restored-roll");
+    const restored = begin(INITIAL_TURN_MOMENTS_STATE, "normal", 0, "restored-roll");
     expect(restored.attempt).toMatchObject({ source: "restored-roll", stage: "waiting-record",
       tumbleCompleted: true, motionOmitted: true, recordAccepted: false });
     expect(advance(restored, "tumble")).toBe(restored);
@@ -606,15 +635,15 @@ describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
 
   it("captures the speed per attempt key; a later speed applies to the next turn only", () => {
     const normal = begin();
-    expect(normal.attempt?.timing).toEqual({ stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800,
-      lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 });
+    expect(normal.attempt?.policy.timing).toEqual({ stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800,
+      lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500, flashMs: 800 });
     // The speed menu changed to はやい while this attempt is active: the same key keeps its captured timing.
-    expect(begin(normal, 300)).toBe(normal);
-    const next = begin(normal, 300, 1);
+    expect(begin(normal, "fast")).toBe(normal);
+    const next = begin(normal, "fast", 1);
     expect(next.attempt).toMatchObject({ key: "31:roll:2:0" });
-    expect(next.attempt?.timing).toEqual({ stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
-      lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333 });
-    expect(normal.attempt?.timing.tumbleMs).toBe(600);
+    expect(next.attempt?.policy.timing).toEqual({ stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
+      lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333, flashMs: 533 });
+    expect(normal.attempt?.policy.timing.tumbleMs).toBe(600);
   });
 });
 
@@ -1626,5 +1655,317 @@ describe("S16 combined publication boundaries", () => {
     expect(lotteryCommits.every((copy: string) => !copy.includes("抽選結果を表示しています"))).toBe(true);
     expect(momentCommits.length).toBeGreaterThan(3);
     expect(momentCommits.every((commit) => commit.statusCount === 1 && !commit.overlay)).toBe(true);
+  });
+});
+
+
+describe("S6 very-fast GameApp integration", () => {
+  function selectVeryFast(): void {
+    click("メニュー");
+    click("速度: ふつう");
+    click("速度: はやい");
+    expect(mounted!.container.querySelector(".game-panel__menu")?.textContent).toContain("とても速い");
+    click("メニュー");
+  }
+
+  it("keeps the adjustment hidden for 159 ms, then accepts it and uses captured stamps and movement", () => {
+    openWithFrames(itemScenario("adjust", network));
+    selectVeryFast();
+    click("サイコロを振る");
+    const pending = storedGame().pending;
+    if (pending?.kind !== "roll") throw new Error("Expected a pending adjustment");
+    expect(tumble()).toEqual({ stage: "tumble", raw: String(pending.rawRoll), stamps: [] });
+    click("メニュー");
+    click("速度: とても速い");
+    click("メニュー");
+    advance(159);
+    expect(adjustmentDialog()).toBeNull();
+    expect(frames()).toBe(0);
+    advance(1);
+    expect(tumble()).toBeNull();
+    expect(adjustmentDialog()).not.toBeNull();
+    expect(document.activeElement?.textContent).toBe("出目を調整しますか？");
+    const delta = chooseAdjustment();
+    press(continueButton());
+    expect(tumble()).toEqual({ stage: "stamps", raw: String(pending.rawRoll), stamps: [delta > 0 ? "調整+1" : "調整-1"] });
+    advance(63);
+    expect(frames()).toBe(0);
+    advance(1);
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(1);
+    expect(dice().textContent).toBe("移動中…");
+    const record = storedGame().movementHistory.at(-1);
+    if (record?.kind !== "item-ride") throw new Error("Expected the adjusted ride");
+    expect(record.physicalHops).toBeGreaterThan(0);
+    // The unchanged hop cap is 8/3 of 120 ms (320 ms); slow would need at least 400 ms per hop.
+    const maximumVeryFastHopMs = 320;
+    act(() => queuedFrames.shift()!(0));
+    act(() => queuedFrames.shift()!(record.physicalHops * maximumVeryFastHopMs));
+    expect(queuedFrames).toHaveLength(0);
+    expect(dice().textContent).toBe("サイコロを振る");
+    expect(banner()).toBeNull();
+  });
+
+  it("runs the card-less flash for 180 ms through GameApp with new target geometry", () => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    selectVeryFast();
+    click("サイコロを振る");
+    advance(160);
+    finishMovement();
+    const flash = railwayMapProps.mock.calls.at(-1)![0].segmentFlash;
+    expect(flash).toEqual({ key: expect.any(String), durationMs: 180,
+      featureIds: ["jr-yamanote:shimbashi~hamamatsucho", "jr-yamanote:hamamatsucho~tamachi",
+        "jr-yamanote:tamachi~takanawa-gateway", "jr-yamanote:takanawa-gateway~shinagawa"] });
+    expect(flash.featureIds.length).toBeGreaterThan(0);
+    expect(banner()).toBeNull();
+    expect(lotteryStage()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    advance(179);
+    expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toEqual(flash);
+    expect(banner()).toBeNull();
+    advance(1);
+    expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toBeNull();
+    expect(lotteryStage()).toBe("lottery-flip");
+    advance(279);
+    expect(lotteryStage()).toBe("lottery-flip");
+    advance(1);
+    expect(lotteryStage()).toBe("lottery-settle");
+    advance(99);
+    expect(lotteryStage()).toBe("lottery-settle");
+    advance(1);
+    expect(lotteryStage()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    expect(banner()).toBeNull();
+  });
+
+  it("starts pickup at movement end without an arrival or flash wait when no target segments are new", () => {
+    openWithFrames(itemScenario("route", network));
+    selectVeryFast();
+    click("サイコロを振る");
+    advance(160);
+    finishMovement();
+    expect(banner()).toBeNull();
+    expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toBeNull();
+    expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
+    advance(139);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    advance(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+describe.each(["important", "none"] as const)("S7 %s integration", (level) => {
+  beforeEach(() => { injection.level = level; injection.speedId = "very-fast"; });
+
+  it.each([false, true])("keeps adjustment and focus stable across settings changes (restored %s)", (restored) => {
+    const game = itemScenario("adjust", network);
+    openWithFrames(restored ? beginItemTurn(game, { items: [] }, network).state : game);
+    if (!restored) click("サイコロを振る");
+    const dialog = adjustmentDialog();
+    expect(dialog).not.toBeNull();
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(0);
+    const focus = document.activeElement;
+    const shows = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    injection.level = "all"; injection.speedId = "slow";
+    render(propsFor());
+    expect(adjustmentDialog()).toBe(dialog);
+    expect(document.activeElement).toBe(focus);
+    expect(shows).not.toHaveBeenCalled();
+    chooseAdjustment(); press(continueButton());
+    expect(adjustmentDialog()).toBeNull();
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    const record = storedGame().movementHistory.at(-1)!;
+    expect(record.physicalHops).toBeGreaterThan(0);
+    act(() => queuedFrames.shift()!(0));
+    act(() => queuedFrames.shift()!(record.physicalHops * 320));
+    expect(queuedFrames).toHaveLength(0);
+    expect(banner()).toBeNull();
+    if (level === "none") expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+  });
+
+  it("keeps prior-engine-turn discard masked through movement and stable while settings change", () => {
+    const game = combinedGame();
+    openWithFrames(game);
+    const oldSlots = [...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent);
+    const start = lotteryCommits.length;
+    click("サイコロを振る");
+    expect(storedGame().pending?.kind).toBe("discard");
+    expect(storedGame().turn).toBe(game.turn);
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    expect([...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent)).toEqual(oldSlots);
+    expect(mounted!.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
+    expect(status()).not.toMatch(/到着|抽選結果|拾いました|捨てる/);
+    expect(railwayMapProps.mock.calls.at(-1)![0].follow.immediate).toBe(true);
+    press(mounted!.container.querySelector(".item-slot__button")!);
+    expect(mounted!.container.querySelector<HTMLButtonElement>(".item-card__action")?.disabled).toBe(true);
+    injection.level = "all"; injection.speedId = "slow";
+    render(propsFor());
+    const pending = storedGame().pending;
+    if (pending?.kind !== "discard") throw new Error("Expected the pending discard record");
+    expect(pending.record.physicalHops).toBeGreaterThan(0);
+    // Every captured 120 ms hop is capped at 320 ms; a newly selected slow hop needs at least 400 ms.
+    act(() => queuedFrames.shift()!(0));
+    act(() => queuedFrames.shift()!(pending.record.physicalHops * 320));
+    expect(queuedFrames).toHaveLength(0);
+    expect(railwayMapProps.mock.calls.at(-1)![0].follow.immediate).toBe(false);
+    expect(banner()).toBeNull();
+    if (level === "important") {
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toMatchObject({ durationMs: 180 });
+      expect(lotteryStage()).toBeNull();
+      advance(180);
+      expect(lotteryStage()).toBe("lottery-flip");
+      advance(280); advance(100);
+      expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
+      expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+      advance(140);
+    } else {
+      expect(lotteryStage()).toBeNull();
+      expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+      expect(lotteryCommits.slice(start).some((copy) => /サイコロを振っています|抽選結果を表示/.test(copy))).toBe(false);
+    }
+    const dialog = mounted!.container.querySelector(".item-discard");
+    expect(dialog).not.toBeNull();
+    expect(mounted!.container.querySelector(".toast-host__toast--motion")).not.toBeNull();
+    const focus = document.activeElement;
+    const shows = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    injection.level = level === "important" ? "none" : "important"; injection.speedId = "fast";
+    render(propsFor());
+    expect(mounted!.container.querySelector(".item-discard")).toBe(dialog);
+    expect(document.activeElement).toBe(focus);
+    expect(shows).not.toHaveBeenCalled();
+    press(dialog!.querySelector("button")!);
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+  });
+
+  it("shows ClearScreen and announces the goal once after the retained presentation ends", () => {
+    let game = createItemGame(ITEM_GAME_CONFIG, "00000000000000000000000000000004", network);
+    let previous = game;
+    while (game.status === "playing" && game.turn < 500) {
+      previous = game;
+      game = playItemTurn(game, {}, network).state;
+      if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+    }
+    expect(game.status).toBe("completed");
+    openWithFrames(previous);
+    click("サイコロを振る");
+    if (adjustmentDialog()) press(continueButton());
+    expect(mounted!.container.querySelector("#clear-title")).toBeNull();
+    expect(status()).not.toContain("ゴール");
+    finishMovement();
+    if (level === "important" && railwayMapProps.mock.calls.at(-1)![0].segmentFlash) {
+      expect(mounted!.container.querySelector("#clear-title")).toBeNull();
+      advance(180);
+    }
+    expect(banner()).toBeNull();
+    expect(mounted!.container.querySelector("#clear-title")).not.toBeNull();
+    const announcement = mounted!.container.querySelectorAll('.item-event-notice [role="status"]');
+    expect(announcement).toHaveLength(1);
+    expect(announcement[0]!.textContent?.match(/ゴールに到着しました/g)).toHaveLength(1);
+    const shown = announcement[0];
+    render(propsFor()); advance(5_000);
+    expect(mounted!.container.querySelector('.item-event-notice [role="status"]')).toBe(shown);
+    expect(gameClearEvents()).toHaveLength(1);
+  });
+
+  it("keeps flash and lottery only for important, with movement and camera still animated", () => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    click("サイコロを振る");
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    finishMovement();
+    const flash = railwayMapProps.mock.calls.at(-1)![0].segmentFlash;
+    expect(banner()).toBeNull();
+    if (level === "important") {
+      expect(flash).toMatchObject({ durationMs: 180 });
+      advance(179);
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toEqual(flash);
+      advance(1);
+      expect(lotteryStage()).toBe("lottery-flip");
+      advance(280); advance(100);
+    } else expect(flash).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+
+describe("S8 persisted presentation settings", () => {
+  it("cycles the real menu and preserves the stored choice under a live OS override", () => {
+    const setReduced = motionPreference(false);
+    openWithFrames(itemScenario("route", network));
+    click("メニュー");
+    for (const label of ["重要なときだけ", "なし", "すべて", "重要なときだけ"]) {
+      click("演出:");
+      expect(mounted!.container.textContent).toContain(`演出: ${label}`);
+    }
+    const saved = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    expect(JSON.parse(saved!).presentationLevel).toBe("important");
+    const writes = vi.spyOn(Storage.prototype, "setItem");
+    setReduced(true);
+    const control = mounted!.container.querySelector<HTMLButtonElement>('[aria-label^="演出:"]')!;
+    expect(control.textContent?.trim()).toBe("演出: 省略");
+    expect(control.disabled).toBe(true);
+    press(control);
+    expect(writes).not.toHaveBeenCalled();
+    expect(localStorage.getItem(SETTINGS_STORAGE_KEY)).toBe(saved);
+    setReduced(false);
+    expect(control.textContent?.trim()).toBe("演出: 重要なときだけ");
+    expect(control.disabled).toBe(false);
+  });
+
+  it.each(["important", "none"] as const)("uses stored %s with movement masking and mandatory discard", (level) => {
+    localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ version: 1, speedId: "very-fast", follow: true, presentationLevel: level }));
+    openWithFrames(combinedGame());
+    const slots = [...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent);
+    click("サイコロを振る");
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    expect(status()).not.toMatch(/到着|抽選結果|拾いました|捨てる/);
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    expect([...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent)).toEqual(slots);
+    press(mounted!.container.querySelector(".item-slot__button")!);
+    expect(mounted!.container.querySelector<HTMLButtonElement>(".item-card__action")?.disabled).toBe(true);
+    finishMovement();
+    expect(banner()).toBeNull();
+    if (level === "important") {
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toMatchObject({ durationMs: 180 });
+      expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+      advance(180);
+      expect(lotteryStage()).toBe("lottery-flip");
+      advance(280); advance(100);
+      expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
+      expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+      advance(140);
+    } else {
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toBeNull();
+      expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+    }
+    expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
+  });
+
+  it("captures a menu change from the next roll without altering the active turn", () => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    click("サイコロを振る");
+    expect(tumble()?.stage).toBe("tumble");
+    click("メニュー"); click("演出:"); click("演出:");
+    expect(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY)!).presentationLevel).toBe("none");
+    expect(tumble()?.stage).toBe("tumble");
+    advance(600);
+    finishMovement();
+    expect(banner()).not.toBeNull();
+    advance(800); advance(1_600); advance(400);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    click("サイコロを振る");
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    finishMovement();
+    expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
   });
 });

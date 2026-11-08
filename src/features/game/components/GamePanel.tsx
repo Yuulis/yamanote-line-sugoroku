@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata, PreRollItemCommand } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
+import type { PresentationLevel } from "../gameSettings";
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
 import {
@@ -30,6 +31,7 @@ import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
 import { DiscardChoice } from "./DiscardChoice";
 import { TurnLogDrawer } from "./TurnLogDrawer";
+import { useGameShortcuts } from "../useGameShortcuts";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -44,11 +46,13 @@ export interface GamePanelProps {
   saveStatus: SaveWriteResult | null;
   follow: boolean;
   speedLabel: string;
+  presentationLevel: PresentationLevel;
   reducedMotion: boolean;
   onRoll: () => void;
   onSkip: () => void;
   onToggleFollow: () => void;
   onCycleSpeed: () => void;
+  onCyclePresentation: () => void;
   onNewGame: () => void;
   onShowTitle: () => void;
   onEditItemDraft?: (command: ItemTurnCommand) => void;
@@ -154,6 +158,12 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
   const itemDialogOpen = Boolean(itemView && itemDialog);
+  useGameShortcuts({
+    canRoll: turnDisplay.canRoll,
+    canSkip: turnDisplay.canSkip,
+    surfaceOpen: activeSurface !== null,
+    itemDialogOpen,
+  }, { onRoll: props.onRoll, onSkip: props.onSkip });
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
     props.onItemDialogOpenChange(itemDialogOpen);
@@ -330,11 +340,13 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           follow={follow}
           reducedMotion={reducedMotion}
           speedLabel={props.speedLabel}
+          presentationLevel={props.presentationLevel}
           lines={legendGroups}
           targetColor={targetColor}
           selectedGroupIds={selectedGroupIds}
           onToggleFollow={props.onToggleFollow}
           onCycleSpeed={props.onCycleSpeed}
+          onCyclePresentation={props.onCyclePresentation}
           onNewGame={props.onNewGame}
           onShowTitle={props.onShowTitle}
           onToggleGroup={toggleGroup}

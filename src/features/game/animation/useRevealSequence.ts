@@ -10,21 +10,21 @@ export interface RevealObservation {
   movementComplete: boolean;
 }
 
-export interface RevealStage {
-  key: string;
+export interface RevealStage<Key extends string = string> {
+  key: Key;
   durationMs: number;
 }
 
-export interface UseRevealSequenceOptions {
+export interface UseRevealSequenceOptions<Key extends string = string> {
   observation: RevealObservation;
-  stages: readonly RevealStage[];
+  stages: readonly RevealStage<Key>[];
   reducedMotion: boolean;
   skipRequested?: boolean;
 }
 
-export interface RevealSequence {
+export interface RevealSequence<Key extends string = string> {
   key: string | null;
-  stage: string;
+  stage: Key | "waiting" | "done";
   busy: boolean;
   ready: boolean;
   skip: () => void;
@@ -117,7 +117,7 @@ export function revealReducer(state: RevealState, action: RevealAction): RevealS
  * dependency, so a new `stages` array with the same content neither replays a
  * completed key nor restarts the active stage's timer.
  */
-export function useRevealSequence({ observation, stages, reducedMotion, skipRequested = false }: UseRevealSequenceOptions): RevealSequence {
+export function useRevealSequence<Key extends string = string>({ observation, stages, reducedMotion, skipRequested = false }: UseRevealSequenceOptions<Key>): RevealSequence<Key> {
   const [state, dispatch] = useReducer(revealReducer, INITIAL_STATE);
   const { sessionId, recordTurn, gameTurn, pendingDecisionTurn, pendingDecisionKind, movementComplete } = observation;
   const stageCount = stages.length;

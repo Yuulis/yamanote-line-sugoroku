@@ -57,11 +57,12 @@ export const DEFAULT_GAME_CONFIG = ITEM_GAME_CONFIG;
 /** Compatibility alias for internal callers; prefer DEFAULT_GAME_CONFIG. */
 export const MVP_GAME_CONFIG = DEFAULT_GAME_CONFIG;
 
-/** Animation speeds per station hop (spec 11: 0.3-0.6 s, configurable). */
+/** Animation speed inputs per station hop, including the very-fast tempo setting. */
 export const ANIMATION_SPEEDS = [
   { id: "slow", label: "ゆっくり", stepMs: 600 },
   { id: "normal", label: "ふつう", stepMs: 450 },
   { id: "fast", label: "はやい", stepMs: 300 },
+  { id: "very-fast", label: "とても速い", stepMs: 120 },
 ] as const;
 
 export type AnimationSpeedId = (typeof ANIMATION_SPEEDS)[number]["id"];

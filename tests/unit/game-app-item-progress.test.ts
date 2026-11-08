@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, createElement, StrictMode, type ComponentProps } from "react";
 import { readFileSync } from "node:fs";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
@@ -18,8 +19,10 @@ import { itemScenario, ITEM_SCENARIOS } from "../e2e/fixtures/itemScenarios";
 import { playTurn } from "../e2e/fixtures/productGame";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 
+beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
+
 const { railwayMapProps } = vi.hoisted(() => ({ railwayMapProps: vi.fn() }));
-vi.mock("../../src/features/map/RailwayMap", () => ({ RailwayMap: (props: { panelKey?: number }) => {
+vi.mock("../../src/features/map/RailwayMap", () => ({ RailwayMap: (props: { panelKey?: number; follow?: { onUserCameraMove: () => void } }) => {
   railwayMapProps(props);
   return createElement("div");
 } }));
@@ -82,6 +85,41 @@ describe("RailwayMap panel session key", () => {
 
     click("タイトル");
     expect(railwayMapProps.mock.calls.at(-1)?.[0].panelKey).toBeUndefined();
+  });
+});
+
+it("keeps settings for a new game and never persists manual camera panning", () => {
+  localStorage.setItem(edition.saveKey, serializeGame(itemScenario("route", network)));
+  vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
+  vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  mounted = mountReact(createElement(Harness, {
+    data, network, edition, picker: {
+      editions: EDITIONS, editionId: edition.id, onEditionChange: vi.fn(),
+      focusPicker: false, onPickerFocusRestored: vi.fn(),
+    },
+  }));
+  click("つづきから");
+  click("メニュー");
+  click("速度");
+  click("演出:");
+  const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+  expect(JSON.parse(savedSettings!)).toEqual({ version: 1, speedId: "fast", follow: true, presentationLevel: "important" });
+  const pan = railwayMapProps.mock.calls.at(-1)?.[0].follow?.onUserCameraMove;
+  if (!pan) throw new Error("Expected the camera pan callback");
+  act(() => { pan(); pan(); });
+  expect(mounted.container.textContent).toContain("追尾: OFF");
+  expect(localStorage.getItem(SETTINGS_STORAGE_KEY)).toBe(savedSettings);
+  click("追尾");
+  expect(mounted.container.textContent).toContain("追尾: ON");
+  click("追尾");
+  click("新規");
+  click("新しく始める");
+  click("メニュー");
+  expect(mounted.container.textContent).toContain("速度: はやい");
+  expect(mounted.container.textContent).toContain("演出: 重要なときだけ");
+  expect(mounted.container.textContent).toContain("追尾: OFF");
+  expect(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY)!)).toEqual({
+    version: 1, speedId: "fast", follow: false, presentationLevel: "important",
   });
 });
 

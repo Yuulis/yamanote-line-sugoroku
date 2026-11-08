@@ -140,3 +140,21 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Pause after every step for user review (user 2026-11-03).
 - Status 2026-11-07: S1–S17 done, CI green (S16 run 42346852704); no PR yet. Visual refinements and two product questions deferred (DESIGN.md TODO). Final state: top of the handoff.
 - Codex lanes: Luna high implements, Sol low reviews, lead verifies; targeted local E2E, full 4-browser suite in CI.
+
+---
+
+## Current Feature: Issue #64 stage 1: tempo settings
+<!-- orchestra:block-id: issue-64-stage-1-tempo-settings -->
+
+### Context
+
+- Goal: shorten long games without rule changes — 4th speed とても速い, persisted 演出 level (すべて/重要なときだけ/なし), persisted speed/follow settings, global keyboard shortcuts.
+- Key files: src/features/game/gameSettings.ts, store/settings.ts, useGameSettings.ts, useGameShortcuts.ts, animation/turnMomentPolicy.ts, animation/turnMoments.ts, animation/useTurnMoments.ts, components/GameMenu.tsx, GamePanel.tsx, src/app/GameApp.tsx, src/styles.css
+- Branch: feature/tempo-stage1 (S1–S10 done)
+- Complexity: COMPLEX (implemented step by step by Codex Sol, verified by the lead)
+
+### Decisions
+
+- Plan and decisions: .claude/docs/plans/tempo-stage1-plan.md, handoff .claude/docs/plans/tempo-stage1-handoff.md, DESIGN.md rows dated 2026-11-08.
+- Follow persists only via the menu toggle; manual pan OFF is session-only (user 2026-11-08).
+- Auto-roll 「おまかせで進む」 is deferred to a later PR (issue #64 stage 2).
