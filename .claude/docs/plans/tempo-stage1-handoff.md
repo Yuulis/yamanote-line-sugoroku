@@ -35,7 +35,7 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 | S6 | Expose the 4th speed 「とても速い」 | done | `4fd0e58` | Codex Sol; vitest 73 files / 1753 passed; E2E ui-pop-turn-moments+game-settings+accessibility+dice desktop/phone chromium 154 passed; segmentFlashGeometry wired; GameApp.tsx 473 lines |
 | S7 | 重要なときだけ / なし internals (GameApp still passes すべて) | done | `b0be077` | Codex Sol; vitest 73 files / 1794 passed; E2E ui-pop-turn-moments desktop/phone chromium 94 passed. Review note for S10: a restored pending-adjust roll animates movement under important/none but not under all (planned behaviour; confirm) |
 | S8 | Expose and persist the 演出 menu control | done | `ab9213d` | Codex Sol + layout fix (compact landscape overflowed: accessibility.spec.ts:534; inline styles moved to styles.css by lead); vitest 1799 passed; E2E game-settings+ui-pop-turn-moments+ui-pop+accessibility+hud-layout+layout desktop/phone chromium 194 passed, 4 existing skips |
-| S9 | Keyboard shortcuts and menu hint | pending | — | |
+| S9 | Keyboard shortcuts and menu hint | done | `4d44412` | Codex Sol; vitest 74 files / 1875 passed; E2E accessibility+ui-pop+ui-pop-turn-moments+items+real-data+layout+hud-layout desktop/phone chromium 249 passed, 5 existing skips. Note: hint also shows on touch devices (tracked in #67) |
 | S10 | Final local validation and full diff review | pending | — | |
 
 ## Decisions (details: plan sections 1-2)
@@ -63,4 +63,4 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 
 1. Plan approved by the user 2026-11-08 (implementer: Codex Sol, default effort; pause after every step) → lead applies the DESIGN rows:
    `python3 .claude/skills/_shared/update_design.py --input .claude/logs/design-input-tempo-fast-forward-auto-roll.json --apply --require-change`.
-2. Branch `feature/tempo-stage1` created; S1–S8 done. Continuous mode from S2 (user 2026-11-08). Next: **S9**. Prompt template: `.claude/docs/plans/tempo-stage1-prompts.md`.
+2. Branch `feature/tempo-stage1` created; S1–S9 done. Continuous mode from S2 (user 2026-11-08). Next: **S10**. Prompt template: `.claude/docs/plans/tempo-stage1-prompts.md`.
