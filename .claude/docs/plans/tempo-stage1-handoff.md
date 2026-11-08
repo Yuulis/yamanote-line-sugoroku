@@ -31,7 +31,7 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 | S2 | Persist the existing speed and follow controls | done | `9a246d1` | Codex Sol; typecheck ok; vitest 72 files / 1709 passed; E2E game-settings+resume desktop/phone chromium 14 passed; GameApp.tsx 479 lines |
 | S3 | Turn policy + speed-id timing table (no behaviour change) | done | `a4c9cf6` | Codex Sol; typecheck ok; vitest 73 files / 1715 passed; E2E ui-pop-turn-moments desktop/phone chromium 92 passed |
 | S4 | Frozen reveal plan owned by `useTurnMoments` (no behaviour change) | done | `a6f8ce6` | Codex Sol; typecheck ok; vitest 73 files / 1722 passed; E2E ui-pop-turn-moments+lottery+resume desktop/phone chromium 108 passed; GameApp.tsx 472 lines |
-| S5 | Card-less `segment-flash` stage (not yet reachable) | pending | — | |
+| S5 | Card-less `segment-flash` stage (not yet reachable) | done | `405c755` | Codex Sol; vitest 73 files / 1743 passed; E2E ui-pop-turn-moments desktop/phone chromium 92 passed. Deviation: optional `segmentFlashGeometry` hook input, GameApp wiring deferred to S6 |
 | S6 | Expose the 4th speed 「とても速い」 | pending | — | S16 / helper migration |
 | S7 | 重要なときだけ / なし internals | pending | — | split S7a/S7b if tests > ~450 LOC |
 | S8 | Expose and persist the 演出 menu control | pending | — | |
@@ -63,4 +63,4 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 
 1. Plan approved by the user 2026-11-08 (implementer: Codex Sol, default effort; pause after every step) → lead applies the DESIGN rows:
    `python3 .claude/skills/_shared/update_design.py --input .claude/logs/design-input-tempo-fast-forward-auto-roll.json --apply --require-change`.
-2. Branch `feature/tempo-stage1` created; S1–S4 done. Continuous mode from S2 (user 2026-11-08). Next: **S5**. Prompt template: `.claude/docs/plans/tempo-stage1-prompts.md`.
+2. Branch `feature/tempo-stage1` created; S1–S5 done. Continuous mode from S2 (user 2026-11-08). Next: **S6** (must also wire `segmentFlashGeometry` from GameApp). Prompt template: `.claude/docs/plans/tempo-stage1-prompts.md`.
