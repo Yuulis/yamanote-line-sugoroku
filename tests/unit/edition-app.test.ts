@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { createElement } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { App } from "../../src/app/App";
 import { getVisibleLineGroupIds, setVisibleLineGroupIds } from "../../src/features/map/lineVisibilityStore";
 import { FIXTURE_EDITIONS, fixtureFileResponses } from "./fixtures/editions";
 import { dispatchReactEvent, flushReact, mountReact } from "./helpers/reactDom";
+
+beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
 
 vi.mock("../../src/features/map/RailwayMap", () => ({
   RailwayMap: () => createElement("div", { "data-testid": "map" }),
@@ -41,6 +44,40 @@ describe("edition app switching", () => {
     expect(reloaded.container.textContent).toContain("Fixture A");
     reloaded.cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it("keeps global speed and follow when an edition remounts GameApp", async () => {
+    const mounted = mountReact(createElement(App, { editions: FIXTURE_EDITIONS }));
+    const click = (label: string): void => {
+      const button = [...mounted.container.querySelectorAll("button")].find((entry) => entry.textContent?.includes(label));
+      if (!button) throw new Error(`Missing button: ${label}`);
+      dispatchReactEvent(button, new MouseEvent("click", { bubbles: true }));
+    };
+    try {
+      await flushReact();
+      click("はじめから");
+      click("メニュー");
+      click("速度");
+      click("追尾");
+      expect(mounted.container.textContent).toContain("速度: はやい");
+      expect(mounted.container.textContent).toContain("追尾: OFF");
+      click("タイトル");
+      const picker = mounted.container.querySelector("select")!;
+      picker.value = "fixture-b";
+      dispatchReactEvent(picker, new Event("change", { bubbles: true }));
+      await flushReact();
+      click("はじめから");
+      click("メニュー");
+      expect(mounted.container.textContent).toContain("Fixture B");
+      expect(mounted.container.textContent).toContain("速度: はやい");
+      expect(mounted.container.textContent).toContain("追尾: OFF");
+      expect(JSON.parse(localStorage.getItem(SETTINGS_STORAGE_KEY)!)).toEqual({
+        version: 1, speedId: "fast", follow: false, presentationLevel: "all",
+      });
+    } finally {
+      mounted.cleanup();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("does not access storage when switching without starting", async () => {
@@ -81,3 +118,6 @@ describe("edition app switching", () => {
     vi.unstubAllGlobals();
   });
 });
+
+// Mounted trees are cleaned up by their tests before clearing shared preferences.
+afterEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });

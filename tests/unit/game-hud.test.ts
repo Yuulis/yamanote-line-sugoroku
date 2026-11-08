@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, createElement, createRef, memo, useEffect, useState } from "react";
 import { readFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { GameHud } from "../../src/features/game/components/GameHud";
 import type { GameHudProps } from "../../src/features/game/components/GameHud";
 import { GameMenu } from "../../src/features/game/components/GameMenu";
@@ -22,6 +23,8 @@ import { networkFromData } from "../../src/features/game/networkFromData";
 import { turnToasts } from "../../src/features/game/toastQueue";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+
+beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
 
 const renderCounts = vi.hoisted(() => ({ hud: 0, legend: 0 }));
 
@@ -616,3 +619,6 @@ it("expires an ordinary toast in production GameApp without rendering HUD or leg
     localStorage.clear();
   }
 });
+
+// Mounted trees are cleaned up by their tests before clearing shared preferences.
+afterEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });

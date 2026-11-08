@@ -11,12 +11,12 @@ import { type RailwayNetwork, isItemSave, targetSegmentIds } from "../features/g
 import {
   ANIMATION_SPEEDS,
   type AnimationSpeedId,
-  DEFAULT_ANIMATION_SPEED,
 } from "../features/game/gameConfig";
 import type { Edition } from "../features/editions/types";
 import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
+import { useGameSettings } from "../features/game/useGameSettings";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
 import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
@@ -74,11 +74,6 @@ function speedById(id: AnimationSpeedId) {
   return ANIMATION_SPEEDS.find((speed) => speed.id === id) ?? ANIMATION_SPEEDS[1];
 }
 
-function nextSpeedId(id: AnimationSpeedId): AnimationSpeedId {
-  const index = ANIMATION_SPEEDS.findIndex((speed) => speed.id === id);
-  return ANIMATION_SPEEDS[(index + 1) % ANIMATION_SPEEDS.length]?.id ?? DEFAULT_ANIMATION_SPEED;
-}
-
 /** Title, play and clear screens over one persistent map. */
 export function GameApp({ data, network, edition, picker, turnMomentBoundary }: GameAppProps) {
   const storage = useMemo(getBrowserStorage, []);
@@ -98,8 +93,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const inventoryHeaderTarget = useRef<HTMLElement>(null);
   const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget,
     slots: [inventorySlot0Target, inventorySlot1Target, inventorySlot2Target], inventoryHeader: inventoryHeaderTarget }), []);
-  const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
-  const [follow, setFollow] = useState(true);
+  const { settings: { speedId, follow }, cycleSpeed, toggleFollow, stopFollowing } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -267,9 +261,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     [requiredIds, network, turnDisplay],
   );
 
-  const stopFollowing = useCallback(() => setFollow(false), []);
-  const toggleFollow = useCallback(() => setFollow((value) => !value), []);
-  const cycleSpeed = useCallback(() => setSpeedId(nextSpeedId), []);
   const animating = session?.phase === "animating";
   const mapFollow = useMemo<MapFollow>(
     () => ({

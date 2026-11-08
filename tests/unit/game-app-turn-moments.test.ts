@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, createElement, useLayoutEffect } from "react";
 import { readFileSync } from "node:fs";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
@@ -24,6 +25,8 @@ import type { useGameApp } from "../../src/features/game/useGameApp";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { FIXTURE_GAME_SEED, LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
+
+beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
 
 const { railwayMapProps, injection, commits, lotteryCommits, momentCommits, trackEvent } = vi.hoisted(() => ({
   railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null }, commits: [] as string[],

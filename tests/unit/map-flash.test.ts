@@ -2,7 +2,8 @@
 import { act, createElement } from "react";
 import { readFileSync } from "node:fs";
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
@@ -28,6 +29,8 @@ import { itemScenario } from "../e2e/fixtures/itemScenarios";
 import { dispatchReactEvent, mountReact, type MountedReact } from "./helpers/reactDom";
 
 // S13: the completed-segment flash that runs concurrently with the arrival stage.
+
+beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
 
 const { railwayMapProps } = vi.hoisted(() => ({ railwayMapProps: vi.fn() }));
 vi.mock("../../src/features/analytics/analytics", async (original) => ({
