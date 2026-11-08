@@ -28,7 +28,7 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 | Step | Title | Status | Commit | Notes |
 |------|-------|--------|--------|-------|
 | S1 | Settings types and guarded storage (not wired) | done | `e609f55` | Codex Sol; typecheck ok; vitest 71 files / 1689 passed (1 pre-existing skip) |
-| S2 | Persist the existing speed and follow controls | pending | — | |
+| S2 | Persist the existing speed and follow controls | done | `9a246d1` | Codex Sol; typecheck ok; vitest 72 files / 1709 passed; E2E game-settings+resume desktop/phone chromium 14 passed; GameApp.tsx 479 lines |
 | S3 | Turn policy + speed-id timing table (no behaviour change) | pending | — | split again if > 250 prod LOC |
 | S4 | Frozen reveal plan owned by `useTurnMoments` (no behaviour change) | pending | — | |
 | S5 | Card-less `segment-flash` stage (not yet reachable) | pending | — | |
@@ -63,4 +63,4 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 
 1. Plan approved by the user 2026-11-08 (implementer: Codex Sol, default effort; pause after every step) → lead applies the DESIGN rows:
    `python3 .claude/skills/_shared/update_design.py --input .claude/logs/design-input-tempo-fast-forward-auto-roll.json --apply --require-change`.
-2. Branch `feature/tempo-stage1` created; S1 done. Next: **S2** after user go-ahead.
+2. Branch `feature/tempo-stage1` created; S1–S2 done. Continuous mode from S2 (user 2026-11-08). Next: **S3**. Prompt template: `.claude/docs/plans/tempo-stage1-prompts.md`.
