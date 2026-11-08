@@ -816,6 +816,12 @@ button[aria-disabled="true"] {
   display: block;
 }
 
+.game-panel__shortcut-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 /* Must stay more specific than every .game-panel__menu display rule (incl. the
    short-landscape `display: contents`), so a closed menu is never rendered. */
 .game-panel__menu[hidden] {
@@ -2085,8 +2091,9 @@ button[aria-disabled="true"] {
       "save save"
       "log-trigger menu-trigger"
       "lottery lottery"
-      "legend legend";
-    grid-template-rows: repeat(8, max-content);
+      "legend legend"
+      "shortcuts shortcuts";
+    grid-template-rows: repeat(9, max-content);
     align-content: start;
     align-items: start;
     --hud-column-gap: 12px;
@@ -2293,6 +2300,10 @@ button[aria-disabled="true"] {
 
   .game-panel__legend-section {
     grid-area: legend;
+  }
+
+  .game-panel__shortcut-hint {
+    grid-area: shortcuts;
   }
 
   .game-panel__save {

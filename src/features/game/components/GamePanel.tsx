@@ -31,6 +31,7 @@ import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
 import { DiscardChoice } from "./DiscardChoice";
 import { TurnLogDrawer } from "./TurnLogDrawer";
+import { useGameShortcuts } from "../useGameShortcuts";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -157,6 +158,12 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
   const itemDialogOpen = Boolean(itemView && itemDialog);
+  useGameShortcuts({
+    canRoll: turnDisplay.canRoll,
+    canSkip: turnDisplay.canSkip,
+    surfaceOpen: activeSurface !== null,
+    itemDialogOpen,
+  }, { onRoll: props.onRoll, onSkip: props.onSkip });
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
     props.onItemDialogOpenChange(itemDialogOpen);

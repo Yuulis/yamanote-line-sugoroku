@@ -254,8 +254,9 @@ describe("GameHud", () => {
       act(() => window.dispatchEvent(escape));
       expect(escape.defaultPrevented).toBe(false);
       expect(onEditItemDraft).not.toHaveBeenCalled();
-      dispatchReactEvent(skip(), new MouseEvent("click", { bubbles: true }));
       expect(onSkip).toHaveBeenCalledTimes(1);
+      dispatchReactEvent(skip(), new MouseEvent("click", { bubbles: true }));
+      expect(onSkip).toHaveBeenCalledTimes(2);
     } finally {
       mount.cleanup();
     }
@@ -293,6 +294,22 @@ describe("GameHud", () => {
 });
 
 describe("GameMenu", () => {
+  it("shows a plain shortcut hint without adding a tab stop", () => {
+    const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
+    try {
+      const region = mount.container.querySelector<HTMLElement>(".game-panel__menu")!;
+      const stopsBefore = region.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]');
+      dispatchReactEvent(mount.container.querySelector(".game-panel__menu-trigger")!, new MouseEvent("click", { bubbles: true }));
+      const hint = region.querySelector<HTMLElement>(".game-panel__shortcut-hint")!;
+      expect(hint.textContent).toBe("Space / Enter: サイコロ　S / Escape: スキップ");
+      expect(hint.tagName).toBe("P");
+      expect(hint.tabIndex).toBe(-1);
+      expect(hint.hasAttribute("tabindex")).toBe(false);
+      expect(hint.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')).toHaveLength(0);
+      expect(region.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]')).toHaveLength(stopsBefore.length);
+    } finally { mount.cleanup(); }
+  });
+
   it("starts closed with a labelled mounted section, five actions, and the legend inside", () => {
     const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
     try {

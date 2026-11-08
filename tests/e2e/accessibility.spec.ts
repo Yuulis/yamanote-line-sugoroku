@@ -34,6 +34,75 @@ const STEP_MS =
 
 test.use({ dataset: "real", gameSeed: PRODUCT_HUB_GAME_SEED });
 
+test.describe("game keyboard shortcuts", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  for (const [rollKey, skipKey, focus] of [
+    ["Space", "s", "heading"], ["Enter", "Escape", "body"],
+  ] as const) {
+    test(`${rollKey} rolls from ${focus} and ${skipKey} skips only the presentation`, async ({ page }) => {
+      await openTitle(page);
+      await page.getByRole("button", { name: "はじめから" }).click();
+      await freezeClock(page);
+      const panel = gamePanel(page);
+      const heading = panel.getByRole("heading", { name: "山手線すごろく" });
+      const focusTarget = focus === "heading" ? heading : page.locator("body");
+      if (focus === "heading") await heading.focus();
+      else await heading.evaluate((element) => (element as HTMLElement).blur());
+      await expect(focusTarget).toBeFocused();
+      const initial = await readSaveText(page);
+      await page.keyboard.press(skipKey);
+      expect(await readSaveText(page)).toBe(initial);
+      const scrollBefore = await panel.evaluate((element) => element.scrollTop);
+      await page.keyboard.press(rollKey);
+      await expect(diceMoment(page)).toBeVisible();
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+      expect((await readSave(page))?.turn).toBe(1);
+      expect(await panel.evaluate((element) => element.scrollTop)).toBe(scrollBefore);
+      const committed = await readSaveText(page);
+      // Ordinary buttons permit Skip, while their native roll activation stays independent.
+      await diceButton(page).focus();
+      await page.keyboard.press(skipKey);
+      await expect(diceMoment(page)).toHaveCount(0);
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+      expect(await readSaveText(page)).toBe(committed);
+      await page.keyboard.press(skipKey);
+      expect(await readSaveText(page)).toBe(committed);
+    });
+  }
+
+  for (const key of ["Space", "Enter"]) {
+    test(`native dice ${key} activation commits exactly one roll`, async ({ page }) => {
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await openTitle(page);
+      await page.getByRole("button", { name: "はじめから" }).click();
+      await diceButton(page).focus();
+      await page.keyboard.press(key);
+      await expect.poll(async () => (await readSave(page))?.turn).toBe(1);
+      await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+      expect((await readSave(page))?.movementHistory).toHaveLength(1);
+    });
+  }
+
+  test("the menu owns shortcuts and its hint adds no tab stop", async ({ page }) => {
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    await openGameMenu(page);
+    const panel = gamePanel(page);
+    const hint = panel.locator(".game-panel__shortcut-hint");
+    await expect(hint).toHaveText("Space / Enter: サイコロ　S / Escape: スキップ");
+    expect(await hint.evaluate((element) => (element as HTMLElement).tabIndex)).toBe(-1);
+    await panel.getByRole("heading", { name: "山手線すごろく" }).focus();
+    const initial = await readSaveText(page);
+    for (const key of ["Space", "Enter", "s"]) await page.keyboard.press(key);
+    expect(await readSaveText(page)).toBe(initial);
+    await page.keyboard.press("Escape");
+    await expect(panel.locator(".game-panel__menu")).toBeHidden();
+    await expect(panel.getByRole("button", { name: "メニュー", exact: true })).toBeFocused();
+    expect(await readSaveText(page)).toBe(initial);
+  });
+});
+
 test("item card Escape closes before the staged draft can be cleared", async ({ page, railwayBundle }) => {
   await page.goto("/");
   await writeSaveText(page, serializeGame(itemScenario("double", railwayBundle.network)));
