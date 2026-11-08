@@ -1,5 +1,5 @@
 import type { DeepReadonly, Direction, ItemTurnRecord, SegmentId } from "../../../types/network";
-import type { MoveEvent } from "../engine";
+import type { MoveEvent, RailwayNetwork } from "../engine";
 import { itemRideHasModifierWording } from "../hudPresentation";
 import type { TurnPresentationPolicy } from "./turnMomentPolicy";
 import type { ItemSessionView } from "../itemSession";
@@ -7,7 +7,7 @@ import type { LastMove } from "../gameSession";
 import type { RevealStage } from "./useRevealSequence";
 
 export type PreMoveStage = "waiting-roll" | "tumble" | "awaiting-adjust" | "waiting-record" | "stamps" | "released";
-export type TurnRevealStageKey = "arrival" | "lottery-flip" | "lottery-settle" | "pickup";
+export type TurnRevealStageKey = "arrival" | "segment-flash" | "lottery-flip" | "lottery-settle" | "pickup";
 
 export interface TurnOrigin {
   stationId: string;
@@ -104,18 +104,40 @@ export interface TurnRevealFacts {
   restored: boolean;
   /** New target segments captured from this record's accepted movement. */
   newlyCompletedTargetSegmentIds: readonly SegmentId[];
+  /** Accepted new target segments have at least one renderable geometry feature. */
+  hasRenderableNewTargetSegments: boolean;
   /** Reduced motion: the result publishes at once, with no timed stage. */
   omitted: boolean;
 }
 
-const NO_REVEAL_STAGES: readonly RevealStage[] = [];
+/** Geometry shared by stage eligibility and the map request, without depending on displayed progress. */
+export interface SegmentFlashGeometry {
+  readonly segmentsById: RailwayNetwork["segmentsById"];
+  readonly targetSegmentIds: readonly SegmentId[];
+}
+
+export function segmentFlashFeatureIds(
+  geometry: Pick<RailwayNetwork, "segmentsById">,
+  targetIds: readonly SegmentId[],
+  newlyCompletedTargetSegmentIds: readonly SegmentId[],
+): readonly string[] {
+  const required = new Set(targetIds);
+  return [...new Set(newlyCompletedTargetSegmentIds.filter((id) => required.has(id))
+    .flatMap((id) => geometry.segmentsById.get(id)?.geometryFeatureIds ?? []))];
+}
+
+const NO_REVEAL_STAGES: readonly RevealStage<TurnRevealStageKey>[] = [];
 
 /** Post-move stages from the accepted snapshot. */
-export function buildTurnRevealStages(facts: TurnRevealFacts, policy: TurnPresentationPolicy): readonly RevealStage[] {
+export function buildTurnRevealStages(facts: TurnRevealFacts, policy: TurnPresentationPolicy): readonly RevealStage<TurnRevealStageKey>[] {
   if (facts.record === null || facts.restored || facts.omitted) return NO_REVEAL_STAGES;
   const record = facts.record;
   const timing = policy.timing;
-  const stages: RevealStage[] = timing.arrivalMs === null ? [] : [{ key: "arrival", durationMs: timing.arrivalMs }];
+  const stages: RevealStage<TurnRevealStageKey>[] = [];
+  if (policy.showArrival && timing.arrivalMs !== null) stages.push({ key: "arrival", durationMs: timing.arrivalMs });
+  else if (policy.showImportantMoments && facts.newlyCompletedTargetSegmentIds.length > 0 && facts.hasRenderableNewTargetSegments) {
+    stages.push({ key: "segment-flash", durationMs: timing.flashMs });
+  }
   if (record.kind !== "item-ride" || record.stopReason === "goal") return stages;
   if (record.landing) {
     const services = record.landingSnapshot?.services ?? [];

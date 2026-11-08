@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, useLayoutEffect } from "react";
 import { readFileSync } from "node:fs";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -9,8 +9,12 @@ import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
 import { playItemTurn, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
+import * as turnMomentPolicy from "../../src/features/game/animation/turnMomentPolicy";
+import { useTurnMoments, type TurnMoments, type UseTurnMomentsOptions } from "../../src/features/game/animation/useTurnMoments";
+import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel } from "../../src/features/game/components/TurnMomentHost";
 import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
+import { itemSessionView } from "../../src/features/game/itemSession";
 import { resumeSession, type GameSession } from "../../src/features/game/gameSession";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
@@ -202,6 +206,20 @@ describe("display.segmentFlash", () => {
       featureIds: ["jr-yamanote:mejiro~ikebukuro", "jr-yamanote:ikebukuro~otsuka", "jr-yamanote:otsuka~sugamo"],
       durationMs: 533,
     });
+  });
+
+  it("keeps the same captured feature request during a card-less flash and clears it at completion", () => {
+    const normal = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+    const attempt = attemptFor({ policy: { ...normal, showArrival: false,
+      timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } } });
+    const request = flashOf({ attempt, revealStage: "segment-flash" });
+    expect(request).toEqual({ key: "61:5", featureIds: ["jr-yamanote:mejiro~ikebukuro",
+      "jr-yamanote:ikebukuro~otsuka", "jr-yamanote:otsuka~sugamo"], durationMs: 180 });
+    expect(flashOf({ attempt, revealStage: "segment-flash" })).toEqual(request);
+    expect(flashOf({ attempt, revealStage: "done" })).toBeNull();
+    expect(flashOf({ attempt, revealStage: "segment-flash", restoredOrOmitted: true })).toBeNull();
+    expect(flashOf({ attempt: attemptFor({ ...attempt, skipRequested: true }), revealStage: "segment-flash" })).toBeNull();
+    expect(flashOf({ attempt: null, revealStage: "segment-flash" })).toBeNull();
   });
 
   it("flashes only target segments the attempt captured, never other services or a progress difference", () => {
@@ -721,5 +739,74 @@ describe("S13 flash in GameApp", () => {
     click("タイトル");
     expect(mounted!.container.querySelector(".game-panel")).toBeNull();
     expect(flash()).toBeNull();
+  });
+});
+
+
+describe("card-less flash request lifetime", () => {
+  it("keeps the real display request through the last millisecond and commits no banner frame", () => {
+    vi.useFakeTimers();
+    const normal = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+    vi.spyOn(turnMomentPolicy, "captureTurnPresentationPolicy").mockReturnValue({ ...normal, showArrival: false,
+      timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } });
+    const base = itemScenario("delay", network);
+    const result = playItemTurn(base, {}, network);
+    const origin = resumeSession(base, network, 111);
+    const session = resumeSession(result.state, network, 111);
+    const itemView = itemSessionView(origin, network)!;
+    const snapshots: { request: SegmentFlashRequest | null; announcement: string; banner: boolean }[] = [];
+    let moments: TurnMoments | null = null;
+    let current: UseTurnMomentsOptions = {
+      sessionId: 111, gameTurn: base.turn, decisionRevision: 0, speedId: "normal", reducedMotion: false,
+      origin: { stationId: base.currentStationId, ride: { serviceId: base.currentServiceId, direction: base.direction },
+        completedSegmentIds: base.completedSegmentIds, turn: base.turn, itemView, previousLastMove: origin.lastMove },
+      observation: { decision: null, record: null, movementEvents: [], targetServiceId: base.config.targetServiceId },
+      revealObservation: { sessionId: 111, recordTurn: null, gameTurn: base.turn,
+        pendingDecisionTurn: null, movementComplete: false },
+      segmentFlashGeometry: { segmentsById: network.segmentsById, targetSegmentIds: targetSegmentIds(base.config, network) },
+      latestRecord: null, restoredRecord: false, suppressRevealStages: false, animation: null, finishAnimation: vi.fn(),
+    };
+    function Harness({ options }: { options: UseTurnMomentsOptions }): React.JSX.Element {
+      const value = useTurnMoments(options);
+      moments = value;
+      const display = deriveTurnMomentDisplay({ session, network, presentation: resolver,
+        progress: displayedProgress(sessionProgress(session), network, null), attempt: value.attempt,
+        itemView: itemSessionView(session, network), revealStage: value.revealStage,
+        revealKey: value.reveal.key, restoredOrOmitted: value.restoredOrOmitted });
+      const banner = turnMomentArrivalModel(display.phase, value.revealStage, "到着駅");
+      useLayoutEffect(() => { snapshots.push({ request: display.segmentFlash, announcement: display.announcement,
+        banner: banner !== null }); });
+      return createElement(TurnMomentHost, null, banner && createElement(ArrivalBanner, { model: banner }));
+    }
+    const mount = mountReact(createElement(Harness, { options: current }));
+    const render = (changes: Partial<UseTurnMomentsOptions>): void => {
+      current = { ...current, ...changes };
+      act(() => mount.root.render(createElement(Harness, { options: current })));
+    };
+    try {
+      act(() => moments!.begin());
+      render({ latestRecord: result.record, observation: { decision: null, record: result.record,
+        movementSessionId: 111, movementTurn: base.turn + 1, targetServiceId: base.config.targetServiceId,
+        movementEvents: result.events.filter((event) => event.type === "segment-traversed") },
+        revealObservation: { sessionId: 111, recordTurn: base.turn + 1, gameTurn: base.turn + 1,
+          pendingDecisionTurn: null, movementComplete: false } });
+      act(() => vi.advanceTimersByTime(600));
+      render({ revealObservation: { ...current.revealObservation, movementComplete: true } });
+      const first = snapshots.at(-1)!.request;
+      expect(first).toMatchObject({ key: `111:${base.turn + 1}`, durationMs: 180 });
+      expect(first!.featureIds).toHaveLength(3);
+      act(() => vi.advanceTimersByTime(179));
+      render({ speedId: "fast", observation: { ...current.observation, movementEvents: [] } });
+      expect(snapshots.at(-1)!.request).toEqual(first);
+      const beforeBoundary = snapshots.length;
+      act(() => vi.advanceTimersByTime(1));
+      expect(snapshots.at(-1)!.request).toBeNull();
+      expect(snapshots.slice(beforeBoundary)).toHaveLength(1);
+      expect(snapshots.at(-1)!.announcement).not.toMatch(/抽選結果を表示しています/);
+      expect(snapshots.every(({ banner }) => !banner)).toBe(true);
+      expect(mount.container.querySelector(".arrival-banner")).toBeNull();
+    } finally {
+      mount.cleanup();
+    }
   });
 });

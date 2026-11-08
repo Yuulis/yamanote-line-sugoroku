@@ -5,6 +5,9 @@ import { captureTurnPresentationPolicy, type TurnMomentTiming, type TurnPresenta
 import type { MoveAnimation } from "../gameSession";
 import {
   buildTurnRevealStages,
+  segmentFlashFeatureIds,
+  type SegmentFlashGeometry,
+  type TurnRevealStageKey,
   INITIAL_TURN_MOMENTS_STATE,
   turnMomentsReducer,
   type PreMoveStage,
@@ -35,6 +38,8 @@ export interface UseTurnMomentsOptions {
   restoredRecord: boolean;
   /** The publication-boundary seam supplies its own stage instead of scheduling real reveals. */
   suppressRevealStages: boolean;
+  /** Geometry for standalone flashes; absent until the caller enables card-less presentation. */
+  segmentFlashGeometry?: SegmentFlashGeometry;
   animation: MoveAnimation | null;
   finishAnimation: (animation: MoveAnimation) => void;
 }
@@ -42,7 +47,7 @@ export interface UseTurnMomentsOptions {
 export interface TurnMoments {
   attempt: RollAttempt | null;
   revealStage: TurnRevealState;
-  reveal: RevealSequence;
+  reveal: RevealSequence<TurnRevealStageKey>;
   revealTiming: TurnMomentTiming;
   restoredOrOmitted: boolean;
   movementStartAllowed: boolean;
@@ -59,10 +64,10 @@ export interface TurnMoments {
 interface FrozenRevealPlan {
   readonly key: string;
   readonly policy: TurnPresentationPolicy;
-  readonly stages: readonly RevealStage[];
+  readonly stages: readonly RevealStage<TurnRevealStageKey>[];
 }
 
-const EMPTY_STAGES: readonly RevealStage[] = [];
+const EMPTY_STAGES: readonly RevealStage<TurnRevealStageKey>[] = [];
 
 /**
  * Whether `animation` is the movement of `attempt`. A turn ending in a pending discard animates under the prior
@@ -146,6 +151,10 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
   if (frozenPlanRef.current === null && record !== null && record.turn === options.revealObservation.recordTurn &&
     options.sessionId === options.revealObservation.sessionId && (!matchingAttempt || matchingAttempt.recordAccepted)) {
     const policy = matchingAttempt?.policy ?? captureTurnPresentationPolicy({ speedId: options.speedId, presentationLevel: "all" });
+    const segmentIds = matchingAttempt?.newlyCompletedTargetSegmentIds ?? [];
+    const geometry = options.segmentFlashGeometry;
+    const hasRenderableNewTargetSegments = geometry !== undefined && matchingAttempt?.motionOmitted === false &&
+      segmentFlashFeatureIds(geometry, geometry.targetSegmentIds, segmentIds).length > 0;
     frozenPlanRef.current = Object.freeze({
       key: revealKey,
       policy,
@@ -153,7 +162,8 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
         record: options.suppressRevealStages ? null : record,
         restored: options.restoredRecord,
         omitted: options.reducedMotion || revealMotionOmitted,
-        newlyCompletedTargetSegmentIds: matchingAttempt?.newlyCompletedTargetSegmentIds ?? [],
+        newlyCompletedTargetSegmentIds: segmentIds,
+        hasRenderableNewTargetSegments,
       }, policy).map((stage) => Object.freeze(stage))),
     });
   }
@@ -208,7 +218,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
 
   return {
     attempt,
-    revealStage: sequence.stage as TurnRevealState,
+    revealStage: sequence.stage,
     reveal: sequence,
     revealTiming: plan?.policy.timing ?? attempt?.policy.timing ??
       captureTurnPresentationPolicy({ speedId: options.speedId, presentationLevel: "all" }).timing,

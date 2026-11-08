@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createGame, playItemTurn, playTurn, targetSegmentIds } from "../../src/features/game/engine";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
 import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
+import { turnMomentArrivalModel } from "../../src/features/game/components/TurnMomentHost";
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import { itemSessionView } from "../../src/features/game/itemSession";
@@ -362,5 +363,68 @@ describe("S15 pickup publication boundary", () => {
     expect(published.showItemNotice).toBe(true);
     expect(published.toastInputs.map((input) => input.text)).toEqual(["快速券を手に入れた！"]);
     expect(published.announcement).toContain("快速券を拾いました");
+  });
+});
+
+
+describe("card-less segment flash publication", () => {
+  const base = itemScenario("discard", network);
+  const result = playItemTurn(base, {}, network);
+  const origin = resumeSession(base, network, 101);
+  const session = resumeSession(result.state, network, 101);
+  const originView = itemSessionView(origin, network)!;
+  const liveView = itemSessionView(session, network)!;
+  const normal = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+  const attempt: RollAttempt = { ...attemptFor(origin), origin: { ...attemptFor(origin).origin, itemView: originView },
+    policy: { ...normal, showArrival: false, timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } },
+    newlyCompletedTargetSegmentIds: result.events.flatMap((event) =>
+      event.type === "segment-traversed" && event.newlyCompleted && event.serviceId === base.config.targetServiceId
+        ? [event.segmentId] : []) };
+  const input = { session, network, presentation: resolver, progress: progressFor(session), attempt,
+    itemView: liveView, restoredOrOmitted: false, revealKey: `101:${attempt.recordTurn}` };
+
+  it("masks landing, inventory, discard and notices while locking items without an arrival banner", () => {
+    expect(liveView.decision?.kind).toBe("discard");
+    const display = deriveTurnMomentDisplay({ ...input, revealStage: "segment-flash" });
+    expect(display.phase).toBe("segment-flash");
+    expect(display.segmentFlash).toMatchObject({ key: input.revealKey, durationMs: 180 });
+    expect(display.ride).toEqual(attempt.origin.ride);
+    expect(display.candidateRows).toEqual([]);
+    expect(display.itemView?.inventory).toEqual(originView.inventory);
+    expect(display.decision).toBeNull();
+    expect(display.showItemNotice).toBe(false);
+    expect(display.itemNoticePublished).toBe(false);
+    expect(display.toastInputs).toEqual([]);
+    expect(display.itemUseLocked).toBe(true);
+    expect(display.canRoll).toBe(false);
+    expect(display.canSkip).toBe(true);
+    expect(display.showClear).toBe(false);
+    expect(display.announcement).not.toMatch(/拾いました|捨てる|サイコロを振れます/);
+    expect(turnMomentArrivalModel(display.phase, "segment-flash", "到着駅")).toBeNull();
+  });
+
+  it("Skip clears the flash and publishes results while keeping discard mandatory", () => {
+    const skipped = { ...attempt, skipRequested: true, motionOmitted: true };
+    const display = deriveTurnMomentDisplay({ ...input, attempt: skipped, revealStage: "done" });
+    expect(display.phase).toBe("published");
+    expect(display.segmentFlash).toBeNull();
+    expect(display.itemView).toBe(liveView);
+    expect(display.decision).toEqual(liveView.decision);
+    expect(display.decision?.kind).toBe("discard");
+    expect(display.canRoll).toBe(false);
+    expect(display.itemUseLocked).toBe(false);
+    expect(display.showItemNotice).toBe(true);
+    expect(display.announcement).toContain("捨てるアイテムを1つ選んでください");
+  });
+
+  it("publishes one safe announcement at the boundary without announcing hidden pickup results", () => {
+    const flash = deriveTurnMomentDisplay({ ...input, revealStage: "segment-flash" });
+    const published = deriveTurnMomentDisplay({ ...input, revealStage: "done" });
+    const repeated = deriveTurnMomentDisplay({ ...input, revealStage: "done" });
+    expect(flash.announcement).toMatch(/到着/);
+    expect(flash.announcement).not.toMatch(/拾いました|捨てる/);
+    expect(published.announcement).toContain("捨てるアイテムを1つ選んでください");
+    expect(repeated.announcement).toBe(published.announcement);
+    expect(published.segmentFlash).toBeNull();
   });
 });

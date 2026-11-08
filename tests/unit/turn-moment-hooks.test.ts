@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { MoveAnimation } from "../../src/features/game/gameSession";
 import type { ItemSessionView } from "../../src/features/game/itemSession";
 import { useTurnMoments, type TurnMoments, type UseTurnMomentsOptions } from "../../src/features/game/animation/useTurnMoments";
+import * as turnMomentPolicy from "../../src/features/game/animation/turnMomentPolicy";
 import * as turnMomentPlanning from "../../src/features/game/animation/turnMoments";
 import type { TurnMomentObservation, TurnOrigin } from "../../src/features/game/animation/turnMoments";
 import type { ItemRideRecord } from "../../src/types/network";
@@ -574,3 +575,87 @@ it.each(["arrival", "lottery-flip", "lottery-settle", "pickup"] as const)(
     expect(vi.getTimerCount()).toBe(0);
   },
 );
+
+
+describe("card-less flash lifecycle", () => {
+  function mountCardlessFlash() {
+    vi.useFakeTimers();
+    const normal = turnMomentPolicy.captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+    vi.spyOn(turnMomentPolicy, "captureTurnPresentationPolicy").mockReturnValue({ ...normal, showArrival: false,
+      timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } });
+    const segmentId = "jr-yamanote:shimbashi:hamamatsucho";
+    const harness = mountHarness(options({ segmentFlashGeometry: {
+      segmentsById: NETWORK.segmentsById, targetSegmentIds: [segmentId],
+    } }));
+    act(() => harness.moments.begin());
+    harness.update({ observation: { ...acceptedRecordObservation(), movementEvents: [
+      { type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1, segmentId,
+        fromStationId: "shimbashi", toStationId: "hamamatsucho", newlyCompleted: true },
+    ] }, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: false } });
+    act(() => vi.advanceTimersByTime(600));
+    expect(harness.moments.revealStage).toBe("waiting");
+    harness.update({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    return harness;
+  }
+
+  it.each(["missing geometry", "unmapped segment", "off-target segment", "no new segments"] as const)(
+    "omits the standalone wait for %s", (reason) => {
+      vi.useFakeTimers();
+      const normal = turnMomentPolicy.captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+      vi.spyOn(turnMomentPolicy, "captureTurnPresentationPolicy").mockReturnValue({ ...normal, showArrival: false,
+        timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } });
+      const segmentId = "jr-yamanote:shimbashi:hamamatsucho";
+      const harness = mountHarness(options({ segmentFlashGeometry: reason === "missing geometry" ? undefined : {
+        segmentsById: reason === "unmapped segment" ? new Map() : NETWORK.segmentsById,
+        targetSegmentIds: reason === "off-target segment" ? [] : [segmentId],
+      } }));
+      act(() => harness.moments.begin());
+      harness.update({ observation: { ...acceptedRecordObservation(), movementEvents: reason === "no new segments" ? [] : [
+        { type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1, segmentId,
+          fromStationId: "shimbashi", toStationId: "hamamatsucho", newlyCompleted: true },
+      ] }, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+        pendingDecisionTurn: null, movementComplete: true } });
+      act(() => vi.advanceTimersByTime(600));
+      expect(harness.moments.revealStage).toBe("done");
+      expect(harness.moments.reveal.ready).toBe(true);
+      expect(vi.getTimerCount()).toBe(0);
+      harness.mount.cleanup();
+    },
+  );
+
+  it("holds the flash for its whole captured duration without committing any arrival frame", () => {
+    const harness = mountCardlessFlash();
+    expect(harness.moments.revealStage).toBe("segment-flash");
+    expect(harness.moments.reveal.ready).toBe(false);
+    act(() => vi.advanceTimersByTime(179));
+    harness.update({ speedId: "fast", observation: acceptedRecordObservation() });
+    expect(harness.moments.revealStage).toBe("segment-flash");
+    expect(harness.moments.attempt?.newlyCompletedTargetSegmentIds).toEqual(["jr-yamanote:shimbashi:hamamatsucho"]);
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.revealStage).toBe("done");
+    expect(harness.moments.reveal.ready).toBe(true);
+    expect(harness.commits.some(({ revealStage }) => revealStage === "arrival")).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it.each(["skip", "replacement", "OS reduction"] as const)("clears the flash on %s without stale timers or replay", (reason) => {
+    const harness = mountCardlessFlash();
+    expect(harness.moments.revealStage).toBe("segment-flash");
+    act(() => vi.advanceTimersByTime(90));
+    if (reason === "skip") act(() => harness.moments.skip());
+    else if (reason === "OS reduction") harness.update({ reducedMotion: true });
+    else harness.update({ sessionId: 8, observation: INITIAL_OBSERVATION,
+      revealObservation: { sessionId: 8, recordTurn: null, gameTurn: 0,
+        pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.revealStage).toBe("done");
+    expect(vi.getTimerCount()).toBe(0);
+    if (reason === "OS reduction") harness.update({ reducedMotion: false });
+    act(() => vi.advanceTimersByTime(180));
+    expect(harness.moments.revealStage).toBe("done");
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+});
