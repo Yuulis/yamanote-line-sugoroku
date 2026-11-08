@@ -33,7 +33,7 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 | S4 | Frozen reveal plan owned by `useTurnMoments` (no behaviour change) | done | `a6f8ce6` | Codex Sol; typecheck ok; vitest 73 files / 1722 passed; E2E ui-pop-turn-moments+lottery+resume desktop/phone chromium 108 passed; GameApp.tsx 472 lines |
 | S5 | Card-less `segment-flash` stage (not yet reachable) | done | `405c755` | Codex Sol; vitest 73 files / 1743 passed; E2E ui-pop-turn-moments desktop/phone chromium 92 passed. Deviation: optional `segmentFlashGeometry` hook input, GameApp wiring deferred to S6 |
 | S6 | Expose the 4th speed 「とても速い」 | done | `4fd0e58` | Codex Sol; vitest 73 files / 1753 passed; E2E ui-pop-turn-moments+game-settings+accessibility+dice desktop/phone chromium 154 passed; segmentFlashGeometry wired; GameApp.tsx 473 lines |
-| S7 | 重要なときだけ / なし internals | pending | — | split S7a/S7b if tests > ~450 LOC |
+| S7 | 重要なときだけ / なし internals (GameApp still passes すべて) | done | `b0be077` | Codex Sol; vitest 73 files / 1794 passed; E2E ui-pop-turn-moments desktop/phone chromium 94 passed. Review note for S10: a restored pending-adjust roll animates movement under important/none but not under all (planned behaviour; confirm) |
 | S8 | Expose and persist the 演出 menu control | pending | — | |
 | S9 | Keyboard shortcuts and menu hint | pending | — | |
 | S10 | Final local validation and full diff review | pending | — | |
@@ -63,4 +63,4 @@ plus S/Escape skip shortcuts. Out: auto-roll 「おまかせで進む」 (stage 
 
 1. Plan approved by the user 2026-11-08 (implementer: Codex Sol, default effort; pause after every step) → lead applies the DESIGN rows:
    `python3 .claude/skills/_shared/update_design.py --input .claude/logs/design-input-tempo-fast-forward-auto-roll.json --apply --require-change`.
-2. Branch `feature/tempo-stage1` created; S1–S6 done. Continuous mode from S2 (user 2026-11-08). Next: **S7**. Prompt template: `.claude/docs/plans/tempo-stage1-prompts.md`.
+2. Branch `feature/tempo-stage1` created; S1–S7 done. Continuous mode from S2 (user 2026-11-08). Next: **S8**. Prompt template: `.claude/docs/plans/tempo-stage1-prompts.md`.
