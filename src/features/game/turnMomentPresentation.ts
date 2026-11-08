@@ -278,7 +278,7 @@ function arrivalSegmentFlash(
     .filter((id) => required.has(id))
     .flatMap((id) => input.network.segmentsById.get(id)?.geometryFeatureIds ?? []))];
   if (featureIds.length === 0) return null;
-  return { key: revealKey, featureIds, durationMs: attempt.timing.arrivalMs };
+  return { key: revealKey, featureIds, durationMs: attempt.policy.timing.flashMs };
 }
 
 const MOVING_ANNOUNCEMENT = "移動中です。スキップできます。";

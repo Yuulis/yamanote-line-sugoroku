@@ -55,7 +55,7 @@ function Harness({ options, onCommit }: HarnessProps) {
 
 function options(changes: Partial<UseTurnMomentsOptions> = {}): UseTurnMomentsOptions {
   return {
-    sessionId: 7, gameTurn: 0, decisionRevision: 3, origin: ORIGIN, stepMs: 450, reducedMotion: false,
+    sessionId: 7, gameTurn: 0, decisionRevision: 3, origin: ORIGIN, speedId: "normal", reducedMotion: false,
     observation: INITIAL_OBSERVATION,
     revealObservation: { sessionId: 7, recordTurn: null, gameTurn: 0, pendingDecisionTurn: null, movementComplete: false },
     revealStages: ARRIVAL, animation: null, finishAnimation: vi.fn(), ...changes,
@@ -131,8 +131,8 @@ describe("useTurnMoments", () => {
     act(() => harness.moments.begin());
     const decision = { kind: "adjust" as const, turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
       allowedDeltas: [-1, 1] as const, itemInstanceIds: ["adjust"], canContinue: true as const };
-    harness.update({ stepMs: 300, observation: { ...INITIAL_OBSERVATION, decision } });
-    expect(harness.moments.attempt?.timing.stepMs).toBe(450);
+    harness.update({ speedId: "fast", observation: { ...INITIAL_OBSERVATION, decision } });
+    expect(harness.moments.attempt?.policy.timing.stepMs).toBe(450);
     act(() => vi.advanceTimersByTime(600));
     expect(harness.moments.attempt?.stage).toBe("awaiting-adjust");
     const modifierRecord: ItemRideRecord = { ...RECORD, command: { items: [{ kind: "double", instanceId: "double" }] } };
@@ -149,6 +149,41 @@ describe("useTurnMoments", () => {
     act(() => vi.advanceTimersByTime(1));
     expect(harness.moments.attempt?.stage).toBe("released");
     expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+
+  it("keeps all captured durations and the movement step after a speed change until the next attempt", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness(options({ revealStages: [
+      { key: "arrival", durationMs: 533 }, { key: "lottery-flip", durationMs: 1067 },
+      { key: "lottery-settle", durationMs: 267 }, { key: "pickup", durationMs: 333 },
+    ] }));
+    act(() => harness.moments.begin());
+    const captured = harness.moments.attempt!.policy;
+    harness.update({ speedId: "fast", observation: acceptedRecordObservation() });
+    expect(harness.moments.attempt!.policy).toBe(captured);
+    expect(captured.timing.stepMs).toBe(450);
+    act(() => vi.advanceTimersByTime(599));
+    expect(harness.moments.attempt?.stage).toBe("tumble");
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    harness.update({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    for (const [stage, duration] of [
+      ["arrival", 800], ["lottery-flip", 1600], ["lottery-settle", 400], ["pickup", 500],
+    ] as const) {
+      expect(harness.moments.revealStage).toBe(stage);
+      act(() => vi.advanceTimersByTime(duration - 1));
+      expect(harness.moments.revealStage).toBe(stage);
+      act(() => vi.advanceTimersByTime(1));
+    }
+    expect(harness.moments.revealStage).toBe("done");
+    harness.update({ gameTurn: 1, observation: INITIAL_OBSERVATION });
+    act(() => harness.moments.begin());
+    expect(harness.moments.attempt?.policy).toMatchObject({ speedId: "fast", level: "all",
+      timing: { stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
+        lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333, flashMs: 533 } });
+    expect(captured.timing.stepMs).toBe(450);
     harness.mount.cleanup();
   });
 
@@ -400,7 +435,7 @@ describe("useTurnMoments", () => {
     const harness = mountHarness();
     const begin = harness.moments.begin;
     const skip = harness.moments.skip;
-    harness.update({ stepMs: 300 });
+    harness.update({ speedId: "fast" });
     expect(harness.moments.begin).toBe(begin);
     expect(harness.moments.skip).toBe(skip);
     harness.mount.cleanup();

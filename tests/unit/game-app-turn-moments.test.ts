@@ -16,13 +16,14 @@ import { itemScenario } from "../e2e/fixtures/itemScenarios";
 
 import { resumeSession, startSession, reduceGameSession, type GameSession } from "../../src/features/game/gameSession";
 import {
-  INITIAL_TURN_MOMENTS_STATE, observeTurnFacts, turnMomentsReducer, turnMomentTiming, type RollAttempt, type TurnMomentObservation,
+  INITIAL_TURN_MOMENTS_STATE, observeTurnFacts, turnMomentsReducer, type RollAttempt, type TurnMomentObservation,
 } from "../../src/features/game/animation/turnMoments";
+import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import { diceStampLabels } from "../../src/features/game/components/DiceTumble";
 import { mapControlInsets, turnMomentDiceModel } from "../../src/features/game/components/TurnMomentHost";
 import type { ItemGameState, ItemTurnRecord } from "../../src/types/network";
 import type { useGameApp } from "../../src/features/game/useGameApp";
-import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { ITEM_GAME_CONFIG, type AnimationSpeedId } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { FIXTURE_GAME_SEED, LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
 
@@ -180,7 +181,7 @@ function attemptFor(origin: GameSession): RollAttempt {
       ride: { serviceId: origin.game.currentServiceId, direction: origin.game.direction },
       completedSegmentIds: origin.game.completedSegmentIds, turn: origin.game.turn,
       itemView: itemSessionView(origin, network)!, previousLastMove: origin.lastMove },
-    timing: { stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800, lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 },
+    policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" }),
     stage: "released", rawRoll: 1, tumbleCompleted: true, skipRequested: false, motionOmitted: false,
     adjustObserved: false, recordAccepted: true, stampsRequired: false, newlyCompletedTargetSegmentIds: [] };
 }
@@ -569,9 +570,9 @@ describe("S10b pending-adjust resume", () => {
 describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
   const base = attemptFor(plainOrigin()).origin;
   type State = typeof INITIAL_TURN_MOMENTS_STATE;
-  const begin = (state: State = INITIAL_TURN_MOMENTS_STATE, stepMs = 450, turn = 0, source?: "restored-roll") =>
+  const begin = (state: State = INITIAL_TURN_MOMENTS_STATE, speedId: AnimationSpeedId = "normal", turn = 0, source?: "restored-roll") =>
     turnMomentsReducer(state, { type: "begin", sessionId: 31, turn, decisionRevision: 0, origin: base,
-      timing: turnMomentTiming(stepMs), source });
+      policy: captureTurnPresentationPolicy({ speedId, presentationLevel: "all" }), source });
   const acceptedRecord = (): TurnMomentObservation => {
     const record = playItemTurn(createItemGame(ITEM_GAME_CONFIG, PLAIN_SEED, network), {}, network).record;
     if (record?.kind !== "item-ride") throw new Error("Expected a plain ride record");
@@ -599,7 +600,7 @@ describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
   });
 
   it("resumes a restored pending roll without ever entering the tumble stage", () => {
-    const restored = begin(INITIAL_TURN_MOMENTS_STATE, 450, 0, "restored-roll");
+    const restored = begin(INITIAL_TURN_MOMENTS_STATE, "normal", 0, "restored-roll");
     expect(restored.attempt).toMatchObject({ source: "restored-roll", stage: "waiting-record",
       tumbleCompleted: true, motionOmitted: true, recordAccepted: false });
     expect(advance(restored, "tumble")).toBe(restored);
@@ -609,15 +610,15 @@ describe("S10b attempt acceptance and speed capture (reducer fixtures)", () => {
 
   it("captures the speed per attempt key; a later speed applies to the next turn only", () => {
     const normal = begin();
-    expect(normal.attempt?.timing).toEqual({ stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800,
-      lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 });
+    expect(normal.attempt?.policy.timing).toEqual({ stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800,
+      lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500, flashMs: 800 });
     // The speed menu changed to はやい while this attempt is active: the same key keeps its captured timing.
-    expect(begin(normal, 300)).toBe(normal);
-    const next = begin(normal, 300, 1);
+    expect(begin(normal, "fast")).toBe(normal);
+    const next = begin(normal, "fast", 1);
     expect(next.attempt).toMatchObject({ key: "31:roll:2:0" });
-    expect(next.attempt?.timing).toEqual({ stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
-      lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333 });
-    expect(normal.attempt?.timing.tumbleMs).toBe(600);
+    expect(next.attempt?.policy.timing).toEqual({ stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
+      lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333, flashMs: 533 });
+    expect(normal.attempt?.policy.timing.tumbleMs).toBe(600);
   });
 });
 

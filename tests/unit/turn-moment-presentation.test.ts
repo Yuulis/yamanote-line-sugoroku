@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createGame, playItemTurn, playTurn, targetSegmentIds } from "../../src/features/game/engine";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
+import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import { itemSessionView } from "../../src/features/game/itemSession";
@@ -31,7 +32,7 @@ function attemptFor(session: GameSession, stage: RollAttempt["stage"] = "release
       itemView: null as never,
       previousLastMove: session.lastMove,
     },
-    timing: { stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800, lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 },
+    policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" }),
     stage,
     rawRoll: null,
     tumbleCompleted: stage === "released",

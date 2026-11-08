@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
+import type { AnimationSpeedId } from "../gameConfig";
+import { captureTurnPresentationPolicy } from "./turnMomentPolicy";
 import type { MoveAnimation } from "../gameSession";
 import {
   INITIAL_TURN_MOMENTS_STATE,
-  turnMomentTiming,
   turnMomentsReducer,
   type PreMoveStage,
   type RollAttempt,
@@ -23,8 +24,8 @@ export interface UseTurnMomentsOptions {
   decisionRevision: number;
   /** Origin snapshot captured by `begin`; null (classic mode, no session) makes `begin` a no-op. */
   origin: TurnOrigin | null;
-  /** Selected 速度 step; the attempt captures its timing (and movement step) at `begin`. */
-  stepMs: number;
+  /** Selected 速度; the attempt captures its policy (and movement step) at `begin`. */
+  speedId: AnimationSpeedId;
   reducedMotion: boolean;
   observation: TurnMomentObservation;
   revealObservation: RevealObservation;
@@ -67,14 +68,14 @@ export function attemptOwnsAnimation(attempt: RollAttempt | null, animation: Mov
 
 function durationForStage(stage: RevealStage, attempt: RollAttempt | null): RevealStage {
   if (!attempt) return stage;
-  const durations: Readonly<Record<string, number | undefined>> = {
-    arrival: attempt.timing.arrivalMs,
-    "lottery-flip": attempt.timing.lotteryFlipMs,
-    "lottery-settle": attempt.timing.lotterySettleMs,
-    pickup: attempt.timing.pickupMs,
+  const durations: Readonly<Record<string, number | null | undefined>> = {
+    arrival: attempt.policy.timing.arrivalMs,
+    "lottery-flip": attempt.policy.timing.lotteryFlipMs,
+    "lottery-settle": attempt.policy.timing.lotterySettleMs,
+    pickup: attempt.policy.timing.pickupMs,
   };
   const durationMs = durations[stage.key];
-  return durationMs === undefined ? stage : { ...stage, durationMs };
+  return durationMs === undefined || durationMs === null ? stage : { ...stage, durationMs };
 }
 
 /** Coordinates the roll attempt and the post-move reveal without owning game state. */
@@ -121,8 +122,8 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
 
   const timedStage = !attempt?.motionOmitted && (attempt?.stage === "tumble" || attempt?.stage === "stamps")
     ? attempt.stage : null;
-  const timedDuration = timedStage === "tumble" ? attempt?.timing.tumbleMs
-    : timedStage === "stamps" ? attempt?.timing.stampsMs : null;
+  const timedDuration = timedStage === "tumble" ? attempt?.policy.timing.tumbleMs
+    : timedStage === "stamps" ? attempt?.policy.timing.stampsMs : null;
   useEffect(() => {
     if (!attempt || timedStage === null || timedDuration === null) return;
     const key = attempt.key;
@@ -138,7 +139,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
     reducedOmissionRef.current = { key, omitted: current.reducedMotion };
     dispatch({ type: "begin", sessionId: current.sessionId, turn: current.gameTurn,
       decisionRevision: current.decisionRevision, origin: current.origin,
-      timing: turnMomentTiming(current.stepMs), reducedMotion: current.reducedMotion, source });
+      policy: captureTurnPresentationPolicy({ speedId: current.speedId, presentationLevel: "all" }), reducedMotion: current.reducedMotion, source });
   }, []);
 
   const frozenStagesRef = useRef<FrozenStages>({ key: "", stages: EMPTY_STAGES });

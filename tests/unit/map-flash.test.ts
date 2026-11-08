@@ -9,6 +9,7 @@ import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
 import { playItemTurn, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
+import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
 import { resumeSession, type GameSession } from "../../src/features/game/gameSession";
 import { networkFromData } from "../../src/features/game/networkFromData";
@@ -172,7 +173,7 @@ describe("display.segmentFlash", () => {
       key: `61:roll:${game.turn + 1}:0`, sessionId: 61, recordTurn: game.turn + 1, source: "click",
       origin: { stationId: game.currentStationId, ride: { serviceId: game.currentServiceId, direction: game.direction },
         completedSegmentIds: game.completedSegmentIds, turn: game.turn, itemView: null as never, previousLastMove: origin.lastMove },
-      timing: { stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533, lotteryFlipMs: 1067, lotterySettleMs: 267, pickupMs: 333 },
+      policy: captureTurnPresentationPolicy({ speedId: "fast", presentationLevel: "all" }),
       stage: "released", rawRoll: 1, tumbleCompleted: true, skipRequested: false, motionOmitted: false,
       adjustObserved: false, recordAccepted: true, stampsRequired: false, newlyCompletedTargetSegmentIds: fresh,
       ...overrides,

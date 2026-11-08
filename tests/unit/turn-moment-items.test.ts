@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { beginItemTurn, createItemGame, finishItemTurn, playItemTurn, resolveItemDiscard } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { sessionProgress, displayedProgress } from "../../src/features/game/animation/displayedProgress";
+import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import type { RollAttempt, PreMoveStage } from "../../src/features/game/animation/turnMoments";
 import { reduceGameSession, resumeSession, type GameAction, type GameSession } from "../../src/features/game/gameSession";
 import { itemActionIdentity, itemSessionView } from "../../src/features/game/itemSession";
@@ -13,8 +14,7 @@ import { itemScenario } from "../e2e/fixtures/itemScenarios";
 
 const { network } = await loadBundle("fixture");
 const presentation = createPresentationResolver(network);
-const TIMING = { stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800,
-  lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 } as const;
+const POLICY = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
 
 function releasedAttempt(
   session: ReturnType<typeof resumeSession>, snapshot: NonNullable<ReturnType<typeof itemSessionView>>,
@@ -24,7 +24,7 @@ function releasedAttempt(
     recordTurn: snapshot.identity.turn + 1, source: "click", origin: { stationId: snapshot.position.currentStationId,
       ride: { serviceId: snapshot.position.currentServiceId, direction: snapshot.position.direction },
       completedSegmentIds: session.game.completedSegmentIds, turn: snapshot.identity.turn, itemView: snapshot,
-      previousLastMove: session.lastMove }, timing: TIMING, stage, rawRoll: 4, tumbleCompleted: true,
+      previousLastMove: session.lastMove }, policy: POLICY, stage, rawRoll: 4, tumbleCompleted: true,
     skipRequested: false, motionOmitted: false, adjustObserved: false, recordAccepted: true, stampsRequired: true,
     newlyCompletedTargetSegmentIds: [] };
 }

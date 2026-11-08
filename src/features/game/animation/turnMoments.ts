@@ -1,23 +1,13 @@
 import type { DeepReadonly, Direction, ItemTurnRecord, SegmentId } from "../../../types/network";
 import type { MoveEvent } from "../engine";
 import { itemRideHasModifierWording } from "../hudPresentation";
-import { ANIMATION_SPEEDS } from "../gameConfig";
+import type { TurnMomentTiming, TurnPresentationPolicy } from "./turnMomentPolicy";
 import type { ItemSessionView } from "../itemSession";
 import type { LastMove } from "../gameSession";
 import type { RevealStage } from "./useRevealSequence";
 
 export type PreMoveStage = "waiting-roll" | "tumble" | "awaiting-adjust" | "waiting-record" | "stamps" | "released";
 export type TurnRevealStageKey = "arrival" | "lottery-flip" | "lottery-settle" | "pickup";
-
-export interface TurnMomentTiming {
-  stepMs: number;
-  tumbleMs: number;
-  stampsMs: number;
-  arrivalMs: number;
-  lotteryFlipMs: number;
-  lotterySettleMs: number;
-  pickupMs: number;
-}
 
 export interface TurnOrigin {
   stationId: string;
@@ -34,7 +24,7 @@ export interface RollAttempt {
   recordTurn: number;
   source: "click" | "restored-roll";
   origin: TurnOrigin;
-  timing: TurnMomentTiming;
+  policy: TurnPresentationPolicy;
   stage: PreMoveStage;
   rawRoll: number | null;
   tumbleCompleted: boolean;
@@ -74,27 +64,11 @@ export interface AcceptedTurnFacts {
 
 export type TurnMomentsAction =
   | { type: "begin"; sessionId: number; turn: number; decisionRevision: number; source?: "click" | "restored-roll";
-      origin: TurnOrigin; timing: TurnMomentTiming; reducedMotion?: boolean }
+      origin: TurnOrigin; policy: TurnPresentationPolicy; reducedMotion?: boolean }
   | { type: "observe"; sessionId: number; facts: TurnMomentObservation }
   | { type: "advance"; key: string; expectedStage: PreMoveStage }
   | { type: "skip"; key: string }
   | { type: "reset"; sessionId: number | null };
-
-const NORMAL_STEP_MS = ANIMATION_SPEEDS.find((speed) => speed.id === "normal")!.stepMs;
-const NORMAL_BASES = { tumbleMs: 600, stampsMs: 240, arrivalMs: 800, lotteryFlipMs: 1_600, lotterySettleMs: 400, pickupMs: 500 } as const;
-
-export function turnMomentTiming(stepMs: number): TurnMomentTiming {
-  const factor = stepMs / NORMAL_STEP_MS;
-  return {
-    stepMs,
-    tumbleMs: Math.round(NORMAL_BASES.tumbleMs * factor),
-    stampsMs: Math.round(NORMAL_BASES.stampsMs * factor),
-    arrivalMs: Math.round(NORMAL_BASES.arrivalMs * factor),
-    lotteryFlipMs: Math.round(NORMAL_BASES.lotteryFlipMs * factor),
-    lotterySettleMs: Math.round(NORMAL_BASES.lotterySettleMs * factor),
-    pickupMs: Math.round(NORMAL_BASES.pickupMs * factor),
-  };
-}
 
 /** Normalizes externally observed facts; turn/session ownership is checked by the reducer. */
 export function observeTurnFacts(observation: TurnMomentObservation): AcceptedTurnFacts {
@@ -138,7 +112,7 @@ const NO_REVEAL_STAGES: readonly RevealStage[] = [];
 export function buildTurnRevealStages(facts: TurnRevealFacts, timing: TurnMomentTiming): readonly RevealStage[] {
   if (facts.record === null || facts.restored || facts.omitted) return NO_REVEAL_STAGES;
   const record = facts.record;
-  const stages: RevealStage[] = [{ key: "arrival", durationMs: timing.arrivalMs }];
+  const stages: RevealStage[] = timing.arrivalMs === null ? [] : [{ key: "arrival", durationMs: timing.arrivalMs }];
   if (record.kind !== "item-ride" || record.stopReason === "goal") return stages;
   if (record.landing) {
     const services = record.landingSnapshot?.services ?? [];
@@ -184,7 +158,7 @@ function beginAttempt(state: TurnMomentsState, action: Extract<TurnMomentsAction
     sessionId: action.sessionId,
     attempt: {
       key, sessionId: action.sessionId, recordTurn: action.turn + 1, source, origin: action.origin,
-      timing: action.timing, stage: omitted ? "waiting-record" : "waiting-roll", rawRoll: null,
+      policy: action.policy, stage: omitted ? "waiting-record" : "waiting-roll", rawRoll: null,
       tumbleCompleted: omitted, skipRequested: false, motionOmitted: omitted, adjustObserved: false,
       recordAccepted: false, stampsRequired: false, newlyCompletedTargetSegmentIds: [],
     },
