@@ -158,6 +158,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     latestRecord,
     restoredRecord: latestRecord !== null && latestRecord.turn <= entryTurn,
     suppressRevealStages: turnMomentBoundary !== undefined,
+    segmentFlashGeometry: { segmentsById: network.segmentsById, targetSegmentIds: [...requiredIds] },
     animation,
     finishAnimation: app.finishAnimation,
   });

@@ -383,3 +383,21 @@ describe("card-less segment flash planning", () => {
       .toEqual([{ key: "segment-flash", durationMs: 180 }]);
   });
 });
+
+
+describe("very-fast reveal planning", () => {
+  const policy = captureTurnPresentationPolicy({ speedId: "very-fast", presentationLevel: "all" });
+  const facts = { record: ride(), restored: false, omitted: false,
+    newlyCompletedTargetSegmentIds: [SEGMENT_IDS[0]!], hasRenderableNewTargetSegments: true };
+
+  it("omits arrival and retains the standalone new-segment flash at 180 ms", () => {
+    expect(buildTurnRevealStages(facts, policy)).toEqual([{ key: "segment-flash", durationMs: 180 }]);
+  });
+
+  it.each([
+    { ...facts, newlyCompletedTargetSegmentIds: [] },
+    { ...facts, hasRenderableNewTargetSegments: false },
+  ])("adds no flash delay without renderable new segments (%j)", (input) => {
+    expect(buildTurnRevealStages(input, policy)).toEqual([]);
+  });
+});

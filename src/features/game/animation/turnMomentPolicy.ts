@@ -22,7 +22,7 @@ export interface TurnPresentationPolicy {
   readonly showImportantMoments: boolean;
 }
 
-/** Legacy rounded durations, captured together with the movement step at roll time. */
+/** Explicit timings captured with the movement step; the three legacy rows retain their rounded durations. */
 const TURN_MOMENT_TIMINGS: Readonly<Record<AnimationSpeedId, TurnMomentTiming>> = {
   slow: Object.freeze({
     stepMs: 600, tumbleMs: 800, stampsMs: 320, arrivalMs: 1_067,
@@ -35,6 +35,10 @@ const TURN_MOMENT_TIMINGS: Readonly<Record<AnimationSpeedId, TurnMomentTiming>> 
   fast: Object.freeze({
     stepMs: 300, tumbleMs: 400, stampsMs: 160, arrivalMs: 533,
     lotteryFlipMs: 1_067, lotterySettleMs: 267, pickupMs: 333, flashMs: 533,
+  }),
+  "very-fast": Object.freeze({
+    stepMs: 120, tumbleMs: 160, stampsMs: 64, arrivalMs: null,
+    lotteryFlipMs: 280, lotterySettleMs: 100, pickupMs: 140, flashMs: 180,
   }),
 };
 
@@ -51,7 +55,7 @@ export function captureTurnPresentationPolicy(
     timing: turnMomentTiming(settings.speedId),
     showTumble: true,
     showStamps: true,
-    showArrival: true,
+    showArrival: turnMomentTiming(settings.speedId).arrivalMs !== null,
     showImportantMoments: true,
   });
 }

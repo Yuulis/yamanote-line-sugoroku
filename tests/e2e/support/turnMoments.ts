@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test";
-import { diceMoment, gamePanel } from "./app";
+import { diceMoment, gamePanel, readMap } from "./app";
 
 // Explicit frozen-clock checkpoint helpers for the "turn moments" (dice tumble,
 // modifier stamps, movement, arrival banner, lottery flip + settle, item
@@ -24,7 +24,7 @@ import { diceMoment, gamePanel } from "./app";
 //
 // Active stages wait for their visible checkpoint and timer effect before advancing.
 
-/** Normal ("ふつう") per-hop step; every stage scales by `stepMs / NORMAL_STEP_MS`. */
+/** Normal ("ふつう") per-hop reference for the legacy slow/normal/fast factor helpers. */
 export const NORMAL_STEP_MS = 450;
 
 /** One page animation frame under Playwright's fake clock. */
@@ -56,8 +56,39 @@ async function advanceStage(page: Page, stage: TurnMomentStage, factor: number):
   await page.clock.runFor(stageDurationMs(stage, factor));
 }
 
-/** Stages that are active in production and have a visible marker of being presented. */
-export type PresentedStage = "tumble" | "stamps" | "arrival" | "lottery-flip" | "lottery-settle" | "pickup";
+/** Stages with a visible overlay or map-flash checkpoint. */
+export type PresentedStage = "tumble" | "stamps" | "arrival" | "segment-flash" | "lottery-flip" | "lottery-settle" | "pickup";
+export type MomentSpeedId = "slow" | "normal" | "fast" | "very-fast";
+
+/** Independent specification literals; legacy factor helpers above retain their original contract. */
+export const STAGE_MS_BY_SPEED = {
+  slow: { tumble: 800, stamps: 320, arrival: 1_067, "segment-flash": 1_067,
+    "lottery-flip": 2_133, "lottery-settle": 533, pickup: 667 },
+  normal: { tumble: 600, stamps: 240, arrival: 800, "segment-flash": 800,
+    "lottery-flip": 1_600, "lottery-settle": 400, pickup: 500 },
+  fast: { tumble: 400, stamps: 160, arrival: 533, "segment-flash": 533,
+    "lottery-flip": 1_067, "lottery-settle": 267, pickup: 333 },
+  "very-fast": { tumble: 160, stamps: 64, arrival: null, "segment-flash": 180,
+    "lottery-flip": 280, "lottery-settle": 100, pickup: 140 },
+} as const satisfies Readonly<Record<MomentSpeedId, Readonly<Record<PresentedStage, number | null>>>>;
+
+export function stageMsForSpeed(stage: PresentedStage, speedId: MomentSpeedId): number | null {
+  return STAGE_MS_BY_SPEED[speedId][stage];
+}
+
+/** Arrival replacement depends on accepted new geometry; no empty flash checkpoint or delay. */
+export function arrivalStagesForSpeed(speedId: MomentSpeedId, hasNewSegmentGeometry: boolean): PresentedStage[] {
+  if (stageMsForSpeed("arrival", speedId) !== null) return ["arrival"];
+  return hasNewSegmentGeometry ? ["segment-flash"] : [];
+}
+
+/** Advance one existing stage at a named speed; an absent arrival must be skipped by the caller. */
+export async function advanceStageForSpeed(page: Page, stage: PresentedStage, speedId: MomentSpeedId): Promise<void> {
+  const duration = stageMsForSpeed(stage, speedId);
+  if (duration === null) throw new Error(`${stage} is absent at ${speedId}`);
+  await awaitStage(page, stage);
+  await page.clock.runFor(duration);
+}
 
 /**
  * Let the page run every task already queued, without moving the (frozen) page
@@ -86,7 +117,10 @@ async function flushQueuedTasks(page: Page): Promise<void> {
  * never ends. Every stage helper below calls this first, so callers never race it.
  */
 export async function awaitStage(page: Page, stage: PresentedStage): Promise<void> {
-  if (stage === "arrival") {
+  if (stage === "segment-flash") {
+    await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+    await expect.poll(async () => (await readMap(page))?.flashFilterIds.length ?? 0).toBeGreaterThan(0);
+  } else if (stage === "arrival") {
     await expect(page.locator(".turn-moment-host .arrival-banner")).toBeVisible();
   } else if (stage === "pickup") {
     await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toBeVisible();

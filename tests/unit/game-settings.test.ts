@@ -40,6 +40,15 @@ const CUSTOM_SETTINGS: GameSettings = {
 };
 
 describe("game settings defaults and presentation levels", () => {
+  it("lists very-fast after fast so the normal cycle visits fast, very-fast, slow, normal", () => {
+    expect(ANIMATION_SPEEDS).toEqual([
+      { id: "slow", label: "ゆっくり", stepMs: 600 },
+      { id: "normal", label: "ふつう", stepMs: 450 },
+      { id: "fast", label: "はやい", stepMs: 300 },
+      { id: "very-fast", label: "とても速い", stepMs: 120 },
+    ]);
+  });
+
   it("defaults to normal speed, follow on, and all presentation", () => {
     expect(DEFAULT_GAME_SETTINGS).toEqual({
       speedId: "normal",
@@ -87,7 +96,7 @@ describe("parseSettings / readSettings", () => {
 
   it.each<[string, Record<string, unknown>, GameSettings]>([
     ["unknown speed", { speedId: "unknown" }, { ...CUSTOM_SETTINGS, speedId: "normal" }],
-    ["future speed", { speedId: "very-fast" }, { ...CUSTOM_SETTINGS, speedId: "normal" }],
+    ["future speed", { speedId: "ultra-fast" }, { ...CUSTOM_SETTINGS, speedId: "normal" }],
     ["numeric speed", { speedId: 1 }, { ...CUSTOM_SETTINGS, speedId: "normal" }],
     ["string follow", { follow: "true" }, { ...CUSTOM_SETTINGS, follow: true }],
     ["numeric follow", { follow: 1 }, { ...CUSTOM_SETTINGS, follow: true }],

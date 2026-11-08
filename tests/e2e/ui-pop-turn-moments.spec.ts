@@ -28,10 +28,11 @@ import {
   targetFeatureIds,
   writeSaveText,
 } from "./support/app";
-import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble, awaitStage, FRAME_MS, NORMAL_STEP_MS, stageDurationMs } from "./support/turnMoments";
+import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble, awaitStage, arrivalStagesForSpeed, advanceStageForSpeed, FRAME_MS, NORMAL_STEP_MS, stageDurationMs, stageMsForSpeed, type PresentedStage, type MomentSpeedId } from "./support/turnMoments";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { directionLabel } from "../../src/features/game/presentation";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
+import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import type { RailwayBundle } from "./fixtures/bundle";
 
 // UI pop P2, S11: the pre-move moment (dice tumble, adjustment after the tumble,
@@ -747,9 +748,10 @@ test.describe("S15 pickup and delayed discard", () => {
 // S16: cross-feature composition. Adjustment/goal/save-failure boundaries remain
 // in the S11/S12 cases, accessibility.spec.ts and save-errors.spec.ts.
 const SPEED_CASES = [
-  { id: "slow", label: "ゆっくり", clicks: 2, stepMs: 600 },
+  { id: "slow", label: "ゆっくり", clicks: 3, stepMs: 600 },
   { id: "normal", label: "ふつう", clicks: 0, stepMs: 450 },
   { id: "fast", label: "はやい", clicks: 1, stepMs: 300 },
+  { id: "very-fast", label: "とても速い", clicks: 2, stepMs: 120 },
 ] as const;
 
 async function combinedTo(page: Page, bundle: RailwayBundle, checkpoint: string): Promise<ItemGameState> {
@@ -790,17 +792,24 @@ for (const speed of SPEED_CASES) {
     for (let index: number = 0; index < speed.clicks; index += 1) await speedButton.click();
     await expect(speedButton).toContainText(speed.label);
     await closeGameMenu(page);
-    await page.evaluate(() => {
+    await page.evaluate((flashLayerId) => {
       const original: typeof window.setTimeout = window.setTimeout.bind(window);
       const timers: { stage: string; delay: number; deadline: number }[] = [];
       (window as unknown as { momentTimers: typeof timers }).momentTimers = timers;
       window.setTimeout = ((handler: TimerHandler, delay?: number, ...args: unknown[]): number => {
+        const map = (window as unknown as { __sugorokuE2E?: { map?: {
+          getLayer(id: string): unknown; getFilter(id: string): unknown;
+        } } }).__sugorokuE2E?.map;
+        const filter = map?.getLayer(flashLayerId) ? map.getFilter(flashLayerId) as
+          [string, unknown, [string, unknown, [string, string[]]]] : null;
+        const flashing: boolean = (filter?.[2]?.[2]?.[1]?.length ?? 0) > 0;
         const stage: string | null = document.querySelector(".dice-tumble, .lottery-reveal, .item-pickup-moment")?.getAttribute("data-stage")
-          ?? (document.querySelector(".arrival-banner") ? "arrival" : null);
+          ?? (document.querySelector(".arrival-banner") ? "arrival"
+            : flashing && !document.querySelector(".turn-moment-host") ? "segment-flash" : null);
         if (stage && delay !== undefined) timers.push({ stage, delay, deadline: Date.now() + delay });
         return original(handler, delay, ...args);
       }) as typeof window.setTimeout;
-    });
+    }, LAYER_IDS.segmentsFlash);
     await diceButton(page).focus();
     await page.keyboard.press("Enter");
     const expected: ItemGameState = playItemTurn(base, {}, railwayBundle.network).state;
@@ -814,20 +823,20 @@ for (const speed of SPEED_CASES) {
     await speedButton.click();
     await closeGameMenu(page);
     await diceButton(page).focus();
-    const factor: number = speed.stepMs / NORMAL_STEP_MS;
-    const boundaries: string[] = [];
-    const check = async (): Promise<void> => {
+    const boundaries = new Map<PresentedStage, string>();
+    const check = async (stage: PresentedStage): Promise<void> => {
       await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
-      await expect(page.locator(".turn-moment-host")).toHaveAttribute("aria-hidden", "true");
+      if (stage === "segment-flash") await expect(page.locator(".turn-moment-host")).toHaveCount(0);
+      else await expect(page.locator(".turn-moment-host")).toHaveAttribute("aria-hidden", "true");
       await expect(page.locator(".turn-moment-host button, .turn-moment-host [tabindex], .turn-moment-host [role=status]")).toHaveCount(0);
       await expect(diceButton(page)).toBeFocused();
       await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
-      boundaries.push((await gamePanel(page).getByRole("status").textContent())!);
+      boundaries.set(stage, (await gamePanel(page).getByRole("status").textContent())!);
       expect(await readSave(page)).toEqual(expected);
     };
-    for (const [stage, duration] of [["tumble", "tumble"], ["stamps", "stamps"]] as const) {
-      await awaitStage(page, stage); await check();
-      await page.clock.runFor(stageDurationMs(duration, factor) - 1);
+    for (const stage of ["tumble", "stamps"] as const) {
+      await awaitStage(page, stage); await check(stage);
+      await page.clock.runFor(stageMsForSpeed(stage, speed.id)! - 1);
       await expect(diceMoment(page)).toHaveAttribute("data-stage", stage);
       await page.clock.runFor(1);
     }
@@ -836,26 +845,30 @@ for (const speed of SPEED_CASES) {
     await expect(diceButton(page)).toHaveText("移動中…");
     await expect(arrivalBanner(page)).toHaveCount(0);
     await advanceMovement(page, moveMs * 0.2);
-    for (const [stage, duration] of [["arrival", "arrival"], ["lottery-flip", "lotteryFlip"], ["lottery-settle", "lotterySettle"], ["pickup", "pickup"]] as const) {
-      await awaitStage(page, stage); await check();
-      const flashIds: string[] = stage === "arrival" ? targetFeatureIds({ completedSegmentIds: record.traversedSegmentIds.filter((id) => !base.completedSegmentIds.includes(id)) }, railwayBundle) : [];
-      if (stage === "arrival") expect(flashIds.length).toBeGreaterThan(0);
+    const arrivalStages = arrivalStagesForSpeed(speed.id, true);
+    const revealStages: PresentedStage[] = [...arrivalStages, "lottery-flip", "lottery-settle", "pickup"];
+    for (const stage of revealStages) {
+      await awaitStage(page, stage); await check(stage);
+      if (speed.id === "very-fast") await expect(arrivalBanner(page)).toHaveCount(0);
+      const isArrival = stage === "arrival" || stage === "segment-flash";
+      const flashIds: string[] = isArrival ? targetFeatureIds({ completedSegmentIds: record.traversedSegmentIds.filter((id) => !base.completedSegmentIds.includes(id)) }, railwayBundle) : [];
+      if (isArrival) expect(flashIds.length).toBeGreaterThan(0);
       await expect.poll(async () => [...((await readMap(page))?.flashFilterIds ?? [])].sort()).toEqual(flashIds.sort());
       const timer = await page.evaluate(({ stage, delay }) => {
         const timers = (window as unknown as { momentTimers: { stage: string; delay: number; deadline: number }[] }).momentTimers;
         const timer = timers.find((entry) => entry.stage === stage && entry.delay === delay);
         return timer ? { ...timer, remaining: timer.deadline - Date.now() } : null;
-      }, { stage, delay: stageDurationMs(duration, factor) });
-      expect(timer?.delay).toBe(stageDurationMs(duration, factor));
+      }, { stage, delay: stageMsForSpeed(stage, speed.id)! });
+      expect(timer?.delay).toBe(stageMsForSpeed(stage, speed.id));
       expect(timer!.remaining).toBeGreaterThan(0);
       await page.clock.runFor(timer!.remaining - 1);
       await awaitStage(page, stage);
       await page.clock.runFor(1);
     }
     // Flip/settle share one announcement; pickup publishes the ride before the item.
-    expect(boundaries[2]).toBe(boundaries[3]);
-    expect(boundaries[3]).toBe(boundaries[4]);
-    expect(boundaries[5]).not.toBe(boundaries[4]);
+    expect(boundaries.get(arrivalStages[0]!)).toBe(boundaries.get("lottery-flip"));
+    expect(boundaries.get("lottery-flip")).toBe(boundaries.get("lottery-settle"));
+    expect(boundaries.get("pickup")).not.toBe(boundaries.get("lottery-settle"));
     const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
     await expect(discard.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
     await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
@@ -866,11 +879,38 @@ for (const speed of SPEED_CASES) {
     // The next turn captures the newly selected speed.
     await diceButton(page).click();
     await awaitStage(page, "tumble");
-    const nextStep: number = speed.id === "slow" ? 450 : speed.id === "normal" ? 300 : 600;
-    await page.clock.runFor(stageDurationMs("tumble", nextStep / 450) - 1);
+    const nextSpeed: MomentSpeedId = speed.id === "slow" ? "normal" : speed.id === "normal" ? "fast"
+      : speed.id === "fast" ? "very-fast" : "slow";
+    await page.clock.runFor(stageMsForSpeed("tumble", nextSpeed)! - 1);
     await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
     await page.clock.runFor(1);
     await expect(page.locator('.dice-tumble[data-stage="tumble"]')).toHaveCount(0);
+    if (speed.id === "very-fast") {
+      // This inventory still owns an adjustment ticket: the next turn must resolve that decision before moving.
+      await expect(adjustmentDialog(page)).toBeVisible();
+      await adjustmentDialog(page).getByRole("button", { name: "そのまま続ける", exact: true }).click();
+      await expectAcceptedSave(page, base.turn + 2);
+      const nextBase = resolveItemDiscard(expected, expected.pending.item.id).state;
+      const nextResult = playItemTurn(nextBase, {}, railwayBundle.network);
+      expect(await readSave(page)).toEqual(nextResult.state);
+      if (!nextResult.record) throw new Error("Expected the next turn's accepted record");
+      if (stampsExpected(nextResult.record)) await advanceStageForSpeed(page, "stamps", nextSpeed);
+      // The active very-fast turn had no banner even after selecting slow; only this next turn gets it.
+      await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+      await awaitStage(page, "arrival");
+      await expect(arrivalBanner(page)).toBeVisible();
+      const nextArrival = await page.evaluate((delay) => {
+        const timers = (window as unknown as { momentTimers: { stage: string; delay: number; deadline: number }[] }).momentTimers;
+        const timer = timers.findLast((entry) => entry.stage === "arrival" && entry.delay === delay);
+        return timer ? { ...timer, remaining: timer.deadline - Date.now() } : null;
+      }, stageMsForSpeed("arrival", nextSpeed)!);
+      expect(nextArrival?.delay).toBe(1_067);
+      expect(nextArrival!.remaining).toBeGreaterThan(0);
+      await page.clock.runFor(nextArrival!.remaining - 1);
+      await expect(arrivalBanner(page)).toBeVisible();
+      await page.clock.runFor(1);
+      await expect(arrivalBanner(page)).toHaveCount(0);
+    }
   });
 }
 

@@ -63,10 +63,10 @@ describe.each([false, true])("useGameSettings (StrictMode: %s)", (strict) => {
     expect(storage.setItem).not.toHaveBeenCalled();
   });
 
-  it("cycles the existing speeds and presentation with exactly one write per change", () => {
+  it("cycles all four speeds and presentation with exactly one write per change", () => {
     const storage = memoryStorage();
     mountSettings(storage, strict);
-    for (const [index, speedId] of ["fast", "slow", "normal"].entries()) {
+    for (const [index, speedId] of ["fast", "very-fast", "slow", "normal"].entries()) {
       act(() => current.cycleSpeed());
       expect(current.settings.speedId).toBe(speedId);
       expect(storage.setItem).toHaveBeenCalledTimes(index + 1);
@@ -75,7 +75,7 @@ describe.each([false, true])("useGameSettings (StrictMode: %s)", (strict) => {
     act(() => current.cyclePresentation());
     expect(current.settings.presentationLevel).toBe("important");
     expect(current.writeStatus).toBe("saved");
-    expect(storage.setItem).toHaveBeenCalledTimes(4);
+    expect(storage.setItem).toHaveBeenCalledTimes(5);
     expect(stored(storage)).toEqual({ version: 1, ...DEFAULT_GAME_SETTINGS, presentationLevel: "important" });
   });
 
@@ -131,7 +131,7 @@ describe.each([false, true])("useGameSettings (StrictMode: %s)", (strict) => {
     storage.setItem.mockImplementationOnce(() => { throw new Error("QuotaExceededError"); });
     mountSettings(storage, strict);
     act(() => current.cycleSpeed());
-    expect(current.settings.speedId).toBe("slow");
+    expect(current.settings.speedId).toBe("very-fast");
     mounted!.cleanup();
     mountSettings(storage, strict);
     expect(current.settings).toEqual(CUSTOM_SETTINGS);

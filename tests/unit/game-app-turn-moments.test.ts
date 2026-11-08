@@ -1647,3 +1647,99 @@ describe("S16 combined publication boundaries", () => {
     expect(momentCommits.every((commit) => commit.statusCount === 1 && !commit.overlay)).toBe(true);
   });
 });
+
+
+describe("S6 very-fast GameApp integration", () => {
+  function selectVeryFast(): void {
+    click("メニュー");
+    click("速度: ふつう");
+    click("速度: はやい");
+    expect(mounted!.container.querySelector(".game-panel__menu")?.textContent).toContain("とても速い");
+    click("メニュー");
+  }
+
+  it("keeps the adjustment hidden for 159 ms, then accepts it and uses captured stamps and movement", () => {
+    openWithFrames(itemScenario("adjust", network));
+    selectVeryFast();
+    click("サイコロを振る");
+    const pending = storedGame().pending;
+    if (pending?.kind !== "roll") throw new Error("Expected a pending adjustment");
+    expect(tumble()).toEqual({ stage: "tumble", raw: String(pending.rawRoll), stamps: [] });
+    click("メニュー");
+    click("速度: とても速い");
+    click("メニュー");
+    advance(159);
+    expect(adjustmentDialog()).toBeNull();
+    expect(frames()).toBe(0);
+    advance(1);
+    expect(tumble()).toBeNull();
+    expect(adjustmentDialog()).not.toBeNull();
+    expect(document.activeElement?.textContent).toBe("出目を調整しますか？");
+    const delta = chooseAdjustment();
+    press(continueButton());
+    expect(tumble()).toEqual({ stage: "stamps", raw: String(pending.rawRoll), stamps: [delta > 0 ? "調整+1" : "調整-1"] });
+    advance(63);
+    expect(frames()).toBe(0);
+    advance(1);
+    expect(tumble()).toBeNull();
+    expect(frames()).toBe(1);
+    expect(dice().textContent).toBe("移動中…");
+    const record = storedGame().movementHistory.at(-1);
+    if (record?.kind !== "item-ride") throw new Error("Expected the adjusted ride");
+    expect(record.physicalHops).toBeGreaterThan(0);
+    // The unchanged hop cap is 8/3 of 120 ms (320 ms); slow would need at least 400 ms per hop.
+    const maximumVeryFastHopMs = 320;
+    act(() => queuedFrames.shift()!(0));
+    act(() => queuedFrames.shift()!(record.physicalHops * maximumVeryFastHopMs));
+    expect(queuedFrames).toHaveLength(0);
+    expect(dice().textContent).toBe("サイコロを振る");
+    expect(banner()).toBeNull();
+  });
+
+  it("runs the card-less flash for 180 ms through GameApp with new target geometry", () => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    selectVeryFast();
+    click("サイコロを振る");
+    advance(160);
+    finishMovement();
+    const flash = railwayMapProps.mock.calls.at(-1)![0].segmentFlash;
+    expect(flash).toEqual({ key: expect.any(String), durationMs: 180,
+      featureIds: ["jr-yamanote:shimbashi~hamamatsucho", "jr-yamanote:hamamatsucho~tamachi",
+        "jr-yamanote:tamachi~takanawa-gateway", "jr-yamanote:takanawa-gateway~shinagawa"] });
+    expect(flash.featureIds.length).toBeGreaterThan(0);
+    expect(banner()).toBeNull();
+    expect(lotteryStage()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    advance(179);
+    expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toEqual(flash);
+    expect(banner()).toBeNull();
+    advance(1);
+    expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toBeNull();
+    expect(lotteryStage()).toBe("lottery-flip");
+    advance(279);
+    expect(lotteryStage()).toBe("lottery-flip");
+    advance(1);
+    expect(lotteryStage()).toBe("lottery-settle");
+    advance(99);
+    expect(lotteryStage()).toBe("lottery-settle");
+    advance(1);
+    expect(lotteryStage()).toBeNull();
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+    expect(banner()).toBeNull();
+  });
+
+  it("starts pickup at movement end without an arrival or flash wait when no target segments are new", () => {
+    openWithFrames(itemScenario("route", network));
+    selectVeryFast();
+    click("サイコロを振る");
+    advance(160);
+    finishMovement();
+    expect(banner()).toBeNull();
+    expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toBeNull();
+    expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
+    advance(139);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    advance(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+});

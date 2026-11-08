@@ -41,3 +41,18 @@ describe("turn moment policy legacy timings", () => {
     expect(turnMomentTiming("normal").tumbleMs).toBe(600);
   });
 });
+
+
+describe("very-fast turn moment policy", () => {
+  it("captures the fourth timing row, keeping important moments without an arrival card", () => {
+    const policy = captureTurnPresentationPolicy({ speedId: "very-fast", presentationLevel: "all" });
+    expect(policy).toEqual({
+      speedId: "very-fast", level: "all",
+      timing: { stepMs: 120, tumbleMs: 160, stampsMs: 64, arrivalMs: null,
+        lotteryFlipMs: 280, lotterySettleMs: 100, pickupMs: 140, flashMs: 180 },
+      showTumble: true, showStamps: true, showArrival: false, showImportantMoments: true,
+    });
+    expect(policy.timing.lotteryFlipMs + policy.timing.lotterySettleMs).toBe(380);
+    expect(Object.isFrozen(policy.timing)).toBe(true);
+  });
+});

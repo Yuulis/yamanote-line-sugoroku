@@ -94,6 +94,35 @@ function acceptedRecordObservation(): TurnMomentObservation {
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe("useTurnMoments", () => {
+  it("keeps the very-fast adjustment tumble and stamps deadlines after selecting slow mid-turn", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness(options({ speedId: "very-fast" }));
+    act(() => harness.moments.begin());
+    harness.update({ speedId: "slow", observation: { ...INITIAL_OBSERVATION,
+      decision: { kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
+        allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true },
+    } });
+    expect(harness.moments.attempt?.policy.timing.stepMs).toBe(120);
+    act(() => vi.advanceTimersByTime(159));
+    expect(harness.moments.attempt?.stage).toBe("tumble");
+    expect(harness.moments.movementStartAllowed).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.attempt?.stage).toBe("awaiting-adjust");
+    const record: ItemRideRecord = { ...RECORD, adjustment: { instanceId: "adjust", delta: 1 } };
+    harness.update({ observation: { ...acceptedRecordObservation(), record } });
+    expect(harness.moments.attempt?.stage).toBe("stamps");
+    act(() => vi.advanceTimersByTime(63));
+    expect(harness.moments.movementStartAllowed).toBe(false);
+    act(() => vi.advanceTimersByTime(1));
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    expect(harness.moments.attempt?.policy.speedId).toBe("very-fast");
+    harness.update({ gameTurn: 1, observation: INITIAL_OBSERVATION });
+    act(() => harness.moments.begin());
+    expect(harness.moments.attempt?.policy.speedId).toBe("slow");
+    expect(harness.moments.attempt?.policy.showArrival).toBe(true);
+    harness.mount.cleanup();
+  });
+
   it("arms only the current pre-move stage timer and cleans each transition", () => {
     vi.useFakeTimers();
     const harness = mountHarness();

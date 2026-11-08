@@ -26,3 +26,25 @@ test("persists menu speed and follow through reload without the seed overwriting
   await expect(panel.getByRole("button", { name: "追尾: OFF", exact: true })).toBeVisible();
   await expect.poll(readPayload).toEqual(expected);
 });
+
+
+test("very-fast menu speed survives reload with the existing settings payload", async ({ page }) => {
+  await openTitle(page);
+  await startNewGame(page);
+  const panel = gamePanel(page);
+  await panel.getByRole("button", { name: "メニュー", exact: true }).click();
+  const speed = panel.getByRole("button", { name: /^アニメーション速度:/ });
+  await speed.click();
+  await expect(speed).toContainText("はやい");
+  await speed.click();
+  await expect(speed).toHaveText("速度: とても速い");
+  const payload = { version: 1, speedId: "very-fast", follow: true, presentationLevel: "all" };
+  const readPayload = (): Promise<unknown> => page.evaluate(() =>
+    JSON.parse(localStorage.getItem("yamanote-line-sugoroku:settings:v1")!));
+  await expect.poll(readPayload).toEqual(payload);
+  await page.reload();
+  await page.getByRole("button", { name: /^つづきから/ }).click();
+  await panel.getByRole("button", { name: "メニュー", exact: true }).click();
+  await expect(speed).toHaveText("速度: とても速い");
+  await expect.poll(readPayload).toEqual(payload);
+});
