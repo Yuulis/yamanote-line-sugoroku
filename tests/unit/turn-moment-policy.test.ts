@@ -56,3 +56,17 @@ describe("very-fast turn moment policy", () => {
     expect(Object.isFrozen(policy.timing)).toBe(true);
   });
 });
+
+describe("selective presentation permissions", () => {
+  it.each([
+    ["all", "normal", true, true, true],
+    ["all", "very-fast", true, false, true],
+    ["important", "slow", false, false, true],
+    ["important", "very-fast", false, false, true],
+    ["none", "normal", false, false, false],
+  ] as const)("captures %s at %s", (presentationLevel, speedId, showTumble, showArrival, showImportantMoments) => {
+    expect(captureTurnPresentationPolicy({ speedId, presentationLevel })).toMatchObject({
+      level: presentationLevel, speedId, showTumble, showStamps: showTumble, showArrival, showImportantMoments,
+    });
+  });
+});

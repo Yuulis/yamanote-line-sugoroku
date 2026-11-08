@@ -3,6 +3,7 @@ import { createGame, playItemTurn, playTurn, targetSegmentIds } from "../../src/
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
 import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import { turnMomentArrivalModel } from "../../src/features/game/components/TurnMomentHost";
+import { buildTurnRevealStages } from "../../src/features/game/animation/turnMoments";
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import { itemSessionView } from "../../src/features/game/itemSession";
@@ -427,4 +428,38 @@ describe("card-less segment flash publication", () => {
     expect(repeated.announcement).toBe(published.announcement);
     expect(published.segmentFlash).toBeNull();
   });
+});
+
+it.each(["all", "important", "none"] as const)("keeps goal publication and its announcement with %s, with or without new segments", (presentationLevel) => {
+  const base = itemScenario("rapid-long", network);
+  const ticket = base.inventory.find((item) => item.kind === "rapid")!;
+  const result = playItemTurn(base, { command: { items: [{ kind: "rapid", instanceId: ticket.id }] } }, network);
+  const origin = resumeSession(base, network, 111);
+  const session = resumeSession(result.state, network, 111);
+  expect(session.game.status).toBe("completed");
+  for (const hasSegments of [false, true]) {
+    const attempt = { ...attemptFor(origin), origin: { ...attemptFor(origin).origin, itemView: itemSessionView(origin, network)! },
+      policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel }),
+      newlyCompletedTargetSegmentIds: hasSegments ? targetSegmentIds(base.config, network) : [] };
+    const stages = buildTurnRevealStages({ record: result.record, restored: false, omitted: false,
+      newlyCompletedTargetSegmentIds: attempt.newlyCompletedTargetSegmentIds, hasRenderableNewTargetSegments: hasSegments }, attempt.policy);
+    const input = { session, network, presentation: resolver, progress: progressFor(session), attempt,
+      itemView: itemSessionView(session, network), restoredOrOmitted: false, revealKey: "111:8" };
+    const moving = deriveTurnMomentDisplay({ ...input, session: { ...session, phase: "animating" }, revealStage: "done" });
+    expect(moving.showClear).toBe(false);
+    expect(moving.itemUseLocked).toBe(true);
+    expect(moving.announcement).not.toMatch(/到着|ゴール|抽選結果|拾いました/);
+    const displays = stages.map(({ key }) => deriveTurnMomentDisplay({ ...input, revealStage: key }));
+    for (const display of displays) {
+      expect(display.showClear).toBe(false);
+      expect(display.clearAnnouncement).toBe("");
+      expect(display.announcement).not.toContain("ゴール");
+      if (display.phase === "segment-flash") expect(display.segmentFlash).not.toBeNull();
+    }
+    const published = deriveTurnMomentDisplay({ ...input, revealStage: "done" });
+    expect(published.showClear).toBe(true);
+    expect(published.announcement).toBe("");
+    expect(published.clearAnnouncement.match(/ゴールに到着しました/g)).toHaveLength(1);
+    expect(published.itemUseLocked).toBe(false);
+  }
 });

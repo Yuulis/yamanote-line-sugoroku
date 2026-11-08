@@ -19,6 +19,8 @@ import {
   INITIAL_TURN_MOMENTS_STATE, observeTurnFacts, turnMomentsReducer, type RollAttempt, type TurnMomentObservation,
 } from "../../src/features/game/animation/turnMoments";
 import * as turnMomentPlanning from "../../src/features/game/animation/turnMoments";
+import type { PresentationLevel } from "../../src/features/game/gameSettings";
+import type { UseTurnMomentsOptions } from "../../src/features/game/animation/useTurnMoments";
 import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import { diceStampLabels } from "../../src/features/game/components/DiceTumble";
 import { mapControlInsets, turnMomentDiceModel } from "../../src/features/game/components/TurnMomentHost";
@@ -31,7 +33,8 @@ import { FIXTURE_GAME_SEED, LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/see
 beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
 
 const { railwayMapProps, injection, commits, lotteryCommits, momentCommits, trackEvent } = vi.hoisted(() => ({
-  railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null }, commits: [] as string[],
+  railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null,
+    level: undefined as PresentationLevel | undefined, speedId: undefined as AnimationSpeedId | undefined }, commits: [] as string[],
   trackEvent: vi.fn(), lotteryCommits: [] as string[],
   momentCommits: [] as { statusCount: number; overlay: boolean }[],
 }));
@@ -44,6 +47,12 @@ vi.mock("../../src/features/game/useGameApp", async (original) => {
     const app = actual.useGameApp(...args);
     return injection.app ?? app;
   } };
+});
+vi.mock("../../src/features/game/animation/useTurnMoments", async (original) => {
+  const actual = await original<typeof import("../../src/features/game/animation/useTurnMoments")>();
+  return { ...actual, useTurnMoments: (options: UseTurnMomentsOptions) => actual.useTurnMoments({
+    ...options, presentationLevel: injection.level, speedId: injection.speedId ?? options.speedId,
+  }) };
 });
 vi.mock("../../src/features/game/components/GameHud", async (original) => {
   const actual = await original<typeof import("../../src/features/game/components/GameHud")>();
@@ -81,6 +90,7 @@ beforeAll(() => {
 });
 afterEach(() => {
   injection.app = null;
+  injection.level = undefined; injection.speedId = undefined;
   trackEvent.mockClear();
   commits.length = 0; lotteryCommits.length = 0; momentCommits.length = 0;
   railwayMapProps.mockClear();
@@ -1740,6 +1750,144 @@ describe("S6 very-fast GameApp integration", () => {
     advance(139);
     expect(dice().getAttribute("aria-disabled")).toBe("true");
     advance(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("false");
+  });
+});
+
+describe.each(["important", "none"] as const)("S7 %s integration", (level) => {
+  beforeEach(() => { injection.level = level; injection.speedId = "very-fast"; });
+
+  it.each([false, true])("keeps adjustment and focus stable across settings changes (restored %s)", (restored) => {
+    const game = itemScenario("adjust", network);
+    openWithFrames(restored ? beginItemTurn(game, { items: [] }, network).state : game);
+    if (!restored) click("サイコロを振る");
+    const dialog = adjustmentDialog();
+    expect(dialog).not.toBeNull();
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(0);
+    const focus = document.activeElement;
+    const shows = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    injection.level = "all"; injection.speedId = "slow";
+    render(propsFor());
+    expect(adjustmentDialog()).toBe(dialog);
+    expect(document.activeElement).toBe(focus);
+    expect(shows).not.toHaveBeenCalled();
+    chooseAdjustment(); press(continueButton());
+    expect(adjustmentDialog()).toBeNull();
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    const record = storedGame().movementHistory.at(-1)!;
+    expect(record.physicalHops).toBeGreaterThan(0);
+    act(() => queuedFrames.shift()!(0));
+    act(() => queuedFrames.shift()!(record.physicalHops * 320));
+    expect(queuedFrames).toHaveLength(0);
+    expect(banner()).toBeNull();
+    if (level === "none") expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+  });
+
+  it("keeps prior-engine-turn discard masked through movement and stable while settings change", () => {
+    const game = combinedGame();
+    openWithFrames(game);
+    const oldSlots = [...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent);
+    const start = lotteryCommits.length;
+    click("サイコロを振る");
+    expect(storedGame().pending?.kind).toBe("discard");
+    expect(storedGame().turn).toBe(game.turn);
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    expect([...mounted!.container.querySelectorAll(".item-slot__button")].map((button) => button.textContent)).toEqual(oldSlots);
+    expect(mounted!.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
+    expect(status()).not.toMatch(/到着|抽選結果|拾いました|捨てる/);
+    expect(railwayMapProps.mock.calls.at(-1)![0].follow.immediate).toBe(true);
+    press(mounted!.container.querySelector(".item-slot__button")!);
+    expect(mounted!.container.querySelector<HTMLButtonElement>(".item-card__action")?.disabled).toBe(true);
+    injection.level = "all"; injection.speedId = "slow";
+    render(propsFor());
+    const pending = storedGame().pending;
+    if (pending?.kind !== "discard") throw new Error("Expected the pending discard record");
+    expect(pending.record.physicalHops).toBeGreaterThan(0);
+    // Every captured 120 ms hop is capped at 320 ms; a newly selected slow hop needs at least 400 ms.
+    act(() => queuedFrames.shift()!(0));
+    act(() => queuedFrames.shift()!(pending.record.physicalHops * 320));
+    expect(queuedFrames).toHaveLength(0);
+    expect(railwayMapProps.mock.calls.at(-1)![0].follow.immediate).toBe(false);
+    expect(banner()).toBeNull();
+    if (level === "important") {
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toMatchObject({ durationMs: 180 });
+      expect(lotteryStage()).toBeNull();
+      advance(180);
+      expect(lotteryStage()).toBe("lottery-flip");
+      advance(280); advance(100);
+      expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
+      expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+      advance(140);
+    } else {
+      expect(lotteryStage()).toBeNull();
+      expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
+      expect(lotteryCommits.slice(start).some((copy) => /サイコロを振っています|抽選結果を表示/.test(copy))).toBe(false);
+    }
+    const dialog = mounted!.container.querySelector(".item-discard");
+    expect(dialog).not.toBeNull();
+    expect(mounted!.container.querySelector(".toast-host__toast--motion")).not.toBeNull();
+    const focus = document.activeElement;
+    const shows = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    injection.level = level === "important" ? "none" : "important"; injection.speedId = "fast";
+    render(propsFor());
+    expect(mounted!.container.querySelector(".item-discard")).toBe(dialog);
+    expect(document.activeElement).toBe(focus);
+    expect(shows).not.toHaveBeenCalled();
+    press(dialog!.querySelector("button")!);
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+  });
+
+  it("shows ClearScreen and announces the goal once after the retained presentation ends", () => {
+    let game = createItemGame(ITEM_GAME_CONFIG, "00000000000000000000000000000004", network);
+    let previous = game;
+    while (game.status === "playing" && game.turn < 500) {
+      previous = game;
+      game = playItemTurn(game, {}, network).state;
+      if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+    }
+    expect(game.status).toBe("completed");
+    openWithFrames(previous);
+    click("サイコロを振る");
+    if (adjustmentDialog()) press(continueButton());
+    expect(mounted!.container.querySelector("#clear-title")).toBeNull();
+    expect(status()).not.toContain("ゴール");
+    finishMovement();
+    if (level === "important" && railwayMapProps.mock.calls.at(-1)![0].segmentFlash) {
+      expect(mounted!.container.querySelector("#clear-title")).toBeNull();
+      advance(180);
+    }
+    expect(banner()).toBeNull();
+    expect(mounted!.container.querySelector("#clear-title")).not.toBeNull();
+    const announcement = mounted!.container.querySelectorAll('.item-event-notice [role="status"]');
+    expect(announcement).toHaveLength(1);
+    expect(announcement[0]!.textContent?.match(/ゴールに到着しました/g)).toHaveLength(1);
+    const shown = announcement[0];
+    render(propsFor()); advance(5_000);
+    expect(mounted!.container.querySelector('.item-event-notice [role="status"]')).toBe(shown);
+    expect(gameClearEvents()).toHaveLength(1);
+  });
+
+  it("keeps flash and lottery only for important, with movement and camera still animated", () => {
+    openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
+    click("サイコロを振る");
+    expect(tumble()).toBeNull();
+    expect(queuedFrames).toHaveLength(1);
+    expect(dice().getAttribute("aria-disabled")).toBe("true");
+    finishMovement();
+    const flash = railwayMapProps.mock.calls.at(-1)![0].segmentFlash;
+    expect(banner()).toBeNull();
+    if (level === "important") {
+      expect(flash).toMatchObject({ durationMs: 180 });
+      advance(179);
+      expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toEqual(flash);
+      advance(1);
+      expect(lotteryStage()).toBe("lottery-flip");
+      advance(280); advance(100);
+    } else expect(flash).toBeNull();
     expect(dice().getAttribute("aria-disabled")).toBe("false");
   });
 });

@@ -138,7 +138,7 @@ export function buildTurnRevealStages(facts: TurnRevealFacts, policy: TurnPresen
   else if (policy.showImportantMoments && facts.newlyCompletedTargetSegmentIds.length > 0 && facts.hasRenderableNewTargetSegments) {
     stages.push({ key: "segment-flash", durationMs: timing.flashMs });
   }
-  if (record.kind !== "item-ride" || record.stopReason === "goal") return stages;
+  if (!policy.showImportantMoments || record.kind !== "item-ride" || record.stopReason === "goal") return stages;
   if (record.landing) {
     const services = record.landingSnapshot?.services ?? [];
     const selected = services.find((service) => service.serviceId === record.landing?.serviceId);
@@ -178,13 +178,14 @@ function beginAttempt(state: TurnMomentsState, action: Extract<TurnMomentsAction
   const key = `${action.sessionId}:roll:${action.turn + 1}:${action.decisionRevision}`;
   if (state.sessionId === action.sessionId && state.attempt?.key === key) return state;
   const source = action.source ?? "click";
-  const omitted = Boolean(action.reducedMotion) || source === "restored-roll";
+  const omitted = Boolean(action.reducedMotion) || (source === "restored-roll" && action.policy.showTumble);
+  const tumbleCompleted = omitted || !action.policy.showTumble;
   return {
     sessionId: action.sessionId,
     attempt: {
       key, sessionId: action.sessionId, recordTurn: action.turn + 1, source, origin: action.origin,
-      policy: action.policy, stage: omitted ? "waiting-record" : "waiting-roll", rawRoll: null,
-      tumbleCompleted: omitted, skipRequested: false, motionOmitted: omitted, adjustObserved: false,
+      policy: action.policy, stage: tumbleCompleted ? "waiting-record" : "waiting-roll", rawRoll: null,
+      tumbleCompleted, skipRequested: false, motionOmitted: omitted, adjustObserved: false,
       recordAccepted: false, stampsRequired: false, newlyCompletedTargetSegmentIds: [],
     },
   };
@@ -196,7 +197,7 @@ function advanceAttempt(state: TurnMomentsState, attempt: RollAttempt,
   let nextStage: PreMoveStage = attempt.stage;
   if (attempt.stage === "tumble") {
     nextStage = attempt.adjustObserved && !attempt.recordAccepted ? "awaiting-adjust"
-      : attempt.recordAccepted ? nextRecordedStage(attempt.stampsRequired) : "waiting-record";
+      : attempt.recordAccepted ? nextRecordedStage(attempt.stampsRequired && attempt.policy.showStamps) : "waiting-record";
   } else if (attempt.stage === "stamps") nextStage = "released";
   if (nextStage === attempt.stage) return state;
   return { ...state, attempt: { ...attempt, stage: nextStage,
@@ -225,9 +226,11 @@ function observeAttempt(state: TurnMomentsState, attempt: RollAttempt, observati
   if (deadhead && attempt.stage !== "released") stage = "released";
   else if (omitted || attempt.skipRequested) {
     if (recordAccepted && attempt.stage !== "released") stage = "released";
-  } else if (attempt.stage === "waiting-roll" && (decisionMatches || (recordMatches && rawRoll !== null))) stage = "tumble";
-  else if (attempt.stage === "awaiting-adjust" && recordAccepted) stage = nextRecordedStage(stampsRequired);
-  else if (attempt.stage === "waiting-record" && recordAccepted) stage = nextRecordedStage(stampsRequired);
+    else if (decisionMatches && !attempt.policy.showTumble) stage = "awaiting-adjust";
+  } else if (!attempt.policy.showTumble && decisionMatches && !recordAccepted) stage = "awaiting-adjust";
+  else if (attempt.stage === "waiting-roll" && (decisionMatches || (recordMatches && rawRoll !== null))) stage = "tumble";
+  else if (attempt.stage === "awaiting-adjust" && recordAccepted) stage = nextRecordedStage(stampsRequired && attempt.policy.showStamps);
+  else if (attempt.stage === "waiting-record" && recordAccepted) stage = nextRecordedStage(stampsRequired && attempt.policy.showStamps);
   const nextAttempt: RollAttempt = {
     ...attempt, stage, rawRoll, adjustObserved, recordAccepted, stampsRequired,
     tumbleCompleted: attempt.tumbleCompleted || stage === "stamps" || stage === "released",

@@ -53,9 +53,9 @@ export function captureTurnPresentationPolicy(
     speedId: settings.speedId,
     level: settings.presentationLevel,
     timing: turnMomentTiming(settings.speedId),
-    showTumble: true,
-    showStamps: true,
-    showArrival: turnMomentTiming(settings.speedId).arrivalMs !== null,
-    showImportantMoments: true,
+    showTumble: settings.presentationLevel === "all",
+    showStamps: settings.presentationLevel === "all",
+    showArrival: settings.presentationLevel === "all" && turnMomentTiming(settings.speedId).arrivalMs !== null,
+    showImportantMoments: settings.presentationLevel !== "none",
   });
 }

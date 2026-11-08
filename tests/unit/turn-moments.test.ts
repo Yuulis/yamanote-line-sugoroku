@@ -401,3 +401,49 @@ describe("very-fast reveal planning", () => {
     expect(buildTurnRevealStages(input, policy)).toEqual([]);
   });
 });
+
+describe.each(["important", "none"] as const)("%s pre-move scheduling", (presentationLevel) => {
+  const policy = captureTurnPresentationPolicy({ speedId: "very-fast", presentationLevel });
+  it.each(["click", "restored-roll"] as const)("keeps %s adjustment usable without hidden timers or motion omission", (source) => {
+    const begun = start(undefined, { policy, source });
+    expect(begun.attempt?.tumbleCompleted).toBe(true);
+    expect(begun.attempt?.motionOmitted).toBe(false);
+    const pending = observe(begun, { decision: DECISION });
+    expect(pending.attempt?.stage).toBe("awaiting-adjust");
+    expect(pending.attempt?.recordAccepted).toBe(false);
+    expect(observe(pending)).toBe(pending);
+    const accepted = observe(pending, { record: ride({ adjustment: { instanceId: "adjust-a", delta: 1 } }) });
+    expect(accepted.attempt?.stage).toBe("released");
+    expect(accepted.attempt?.policy).toBe(policy);
+    expect(accepted.attempt?.motionOmitted).toBe(false);
+  });
+  it.each([
+    ["oversleep", ride({ movementMode: "oversleep" })],
+    ["forced delay", ride({ itemEvents: [{ type: "effect-activated", effect: "delay" }] })],
+    ["deadhead", deadhead()],
+  ] as const)("releases %s without waiting for hidden stamps", (_name, record) => {
+    const accepted = observe(start(undefined, { policy }), { record });
+    expect(accepted.attempt?.stage).toBe("released");
+    expect(accepted.attempt?.tumbleCompleted).toBe(true);
+    expect(accepted.attempt?.motionOmitted).toBe(record.kind === "deadhead");
+  });
+});
+
+it.each(["all", "important", "none"] as const)("selects %s reveal stages and goal boundaries", (presentationLevel) => {
+  const policy = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel });
+  const record = ride({ landing: { serviceId: "jr-yamanote", direction: 1 },
+    landingSnapshot: { stationId: "yoyogi", services: [
+      { serviceId: "jr-yamanote", weight: 1, directions: [1, -1], directionWeights: [1, 1] },
+    ], suspensionIgnored: false, detourConsumed: false }, itemEvents: PICKUP });
+  for (const hasSegments of [false, true]) {
+    const facts = { record, restored: false, omitted: false,
+      newlyCompletedTargetSegmentIds: hasSegments ? ["target-segment"] : [], hasRenderableNewTargetSegments: hasSegments };
+    const prefix = presentationLevel === "all" ? ["arrival"]
+      : presentationLevel === "important" && hasSegments ? ["segment-flash"] : [];
+    expect(buildTurnRevealStages(facts, policy).map(({ key }) => key)).toEqual([
+      ...prefix, ...(presentationLevel === "none" ? [] : ["lottery-flip", "lottery-settle", "pickup"]),
+    ]);
+    expect(buildTurnRevealStages({ ...facts, record: { ...record, stopReason: "goal" } }, policy)
+      .map(({ key }) => key)).toEqual(prefix);
+  }
+});

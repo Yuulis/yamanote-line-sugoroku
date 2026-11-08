@@ -688,3 +688,84 @@ describe("card-less flash lifecycle", () => {
     harness.mount.cleanup();
   });
 });
+
+describe.each(["important", "none"] as const)("%s captured coordination", (presentationLevel) => {
+  it("publishes an uneventful turn only when movement ends and captures changes for the next roll", () => {
+    vi.useFakeTimers();
+    const harness = mountHarness(options({ presentationLevel, speedId: "very-fast" }));
+    act(() => harness.moments.begin());
+    const policy = harness.moments.attempt!.policy;
+    harness.update({ presentationLevel: "all", speedId: "slow", observation: acceptedRecordObservation(),
+      latestRecord: RECORD, animation: { ...MOVE, turn: 0 },
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 0, pendingDecisionTurn: 1,
+        pendingDecisionKind: "discard", movementComplete: false } });
+    expect(harness.moments.attempt?.policy).toBe(policy);
+    expect(policy.level).toBe(presentationLevel);
+    expect(policy.timing.stepMs).toBe(120);
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    expect(harness.moments.restoredOrOmitted).toBe(false);
+    expect(harness.moments.attemptMotionReduced).toBe(false);
+    expect(harness.moments.reveal.ready).toBe(false);
+    expect(vi.getTimerCount()).toBe(0);
+    harness.update({ revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.reveal.ready).toBe(true);
+    harness.update({ gameTurn: 1, observation: INITIAL_OBSERVATION });
+    act(() => harness.moments.begin());
+    expect(harness.moments.attempt?.policy).toMatchObject({ level: "all", speedId: "slow" });
+    harness.mount.cleanup();
+  });
+
+  it("restores pending adjustment without tumble, then runs only the captured later stages", () => {
+    vi.useFakeTimers();
+    const decision: NonNullable<ItemSessionView["decision"]> = { kind: "adjust", turn: 1, rawRoll: 4,
+      resolvedRide: RECORD.resolvedRide, allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true };
+    const segmentId = "jr-yamanote:shimbashi:hamamatsucho";
+    const harness = mountHarness(options({ presentationLevel, observation: { ...INITIAL_OBSERVATION, decision },
+      segmentFlashGeometry: { segmentsById: NETWORK.segmentsById, targetSegmentIds: [segmentId] } }));
+    act(() => harness.moments.begin("restored-roll"));
+    expect(harness.moments.attempt?.stage).toBe("awaiting-adjust");
+    expect(vi.getTimerCount()).toBe(0);
+    harness.update({ latestRecord: REVEAL_RECORD, observation: { ...acceptedRecordObservation(), record: REVEAL_RECORD,
+      movementEvents: [{ type: "segment-traversed", step: 1, serviceId: "jr-yamanote", direction: 1, segmentId,
+        fromStationId: "shimbashi", toStationId: "hamamatsucho", newlyCompleted: true }] },
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.movementStartAllowed).toBe(true);
+    expect(harness.moments.restoredOrOmitted).toBe(false);
+    if (presentationLevel === "important") {
+      for (const [stage, duration] of [["segment-flash", 800], ["lottery-flip", 1600], ["lottery-settle", 400], ["pickup", 500]] as const) {
+        expect(harness.moments.revealStage).toBe(stage);
+        act(() => vi.advanceTimersByTime(duration));
+      }
+    }
+    expect(harness.moments.revealStage).toBe("done");
+    expect(harness.commits.some(({ attempt }) => attempt?.stage === "tumble" || attempt?.stage === "stamps")).toBe(false);
+    harness.mount.cleanup();
+  });
+
+  it.each(["Skip", "OS override"] as const)("keeps %s authoritative", (reason) => {
+    vi.useFakeTimers();
+    const harness = mountHarness(options({ presentationLevel }));
+    act(() => harness.moments.begin());
+    harness.update({ latestRecord: REVEAL_RECORD, observation: { ...acceptedRecordObservation(), record: REVEAL_RECORD },
+      revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1, pendingDecisionTurn: null, movementComplete: false } });
+    if (reason === "Skip") act(() => harness.moments.skip());
+    else harness.update({ reducedMotion: true });
+    harness.update({ reducedMotion: false, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
+      pendingDecisionTurn: null, movementComplete: true } });
+    expect(harness.moments.revealStage).toBe("done");
+    expect(harness.moments.attempt?.motionOmitted).toBe(true);
+    expect(harness.moments.attemptMotionReduced).toBe(reason === "OS override");
+    expect(vi.getTimerCount()).toBe(0);
+    harness.mount.cleanup();
+  });
+});
+
+it.each(["important", "none"] as const)("leaves classic mode unchanged under %s", (presentationLevel) => {
+  const harness = mountHarness(options({ presentationLevel, origin: null }));
+  act(() => harness.moments.begin());
+  expect(harness.moments.attempt).toBeNull();
+  expect(harness.moments.movementStartAllowed).toBe(true);
+  expect(harness.moments.attemptMotionReduced).toBe(false);
+  harness.mount.cleanup();
+});

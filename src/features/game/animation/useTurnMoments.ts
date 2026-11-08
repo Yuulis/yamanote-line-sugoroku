@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { AnimationSpeedId } from "../gameConfig";
+import type { PresentationLevel } from "../gameSettings";
 import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
 import { captureTurnPresentationPolicy, type TurnMomentTiming, type TurnPresentationPolicy } from "./turnMomentPolicy";
 import type { MoveAnimation } from "../gameSession";
@@ -31,6 +32,8 @@ export interface UseTurnMomentsOptions {
   origin: TurnOrigin | null;
   /** Selected 速度; the attempt captures its policy (and movement step) at `begin`. */
   speedId: AnimationSpeedId;
+  /** Captured at begin; callers keep the existing all-level behaviour until the menu is wired. */
+  presentationLevel?: PresentationLevel;
   reducedMotion: boolean;
   observation: TurnMomentObservation;
   revealObservation: RevealObservation;
@@ -140,7 +143,8 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
     reducedOmissionRef.current = { key, omitted: current.reducedMotion };
     dispatch({ type: "begin", sessionId: current.sessionId, turn: current.gameTurn,
       decisionRevision: current.decisionRevision, origin: current.origin,
-      policy: captureTurnPresentationPolicy({ speedId: current.speedId, presentationLevel: "all" }), reducedMotion: current.reducedMotion, source });
+      policy: captureTurnPresentationPolicy({ speedId: current.speedId, presentationLevel: current.presentationLevel ?? "all" }),
+      reducedMotion: current.reducedMotion, source });
   }, []);
 
   const matchingAttempt = attempt?.sessionId === options.revealObservation.sessionId &&
@@ -150,7 +154,9 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
   const record = options.latestRecord;
   if (frozenPlanRef.current === null && record !== null && record.turn === options.revealObservation.recordTurn &&
     options.sessionId === options.revealObservation.sessionId && (!matchingAttempt || matchingAttempt.recordAccepted)) {
-    const policy = matchingAttempt?.policy ?? captureTurnPresentationPolicy({ speedId: options.speedId, presentationLevel: "all" });
+    const policy = matchingAttempt?.policy ?? captureTurnPresentationPolicy({
+      speedId: options.speedId, presentationLevel: options.presentationLevel ?? "all",
+    });
     const segmentIds = matchingAttempt?.newlyCompletedTargetSegmentIds ?? [];
     const geometry = options.segmentFlashGeometry;
     const hasRenderableNewTargetSegments = geometry !== undefined && matchingAttempt?.motionOmitted === false &&
