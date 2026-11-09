@@ -704,6 +704,7 @@ function hudProps(overrides: Partial<GameHudProps> = {}): GameHudProps {
     station: "東京", ride: "山手線", lineBadge: { groupId: "jr-yamanote", code: "JY", color: "#80c241", name: "山手線", textColor: "#000000" },
     direction: "外回り", turn: 5, completed: 3, required: 30, compactRoll: "3マス", saveStatus: null,
     saveStatusMessage: "未保存", canRoll: true, canSkip: false, animating: false, draftSelected: false,
+    autoRollEnabled: false, onToggleAutoRoll: vi.fn(),
     rollButtonRef: createRef<HTMLButtonElement>(), onRoll: vi.fn(), onSkip: vi.fn(), effects: [], ...overrides,
   };
 }
