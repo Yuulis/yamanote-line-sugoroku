@@ -49,8 +49,11 @@ async function prepareDiscard(page: import("@playwright/test").Page, railwayBund
   await autoRollToggle(page).click();
   await diceButton(page).click();
   const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+  // Wait for whichever decision appears first; a one-shot isVisible() check races the adjustment dialog.
+  await expect(adjustment.or(discard)).toBeVisible();
   if (await adjustment.isVisible()) await adjustment.getByRole("button", { name: "そのまま続ける" }).click();
-  await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+  await expect(discard).toBeVisible();
 }
 
 test("a pending discard stays ON and unanswered while the dialog is open", async ({ page, railwayBundle }) => {
