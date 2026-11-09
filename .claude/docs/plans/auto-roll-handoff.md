@@ -28,7 +28,7 @@ persisted. No engine, RNG, save, settings-storage or analytics change.
 | Step | Title | Status | Commit | Notes |
 |------|-------|--------|--------|-------|
 | S1 | Pure scheduling and pickup-stop predicates (not wired) | done | `38f96ef` | Codex Luna xhigh; typecheck ok; vitest 75 files / 1907 passed (1 pre-existing skip); 32 new predicate tests |
-| S2 | `useAutoRoll` hook and shared roll guard (not wired) | pending | | |
+| S2 | `useAutoRoll` hook and shared roll guard (not wired) | done | `24514b3` | Codex Luna xhigh; vitest 76 files / 1959 passed; hook tests 52 passed x3 runs. Deviation: DOM dialog recheck (100 ms x12) then MutationObserver so a long-open native dialog restarts the gap on close |
 | S3 | Wire the toggle, manual inputs, confirm pause and 3-button layout | pending | | intermediate state: not shippable before S4 |
 | S4 | Coalesced announcements in the existing status | pending | | |
 | S5a | Browser coverage: decisions, pauses, input races | pending | | |
