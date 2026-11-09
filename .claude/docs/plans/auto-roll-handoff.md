@@ -27,7 +27,7 @@ persisted. No engine, RNG, save, settings-storage or analytics change.
 
 | Step | Title | Status | Commit | Notes |
 |------|-------|--------|--------|-------|
-| S1 | Pure scheduling and pickup-stop predicates (not wired) | pending | | |
+| S1 | Pure scheduling and pickup-stop predicates (not wired) | done | `38f96ef` | Codex Luna xhigh; typecheck ok; vitest 75 files / 1907 passed (1 pre-existing skip); 32 new predicate tests |
 | S2 | `useAutoRoll` hook and shared roll guard (not wired) | pending | | |
 | S3 | Wire the toggle, manual inputs, confirm pause and 3-button layout | pending | | intermediate state: not shippable before S4 |
 | S4 | Coalesced announcements in the existing status | pending | | |
