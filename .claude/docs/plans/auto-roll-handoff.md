@@ -33,7 +33,7 @@ persisted. No engine, RNG, save, settings-storage or analytics change.
 | S4 | Coalesced announcements in the existing status | done | `fb3510b` | Codex Luna xhigh, redone once after lead review (first attempt parsed 「Nターン目：」 text and grew 7 refs). Now summaryTurn structural signal + pure selectAutoRollAnnouncement; useAutoRoll.ts 235 lines; vitest 78 files / 1977 passed; E2E auto-roll+accessibility+items+ui-pop-turn-moments desktop/phone chromium 215 passed |
 | S5a | Browser coverage: decisions, pauses, input races | done | `ab13213` | Codex Luna xhigh; typecheck ok; auto-roll-decisions.spec desktop/phone chromium 28 passed (1.3 min). Adjust-then-resume is unit-covered only (use-auto-roll.test.ts:326): the adjust fixture picks up a harmful drop in the adjusted turn. Reduced test budget per user |
 | S5b | Browser coverage: lifecycle, motion modes, save failure | done | `752a62d` | Codex Luna xhigh; typecheck ok; auto-roll-lifecycle.spec desktop/phone chromium 18 passed (36 s). Edition switch untestable (single edition: no picker) — asserted picker absent instead |
-| S6 | Final local validation and full diff review | pending | | |
+| S6 | Final local validation and full diff review | done | `345f6f1` | typecheck ok; vitest 78 files / 1978 passed; build ok; Codex Sol low review FIX-FIRST (2 x P2: draft-reference release of stop message; early-return in adjust-resume test) → fixed by Codex Luna xhigh. Local E2E not rerun (no src change since S4 E2E except the hook fix; user asked to save test time) — CI full matrix is the gate |
 
 ## Decisions (details: plan section 2)
 
