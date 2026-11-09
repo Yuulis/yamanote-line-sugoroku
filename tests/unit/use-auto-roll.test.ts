@@ -228,8 +228,12 @@ describe.each([false, true])("useAutoRoll (StrictMode: %s)", (strict) => {
     const oldOnRoll = vi.fn();
     const latestOnRoll = vi.fn();
     beginAutoRoll(session, oldOnRoll);
+    const initialToggle = controls.toggle;
+    const initialRequestRoll = controls.requestRoll;
     act(() => vi.advanceTimersByTime(700));
     render({ session, onRoll: latestOnRoll });
+    expect(controls.toggle).toBe(initialToggle);
+    expect(controls.requestRoll).toBe(initialRequestRoll);
     act(() => vi.advanceTimersByTime(AUTO_ROLL_GAP_MS - 700));
     expect(oldOnRoll).not.toHaveBeenCalled();
     expect(latestOnRoll).toHaveBeenCalledTimes(1);

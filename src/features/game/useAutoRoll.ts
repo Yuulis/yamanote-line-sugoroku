@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
-  AUTO_ROLL_GAP_MS, autoRollBaseline, autoRollDisposition, autoRollReadyKey,
-  type AutoRollDisposition, type AutoRollSnapshot,
+  AUTO_ROLL_ANNOUNCEMENTS, autoRollBaseline, autoRollDisposition,
+  autoRollReadyKey, scheduleAutoRollTimer, selectAutoRollAnnouncement,
+  type AutoRollAnnouncementState, type AutoRollDisposition, type AutoRollSnapshot,
 } from "./autoRoll";
 import type { GameSession } from "./gameSession";
 import type { TurnMomentDisplay } from "./turnMomentPresentation";
@@ -22,15 +23,12 @@ export interface AutoRollControls {
   readonly requestRoll: () => void;
 }
 
-const AUTO_ROLL_DIALOG_RECHECK_MS = 100;
-const AUTO_ROLL_MAX_DIALOG_RECHECKS = 12;
+const OFF_ANNOUNCEMENT_STATE: AutoRollAnnouncementState = {
+  kind: "off", text: "", publicationKey: null, stopReason: null,
+};
 
 function documentVisible(): boolean {
   return typeof document === "undefined" || document.visibilityState !== "hidden";
-}
-
-function modalDialogOpen(): boolean {
-  return typeof document !== "undefined" && document.querySelector("dialog[open]") !== null;
 }
 
 function dispositionReason(disposition: AutoRollDisposition): string {
@@ -52,28 +50,64 @@ function snapshotFor(input: UseAutoRollInput): AutoRollSnapshot {
   };
 }
 
+function publicationIdentity(input: UseAutoRollInput): string | null {
+  const move = input.turnDisplay.itemNoticeMove;
+  if (input.turnDisplay.phase !== "published" || !move) return null;
+  const record = move.itemRecord;
+  const turn = record?.turn ?? input.turnDisplay.turn;
+  const pendingDiscard = record?.discardedInstanceId === null && record.itemEvents.some((event) => event.type === "pickup-pending-discard");
+  return `${input.session.sessionId}:${turn}:${pendingDiscard ? "pending" : "resolved"}`;
+}
+
+function pickupStopAnnouncement(summary: string): string {
+  return `${AUTO_ROLL_ANNOUNCEMENTS.pickup} ${summary}`;
+}
+
+function stopAnnouncementState(
+  reason: "manual" | "hidden", text: string,
+): AutoRollAnnouncementState {
+  return { kind: "stop", text, publicationKey: null, stopReason: reason };
+}
+
+function releaseStopState(state: AutoRollAnnouncementState): AutoRollAnnouncementState {
+  return state.kind === "stop" || state.kind === "pickup-stop-pending"
+    ? { kind: "released", text: "", publicationKey: null, stopReason: null } : state;
+}
+
 export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
   const [enabled, setEnabled] = useState(false);
+  const [announcementState, setAnnouncementState] = useState<AutoRollAnnouncementState>(OFF_ANNOUNCEMENT_STATE);
   const enabledRef = useRef(false);
   const baselinePublishedTurnRef = useRef(0);
   const consumedReadyKeyRef = useRef<string | null>(null);
   const latestSnapshotRef = useRef<AutoRollSnapshot | null>(null);
   const latestOnRollRef = useRef(input.onRoll);
+  const latestInputRef = useRef(input);
   const requestRollRef = useRef<() => void>(() => undefined);
   const mountedRef = useRef(false);
-  const timerTokenRef = useRef(0);
-  const timerGenerationRef = useRef(0);
   const [timerGeneration, bumpTimerGeneration] = useReducer((generation: number) => generation + 1, 0);
 
   const snapshot = snapshotFor(input);
+  const currentPublicationKey = publicationIdentity(input);
+  const currentDraft = input.turnDisplay.itemView?.draft;
+  const previousDraftRef = useRef(currentDraft);
   latestSnapshotRef.current = snapshot;
   latestOnRollRef.current = input.onRoll;
+  latestInputRef.current = input;
+
   const disposition = autoRollDisposition(snapshot, enabled, baselinePublishedTurnRef.current);
   const dispositionKind = disposition.kind;
   const dispositionReasonValue = dispositionReason(disposition);
+  const announcement = selectAutoRollAnnouncement({
+    state: announcementState,
+    enabled,
+    disposition,
+    displayAnnouncement: input.turnDisplay.announcement,
+    summaryTurn: input.turnDisplay.summaryTurn,
+    publicationKey: currentPublicationKey,
+  });
 
   const invalidateTimers = useCallback(() => {
-    timerGenerationRef.current += 1;
     bumpTimerGeneration();
   }, []);
 
@@ -82,6 +116,7 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
     if (!latestSnapshot?.canRoll || consumedReadyKeyRef.current === latestSnapshot.readyKey) return;
     consumedReadyKeyRef.current = latestSnapshot.readyKey;
     invalidateTimers();
+    setAnnouncementState(releaseStopState);
     latestOnRollRef.current();
   }, [invalidateTimers]);
   requestRollRef.current = requestRoll;
@@ -90,6 +125,7 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
     if (enabledRef.current) {
       enabledRef.current = false;
       setEnabled(false);
+      setAnnouncementState(stopAnnouncementState("manual", AUTO_ROLL_ANNOUNCEMENTS.stopped));
       invalidateTimers();
       return;
     }
@@ -104,6 +140,10 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
     consumedReadyKeyRef.current = null;
     enabledRef.current = true;
     setEnabled(true);
+    setAnnouncementState({
+      kind: "start", text: AUTO_ROLL_ANNOUNCEMENTS.started,
+      publicationKey: publicationIdentity(latestInputRef.current), stopReason: null,
+    });
     invalidateTimers();
   }, [invalidateTimers]);
 
@@ -111,6 +151,12 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
     mountedRef.current = true;
     return () => { mountedRef.current = false; };
   }, []);
+
+  useEffect(() => {
+    if (previousDraftRef.current === currentDraft) return;
+    previousDraftRef.current = currentDraft;
+    setAnnouncementState(releaseStopState);
+  }, [currentDraft]);
 
   useEffect(() => {
     if (typeof document === "undefined") return undefined;
@@ -121,6 +167,7 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
       if (!enabledRef.current) return;
       enabledRef.current = false;
       setEnabled(false);
+      setAnnouncementState(stopAnnouncementState("hidden", AUTO_ROLL_ANNOUNCEMENTS.hidden));
       invalidateTimers();
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
@@ -128,72 +175,61 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
   }, [invalidateTimers]);
 
   useEffect(() => {
-    if (dispositionKind !== "stop" || !enabledRef.current) return;
-    enabledRef.current = false;
-    setEnabled(false);
-    invalidateTimers();
-  }, [dispositionKind, dispositionReasonValue, enabled, invalidateTimers]);
+    const summaryReady = input.turnDisplay.summaryTurn !== null && currentPublicationKey !== null;
+    if (announcementState.kind === "pickup-stop-pending" && summaryReady &&
+        announcementState.publicationKey === currentPublicationKey) {
+      setAnnouncementState({
+        kind: "stop", text: pickupStopAnnouncement(input.turnDisplay.announcement),
+        publicationKey: currentPublicationKey, stopReason: "pickup",
+      });
+      return;
+    }
+    if (enabledRef.current && disposition.kind === "stop" && disposition.reason === "pickup") {
+      enabledRef.current = false;
+      setEnabled(false);
+      setAnnouncementState({
+        kind: summaryReady ? "stop" : "pickup-stop-pending",
+        text: summaryReady ? pickupStopAnnouncement(input.turnDisplay.announcement) : announcementState.text,
+        publicationKey: currentPublicationKey,
+        stopReason: "pickup",
+      });
+      invalidateTimers();
+      return;
+    }
+    if (!enabledRef.current) return;
+    if (summaryReady && currentPublicationKey !== announcementState.publicationKey) {
+      setAnnouncementState({
+        kind: "summary", text: input.turnDisplay.announcement,
+        publicationKey: currentPublicationKey, stopReason: null,
+      });
+      return;
+    }
+    if (disposition.kind === "pause" && disposition.reason === "draft") {
+      if (announcementState.kind !== "draft") {
+        setAnnouncementState({
+          kind: "draft", text: AUTO_ROLL_ANNOUNCEMENTS.draft,
+          publicationKey: announcementState.publicationKey, stopReason: null,
+        });
+      }
+      return;
+    }
+    if (announcementState.kind === "draft") {
+      setAnnouncementState({
+        kind: "released", text: "", publicationKey: announcementState.publicationKey, stopReason: null,
+      });
+    }
+  }, [
+    enabled, announcementState, dispositionKind, dispositionReasonValue, currentPublicationKey,
+    input.turnDisplay.announcement, input.turnDisplay.summaryTurn, invalidateTimers,
+  ]);
 
   useEffect(() => {
     if (!enabled || dispositionKind !== "ready" || consumedReadyKeyRef.current === snapshot.readyKey) return undefined;
-
-    const readyKey = snapshot.readyKey;
-    const generation = timerGenerationRef.current;
-    const token = ++timerTokenRef.current;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    let dialogObserver: MutationObserver | undefined;
-    let rechecksRemaining = AUTO_ROLL_MAX_DIALOG_RECHECKS;
-
-    const stillReady = (): boolean => {
-      if (!mountedRef.current || !enabledRef.current || token !== timerTokenRef.current ||
-          generation !== timerGenerationRef.current) return false;
-      const latestSnapshot = latestSnapshotRef.current;
-      if (!latestSnapshot || latestSnapshot.readyKey !== readyKey || !latestSnapshot.visible) return false;
-      return autoRollDisposition(latestSnapshot, enabledRef.current, baselinePublishedTurnRef.current).kind === "ready";
-    };
-
-    const checkDialog = (): void => {
-      if (!stillReady()) return;
-      if (!modalDialogOpen()) {
-        invalidateTimers();
-        return;
-      }
-      rechecksRemaining -= 1;
-      if (rechecksRemaining <= 0) {
-        const root = document.documentElement;
-        if (!root || typeof MutationObserver === "undefined") return;
-        dialogObserver = new MutationObserver(() => {
-          if (!stillReady()) {
-            dialogObserver?.disconnect();
-            return;
-          }
-          if (!modalDialogOpen()) {
-            dialogObserver?.disconnect();
-            invalidateTimers();
-          }
-        });
-        dialogObserver.observe(root, { attributes: true, attributeFilter: ["open"], childList: true, subtree: true });
-        return;
-      }
-      timeoutId = setTimeout(checkDialog, AUTO_ROLL_DIALOG_RECHECK_MS);
-    };
-
-    const onTimer = (): void => {
-      if (!stillReady()) return;
-      if (modalDialogOpen()) {
-        timeoutId = setTimeout(checkDialog, AUTO_ROLL_DIALOG_RECHECK_MS);
-        return;
-      }
-      requestRollRef.current();
-    };
-
-    timeoutId = setTimeout(onTimer, AUTO_ROLL_GAP_MS);
-    return () => {
-      timerTokenRef.current += 1;
-      dialogObserver?.disconnect();
-      if (timeoutId !== undefined) clearTimeout(timeoutId);
-    };
+    return scheduleAutoRollTimer({ readyKey: snapshot.readyKey, isMounted: () => mountedRef.current,
+      isEnabled: () => enabledRef.current, latestSnapshot: () => latestSnapshotRef.current,
+      baselinePublishedTurn: () => baselinePublishedTurnRef.current,
+      requestRoll: () => requestRollRef.current(), invalidateTimers });
   }, [enabled, snapshot.readyKey, dispositionKind, dispositionReasonValue, timerGeneration, invalidateTimers]);
 
-  return { enabled, announcement: input.turnDisplay.announcement, toggle, requestRoll };
+  return { enabled, announcement, toggle, requestRoll };
 }

@@ -366,7 +366,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onShowAll={showAllLineGroups}
         />
       </div>
-      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{turnDisplay.announcement}</p>}
+      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{autoRoll.announcement}</p>}
       {itemView && itemDialog && (
         <ItemUseDialog
           kind={itemDialog.kind}

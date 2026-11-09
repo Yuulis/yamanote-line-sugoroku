@@ -56,6 +56,8 @@ export interface TurnMomentDisplay {
   itemNoticePublished: boolean;
   itemNoticeMove: LastMove | null;
   announcement: string;
+  /** Turn number only when announcement currently contains this published turn's result summary. */
+  summaryTurn: number | null;
   clearAnnouncement: string;
   toastInputs: readonly ToastInput[];
   canRoll: boolean;
@@ -224,6 +226,11 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
         ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation)
         : turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
           stage: announcementStage, canRoll, completedCount, requiredCount, network: input.network, presentation: input.presentation });
+  const hasPublishedSummary = phase === "published" && current !== null && !showClear && (liveView
+    ? input.session.phase !== "animating" && input.session.phase !== "committing" && input.session.phase !== "resolving" &&
+      !liveView.draft.items.length && decision?.kind !== "adjust"
+    : !input.restoredHistory && (attempt !== null || input.session.phase === "idle"));
+  const summaryTurn = hasPublishedSummary ? current.itemRecord?.turn ?? input.session.game.turn : null;
   const clearAnnouncement = showClear && liveView
     ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation, false) : "";
   const canSkip = input.session.phase === "animating" || (active && (preMoveActive || revealActive));
@@ -250,6 +257,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     itemNoticePublished: resultPublished,
     itemNoticeMove: resultPublished ? input.session.lastMove : null,
     announcement,
+    summaryTurn,
     clearAnnouncement,
     toastInputs,
     canRoll,

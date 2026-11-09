@@ -4,6 +4,7 @@ import { createItemGame, playItemTurn, serializeGame } from "../../src/features/
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState, ItemTurnRecord } from "../../src/types/network";
 import { expect, test } from "./fixtures";
+import { itemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import {
   diceButton,
@@ -19,6 +20,7 @@ test.use({ dataset: "fixture", reducedMotion: "reduce" });
 
 const AUTO_ROLL_GAP_MS = 1_200;
 const AUTO_ROLL_TURNS_TO_PROVE = 2;
+const AUTO_ROLL_SAFE_LOOKAHEAD = 10;
 const MAX_SEED_CANDIDATES = 4_096;
 const STOPPED_WAIT_MS = 100;
 /** Opt-in visual evidence for local review; CI never writes screenshots. */
@@ -38,7 +40,7 @@ function plainStart(bundle: RailwayBundle): ItemGameState {
   for (let candidate = 0; candidate < MAX_SEED_CANDIDATES; candidate += 1) {
     let game = createItemGame(ITEM_GAME_CONFIG, seedText(candidate), bundle.network);
     let safe = true;
-    for (let turn = 0; turn < AUTO_ROLL_TURNS_TO_PROVE; turn += 1) {
+    for (let turn = 0; turn < AUTO_ROLL_SAFE_LOOKAHEAD; turn += 1) {
       const result = playItemTurn(game, {}, bundle.network);
       if (hasPublishedPickupStop(result.record) || result.state.pending !== null) {
         safe = false;
@@ -70,6 +72,26 @@ async function openSavedGame(page: import("@playwright/test").Page, game: ItemGa
 
 function autoRollButton(page: import("@playwright/test").Page) {
   return gamePanel(page).getByRole("button", { name: "おまかせで進む" });
+}
+
+async function observeAutoRollStatus(page: import("@playwright/test").Page): Promise<void> {
+  await page.evaluate(() => {
+    const region = document.querySelector<HTMLElement>('.game-panel [role="status"]');
+    if (!region) throw new Error("The panel status region is missing");
+    const changes: string[] = [];
+    let previous = region.textContent ?? "";
+    new MutationObserver(() => {
+      const current = region.textContent ?? "";
+      if (current === previous) return;
+      previous = current;
+      changes.push(current);
+    }).observe(region, { childList: true, characterData: true, subtree: true });
+    (window as Window & { __autoRollStatusChanges?: string[] }).__autoRollStatusChanges = changes;
+  });
+}
+
+async function autoRollStatusChanges(page: import("@playwright/test").Page): Promise<string[]> {
+  return page.evaluate(() => (window as Window & { __autoRollStatusChanges?: string[] }).__autoRollStatusChanges ?? []);
 }
 
 test("captures the dice row with auto-roll OFF and ON at desktop, phone, and compact landscape sizes", async ({ page }, testInfo) => {
@@ -116,13 +138,22 @@ test("captures the dice row with auto-roll OFF and ON at desktop, phone, and com
 
 test("automatically rolls twice with a full gap between published ready turns", async ({ page, railwayBundle }) => {
   await openSavedGame(page, plainStart(railwayBundle));
+  await observeAutoRollStatus(page);
   const toggle = autoRollButton(page);
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "true");
+  await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
+  await expect(gamePanel(page).getByRole("status")).toHaveText("おまかせで進みます。");
   await expect.poll(async () => (await readSave(page))?.turn).toBe(1);
+  await expect(gamePanel(page).getByRole("status")).toContainText("1ターン目");
   await expect.poll(async () => (await readSave(page))?.turn).toBe(AUTO_ROLL_TURNS_TO_PROVE);
+  await expect(gamePanel(page).getByRole("status")).toContainText("2ターン目");
+  const changes = await autoRollStatusChanges(page);
+  expect(changes.filter((announcement) => announcement.startsWith("1ターン目"))).toHaveLength(1);
+  expect(changes.filter((announcement) => announcement.startsWith("2ターン目"))).toHaveLength(1);
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(gamePanel(page).getByRole("status")).toHaveText("おまかせを止めました。");
 });
 
 test("manual OFF cancels the pending roll and does not interrupt an active turn", async ({ page, railwayBundle }) => {
@@ -147,10 +178,49 @@ test("manual OFF cancels the pending roll and does not interrupt an active turn"
 
 test("turns OFF on a published retained pickup and does not roll again", async ({ page, railwayBundle }) => {
   await openSavedGame(page, pickupStart(railwayBundle));
+  await observeAutoRollStatus(page);
   const toggle = autoRollButton(page);
   await toggle.click();
   await expect.poll(async () => (await readSave(page))?.turn).toBe(1);
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
+  await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
+  await expect(gamePanel(page).getByRole("status")).toContainText("アイテムを拾ったため、おまかせを止めました。");
+  const changes = await autoRollStatusChanges(page);
+  expect(changes.filter((announcement) => /^1ターン目/.test(announcement))).toHaveLength(0);
+  expect(changes.some((announcement) => announcement.startsWith("アイテムを拾ったため、おまかせを止めました。")
+    && announcement.includes("1ターン目"))).toBe(true);
   await page.waitForTimeout(AUTO_ROLL_GAP_MS + STOPPED_WAIT_MS);
   expect((await readSave(page))?.turn).toBe(1);
+});
+
+test("keeps one live region while auto-roll is ON during adjust and discard decisions", async ({ page, railwayBundle }) => {
+  await openSavedGame(page, itemScenario("adjust", railwayBundle.network));
+  const toggle = autoRollButton(page);
+  await toggle.click();
+  await diceButton(page).click();
+  const adjust = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect(adjust).toBeVisible();
+  await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
+  await adjust.getByRole("button", { name: "そのまま続ける" }).click();
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
+  await toggle.click();
+
+  await openSavedGame(page, itemScenario("discard", railwayBundle.network));
+  const discardToggle = autoRollButton(page);
+  await discardToggle.click();
+  const turnBeforeDiscard = (await readSave(page))?.turn;
+  if (turnBeforeDiscard === undefined) throw new Error("Expected the discard fixture save");
+  await diceButton(page).click();
+  const discardAdjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect.poll(async () => await discardAdjustment.isVisible() ||
+    (await readSave(page))?.pending?.kind === "discard").toBe(true);
+  if (await discardAdjustment.isVisible()) {
+    await discardAdjustment.getByRole("button", { name: "そのまま続ける" }).click();
+  }
+  const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+  await expect(discard).toBeVisible();
+  await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
+  await discard.getByRole("button").first().click();
+  await expect(discard).toBeHidden();
+  await discardToggle.click();
 });

@@ -119,6 +119,28 @@ describe("GameApp auto-roll wiring", () => {
     expect(storedGame().turn).toBe(3);
   });
 
+  it("renders one shared status for auto-roll and retains a manual stop across unrelated renders", () => {
+    openApp();
+    const status = mounted!.container.querySelector<HTMLElement>('.game-panel [role="status"]');
+    if (!status) throw new Error("Expected the panel status region");
+    expect(mounted!.container.querySelectorAll('.game-panel [role="status"]')).toHaveLength(1);
+    const toggle = autoRollButton();
+    if (!toggle) throw new Error("Expected the auto-roll toggle");
+    dispatchReactEvent(toggle, new MouseEvent("click", { bubbles: true }));
+    expect(status.textContent).toBe("おまかせで進みます。");
+
+    dispatchReactEvent(toggle, new MouseEvent("click", { bubbles: true }));
+    expect(status.textContent).toBe("おまかせを止めました。");
+    const pan = railwayMapProps.mock.calls.at(-1)?.[0].follow?.onUserCameraMove;
+    if (!pan) throw new Error("Expected the map follow callback");
+    act(() => pan());
+    expect(status.textContent).toBe("おまかせを止めました。");
+    expect(mounted!.container.querySelectorAll('.game-panel [role="status"]')).toHaveLength(1);
+
+    click("サイコロを振る");
+    expect(status.textContent).not.toContain("おまかせを止めました");
+  });
+
   it.each(["click", "Space", "Enter"] as const)("routes %s through the shared guard when it races the timer", (input) => {
     openApp();
     const toggle = autoRollButton();
