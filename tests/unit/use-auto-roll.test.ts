@@ -337,7 +337,7 @@ describe.each([false, true])("useAutoRoll (StrictMode: %s)", (strict) => {
     session = reduceItem(session, { type: "item-save-attempted", ...itemActionIdentity(session) });
     if (session.phase === "animating" && session.animation) session = reduceItem(session, { type: "animation-finished", ...session.animation });
     render({ session, onRoll });
-    if (!controls.enabled) return;
+    expect(controls.enabled).toBe(true);
     act(() => vi.advanceTimersByTime(AUTO_ROLL_GAP_MS - 1));
     expect(onRoll).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(1));

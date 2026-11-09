@@ -4,6 +4,7 @@ import {
   autoRollReadyKey, scheduleAutoRollTimer, selectAutoRollAnnouncement,
   type AutoRollAnnouncementState, type AutoRollDisposition, type AutoRollSnapshot,
 } from "./autoRoll";
+import type { PreRollItemCommand } from "../../types/network";
 import type { GameSession } from "./gameSession";
 import type { TurnMomentDisplay } from "./turnMomentPresentation";
 
@@ -74,6 +75,21 @@ function releaseStopState(state: AutoRollAnnouncementState): AutoRollAnnouncemen
     ? { kind: "released", text: "", publicationKey: null, stopReason: null } : state;
 }
 
+function sameDraftSelection(
+  previous: readonly PreRollItemCommand[] | undefined,
+  current: readonly PreRollItemCommand[] | undefined,
+): boolean {
+  const previousItems = previous ?? [];
+  const currentItems = current ?? [];
+  return previousItems.length === currentItems.length && previousItems.every((item, index) => {
+    const currentItem = currentItems[index];
+    if (!currentItem || item.kind !== currentItem.kind || item.instanceId !== currentItem.instanceId) return false;
+    if (item.kind === "route-ticket" && currentItem.kind === "route-ticket") return item.serviceId === currentItem.serviceId;
+    if (item.kind === "direction-ticket" && currentItem.kind === "direction-ticket") return item.direction === currentItem.direction;
+    return true;
+  });
+}
+
 export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
   const [enabled, setEnabled] = useState(false);
   const [announcementState, setAnnouncementState] = useState<AutoRollAnnouncementState>(OFF_ANNOUNCEMENT_STATE);
@@ -89,8 +105,8 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
 
   const snapshot = snapshotFor(input);
   const currentPublicationKey = publicationIdentity(input);
-  const currentDraft = input.turnDisplay.itemView?.draft;
-  const previousDraftRef = useRef(currentDraft);
+  const currentDraftItems = input.turnDisplay.itemView?.draft.items;
+  const previousDraftItemsRef = useRef(currentDraftItems);
   latestSnapshotRef.current = snapshot;
   latestOnRollRef.current = input.onRoll;
   latestInputRef.current = input;
@@ -153,10 +169,11 @@ export function useAutoRoll(input: UseAutoRollInput): AutoRollControls {
   }, []);
 
   useEffect(() => {
-    if (previousDraftRef.current === currentDraft) return;
-    previousDraftRef.current = currentDraft;
+    const changed = !sameDraftSelection(previousDraftItemsRef.current, currentDraftItems);
+    previousDraftItemsRef.current = currentDraftItems;
+    if (!changed) return;
     setAnnouncementState(releaseStopState);
-  }, [currentDraft]);
+  }, [currentDraftItems]);
 
   useEffect(() => {
     if (typeof document === "undefined") return undefined;

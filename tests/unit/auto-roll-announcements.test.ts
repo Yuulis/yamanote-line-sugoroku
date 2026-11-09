@@ -31,6 +31,7 @@ let visibilityDescriptor: PropertyDescriptor | undefined;
 interface HarnessProps {
   readonly session: GameSession;
   readonly announcement: string;
+  readonly onRoll?: () => void;
   readonly phase?: TurnMomentDisplay["phase"];
   readonly summaryTurn?: number | null;
 }
@@ -45,7 +46,7 @@ function displayFor({ session, announcement, phase, summaryTurn }: HarnessProps)
 
 function Harness(props: HarnessProps): null {
   const current = useAutoRoll({ session: props.session, turnDisplay: displayFor(props), surfaceOpen: false,
-    itemDialogOpen: false, confirmationOpen: false, onRoll: vi.fn() });
+    itemDialogOpen: false, confirmationOpen: false, onRoll: props.onRoll ?? vi.fn() });
   useLayoutEffect(() => { controls = current; });
   return null;
 }
@@ -101,6 +102,20 @@ function pendingDiscardSession(): GameSession {
     { type: "animation-finished", ...session.animation }, config, network);
   if (session.phase !== "awaiting-discard") throw new Error("Expected a pending discard decision");
   return session;
+}
+
+function adjustSession(): GameSession {
+  const config: GameConfig = { ...ITEM_GAME_CONFIG, itemPolicy: { ...ITEM_GAME_CONFIG.itemPolicy!, dropChancePerMille: 0,
+    harmfulChancePercent: 0, beneficialKinds: ["roll-adjust"] } };
+  for (let seed = 0; seed < 100; seed += 1) {
+    const game = { ...createItemGame(config, `auto-roll-announcement-adjust-${seed}`, network),
+      inventory: [{ id: "held-adjust", kind: "roll-adjust" as const }] };
+    let session = resumeSession(game, network, 74);
+    session = reduceGameSession(session, { type: "item-commit", ...itemActionIdentity(session) }, config, network);
+    session = reduceGameSession(session, { type: "item-save-attempted", ...itemActionIdentity(session) }, config, network);
+    if (session.phase === "awaiting-adjust") return session;
+  }
+  throw new Error("Expected a reducer-produced adjustment decision");
 }
 
 function resolveNewDiscard(session: GameSession): GameSession {
@@ -240,6 +255,36 @@ describe("auto-roll announcements", () => {
     expect(controls.announcement).toBe("おまかせを止めました。");
     act(() => controls.requestRoll());
     expect(controls.announcement).toBe("次の公開要約");
+  });
+
+  it("keeps a hidden stop through reducer-produced adjust resolution until a manual roll", () => {
+    let session = adjustSession();
+    const decision = itemSessionView(session, network)?.decision;
+    if (decision?.kind !== "adjust") throw new Error("Expected the reducer's adjustment choice");
+    const onRoll = vi.fn();
+    render({ session, announcement: "調整待ちの案内", onRoll });
+    act(() => controls.toggle());
+    setVisibility("hidden");
+    act(() => document.dispatchEvent(new Event("visibilitychange")));
+    expect(controls.announcement).toBe(AUTO_ROLL_ANNOUNCEMENTS.hidden);
+
+    setVisibility("visible");
+    session = reduceGameSession(session, { type: "item-adjust", ...itemActionIdentity(session), adjustment: {
+      instanceId: decision.itemInstanceIds[0]!, delta: decision.allowedDeltas[0]!,
+    } }, ITEM_GAME_CONFIG, network);
+    render({ session, announcement: "調整後の案内", onRoll });
+    expect(controls.announcement).toBe(AUTO_ROLL_ANNOUNCEMENTS.hidden);
+
+    session = reduceGameSession(session, { type: "item-save-attempted", ...itemActionIdentity(session) }, ITEM_GAME_CONFIG, network);
+    if (session.phase === "animating" && session.animation) {
+      session = reduceGameSession(session, { type: "animation-finished", ...session.animation }, ITEM_GAME_CONFIG, network);
+    }
+    render({ session, announcement: "公開後の案内", onRoll });
+    expect(controls.announcement).toBe(AUTO_ROLL_ANNOUNCEMENTS.hidden);
+
+    act(() => controls.requestRoll());
+    expect(onRoll).toHaveBeenCalledTimes(1);
+    expect(controls.announcement).toBe("公開後の案内");
   });
 
   it("shows a stable draft-pause copy and clears it after deselection", () => {
