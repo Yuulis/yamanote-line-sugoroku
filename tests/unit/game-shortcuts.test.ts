@@ -50,6 +50,7 @@ describe("gameShortcutAction", () => {
 
   it.each([
     '<button><span data-target>Dice</span></button>', '<a href="/"><span data-target>Link</span></a>',
+    '<button aria-pressed="false"><span data-target>おまかせ: OFF</span></button>',
     '<input>', '<select><option>One</option></select>', '<textarea></textarea>',
     '<summary><span data-target>Details</span></summary>',
     '<div contenteditable="true"><span data-target>Edit</span></div>',

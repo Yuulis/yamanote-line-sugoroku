@@ -74,6 +74,7 @@ describe("shared turn moment publication", () => {
     const display = deriveTurnMomentDisplay({ session: moved, network, presentation: resolver, progress: { stationId: "shinagawa", position: [139.738535, 35.628135], completedSegmentIds: ["legacy-yamanote-01"], stepsCompleted: 1 },
       attempt: attemptFor(before), revealStage: "waiting", restoredOrOmitted: false });
     expect(display.phase).toBe("moving");
+    expect(display.summaryTurn).toBeNull();
     expect(display.progress.stationId).toBe("shinagawa");
     expect(display.progress.stepsCompleted).toBe(1);
     expect(display.rollText).toBe("—");
@@ -96,6 +97,7 @@ describe("shared turn moment publication", () => {
     expect(published.lotteryText).toBe("品川：山手線・テスト南線から抽選 → テスト南線 ／ 乗車方向は大森方面のみ");
     expect(published.candidateRows.map((row) => row.label)).toEqual(["山手線", "テスト南線"]);
     expect(published.rollText).toBe("4");
+    expect(published.summaryTurn).toBe(1);
   });
 
   it("keeps every lottery result hidden through flip and settle, then publishes literal ride and platform together", () => {
@@ -285,6 +287,28 @@ describe("S12 arrival and goal publication", () => {
     // 77駅 is the rapid hop budget the HUD compact roll already shows during movement (the record moved 13 stations).
     expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。スキップできます。");
     expect(moving.announcement).not.toMatch(/駅移動|使わず|到着|ゴール/);
+    expect(moving.summaryTurn).toBeNull();
+  });
+
+  it("does not classify reduced-motion movement copy as a published summary", () => {
+    const routeBase = itemScenario("route", network);
+    const result = playItemTurn(routeBase, {}, network);
+    const publishedSession = resumeSession(result.state, network, 82);
+    const movementBoundary = deriveTurnMomentDisplay({
+      session: { ...publishedSession, phase: "animating" }, network, presentation: resolver,
+      progress: progressFor(publishedSession), attempt: null, revealStage: "done", restoredOrOmitted: true,
+      itemView: itemSessionView(publishedSession, network),
+    });
+    expect(movementBoundary.phase).toBe("published");
+    expect(movementBoundary.itemNoticePublished).toBe(true);
+    expect(movementBoundary.announcement).toContain("移動中です");
+    expect(movementBoundary.summaryTurn).toBeNull();
+
+    const summary = deriveTurnMomentDisplay({
+      session: publishedSession, network, presentation: resolver, progress: progressFor(publishedSession),
+      attempt: null, revealStage: "done", restoredOrOmitted: true, itemView: itemSessionView(publishedSession, network),
+    });
+    expect(summary.summaryTurn).toBe(result.record?.turn ?? null);
   });
 
   it("keeps the goal banner on the panel: no ClearScreen, locked dice and items, Skip available, no goal announcement", () => {
@@ -313,6 +337,7 @@ describe("S12 arrival and goal publication", () => {
     expect(published.canSkip).toBe(false);
     // ClearScreen owns the goal announcement; the panel (being replaced) announces nothing more.
     expect(published.announcement).toBe("");
+    expect(published.summaryTurn).toBeNull();
     expect(published.clearAnnouncement).toContain("ゴールに到着しました");
   });
 });

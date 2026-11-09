@@ -801,8 +801,33 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__actions .game-panel__roll {
-  flex: 2;
+  flex: 2.3;
+  min-width: 0;
+  padding-inline: 2px;
+  font-size: 16px;
   font-weight: bold;
+  white-space: nowrap;
+}
+
+.game-panel__actions .game-panel__roll--draft {
+  white-space: normal;
+  font-size: 13px;
+}
+
+.game-panel__actions .game-panel__skip {
+  flex: 1;
+  min-width: 0;
+  padding-inline: 2px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.game-panel__actions .game-panel__auto-roll {
+  flex: 1.7;
+  min-width: 0;
+  padding-inline: 2px;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .game-panel__options {
@@ -940,6 +965,7 @@ button[aria-disabled="true"] {
   grid-column: 1 / -1;
 }
 
+.game-panel__actions .game-panel__auto-roll[aria-pressed="true"],
 .game-panel__options button[aria-pressed="true"] {
   background: var(--color-brand-tint);
   border: 1px solid var(--color-brand);
@@ -1891,7 +1917,7 @@ button[aria-disabled="true"] {
   .game-panel__actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr) minmax(0, 1.35fr);
     height: 56px;
     min-height: 56px;
     max-height: 56px;
@@ -1911,8 +1937,18 @@ button[aria-disabled="true"] {
 
   .game-panel__actions .game-panel__roll {
     line-height: 1.2;
-    white-space: normal;
     overflow: hidden;
+    font-size: 14px;
+  }
+
+  .game-panel__actions .game-panel__roll--draft {
+    white-space: normal;
+    font-size: 12px;
+  }
+
+  .game-panel__actions .game-panel__auto-roll {
+    padding-inline: 2px;
+    font-size: 12px;
   }
 
   .item-inventory { grid-area: inventory; margin: 0 0 4px; }
@@ -2085,7 +2121,8 @@ button[aria-disabled="true"] {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
       "stats stats"
-      "actions inventory"
+      "actions actions"
+      "inventory inventory"
       "staged staged"
       "chips chips"
       "save save"
@@ -2093,7 +2130,7 @@ button[aria-disabled="true"] {
       "lottery lottery"
       "legend legend"
       "shortcuts shortcuts";
-    grid-template-rows: repeat(9, max-content);
+    grid-template-rows: repeat(10, max-content);
     align-content: start;
     align-items: start;
     --hud-column-gap: 12px;
@@ -2141,10 +2178,11 @@ button[aria-disabled="true"] {
 
   .game-panel__stats {
     grid-area: stats;
-    margin: 0 0 4px;
+    margin: 0;
     grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-    grid-template-rows: repeat(3, 24px);
+    grid-template-rows: repeat(3, 18px);
     gap: 0 6px;
+    --hud-row-height: 18px;
   }
 
   .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
@@ -2167,12 +2205,12 @@ button[aria-disabled="true"] {
   .game-panel__actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr) minmax(0, 1.35fr);
     align-self: start;
     height: 56px;
     min-height: 56px;
     max-height: 56px;
-    margin: 0 0 4px;
+    margin: 0;
     align-items: stretch;
     align-content: start;
   }
@@ -2189,20 +2227,35 @@ button[aria-disabled="true"] {
 
   .game-panel__actions .game-panel__roll {
     line-height: 1.2;
-    white-space: normal;
     overflow: hidden;
   }
 
-  .game-panel__actions button:last-child {
+  .game-panel__actions .game-panel__roll--draft {
+    white-space: normal;
+    font-size: 12px;
+  }
+
+  .game-panel__actions .game-panel__skip {
     white-space: nowrap;
     padding-inline: 2px;
     font-size: 12px;
   }
 
+  .game-panel__actions .game-panel__auto-roll {
+    white-space: nowrap;
+    padding-inline: 2px;
+    font-size: 12px;
+  }
+
+  .item-slot__button,
+  .item-slot--empty {
+    height: 48px;
+  }
+
   .item-inventory {
     grid-area: inventory;
     min-width: 0;
-    margin: 0 0 4px;
+    margin: 0;
   }
 
   .item-inventory__label { margin: 0 0 2px; padding: 0; line-height: 16px; }
@@ -2220,9 +2273,9 @@ button[aria-disabled="true"] {
   }
   .game-panel .effect-chip { flex: 0 0 auto; }
   .game-panel__log-trigger,
-  .game-panel__menu-trigger { margin: 0 0 4px; }
-  .game-panel__log { margin: 0 0 4px; }
-  .game-panel__options { margin: 0 0 4px; }
+  .game-panel__menu-trigger { margin: 0; }
+  .game-panel__log { margin: 0; }
+  .game-panel__options { margin: 0; }
   .game-panel__legend-section { margin-top: 0; }
   .game-panel__disclosures { row-gap: 0; }
   .game-panel__menu { min-width: 0; }
@@ -2304,16 +2357,17 @@ button[aria-disabled="true"] {
 
   .game-panel__shortcut-hint {
     grid-area: shortcuts;
+    margin: 0;
   }
 
   .game-panel__save {
     grid-area: save;
-    margin: 0 0 4px;
+    margin: 0;
   }
 
   .game-panel .effect-chips {
     grid-area: chips;
-    margin-top: 0;
+    margin: 0;
   }
 
 }

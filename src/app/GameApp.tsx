@@ -401,6 +401,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           speedLabel={speed?.label ?? ""}
           presentationLevel={presentationLevel}
           reducedMotion={reducedMotion}
+          confirmationOpen={confirm !== null}
           onRoll={guardedRoll}
           onEditItemDraft={guardedEditItemDraft}
           onAdjustItemRoll={guardedAdjustItemRoll}
