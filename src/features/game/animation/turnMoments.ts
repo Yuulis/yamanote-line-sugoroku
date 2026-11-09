@@ -1,23 +1,13 @@
 import type { DeepReadonly, Direction, ItemTurnRecord, SegmentId } from "../../../types/network";
-import type { MoveEvent } from "../engine";
+import type { MoveEvent, RailwayNetwork } from "../engine";
 import { itemRideHasModifierWording } from "../hudPresentation";
-import { ANIMATION_SPEEDS } from "../gameConfig";
+import type { TurnPresentationPolicy } from "./turnMomentPolicy";
 import type { ItemSessionView } from "../itemSession";
 import type { LastMove } from "../gameSession";
 import type { RevealStage } from "./useRevealSequence";
 
 export type PreMoveStage = "waiting-roll" | "tumble" | "awaiting-adjust" | "waiting-record" | "stamps" | "released";
-export type TurnRevealStageKey = "arrival" | "lottery-flip" | "lottery-settle" | "pickup";
-
-export interface TurnMomentTiming {
-  stepMs: number;
-  tumbleMs: number;
-  stampsMs: number;
-  arrivalMs: number;
-  lotteryFlipMs: number;
-  lotterySettleMs: number;
-  pickupMs: number;
-}
+export type TurnRevealStageKey = "arrival" | "segment-flash" | "lottery-flip" | "lottery-settle" | "pickup";
 
 export interface TurnOrigin {
   stationId: string;
@@ -34,7 +24,7 @@ export interface RollAttempt {
   recordTurn: number;
   source: "click" | "restored-roll";
   origin: TurnOrigin;
-  timing: TurnMomentTiming;
+  policy: TurnPresentationPolicy;
   stage: PreMoveStage;
   rawRoll: number | null;
   tumbleCompleted: boolean;
@@ -74,27 +64,11 @@ export interface AcceptedTurnFacts {
 
 export type TurnMomentsAction =
   | { type: "begin"; sessionId: number; turn: number; decisionRevision: number; source?: "click" | "restored-roll";
-      origin: TurnOrigin; timing: TurnMomentTiming; reducedMotion?: boolean }
+      origin: TurnOrigin; policy: TurnPresentationPolicy; reducedMotion?: boolean }
   | { type: "observe"; sessionId: number; facts: TurnMomentObservation }
   | { type: "advance"; key: string; expectedStage: PreMoveStage }
   | { type: "skip"; key: string }
   | { type: "reset"; sessionId: number | null };
-
-const NORMAL_STEP_MS = ANIMATION_SPEEDS.find((speed) => speed.id === "normal")!.stepMs;
-const NORMAL_BASES = { tumbleMs: 600, stampsMs: 240, arrivalMs: 800, lotteryFlipMs: 1_600, lotterySettleMs: 400, pickupMs: 500 } as const;
-
-export function turnMomentTiming(stepMs: number): TurnMomentTiming {
-  const factor = stepMs / NORMAL_STEP_MS;
-  return {
-    stepMs,
-    tumbleMs: Math.round(NORMAL_BASES.tumbleMs * factor),
-    stampsMs: Math.round(NORMAL_BASES.stampsMs * factor),
-    arrivalMs: Math.round(NORMAL_BASES.arrivalMs * factor),
-    lotteryFlipMs: Math.round(NORMAL_BASES.lotteryFlipMs * factor),
-    lotterySettleMs: Math.round(NORMAL_BASES.lotterySettleMs * factor),
-    pickupMs: Math.round(NORMAL_BASES.pickupMs * factor),
-  };
-}
 
 /** Normalizes externally observed facts; turn/session ownership is checked by the reducer. */
 export function observeTurnFacts(observation: TurnMomentObservation): AcceptedTurnFacts {
@@ -128,18 +102,43 @@ export interface TurnRevealFacts {
   record: DeepReadonly<ItemTurnRecord> | null;
   /** The record was already committed when the session was entered (resume): it is never revealed again. */
   restored: boolean;
+  /** New target segments captured from this record's accepted movement. */
+  newlyCompletedTargetSegmentIds: readonly SegmentId[];
+  /** Accepted new target segments have at least one renderable geometry feature. */
+  hasRenderableNewTargetSegments: boolean;
   /** Reduced motion: the result publishes at once, with no timed stage. */
   omitted: boolean;
 }
 
-const NO_REVEAL_STAGES: readonly RevealStage[] = [];
+/** Geometry shared by stage eligibility and the map request, without depending on displayed progress. */
+export interface SegmentFlashGeometry {
+  readonly segmentsById: RailwayNetwork["segmentsById"];
+  readonly targetSegmentIds: readonly SegmentId[];
+}
+
+export function segmentFlashFeatureIds(
+  geometry: Pick<RailwayNetwork, "segmentsById">,
+  targetIds: readonly SegmentId[],
+  newlyCompletedTargetSegmentIds: readonly SegmentId[],
+): readonly string[] {
+  const required = new Set(targetIds);
+  return [...new Set(newlyCompletedTargetSegmentIds.filter((id) => required.has(id))
+    .flatMap((id) => geometry.segmentsById.get(id)?.geometryFeatureIds ?? []))];
+}
+
+const NO_REVEAL_STAGES: readonly RevealStage<TurnRevealStageKey>[] = [];
 
 /** Post-move stages from the accepted snapshot. */
-export function buildTurnRevealStages(facts: TurnRevealFacts, timing: TurnMomentTiming): readonly RevealStage[] {
+export function buildTurnRevealStages(facts: TurnRevealFacts, policy: TurnPresentationPolicy): readonly RevealStage<TurnRevealStageKey>[] {
   if (facts.record === null || facts.restored || facts.omitted) return NO_REVEAL_STAGES;
   const record = facts.record;
-  const stages: RevealStage[] = [{ key: "arrival", durationMs: timing.arrivalMs }];
-  if (record.kind !== "item-ride" || record.stopReason === "goal") return stages;
+  const timing = policy.timing;
+  const stages: RevealStage<TurnRevealStageKey>[] = [];
+  if (policy.showArrival && timing.arrivalMs !== null) stages.push({ key: "arrival", durationMs: timing.arrivalMs });
+  else if (policy.showImportantMoments && facts.newlyCompletedTargetSegmentIds.length > 0 && facts.hasRenderableNewTargetSegments) {
+    stages.push({ key: "segment-flash", durationMs: timing.flashMs });
+  }
+  if (!policy.showImportantMoments || record.kind !== "item-ride" || record.stopReason === "goal") return stages;
   if (record.landing) {
     const services = record.landingSnapshot?.services ?? [];
     const selected = services.find((service) => service.serviceId === record.landing?.serviceId);
@@ -179,13 +178,14 @@ function beginAttempt(state: TurnMomentsState, action: Extract<TurnMomentsAction
   const key = `${action.sessionId}:roll:${action.turn + 1}:${action.decisionRevision}`;
   if (state.sessionId === action.sessionId && state.attempt?.key === key) return state;
   const source = action.source ?? "click";
-  const omitted = Boolean(action.reducedMotion) || source === "restored-roll";
+  const omitted = Boolean(action.reducedMotion) || (source === "restored-roll" && action.policy.showTumble);
+  const tumbleCompleted = omitted || !action.policy.showTumble;
   return {
     sessionId: action.sessionId,
     attempt: {
       key, sessionId: action.sessionId, recordTurn: action.turn + 1, source, origin: action.origin,
-      timing: action.timing, stage: omitted ? "waiting-record" : "waiting-roll", rawRoll: null,
-      tumbleCompleted: omitted, skipRequested: false, motionOmitted: omitted, adjustObserved: false,
+      policy: action.policy, stage: tumbleCompleted ? "waiting-record" : "waiting-roll", rawRoll: null,
+      tumbleCompleted, skipRequested: false, motionOmitted: omitted, adjustObserved: false,
       recordAccepted: false, stampsRequired: false, newlyCompletedTargetSegmentIds: [],
     },
   };
@@ -197,7 +197,7 @@ function advanceAttempt(state: TurnMomentsState, attempt: RollAttempt,
   let nextStage: PreMoveStage = attempt.stage;
   if (attempt.stage === "tumble") {
     nextStage = attempt.adjustObserved && !attempt.recordAccepted ? "awaiting-adjust"
-      : attempt.recordAccepted ? nextRecordedStage(attempt.stampsRequired) : "waiting-record";
+      : attempt.recordAccepted ? nextRecordedStage(attempt.stampsRequired && attempt.policy.showStamps) : "waiting-record";
   } else if (attempt.stage === "stamps") nextStage = "released";
   if (nextStage === attempt.stage) return state;
   return { ...state, attempt: { ...attempt, stage: nextStage,
@@ -226,9 +226,11 @@ function observeAttempt(state: TurnMomentsState, attempt: RollAttempt, observati
   if (deadhead && attempt.stage !== "released") stage = "released";
   else if (omitted || attempt.skipRequested) {
     if (recordAccepted && attempt.stage !== "released") stage = "released";
-  } else if (attempt.stage === "waiting-roll" && (decisionMatches || (recordMatches && rawRoll !== null))) stage = "tumble";
-  else if (attempt.stage === "awaiting-adjust" && recordAccepted) stage = nextRecordedStage(stampsRequired);
-  else if (attempt.stage === "waiting-record" && recordAccepted) stage = nextRecordedStage(stampsRequired);
+    else if (decisionMatches && !attempt.policy.showTumble) stage = "awaiting-adjust";
+  } else if (!attempt.policy.showTumble && decisionMatches && !recordAccepted) stage = "awaiting-adjust";
+  else if (attempt.stage === "waiting-roll" && (decisionMatches || (recordMatches && rawRoll !== null))) stage = "tumble";
+  else if (attempt.stage === "awaiting-adjust" && recordAccepted) stage = nextRecordedStage(stampsRequired && attempt.policy.showStamps);
+  else if (attempt.stage === "waiting-record" && recordAccepted) stage = nextRecordedStage(stampsRequired && attempt.policy.showStamps);
   const nextAttempt: RollAttempt = {
     ...attempt, stage, rawRoll, adjustObserved, recordAccepted, stampsRequired,
     tumbleCompleted: attempt.tumbleCompleted || stage === "stamps" || stage === "released",

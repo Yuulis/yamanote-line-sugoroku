@@ -11,17 +11,17 @@ import { type RailwayNetwork, isItemSave, targetSegmentIds } from "../features/g
 import {
   ANIMATION_SPEEDS,
   type AnimationSpeedId,
-  DEFAULT_ANIMATION_SPEED,
 } from "../features/game/gameConfig";
 import type { Edition } from "../features/editions/types";
 import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
+import { useGameSettings } from "../features/game/useGameSettings";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
 import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
 import type { TurnMomentDisplay, TurnRevealState } from "../features/game/turnMomentPresentation";
-import { buildTurnRevealStages, turnMomentTiming, type RollAttempt, type TurnMomentObservation, type TurnOrigin } from "../features/game/animation/turnMoments";
+import type { RollAttempt, TurnMomentObservation, TurnOrigin } from "../features/game/animation/turnMoments";
 import { attemptOwnsAnimation, useTurnMoments } from "../features/game/animation/useTurnMoments";
 import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
 import { DiceTumble } from "../features/game/components/DiceTumble";
@@ -74,11 +74,6 @@ function speedById(id: AnimationSpeedId) {
   return ANIMATION_SPEEDS.find((speed) => speed.id === id) ?? ANIMATION_SPEEDS[1];
 }
 
-function nextSpeedId(id: AnimationSpeedId): AnimationSpeedId {
-  const index = ANIMATION_SPEEDS.findIndex((speed) => speed.id === id);
-  return ANIMATION_SPEEDS[(index + 1) % ANIMATION_SPEEDS.length]?.id ?? DEFAULT_ANIMATION_SPEED;
-}
-
 /** Title, play and clear screens over one persistent map. */
 export function GameApp({ data, network, edition, picker, turnMomentBoundary }: GameAppProps) {
   const storage = useMemo(getBrowserStorage, []);
@@ -98,8 +93,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const inventoryHeaderTarget = useRef<HTMLElement>(null);
   const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget,
     slots: [inventorySlot0Target, inventorySlot1Target, inventorySlot2Target], inventoryHeader: inventoryHeaderTarget }), []);
-  const [speedId, setSpeedId] = useState<AnimationSpeedId>(DEFAULT_ANIMATION_SPEED);
-  const [follow, setFollow] = useState(true);
+  const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -136,21 +130,13 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   }
   const latestRecord = session?.lastMove?.itemRecord ?? null;
   const entryTurn = Math.max(resumeBaseline.current.turn, resumeBaseline.current.recordTurn);
-  const fallbackStepMs = speed?.stepMs ?? 0;
-  // Frozen per reveal key by useTurnMoments (durations from the attempt's captured timing when it owns the record).
-  // The test seam injects the presented stage itself, so the real sequence then times no stage of its own.
-  const seamed = turnMomentBoundary !== undefined;
-  const revealStages = useMemo(() => buildTurnRevealStages({
-    record: seamed ? null : latestRecord,
-    restored: latestRecord !== null && latestRecord.turn <= entryTurn,
-    omitted: reducedMotion,
-  }, turnMomentTiming(fallbackStepMs)), [seamed, latestRecord, entryTurn, reducedMotion, fallbackStepMs]);
   const moments = useTurnMoments({
     sessionId: session?.sessionId ?? 0,
     gameTurn: game?.turn ?? 0,
     decisionRevision: session?.item?.decisionRevision ?? 0,
     origin: turnOrigin,
-    stepMs: speed?.stepMs ?? 0,
+    speedId,
+    presentationLevel,
     reducedMotion,
     observation: {
       decision: itemView?.decision ?? null,
@@ -170,7 +156,10 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
       pendingDecisionTurn: itemView?.decision ? game?.turn ?? null : null,
       movementComplete: session?.phase !== "animating",
     },
-    revealStages,
+    latestRecord,
+    restoredRecord: latestRecord !== null && latestRecord.turn <= entryTurn,
+    suppressRevealStages: turnMomentBoundary !== undefined,
+    segmentFlashGeometry: { segmentsById: network.segmentsById, targetSegmentIds: [...requiredIds] },
     animation,
     finishAnimation: app.finishAnimation,
   });
@@ -193,7 +182,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const ownsAnimation = attemptOwnsAnimation(liveAttempt, animation);
   // Reduced motion seen at any point of the attempt finishes its movement instantly, even if turned off again since.
   const stepMs = reducedMotion || (ownsAnimation && moments.attemptMotionReduced) ? 0
-    : ownsAnimation && liveAttempt ? liveAttempt.timing.stepMs : speed?.stepMs ?? 0;
+    : ownsAnimation && liveAttempt ? liveAttempt.policy.timing.stepMs : speed?.stepMs ?? 0;
   const { view, livePosition } = useMoveAnimation(
     animation,
     network,
@@ -267,9 +256,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     [requiredIds, network, turnDisplay],
   );
 
-  const stopFollowing = useCallback(() => setFollow(false), []);
-  const toggleFollow = useCallback(() => setFollow((value) => !value), []);
-  const cycleSpeed = useCallback(() => setSpeedId(nextSpeedId), []);
   const animating = session?.phase === "animating";
   const mapFollow = useMemo<MapFollow>(
     () => ({
@@ -348,8 +334,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const lotteryStage = turnDisplay?.phase === "lottery-flip" || turnDisplay?.phase === "lottery-settle" ? turnDisplay.phase : null;
   const lottery = lotteryStage && session?.lastMove?.landing ? {
     landing: session.lastMove.landing, stage: lotteryStage,
-    durationMs: lotteryStage === "lottery-flip" ? moments.attempt?.timing.lotteryFlipMs ?? turnMomentTiming(fallbackStepMs).lotteryFlipMs
-      : moments.attempt?.timing.lotterySettleMs ?? turnMomentTiming(fallbackStepMs).lotterySettleMs,
+    durationMs: lotteryStage === "lottery-flip" ? moments.revealTiming.lotteryFlipMs
+      : moments.revealTiming.lotterySettleMs,
     network, presentation, rideTarget, directionTarget,
   } : null;
   const record = session?.lastMove?.itemRecord;
@@ -358,7 +344,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const pickup = turnDisplay?.phase === "pickup" && pickupEvent
     && (pickupEvent.type === "pickup-retained" || pickupEvent.type === "pickup-pending-discard") ? {
       kind: pickupEvent.item.kind,
-      durationMs: presentedAttempt?.timing.pickupMs ?? turnMomentTiming(fallbackStepMs).pickupMs,
+      durationMs: moments.revealTiming.pickupMs,
       targetRef: pickupEvent.type === "pickup-pending-discard"
         ? turnMomentTargets.inventoryHeader ?? null
         : turnMomentTargets.slots?.[turnDisplay.itemView?.inventory.length ?? 0] ?? null,
@@ -413,7 +399,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           saveStatus={app.saveStatus}
           follow={follow}
           speedLabel={speed?.label ?? ""}
+          presentationLevel={presentationLevel}
           reducedMotion={reducedMotion}
+          confirmationOpen={confirm !== null}
           onRoll={guardedRoll}
           onEditItemDraft={guardedEditItemDraft}
           onAdjustItemRoll={guardedAdjustItemRoll}
@@ -421,6 +409,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           onSkip={skip}
           onToggleFollow={toggleFollow}
           onCycleSpeed={cycleSpeed}
+          onCyclePresentation={cyclePresentation}
           onNewGame={requestNewGame}
           onShowTitle={showTitle}
           onItemDialogOpenChange={setItemDialogOpen}

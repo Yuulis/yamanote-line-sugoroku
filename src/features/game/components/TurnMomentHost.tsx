@@ -271,7 +271,7 @@ export function turnMomentDiceModel(
   if (attempt.stage !== "tumble" && attempt.stage !== "stamps") return null;
   if (!isDiceFace(attempt.rawRoll)) return null;
   const accepted = record && record.turn === attempt.recordTurn ? record : null;
-  const stageMs: number = attempt.stage === "tumble" ? attempt.timing.tumbleMs : attempt.timing.stampsMs;
+  const stageMs: number = attempt.stage === "tumble" ? attempt.policy.timing.tumbleMs : attempt.policy.timing.stampsMs;
   return { ...diceTumbleModelFor(accepted, attempt.stage, stageMs, reducedMotion), rawRoll: attempt.rawRoll };
 }
 

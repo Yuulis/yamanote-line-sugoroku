@@ -123,7 +123,7 @@ describe("scaled map and presentation", () => {
     requiredCount: 30,
     saveStatus: null,
     follow: true,
-    speedLabel: "ふつう",
+    speedLabel: "ふつう", presentationLevel: "all", onCyclePresentation: () => {},
     reducedMotion: true,
     onRoll: () => {},
     onSkip: () => {},

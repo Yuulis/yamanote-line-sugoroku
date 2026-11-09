@@ -810,7 +810,7 @@ test.describe("S23 populated responsive HUD", () => {
       const visited: Array<{ name: string; top: number; left: number }> = [];
       const effectsScrollable = await panel.locator(".effect-chips").evaluate((element) => element.scrollWidth > element.clientWidth);
       const expectedSlots = await panel.locator(".item-slot:not(.item-slot--empty) h3").allTextContents();
-      const expected = [...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), "ログ", "メニュー"];
+      const expected = ["おまかせ: OFF", ...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), "ログ", "メニュー"];
       for (let index = 0; index < expected.length; index += 1) {
         await page.keyboard.press("Tab");
         const active = await page.evaluate(() => {

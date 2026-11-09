@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata, PreRollItemCommand } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
+import type { PresentationLevel } from "../gameSettings";
 import type { GameSession } from "../gameSession";
 import { createPresentationResolver, type PresentationResolver } from "../presentationResolver";
 import {
@@ -30,6 +31,8 @@ import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
 import { DiscardChoice } from "./DiscardChoice";
 import { TurnLogDrawer } from "./TurnLogDrawer";
+import { useGameShortcuts } from "../useGameShortcuts";
+import { useAutoRoll } from "../useAutoRoll";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -44,11 +47,14 @@ export interface GamePanelProps {
   saveStatus: SaveWriteResult | null;
   follow: boolean;
   speedLabel: string;
+  presentationLevel: PresentationLevel;
   reducedMotion: boolean;
+  confirmationOpen?: boolean;
   onRoll: () => void;
   onSkip: () => void;
   onToggleFollow: () => void;
   onCycleSpeed: () => void;
+  onCyclePresentation: () => void;
   onNewGame: () => void;
   onShowTitle: () => void;
   onEditItemDraft?: (command: ItemTurnCommand) => void;
@@ -154,6 +160,20 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
   const itemDialogOpen = Boolean(itemView && itemDialog);
+  const autoRoll = useAutoRoll({
+    session,
+    turnDisplay,
+    surfaceOpen: activeSurface !== null,
+    itemDialogOpen,
+    confirmationOpen: props.confirmationOpen ?? false,
+    onRoll: props.onRoll,
+  });
+  useGameShortcuts({
+    canRoll: turnDisplay.canRoll,
+    canSkip: turnDisplay.canSkip,
+    surfaceOpen: activeSurface !== null,
+    itemDialogOpen,
+  }, { onRoll: autoRoll.requestRoll, onSkip: props.onSkip });
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
     props.onItemDialogOpenChange(itemDialogOpen);
@@ -280,11 +300,13 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         saveStatus={saveStatus}
         saveStatusMessage={saveStatusMessage(saveStatus)}
         canRoll={canRoll}
+        autoRollEnabled={autoRoll.enabled}
         animating={animating}
         draftSelected={Boolean(draftItem)}
         rollButtonRef={rollButtonRef}
-        onRoll={props.onRoll}
+        onRoll={autoRoll.requestRoll}
         onSkip={props.onSkip}
+        onToggleAutoRoll={autoRoll.toggle}
         effects={effectModels}
         canSkip={turnDisplay.canSkip}
         rideTargetRef={props.turnMomentTargets?.ride}
@@ -330,11 +352,13 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           follow={follow}
           reducedMotion={reducedMotion}
           speedLabel={props.speedLabel}
+          presentationLevel={props.presentationLevel}
           lines={legendGroups}
           targetColor={targetColor}
           selectedGroupIds={selectedGroupIds}
           onToggleFollow={props.onToggleFollow}
           onCycleSpeed={props.onCycleSpeed}
+          onCyclePresentation={props.onCyclePresentation}
           onNewGame={props.onNewGame}
           onShowTitle={props.onShowTitle}
           onToggleGroup={toggleGroup}
@@ -342,7 +366,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onShowAll={showAllLineGroups}
         />
       </div>
-      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{turnDisplay.announcement}</p>}
+      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{autoRoll.announcement}</p>}
       {itemView && itemDialog && (
         <ItemUseDialog
           kind={itemDialog.kind}

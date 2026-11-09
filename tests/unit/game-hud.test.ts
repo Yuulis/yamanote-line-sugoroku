@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { act, createElement, createRef, memo, useEffect, useState } from "react";
 import { readFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { GameHud } from "../../src/features/game/components/GameHud";
 import type { GameHudProps } from "../../src/features/game/components/GameHud";
 import { GameMenu } from "../../src/features/game/components/GameMenu";
@@ -22,6 +23,8 @@ import { networkFromData } from "../../src/features/game/networkFromData";
 import { turnToasts } from "../../src/features/game/toastQueue";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+
+beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
 
 const renderCounts = vi.hoisted(() => ({ hud: 0, legend: 0 }));
 
@@ -61,6 +64,7 @@ function props(overrides: Partial<GameHudProps> = {}): GameHudProps {
     station: "東京", ride: "山手線", lineBadge: { groupId: "jr-yamanote", code: "JY", color: "#80c241", name: "山手線", textColor: "#000000" },
     direction: "外回り", turn: 5, completed: 3, required: 30, compactRoll: "3マス", saveStatus: null,
     saveStatusMessage: "未保存", canRoll: true, canSkip: false, animating: false, draftSelected: false,
+    autoRollEnabled: false, onToggleAutoRoll: vi.fn(),
     rollButtonRef: createRef<HTMLButtonElement>(), onRoll: vi.fn(), onSkip: vi.fn(), effects: [], ...overrides,
   };
 }
@@ -74,7 +78,7 @@ type MenuValue = Omit<GameMenuProps, "expanded" | "onExpandedChange">;
 
 function menuProps(overrides: Partial<MenuValue> = {}): MenuValue {
   return {
-    follow: true, reducedMotion: false, speedLabel: "ふつう", lines: [
+    follow: true, reducedMotion: false, speedLabel: "ふつう", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), lines: [
       { id: "jr-yamanote", name: "山手線", color: "#80c241", operatorId: "JR東日本", serviceIds: ["jr-yamanote"] },
     ], targetColor: "#80c241", selectedGroupIds: null,
     onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
@@ -115,7 +119,7 @@ describe("GameHud", () => {
       const value: Parameters<typeof GamePanel>[0] = {
         session, network: fixtureNetwork, lines: [], turnDisplay: displayFor(session, fixtureNetwork, session.game.currentStationId,
           session.game.completedSegmentIds, itemView), requiredCount: 30,
-        saveStatus: null, follow: true, speedLabel: "標準", reducedMotion: false,
+        saveStatus: null, follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
         onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
         onNewGame: vi.fn(), onShowTitle: vi.fn() ,
       };
@@ -187,6 +191,32 @@ describe("GameHud", () => {
     }
   });
 
+  it("shows an always-enabled auto-roll toggle with a fixed name, state text, and pressed state", () => {
+    const onToggleAutoRoll = vi.fn();
+    const value = props({ autoRollEnabled: false, onToggleAutoRoll, canRoll: false, animating: true });
+    const mount = mountReact(createElement(Harness, { value }));
+    try {
+      const toggle = mount.container.querySelector<HTMLButtonElement>(
+        'button[aria-label="おまかせで進む"]',
+      );
+      expect(toggle).not.toBeNull();
+      expect(toggle?.textContent?.trim()).toBe("おまかせ: OFF");
+      expect(toggle?.getAttribute("aria-pressed")).toBe("false");
+      expect(toggle?.disabled).toBe(false);
+      dispatchReactEvent(toggle!, new MouseEvent("click", { bubbles: true }));
+      expect(onToggleAutoRoll).toHaveBeenCalledOnce();
+
+      act(() => mount.root.render(createElement(Harness, {
+        value: { ...value, autoRollEnabled: true, canRoll: true, animating: false },
+      })));
+      expect(toggle?.textContent?.trim()).toBe("おまかせ: ON");
+      expect(toggle?.getAttribute("aria-pressed")).toBe("true");
+      expect(toggle?.getAttribute("aria-label")).toBe("おまかせで進む");
+    } finally {
+      mount.cleanup();
+    }
+  });
+
   it("enables Skip from canSkip alone and keeps the locked dice focusable with a guarded handler", () => {
     const onRoll = vi.fn();
     const onSkip = vi.fn();
@@ -230,7 +260,7 @@ describe("GameHud", () => {
     const onEditItemDraft = vi.fn();
     const value: Parameters<typeof GamePanel>[0] = {
       network, lines: [], session, turnDisplay: idle, onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true,
-      speedLabel: "標準", reducedMotion: false, onRoll, onSkip, onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
+      speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false, onRoll, onSkip, onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(),
       onNewGame: vi.fn(), onShowTitle: vi.fn(),
     };
     function PanelHarness({ panel }: { panel: Parameters<typeof GamePanel>[0] }): React.JSX.Element {
@@ -251,8 +281,9 @@ describe("GameHud", () => {
       act(() => window.dispatchEvent(escape));
       expect(escape.defaultPrevented).toBe(false);
       expect(onEditItemDraft).not.toHaveBeenCalled();
-      dispatchReactEvent(skip(), new MouseEvent("click", { bubbles: true }));
       expect(onSkip).toHaveBeenCalledTimes(1);
+      dispatchReactEvent(skip(), new MouseEvent("click", { bubbles: true }));
+      expect(onSkip).toHaveBeenCalledTimes(2);
     } finally {
       mount.cleanup();
     }
@@ -290,7 +321,23 @@ describe("GameHud", () => {
 });
 
 describe("GameMenu", () => {
-  it("starts closed with a labelled mounted section, four actions, and the legend inside", () => {
+  it("shows a plain shortcut hint without adding a tab stop", () => {
+    const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
+    try {
+      const region = mount.container.querySelector<HTMLElement>(".game-panel__menu")!;
+      const stopsBefore = region.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]');
+      dispatchReactEvent(mount.container.querySelector(".game-panel__menu-trigger")!, new MouseEvent("click", { bubbles: true }));
+      const hint = region.querySelector<HTMLElement>(".game-panel__shortcut-hint")!;
+      expect(hint.textContent).toBe("Space / Enter: サイコロ　S / Escape: スキップ");
+      expect(hint.tagName).toBe("P");
+      expect(hint.tabIndex).toBe(-1);
+      expect(hint.hasAttribute("tabindex")).toBe(false);
+      expect(hint.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')).toHaveLength(0);
+      expect(region.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]')).toHaveLength(stopsBefore.length);
+    } finally { mount.cleanup(); }
+  });
+
+  it("starts closed with a labelled mounted section, five actions, and the legend inside", () => {
     const mount = mountReact(createElement(MenuHarness, { value: menuProps() }));
     try {
       const trigger = mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")!;
@@ -303,13 +350,31 @@ describe("GameMenu", () => {
       expect(region.hasAttribute("role")).toBe(false);
       expect(region.querySelectorAll('[role="menu"]')).toHaveLength(0);
       expect([...region.querySelectorAll(".game-panel__options button")].map((button) => button.textContent?.trim())).toEqual([
-        "追尾: ON", "速度: ふつう", "新規", "タイトル",
+        "追尾: ON", "速度: ふつう", "演出: すべて", "新規", "タイトル",
       ]);
-      expect(region.querySelectorAll(".game-panel__options button")).toHaveLength(4);
+      expect(region.querySelectorAll(".game-panel__options button")).toHaveLength(5);
       expect(region.querySelector(".game-panel__legend-section")).not.toBeNull();
     } finally {
       mount.cleanup();
     }
+  });
+
+  it("labels the presentation cycle and disables it under OS reduction", () => {
+    const onCyclePresentation = vi.fn();
+    const value = menuProps({ presentationLevel: "important", onCyclePresentation });
+    const mount = mountReact(createElement(MenuHarness, { value }));
+    try {
+      const control = mount.container.querySelector<HTMLButtonElement>('[aria-label="演出: 重要なときだけ（押すと切り替え）"]')!;
+      expect(control.textContent?.trim()).toBe("演出: 重要なときだけ");
+      dispatchReactEvent(control, new MouseEvent("click", { bubbles: true }));
+      expect(onCyclePresentation).toHaveBeenCalledOnce();
+      act(() => mount.root.render(createElement(MenuHarness, { value: { ...value, reducedMotion: true } })));
+      expect(control.textContent?.trim()).toBe("演出: 省略");
+      expect(control.getAttribute("aria-label")).toBe("演出: 省略（押すと切り替え）");
+      expect(control.disabled).toBe(true);
+      dispatchReactEvent(control, new MouseEvent("click", { bubbles: true }));
+      expect(onCyclePresentation).toHaveBeenCalledOnce();
+    } finally { mount.cleanup(); }
   });
 
   it("closes and reopens while restoring focus and retaining legend expansion", () => {
@@ -347,7 +412,7 @@ describe("GameMenu", () => {
     try {
       dispatchReactEvent(mount.container.querySelector(".game-panel__menu-trigger")!, new MouseEvent("click", { bubbles: true }));
       expect(mount.container.querySelector(".game-panel__menu")?.hasAttribute("hidden")).toBe(false);
-      dispatchReactEvent(mount.container.querySelector(".game-panel__options button:nth-child(3)")!, new MouseEvent("click", { bubbles: true }));
+      dispatchReactEvent(mount.container.querySelector(".game-panel__options button:nth-child(4)")!, new MouseEvent("click", { bubbles: true }));
       expect(onNewGame).toHaveBeenCalledOnce();
       expect(triggerSeenAtRequest).toEqual([true]);
       expect(mount.container.querySelector(".game-panel__menu")?.hasAttribute("hidden")).toBe(true);
@@ -404,7 +469,7 @@ describe("GameMenu", () => {
     const itemView = { ...itemSessionView(session, network)!, draft: { items: [{ kind: "double" as const, instanceId: "double-1" }] } };
     const onEditItemDraft = vi.fn();
     const mount = mountReact(createElement(GamePanel, {
-      network, lines: [], session , turnDisplay: displayFor(session, network, game.currentStationId, [], itemView), onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
+      network, lines: [], session , turnDisplay: displayFor(session, network, game.currentStationId, [], itemView), onEditItemDraft, requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
       onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
     }));
     const dialog = document.createElement("dialog");
@@ -489,7 +554,7 @@ it("keeps the turn log mounted, mutually exclusive, keyboard closable, and retai
   const game = createItemGame({ ...multiConfig(), itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, "log-disclosure", network);
   const session = resumeSession(game, network);
   const common = { network, lines: [], turnDisplay: displayFor(session, network, "a", []), requiredCount: 4,
-    saveStatus: "saved" as const, follow: true, speedLabel: "標準", reducedMotion: false,
+    saveStatus: "saved" as const, follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
   type PanelProps = Parameters<typeof GamePanel>[0];
   function Harness({ value }: { value: PanelProps }): React.JSX.Element {
@@ -616,3 +681,6 @@ it("expires an ordinary toast in production GameApp without rendering HUD or leg
     localStorage.clear();
   }
 });
+
+// Mounted trees are cleaned up by their tests before clearing shared preferences.
+afterEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });

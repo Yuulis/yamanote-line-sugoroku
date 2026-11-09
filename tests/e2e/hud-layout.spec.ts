@@ -161,3 +161,46 @@ test("keeps the dice button at one HUD position across variable content and save
   expect(viewportYs.every((value) => Math.abs(value - viewportYs[0]!) <= 1), JSON.stringify(positions)).toBe(true);
   testInfo.annotations.push({ type: "dice-positions", description: JSON.stringify(positions) });
 });
+
+test("fits all three action labels on one line from phone to compact landscape", async ({ page }) => {
+  await openTitle(page);
+  await startNewGame(page);
+  const actions = gamePanel(page).locator(".game-panel__actions");
+  const toggle = gamePanel(page).getByRole("button", { name: "おまかせで進む" });
+  const dice = diceButton(page);
+  const viewports = [
+    { width: 320, height: 720 },
+    { width: 390, height: 844 },
+    { width: 640, height: 400 },
+    { width: 667, height: 375 },
+  ];
+
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    await expect(toggle).toHaveText("おまかせ: OFF");
+    const before = await dice.boundingBox();
+    const measureLabels = async () => actions.locator("button").evaluateAll((buttons) => buttons.map((button) => {
+      const range = document.createRange();
+      range.selectNodeContents(button);
+      return {
+        text: button.textContent?.trim(),
+        widthFits: button.scrollWidth <= button.clientWidth,
+        lines: new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size,
+      };
+    }));
+    const off = await measureLabels();
+    expect(off.map(({ text }) => text)).toEqual(["サイコロを振る", "スキップ", "おまかせ: OFF"]);
+    expect(off.every(({ widthFits, lines }) => widthFits && lines === 1), `${viewport.width}x${viewport.height}: ${JSON.stringify(off)}`).toBe(true);
+
+    await toggle.click();
+    await expect(toggle).toHaveText("おまかせ: ON");
+    const on = await measureLabels();
+    expect(on.map(({ text }) => text)).toEqual(["サイコロを振る", "スキップ", "おまかせ: ON"]);
+    expect(on.every(({ widthFits, lines }) => widthFits && lines === 1), `${viewport.width}x${viewport.height}: ${JSON.stringify(on)}`).toBe(true);
+    const after = await dice.boundingBox();
+    if (!before || !after) throw new Error("The dice button has no layout box");
+    expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
+    await toggle.click();
+  }
+});

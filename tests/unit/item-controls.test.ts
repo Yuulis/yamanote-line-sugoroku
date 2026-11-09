@@ -823,7 +823,7 @@ function panelValue(): GamePanelProps {
   return {
     session: fixture.session, network: fixture.network, lines: [], turnDisplay: displayFor(fixture.session, fixture.network,
       fixture.session.game.currentStationId, fixture.session.game.completedSegmentIds, fixture.view), requiredCount: 4,
-    saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
+    saveStatus: "saved", follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
     onEditItemDraft: vi.fn(),
   };
@@ -953,7 +953,7 @@ it("coordinates the modal announcement, focuses the adjustment heading, then res
   const pending = beginItemTurn(base, { items: [] }, network).state;
   const session = resumeSession(pending, network);
   const common = { network, lines: [],
-    requiredCount: 4, saveStatus: "saved" as const, follow: true, speedLabel: "省略", reducedMotion: true,
+    requiredCount: 4, saveStatus: "saved" as const, follow: true, speedLabel: "省略", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: true,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
   const view = itemSessionView(session, network);
   const mount = mountReact(createElement(GamePanel, { ...common, session, turnDisplay: displayFor(session, network, session.game.currentStationId, [], view) }));
@@ -980,7 +980,7 @@ it("keeps exactly one game-panel status region in legacy mode", async () => {
   const session = resumeSession(game, network);
   const mount = mountReact(createElement(GamePanel, {
     network, lines: [], session, turnDisplay: displayFor(session, network),
-    requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", reducedMotion: false,
+    requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
   }));
   mounted.push(mount);
@@ -998,7 +998,7 @@ it("feeds the HUD displayed values and the supplied required count, and hides ch
   const game = { ...base, effects: { delayDueTurns: [3], suspensions: [], detourPending: true, oversleepPending: true } };
   const idle = resumeSession(game, network);
   const common = { network, lines: [], requiredCount: 4,
-    saveStatus: "saved" as const, follow: true, speedLabel: "標準", reducedMotion: false,
+    saveStatus: "saved" as const, follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn() };
   type PanelProps = Parameters<typeof GamePanel>[0];
   function Harness({ value }: { value: PanelProps }): React.JSX.Element {

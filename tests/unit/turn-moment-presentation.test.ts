@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createGame, playItemTurn, playTurn, targetSegmentIds } from "../../src/features/game/engine";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
+import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
+import { turnMomentArrivalModel } from "../../src/features/game/components/TurnMomentHost";
+import { buildTurnRevealStages } from "../../src/features/game/animation/turnMoments";
 import type { RollAttempt } from "../../src/features/game/animation/turnMoments";
 import { lastMoveOf, reduceGameSession, resumeSession, startSession } from "../../src/features/game/gameSession";
 import { itemSessionView } from "../../src/features/game/itemSession";
@@ -31,7 +34,7 @@ function attemptFor(session: GameSession, stage: RollAttempt["stage"] = "release
       itemView: null as never,
       previousLastMove: session.lastMove,
     },
-    timing: { stepMs: 450, tumbleMs: 600, stampsMs: 240, arrivalMs: 800, lotteryFlipMs: 1600, lotterySettleMs: 400, pickupMs: 500 },
+    policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" }),
     stage,
     rawRoll: null,
     tumbleCompleted: stage === "released",
@@ -71,6 +74,7 @@ describe("shared turn moment publication", () => {
     const display = deriveTurnMomentDisplay({ session: moved, network, presentation: resolver, progress: { stationId: "shinagawa", position: [139.738535, 35.628135], completedSegmentIds: ["legacy-yamanote-01"], stepsCompleted: 1 },
       attempt: attemptFor(before), revealStage: "waiting", restoredOrOmitted: false });
     expect(display.phase).toBe("moving");
+    expect(display.summaryTurn).toBeNull();
     expect(display.progress.stationId).toBe("shinagawa");
     expect(display.progress.stepsCompleted).toBe(1);
     expect(display.rollText).toBe("—");
@@ -93,6 +97,7 @@ describe("shared turn moment publication", () => {
     expect(published.lotteryText).toBe("品川：山手線・テスト南線から抽選 → テスト南線 ／ 乗車方向は大森方面のみ");
     expect(published.candidateRows.map((row) => row.label)).toEqual(["山手線", "テスト南線"]);
     expect(published.rollText).toBe("4");
+    expect(published.summaryTurn).toBe(1);
   });
 
   it("keeps every lottery result hidden through flip and settle, then publishes literal ride and platform together", () => {
@@ -282,6 +287,28 @@ describe("S12 arrival and goal publication", () => {
     // 77駅 is the rapid hop budget the HUD compact roll already shows during movement (the record moved 13 stations).
     expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。スキップできます。");
     expect(moving.announcement).not.toMatch(/駅移動|使わず|到着|ゴール/);
+    expect(moving.summaryTurn).toBeNull();
+  });
+
+  it("does not classify reduced-motion movement copy as a published summary", () => {
+    const routeBase = itemScenario("route", network);
+    const result = playItemTurn(routeBase, {}, network);
+    const publishedSession = resumeSession(result.state, network, 82);
+    const movementBoundary = deriveTurnMomentDisplay({
+      session: { ...publishedSession, phase: "animating" }, network, presentation: resolver,
+      progress: progressFor(publishedSession), attempt: null, revealStage: "done", restoredOrOmitted: true,
+      itemView: itemSessionView(publishedSession, network),
+    });
+    expect(movementBoundary.phase).toBe("published");
+    expect(movementBoundary.itemNoticePublished).toBe(true);
+    expect(movementBoundary.announcement).toContain("移動中です");
+    expect(movementBoundary.summaryTurn).toBeNull();
+
+    const summary = deriveTurnMomentDisplay({
+      session: publishedSession, network, presentation: resolver, progress: progressFor(publishedSession),
+      attempt: null, revealStage: "done", restoredOrOmitted: true, itemView: itemSessionView(publishedSession, network),
+    });
+    expect(summary.summaryTurn).toBe(result.record?.turn ?? null);
   });
 
   it("keeps the goal banner on the panel: no ClearScreen, locked dice and items, Skip available, no goal announcement", () => {
@@ -310,6 +337,7 @@ describe("S12 arrival and goal publication", () => {
     expect(published.canSkip).toBe(false);
     // ClearScreen owns the goal announcement; the panel (being replaced) announces nothing more.
     expect(published.announcement).toBe("");
+    expect(published.summaryTurn).toBeNull();
     expect(published.clearAnnouncement).toContain("ゴールに到着しました");
   });
 });
@@ -362,4 +390,101 @@ describe("S15 pickup publication boundary", () => {
     expect(published.toastInputs.map((input) => input.text)).toEqual(["快速券を手に入れた！"]);
     expect(published.announcement).toContain("快速券を拾いました");
   });
+});
+
+
+describe("card-less segment flash publication", () => {
+  const base = itemScenario("discard", network);
+  const result = playItemTurn(base, {}, network);
+  const origin = resumeSession(base, network, 101);
+  const session = resumeSession(result.state, network, 101);
+  const originView = itemSessionView(origin, network)!;
+  const liveView = itemSessionView(session, network)!;
+  const normal = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "all" });
+  const attempt: RollAttempt = { ...attemptFor(origin), origin: { ...attemptFor(origin).origin, itemView: originView },
+    policy: { ...normal, showArrival: false, timing: { ...normal.timing, arrivalMs: null, flashMs: 180 } },
+    newlyCompletedTargetSegmentIds: result.events.flatMap((event) =>
+      event.type === "segment-traversed" && event.newlyCompleted && event.serviceId === base.config.targetServiceId
+        ? [event.segmentId] : []) };
+  const input = { session, network, presentation: resolver, progress: progressFor(session), attempt,
+    itemView: liveView, restoredOrOmitted: false, revealKey: `101:${attempt.recordTurn}` };
+
+  it("masks landing, inventory, discard and notices while locking items without an arrival banner", () => {
+    expect(liveView.decision?.kind).toBe("discard");
+    const display = deriveTurnMomentDisplay({ ...input, revealStage: "segment-flash" });
+    expect(display.phase).toBe("segment-flash");
+    expect(display.segmentFlash).toMatchObject({ key: input.revealKey, durationMs: 180 });
+    expect(display.ride).toEqual(attempt.origin.ride);
+    expect(display.candidateRows).toEqual([]);
+    expect(display.itemView?.inventory).toEqual(originView.inventory);
+    expect(display.decision).toBeNull();
+    expect(display.showItemNotice).toBe(false);
+    expect(display.itemNoticePublished).toBe(false);
+    expect(display.toastInputs).toEqual([]);
+    expect(display.itemUseLocked).toBe(true);
+    expect(display.canRoll).toBe(false);
+    expect(display.canSkip).toBe(true);
+    expect(display.showClear).toBe(false);
+    expect(display.announcement).not.toMatch(/拾いました|捨てる|サイコロを振れます/);
+    expect(turnMomentArrivalModel(display.phase, "segment-flash", "到着駅")).toBeNull();
+  });
+
+  it("Skip clears the flash and publishes results while keeping discard mandatory", () => {
+    const skipped = { ...attempt, skipRequested: true, motionOmitted: true };
+    const display = deriveTurnMomentDisplay({ ...input, attempt: skipped, revealStage: "done" });
+    expect(display.phase).toBe("published");
+    expect(display.segmentFlash).toBeNull();
+    expect(display.itemView).toBe(liveView);
+    expect(display.decision).toEqual(liveView.decision);
+    expect(display.decision?.kind).toBe("discard");
+    expect(display.canRoll).toBe(false);
+    expect(display.itemUseLocked).toBe(false);
+    expect(display.showItemNotice).toBe(true);
+    expect(display.announcement).toContain("捨てるアイテムを1つ選んでください");
+  });
+
+  it("publishes one safe announcement at the boundary without announcing hidden pickup results", () => {
+    const flash = deriveTurnMomentDisplay({ ...input, revealStage: "segment-flash" });
+    const published = deriveTurnMomentDisplay({ ...input, revealStage: "done" });
+    const repeated = deriveTurnMomentDisplay({ ...input, revealStage: "done" });
+    expect(flash.announcement).toMatch(/到着/);
+    expect(flash.announcement).not.toMatch(/拾いました|捨てる/);
+    expect(published.announcement).toContain("捨てるアイテムを1つ選んでください");
+    expect(repeated.announcement).toBe(published.announcement);
+    expect(published.segmentFlash).toBeNull();
+  });
+});
+
+it.each(["all", "important", "none"] as const)("keeps goal publication and its announcement with %s, with or without new segments", (presentationLevel) => {
+  const base = itemScenario("rapid-long", network);
+  const ticket = base.inventory.find((item) => item.kind === "rapid")!;
+  const result = playItemTurn(base, { command: { items: [{ kind: "rapid", instanceId: ticket.id }] } }, network);
+  const origin = resumeSession(base, network, 111);
+  const session = resumeSession(result.state, network, 111);
+  expect(session.game.status).toBe("completed");
+  for (const hasSegments of [false, true]) {
+    const attempt = { ...attemptFor(origin), origin: { ...attemptFor(origin).origin, itemView: itemSessionView(origin, network)! },
+      policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel }),
+      newlyCompletedTargetSegmentIds: hasSegments ? targetSegmentIds(base.config, network) : [] };
+    const stages = buildTurnRevealStages({ record: result.record, restored: false, omitted: false,
+      newlyCompletedTargetSegmentIds: attempt.newlyCompletedTargetSegmentIds, hasRenderableNewTargetSegments: hasSegments }, attempt.policy);
+    const input = { session, network, presentation: resolver, progress: progressFor(session), attempt,
+      itemView: itemSessionView(session, network), restoredOrOmitted: false, revealKey: "111:8" };
+    const moving = deriveTurnMomentDisplay({ ...input, session: { ...session, phase: "animating" }, revealStage: "done" });
+    expect(moving.showClear).toBe(false);
+    expect(moving.itemUseLocked).toBe(true);
+    expect(moving.announcement).not.toMatch(/到着|ゴール|抽選結果|拾いました/);
+    const displays = stages.map(({ key }) => deriveTurnMomentDisplay({ ...input, revealStage: key }));
+    for (const display of displays) {
+      expect(display.showClear).toBe(false);
+      expect(display.clearAnnouncement).toBe("");
+      expect(display.announcement).not.toContain("ゴール");
+      if (display.phase === "segment-flash") expect(display.segmentFlash).not.toBeNull();
+    }
+    const published = deriveTurnMomentDisplay({ ...input, revealStage: "done" });
+    expect(published.showClear).toBe(true);
+    expect(published.announcement).toBe("");
+    expect(published.clearAnnouncement.match(/ゴールに到着しました/g)).toHaveLength(1);
+    expect(published.itemUseLocked).toBe(false);
+  }
 });

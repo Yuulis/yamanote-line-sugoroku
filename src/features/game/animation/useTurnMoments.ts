@@ -1,8 +1,15 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
+import type { AnimationSpeedId } from "../gameConfig";
+import type { PresentationLevel } from "../gameSettings";
+import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
+import { captureTurnPresentationPolicy, type TurnMomentTiming, type TurnPresentationPolicy } from "./turnMomentPolicy";
 import type { MoveAnimation } from "../gameSession";
 import {
+  buildTurnRevealStages,
+  segmentFlashFeatureIds,
+  type SegmentFlashGeometry,
+  type TurnRevealStageKey,
   INITIAL_TURN_MOMENTS_STATE,
-  turnMomentTiming,
   turnMomentsReducer,
   type PreMoveStage,
   type RollAttempt,
@@ -23,12 +30,19 @@ export interface UseTurnMomentsOptions {
   decisionRevision: number;
   /** Origin snapshot captured by `begin`; null (classic mode, no session) makes `begin` a no-op. */
   origin: TurnOrigin | null;
-  /** Selected 速度 step; the attempt captures its timing (and movement step) at `begin`. */
-  stepMs: number;
+  /** Selected 速度; the attempt captures its policy (and movement step) at `begin`. */
+  speedId: AnimationSpeedId;
+  /** Captured at begin; callers keep the existing all-level behaviour until the menu is wired. */
+  presentationLevel?: PresentationLevel;
   reducedMotion: boolean;
   observation: TurnMomentObservation;
   revealObservation: RevealObservation;
-  revealStages: readonly RevealStage[];
+  latestRecord: DeepReadonly<ItemTurnRecord> | null;
+  restoredRecord: boolean;
+  /** The publication-boundary seam supplies its own stage instead of scheduling real reveals. */
+  suppressRevealStages: boolean;
+  /** Geometry for standalone flashes; absent until the caller enables card-less presentation. */
+  segmentFlashGeometry?: SegmentFlashGeometry;
   animation: MoveAnimation | null;
   finishAnimation: (animation: MoveAnimation) => void;
 }
@@ -36,7 +50,8 @@ export interface UseTurnMomentsOptions {
 export interface TurnMoments {
   attempt: RollAttempt | null;
   revealStage: TurnRevealState;
-  reveal: RevealSequence;
+  reveal: RevealSequence<TurnRevealStageKey>;
+  revealTiming: TurnMomentTiming;
   restoredOrOmitted: boolean;
   movementStartAllowed: boolean;
   /**
@@ -49,12 +64,13 @@ export interface TurnMoments {
   advance: (expectedStage: PreMoveStage) => void;
 }
 
-interface FrozenStages {
-  key: string;
-  stages: readonly RevealStage[];
+interface FrozenRevealPlan {
+  readonly key: string;
+  readonly policy: TurnPresentationPolicy;
+  readonly stages: readonly RevealStage<TurnRevealStageKey>[];
 }
 
-const EMPTY_STAGES: readonly RevealStage[] = [];
+const EMPTY_STAGES: readonly RevealStage<TurnRevealStageKey>[] = [];
 
 /**
  * Whether `animation` is the movement of `attempt`. A turn ending in a pending discard animates under the prior
@@ -63,18 +79,6 @@ const EMPTY_STAGES: readonly RevealStage[] = [];
 export function attemptOwnsAnimation(attempt: RollAttempt | null, animation: MoveAnimation | null): boolean {
   if (!attempt || !animation || animation.sessionId !== attempt.sessionId) return false;
   return animation.turn === attempt.recordTurn || animation.turn === attempt.recordTurn - 1;
-}
-
-function durationForStage(stage: RevealStage, attempt: RollAttempt | null): RevealStage {
-  if (!attempt) return stage;
-  const durations: Readonly<Record<string, number | undefined>> = {
-    arrival: attempt.timing.arrivalMs,
-    "lottery-flip": attempt.timing.lotteryFlipMs,
-    "lottery-settle": attempt.timing.lotterySettleMs,
-    pickup: attempt.timing.pickupMs,
-  };
-  const durationMs = durations[stage.key];
-  return durationMs === undefined ? stage : { ...stage, durationMs };
 }
 
 /** Coordinates the roll attempt and the post-move reveal without owning game state. */
@@ -86,7 +90,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
   const resetState = state.sessionId === options.sessionId
     ? state : turnMomentsReducer(state, { type: "reset", sessionId: options.sessionId });
   if (resetState !== state) dispatch({ type: "reset", sessionId: options.sessionId });
-  const currentState = resetState;
+  let currentState = resetState;
   if (currentState.sessionId === options.sessionId && currentState.attempt !== null) {
     const observedState = turnMomentsReducer(currentState, {
       type: "observe",
@@ -97,6 +101,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
       dispatch({ type: "observe", sessionId: options.sessionId,
         facts: { ...options.observation, reducedMotion: options.reducedMotion } });
     }
+    currentState = observedState;
   }
   const attempt = currentState.sessionId === options.sessionId ? currentState.attempt : null;
   const attemptRef = useRef(attempt);
@@ -110,7 +115,7 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
   // The latch belongs to the record it was taken on: a newer attempt (whose record does not exist yet, while lastMove
   // still holds the previous one) must not inherit that record's omission.
   const revealMotionOmitted = revealOmissionRef.current.omitted &&
-    (attempt === null || attempt.recordTurn === options.revealObservation.recordTurn);
+    (attempt === null || attempt.recordTurn <= (options.revealObservation.recordTurn ?? 0));
   const reducedOmissionRef = useRef<{ key: string | null; omitted: boolean }>({ key: null, omitted: false });
   if (attempt === null || reducedOmissionRef.current.key !== attempt.key) {
     reducedOmissionRef.current = { key: attempt?.key ?? null, omitted: false };
@@ -121,8 +126,8 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
 
   const timedStage = !attempt?.motionOmitted && (attempt?.stage === "tumble" || attempt?.stage === "stamps")
     ? attempt.stage : null;
-  const timedDuration = timedStage === "tumble" ? attempt?.timing.tumbleMs
-    : timedStage === "stamps" ? attempt?.timing.stampsMs : null;
+  const timedDuration = timedStage === "tumble" ? attempt?.policy.timing.tumbleMs
+    : timedStage === "stamps" ? attempt?.policy.timing.stampsMs : null;
   useEffect(() => {
     if (!attempt || timedStage === null || timedDuration === null) return;
     const key = attempt.key;
@@ -138,26 +143,48 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
     reducedOmissionRef.current = { key, omitted: current.reducedMotion };
     dispatch({ type: "begin", sessionId: current.sessionId, turn: current.gameTurn,
       decisionRevision: current.decisionRevision, origin: current.origin,
-      timing: turnMomentTiming(current.stepMs), reducedMotion: current.reducedMotion, source });
+      policy: captureTurnPresentationPolicy({ speedId: current.speedId, presentationLevel: current.presentationLevel ?? "all" }),
+      reducedMotion: current.reducedMotion, source });
   }, []);
 
-  const frozenStagesRef = useRef<FrozenStages>({ key: "", stages: EMPTY_STAGES });
-  if (frozenStagesRef.current.key !== revealKey) {
-    const timingAttempt = attempt?.sessionId === options.revealObservation.sessionId &&
-      attempt.recordTurn === options.revealObservation.recordTurn ? attempt : null;
-    frozenStagesRef.current = {
+  const matchingAttempt = attempt?.sessionId === options.revealObservation.sessionId &&
+    attempt.recordTurn === options.revealObservation.recordTurn ? attempt : null;
+  const frozenPlanRef = useRef<FrozenRevealPlan | null>(null);
+  if (frozenPlanRef.current?.key !== revealKey) frozenPlanRef.current = null;
+  const record = options.latestRecord;
+  if (frozenPlanRef.current === null && record !== null && record.turn === options.revealObservation.recordTurn &&
+    options.sessionId === options.revealObservation.sessionId && (!matchingAttempt || matchingAttempt.recordAccepted)) {
+    const policy = matchingAttempt?.policy ?? captureTurnPresentationPolicy({
+      speedId: options.speedId, presentationLevel: options.presentationLevel ?? "all",
+    });
+    const segmentIds = matchingAttempt?.newlyCompletedTargetSegmentIds ?? [];
+    const geometry = options.segmentFlashGeometry;
+    const hasRenderableNewTargetSegments = geometry !== undefined && matchingAttempt?.motionOmitted === false &&
+      segmentFlashFeatureIds(geometry, geometry.targetSegmentIds, segmentIds).length > 0;
+    frozenPlanRef.current = Object.freeze({
       key: revealKey,
-      stages: options.revealStages.map((stage) => durationForStage(stage, timingAttempt)),
-    };
+      policy,
+      stages: Object.freeze(buildTurnRevealStages({
+        record: options.suppressRevealStages ? null : record,
+        restored: options.restoredRecord,
+        omitted: options.reducedMotion || revealMotionOmitted,
+        newlyCompletedTargetSegmentIds: segmentIds,
+        hasRenderableNewTargetSegments,
+      }, policy).map((stage) => Object.freeze(stage))),
+    });
   }
+  const plan = frozenPlanRef.current;
   const sequence = useRevealSequence({
     observation: {
       ...options.revealObservation,
+      // An early empty plan would mark this key done forever; observe it only once its facts can be frozen.
+      recordTurn: plan === null ? null : options.revealObservation.recordTurn,
+      movementComplete: plan !== null && options.revealObservation.movementComplete,
       pendingDecisionKind: options.observation.decision?.kind ?? null,
     },
-    stages: frozenStagesRef.current.stages,
-    reducedMotion: options.reducedMotion || reducedMotionOmitted,
-    skipRequested: attempt?.skipRequested ?? false,
+    stages: plan?.stages ?? EMPTY_STAGES,
+    reducedMotion: options.reducedMotion || Boolean(matchingAttempt && reducedMotionOmitted),
+    skipRequested: matchingAttempt?.skipRequested ?? false,
   });
   const revealSkipRef = useRef(sequence.skip);
   revealSkipRef.current = sequence.skip;
@@ -188,15 +215,19 @@ export function useTurnMoments(options: UseTurnMomentsOptions): TurnMoments {
     finishedRef.current.clear();
   }, [options.sessionId]);
 
-  const restoredOrOmitted = options.reducedMotion || reducedMotionOmitted || revealMotionOmitted ||
-    (attempt?.source === "restored-roll" && !attempt.recordAccepted);
+  const attemptIsCurrent = attempt !== null &&
+    attempt.recordTurn >= (options.revealObservation.recordTurn ?? 0);
+  const restoredOrOmitted = options.reducedMotion || revealMotionOmitted ||
+    (attemptIsCurrent && (reducedMotionOmitted || (attempt.source === "restored-roll" && !attempt.recordAccepted)));
   const movementStartAllowed = attempt === null ||
     ((attempt.stage === "released" || (attempt.motionOmitted && attempt.recordAccepted)) && !attempt.skipRequested);
 
   return {
     attempt,
-    revealStage: sequence.stage as TurnRevealState,
+    revealStage: sequence.stage,
     reveal: sequence,
+    revealTiming: plan?.policy.timing ?? attempt?.policy.timing ??
+      captureTurnPresentationPolicy({ speedId: options.speedId, presentationLevel: "all" }).timing,
     restoredOrOmitted,
     movementStartAllowed,
     attemptMotionReduced: reducedMotionOmitted,

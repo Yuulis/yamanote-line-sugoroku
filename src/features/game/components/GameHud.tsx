@@ -24,11 +24,13 @@ export interface GameHudProps {
   saveStatusMessage: string;
   canRoll: boolean;
   canSkip: boolean;
+  autoRollEnabled: boolean;
   animating: boolean;
   draftSelected: boolean;
   rollButtonRef: RefObject<HTMLButtonElement | null>;
   onRoll: () => void;
   onSkip: () => void;
+  onToggleAutoRoll: () => void;
   effects: readonly EffectChipModel[];
   /** Optional animation targets; measured only, they add no elements and change no markup. */
   rideTargetRef?: TurnMomentTargetRef;
@@ -51,7 +53,7 @@ export function GameHud({
   inventory,
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, compactRoll, saveStatus, saveStatusMessage,
-  canRoll, canSkip, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
+  canRoll, canSkip, autoRollEnabled, animating, draftSelected, rollButtonRef, onRoll, onSkip, onToggleAutoRoll, effects,
   rideTargetRef, directionTargetRef,
 }: GameHudProps): React.JSX.Element {
   const rideRef = useCallback((element: HTMLSpanElement | null): void => setTargetRef(rideTargetRef, element), [rideTargetRef]);
@@ -85,13 +87,22 @@ export function GameHud({
         <button
           ref={rollButtonRef}
           type="button"
-          className="game-panel__roll button-cta"
+          className={`game-panel__roll button-cta${draftSelected ? " game-panel__roll--draft" : ""}`}
           onClick={() => { if (canRoll) onRoll(); }}
           aria-disabled={!canRoll}
         >
           {animating ? "移動中…" : draftSelected ? "この内容でサイコロを振る" : "サイコロを振る"}
         </button>
-        <button type="button" onClick={onSkip} disabled={!canSkip}>スキップ</button>
+        <button type="button" className="game-panel__skip" onClick={onSkip} disabled={!canSkip}>スキップ</button>
+        <button
+          type="button"
+          className="game-panel__auto-roll"
+          aria-label="おまかせで進む"
+          aria-pressed={autoRollEnabled}
+          onClick={onToggleAutoRoll}
+        >
+          おまかせ: {autoRollEnabled ? "ON" : "OFF"}
+        </button>
       </div>
       {inventory}
       <EffectChips models={effects} />
