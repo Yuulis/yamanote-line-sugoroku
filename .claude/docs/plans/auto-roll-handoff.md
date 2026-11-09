@@ -67,3 +67,7 @@ persisted. No engine, RNG, save, settings-storage or analytics change.
 2. Lead applies the DESIGN rows:
    `python3 .claude/skills/_shared/update_design.py --input .claude/logs/design-input-auto-roll.json --apply --require-change`.
 3. Start S1.
+
+## PR
+
+- PR #75 (feature/auto-roll → develop). CI run 1: phone-chromium failed — `ui-pop-turn-moments.spec.ts:933` (pickup reload) timed out twice (CI-only; 9/9 locally) and `auto-roll-decisions.spec.ts:69` flaked on a one-shot `isVisible()` race → fixed in `c6a346a`. CI run 2 (42628722732): all green, no flaky retries.
