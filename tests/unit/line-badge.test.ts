@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { LineBadge } from "../../src/features/game/components/LineBadge";
-import { badgeTextColor, LINE_BADGE_CODES, lineBadgeFor, NO_CODE_LINE_GROUP_IDS } from "../../src/features/game/lineBadge";
+import { badgeTextColor, LINE_BADGE_CODES, lineBadgeFor, NO_CODE_LINE_GROUP_IDS, type LineBadgeModel } from "../../src/features/game/lineBadge";
 import type { PresentationResolver } from "../../src/features/game/presentationResolver";
 import { contrastRatio } from "../../src/features/game/uiContrast";
 
@@ -224,6 +224,20 @@ describe("LineBadge renderer", () => {
     expect(unknownDocument.querySelector(".line-badge__mark")?.getAttribute("style")).toContain("var(--color-border)");
   });
 
+  it("adds phrase hints inside the existing name span and preserves the full name", () => {
+    const name: string = "JR中央線・山手線（新宿方面）";
+    const model: LineBadgeModel = { ...lineBadgeFor("jr-yamanote", PRESENTATION), name };
+    const markup: string = renderToStaticMarkup(createElement(LineBadge, { model }));
+    const document: Document = new DOMParser().parseFromString(markup, "text/html");
+    const badge: HTMLElement | null = document.querySelector(".line-badge");
+    const nameElement: HTMLElement | null = document.querySelector(".line-badge__name");
+
+    expect(badge?.className).toBe("line-badge line-badge--md");
+    expect(nameElement?.innerHTML).toBe("JR中央線・<wbr>山手線<wbr>（新宿<wbr>方面）");
+    expect(nameElement?.textContent).toBe(name);
+    expect(document.querySelector(".line-badge__mark")?.querySelector(".line-badge__code")?.textContent).toBe("JY");
+  });
+
   it("shows only the catalogue letters on every manifest line, never a station number", () => {
     for (const [serviceId, group] of GROUP_BY_SERVICE) {
       const markup: string = renderToStaticMarkup(createElement(LineBadge, {
@@ -244,9 +258,11 @@ describe("LineBadge renderer", () => {
       showName: false,
       size: "lg",
     }));
+    const document: Document = new DOMParser().parseFromString(markup, "text/html");
 
     expect(markup).toContain("line-badge--lg");
     expect(markup).not.toContain("line-badge__name");
+    expect(document.querySelector(".line-badge__name")).toBeNull();
     expect(markup).toContain("JY");
   });
 });

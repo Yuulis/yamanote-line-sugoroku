@@ -1931,10 +1931,18 @@ button[aria-disabled="true"] {
     max-height: 34px;
     overflow: hidden;
     overflow-wrap: anywhere;
+    word-break: keep-all;
     white-space: normal;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-height: 17px;
+  }
+
+  @supports (word-break: auto-phrase) {
+    .game-panel__stats [data-stat="ride"],
+    .game-panel__stats [data-stat="direction"] {
+      word-break: auto-phrase;
+    }
   }
 
   .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
@@ -2458,6 +2466,12 @@ button[aria-disabled="true"] {
 .line-badge__name {
   min-width: 0;
   color: var(--color-text);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@supports (word-break: auto-phrase) {
+  .line-badge__name { word-break: auto-phrase; }
 }
 
 .line-badge--sm .line-badge__mark { min-width: 30px; min-height: 20px; padding-inline: 8px 7px; }
