@@ -36,7 +36,6 @@ async function collectTextLayout(locator: Locator, includeLineHeight: boolean): 
   }
 
   return locator.evaluate(async (target, needsNumericLineHeight) => {
-    const TOP_TOLERANCE = 1;
     const MIN_SIZE = 0;
     const PIXEL_PATTERN = /^(?:\d+(?:\.\d+)?|\.\d+)px$/;
     await document.fonts.ready;
@@ -44,7 +43,8 @@ async function collectTextLayout(locator: Locator, includeLineHeight: boolean): 
 
     const style = getComputedStyle(target);
     const rawText: string = target.textContent ?? "";
-    const glyphRects: Array<{ offset: number; rect: DOMRect }> = [];
+    type GlyphRect = { offset: number; rect: DOMRect };
+    const glyphRects: GlyphRect[] = [];
     const textWalker = document.createTreeWalker(target, NodeFilter.SHOW_TEXT);
     const range: Range = document.createRange();
     let textOffset: number = 0;
@@ -129,26 +129,41 @@ async function collectTextLayout(locator: Locator, includeLineHeight: boolean): 
     const contained: (rect: DOMRect) => boolean = (rect) => clips.every((clip) =>
       (!clip.clipX || within(rect.left, rect.right, clip.left, clip.right))
       && (!clip.clipY || within(rect.top, rect.bottom, clip.top, clip.bottom)));
-    const lineCount: (tops: number[]) => number = (tops) => {
-      const ordered: number[] = tops.sort((first, second) => first - second);
-      let count: number = 0;
-      let groupTop: number | null = null;
-      for (const top of ordered) {
-        if (groupTop === null || Math.abs(top - groupTop) > TOP_TOLERANCE) {
-          count += 1;
-          groupTop = top;
+    const groupLines = (rects: GlyphRect[]): { count: number; indices: Map<GlyphRect, number> } => {
+      const ordered: GlyphRect[] = [...rects].sort((first, second) => first.rect.top - second.rect.top);
+      const lines: Array<{ top: number; bottom: number; glyphs: GlyphRect[] }> = [];
+      for (const glyph of ordered) {
+        const center: number = (glyph.rect.top + glyph.rect.bottom) / 2;
+        const currentLine = lines.at(-1);
+        if (currentLine && center >= currentLine.top && center <= currentLine.bottom) {
+          currentLine.top = Math.min(currentLine.top, glyph.rect.top);
+          currentLine.bottom = Math.max(currentLine.bottom, glyph.rect.bottom);
+          currentLine.glyphs.push(glyph);
+        } else {
+          lines.push({ top: glyph.rect.top, bottom: glyph.rect.bottom, glyphs: [glyph] });
         }
       }
-      return count;
+      const indices = new Map<GlyphRect, number>();
+      lines.forEach((line, lineIndex) => line.glyphs.forEach((glyph) => indices.set(glyph, lineIndex)));
+      return { count: lines.length, indices };
     };
 
     const visibleRects = glyphRects.filter(({ rect }) => intersects(rect));
+    // Range rectangles can overlap a clamp edge even when only their typographic box, not the
+    // painted glyph, reaches the clipping area. Count a line as visible only when a glyph's
+    // vertical center remains inside every clipping ancestor.
+    const lineCenterVisibleRects = visibleRects.filter(({ rect }) => {
+      const center: number = (rect.top + rect.bottom) / 2;
+      return clips.every((clip) => !clip.clipY || (center >= clip.top && center <= clip.bottom));
+    });
+    const rawLines = groupLines(glyphRects);
+    const visibleLines = groupLines(lineCenterVisibleRects);
     const fullyContainedCount: number = glyphRects.filter(({ rect }) => contained(rect)).length;
     const breakOffsets: number[] = [];
     for (let index: number = 1; index < glyphRects.length; index += 1) {
       const previous = glyphRects[index - 1]!;
       const current = glyphRects[index]!;
-      if (Math.abs(current.rect.top - previous.rect.top) > TOP_TOLERANCE
+      if (rawLines.indices.get(current) !== rawLines.indices.get(previous)
         && breakOffsets.at(-1) !== current.offset) {
         breakOffsets.push(current.offset);
       }
@@ -177,8 +192,8 @@ async function collectTextLayout(locator: Locator, includeLineHeight: boolean): 
     return {
       text: rawText,
       widthFits: target.scrollWidth <= target.clientWidth,
-      rawLineCount: lineCount(glyphRects.map(({ rect }) => rect.top)),
-      visibleLineCount: lineCount(visibleRects.map(({ rect }) => rect.top)),
+      rawLineCount: rawLines.count,
+      visibleLineCount: visibleLines.count,
       lineHeight,
       fontSize,
       height: box?.height ?? null,

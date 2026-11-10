@@ -653,6 +653,10 @@ button[aria-disabled="true"] {
   white-space: nowrap;
 }
 
+.hud-stat__value wbr {
+  display: none;
+}
+
 .game-panel__stats dd:has(.target-progress) .hud-stat__value {
   flex: 0 1 auto;
 }
@@ -2005,12 +2009,13 @@ button[aria-disabled="true"] {
     line-height: 17px;
   }
 
-  @supports (word-break: auto-phrase) {
-    .game-panel__stats [data-stat="ride"],
-    .game-panel__stats [data-stat="direction"] {
-      word-break: auto-phrase;
-    }
+  .game-panel__stats [data-stat="ride"] wbr,
+  .game-panel__stats [data-stat="direction"] wbr {
+    display: inline;
   }
+
+  /* Names stay on keep-all + PhraseText hints: auto-phrase treats e.g. 市川塩浜方面 as one phrase and,
+     when it overflows a narrow column, falls back to breaking anywhere (市川塩浜方/面), ignoring the hint. */
 
   .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
   .game-panel__stats dd:nth-of-type(1) { grid-column: 2; grid-row: 1; }
@@ -2556,10 +2561,6 @@ button[aria-disabled="true"] {
   overflow-wrap: anywhere;
 }
 
-@supports (word-break: auto-phrase) {
-  .line-badge__name { word-break: auto-phrase; }
-}
-
 .line-badge--sm .line-badge__mark { min-width: 30px; min-height: 20px; padding-inline: 8px 7px; }
 .line-badge--sm .line-badge__code { font-size: 11px; }
 .line-badge--sm .line-badge__name { font-size: 12px; }
@@ -2641,6 +2642,9 @@ button[aria-disabled="true"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.lottery-reveal .line-badge__name wbr {
+  display: none;
 }
 .lottery-reveal__row--flipping .lottery-reveal__result {
   animation: lottery-result var(--lottery-ms) steps(1, end) both;

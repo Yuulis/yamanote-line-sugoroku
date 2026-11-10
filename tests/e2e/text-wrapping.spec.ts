@@ -1,13 +1,16 @@
+import { mkdirSync } from "node:fs";
+import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
-import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { nextStationId, restoreGame as restoreSavedGame, serializeGame } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
+import { longestRideState, longestDirectionState, longLineLotteryState } from "./support/textWrappingState";
 import { createGame as createProductGame, playTurn as playProductTurn } from "./fixtures/productGame";
 import { itemScenario } from "./fixtures/itemScenarios";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HISTORY_SCENARIO_TURNS } from "./fixtures/seeds";
-import { diceButton, gamePanel, openTitle, panelStat, startNewGame, useInventoryItem, writeSaveText } from "./support/app";
+import { diceButton, gamePanel, openTitle, panelStat, readSave, startNewGame, useInventoryItem, writeSaveText, rollOnce } from "./support/app";
 import { expectSingleLine, measureTextLayout } from "./support/layout";
 
 const PHONE_HUD_TARGET_BUDGET_PX = 252;
@@ -18,13 +21,17 @@ const PHONE_HUD_LABEL_FONT_SIZE_PX = 13;
 const PHONE_HUD_VALUE_FONT_SIZE_PX = 15;
 const PHONE_HUD_VALUE_LINE_HEIGHT_PX = 17;
 const PHONE_HUD_TWO_LINE_HEIGHT_PX = 34;
+const PHONE_HUD_MAX_VISIBLE_LINES = 2;
+const PHONE_HUD_SINGLE_LINE_COUNT = 1;
 const DESKTOP_HUD_ROW_HEIGHT_PX = 24;
 const SHORT_LANDSCAPE_HUD_ROW_HEIGHT_PX = 18;
 const PHONE_BREAKPOINT_WIDTH_PX = 600;
 const BREAKPOINT_TEST_HEIGHT_PX = 844;
-const LONG_RIDE_SEED_LIMIT = 64;
-const LONG_RIDE_TURN_LIMIT = 12;
-const LONG_RIDE_MINIMUM_LENGTH = 5;
+const DESKTOP_TEXT_VIEWPORT = { width: 1280, height: 800 } as const;
+const FALLBACK_TEXT_VIEWPORT = { width: 390, height: 844 } as const;
+const LONGEST_TEXT_TEST_TIMEOUT_MS = 90_000;
+const VISUAL_EVIDENCE_TEST_TIMEOUT_MS = 180_000;
+const VISUAL_EVIDENCE_DIRECTORY = "/home/yuulis/yamanote-line-sugoroku/.claude/logs/screenshots/ttw-step7";
 const HUD_INVENTORY_SLOT_COUNT = 3;
 const HUD_INVENTORY_SLOT_HEIGHT_PX = 56;
 const HUD_INTERACTIVE_TARGET_MINIMUM_PX = 44;
@@ -34,6 +41,7 @@ const PANEL_HEIGHT_TOLERANCE_PX = 1;
 const HUD_BUDGET_VERTICAL_GRID_GAPS = 2;
 const NARROW_PHONE_VIEWPORT = { width: 320, height: 568 } as const;
 const TALL_PHONE_VIEWPORT = { width: 412, height: 839 } as const;
+const LONGEST_TEXT_VIEWPORTS = [NARROW_PHONE_VIEWPORT, TALL_PHONE_VIEWPORT, DESKTOP_TEXT_VIEWPORT] as const;
 const SHORT_LANDSCAPE_VIEWPORT = { width: 667, height: 375 } as const;
 const DIALOG_VIEWPORTS = [
   { width: 320, height: 568 },
@@ -51,6 +59,7 @@ const PHONE_HUD_STATS_ROWS = [
   `${PHONE_HUD_TWO_LINE_HEIGHT_PX}px`,
   `${PHONE_HUD_LABEL_HEIGHT_PX}px`,
 ];
+const VALID_DIRECTION_VALUES = [-1, 1] as const;
 const SHORT_LANDSCAPE_STATS_ROWS = Array.from(
   { length: 3 },
   () => `${SHORT_LANDSCAPE_HUD_ROW_HEIGHT_PX}px`,
@@ -62,22 +71,6 @@ function fixedHeight(heightPx: number) {
 }
 
 test.use({ dataset: "real", reducedMotion: "reduce" });
-
-function longRideGame(bundle: RailwayBundle): ItemGameState {
-  for (let seedValue: number = 0; seedValue < LONG_RIDE_SEED_LIMIT; seedValue += 1) {
-    const seed: string = seedValue.toString(16).padStart(32, "0");
-    let game: ItemGameState = createItemGame(ITEM_GAME_CONFIG, seed, bundle.network);
-    for (let turnIndex: number = 0; turnIndex < LONG_RIDE_TURN_LIMIT && game.status === "playing"; turnIndex += 1) {
-      const name: string = bundle.network.servicesById.get(game.currentServiceId)?.name ?? "";
-      if (game.turn > 0 && name.length >= LONG_RIDE_MINIMUM_LENGTH) return game;
-      const result = playItemTurn(game, {}, bundle.network).state;
-      game = result.pending?.kind === "discard"
-        ? resolveItemDiscard(result, result.pending.item.id).state
-        : result;
-    }
-  }
-  throw new Error("Expected a seeded game for the long-text HUD fixture");
-}
 
 async function restoreGame(page: Page, game: ItemGameState): Promise<void> {
   await page.goto("/");
@@ -222,7 +215,7 @@ async function expectPhoneHudState(page: Page, viewport: { width: number; height
       fontSize: PHONE_HUD_VALUE_FONT_SIZE_PX,
       lineHeight: PHONE_HUD_VALUE_LINE_HEIGHT_PX,
       height: PHONE_HUD_TWO_LINE_HEIGHT_PX,
-      clampCount: 2,
+      clampCount: PHONE_HUD_MAX_VISIBLE_LINES,
     });
     expect(layout.visibleLineCount, `${details}; ${label}`).toBeLessThanOrEqual(2);
     expect(layout.widthFits, `${details}; ${label}`).toBe(true);
@@ -244,6 +237,8 @@ test("layout measurement", async ({ page }, testInfo) => {
       }
       #normal { width: 100px; font-size: 16px; line-height: normal; }
       #unicode { width: 18px; font: 16px/20px monospace; }
+      #mixed { width: 500px; font: 15px/17px system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; }
+      #mixed-two-lines { width: 500px; font: 15px/17px system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; }
       #overlong { box-sizing: border-box; width: 50px; height: 20px; overflow: hidden; white-space: nowrap; font: 16px/20px monospace; }
       #clip-host { width: 75px; height: 20px; overflow: hidden; }
       #clip-target { width: 200px; white-space: nowrap; font: 16px/20px monospace; }
@@ -253,6 +248,8 @@ test("layout measurement", async ({ page }, testInfo) => {
     <div id="clamp" class="fixture">Alpha Beta Gamma Delta Epsilon Zeta</div>
     <div id="normal" class="fixture">button uses normal line-height</div>
     <div id="unicode" class="fixture">A<wbr>😀<wbr>B</div>
+    <div id="mixed" class="fixture">羽田第1ターミナルA12方面</div>
+    <div id="mixed-two-lines" class="fixture">羽田第1ターミナルA12方面<br>成田第2ターミナルB34</div>
     <div id="overlong" class="fixture">UNBREAKABLETOKEN</div>
     <div id="clip-host"><div id="clip-target">ABCDEFGHIJKLMN</div></div>
     <button id="button">OK</button>`);
@@ -293,6 +290,18 @@ test("layout measurement", async ({ page }, testInfo) => {
   expect(unicode.hintOffsets).toEqual([1, 3]);
   expect(unicode.breakOffsets).not.toContain(2);
 
+  const mixed = await measureTextLayout(page.locator("#mixed"));
+  expect(mixed.text).toBe("羽田第1ターミナルA12方面");
+  expect(mixed.rawLineCount, JSON.stringify(mixed)).toBe(1);
+  expect(mixed.visibleLineCount, JSON.stringify(mixed)).toBe(1);
+  expect(mixed.breakOffsets).toEqual([]);
+
+  const mixedTwoLines = await measureTextLayout(page.locator("#mixed-two-lines"));
+  expect(mixedTwoLines.text).toBe("羽田第1ターミナルA12方面成田第2ターミナルB34");
+  expect(mixedTwoLines.rawLineCount, JSON.stringify(mixedTwoLines)).toBe(2);
+  expect(mixedTwoLines.visibleLineCount, JSON.stringify(mixedTwoLines)).toBe(2);
+  expect(mixedTwoLines.breakOffsets).toContain("羽田第1ターミナルA12方面".length);
+
   const overlong = await measureTextLayout(page.locator("#overlong"));
   expect(overlong.widthFits).toBe(false);
   expect(overlong.contentExcess.width).toBeGreaterThan(0);
@@ -306,7 +315,7 @@ test("layout measurement", async ({ page }, testInfo) => {
 });
 
 test("phone HUD budget", async ({ page, railwayBundle }) => {
-  const longRide: ItemGameState = longRideGame(railwayBundle);
+  const longRide: ItemGameState = longestRideState(railwayBundle).game;
   await page.setViewportSize(NARROW_PHONE_VIEWPORT);
   await openTitle(page);
   await startNewGame(page);
@@ -327,6 +336,194 @@ test("phone HUD budget", async ({ page, railwayBundle }) => {
     expect(Math.abs(idle.viewportY - long.viewportY), `${width}px dice viewport position`)
       .toBeLessThanOrEqual(HUD_DICE_POSITION_TOLERANCE_PX);
   }
+});
+
+interface DiceLayoutPosition {
+  offset: number;
+  viewportY: number;
+}
+
+async function measureDiceLayoutPosition(page: Page): Promise<DiceLayoutPosition> {
+  await expect(diceButton(page)).toHaveText("サイコロを振る");
+  return page.evaluate(() => {
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    const button = document.querySelector<HTMLElement>(".game-panel__roll");
+    if (!panel || !button) throw new Error("HUD panel or dice button is missing");
+    const panelRect = panel.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    return { offset: buttonRect.y - panelRect.y, viewportY: buttonRect.y };
+  });
+}
+
+async function expectLongestHudText(
+  page: Page,
+  label: "乗車中" | "進行方向",
+  expectedText: string,
+  viewportWidth: number,
+): Promise<void> {
+  const value: Locator = panelStat(page, label);
+  await expect(value).toHaveText(expectedText);
+  await expect(value).toHaveAttribute("title", expectedText);
+
+  if (viewportWidth <= PHONE_BREAKPOINT_WIDTH_PX) {
+    const layout = await measureTextLayout(value);
+    expect(layout.text).toBe(expectedText);
+    expect(layout).toMatchObject({
+      fontSize: PHONE_HUD_VALUE_FONT_SIZE_PX,
+      lineHeight: PHONE_HUD_VALUE_LINE_HEIGHT_PX,
+      height: PHONE_HUD_TWO_LINE_HEIGHT_PX,
+      clampCount: 2,
+    });
+    expect(layout.visibleLineCount, JSON.stringify(layout)).toBeLessThanOrEqual(PHONE_HUD_MAX_VISIBLE_LINES);
+    expect(layout.widthFits).toBe(true);
+    return;
+  }
+
+  const desktopLayout = await value.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return {
+      whiteSpace: style.whiteSpace,
+      overflow: style.overflow,
+      textOverflow: style.textOverflow,
+      text: element.textContent ?? "",
+      clientHeight: element.clientHeight,
+      clientWidth: element.clientWidth,
+      scrollWidth: element.scrollWidth,
+      lineTops: [...new Set(Array.from(range.getClientRects(), (rect) => Math.round(rect.top)))],
+    };
+  });
+  expect(desktopLayout.text).toBe(expectedText);
+  expect(desktopLayout.lineTops, JSON.stringify(desktopLayout)).toHaveLength(PHONE_HUD_SINGLE_LINE_COUNT);
+  expect(desktopLayout.whiteSpace).toBe("nowrap");
+  expect(desktopLayout.overflow).toBe("hidden");
+  expect(desktopLayout.textOverflow).toBe("ellipsis");
+}
+
+async function expectRestoredTurnRoundTrip(page: Page, bundle: RailwayBundle, game: ItemGameState): Promise<void> {
+  const turnBefore: number = game.turn;
+  await rollOnce(page);
+  const saved = await readSave(page);
+  if (!saved) throw new Error("The completed turn did not leave a save");
+  expect(saved.turn).toBe(turnBefore + 1);
+  expect(saved.movementHistory).toHaveLength(saved.turn);
+  expect(saved.pending).toBeNull();
+  expect(VALID_DIRECTION_VALUES).toContain(saved.direction);
+  const service = bundle.network.servicesById.get(saved.currentServiceId);
+  expect(service).toBeDefined();
+  expect(service?.stationIds).toContain(saved.currentStationId);
+  expect(nextStationId(bundle.network, saved.currentServiceId, saved.currentStationId, saved.direction)).toBeDefined();
+
+  const serialized: string = serializeGame(saved);
+  expect(restoreSavedGame(serialized, bundle.network)).toEqual(saved);
+  await writeSaveText(page, serialized);
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  if (saved.status === "completed") {
+    await expect(page.getByRole("region", { name: "クリア！" })).toBeVisible();
+  } else {
+    await expect(gamePanel(page)).toBeVisible();
+  }
+  expect(await readSave(page)).toEqual(saved);
+}
+
+test("longest text", async ({ page, railwayBundle }) => {
+  test.setTimeout(LONGEST_TEXT_TEST_TIMEOUT_MS);
+  const rideState = longestRideState(railwayBundle);
+  const directionState = longestDirectionState(railwayBundle);
+  const states = [rideState, directionState] as const;
+  const idlePositions: DiceLayoutPosition[] = [];
+
+  await openTitle(page);
+  await startNewGame(page);
+  for (const viewport of LONGEST_TEXT_VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    idlePositions.push(await measureDiceLayoutPosition(page));
+  }
+
+  for (const state of states) {
+    for (let viewportIndex: number = 0; viewportIndex < LONGEST_TEXT_VIEWPORTS.length; viewportIndex += 1) {
+      const viewport = LONGEST_TEXT_VIEWPORTS[viewportIndex]!;
+      await page.setViewportSize(viewport);
+      await restoreGame(page, state.game);
+
+      await expectLongestHudText(page, "乗車中", state.serviceName, viewport.width);
+      await expectLongestHudText(page, "進行方向", state.directionLabel, viewport.width);
+      await expectNoHorizontalOverflow(gamePanel(page));
+      await expectPageNoHorizontalOverflow(page);
+
+      const dicePosition = await measureDiceLayoutPosition(page);
+      const idlePosition = idlePositions[viewportIndex]!;
+      expect(Math.abs(dicePosition.offset - idlePosition.offset), `${state.kind} ${viewport.width}px panel offset`)
+        .toBeLessThanOrEqual(HUD_DICE_POSITION_TOLERANCE_PX);
+      expect(Math.abs(dicePosition.viewportY - idlePosition.viewportY), `${state.kind} ${viewport.width}px viewport position`)
+        .toBeLessThanOrEqual(HUD_DICE_POSITION_TOLERANCE_PX);
+    }
+
+    await expectRestoredTurnRoundTrip(page, railwayBundle, state.game);
+  }
+});
+
+test("fallback wrapping", async ({ page, railwayBundle }, testInfo) => {
+  const state = longestRideState(railwayBundle);
+  await page.setViewportSize(FALLBACK_TEXT_VIEWPORT);
+  await restoreGame(page, state.game);
+
+  const ride: Locator = panelStat(page, "乗車中");
+  const layout = await measureTextLayout(ride);
+  const wrapping = await ride.evaluate((element) => ({
+    autoPhraseSupported: CSS.supports("word-break", "auto-phrase"),
+    wordBreak: getComputedStyle(element).wordBreak,
+    overflowWrap: getComputedStyle(element).overflowWrap,
+  }));
+  // HUD names use keep-all + PhraseText hints in every engine (auto-phrase ignores the hints when a phrase overflows).
+  expect(wrapping.wordBreak).toBe("keep-all");
+  expect(wrapping.overflowWrap).toBe("anywhere");
+  expect(layout.text).toBe(state.serviceName);
+  expect(layout.hintOffsets.length).toBeGreaterThan(0);
+  expect(layout.widthFits).toBe(true);
+  expect(layout.visibleLineCount).toBeLessThanOrEqual(2);
+  await expectNoHorizontalOverflow(ride);
+  await expectNoHorizontalOverflow(gamePanel(page));
+  await expectPageNoHorizontalOverflow(page);
+  testInfo.annotations.push({ type: "fallback CSS", description: JSON.stringify(wrapping) });
+
+  await page.setViewportSize(NARROW_PHONE_VIEWPORT);
+  const direction: Locator = panelStat(page, "進行方向");
+  const directionLayout = await measureTextLayout(direction);
+  expect(directionLayout.breakOffsets.length, JSON.stringify(directionLayout)).toBeGreaterThan(0);
+  for (const offset of directionLayout.breakOffsets) {
+    expect(directionLayout.hintOffsets, `break at ${offset} in ${directionLayout.text}`).toContain(offset);
+  }
+});
+
+test("Step 7 visual evidence", async ({ page, railwayBundle }) => {
+  test.skip(process.env.TTW_SCREENSHOTS !== "1", "visual evidence is generated only on explicit request");
+  test.setTimeout(VISUAL_EVIDENCE_TEST_TIMEOUT_MS);
+  mkdirSync(VISUAL_EVIDENCE_DIRECTORY, { recursive: true });
+
+  for (const state of [longestRideState(railwayBundle), longestDirectionState(railwayBundle)]) {
+    for (const viewport of LONGEST_TEXT_VIEWPORTS) {
+      await page.setViewportSize(viewport);
+      await restoreGame(page, state.game);
+      const fileName = `${state.kind}-${viewport.width}x${viewport.height}.png`;
+      await gamePanel(page).screenshot({ path: join(VISUAL_EVIDENCE_DIRECTORY, fileName) });
+    }
+  }
+
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const lotteryGame: ItemGameState = longLineLotteryState(railwayBundle);
+  await restoreGame(page, lotteryGame);
+  await diceButton(page).click();
+  const lotteryReveal: Locator = page.locator(".lottery-reveal");
+  const adjustmentDialog: Locator = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect(lotteryReveal.or(adjustmentDialog)).toBeVisible();
+  if (await adjustmentDialog.isVisible()) {
+    await adjustmentDialog.getByRole("button", { name: "そのまま続ける" }).click();
+  }
+  await expect(lotteryReveal).toBeVisible();
+  await lotteryReveal.screenshot({ path: join(VISUAL_EVIDENCE_DIRECTORY, "lottery-reveal-long-line.png") });
 });
 
 test("HUD breakpoint isolation", async ({ page }) => {
@@ -375,6 +572,9 @@ test("HUD breakpoint isolation", async ({ page }) => {
 });
 
 test("dialog wrapping", async ({ page, railwayBundle }) => {
+  // Two viewports, each restoring two saves and opening two native dialogs: about 28 s on a loaded
+  // local Firefox, close to the default 30 s budget.
+  test.slow();
   const routeGame: ItemGameState = itemScenario("route", railwayBundle.network);
   const adjustmentGame: ItemGameState = itemScenario("adjust", railwayBundle.network);
 
