@@ -110,6 +110,9 @@ async function collectTextLayout(locator: Locator, includeLineHeight: boolean): 
           clipY,
         });
       }
+      // Top-layer elements (modal dialogs, open popovers) paint above their DOM ancestors,
+      // so ancestor scrollports beyond them do not clip what they contain.
+      if (ancestor.matches(":modal, :popover-open")) break;
       ancestor = ancestor.parentElement;
     }
 

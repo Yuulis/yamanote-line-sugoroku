@@ -1242,9 +1242,14 @@ button[aria-disabled="true"] {
 
 .clear-screen__actions {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 8px;
   margin-top: 12px;
+}
+
+.clear-screen__actions button {
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .clear-screen__share {
@@ -1252,6 +1257,11 @@ button[aria-disabled="true"] {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.clear-screen__share button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .clear-screen__share button:focus-visible,
@@ -1277,6 +1287,7 @@ button[aria-disabled="true"] {
 .clear-screen__share-fallback textarea {
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   font: inherit;
 }
 
@@ -1303,6 +1314,7 @@ button[aria-disabled="true"] {
 .dialog__title {
   margin: 0 0 8px;
   font-size: 17px;
+  text-wrap: balance;
 }
 
 .dialog p {
@@ -1312,12 +1324,15 @@ button[aria-disabled="true"] {
 
 .dialog__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
 }
 
 .dialog__actions button {
+  flex: 0 0 auto;
   min-width: 112px;
+  white-space: nowrap;
 }
 
 .dialog__confirm {
@@ -1347,9 +1362,11 @@ button[aria-disabled="true"] {
 }
 
 .item-staged-summary button {
+  flex: 0 0 auto;
   min-height: 44px;
   margin-left: auto;
   padding: 2px 8px;
+  white-space: nowrap;
 }
 
 .item-inventory {
@@ -1480,11 +1497,13 @@ button[aria-disabled="true"] {
 
 .item-dialog__hint {
   overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .item-dialog__hint--target {
   font-weight: bold;
   color: var(--color-good);
+  text-wrap: balance;
 }
 
 .item-dialog__group {
@@ -1536,6 +1555,8 @@ button[aria-disabled="true"] {
 .item-adjustment__choice > span {
   min-width: 0;
   flex: 1;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .item-route-option__name,
@@ -1546,6 +1567,7 @@ button[aria-disabled="true"] {
 
 .item-route-option__name {
   font-weight: bold;
+  word-break: keep-all;
 }
 
 .item-route-option__guidance {
@@ -1553,6 +1575,18 @@ button[aria-disabled="true"] {
   color: #444444;
   font-size: 12px;
   line-height: 1.45;
+  word-break: keep-all;
+}
+
+@supports (word-break: auto-phrase) {
+  .item-dialog__hint,
+  .item-route-option__copy,
+  .item-route-option__name,
+  .item-route-option__guidance,
+  .item-direction-option > span,
+  .item-adjustment__choice > span {
+    word-break: auto-phrase;
+  }
 }
 
 .item-discard__list {
@@ -1691,6 +1725,7 @@ button[aria-disabled="true"] {
   min-height: 44px;
   margin-top: 8px;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .item-card-popover {
@@ -2075,6 +2110,7 @@ button[aria-disabled="true"] {
   padding: 4px 8px;
   font-size: 12px;
   text-align: left;
+  white-space: nowrap;
   background: #ffffff;
   border: 1px solid #aaaaaa;
   border-radius: 4px;
@@ -2087,6 +2123,7 @@ button[aria-disabled="true"] {
   margin-top: -44px;
   padding: 4px;
   font-size: 12px;
+  white-space: nowrap;
   background: #ffffff;
   border: 1px solid #aaaaaa;
   border-radius: 4px;
@@ -2108,6 +2145,10 @@ button[aria-disabled="true"] {
   padding-block: 12px;
   box-sizing: border-box;
   line-height: 20px;
+}
+
+.game-panel__legend-operator summary {
+  white-space: nowrap;
 }
 
 .game-panel__legend-operator ul,
@@ -2139,6 +2180,7 @@ button[aria-disabled="true"] {
 .game-panel__legend-select-all {
   padding-left: 4px;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 .game-panel__candidates {
@@ -2422,11 +2464,23 @@ button[aria-disabled="true"] {
 
 .clear-screen__paging {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
   font-size: 12px;
+}
+
+.clear-screen__paging button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .clear-screen__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .item-event-notice {

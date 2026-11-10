@@ -1,10 +1,13 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { diceButton, gamePanel, openTitle, panelStat, startNewGame, writeSaveText } from "./support/app";
+import { createGame as createProductGame, playTurn as playProductTurn } from "./fixtures/productGame";
+import { itemScenario } from "./fixtures/itemScenarios";
+import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HISTORY_SCENARIO_TURNS } from "./fixtures/seeds";
+import { diceButton, gamePanel, openTitle, panelStat, startNewGame, useInventoryItem, writeSaveText } from "./support/app";
 import { expectSingleLine, measureTextLayout } from "./support/layout";
 
 const PHONE_HUD_TARGET_BUDGET_PX = 252;
@@ -32,6 +35,11 @@ const HUD_BUDGET_VERTICAL_GRID_GAPS = 2;
 const NARROW_PHONE_VIEWPORT = { width: 320, height: 568 } as const;
 const TALL_PHONE_VIEWPORT = { width: 412, height: 839 } as const;
 const SHORT_LANDSCAPE_VIEWPORT = { width: 667, height: 375 } as const;
+const DIALOG_VIEWPORTS = [
+  { width: 320, height: 568 },
+  { width: 1280, height: 800 },
+] as const;
+const CLEAR_SCREEN_VIEWPORT = { width: 320, height: 568 } as const;
 const PHONE_HUD_STATS_ROWS = [
   `${PHONE_HUD_LABEL_HEIGHT_PX}px`,
   `${PHONE_HUD_TWO_LINE_HEIGHT_PX}px`,
@@ -72,6 +80,47 @@ async function restoreGame(page: Page, game: ItemGameState): Promise<void> {
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
   await expect(gamePanel(page)).toBeVisible();
+}
+
+function completedHistoryGame(bundle: RailwayBundle): ItemGameState {
+  let game: ItemGameState = createProductGame(ITEM_GAME_CONFIG, PRODUCT_HISTORY_GAME_SEED, bundle.network);
+  while (game.status === "playing" && game.turn < PRODUCT_HISTORY_SCENARIO_TURNS.completed) {
+    game = playProductTurn(game, bundle.network).state;
+  }
+  if (game.status !== "completed" || game.turn !== PRODUCT_HISTORY_SCENARIO_TURNS.completed) {
+    throw new Error("Expected the product history game to reach its verified clear state");
+  }
+  return game;
+}
+
+async function expectNoHorizontalOverflow(locator: Locator): Promise<void> {
+  const { clientWidth, scrollWidth } = await locator.evaluate((element) => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+  }));
+  expect(scrollWidth, `${locator.toString()} should not overflow horizontally`).toBeLessThanOrEqual(clientWidth);
+}
+
+async function expectPageNoHorizontalOverflow(page: Page): Promise<void> {
+  const dimensions = await page.evaluate(() => ({
+    documentClientWidth: document.documentElement.clientWidth,
+    documentScrollWidth: document.documentElement.scrollWidth,
+    bodyClientWidth: document.body.clientWidth,
+    bodyScrollWidth: document.body.scrollWidth,
+  }));
+  expect(dimensions.documentScrollWidth, "document should not overflow horizontally")
+    .toBeLessThanOrEqual(dimensions.documentClientWidth);
+  expect(dimensions.bodyScrollWidth, "body should not overflow horizontally")
+    .toBeLessThanOrEqual(dimensions.bodyClientWidth);
+}
+
+async function expectButtonsSingleLine(buttons: Locator): Promise<void> {
+  const count: number = await buttons.count();
+  for (let index: number = 0; index < count; index += 1) {
+    const button: Locator = buttons.nth(index);
+    await button.scrollIntoViewIfNeeded();
+    await expectSingleLine(button);
+  }
 }
 
 async function measurePhoneHudBudget(page: Page) {
@@ -301,6 +350,89 @@ test("HUD breakpoint isolation", async ({ page }) => {
     expect(value.title).toBe(value.text);
     expect(value).toMatchObject({ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" });
   }
+});
+
+test("dialog wrapping", async ({ page, railwayBundle }) => {
+  const routeGame: ItemGameState = itemScenario("route", railwayBundle.network);
+  const adjustmentGame: ItemGameState = itemScenario("adjust", railwayBundle.network);
+
+  for (const viewport of DIALOG_VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await restoreGame(page, routeGame);
+    await useInventoryItem(page, "路線指定券");
+
+    const routeDialog = page.getByRole("dialog");
+    await expect(routeDialog).toBeVisible();
+    await expect(routeDialog.getByRole("heading")).toHaveAccessibleName("乗る路線を選ぶ");
+    await expect(routeDialog.getByRole("radio").first()).toHaveAccessibleName(
+      "山手線（山手線） 外回り：目黒、次の駅から山手線まで0駅。向きは固定です",
+    );
+    await expectButtonsSingleLine(routeDialog.locator(".dialog__actions button"));
+    await expectNoHorizontalOverflow(routeDialog);
+    await expectPageNoHorizontalOverflow(page);
+
+    const guidanceOptions: Locator = routeDialog.locator(".item-route-option__guidance");
+    const guidanceTexts: string[] = await guidanceOptions.allTextContents();
+    expect(guidanceTexts.length).toBeGreaterThan(0);
+    let longestGuidanceIndex: number = 0;
+    for (let index: number = 1; index < guidanceTexts.length; index += 1) {
+      if (guidanceTexts[index]!.length > guidanceTexts[longestGuidanceIndex]!.length) {
+        longestGuidanceIndex = index;
+      }
+    }
+    const longGuidance: ReturnType<typeof routeDialog.locator> = guidanceOptions.nth(longestGuidanceIndex);
+    const guidanceLayout = await measureTextLayout(longGuidance);
+    expect(guidanceLayout.text.length).toBeGreaterThan(0);
+    expect(guidanceLayout.rawLineCount).toBeGreaterThan(1);
+    expect(guidanceLayout.widthFits).toBe(true);
+    expect(guidanceLayout.hintOffsets.length).toBeGreaterThan(0);
+
+    await routeDialog.getByRole("button", { name: "キャンセル", exact: true }).click();
+    await restoreGame(page, adjustmentGame);
+    await diceButton(page).click();
+
+    const adjustmentDialog = page.getByRole("dialog", { name: "出目を調整しますか？", exact: true });
+    await expect(adjustmentDialog).toBeVisible();
+    await expectButtonsSingleLine(adjustmentDialog.locator(".dialog__actions button"));
+    await expectNoHorizontalOverflow(adjustmentDialog);
+    await expectPageNoHorizontalOverflow(page);
+  }
+});
+
+test("clear-screen wrapping", async ({ page, railwayBundle }) => {
+  const completedGame: ItemGameState = completedHistoryGame(railwayBundle);
+  await page.setViewportSize(CLEAR_SCREEN_VIEWPORT);
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(completedGame));
+  await page.reload();
+  await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
+
+  const clearScreen: Locator = page.getByRole("region", { name: "クリア！" });
+  const historyItems: Locator = clearScreen.locator(".clear-screen__history li");
+  const paging: Locator = clearScreen.getByRole("navigation", { name: "移動履歴のページ" });
+  await expect(historyItems).toHaveCount(20);
+  await expect(historyItems.first()).toContainText("1ターン目");
+  await expectButtonsSingleLine(paging.getByRole("button"));
+  const actionColumns: string[] = await clearScreen.locator(".clear-screen__actions").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/),
+  );
+  expect(actionColumns).toHaveLength(1);
+  await expect(paging).toHaveCSS("flex-wrap", "wrap");
+  await expectNoHorizontalOverflow(clearScreen);
+  await expectPageNoHorizontalOverflow(page);
+
+  await paging.getByRole("button", { name: "次のページ", exact: true }).click();
+  await expect(historyItems.first()).toContainText("21ターン目");
+  await expect(paging.getByRole("status")).toHaveText("2 / 5ページ");
+  await paging.getByRole("button", { name: "前のページ", exact: true }).click();
+  await expect(historyItems.first()).toContainText("1ターン目");
+  await expect(paging.getByRole("status")).toHaveText("1 / 5ページ");
+
+  await expectButtonsSingleLine(clearScreen.locator(
+    ".clear-screen__actions button, .clear-screen__share button, .clear-screen__paging button",
+  ));
+  await expectNoHorizontalOverflow(clearScreen);
+  await expectPageNoHorizontalOverflow(page);
 });
 
 async function readHudBreakpointLayout(page: Page) {

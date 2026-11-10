@@ -2,6 +2,7 @@ import { useId, useLayoutEffect, useRef, useState, type SyntheticEvent } from "r
 import type { ItemRollAdjustment } from "../../../types/network";
 import type { ItemSessionView } from "../itemSession";
 import { adjustedPips } from "../itemPresentation";
+import { PhraseText } from "./PhraseText";
 
 export interface RollAdjustmentProps {
   announcement?: string;
@@ -59,7 +60,7 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
         {announcement !== undefined && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
         <h2 id={titleId} aria-describedby={rollId} ref={headingRef} className="dialog__title" tabIndex={-1}>出目を調整しますか？</h2>
         <p id={rollId} className="item-dialog__hint">出目：<strong>{decision.rawRoll}</strong></p>
-        <p className="item-dialog__hint">±1を選ぶと出目調整券を1枚使います。</p>
+        <p className="item-dialog__hint"><PhraseText text="±1を選ぶと出目調整券を1枚使います。" /></p>
         <fieldset className="item-dialog__group">
           <legend>進むマス数を選ぶ</legend>
           {choices.map((delta) => {
@@ -73,11 +74,11 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
                 checked={choice === delta}
                 onChange={() => setChoice(delta)}
               />
-              <span><strong>{label}</strong>：出目 {pips}、{pips}マス進む</span>
+              <span><strong>{label}</strong><PhraseText text={`：出目 ${pips}、${pips}マス進む`} /></span>
             </label>;
           })}
         </fieldset>
-        <p className="item-dialog__hint">Escapeキーでも「そのまま」で続けます。出目を見た後はターンを取り消せません。</p>
+        <p className="item-dialog__hint"><PhraseText text="Escapeキーでも「そのまま」で続けます。出目を見た後はターンを取り消せません。" /></p>
         <div className="dialog__actions">
           <button type="button" className="button-primary" onClick={() => continueTurn(choice)}>
             {choice === 0 ? "そのまま続ける" : `出目${adjustedPips(decision.rawRoll, choice)}で続ける`}
