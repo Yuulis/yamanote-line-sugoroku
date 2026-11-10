@@ -70,8 +70,8 @@
       "color": "#00B2E5",
       "circular": false,
       "directionLabels": {
-        "forward": "蒲田方面",
-        "backward": "赤羽方面"
+        "forward": "大船方面",
+        "backward": "大宮方面"
       },
       "endpoints": {
         "first": "terminus",
@@ -155,7 +155,7 @@
       "color": "#FFD400",
       "circular": false,
       "directionLabels": {
-        "forward": "小岩方面",
+        "forward": "千葉方面",
         "backward": "三鷹方面"
       },
       "endpoints": {
@@ -598,7 +598,7 @@
       "color": "#00AC9A",
       "circular": false,
       "directionLabels": {
-        "forward": "浮間舟渡方面",
+        "forward": "川越方面",
         "backward": "大崎方面"
       },
       "endpoints": {
@@ -660,7 +660,7 @@
       "color": "#00AC9A",
       "circular": false,
       "directionLabels": {
-        "forward": "西大井方面",
+        "forward": "羽沢横浜国大方面",
         "backward": "新宿方面"
       },
       "endpoints": {
@@ -705,7 +705,7 @@
       "color": "#C9242F",
       "circular": false,
       "directionLabels": {
-        "forward": "葛西臨海公園方面",
+        "forward": "蘇我方面",
         "backward": "東京方面"
       },
       "endpoints": {
@@ -761,7 +761,7 @@
       "color": "#F15A22",
       "circular": false,
       "directionLabels": {
-        "forward": "新秋津方面",
+        "forward": "西船橋方面",
         "backward": "府中本町方面"
       },
       "endpoints": {
@@ -906,7 +906,7 @@
       "circular": false,
       "directionLabels": {
         "forward": "立川方面",
-        "backward": "矢野口方面"
+        "backward": "川崎方面"
       },
       "endpoints": {
         "first": "terminus",
@@ -1142,7 +1142,7 @@
       "circular": false,
       "directionLabels": {
         "forward": "八王子方面",
-        "backward": "相原方面"
+        "backward": "東神奈川方面"
       },
       "endpoints": {
         "first": "service-boundary",
@@ -1321,7 +1321,7 @@
       "color": "#0067C0",
       "circular": false,
       "directionLabels": {
-        "forward": "西大井方面",
+        "forward": "久里浜方面",
         "backward": "東京方面"
       },
       "endpoints": {
@@ -1378,7 +1378,7 @@
       "color": "#0067C0",
       "circular": false,
       "directionLabels": {
-        "forward": "新小岩方面",
+        "forward": "千葉方面",
         "backward": "東京方面"
       },
       "endpoints": {

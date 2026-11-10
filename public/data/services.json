@@ -906,8 +906,8 @@
       "circular": false,
       "color": "#00B2E5",
       "directionLabels": {
-        "forward": "蒲田方面",
-        "backward": "赤羽方面"
+        "forward": "大船方面",
+        "backward": "大宮方面"
       },
       "platformCoordinates": {
         "omiya": [
@@ -1156,7 +1156,7 @@
       "circular": false,
       "color": "#FFD400",
       "directionLabels": {
-        "forward": "小岩方面",
+        "forward": "千葉方面",
         "backward": "三鷹方面"
       },
       "platformCoordinates": {
@@ -2117,7 +2117,7 @@
       "circular": false,
       "color": "#00AC9A",
       "directionLabels": {
-        "forward": "浮間舟渡方面",
+        "forward": "川越方面",
         "backward": "大崎方面"
       },
       "platformCoordinates": {
@@ -2243,7 +2243,7 @@
       "circular": false,
       "color": "#00AC9A",
       "directionLabels": {
-        "forward": "西大井方面",
+        "forward": "羽沢横浜国大方面",
         "backward": "新宿方面"
       },
       "platformCoordinates": {
@@ -2312,7 +2312,7 @@
       "circular": false,
       "color": "#C9242F",
       "directionLabels": {
-        "forward": "葛西臨海公園方面",
+        "forward": "蘇我方面",
         "backward": "東京方面"
       },
       "platformCoordinates": {
@@ -2433,7 +2433,7 @@
       "circular": false,
       "color": "#F15A22",
       "directionLabels": {
-        "forward": "新秋津方面",
+        "forward": "西船橋方面",
         "backward": "府中本町方面"
       },
       "platformCoordinates": {
@@ -2653,7 +2653,7 @@
       "color": "#FFD400",
       "directionLabels": {
         "forward": "立川方面",
-        "backward": "矢野口方面"
+        "backward": "川崎方面"
       },
       "platformCoordinates": {
         "kawasaki": [
@@ -2992,7 +2992,7 @@
       "color": "#80C241",
       "directionLabels": {
         "forward": "八王子方面",
-        "backward": "相原方面"
+        "backward": "東神奈川方面"
       },
       "platformCoordinates": {
         "higashi-kanagawa": [
@@ -3354,7 +3354,7 @@
       "circular": false,
       "color": "#0067C0",
       "directionLabels": {
-        "forward": "西大井方面",
+        "forward": "久里浜方面",
         "backward": "東京方面"
       },
       "platformCoordinates": {
@@ -3463,7 +3463,7 @@
       "circular": false,
       "color": "#0067C0",
       "directionLabels": {
-        "forward": "新小岩方面",
+        "forward": "千葉方面",
         "backward": "東京方面"
       },
       "platformCoordinates": {
