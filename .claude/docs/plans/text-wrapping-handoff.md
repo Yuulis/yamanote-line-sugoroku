@@ -11,7 +11,7 @@ Resume from here. Plan: `.claude/docs/plans/text-wrapping-plan.md` (Revision 3 l
 
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
-| 1 layout helper | pending | | |
+| 1 layout helper | done | (this commit) | Luna xhigh 715 s; lead: typecheck ok, `layout measurement` 1/1 desktop-chromium |
 | 2 phone HUD budget | pending | | |
 | 3 PhraseText | pending | | |
 | 4 HUD + LineBadge | pending | | |
@@ -22,4 +22,4 @@ Resume from here. Plan: `.claude/docs/plans/text-wrapping-plan.md` (Revision 3 l
 
 ## Next
 
-Step 1.
+Step 2 (phone HUD budget gate) — wait for user go-ahead.
