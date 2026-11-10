@@ -158,3 +158,29 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Plan and decisions: .claude/docs/plans/tempo-stage1-plan.md, handoff .claude/docs/plans/tempo-stage1-handoff.md, DESIGN.md rows dated 2026-11-08.
 - Follow persists only via the menu toggle; manual pan OFF is session-only (user 2026-11-08).
 - Auto-roll 「おまかせで進む」 is deferred to a later PR (issue #64 stage 2).
+
+---
+
+## Current Feature: Issue #70: text wrapping and HUD readability
+<!-- orchestra:block-id: issue-70-text-wrapping-and-hud-readability -->
+
+### Context
+
+- Goal: Japanese text breaks at natural points (render-time <wbr> via PhraseText + keep-all/auto-phrase CSS); short labels stay one line; phone HUD ride/direction wrap to 2 lines in a constant 34px reservation at 15px, labels 13px. Presentation only.
+- Branch: feature/text-wrapping (from develop a375384, v0.13.0)
+- Plan: .claude/docs/plans/text-wrapping-plan.md (Revision 3 lean); handoff: text-wrapping-handoff.md; prompts: text-wrapping-prompts.md
+- Research: .claude/docs/research/feature-text-wrapping-readability-{brief,codebase}.md
+- Dependencies: none new
+- Complexity: COMPLEX (8 steps)
+
+### Architecture
+
+- PhraseText returns string slices + <wbr>; title/aria/live-region/save/share strings unchanged.
+- Phone stats rows 18/34/34/18px; action margin 4→2px, inventory margin 4→0px → 252px at 320x568 (cap 255.6px).
+- Desktop and short-landscape HUD unchanged; arrival banner, toasts, title resume button unchanged.
+
+### Decisions
+
+- Scope all of #70 in one PR; phone HUD 2-line wrap, not tap-to-expand (user 2026-11-10).
+- Lean test scope over the 20-unit validated plan (user 2026-11-10).
+- Pause after every step; implementer Codex Luna xhigh, lead verifies (user 2026-11-10).
