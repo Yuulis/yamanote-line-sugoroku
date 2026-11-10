@@ -113,12 +113,19 @@ async function collectTextLayout(locator: Locator, includeLineHeight: boolean): 
       ancestor = ancestor.parentElement;
     }
 
+    // Glyph rects can extend a fraction of a pixel past their line box (Firefox paints the
+    // font content area, not the line box), so a sub-pixel overlap with a clip is not a visible glyph.
+    const PAINT_TOLERANCE = 1;
+    const overlaps = (start: number, end: number, clipStart: number, clipEnd: number): boolean =>
+      Math.min(end, clipEnd) - Math.max(start, clipStart) > PAINT_TOLERANCE;
+    const within = (start: number, end: number, clipStart: number, clipEnd: number): boolean =>
+      start >= clipStart - PAINT_TOLERANCE && end <= clipEnd + PAINT_TOLERANCE;
     const intersects: (rect: DOMRect) => boolean = (rect) => clips.every((clip) =>
-      (!clip.clipX || (rect.right > clip.left && rect.left < clip.right))
-      && (!clip.clipY || (rect.bottom > clip.top && rect.top < clip.bottom)));
+      (!clip.clipX || overlaps(rect.left, rect.right, clip.left, clip.right))
+      && (!clip.clipY || overlaps(rect.top, rect.bottom, clip.top, clip.bottom)));
     const contained: (rect: DOMRect) => boolean = (rect) => clips.every((clip) =>
-      (!clip.clipX || (rect.left >= clip.left && rect.right <= clip.right))
-      && (!clip.clipY || (rect.top >= clip.top && rect.bottom <= clip.bottom)));
+      (!clip.clipX || within(rect.left, rect.right, clip.left, clip.right))
+      && (!clip.clipY || within(rect.top, rect.bottom, clip.top, clip.bottom)));
     const lineCount: (tops: number[]) => number = (tops) => {
       const ordered: number[] = tops.sort((first, second) => first - second);
       let count: number = 0;

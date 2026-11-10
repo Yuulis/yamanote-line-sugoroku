@@ -1892,9 +1892,49 @@ button[aria-disabled="true"] {
   .game-panel__stats {
     grid-area: stats;
     grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-    grid-template-rows: repeat(4, 24px);
+    grid-template-rows: 18px 34px 34px 18px;
     gap: 0 6px;
     margin: 0;
+    --hud-row-height: 18px;
+  }
+
+  .game-panel__stats dt,
+  .game-panel__stats dd {
+    height: 18px;
+    min-height: 18px;
+    max-height: 18px;
+  }
+
+  .game-panel__stats dt {
+    line-height: 18px;
+    font-size: 13px;
+  }
+
+  .game-panel__stats dd:has(> [data-stat="ride"]),
+  .game-panel__stats dd:has(> [data-stat="direction"]) {
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    align-items: flex-start;
+  }
+
+  .game-panel__stats .hud-stat__value {
+    font-size: 15px;
+    line-height: 18px;
+  }
+
+  .game-panel__stats [data-stat="ride"],
+  .game-panel__stats [data-stat="direction"] {
+    display: -webkit-box;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 17px;
   }
 
   .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
@@ -1921,7 +1961,7 @@ button[aria-disabled="true"] {
     height: 56px;
     min-height: 56px;
     max-height: 56px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     align-items: stretch;
     align-content: start;
   }
@@ -1951,7 +1991,7 @@ button[aria-disabled="true"] {
     font-size: 12px;
   }
 
-  .item-inventory { grid-area: inventory; margin: 0 0 4px; }
+  .item-inventory { grid-area: inventory; margin: 0; }
   .item-inventory__label { margin: 0 0 2px; padding: 0; line-height: 16px; }
   .item-staged-summary { grid-area: staged; margin: 0 0 4px; padding: 2px 2px 2px 8px; }
   .game-panel .effect-chips {
