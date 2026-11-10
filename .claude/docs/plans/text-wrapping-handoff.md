@@ -26,4 +26,4 @@ Resume from here. Plan: `.claude/docs/plans/text-wrapping-plan.md` (Revision 3 l
 
 ## Next
 
-All 8 steps done. Next: open the PR `feature/text-wrapping` → `develop` (closes #70) after user approval; rename the release note when the version is decided.
+Released 2026-11-10: #79 and #80 merged into develop, #81 merged into master (e3c5d88); production checks passed; GitHub Release v0.13.1 created by the user. Issue #70 closes via #79. Feature complete. Issues #60–#63 re-checked and rewritten the same day (`.claude/docs/research/issue-60-63-review.md`, drafts in `issue-60-63-drafts/`); recommended next: #62 quick win (direction labels to termini + 30/30 「あとは新橋」 guidance).
