@@ -741,12 +741,20 @@ button[aria-disabled="true"] {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.5;
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
 .game-panel__route-summary {
   margin-top: 6px;
   font-size: 12px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.game-panel__candidates {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .game-panel__route-summary h2 {
@@ -1194,6 +1202,18 @@ button[aria-disabled="true"] {
   text-align: center;
 }
 
+.clear-screen__summary,
+.clear-screen__history li,
+.clear-screen .item-event-notice [role="status"] {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.clear-screen__summary,
+.clear-screen .item-event-notice [role="status"] {
+  line-height: 1.5;
+}
+
 .clear-screen__save-warning {
   margin: 8px 0;
   padding: 6px 10px;
@@ -1232,6 +1252,7 @@ button[aria-disabled="true"] {
 .clear-screen__history li {
   padding: 2px 0;
   border-bottom: 1px solid #eeeeee;
+  line-height: 1.45;
 }
 
 .clear-screen__turn {
@@ -1358,6 +1379,7 @@ button[aria-disabled="true"] {
   border: 1px solid var(--color-brand);
   border-radius: var(--radius-sm);
   background: var(--color-brand-tint);
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
@@ -1579,6 +1601,16 @@ button[aria-disabled="true"] {
 }
 
 @supports (word-break: auto-phrase) {
+  .game-panel__lottery,
+  .game-panel__route-summary,
+  .game-panel__candidates,
+  .item-staged-summary,
+  .clear-screen__summary,
+  .clear-screen__history li,
+  .clear-screen .item-event-notice [role="status"] {
+    word-break: auto-phrase;
+  }
+
   .item-dialog__hint,
   .item-route-option__copy,
   .item-route-option__name,

@@ -33,6 +33,7 @@ import { DiscardChoice } from "./DiscardChoice";
 import { TurnLogDrawer } from "./TurnLogDrawer";
 import { useGameShortcuts } from "../useGameShortcuts";
 import { useAutoRoll } from "../useAutoRoll";
+import { PhraseText } from "./PhraseText";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -279,9 +280,9 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           />}
           {draftItem && itemView && <div className="item-staged-summary">
             <span className="item-staged-summary__label">選択中：</span>
-            <strong>{ITEM_DESCRIPTIONS[draftItem.kind].name}</strong>
-            {draftItem.kind === "route-ticket" && <span>（{serviceName(network, draftItem.serviceId, presentation)}。向きは抽選）</span>}
-            {draftItem.kind === "direction-ticket" && <span>（{directionLabel(network, itemView.position.currentServiceId, draftItem.direction)}）</span>}
+            <strong><PhraseText text={ITEM_DESCRIPTIONS[draftItem.kind].name} /></strong>
+            {draftItem.kind === "route-ticket" && <span><PhraseText text={`（${serviceName(network, draftItem.serviceId, presentation)}。向きは抽選）`} /></span>}
+            {draftItem.kind === "direction-ticket" && <span><PhraseText text={`（${directionLabel(network, itemView.position.currentServiceId, draftItem.direction)}）`} /></span>}
             <button type="button" onClick={clearDraft} disabled={phase !== "idle" || turnDisplay.itemUseLocked}>選択を解除</button>
             <span className="visually-hidden">Escapeキーで選択を解除できます。</span>
           </div>}
@@ -318,7 +319,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onExpandedChange={setLogExpanded}
           arrival={itemView ? turnDisplay.arrivalText : null}
           roll={turnDisplay.rollText}
-          lottery={<p className="game-panel__lottery"><span>抽選: </span>{turnDisplay.lotteryDisplayText}</p>}
+          lottery={<p className="game-panel__lottery"><span>抽選: </span><PhraseText text={turnDisplay.lotteryDisplayText} /></p>}
           notice={itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
             view={itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation} showEffects={false}
           /> : null}
@@ -328,21 +329,21 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
             <section aria-label="山手線の未踏破区間">
               <h2>山手線の未踏破区間（{remainingSections.length}）</h2>
               {remainingSections.length > 0 ? (
-                <ol>{remainingSections.map((section) => <li key={section.id}>{section.from} → {section.to}</li>)}</ol>
+                <ol>{remainingSections.map((section) => <li key={section.id}><PhraseText text={`${section.from} → ${section.to}`} /></li>)}</ol>
               ) : <p>未踏破区間はありません。</p>}
             </section>
             <section aria-label="乗車中の次の駅">
               <h2>乗車中の次の駅</h2>
-              <p>{serviceName(network, ride.serviceId, presentation)}・{directionLabel(network, ride.serviceId, ride.direction)}</p>
+              <p><PhraseText text={`${serviceName(network, ride.serviceId, presentation)}・${directionLabel(network, ride.serviceId, ride.direction)}`} /></p>
               {upcomingStations.length > 0 ? (
-                <ol>{upcomingStations.map((stationId) => <li key={stationId}>{stationName(network, stationId, presentation)}</li>)}</ol>
+                <ol>{upcomingStations.map((stationId) => <li key={stationId}><PhraseText text={stationName(network, stationId, presentation)} /></li>)}</ol>
               ) : <p>この路線に次の駅はありません。</p>}
             </section>
           </details>}
           candidates={turnDisplay.candidateDrawSlotCount > LOTTERY_INLINE_LIMIT ? (
             <details className="game-panel__candidates" key={game.turn}>
               <summary>抽選候補をすべて表示（{turnDisplay.candidateDrawSlotCount}抽選枠）</summary>
-              <ul>{candidates.map((row) => <li key={row.groupId}>{row.label}</li>)}</ul>
+              <ul>{candidates.map((row) => <li key={row.groupId}><PhraseText text={row.label} /></li>)}</ul>
             </details>
           ) : null}
         />

@@ -16,10 +16,10 @@ Resume from here. Plan: `.claude/docs/plans/text-wrapping-plan.md` (Revision 3 l
 | 3 PhraseText | done | (this commit) | Luna xhigh 512 s; `phraseBreakOffsets` + `PhraseText` (Intl.Segmenter grapheme guard); lead hand-checked all 15 expected offsets; typecheck ok, unit 15/15; Codex full vitest 1,993 passed |
 | 4 HUD + LineBadge | done | (this commit) | First Luna run killed by session end (partial edits, empty report; CSS used wrong `text-wrap: auto-phrase`); resumed run fixed it to `word-break: auto-phrase` (272 s). Lottery reveal name stays nowrap ellipsis (`.lottery-reveal .line-badge__name`). Codex: vitest 1,995 passed, chromium 14 + firefox 2 E2E. Lead: typecheck ok, unit 52/52, phone HUD E2E 2/2; CI run 42755060413 green on 06b4733 (all 4 E2E legs; also covers step 3, whose run was cancelled by the newer push) |
 | 5 dialogs + clear screen | done | (this commit) | Luna xhigh 1457 s. Lead fixes: removed out-of-plan nowrap on `.game-panel__legend-operator label` (every legend line name; long names would overflow at 320px); layout.ts stops ancestor clipping at top-layer elements (`:modal, :popover-open`) so 1280px modal buttons use `expectSingleLine` instead of Codex's nowrap-only workaround. Lead: typecheck ok, unit 102/102, chromium desktop+phone 14/14 (incl. legend/adjust regressions), firefox spec 5/5. `ticket card opens` grep in the plan matches no test title |
-| 6 GamePanel | pending | | |
+| 6 GamePanel + clear screen | done | (this commit) | Luna xhigh 1230 s. Scope addition (user 2026-11-10): clear-screen summary + history get PhraseText; the goal-turn sentence comes from `ItemEventNotice` (live region) so it gets phrase CSS only. Codex: vitest 1,995 passed, chromium 4 + 6 regression, firefox 2. Lead: typecheck ok, full spec chromium desktop+phone 12/12, firefox 6/6 |
 | 7 longest real data + fallback | pending | | |
 | 8 regression + release note | pending | | |
 
 ## Next
 
-Step 6 (GamePanel related displays) — wait for user go-ahead.
+Justify experiment (user 2026-11-10): compare `text-align: justify` on long multi-line prose only (dialog hints, option guidance, clear-screen summary/history) gated by a container width of about 20+ characters per line; screenshots at 320/390/1280 with and without, plus max extra inter-character spacing per line (threshold 0.1em). User decides adoption. Then Step 7.

@@ -9,6 +9,7 @@ import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
 import { itemHistoryText, directionLabel, landingTransitionText, serviceName, stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
 import { trackEvent } from "../../analytics/analytics";
+import { PhraseText } from "./PhraseText";
 
 interface ClearScreenProps {
   game: GameState | ItemGameState;
@@ -69,7 +70,7 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
       <h1 ref={headingRef} id="clear-title" className="clear-screen__title" tabIndex={-1}>
         クリア！
       </h1>
-      <p>山手線の外回り全30区間を踏破し、{goalName}に戻りました。</p>
+      <p className="clear-screen__summary"><PhraseText text={`山手線の外回り全30区間を踏破し、${goalName}に戻りました。`} /></p>
       {saveStatus !== "saved" && (
         <p className="clear-screen__save-warning" role="alert">
           セーブ: {saveStatusMessage(saveStatus)}。再読み込みするとこのクリアは残りません。
@@ -87,16 +88,15 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
       <h2 className="clear-screen__subtitle">移動履歴</h2>
       <ol ref={historyRef} className="clear-screen__history">
         {game.movementHistory.slice(currentPage * HISTORY_PAGE_SIZE, (currentPage + 1) * HISTORY_PAGE_SIZE).map((record) => {
-          if ("kind" in record) return <li key={record.turn}>{itemHistoryText(record, network, presentation)}</li>;
+          if ("kind" in record) return <li key={record.turn}><PhraseText text={itemHistoryText(record, network, presentation)} /></li>;
           const note = earlyStopNote(record, (id) => presentation.serviceStationName(record.serviceId, id), endpointKindAt(network, record.serviceId, record.toStationId));
           const transition = landingTransitionText(record, network, presentation);
           return (
             <li key={record.turn}>
-              <span className="clear-screen__turn">{record.turn}ターン目</span> 出目{record.roll}：
-              {presentation.serviceStationName(record.serviceId, record.fromStationId)} → {presentation.serviceStationName(record.serviceId, record.toStationId)}
-              （{serviceName(network, record.serviceId, presentation)}・{directionLabel(network, record.serviceId, record.direction)}）
-              {transition && ` → ${transition}`}
-              {note !== null && `（${note}）`}
+              <span className="clear-screen__turn">{record.turn}ターン目</span>{" "}
+              <PhraseText text={`出目${record.roll}：${presentation.serviceStationName(record.serviceId, record.fromStationId)} → ${presentation.serviceStationName(record.serviceId, record.toStationId)}（${serviceName(network, record.serviceId, presentation)}・${directionLabel(network, record.serviceId, record.direction)}）`} />
+              {transition && <PhraseText text={` → ${transition}`} />}
+              {note !== null && <PhraseText text={`（${note}）`} />}
             </li>
           );
         })}

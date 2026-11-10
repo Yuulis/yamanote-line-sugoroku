@@ -49,7 +49,7 @@ Forbidden throughout: engine, RNG, save schema/version or persistence logic, `sr
 | Arrival banner station | Unchanged; 28px, one-line ellipsis. Regression check placement and containment |
 | Toasts | Unchanged; regression check viewport containment |
 | Title-screen resume button | Unchanged; regression check long saved-station label at 320px |
-| Clear history | Unchanged text/wrapping/pagination semantics; regression check multi-page history and containment |
+| Clear-screen summary sentences and history entries | **Improve now (user 2026-11-10, added to Step 6)**: PhraseText + phrase CSS; text, pagination and share strings unchanged. Reason: the goal-turn sentence broke mid-word (「1駅移/動」「到/着」) at 320px |
 
 ## 2. Architecture and execution contract
 

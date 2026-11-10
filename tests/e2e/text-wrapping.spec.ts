@@ -40,6 +40,11 @@ const DIALOG_VIEWPORTS = [
   { width: 1280, height: 800 },
 ] as const;
 const CLEAR_SCREEN_VIEWPORT = { width: 320, height: 568 } as const;
+const CLEAR_HISTORY_PAGE_COUNT = 5;
+const CLEAR_SCREEN_SUMMARY_TEXT = "山手線の外回り全30区間を踏破し、新橋に戻りました。";
+const CLEAR_SCREEN_GOAL_ANNOUNCEMENT = "96ターン目：出目3（3マス、1駅移動、残り2は使わず）、新橋に到着。ゴールに到着しました。踏破 30/30";
+const CLEAR_SCREEN_GOAL_HISTORY = "96ターン目 出目3（3マス、1駅移動、残り2は使わず）：有楽町・日比谷 → 新橋（山手線・外回り）。ゴールに到着しました";
+const PANEL_CANDIDATE_MINIMUM = 5;
 const PHONE_HUD_STATS_ROWS = [
   `${PHONE_HUD_LABEL_HEIGHT_PX}px`,
   `${PHONE_HUD_TWO_LINE_HEIGHT_PX}px`,
@@ -82,15 +87,32 @@ async function restoreGame(page: Page, game: ItemGameState): Promise<void> {
   await expect(gamePanel(page)).toBeVisible();
 }
 
-function completedHistoryGame(bundle: RailwayBundle): ItemGameState {
+interface CompletedHistoryScenario {
+  beforeFinalTurn: ItemGameState;
+  completedGame: ItemGameState;
+}
+
+function completedHistoryGame(bundle: RailwayBundle): CompletedHistoryScenario {
   let game: ItemGameState = createProductGame(ITEM_GAME_CONFIG, PRODUCT_HISTORY_GAME_SEED, bundle.network);
+  let beforeFinalTurn: ItemGameState = game;
   while (game.status === "playing" && game.turn < PRODUCT_HISTORY_SCENARIO_TURNS.completed) {
+    beforeFinalTurn = game;
     game = playProductTurn(game, bundle.network).state;
   }
   if (game.status !== "completed" || game.turn !== PRODUCT_HISTORY_SCENARIO_TURNS.completed) {
     throw new Error("Expected the product history game to reach its verified clear state");
   }
-  return game;
+  return { beforeFinalTurn, completedGame: game };
+}
+
+function panelCandidateGame(bundle: RailwayBundle): ItemGameState {
+  let game: ItemGameState = createProductGame(ITEM_GAME_CONFIG, PRODUCT_HISTORY_GAME_SEED, bundle.network);
+  while (game.status === "playing" && game.turn < PRODUCT_HISTORY_SCENARIO_TURNS.completed) {
+    const result = playProductTurn(game, bundle.network);
+    game = result.state;
+    if ((result.record.landingSnapshot?.services.length ?? 0) >= PANEL_CANDIDATE_MINIMUM) return game;
+  }
+  throw new Error("Expected the product history trajectory to reach a multi-candidate station");
 }
 
 async function expectNoHorizontalOverflow(locator: Locator): Promise<void> {
@@ -400,16 +422,32 @@ test("dialog wrapping", async ({ page, railwayBundle }) => {
 });
 
 test("clear-screen wrapping", async ({ page, railwayBundle }) => {
-  const completedGame: ItemGameState = completedHistoryGame(railwayBundle);
+  const { beforeFinalTurn, completedGame } = completedHistoryGame(railwayBundle);
+  expect(completedGame.turn).toBe(PRODUCT_HISTORY_SCENARIO_TURNS.completed);
   await page.setViewportSize(CLEAR_SCREEN_VIEWPORT);
   await page.goto("/");
-  await writeSaveText(page, serializeGame(completedGame));
+  await writeSaveText(page, serializeGame(beforeFinalTurn));
   await page.reload();
-  await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await diceButton(page).click();
 
   const clearScreen: Locator = page.getByRole("region", { name: "クリア！" });
   const historyItems: Locator = clearScreen.locator(".clear-screen__history li");
   const paging: Locator = clearScreen.getByRole("navigation", { name: "移動履歴のページ" });
+  const summaryParagraph: Locator = clearScreen.locator(".clear-screen__summary");
+  const goalAnnouncement: Locator = clearScreen.locator(".item-event-notice [role=status]");
+  await expect(clearScreen).toBeVisible();
+  await expect(summaryParagraph).toHaveText(CLEAR_SCREEN_SUMMARY_TEXT);
+  const summaryLayout = await measureTextLayout(summaryParagraph);
+  expect(summaryLayout.hintOffsets.length).toBeGreaterThan(0);
+  expect(summaryLayout.text).toBe(CLEAR_SCREEN_SUMMARY_TEXT);
+  expect(summaryLayout.widthFits).toBe(true);
+  await expect(goalAnnouncement).toHaveText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT);
+  const goalAnnouncementWordBreak: string = await goalAnnouncement.evaluate(() =>
+    CSS.supports("word-break", "auto-phrase") ? "auto-phrase" : "keep-all",
+  );
+  await expect(goalAnnouncement).toHaveCSS("word-break", goalAnnouncementWordBreak);
+  await expectNoHorizontalOverflow(goalAnnouncement);
   await expect(historyItems).toHaveCount(20);
   await expect(historyItems.first()).toContainText("1ターン目");
   await expectButtonsSingleLine(paging.getByRole("button"));
@@ -428,10 +466,64 @@ test("clear-screen wrapping", async ({ page, railwayBundle }) => {
   await expect(historyItems.first()).toContainText("1ターン目");
   await expect(paging.getByRole("status")).toHaveText("1 / 5ページ");
 
+  for (let pageIndex: number = 1; pageIndex < CLEAR_HISTORY_PAGE_COUNT; pageIndex += 1) {
+    await paging.getByRole("button", { name: "次のページ", exact: true }).click();
+  }
+  await expect(paging.getByRole("status")).toHaveText("5 / 5ページ");
+  const goalHistoryEntry: Locator = historyItems.last();
+  const goalHistoryLayout = await measureTextLayout(goalHistoryEntry);
+  expect(goalHistoryLayout.hintOffsets.length).toBeGreaterThan(0);
+  expect(goalHistoryLayout.text).toBe(CLEAR_SCREEN_GOAL_HISTORY);
+  expect(goalHistoryLayout.widthFits).toBe(true);
+  await expectNoHorizontalOverflow(goalHistoryEntry);
+
   await expectButtonsSingleLine(clearScreen.locator(
     ".clear-screen__actions button, .clear-screen__share button, .clear-screen__paging button",
   ));
   await expectNoHorizontalOverflow(clearScreen);
+  await expectPageNoHorizontalOverflow(page);
+});
+
+test("panel wrapping", async ({ page, railwayBundle }) => {
+  const routeGame: ItemGameState = itemScenario("route", railwayBundle.network);
+  await page.setViewportSize(NARROW_PHONE_VIEWPORT);
+  await restoreGame(page, routeGame);
+  await useInventoryItem(page, "路線指定券");
+
+  const routeDialog: Locator = page.getByRole("dialog", { name: "乗る路線を選ぶ", exact: true });
+  await routeDialog.getByRole("radio").first().check();
+  await routeDialog.getByRole("button", { name: "この路線に決める", exact: true }).click();
+
+  const panel: Locator = gamePanel(page);
+  const stagedSummary: Locator = panel.locator(".item-staged-summary");
+  await expect(stagedSummary).toBeVisible();
+  expect(await stagedSummary.locator("wbr").count()).toBeGreaterThan(0);
+  await expectNoHorizontalOverflow(stagedSummary);
+
+  await restoreGame(page, panelCandidateGame(railwayBundle));
+  await panel.getByRole("button", { name: "ログ", exact: true }).click();
+  const lotteryText: Locator = panel.locator(".game-panel__lottery");
+  await expect(lotteryText).toBeVisible();
+  const lotteryLayout = await measureTextLayout(lotteryText);
+  expect(lotteryLayout.hintOffsets.length).toBeGreaterThan(0);
+  expect(lotteryLayout.widthFits).toBe(true);
+
+  const routeSummary: Locator = panel.locator(".game-panel__route-summary");
+  await routeSummary.locator("summary").click();
+  await expect(routeSummary.locator("section[aria-label='乗車中の次の駅']")).toBeVisible();
+  const routeRows: Locator = routeSummary.locator("section[aria-label='乗車中の次の駅'] li");
+  await expect(routeRows.first()).toBeVisible();
+  expect(await routeSummary.locator("li wbr").count()).toBeGreaterThan(0);
+  await expectNoHorizontalOverflow(routeSummary);
+
+  const candidates: Locator = panel.locator(".game-panel__candidates");
+  await expect(candidates).toBeVisible();
+  await candidates.locator("summary").click();
+  await expect(candidates.locator("li").first()).toBeVisible();
+  expect(await candidates.locator("li wbr").count()).toBeGreaterThan(0);
+  await expectNoHorizontalOverflow(candidates);
+
+  await expectNoHorizontalOverflow(panel);
   await expectPageNoHorizontalOverflow(page);
 });
 
