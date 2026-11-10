@@ -51,6 +51,39 @@ function progressFor(session: GameSession) {
   return displayedProgress(sessionProgress(session), network, null);
 }
 
+function sessionWithTargetCompletionInHistory(): GameSession {
+  const session = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, 121);
+  const requiredIds = targetSegmentIds(session.game.config, network);
+  const movementHistory = [...requiredIds].reverse().map((segmentId, index) => {
+    const segment = network.segmentsById.get(segmentId)!;
+    return {
+      turn: index + 1,
+      roll: 1,
+      serviceId: segment.serviceId,
+      direction: LEGACY_CAPITAL_REGION_CONFIG.targetDirection,
+      fromStationId: segment.from,
+      toStationId: segment.to,
+      traversedSegmentIds: [segmentId],
+      stopReason: "roll" as const,
+      landing: null,
+    };
+  });
+  const finalRecord = movementHistory.at(-1)!;
+  return {
+    ...session,
+    game: {
+      ...session.game,
+      status: "playing",
+      turn: movementHistory.length,
+      currentStationId: finalRecord.toStationId,
+      currentServiceId: LEGACY_CAPITAL_REGION_CONFIG.targetServiceId,
+      direction: LEGACY_CAPITAL_REGION_CONFIG.targetDirection,
+      completedSegmentIds: [...requiredIds],
+      movementHistory,
+    },
+  };
+}
+
 describe("shared turn moment publication", () => {
   const before = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, 21);
   const moved = reduceGameSession(before, {
@@ -114,11 +147,13 @@ describe("shared turn moment publication", () => {
       expect(display.arrivalText).toBe("1ターン目：品川に到着。踏破 4/30");
       expect(display.lotteryText).toBe("—");
       expect(display.candidateRows).toEqual([]);
+      expect(display.markerBearing).toBeCloseTo(225.61, 1);
       expect(display.showClear).toBe(false);
     }
     const display = deriveTurnMomentDisplay({ session: completed, network, presentation: resolver, progress: progressFor(completed),
       attempt, revealStage: "done", restoredOrOmitted: false });
     expect(display.ride).toEqual({ serviceId: "fixture-south", direction: 1 });
+    expect(display.markerBearing).toBeCloseTo(194.46, 1);
     expect(display.phase).toBe("published");
     expect(display.progress.position).toEqual([139.741535, 35.628135]);
     expect(display.rollText).toBe("4");
@@ -267,6 +302,81 @@ describe("shared turn moment publication", () => {
     expect(display.lotteryText).toBe("品川：山手線・テスト南線から抽選 → テスト南線 ／ 乗車方向は大森方面のみ");
     expect(display.showClear).toBe(false);
   });
+
+  it("uses the revealed ride for its heading and falls back to the incoming direction at an endpoint", () => {
+    const target = deriveTurnMomentDisplay({
+      session: before, network, presentation: resolver, progress: progressFor(before),
+      attempt: attemptFor(before, "waiting-roll"), revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(target.markerBearing).toBeCloseTo(184.55, 1);
+
+    const endpointSession: GameSession = {
+      ...before,
+      game: { ...before.game, currentStationId: "fixture-omori", currentServiceId: "fixture-south", direction: 1 },
+    };
+    const endpointProgress = progressFor(endpointSession);
+    const endpoint = deriveTurnMomentDisplay({
+      session: endpointSession, network, presentation: resolver, progress: endpointProgress,
+      attempt: null, revealStage: "waiting", restoredOrOmitted: true,
+    });
+    expect(endpoint.markerBearing).toBeCloseTo(196.73, 1);
+  });
+});
+
+describe("shared map guidance publication", () => {
+  const session = sessionWithTargetCompletionInHistory();
+  const requiredIds = targetSegmentIds(session.game.config, network);
+  const lastRequiredSegment = network.segmentsById.get(requiredIds[0]!)!;
+  const crossingAttempt: RollAttempt = {
+    ...attemptFor(session, "waiting-roll"),
+    recordTurn: requiredIds.length,
+    origin: {
+      ...attemptFor(session).origin,
+      stationId: lastRequiredSegment.from,
+      ride: { serviceId: lastRequiredSegment.serviceId, direction: 1 },
+      completedSegmentIds: requiredIds.slice(1),
+      turn: requiredIds.length - 1,
+    },
+  };
+
+  it("withholds a new 30/30 guidance crossing before arrival and publishes it at arrival", () => {
+    const preMove = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: crossingAttempt, revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(preMove.goalGuidance).toBeNull();
+
+    const movingSession = { ...session, phase: "animating" as const };
+    const moving = deriveTurnMomentDisplay({
+      session: movingSession, network, presentation: resolver,
+      progress: { ...progressFor(session), stepsCompleted: 1 },
+      attempt: { ...crossingAttempt, stage: "released" }, revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(moving.goalGuidance).toBeNull();
+
+    const arrival = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: { ...crossingAttempt, stage: "released" }, revealStage: "arrival", restoredOrOmitted: false,
+    });
+    expect(arrival.goalGuidance).toEqual({ stationId: "shimbashi", stationName: "新橋", text: "新橋に着けばクリア" });
+    // "重要なときだけ" publishes the arrival through segment-flash instead of the arrival stage.
+    const flash = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: { ...crossingAttempt, stage: "released" }, revealStage: "segment-flash", restoredOrOmitted: false,
+    });
+    expect(flash.phase).toBe("segment-flash");
+    expect(flash.goalGuidance).toEqual({ stationId: "shimbashi", stationName: "新橋", text: "新橋に着けばクリア" });
+  });
+
+  it("retains published guidance during a later move", () => {
+    const laterMove = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: { ...attemptFor(session, "waiting-roll"), recordTurn: session.game.turn + 1 },
+      revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(laterMove.phase).toBe("pre-move");
+    expect(laterMove.goalGuidance).toEqual({ stationId: "shimbashi", stationName: "新橋", text: "新橋に着けばクリア" });
+  });
 });
 
 describe("S12 arrival and goal publication", () => {
@@ -275,7 +385,7 @@ describe("S12 arrival and goal publication", () => {
   const goalState = playItemTurn(base, { command: { items: [{ kind: "rapid", instanceId: ticket.id }] } }, network).state;
   const origin = resumeSession(base, network, 81);
   const goal = resumeSession(goalState, network, 81);
-  const derive = (session: GameSession, revealStage: "waiting" | "arrival" | "done") => deriveTurnMomentDisplay({
+  const derive = (session: GameSession, revealStage: "waiting" | "arrival" | "segment-flash" | "done") => deriveTurnMomentDisplay({
     session, network, presentation: resolver, progress: progressFor(session), attempt: attemptFor(origin, "released"),
     revealStage, restoredOrOmitted: false, itemView: itemSessionView(session, network),
   });
@@ -318,7 +428,9 @@ describe("S12 arrival and goal publication", () => {
     expect(arrival.canRoll).toBe(false);
     expect(arrival.itemUseLocked).toBe(true);
     expect(arrival.canSkip).toBe(true);
+    expect(arrival.goalGuidance).toBeNull();
     expect(arrival.announcement).toBe("8ターン目：新橋に到着。踏破 30/30");
+    expect(derive(goal, "segment-flash").goalGuidance).toBeNull();
     expect(arrival.clearAnnouncement).toBe("");
     expect(arrival.toastInputs).toEqual([]);
 

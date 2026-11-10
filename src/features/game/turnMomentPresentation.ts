@@ -1,6 +1,6 @@
 import type { Direction } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
-import { platformPosition, targetSegmentIds } from "./engine";
+import { isItemSave, platformPosition, targetSegmentIds } from "./engine";
 import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { segmentFlashFeatureIds, type TurnRevealStageKey, type RollAttempt } from "./animation/turnMoments";
@@ -11,6 +11,7 @@ import type { PresentationResolver } from "./presentationResolver";
 import type { ItemSessionView } from "./itemSession";
 import { turnToasts, type ToastInput } from "./toastQueue";
 import { maskTurnMomentItemView } from "./turnMomentItems";
+import { displayedHeading, firstTargetCompletionTurn, type GoalGuidance } from "./mapGuidance";
 
 export type TurnPublicationPhase = "pre-move" | "moving" | TurnRevealStageKey | "published";
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
@@ -40,6 +41,8 @@ export interface TurnMomentDisplay {
   turn: number;
   progress: DisplayedProgress;
   ride: Readonly<{ serviceId: string; direction: Direction }>;
+  markerBearing: number | null;
+  goalGuidance: GoalGuidance | null;
   compactRoll: string;
   rollText: string;
   arrivalText: string | null;
@@ -168,6 +171,28 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const completedIds = new Set(progress.completedSegmentIds);
   const completedCount = targetIds.filter((id) => completedIds.has(id)).length;
   const requiredCount = targetIds.length;
+  const goal = input.session.game.status === "completed";
+  const historicalRecords = input.session.game.movementHistory.map(({ turn: recordTurn, traversedSegmentIds }) => ({
+    turn: recordTurn,
+    traversedSegmentIds,
+  }));
+  const pendingDiscardRecord = isItemSave(input.session.game) && input.session.game.pending?.kind === "discard"
+    ? input.session.game.pending.record : null;
+  const completionRecords = pendingDiscardRecord
+    ? [...historicalRecords, pendingDiscardRecord]
+    : historicalRecords;
+  const firstCompletionTurn = firstTargetCompletionTurn(completionRecords, targetIds);
+  const publicationTurn = attempt?.recordTurn ?? current?.itemRecord?.turn ?? input.session.game.turn;
+  const completionArrivalPublished = !isBeforeArrival;
+  const goalGuidancePublished = firstCompletionTurn !== null && (
+    firstCompletionTurn < publicationTurn || (firstCompletionTurn === publicationTurn && completionArrivalPublished)
+  );
+  const goalStationId = input.session.game.config.startStationId;
+  const goalStationName = input.presentation.stationName(goalStationId);
+  const goalGuidance: GoalGuidance | null = goalGuidancePublished && !(goal && completionArrivalPublished)
+    ? { stationId: goalStationId, stationName: goalStationName, text: `${goalStationName}に着けばクリア` }
+    : null;
+  const markerBearing = displayedHeading(progress, ride, input.network);
   const arrivalText = isBeforeArrival || !current ? null : arrivalLogText(
     current.itemRecord?.turn ?? input.session.game.turn,
     current,
@@ -183,7 +208,6 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const candidateMove = lotteryPublished ? current : previousLastMove(input);
   const candidateRows = visibleCandidates(candidateMove, input.presentation);
   const candidateDrawSlotCount = candidateMove?.landing?.serviceCandidates.length ?? 0;
-  const goal = input.session.game.status === "completed";
   const showClear = goal && isPublished;
   const liveView = input.itemView ?? null;
   const preMoveActive = Boolean(attempt && PRE_MOVE_STAGES.has(attempt.stage));
@@ -242,6 +266,8 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
       : current?.itemRecord?.turn ?? input.session.game.turn,
     progress,
     ride,
+    markerBearing,
+    goalGuidance,
     compactRoll,
     rollText,
     arrivalText,
