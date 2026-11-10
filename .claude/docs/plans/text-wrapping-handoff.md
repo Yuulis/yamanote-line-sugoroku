@@ -22,4 +22,4 @@ Resume from here. Plan: `.claude/docs/plans/text-wrapping-plan.md` (Revision 3 l
 
 ## Next
 
-Justify experiment (user 2026-11-10): compare `text-align: justify` on long multi-line prose only (dialog hints, option guidance, clear-screen summary/history) gated by a container width of about 20+ characters per line; screenshots at 320/390/1280 with and without, plus max extra inter-character spacing per line (threshold 0.1em). User decides adoption. Then Step 7.
+Justify experiment done 2026-11-10: rejected by the user (left-aligned stays; DESIGN.md row; evidence .claude/logs/justify-experiment/report.md, screenshots .claude/logs/screenshots/ttw-justify/). Next: Step 7 (longest real data + fallback) — user approved.
