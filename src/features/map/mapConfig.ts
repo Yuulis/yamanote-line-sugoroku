@@ -66,10 +66,7 @@ export const LAYER_IDS = {
   /** Every other station name, from LABEL_ORDINARY_MIN_ZOOM up. */
   stationLabelsOrdinary: "railway-stations-label-ordinary",
   currentPosition: "game-current-position-circle",
-  currentPositionHeading: "game-current-position-heading",
 } as const;
-
-export const HEADING_SDF_IMAGE_ID = "game-current-position-heading-sdf";
 
 export const FALLBACK_LINE_COLOR = "#80c241";
 export const SEGMENT_LINE_WIDTH = 5;
@@ -106,8 +103,6 @@ export const CURRENT_POSITION_RADIUS = 10;
 export const CURRENT_POSITION_COLOR = "#e53935";
 export const CURRENT_POSITION_STROKE_COLOR = "#ffffff";
 export const CURRENT_POSITION_STROKE_WIDTH = 3;
-export const CURRENT_POSITION_HEADING_HALO_WIDTH = 1.5;
-export const HEADING_SDF_SIZE = 32;
 /** A station served by at least this many services is a transfer station. */
 export const TRANSFER_MIN_SERVICES = 2;
 /** Below this zoom only transfer and target-line stations are marked, so the lines stay readable. */

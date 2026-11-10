@@ -25,7 +25,6 @@ import { loadBundle } from "../e2e/fixtures/bundle";
 
 const bundle = await loadBundle("real");
 const TARGET = "jr-yamanote";
-const HEADING_SDF_ALPHA_EDGE = 192;
 /** About the zoom at which the whole 1都3県 network fits on screen. */
 const OVERVIEW_ZOOM = 8;
 const CLOSE_ZOOM = 14;
@@ -94,8 +93,6 @@ describe("shipped network markers", () => {
     const map = {
       addSource: vi.fn(),
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
-      hasImage: vi.fn(() => false),
-      addImage: vi.fn(),
     } as unknown as MapLibreMap;
     addRailwayLayers(map, { stations, services: [...network.servicesById.values()], targetServiceId: TARGET });
     const keyFilter = ["in", ["get", "id"], ["literal", keyStationIds(tiers)]];
@@ -122,8 +119,6 @@ describe("shipped network markers", () => {
     const map = {
       addSource: (id: string) => { sources.push(id); },
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; order.push(layer.id); },
-      hasImage: vi.fn(() => false),
-      addImage: vi.fn(),
     } as unknown as MapLibreMap;
     addRailwayLayers(map, {
       stations,
@@ -137,8 +132,8 @@ describe("shipped network markers", () => {
     const isKeyLabel = ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM];
 
     expect(sources).toEqual(["railway-segments", "railway-stations", "game-current-position"]);
-    // Step 4: 11 -> 13 layers. The casing sits below pending segments and the heading above the circle marker.
-    expect(order).toHaveLength(13);
+    // Step 4b: 11 -> 12 layers. The casing sits below pending segments; the current-position circle is last.
+    expect(order).toHaveLength(12);
     expect(order).toEqual([
       LAYER_IDS.base,
       LAYER_IDS.services,
@@ -152,7 +147,6 @@ describe("shipped network markers", () => {
       LAYER_IDS.stationLabelsOrdinary,
       LAYER_IDS.stationLabels,
       LAYER_IDS.currentPosition,
-      LAYER_IDS.currentPositionHeading,
     ]);
     expect(layers[LAYER_IDS.segmentsCompleted]?.filter).toEqual(
       ["all", ["==", ["get", "serviceId"], TARGET], ["in", ["get", "featureId"], ["literal", []]]],
@@ -176,50 +170,34 @@ describe("shipped network markers", () => {
     }
   });
 
-  it("registers a runtime SDF beak and rotates it from the marker bearing", () => {
+  it("keeps the current-position circle as the only marker style layer", () => {
     const layers: Record<string, Record<string, unknown>> = {};
-    const images: { id: string; width: number; height: number; data: Uint8Array; sdf: boolean }[] = [];
+    const sources: Record<string, { type: string; data?: unknown }> = {};
+    const addImage = vi.fn();
     const map = {
-      addSource: vi.fn(),
+      addSource: (id: string, source: { type: string; data?: unknown }) => { sources[id] = source; },
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
-      hasImage: vi.fn(() => false),
-      addImage: (id: string, image: { width: number; height: number; data: Uint8Array }, options?: { sdf?: boolean }) => {
-        images.push({ ...image, id, sdf: options?.sdf ?? false });
-      },
+      addImage,
     } as unknown as MapLibreMap;
 
     addRailwayLayers(map, { stations, services: [...network.servicesById.values()], targetServiceId: TARGET });
 
-    expect(images).toHaveLength(1);
-    expect(images[0]).toMatchObject({
-      id: "game-current-position-heading-sdf",
-      width: 32,
-      height: 32,
-      sdf: true,
+    expect(sources["game-current-position"]).toEqual({
+      type: "geojson",
+      data: { type: "FeatureCollection", features: [] },
     });
-    expect(images[0]!.data).toHaveLength(32 * 32 * 4);
-    expect(new Set(images[0]!.data).size).toBeGreaterThan(1);
-    const alphaAt = (x: number, y: number): number => images[0]!.data[(y * 32 + x) * 4 + 3]!;
-    expect(alphaAt(16, 10)).toBeGreaterThan(HEADING_SDF_ALPHA_EDGE);
-    expect(alphaAt(0, 0)).toBeLessThan(HEADING_SDF_ALPHA_EDGE);
-    expect(layers[LAYER_IDS.currentPositionHeading]).toMatchObject({
-      id: "game-current-position-heading",
-      type: "symbol",
+    expect(layers[LAYER_IDS.currentPosition]).toMatchObject({
+      type: "circle",
       source: "game-current-position",
-      filter: ["has", "bearing"],
-      layout: {
-        "icon-image": "game-current-position-heading-sdf",
-        "icon-rotate": ["get", "bearing"],
-        "icon-rotation-alignment": "map",
-        "icon-allow-overlap": true,
-        "icon-ignore-placement": true,
-      },
       paint: {
-        "icon-color": "#e53935",
-        "icon-halo-color": "#ffffff",
-        "icon-halo-width": 1.5,
+        "circle-radius": 10,
+        "circle-color": "#e53935",
+        "circle-stroke-color": "#ffffff",
+        "circle-stroke-width": 3,
       },
     });
+    expect(layers).not.toHaveProperty("game-current-position-heading");
+    expect(addImage).not.toHaveBeenCalled();
   });
 
   it("shows every station name from the same zoom as the single zero-size layer did", () => {
@@ -227,8 +205,6 @@ describe("shipped network markers", () => {
     const map = {
       addSource: vi.fn(),
       addLayer: (layer: { id: string; minzoom: number; filter: unknown }) => { layers[layer.id] = layer; },
-      hasImage: vi.fn(() => false),
-      addImage: vi.fn(),
     } as unknown as MapLibreMap;
     addRailwayLayers(map, { stations, services: [...network.servicesById.values()], targetServiceId: TARGET });
     const keyLabels = layers[LAYER_IDS.stationLabels]!;
@@ -251,8 +227,6 @@ describe("shipped network markers", () => {
     const map = {
       addSource: vi.fn(),
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
-      hasImage: vi.fn(() => false),
-      addImage: vi.fn(),
     } as unknown as MapLibreMap;
     addRailwayLayers(map, {
       stations,

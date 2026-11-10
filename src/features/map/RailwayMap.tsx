@@ -47,6 +47,7 @@ import {
   updateCurrentPosition,
   updateHighlightedService,
 } from "./railwayLayers";
+import { createHeadingMarker, type HeadingMarkerController } from "./headingMarker";
 import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
@@ -327,6 +328,7 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
   const [attempt, setAttempt] = useState(0);
   // The map instance once its layers exist, so progress can be applied to it.
   const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
+  const headingMarkerRef = useRef<HeadingMarkerController | null>(null);
   // Bumped when a replaced style forced the layers to be re-added, so the
   // progress and visibility effects below apply their state to them again.
   const [layersRevision, setLayersRevision] = useState(0);
@@ -448,13 +450,24 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
   const completedKey = completedFeatureIds?.join("\n");
   const markerBearing = displayedBearing ?? null;
   useEffect(() => {
+    if (!loadedMap) return;
+    const headingMarker = createHeadingMarker(loadedMap);
+    headingMarkerRef.current = headingMarker;
+    return () => {
+      headingMarker.remove();
+      if (headingMarkerRef.current === headingMarker) headingMarkerRef.current = null;
+    };
+  }, [loadedMap]);
+  useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, layersRevision, completedKey, targetServiceId]);
   useEffect(() => {
     if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
   }, [loadedMap, layersRevision, mapPresentationIndex, selectedGroupIds, targetServiceId]);
   useEffect(() => {
-    if (loadedMap) updateCurrentPosition(loadedMap, position, markerBearing);
+    if (!loadedMap) return;
+    updateCurrentPosition(loadedMap, position);
+    headingMarkerRef.current?.update(position, markerBearing);
   }, [loadedMap, layersRevision, position, markerBearing]);
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
 

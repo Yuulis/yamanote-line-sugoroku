@@ -112,8 +112,6 @@ describe("flash layer", () => {
     const map = {
       addSource: () => {},
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
-      hasImage: () => false,
-      addImage: () => {},
     } as unknown as MapLibreMap;
     addRailwayLayers(map, {
       geometry: railwayData.geometry.ok ? railwayData.geometry.value : undefined,

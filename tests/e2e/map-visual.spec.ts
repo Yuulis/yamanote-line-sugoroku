@@ -1,14 +1,14 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
-import { createItemGame, nextStationId, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { displayedHeading } from "../../src/features/game/mapGuidance";
 import type { ItemGameState } from "../../src/types/network";
-import { LAYER_IDS } from "../../src/features/map/mapConfig";
+import { LAYER_IDS, MAP_STYLE_URL } from "../../src/features/map/mapConfig";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { closeGameMenu, gamePanel, openGameMenu, openTitle, readHeadingPixels, readMap, startNewGame, writeSaveText } from "./support/app";
+import { closeGameMenu, gamePanel, openGameMenu, openTitle, readMap, startNewGame, writeSaveText } from "./support/app";
 
 // S6V: the 1都3県 network must stay readable. Real data, both form factors.
 test.use({ dataset: "real" });
@@ -19,11 +19,6 @@ const TARGET_SERVICE_ID = "jr-yamanote";
 const MIN_COMPLETED_YAMANOTE_SEGMENTS = 4;
 const MAX_VISUAL_GAME_TURNS = 24;
 const MAX_VISUAL_GAME_SEEDS = 512;
-const MIN_HEADING_RED_PIXELS = 80;
-const HEADING_SAMPLE_RADIUS = 18;
-const HEADING_MATCH_TOLERANCE_DEGREES = 20;
-const HEADING_ICON_CENTER = 16;
-const HEADING_ICON_POLYGON: readonly [number, number][] = [[16, 1], [27, 28], [16, 22], [5, 28]];
 /** Tokyo to Yurakucho from the public jr-yamanote platform coordinates. */
 const TOKYO_OUTER_LOOP_BEARING = 205.15;
 /** Allowed offset of the target line's centre from the free area's centre. */
@@ -167,48 +162,6 @@ function midGameWithYamanoteProgress(bundle: RailwayBundle): ItemGameState {
     }
   }
   throw new Error("No engine-generated game reached the map guidance screenshot state");
-}
-
-function sampledHeadingDirection(redPixels: readonly [number, number][]): number {
-  const redPixelSet = new Set(redPixels.map(([x, y]) => `${x},${y}`));
-  let bestDirection = 0;
-  let bestScore = Number.NEGATIVE_INFINITY;
-  for (let direction = 0; direction < 360; direction += 1) {
-    const radians = direction * Math.PI / 180;
-    const cosine = Math.cos(radians);
-    const sine = Math.sin(radians);
-    let intersection = 0;
-    let union = 0;
-    for (let y = -HEADING_SAMPLE_RADIUS; y <= HEADING_SAMPLE_RADIUS; y += 1) {
-      for (let x = -HEADING_SAMPLE_RADIUS; x <= HEADING_SAMPLE_RADIUS; x += 1) {
-        const localX = HEADING_ICON_CENTER + x * cosine + y * sine;
-        const localY = HEADING_ICON_CENTER - x * sine + y * cosine;
-        let inside = false;
-        for (let index = 0; index < HEADING_ICON_POLYGON.length; index += 1) {
-          const start = HEADING_ICON_POLYGON[index]!;
-          const end = HEADING_ICON_POLYGON[(index + 1) % HEADING_ICON_POLYGON.length]!;
-          const crossesRay = (start[1] > localY) !== (end[1] > localY);
-          if (crossesRay && localX < ((end[0] - start[0]) * (localY - start[1])) / (end[1] - start[1]) + start[0]) {
-            inside = !inside;
-          }
-        }
-        const sampledRed = redPixelSet.has(`${x},${y}`);
-        if (inside && sampledRed) intersection += 1;
-        if (inside || sampledRed) union += 1;
-      }
-    }
-    const score = intersection / union;
-    if (score > bestScore) {
-      bestDirection = direction;
-      bestScore = score;
-    }
-  }
-  return bestDirection;
-}
-
-function angularDifference(first: number, second: number): number {
-  const difference = Math.abs(first - second) % 360;
-  return Math.min(difference, 360 - difference);
 }
 
 test("the target line starts centred in the free map area and 全体 shows every platform unclipped", async ({ page, railwayBundle }) => {
@@ -407,28 +360,16 @@ test("pending guidance and heading", async ({ page, railwayBundle }, testInfo) =
   expect(expectedBearing).not.toBeNull();
   expect(expectedBearing).toBeCloseTo(TOKYO_OUTER_LOOP_BEARING, 1);
   const snapshot = await readMap(page);
-  expect(snapshot?.markerBearing).toBeCloseTo(expectedBearing!, 0);
-  const nextStation = nextStationId(railwayBundle.network, game.currentServiceId, game.currentStationId, game.direction);
-  expect(nextStation).toBeDefined();
-  const screenBearing = await page.evaluate(({ from, to }) => {
-    const map = (window as unknown as { __sugorokuE2E: { map: {
-      project(coordinates: [number, number]): { x: number; y: number };
-    } } }).__sugorokuE2E.map;
-    const start = map.project(from);
-    const end = map.project(to);
-    return (Math.atan2(end.x - start.x, start.y - end.y) * 180 / Math.PI + 360) % 360;
-  }, {
-    from: railwayBundle.network.servicesById.get(game.currentServiceId)!.platformCoordinates[game.currentStationId]!,
-    to: railwayBundle.network.servicesById.get(game.currentServiceId)!.platformCoordinates[nextStation!]!,
-  });
-  const headingPixels = await readHeadingPixels(page);
-  const renderedBearing = sampledHeadingDirection(headingPixels.redPixels);
-  expect(
-    angularDifference(renderedBearing, screenBearing),
-    `rendered beak ${renderedBearing}° should point toward the next platform at ${screenBearing}°; ` +
-      `marker bearing=${snapshot?.markerBearing}, red samples=${headingPixels.redPixels.length}`,
-  ).toBeLessThanOrEqual(HEADING_MATCH_TOLERANCE_DEGREES);
-  expect(headingPixels.redPixels.length, "the heading SDF should occupy its full rendered footprint").toBeGreaterThanOrEqual(MIN_HEADING_RED_PIXELS);
+  expect(snapshot?.markerRendered).toBe(true);
+  expect(snapshot?.headingMarker).not.toBeNull();
+  const headingMarker = snapshot!.headingMarker!;
+  expect(headingMarker.visible).toBe(true);
+  expect(headingMarker.rotation).not.toBeNull();
+  const rotationDifference = Math.abs((headingMarker.rotation! - expectedBearing! + 540) % 360 - 180);
+  expect(rotationDifference, "the DOM beak should apply the reveal-gated bearing").toBeLessThanOrEqual(1);
+  expect(headingMarker.projectedCenter).not.toBeNull();
+  expect(Math.abs(headingMarker.center.x - headingMarker.projectedCenter!.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(headingMarker.center.y - headingMarker.projectedCenter!.y)).toBeLessThanOrEqual(2);
 
   const casingPaint = await page.evaluate((layerId) => {
     const map = (window as unknown as { __sugorokuE2E: { map: {
@@ -465,8 +406,8 @@ test("pending guidance and heading", async ({ page, railwayBundle }, testInfo) =
     const snapshot = await readMap(page);
     expect(snapshot).not.toBeNull();
     expect(snapshot!.markerRendered).toBe(true);
-    expect(snapshot!.markerBearing).toEqual(expect.any(Number));
-    expect(snapshot!.headingRendered).toBe(true);
+    expect(snapshot!.headingMarker?.visible).toBe(true);
+    expect(snapshot!.headingMarker?.rotation).toEqual(expect.any(Number));
     expect(snapshot!.pendingPaint.color).toBe("#c040cf");
     expect(snapshot!.pendingPaint.dash).toEqual([2, 1.5]);
     expect(snapshot!.completedPaint.dash).toBeNull();
@@ -474,6 +415,18 @@ test("pending guidance and heading", async ({ page, railwayBundle }, testInfo) =
     expect(snapshot!.completedRenderedIds.length).toBeGreaterThan(0);
     expect(snapshot!.pendingRenderedIds.length).toBeGreaterThan(0);
   }
+
+  const headingElement = page.locator("[data-map-heading-marker]");
+  await expect(headingElement).toHaveCount(1);
+  await page.evaluate((styleUrl) => {
+    const map = (window as unknown as { __sugorokuE2E: { map: { setStyle(style: string, options: { diff: boolean }): void } } }).__sugorokuE2E.map;
+    map.setStyle(styleUrl, { diff: false });
+  }, MAP_STYLE_URL);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(headingElement).toHaveCount(1);
+  const restoredHeading = (await readMap(page))?.headingMarker;
+  expect(restoredHeading?.visible).toBe(true);
+  expect(restoredHeading?.rotation).not.toBeNull();
 });
 
 test("clicking an ordinary station opens exactly one popup naming it", async ({ page, railwayBundle }) => {

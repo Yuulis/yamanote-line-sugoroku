@@ -26,21 +26,18 @@ export interface CurrentPositionCollection {
   type: "FeatureCollection";
   features: {
     type: "Feature";
-    properties: { bearing?: number };
+    properties: Record<string, never>;
     geometry: { type: "Point"; coordinates: Position };
   }[];
 }
 
 /** A single-point collection for the player marker (empty when unknown). */
-export function currentPositionCollection(
-  position: Position | null,
-  bearing?: number | null,
-): CurrentPositionCollection {
+export function currentPositionCollection(position: Position | null): CurrentPositionCollection {
   const features = position
     ? [
         {
           type: "Feature" as const,
-          properties: bearing === null || bearing === undefined ? {} : { bearing },
+          properties: {},
           geometry: { type: "Point" as const, coordinates: position },
         },
       ]

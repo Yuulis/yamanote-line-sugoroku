@@ -159,8 +159,6 @@ describe("scaled map and presentation", () => {
     const map = {
       addSource: () => {},
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
-      hasImage: () => false,
-      addImage: () => {},
       getLayer: (id: string) => layers[id],
       setFilter: (id: string, filter: unknown) => { filters[id] = filter; },
       setPaintProperty: (id: string, name: string, value: unknown) => { paints[`${id}:${name}`] = value; },

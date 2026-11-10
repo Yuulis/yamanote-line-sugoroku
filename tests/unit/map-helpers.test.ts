@@ -218,20 +218,19 @@ describe("map presentation index and visibility filters", () => {
 });
 
 describe("currentPositionCollection", () => {
-  it("omits the bearing property when no displayed heading is available", () => {
-    expect(currentPositionCollection([139.7, 35.6]).features[0]?.properties).toEqual({});
-  });
-
-  it("publishes a displayed bearing beside the unchanged marker point", () => {
-    const collection = currentPositionCollection([139.7, 35.6], 42);
-
+  it("keeps the per-frame marker source to one point without heading properties", () => {
+    const collection = currentPositionCollection([139.7, 35.6]);
     expect(collection.features).toEqual([
       {
         type: "Feature",
-        properties: { bearing: 42 },
+        properties: {},
         geometry: { type: "Point", coordinates: [139.7, 35.6] },
       },
     ]);
+  });
+
+  it("clears the marker source when the position is unknown", () => {
+    expect(currentPositionCollection(null).features).toEqual([]);
   });
 });
 

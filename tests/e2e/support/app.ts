@@ -33,10 +33,13 @@ export interface MapSnapshot {
   marker: [number, number] | null;
   /** The marker layer draws a visible feature at `marker` (not just stored). */
   markerRendered: boolean;
-  /** Reveal-gated heading written to the marker source. */
-  markerBearing: number | null;
-  /** The separately rendered SDF heading symbol at the marker position. */
-  headingRendered: boolean;
+  /** The DOM beak, including its applied world bearing and screen alignment. */
+  headingMarker: {
+    visible: boolean;
+    rotation: number | null;
+    center: { x: number; y: number };
+    projectedCenter: { x: number; y: number } | null;
+  } | null;
   /** Geometry feature ids in the completed layer's `in` filter literal. */
   completedFilterIds: string[];
   /** Geometry feature ids the completed / pending line layers actually render. */
@@ -49,11 +52,6 @@ export interface MapSnapshot {
   flashFilterIds: string[];
   /** The flash layer's `line-opacity`; null when the layer is missing. */
   flashOpacity: number | null;
-}
-
-export interface HeadingPixelSnapshot {
-  /** Beak-layer red pixels, in CSS-pixel offsets from the marker centre. */
-  redPixels: [number, number][];
 }
 
 export interface LinePaint {
@@ -328,7 +326,9 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         getFilter(layerId: string): unknown;
         getPaintProperty(layerId: string, name: string): unknown;
         getSource(id: string): { getData(): Promise<unknown> } | undefined;
-        project(lngLat: [number, number]): unknown;
+        project(lngLat: [number, number]): { x: number; y: number };
+        getContainer(): HTMLElement;
+        getBearing(): number;
         queryRenderedFeatures(
           pointOrOptions?: unknown,
           options?: { layers: string[] },
@@ -340,11 +340,35 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       // A replaced style drops the railway layers until "style.load" re-adds them.
       if (!map || !map.getLayer(layers.completed)) return null;
       const data = (await map.getSource(markerSourceId)?.getData()) as
-        | { features: { geometry: { coordinates: [number, number] }; properties: { bearing?: unknown } }[] }
+        | { features: { geometry: { coordinates: [number, number] } }[] }
         | undefined;
       const markerFeature = data?.features[0];
       const marker = markerFeature?.geometry.coordinates ?? null;
-      const markerBearing = typeof markerFeature?.properties.bearing === "number" ? markerFeature.properties.bearing : null;
+      const headingElement = document.querySelector<HTMLElement>("[data-map-heading-marker]");
+      const headingBounds = headingElement?.getBoundingClientRect();
+      const mapBounds = map.getContainer().getBoundingClientRect();
+      const markerProjection = marker === null ? null : map.project(marker);
+      const cssRotation = headingElement?.style.transform.match(/rotateZ\((-?[\d.]+)deg\)/);
+      const cssRotationDegrees = cssRotation ? Number(cssRotation[1]) : null;
+      const headingRotation = cssRotationDegrees === null
+        ? null
+        : ((cssRotationDegrees + map.getBearing()) % 360 + 360) % 360;
+      const headingVisibility = headingElement ? window.getComputedStyle(headingElement) : null;
+      const headingMarker = headingElement && headingBounds
+        ? {
+            visible: !headingElement.hidden && headingVisibility?.visibility === "visible" &&
+              headingVisibility.display !== "none" && headingVisibility.opacity !== "0" &&
+              headingElement.getClientRects().length > 0,
+            rotation: headingRotation,
+            center: {
+              x: headingBounds.left + headingBounds.width / 2,
+              y: headingBounds.top + headingBounds.height / 2,
+            },
+            projectedCenter: markerProjection
+              ? { x: mapBounds.left + markerProjection.x, y: mapBounds.top + markerProjection.y }
+              : null,
+          }
+        : null;
       const renderedIds = (layerId: string): string[] => {
         if (!map.getLayer(layerId)) return [];
         const features = map.queryRenderedFeatures({ layers: [layerId] });
@@ -375,10 +399,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
           map.queryRenderedFeatures(map.project(marker), { layers: [layers.marker] }).length > 0 &&
           isPositive(map.getPaintProperty(layers.marker, "circle-radius")) &&
           isPositive(map.getPaintProperty(layers.marker, "circle-opacity") ?? 1),
-        markerBearing,
-        headingRendered:
-          marker !== null && markerBearing !== null &&
-          map.queryRenderedFeatures(map.project(marker), { layers: [layers.heading] }).length > 0,
+        headingMarker,
         completedFilterIds: filter?.[2]?.[2]?.[1] ?? [],
         completedRenderedIds: renderedIds(layers.completed),
         pendingRenderedIds: renderedIds(layers.pending),
@@ -393,80 +414,12 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         highlighted: LAYER_IDS.currentService,
         completed: LAYER_IDS.segmentsCompleted,
         pending: LAYER_IDS.segmentsPending,
-        heading: LAYER_IDS.currentPositionHeading,
         flash: LAYER_IDS.segmentsFlash,
         marker: LAYER_IDS.currentPosition,
       },
       markerSourceId: SOURCE_IDS.currentPosition,
     },
   );
-}
-
-/** Read the rendered heading symbol from WebGL with every other style layer hidden. */
-export async function readHeadingPixels(page: Page): Promise<HeadingPixelSnapshot> {
-  return page.evaluate(async ({ headingLayerId, markerSourceId }) => {
-    interface RenderedFeature {
-      geometry: { coordinates: [number, number] };
-    }
-    interface HookMap {
-      getStyle(): { layers: { id: string }[] };
-      getLayer(layerId: string): unknown;
-      getLayoutProperty(layerId: string, name: string): unknown;
-      setLayoutProperty(layerId: string, name: string, value: string): void;
-      getSource(id: string): { getData(): Promise<{ features: RenderedFeature[] }> } | undefined;
-      project(lngLat: [number, number]): { x: number; y: number };
-      getCanvas(): HTMLCanvasElement;
-      once(type: string, listener: () => void): void;
-      triggerRepaint(): void;
-    }
-    const hook = (window as unknown as { __sugorokuE2E?: { map?: HookMap | null } }).__sugorokuE2E;
-    const map = hook?.map;
-    if (!map || !map.getLayer(headingLayerId)) throw new Error("The heading layer is not available");
-    const feature = (await map.getSource(markerSourceId)?.getData())?.features[0];
-    if (!feature) throw new Error("The heading marker source is empty");
-
-    const originalVisibility = map.getStyle().layers.map(({ id }) => ({
-      id,
-      visible: map.getLayoutProperty(id, "visibility") !== "none",
-    }));
-    for (const { id } of originalVisibility) {
-      if (id !== headingLayerId) map.setLayoutProperty(id, "visibility", "none");
-    }
-    try {
-      const render = new Promise<void>((resolve) => map.once("render", resolve));
-      map.triggerRepaint();
-      await render;
-
-      const canvas = map.getCanvas();
-      const context = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
-      if (!context) throw new Error("The map canvas has no readable WebGL context");
-      const pixels = new Uint8Array(canvas.width * canvas.height * 4);
-      context.readPixels(0, 0, canvas.width, canvas.height, context.RGBA, context.UNSIGNED_BYTE, pixels);
-      const marker = map.project(feature.geometry.coordinates);
-      const scaleX = canvas.width / canvas.clientWidth;
-      const scaleY = canvas.height / canvas.clientHeight;
-      const sampleRadius = 18;
-      const redPixels: [number, number][] = [];
-      for (let offsetY = -sampleRadius; offsetY <= sampleRadius; offsetY += 1) {
-        for (let offsetX = -sampleRadius; offsetX <= sampleRadius; offsetX += 1) {
-          const x = Math.floor((marker.x + offsetX) * scaleX);
-          const y = canvas.height - 1 - Math.floor((marker.y + offsetY) * scaleY);
-          if (x < 0 || x >= canvas.width || y < 0 || y >= canvas.height) continue;
-          const pixelOffset = (y * canvas.width + x) * 4;
-          const red = pixels[pixelOffset]!;
-          const green = pixels[pixelOffset + 1]!;
-          const blue = pixels[pixelOffset + 2]!;
-          if (red > 120 && red > green * 1.7 && red > blue * 1.7) redPixels.push([offsetX, offsetY]);
-        }
-      }
-      return { redPixels };
-    } finally {
-      for (const { id, visible } of originalVisibility) {
-        map.setLayoutProperty(id, "visibility", visible ? "visible" : "none");
-      }
-      map.triggerRepaint();
-    }
-  }, { headingLayerId: LAYER_IDS.currentPositionHeading, markerSourceId: SOURCE_IDS.currentPosition });
 }
 
 /**
