@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { LineBadgeModel } from "../lineBadge";
+import { PhraseText } from "./PhraseText";
 
 export interface LineBadgeProps {
   model: LineBadgeModel;
@@ -19,7 +20,7 @@ export function LineBadge({ model, showName = true, size = "md" }: LineBadgeProp
       <span className="line-badge__mark" style={markStyle} aria-hidden="true">
         {model.code === null ? null : <span className="line-badge__code">{model.code}</span>}
       </span>
-      {showName ? <span className="line-badge__name">{model.name}</span> : null}
+      {showName ? <span className="line-badge__name"><PhraseText text={model.name} /></span> : null}
     </span>
   );
 }

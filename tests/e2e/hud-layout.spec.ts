@@ -4,6 +4,7 @@ import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
+import { longestRideState } from "./support/textWrappingState";
 import { closeGameLog, diceButton, gamePanel, hudCompactRoll, openGameLog, openTitle, panelStat, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 // Real data: its long line names are what overflow the phone value columns.
@@ -34,31 +35,6 @@ async function restore(page: Page, game: ItemGameState): Promise<void> {
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
   await expect(gamePanel(page)).toBeVisible();
-}
-
-function longestRideGame(bundle: RailwayBundle): ItemGameState {
-  let selected: ItemGameState | null = null;
-  let selectedLength: number = -1;
-  for (let seedValue: number = 0; seedValue < 64; seedValue += 1) {
-    const seed: string = seedValue.toString(16).padStart(32, "0");
-    let game: ItemGameState = createItemGame(ITEM_GAME_CONFIG, seed, bundle.network);
-    for (let turnIndex: number = 0; turnIndex < 12 && game.status === "playing"; turnIndex += 1) {
-      if (game.turn > 0) {
-        const name: string = bundle.network.servicesById.get(game.currentServiceId)?.name ?? "";
-        if (name.length > selectedLength) {
-          selected = game;
-          selectedLength = name.length;
-        }
-      }
-      const result = playItemTurn(game, {}, bundle.network).state;
-      game = result.pending?.kind === "discard"
-        ? resolveItemDiscard(result, result.pending.item.id).state
-        : result;
-    }
-    if (selectedLength >= 5) break;
-  }
-  if (!selected) throw new Error("Expected a seeded game for the longest fixture ride name");
-  return selected;
 }
 
 function gameWithActiveSuspension(bundle: RailwayBundle): ItemGameState {
@@ -140,12 +116,12 @@ test("keeps the dice button at one HUD position across variable content and save
   expect(await gamePanel(page).locator(".effect-chip").count()).toBeGreaterThanOrEqual(2);
   positions.push(await measureDice(page, "two active effect chips with suspension"));
 
-  const longRide: ItemGameState = longestRideGame(railwayBundle);
+  const longRide: ItemGameState = longestRideState(railwayBundle).game;
   await restore(page, longRide);
   const ride = panelStat(page, "乗車中");
   if (testInfo.project.name === "phone-chromium") {
-    // S23 (user decision 2026-10-30): the phone ride row spans the HUD width, so the longest fixture ride name
-    // is shown in full instead of being truncated (S10b asserted the overflow of the old narrow column).
+    // S23 (user decision 2026-10-30): the phone ride row spans the HUD width. Full text stays in the DOM and title;
+    // phone paint may ellipsize after two lines (S10b asserted old narrow-column overflow).
     await expect.poll(() => ride.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     // The display name can differ from the raw service name; any truncation is CSS-only, so the span keeps the
     // whole name as text and title.

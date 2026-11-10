@@ -5,6 +5,7 @@ import type { EffectChipModel } from "../hudPresentation";
 import { setTargetRef, type TurnMomentTargetRef } from "./TurnMomentHost";
 import { EffectChips } from "./EffectChips";
 import { LineBadge } from "./LineBadge";
+import { PhraseText } from "./PhraseText";
 import { TargetProgressBar } from "./TargetProgressBar";
 
 export interface GameHudProps {
@@ -73,9 +74,9 @@ export function GameHud({
         <dt>現在駅</dt>
         <dd><span className="hud-stat__value" data-stat="station" title={station}>{station}</span></dd>
         <dt>乗車中</dt>
-        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride" title={ride} ref={rideRef}>{ride}</span></dd>
+        <dd><LineBadge model={lineBadge} showName={false} size="sm" /><span className="hud-stat__value" data-stat="ride" title={ride} ref={rideRef}><PhraseText text={ride} /></span></dd>
         <dt>進行方向</dt>
-        <dd><span className="hud-stat__value" data-stat="direction" title={direction} ref={directionRef}>{direction}</span></dd>
+        <dd><span className="hud-stat__value" data-stat="direction" title={direction} ref={directionRef}><PhraseText text={direction} /></span></dd>
         <dt>ターン数</dt>
         <dd><span className="hud-stat__value" data-stat="turn" title={String(turn)}>{turn}</span></dd>
         <dt>踏破区間</dt>
