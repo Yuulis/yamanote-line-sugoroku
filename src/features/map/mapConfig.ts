@@ -49,7 +49,9 @@ export const LAYER_IDS = {
   services: "railway-services",
   base: "railway-base",
   currentService: "railway-current-service",
-  /** Not yet traversed: grey dashed line. */
+  /** White dashed casing beneath the not-yet-traversed target segments. */
+  segmentsPendingCasing: "railway-segments-pending-casing",
+  /** Not yet traversed: magenta dashed line. */
   segmentsPending: "railway-segments-pending",
   /** Traversed: solid line in the service colour. */
   segmentsCompleted: "railway-segments-completed",
@@ -64,7 +66,10 @@ export const LAYER_IDS = {
   /** Every other station name, from LABEL_ORDINARY_MIN_ZOOM up. */
   stationLabelsOrdinary: "railway-stations-label-ordinary",
   currentPosition: "game-current-position-circle",
+  currentPositionHeading: "game-current-position-heading",
 } as const;
+
+export const HEADING_SDF_IMAGE_ID = "game-current-position-heading-sdf";
 
 export const FALLBACK_LINE_COLOR = "#80c241";
 export const SEGMENT_LINE_WIDTH = 5;
@@ -86,14 +91,23 @@ export const SEGMENT_FLASH_LINE_WIDTH = 11;
 export const SEGMENT_FLASH_LINE_BLUR = 3;
 /** Peak opacity of the single pulse, reached at the middle of the arrival. */
 export const SEGMENT_FLASH_MAX_OPACITY = 0.85;
-export const PENDING_SEGMENT_COLOR = "#8a8a8a";
-export const PENDING_SEGMENT_WIDTH = 3;
+export const PENDING_SEGMENT_COLOR = "#c040cf";
+export const PENDING_SEGMENT_WIDTH = 4;
 /** Dash and gap lengths, in line widths. */
 export const PENDING_SEGMENT_DASH: [number, number] = [2, 1.5];
+export const PENDING_SEGMENT_CASING_COLOR = "#ffffff";
+export const PENDING_SEGMENT_CASING_WIDTH = 8;
+/** Match casing dash lengths to the core's pixel pattern. */
+export const PENDING_SEGMENT_CASING_DASH: [number, number] = [
+  PENDING_SEGMENT_DASH[0] * PENDING_SEGMENT_WIDTH / PENDING_SEGMENT_CASING_WIDTH,
+  PENDING_SEGMENT_DASH[1] * PENDING_SEGMENT_WIDTH / PENDING_SEGMENT_CASING_WIDTH,
+];
 export const CURRENT_POSITION_RADIUS = 10;
 export const CURRENT_POSITION_COLOR = "#e53935";
 export const CURRENT_POSITION_STROKE_COLOR = "#ffffff";
 export const CURRENT_POSITION_STROKE_WIDTH = 3;
+export const CURRENT_POSITION_HEADING_HALO_WIDTH = 1.5;
+export const HEADING_SDF_SIZE = 32;
 /** A station served by at least this many services is a transfer station. */
 export const TRANSFER_MIN_SERVICES = 2;
 /** Below this zoom only transfer and target-line stations are marked, so the lines stay readable. */

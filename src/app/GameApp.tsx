@@ -465,6 +465,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         targetServiceId={edition.config.targetServiceId}
         presentation={presentation}
         progress={progress}
+        markerBearing={turnDisplay?.markerBearing ?? null}
         segmentFlash={turnDisplay?.segmentFlash ?? null}
         livePosition={livePosition}
         follow={mapFollow}

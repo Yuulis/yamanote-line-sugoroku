@@ -8,6 +8,7 @@ import {
 } from "../../src/features/map/attribution";
 import { buildLineColorExpression, buildTrackColorExpression } from "../../src/features/map/lineColor";
 import { buildStationCollection } from "../../src/features/map/stationCollection";
+import { currentPositionCollection } from "../../src/features/map/progressStyle";
 import {
   buildMapPresentationIndex,
   visiblePrimitiveFeatureIds,
@@ -213,6 +214,24 @@ describe("map presentation index and visibility filters", () => {
     expect(filters[LAYER_IDS.services]).toEqual(backgroundServiceFilter(["shared", "private-only", "radial-only"], "jr-yamanote"));
     expect(filters).not.toHaveProperty(LAYER_IDS.segmentsPending);
     expect(filters).not.toHaveProperty(LAYER_IDS.currentService);
+  });
+});
+
+describe("currentPositionCollection", () => {
+  it("omits the bearing property when no displayed heading is available", () => {
+    expect(currentPositionCollection([139.7, 35.6]).features[0]?.properties).toEqual({});
+  });
+
+  it("publishes a displayed bearing beside the unchanged marker point", () => {
+    const collection = currentPositionCollection([139.7, 35.6], 42);
+
+    expect(collection.features).toEqual([
+      {
+        type: "Feature",
+        properties: { bearing: 42 },
+        geometry: { type: "Point", coordinates: [139.7, 35.6] },
+      },
+    ]);
   });
 });
 

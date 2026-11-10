@@ -12,10 +12,13 @@ import { buildLineColorExpression, buildTrackColorExpression } from "./lineColor
 import { targetTrackFilter } from "./lineVisibility";
 import {
   CURRENT_POSITION_COLOR,
+  CURRENT_POSITION_HEADING_HALO_WIDTH,
   CURRENT_POSITION_RADIUS,
   CURRENT_POSITION_STROKE_COLOR,
   CURRENT_POSITION_STROKE_WIDTH,
   CURRENT_SERVICE_LINE_WIDTH,
+  HEADING_SDF_IMAGE_ID,
+  HEADING_SDF_SIZE,
   KEY_STATION_RADIUS_STOPS,
   KEY_STATION_STROKE_STOPS,
   LABEL_MIN_ZOOM,
@@ -31,6 +34,9 @@ import {
   ORDINARY_STATION_STROKE_STOPS,
   OTHER_SERVICE_LINE_OPACITY,
   OTHER_SERVICE_LINE_WIDTH,
+  PENDING_SEGMENT_CASING_COLOR,
+  PENDING_SEGMENT_CASING_DASH,
+  PENDING_SEGMENT_CASING_WIDTH,
   PENDING_SEGMENT_COLOR,
   PENDING_SEGMENT_DASH,
   PENDING_SEGMENT_WIDTH,
@@ -83,6 +89,89 @@ export interface RailwayLayerInput {
   presentationIndex?: MapPresentationIndex;
 }
 
+interface HeadingSdfImage {
+  width: number;
+  height: number;
+  data: Uint8Array;
+}
+
+type SdfPoint = readonly [number, number];
+
+const HEADING_SDF_RGB: readonly [number, number, number] = [255, 255, 255];
+const HEADING_SDF_RGBA_CHANNELS = 4;
+const HEADING_SDF_ALPHA_CHANNEL = 3;
+/** Match MapLibre's symbol SDF edge threshold of 0.75 alpha (TinySDF cutoff 0.25). */
+const HEADING_SDF_CUTOFF = 0.25;
+const HEADING_SDF_DISTANCE_RANGE = 8;
+const HEADING_SDF_ALPHA_BASE = 255 * (1 - HEADING_SDF_CUTOFF);
+const HEADING_SDF_ALPHA_PER_PIXEL = 255 / HEADING_SDF_DISTANCE_RANGE;
+const SEGMENT_PROJECTION_MIN = 0;
+const SEGMENT_PROJECTION_MAX = 1;
+const HEADING_SDF_POLYGON: readonly SdfPoint[] = [
+  [16, 1],
+  [27, 28],
+  [16, 22],
+  [5, 28],
+];
+
+function distanceToSegmentSquared(point: SdfPoint, start: SdfPoint, end: SdfPoint): number {
+  const segmentX = end[0] - start[0];
+  const segmentY = end[1] - start[1];
+  const segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+  const projected = segmentLengthSquared === 0
+    ? SEGMENT_PROJECTION_MIN
+    : ((point[0] - start[0]) * segmentX + (point[1] - start[1]) * segmentY) / segmentLengthSquared;
+  const projection = Math.max(SEGMENT_PROJECTION_MIN, Math.min(SEGMENT_PROJECTION_MAX, projected));
+  const closestX = start[0] + projection * segmentX;
+  const closestY = start[1] + projection * segmentY;
+  const deltaX = point[0] - closestX;
+  const deltaY = point[1] - closestY;
+  return deltaX * deltaX + deltaY * deltaY;
+}
+
+function isInsidePolygon(point: SdfPoint, polygon: readonly SdfPoint[]): boolean {
+  let inside = false;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const start = polygon[index]!;
+    const end = polygon[(index + 1) % polygon.length]!;
+    const crossesRay = (start[1] > point[1]) !== (end[1] > point[1]);
+    if (crossesRay && point[0] < ((end[0] - start[0]) * (point[1] - start[1])) / (end[1] - start[1]) + start[0]) {
+      inside = !inside;
+    }
+  }
+  return inside;
+}
+
+function signedDistanceToPolygon(point: SdfPoint, polygon: readonly SdfPoint[]): number {
+  let minimumDistanceSquared = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < polygon.length; index += 1) {
+    const start = polygon[index]!;
+    const end = polygon[(index + 1) % polygon.length]!;
+    minimumDistanceSquared = Math.min(minimumDistanceSquared, distanceToSegmentSquared(point, start, end));
+  }
+  const distance = Math.sqrt(minimumDistanceSquared);
+  return isInsidePolygon(point, polygon) ? distance : -distance;
+}
+
+function createHeadingSdfImage(): HeadingSdfImage {
+  const pixelCount = HEADING_SDF_SIZE * HEADING_SDF_SIZE;
+  const data = new Uint8Array(pixelCount * HEADING_SDF_RGBA_CHANNELS);
+  for (let y = 0; y < HEADING_SDF_SIZE; y += 1) {
+    for (let x = 0; x < HEADING_SDF_SIZE; x += 1) {
+      const point: SdfPoint = [x + 0.5, y + 0.5];
+      const signedDistance = signedDistanceToPolygon(point, HEADING_SDF_POLYGON);
+      const distanceInRange = Math.max(-HEADING_SDF_DISTANCE_RANGE, Math.min(HEADING_SDF_DISTANCE_RANGE, signedDistance));
+      const alpha = Math.max(0, Math.min(255, Math.round(
+        HEADING_SDF_ALPHA_BASE + distanceInRange * HEADING_SDF_ALPHA_PER_PIXEL,
+      )));
+      const pixelOffset = (y * HEADING_SDF_SIZE + x) * HEADING_SDF_RGBA_CHANNELS;
+      data.set(HEADING_SDF_RGB, pixelOffset);
+      data[pixelOffset + HEADING_SDF_ALPHA_CHANNEL] = alpha;
+    }
+  }
+  return { width: HEADING_SDF_SIZE, height: HEADING_SDF_SIZE, data };
+}
+
 /** Add whichever railway layers the available data allows. */
 export function addRailwayLayers(
   map: MapLibreMap,
@@ -129,6 +218,18 @@ export function addRailwayLayers(
       paint: { "line-color": "#80c241", "line-width": CURRENT_SERVICE_LINE_WIDTH },
     });
     // Two layers so progress is told by line style as well as colour (spec 6.3).
+    map.addLayer({
+      id: LAYER_IDS.segmentsPendingCasing,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: pendingSegmentFilter([], targetServiceId),
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: {
+        "line-color": PENDING_SEGMENT_CASING_COLOR,
+        "line-width": PENDING_SEGMENT_CASING_WIDTH,
+        "line-dasharray": PENDING_SEGMENT_CASING_DASH,
+      },
+    });
     map.addLayer({
       id: LAYER_IDS.segmentsPending,
       type: "line",
@@ -235,6 +336,27 @@ export function addRailwayLayers(
       "circle-stroke-width": CURRENT_POSITION_STROKE_WIDTH,
     },
   });
+  if (!map.hasImage(HEADING_SDF_IMAGE_ID)) {
+    map.addImage(HEADING_SDF_IMAGE_ID, createHeadingSdfImage(), { sdf: true });
+  }
+  map.addLayer({
+    id: LAYER_IDS.currentPositionHeading,
+    type: "symbol",
+    source: SOURCE_IDS.currentPosition,
+    filter: ["has", "bearing"],
+    layout: {
+      "icon-image": HEADING_SDF_IMAGE_ID,
+      "icon-rotate": ["get", "bearing"],
+      "icon-rotation-alignment": "map",
+      "icon-allow-overlap": true,
+      "icon-ignore-placement": true,
+    },
+    paint: {
+      "icon-color": CURRENT_POSITION_COLOR,
+      "icon-halo-color": CURRENT_POSITION_STROKE_COLOR,
+      "icon-halo-width": CURRENT_POSITION_HEADING_HALO_WIDTH,
+    },
+  });
 }
 
 /** Collision-aware station names of one tier, shown from `minzoom` up. */
@@ -275,13 +397,15 @@ export function updateCompletedSegments(
 ): void {
   if (!map.getLayer(LAYER_IDS.segmentsCompleted)) return;
   map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedFeatureIds, targetServiceId));
-  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedFeatureIds, targetServiceId));
+  const filter = pendingSegmentFilter(completedFeatureIds, targetServiceId);
+  map.setFilter(LAYER_IDS.segmentsPending, filter);
+  if (map.getLayer(LAYER_IDS.segmentsPendingCasing)) map.setFilter(LAYER_IDS.segmentsPendingCasing, filter);
 }
 
 /** Move the player marker (called on every animation frame). */
-export function updateCurrentPosition(map: MapLibreMap, position: Position | null): void {
+export function updateCurrentPosition(map: MapLibreMap, position: Position | null, bearing?: number | null): void {
   const source = map.getSource<GeoJSONSource>(SOURCE_IDS.currentPosition);
-  source?.setData(currentPositionCollection(position));
+  source?.setData(currentPositionCollection(position, bearing));
 }
 
 /** Highlight by referenced feature IDs, never by primitive owner. */

@@ -65,6 +65,8 @@ interface RailwayMapProps {
   presentation?: PresentationResolver;
   /** Game progress to draw; omitted when no game is running. */
   progress?: MapProgress;
+  /** Reveal-gated heading from the shared turn display. */
+  markerBearing?: number | null;
   /** The presented arrival's flash of newly completed target segments; null/omitted clears the flash layer. */
   segmentFlash?: SegmentFlashRequest | null;
   /** Per-frame marker position of a running move; overrides the progress position once set. */
@@ -301,7 +303,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -444,6 +446,7 @@ export function RailwayMap({ data, presentation, progress, segmentFlash = null, 
   // Keyed by content: the list is rebuilt on every hop of a move but only
   // changes when a segment is finished, so the filters are set that often.
   const completedKey = completedFeatureIds?.join("\n");
+  const markerBearing = displayedBearing ?? null;
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, layersRevision, completedKey, targetServiceId]);
@@ -451,8 +454,8 @@ export function RailwayMap({ data, presentation, progress, segmentFlash = null, 
     if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
   }, [loadedMap, layersRevision, mapPresentationIndex, selectedGroupIds, targetServiceId]);
   useEffect(() => {
-    if (loadedMap) updateCurrentPosition(loadedMap, position);
-  }, [loadedMap, layersRevision, position]);
+    if (loadedMap) updateCurrentPosition(loadedMap, position, markerBearing);
+  }, [loadedMap, layersRevision, position, markerBearing]);
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
 
   useEffect(() => {

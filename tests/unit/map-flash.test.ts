@@ -20,6 +20,7 @@ import { networkFromData } from "../../src/features/game/networkFromData";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { deriveTurnMomentDisplay, type TurnRevealState } from "../../src/features/game/turnMomentPresentation";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
+import { pendingSegmentFilter } from "../../src/features/map/progressStyle";
 import { useSegmentFlash } from "../../src/features/map/RailwayMap";
 import {
   addRailwayLayers,
@@ -28,6 +29,7 @@ import {
   segmentFlashOpacity,
   setSegmentFlashFeatures,
   setSegmentFlashOpacity,
+  updateCompletedSegments,
 } from "../../src/features/map/railwayLayers";
 import type { ItemGameState } from "../../src/types/network";
 import { itemScenario } from "../e2e/fixtures/itemScenarios";
@@ -110,6 +112,8 @@ describe("flash layer", () => {
     const map = {
       addSource: () => {},
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
+      hasImage: () => false,
+      addImage: () => {},
     } as unknown as MapLibreMap;
     addRailwayLayers(map, {
       geometry: railwayData.geometry.ok ? railwayData.geometry.value : undefined,
@@ -121,6 +125,19 @@ describe("flash layer", () => {
 
   it("starts empty and transparent on the segments source, target-scoped like the completed layer", () => {
     const layers = addedLayers("custom-target");
+    expect(layers[LAYER_IDS.segmentsPendingCasing]).toMatchObject({
+      id: "railway-segments-pending-casing",
+      type: "line",
+      source: "railway-segments",
+      filter: pendingSegmentFilter([], "custom-target"),
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: { "line-color": "#ffffff", "line-width": 8, "line-dasharray": [1, 0.75] },
+    });
+    expect(layers[LAYER_IDS.segmentsPending]?.paint).toMatchObject({
+      "line-color": "#c040cf",
+      "line-width": 4,
+      "line-dasharray": [2, 1.5],
+    });
     expect(layers[LAYER_IDS.segmentsFlash]).toMatchObject({
       id: "railway-segments-flash",
       type: "line",
@@ -131,6 +148,24 @@ describe("flash layer", () => {
     // The completed layer keeps its ID and its filter shape.
     expect(LAYER_IDS.segmentsCompleted).toBe("railway-segments-completed");
     expect(layers[LAYER_IDS.segmentsCompleted]?.filter).toEqual(emptyFlashFilter("custom-target"));
+  });
+
+  it("keeps the casing filter aligned with pending segments as completion changes", () => {
+    const filters: Record<string, unknown> = {};
+    const availableLayers: ReadonlySet<string> = new Set([
+      LAYER_IDS.segmentsCompleted,
+      LAYER_IDS.segmentsPending,
+      LAYER_IDS.segmentsPendingCasing,
+    ]);
+    const map = {
+      getLayer: (id: string) => availableLayers.has(id) ? { id } : undefined,
+      setFilter: (id: string, filter: unknown) => { filters[id] = filter; },
+    } as unknown as MapLibreMap;
+
+    updateCompletedSegments(map, ["jr-yamanote:a:b"], "custom-target");
+
+    expect(filters[LAYER_IDS.segmentsPending]).toEqual(pendingSegmentFilter(["jr-yamanote:a:b"], "custom-target"));
+    expect(filters[LAYER_IDS.segmentsPendingCasing]).toEqual(filters[LAYER_IDS.segmentsPending]);
   });
 
   it("writes nothing while the flash layer is missing, and writes filter and opacity once it exists", () => {
