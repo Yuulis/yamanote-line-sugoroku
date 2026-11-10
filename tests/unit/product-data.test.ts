@@ -243,10 +243,14 @@ describe("frozen Tokyo suburban runtime contract", () => {
     const historical = readFileSync(fileURLToPath(new URL("../e2e/fixtures/historical-classic-before-clear-save.json", import.meta.url)), "utf8");
     expect(createHash("sha256").update(historical).digest("hex")).toBe("4017bf7c9647638fa606c20508cd511474adcda6972f519668093780544d3e6e");
     expect(() => restoreGame(historical, network, { expectedConfig: DEFAULT_GAME_CONFIG, requireSeededRolls: true }))
+      .toThrowError(expect.objectContaining({ code: "DATA_VERSION_MISMATCH" }));
+    const historicalDataVersion = (JSON.parse(historical) as { dataVersion: string }).dataVersion;
+    const historicalNetwork = { ...network, dataVersion: historicalDataVersion };
+    expect(() => restoreGame(historical, historicalNetwork, { expectedConfig: DEFAULT_GAME_CONFIG, requireSeededRolls: true }))
       .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
-    expect(restoreGame(historical, network, { expectedConfig: CLASSIC_GAME_CONFIG, requireSeededRolls: true }).turn).toBe(41);
+    expect(restoreGame(historical, historicalNetwork, { expectedConfig: CLASSIC_GAME_CONFIG, requireSeededRolls: true }).turn).toBe(41);
     const storage = memoryStorage(historical);
-    expect(readSave(storage, network, DEFAULT_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "rules" });
+    expect(readSave(storage, network, DEFAULT_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
     expect(storage.value).toBe(historical);
   });
 

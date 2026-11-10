@@ -332,7 +332,10 @@ npx vitest run tests/unit/product-data.test.ts tests/unit/real-data-e2e-scenario
 npm run build
 uv run python -m scripts.data_pipeline.validate
 npx playwright test tests/e2e/save-errors.spec.ts --project=desktop-chromium --workers=2 --grep 'rejects the historical classic v4 save'
+npx playwright test tests/e2e/tokyo-suburban.spec.ts tests/e2e/real-data.spec.ts tests/e2e/accessibility.spec.ts --project=desktop-chromium --workers=2 --grep "actual clearing turn|real Korakuen transfer|Oedo candidates at 都庁前|resume and clear transitions focus"
 ```
+
+(Lead 2026-11-10: the last command covers the four other pinned-save E2E cases that failed in CI run 42794944265 after Step 1 on all four projects.)
 
 **Est. LOC:** 40–55, excluding regenerated outputs.
 

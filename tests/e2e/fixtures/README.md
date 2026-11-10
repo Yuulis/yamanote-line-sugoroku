@@ -39,6 +39,8 @@ JS
 `old-capital-region-save.json` and its provenance are immutable historical v3
 fixtures: they fail with `UNSUPPORTED_SAVE_VERSION`, even on their source data.
 `historical-classic-before-clear-save.json` preserves the exact pre-S11 v4
-classic fixture bytes: it fails with `CONFIG_MISMATCH` under the product config.
+classic fixture bytes: it fails with `DATA_VERSION_MISMATCH` against the live
+product bundle. Its rules mismatch and seeded turn-41 restore remain covered
+with a test-only network view using the fixture's historical data version.
 Neither historical fixture is a regeneration target. Rejection must preserve
-storage bytes until the player explicitly discards them.
+storage bytes across reloads until the player explicitly discards them.
