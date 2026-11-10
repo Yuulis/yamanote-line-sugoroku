@@ -1,0 +1,29 @@
+# Text Wrapping and HUD Readability (issue #70) — Handoff
+
+Resume from here. Plan: `.claude/docs/plans/text-wrapping-plan.md` (Revision 3 lean section overrides §3). Brief: `.claude/docs/research/feature-text-wrapping-readability-brief.md`. Scan: `.claude/docs/research/feature-text-wrapping-readability-codebase.md`. Step prompts: `.claude/docs/plans/text-wrapping-prompts.md`.
+
+- Branch: `feature/text-wrapping` (from develop a375384, v0.13.0); no upstream yet.
+- Pacing: stop after every step for user review (user 2026-11-10).
+- Implementer: Codex Luna xhigh (`--model "${CODEX_MODEL_LUNA:-gpt-6-luna}" --config model_reasoning_effort=xhigh --timeout 2400`); reviews Sol low; lead verifies, commits, pushes, checks CI.
+- Local E2E: targeted specs only, `--workers=2`; full 4-project matrix in CI.
+
+## Step status
+
+| Step | Status | Commit | Evidence |
+|---|---|---|---|
+| 1 layout helper | done | (this commit) | Luna xhigh 715 s; lead: typecheck ok, `layout measurement` 1/1 desktop-chromium |
+| 2 phone HUD budget | done | (this commit) | Luna xhigh 1998 s; 252px budget holds at 320x568. Deviation: no JSX modifier class (unit HTML-equality contract) — CSS keys off existing `data-stat`. Lead fixes: layout.ts 1px paint tolerance (Firefox glyph rects overhang the line box → step-1 CI failure on desktop-firefox), panel 45% check +1px like ui-pop/capital-region. Lead: firefox spec 3/3, chromium desktop+phone targeted 16/16; screenshots .claude/logs/screenshots/ttw-step2/; CI run 42744698139 green on 07e526f (all 4 E2E legs) |
+| 3 PhraseText | done | (this commit) | Luna xhigh 512 s; `phraseBreakOffsets` + `PhraseText` (Intl.Segmenter grapheme guard); lead hand-checked all 15 expected offsets; typecheck ok, unit 15/15; Codex full vitest 1,993 passed |
+| 4 HUD + LineBadge | done | (this commit) | First Luna run killed by session end (partial edits, empty report; CSS used wrong `text-wrap: auto-phrase`); resumed run fixed it to `word-break: auto-phrase` (272 s). Lottery reveal name stays nowrap ellipsis (`.lottery-reveal .line-badge__name`). Codex: vitest 1,995 passed, chromium 14 + firefox 2 E2E. Lead: typecheck ok, unit 52/52, phone HUD E2E 2/2; CI run 42755060413 green on 06b4733 (all 4 E2E legs; also covers step 3, whose run was cancelled by the newer push) |
+| 5 dialogs + clear screen | done | (this commit) | Luna xhigh 1457 s. Lead fixes: removed out-of-plan nowrap on `.game-panel__legend-operator label` (every legend line name; long names would overflow at 320px); layout.ts stops ancestor clipping at top-layer elements (`:modal, :popover-open`) so 1280px modal buttons use `expectSingleLine` instead of Codex's nowrap-only workaround. Lead: typecheck ok, unit 102/102, chromium desktop+phone 14/14 (incl. legend/adjust regressions), firefox spec 5/5. `ticket card opens` grep in the plan matches no test title |
+| 6 GamePanel + clear screen | done | (this commit) | Luna xhigh 1230 s. Scope addition (user 2026-11-10): clear-screen summary + history get PhraseText; the goal-turn sentence comes from `ItemEventNotice` (live region) so it gets phrase CSS only. Codex: vitest 1,995 passed, chromium 4 + 6 regression, firefox 2. Lead: typecheck ok, full spec chromium desktop+phone 12/12, firefox 6/6; CI run 42760909343 green on c54b456 after rerunning chromium legs (first attempt hit the 20-min job timeout during `playwright install --with-deps`: apt mirror stall, no tests ran) |
+| 7 longest real data + fallback | done | (this commit) | Luna xhigh 2080 s + fix run 1362 s. Real longest data exposed two product bugs fixed here: (1) Chromium breaks at <wbr> inside nowrap → desktop HUD ride painted two clipped lines; fixed with `wbr { display: none }` in nowrap contexts, restored for phone two-line values; (2) lead: auto-phrase broke 市川塩浜方/面 in the 5-char phone direction column → names now keep-all + hints only (DESIGN.md row). Layout helper groups lines by vertical overlap and counts a line visible by glyph center (Range rect 20px > 17px line-height overhung the clamp). `dialog wrapping` marked test.slow() (28 s on local Firefox). Lead: unit 118/118, chromium desktop+phone 20/20, firefox spec 8/8, screenshots .claude/logs/screenshots/ttw-step7/; CI run 42770344057 green on 89195e7 after rerunning WebKit (first attempt: 10.5-min `playwright install --with-deps` apt stall hit the 20-min job timeout) |
+| 8 regression + release note | done | (this commit) | Luna xhigh 174 s: Japanese working note `docs/manual/public-launch/release-notes-unreleased.md`; `--list` audit 8 kept titles × 1 each. Lead: typecheck ok, build ok, full vitest 1,995 passed / 1 skipped (a first run alongside Codex's Playwright had 2 load-related failures in engine-landing and game-app-item-progress; both passed alone and in the clean rerun). No code changed after 89195e7 (CI green on all 4 projects), so local E2E was not rerun |
+
+## Follow-ups (out of scope)
+
+- CI: `npx playwright install --with-deps` stalled twice on 2026-11-10 (apt mirror; 10.5 min on WebKit, 20-min timeout on Chromium). User 2026-11-10: caching the apt dependencies is acceptable if it keeps taking too long.
+
+## Next
+
+All 8 steps done. Next: open the PR `feature/text-wrapping` → `develop` (closes #70) after user approval; rename the release note when the version is decided.

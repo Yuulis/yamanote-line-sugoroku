@@ -168,6 +168,37 @@ describe("GameHud", () => {
     }
   });
 
+  it("adds phrase hints inside the existing ride and direction value spans", () => {
+    const rideTargetRef = createRef<HTMLElement>();
+    const directionTargetRef = createRef<HTMLElement>();
+    const ride: string = "中央線・山手線";
+    const direction: string = "新宿方面";
+    const mount = mountReact(createElement(GameHud, props({
+      ride,
+      direction,
+      rideTargetRef,
+      directionTargetRef,
+    })));
+
+    try {
+      const rideValue: HTMLElement | null = mount.container.querySelector('[data-stat="ride"]');
+      const directionValue: HTMLElement | null = mount.container.querySelector('[data-stat="direction"]');
+
+      expect(rideValue?.innerHTML).toBe("中央線・<wbr>山手線");
+      expect(directionValue?.innerHTML).toBe("新宿<wbr>方面");
+      expect(rideValue?.textContent).toBe(ride);
+      expect(directionValue?.textContent).toBe(direction);
+      expect(rideValue?.getAttribute("title")).toBe(ride);
+      expect(directionValue?.getAttribute("title")).toBe(direction);
+      expect(rideValue?.className).toBe("hud-stat__value");
+      expect(directionValue?.className).toBe("hud-stat__value");
+      expect(rideTargetRef.current).toBe(rideValue);
+      expect(directionTargetRef.current).toBe(directionValue);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
   it("keeps the three dice labels exact and suppresses clicks while moving", () => {
     const onRoll = vi.fn();
     const initial = props({ onRoll });

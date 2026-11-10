@@ -653,6 +653,10 @@ button[aria-disabled="true"] {
   white-space: nowrap;
 }
 
+.hud-stat__value wbr {
+  display: none;
+}
+
 .game-panel__stats dd:has(.target-progress) .hud-stat__value {
   flex: 0 1 auto;
 }
@@ -741,12 +745,20 @@ button[aria-disabled="true"] {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.5;
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
 .game-panel__route-summary {
   margin-top: 6px;
   font-size: 12px;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.game-panel__candidates {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .game-panel__route-summary h2 {
@@ -1194,6 +1206,18 @@ button[aria-disabled="true"] {
   text-align: center;
 }
 
+.clear-screen__summary,
+.clear-screen__history li,
+.clear-screen .item-event-notice [role="status"] {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.clear-screen__summary,
+.clear-screen .item-event-notice [role="status"] {
+  line-height: 1.5;
+}
+
 .clear-screen__save-warning {
   margin: 8px 0;
   padding: 6px 10px;
@@ -1232,6 +1256,7 @@ button[aria-disabled="true"] {
 .clear-screen__history li {
   padding: 2px 0;
   border-bottom: 1px solid #eeeeee;
+  line-height: 1.45;
 }
 
 .clear-screen__turn {
@@ -1242,9 +1267,14 @@ button[aria-disabled="true"] {
 
 .clear-screen__actions {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 8px;
   margin-top: 12px;
+}
+
+.clear-screen__actions button {
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .clear-screen__share {
@@ -1252,6 +1282,11 @@ button[aria-disabled="true"] {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 12px;
+}
+
+.clear-screen__share button {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .clear-screen__share button:focus-visible,
@@ -1277,6 +1312,7 @@ button[aria-disabled="true"] {
 .clear-screen__share-fallback textarea {
   box-sizing: border-box;
   width: 100%;
+  max-width: 100%;
   font: inherit;
 }
 
@@ -1303,6 +1339,7 @@ button[aria-disabled="true"] {
 .dialog__title {
   margin: 0 0 8px;
   font-size: 17px;
+  text-wrap: balance;
 }
 
 .dialog p {
@@ -1312,12 +1349,15 @@ button[aria-disabled="true"] {
 
 .dialog__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
 }
 
 .dialog__actions button {
+  flex: 0 0 auto;
   min-width: 112px;
+  white-space: nowrap;
 }
 
 .dialog__confirm {
@@ -1343,13 +1383,16 @@ button[aria-disabled="true"] {
   border: 1px solid var(--color-brand);
   border-radius: var(--radius-sm);
   background: var(--color-brand-tint);
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
 .item-staged-summary button {
+  flex: 0 0 auto;
   min-height: 44px;
   margin-left: auto;
   padding: 2px 8px;
+  white-space: nowrap;
 }
 
 .item-inventory {
@@ -1480,11 +1523,13 @@ button[aria-disabled="true"] {
 
 .item-dialog__hint {
   overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .item-dialog__hint--target {
   font-weight: bold;
   color: var(--color-good);
+  text-wrap: balance;
 }
 
 .item-dialog__group {
@@ -1536,6 +1581,8 @@ button[aria-disabled="true"] {
 .item-adjustment__choice > span {
   min-width: 0;
   flex: 1;
+  overflow-wrap: anywhere;
+  word-break: keep-all;
 }
 
 .item-route-option__name,
@@ -1546,6 +1593,7 @@ button[aria-disabled="true"] {
 
 .item-route-option__name {
   font-weight: bold;
+  word-break: keep-all;
 }
 
 .item-route-option__guidance {
@@ -1553,6 +1601,28 @@ button[aria-disabled="true"] {
   color: #444444;
   font-size: 12px;
   line-height: 1.45;
+  word-break: keep-all;
+}
+
+@supports (word-break: auto-phrase) {
+  .game-panel__lottery,
+  .game-panel__route-summary,
+  .game-panel__candidates,
+  .item-staged-summary,
+  .clear-screen__summary,
+  .clear-screen__history li,
+  .clear-screen .item-event-notice [role="status"] {
+    word-break: auto-phrase;
+  }
+
+  .item-dialog__hint,
+  .item-route-option__copy,
+  .item-route-option__name,
+  .item-route-option__guidance,
+  .item-direction-option > span,
+  .item-adjustment__choice > span {
+    word-break: auto-phrase;
+  }
 }
 
 .item-discard__list {
@@ -1691,6 +1761,7 @@ button[aria-disabled="true"] {
   min-height: 44px;
   margin-top: 8px;
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .item-card-popover {
@@ -1892,10 +1963,59 @@ button[aria-disabled="true"] {
   .game-panel__stats {
     grid-area: stats;
     grid-template-columns: auto minmax(0, 1fr) auto minmax(0, 1fr);
-    grid-template-rows: repeat(4, 24px);
+    grid-template-rows: 18px 34px 34px 18px;
     gap: 0 6px;
     margin: 0;
+    --hud-row-height: 18px;
   }
+
+  .game-panel__stats dt,
+  .game-panel__stats dd {
+    height: 18px;
+    min-height: 18px;
+    max-height: 18px;
+  }
+
+  .game-panel__stats dt {
+    line-height: 18px;
+    font-size: 13px;
+  }
+
+  .game-panel__stats dd:has(> [data-stat="ride"]),
+  .game-panel__stats dd:has(> [data-stat="direction"]) {
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    align-items: flex-start;
+  }
+
+  .game-panel__stats .hud-stat__value {
+    font-size: 15px;
+    line-height: 18px;
+  }
+
+  .game-panel__stats [data-stat="ride"],
+  .game-panel__stats [data-stat="direction"] {
+    display: -webkit-box;
+    height: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: keep-all;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-height: 17px;
+  }
+
+  .game-panel__stats [data-stat="ride"] wbr,
+  .game-panel__stats [data-stat="direction"] wbr {
+    display: inline;
+  }
+
+  /* Names stay on keep-all + PhraseText hints: auto-phrase treats e.g. 市川塩浜方面 as one phrase and,
+     when it overflows a narrow column, falls back to breaking anywhere (市川塩浜方/面), ignoring the hint. */
 
   .game-panel__stats dt:nth-of-type(1) { grid-column: 1; grid-row: 1; }
   .game-panel__stats dd:nth-of-type(1) { grid-column: 2; grid-row: 1; }
@@ -1921,7 +2041,7 @@ button[aria-disabled="true"] {
     height: 56px;
     min-height: 56px;
     max-height: 56px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     align-items: stretch;
     align-content: start;
   }
@@ -1951,7 +2071,7 @@ button[aria-disabled="true"] {
     font-size: 12px;
   }
 
-  .item-inventory { grid-area: inventory; margin: 0 0 4px; }
+  .item-inventory { grid-area: inventory; margin: 0; }
   .item-inventory__label { margin: 0 0 2px; padding: 0; line-height: 16px; }
   .item-staged-summary { grid-area: staged; margin: 0 0 4px; padding: 2px 2px 2px 8px; }
   .game-panel .effect-chips {
@@ -2027,6 +2147,7 @@ button[aria-disabled="true"] {
   padding: 4px 8px;
   font-size: 12px;
   text-align: left;
+  white-space: nowrap;
   background: #ffffff;
   border: 1px solid #aaaaaa;
   border-radius: 4px;
@@ -2039,6 +2160,7 @@ button[aria-disabled="true"] {
   margin-top: -44px;
   padding: 4px;
   font-size: 12px;
+  white-space: nowrap;
   background: #ffffff;
   border: 1px solid #aaaaaa;
   border-radius: 4px;
@@ -2060,6 +2182,10 @@ button[aria-disabled="true"] {
   padding-block: 12px;
   box-sizing: border-box;
   line-height: 20px;
+}
+
+.game-panel__legend-operator summary {
+  white-space: nowrap;
 }
 
 .game-panel__legend-operator ul,
@@ -2091,6 +2217,7 @@ button[aria-disabled="true"] {
 .game-panel__legend-select-all {
   padding-left: 4px;
   font-weight: bold;
+  white-space: nowrap;
 }
 
 .game-panel__candidates {
@@ -2374,11 +2501,23 @@ button[aria-disabled="true"] {
 
 .clear-screen__paging {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-top: 8px;
   font-size: 12px;
+}
+
+.clear-screen__paging button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .clear-screen__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .item-event-notice {
@@ -2418,6 +2557,8 @@ button[aria-disabled="true"] {
 .line-badge__name {
   min-width: 0;
   color: var(--color-text);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .line-badge--sm .line-badge__mark { min-width: 30px; min-height: 20px; padding-inline: 8px 7px; }
@@ -2501,6 +2642,9 @@ button[aria-disabled="true"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.lottery-reveal .line-badge__name wbr {
+  display: none;
 }
 .lottery-reveal__row--flipping .lottery-reveal__result {
   animation: lottery-result var(--lottery-ms) steps(1, end) both;

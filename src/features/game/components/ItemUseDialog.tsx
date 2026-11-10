@@ -5,6 +5,7 @@ import type { RailwayNetwork } from "../engine";
 import { directionGuidance } from "../itemPresentation";
 import { directionLabel, serviceName, stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
+import { PhraseText } from "./PhraseText";
 
 interface ItemUseDialogProps {
   kind: Extract<ItemKind, "route-ticket" | "direction-ticket">;
@@ -93,19 +94,20 @@ export function ItemUseDialog({
         {kind === "route-ticket" ? (
           <>
             {routes.some((route) => route.isYamanote) && <p className="item-dialog__hint item-dialog__hint--target">
-              路線指定券で山手線に乗れます
+              <PhraseText text="路線指定券で山手線に乗れます" />
             </p>}
-            <p className="item-dialog__hint">路線を決めた後の向きは抽選です。次の駅までの距離は乗車時間ではなく、山手線までの駅数の目安です。</p>
+            <p className="item-dialog__hint"><PhraseText text="路線を決めた後の向きは抽選です。次の駅までの距離は乗車時間ではなく、山手線までの駅数の目安です。" /></p>
             {routeGroups.map((group) => {
               const duplicates = group.serviceIds.length > 1;
               return <fieldset className="item-dialog__group" key={group.groupId}>
-                <legend>{group.name}</legend>
+                <legend><PhraseText text={group.name} /></legend>
                 {group.serviceIds.map((serviceId, index) => {
                   const route = routeById.get(serviceId)!;
                   const service = network.servicesById.get(serviceId);
                   const title = serviceName(network, serviceId, presentation);
                   const specific = service && service.name !== group.name ? service.name
                     : duplicates ? `系統${index + 1}` : title;
+                  const optionName = `${group.name}${specific !== group.name ? ` — ${specific}` : ""}${route.isYamanote ? "（山手線）" : ""}`;
                   const details = route.direction.directions.map((option) => {
                     const nextStation = stationName(network, option.nextStationId, presentation);
                     return `${directionLabel(network, serviceId, option.direction)}：${nextStation}、${closerText(route.direction.directions, route.direction.closerDirection, option.direction)}`;
@@ -122,8 +124,8 @@ export function ItemUseDialog({
                       onChange={() => setSelectedServiceId(serviceId)}
                     />
                     <span className="item-route-option__copy">
-                      <span className="item-route-option__name">{group.name}{specific !== group.name ? ` — ${specific}` : ""}{route.isYamanote ? "（山手線）" : ""}</span>
-                      <span className="item-route-option__guidance">{details}</span>
+                      <span className="item-route-option__name"><PhraseText text={optionName} /></span>
+                      <span className="item-route-option__guidance"><PhraseText text={details} /></span>
                     </span>
                   </label>;
                 })}
@@ -132,22 +134,28 @@ export function ItemUseDialog({
             {suspendedServices.length > 0 && <section className="item-dialog__group" aria-label="運休中の路線">
               <h3>運休中で選べない</h3>
               <ul>{suspendedServices.map((serviceId) => <li key={serviceId} aria-disabled="true">
-                {serviceName(network, serviceId, presentation)} — 運休中で選べない
+                <PhraseText text={`${serviceName(network, serviceId, presentation)} — 運休中で選べない`} />
               </li>)}</ul>
             </section>}
             {routes.length === 0 && <p>この駅では路線を選べません。</p>}
           </>
         ) : (
           <>
-            <p className="item-dialog__hint">方向指定券で選ぶ路線：{serviceName(network, view.position.currentServiceId, presentation)}</p>
-            <p className="item-dialog__hint">距離は山手線までの駅数の目安で、乗車時間ではありません。</p>
+            <p className="item-dialog__hint"><PhraseText text={`方向指定券で選ぶ路線：${serviceName(network, view.position.currentServiceId, presentation)}`} /></p>
+            <p className="item-dialog__hint"><PhraseText text="距離は山手線までの駅数の目安で、乗車時間ではありません。" /></p>
             {view.hints.direction.closerDirection === null && view.hints.direction.directions.length > 1 && (
-              <p className="item-dialog__hint">どちらの方向にも短い方向はありません。</p>
+              <p className="item-dialog__hint"><PhraseText text="どちらの方向にも短い方向はありません。" /></p>
             )}
             <fieldset className="item-dialog__group">
-              <legend>進む方向</legend>
-              {view.hints.direction.directions.map((option) => (
-                <label className="item-direction-option" key={option.direction}>
+              <legend><PhraseText text="進む方向" /></legend>
+              {view.hints.direction.directions.map((option) => {
+                const directionName = directionLabel(network, view.position.currentServiceId, option.direction);
+                const directionDetails = `${stationName(network, option.nextStationId, presentation)}。${closerText(
+                  view.hints.direction.directions,
+                  view.hints.direction.closerDirection,
+                  option.direction,
+                )}`;
+                return <label className="item-direction-option" key={option.direction}>
                   <input
                     type="radio"
                     name={groupId}
@@ -156,17 +164,11 @@ export function ItemUseDialog({
                     onChange={() => setSelectedDirection(option.direction)}
                   />
                   <span>
-                    <strong>{directionLabel(network, view.position.currentServiceId, option.direction)}</strong>
-                    <span className="item-route-option__guidance">
-                      {stationName(network, option.nextStationId, presentation)}。{closerText(
-                        view.hints.direction.directions,
-                        view.hints.direction.closerDirection,
-                        option.direction,
-                      )}
-                    </span>
+                    <strong><PhraseText text={directionName} /></strong>
+                    <span className="item-route-option__guidance"><PhraseText text={directionDetails} /></span>
                   </span>
-                </label>
-              ))}
+                </label>;
+              })}
             </fieldset>
           </>
         )}
