@@ -8,7 +8,7 @@ import type { ItemGameState } from "../../src/types/network";
 import { LAYER_IDS, MAP_STYLE_URL } from "../../src/features/map/mapConfig";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { closeGameMenu, gamePanel, openGameMenu, openTitle, readMap, rollOnce, startNewGame, writeSaveText } from "./support/app";
+import { closeGameMenu, diceReady, gamePanel, openGameMenu, openTitle, readMap, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 // S6V: the 1都3県 network must stay readable. Real data, both form factors.
 test.use({ dataset: "real" });
@@ -496,6 +496,9 @@ async function readGoalRing(page: Page, stationId: string, center: [number, numb
 
 const FULL_GOAL_GUIDANCE = "新橋に着けばクリア";
 const SHORT_GOAL_GUIDANCE = "あとは新橋へ";
+// Three viewports on desktop plus a real-time arrival presentation.
+const MILESTONE_TEST_TIMEOUT_MS = 60_000;
+const MILESTONE_TOAST = "30区間を踏破！あとは新橋に着けばクリア";
 const SHORT_LANDSCAPE_VIEWPORTS = [{ width: 667, height: 375 }, { width: 601, height: 375 }];
 
 async function fitsOnOneLine(locator: Locator): Promise<boolean> {
@@ -503,6 +506,7 @@ async function fitsOnOneLine(locator: Locator): Promise<boolean> {
 }
 
 test("30 of 30 return guidance", async ({ page, railwayBundle }, testInfo) => {
+  test.setTimeout(MILESTONE_TEST_TIMEOUT_MS);
   const goalStationId = ITEM_GAME_CONFIG.startStationId;
   const goalStation = railwayBundle.network.stationsById.get(goalStationId)!;
   const { before, after } = turnCompletingThirtyOfThirty(railwayBundle);
@@ -536,6 +540,11 @@ test("30 of 30 return guidance", async ({ page, railwayBundle }, testInfo) => {
     expect((await readGoalRing(page, goalStationId, goalStation.coordinates)).filter).toEqual(["in", ["get", "id"], ["literal", []]]);
 
     await rollOnce(page);
+
+    // The milestone is delivered once with the arrival publication, ahead of this turn's own item-event toasts.
+    const toasts = page.locator(".toast-host__toast");
+    await expect(toasts.filter({ hasText: MILESTONE_TOAST })).toHaveCount(1);
+    await expect(toasts.first()).toHaveText(MILESTONE_TOAST);
 
     const guidance = slot.locator(".target-progress--guidance");
     const full = guidance.locator(".goal-guidance__full");
@@ -577,7 +586,33 @@ test("30 of 30 return guidance", async ({ page, railwayBundle }, testInfo) => {
       filter: ["==", ["get", "id"], goalStationId],
       rendered: true,
     });
+
+    // A reload and resume at 30/30 never replays the milestone.
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await expect(guidance).toHaveCount(1);
+    await expect(toasts).toHaveCount(0);
   }
+
+  // With motion on, the milestone is delivered while the arrival banner is still up, not at publication.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(before));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  await page.evaluate((text) => {
+    const seen = window as unknown as { __milestoneDuringArrival: boolean };
+    seen.__milestoneDuringArrival = false;
+    new MutationObserver(() => {
+      const banner = document.querySelector(".turn-moment-host .arrival-banner");
+      const toast = [...document.querySelectorAll(".toast-host__toast")].some((entry) => entry.textContent?.includes(text));
+      if (banner && toast) seen.__milestoneDuringArrival = true;
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  }, MILESTONE_TOAST);
+  await diceReady(page).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __milestoneDuringArrival: boolean }).__milestoneDuringArrival), { timeout: 20_000 }).toBe(true);
 });
 
 test("clicking an ordinary station opens exactly one popup naming it", async ({ page, railwayBundle }) => {

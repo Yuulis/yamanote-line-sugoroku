@@ -243,6 +243,67 @@ describe("GameApp goal guidance", () => {
   });
 });
 
+describe("GameApp 30/30 milestone toast", () => {
+  const MILESTONE = "30区間を踏破！あとは新橋に着けばクリア";
+  const toastTexts = (): string[] => [...mounted!.container.querySelectorAll(".toast-host__toast")].map((toast) => toast.textContent ?? "");
+  const crossingAttempt = (sessionId: number): RollAttempt => ({ ...attemptFor(sessionWithCompletedTargetHistory(sessionId, false)), sessionId });
+  const restoredBoundary = { attempt: null, revealStage: "done" as const, restoredOrOmitted: true };
+  const arrivalBoundary = (sessionId: number) => ({ attempt: crossingAttempt(sessionId), revealStage: "arrival" as const, restoredOrOmitted: false });
+  /** Crafts an item game whose history (and pending discard record, when present) completes every target segment. */
+  function completingItemGame(game: ItemGameState): ItemGameState {
+    const requiredIds = targetSegmentIds(game.config, network);
+    const history = game.movementHistory.map((record, index) => ({
+      ...record, traversedSegmentIds: index === 0 ? requiredIds.slice(1) : [] }));
+    const pending = game.pending?.kind === "discard"
+      ? { ...game.pending, record: { ...game.pending.record, traversedSegmentIds: [requiredIds[0]!] } } : game.pending;
+    return { ...game, movementHistory: history, pending } as ItemGameState;
+  }
+
+  it("toasts once at the arrival that completes 30/30 and never again", () => {
+    vi.useFakeTimers();
+    const origin = sessionWithCompletedTargetHistory(53, false);
+    inject(origin); render(propsFor(restoredBoundary));
+    expect(toastTexts()).toEqual([]);
+    inject(sessionWithCompletedTargetHistory(53, true));
+    render(propsFor(arrivalBoundary(53)));
+    expect(toastTexts()).toEqual([MILESTONE]);
+    expect(status()).toBe("到着しました。新橋に着けばクリア");
+    render(propsFor({ ...arrivalBoundary(53), revealStage: "done" }));
+    expect(toastTexts()).toEqual([MILESTONE]);
+    expect(status()).not.toContain("新橋に着けばクリア");
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(toastTexts()).toEqual([]);
+    render(propsFor({ ...arrivalBoundary(53), revealStage: "done" }));
+    render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    expect(toastTexts()).toEqual([]);
+  });
+
+  it("does not toast or announce a session restored at 30/30", () => {
+    inject(sessionWithCompletedTargetHistory(54, true));
+    render(propsFor(restoredBoundary));
+    // A recomputed display re-offers the milestone; only the entry baseline keeps it out.
+    render(propsFor({ ...restoredBoundary }));
+    expect(toastTexts()).toEqual([]);
+    expect(status()).not.toContain("新橋に着けばクリア");
+  });
+
+  it("does not toast a restored pending discard history, nor after the discard is resolved", () => {
+    const pending = completingItemGame(playItemTurn(itemScenario("discard", network), {}, network).state);
+    if (pending.pending?.kind !== "discard") throw new Error("Expected the engine-built discard decision");
+    const origin = resumeSession(pending, network, 55);
+    inject(origin); render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    // The guidance is public (the milestone would be eligible), so the empty queue proves the baseline suppression.
+    expect(mounted!.container.querySelector(".target-progress--guidance")).not.toBeNull();
+    render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    expect(toastTexts()).toEqual([]);
+    const resolved = completingItemGame(resolveItemDiscard(playItemTurn(itemScenario("discard", network), {}, network).state, pending.pending.item.id).state);
+    inject(resumeSession(resolved, network, 55));
+    render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    expect(toastTexts().filter((text) => text.includes("30区間"))).toEqual([]);
+    expect(status()).not.toContain("新橋に着けばクリア");
+  });
+});
+
 describe("GameApp publication lifecycle", () => {
   it.each([false, true])("keeps classic first movement silent and the previous summary during the next movement (reduced motion %s)", (reduced) => {
     vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: reduced, addEventListener: vi.fn(), removeEventListener: vi.fn() })));

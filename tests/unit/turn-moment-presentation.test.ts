@@ -379,6 +379,40 @@ describe("shared map guidance publication", () => {
   });
 });
 
+describe("30/30 guidance announcement without presented moments", () => {
+  const SENTENCE = "新橋に着けばクリア";
+  const base = itemScenario("route", network);
+  const requiredIds = targetSegmentIds(base.config, network);
+  const played = playItemTurn(base, {}, network).state;
+  // The played turn is crafted to complete every target segment (and nothing earlier does).
+  const completing = {
+    ...played,
+    movementHistory: played.movementHistory.map((record, index, history) => ({
+      ...record, traversedSegmentIds: index === history.length - 1 ? requiredIds : [] })),
+  };
+  const origin = resumeSession(base, network, 91);
+  const result = resumeSession(completing, network, 91);
+  const derive = (phase: "idle" | "animating", revealStage: "waiting" | "done", entryTurn?: number) => deriveTurnMomentDisplay({
+    session: { ...result, phase }, network, presentation: resolver, progress: progressFor(result),
+    attempt: { ...attemptFor(origin, "released"), policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "none" }) },
+    revealStage, restoredOrOmitted: false, itemView: itemSessionView(result, network), entryTurn,
+  });
+
+  it("announces the sentence exactly once at publication when the level plans no arrival stage", () => {
+    expect(result.game.status).toBe("playing");
+    const moving = derive("animating", "waiting");
+    expect(moving.goalGuidance).toBeNull();
+    expect(moving.announcement).not.toContain(SENTENCE);
+    const published = derive("idle", "done");
+    expect(published.phase).toBe("published");
+    expect(published.announcement.split(SENTENCE)).toHaveLength(2);
+  });
+
+  it("does not announce it for a history entered at or after the completing turn", () => {
+    expect(derive("idle", "done", result.game.turn).announcement).not.toContain(SENTENCE);
+  });
+});
+
 describe("S12 arrival and goal publication", () => {
   const base = itemScenario("rapid-long", network);
   const ticket = base.inventory.find((entry) => entry.kind === "rapid")!;
