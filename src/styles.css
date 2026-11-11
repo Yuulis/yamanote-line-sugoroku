@@ -2264,8 +2264,10 @@ button[aria-disabled="true"] {
     flex-shrink: 0;
   }
 
+  /* 12px leaves room in the ~129px column at 601px wide, where CI's CJK font overflowed at 14px. */
   .goal-guidance__short {
     display: inline;
+    font-size: 12px;
   }
 
   .goal-guidance__full {
