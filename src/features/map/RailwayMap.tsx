@@ -45,6 +45,7 @@ import {
   setSegmentFlashOpacity,
   updateCompletedSegments,
   updateCurrentPosition,
+  updateGoalStation,
   updateHighlightedService,
 } from "./railwayLayers";
 import { createHeadingMarker, type HeadingMarkerController } from "./headingMarker";
@@ -68,6 +69,8 @@ interface RailwayMapProps {
   progress?: MapProgress;
   /** Reveal-gated heading from the shared turn display. */
   markerBearing?: number | null;
+  /** Reveal-gated goal station id from the shared turn display; null/omitted clears the ring. */
+  goalStationId?: string | null;
   /** The presented arrival's flash of newly completed target segments; null/omitted clears the flash layer. */
   segmentFlash?: SegmentFlashRequest | null;
   /** Per-frame marker position of a running move; overrides the progress position once set. */
@@ -304,7 +307,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, goalStationId = null, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -469,6 +472,9 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
     updateCurrentPosition(loadedMap, position);
     headingMarkerRef.current?.update(position, markerBearing);
   }, [loadedMap, layersRevision, position, markerBearing]);
+  useEffect(() => {
+    if (loadedMap) updateGoalStation(loadedMap, goalStationId);
+  }, [loadedMap, layersRevision, goalStationId]);
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
 
   useEffect(() => {

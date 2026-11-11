@@ -61,6 +61,8 @@ export const LAYER_IDS = {
   stationCircles: "railway-stations-circle",
   /** Every other station: marked from ORDINARY_STATION_MIN_ZOOM up. */
   stationCirclesOrdinary: "railway-stations-circle-ordinary",
+  /** Ring around the goal station once the goal guidance is public; empty filter otherwise. */
+  goalStation: "railway-goal-station",
   /** Transfer and target-line station names, from LABEL_MIN_ZOOM up. */
   stationLabels: "railway-stations-label",
   /** Every other station name, from LABEL_ORDINARY_MIN_ZOOM up. */
@@ -113,6 +115,9 @@ export const KEY_STATION_RADIUS_STOPS: ZoomStops = [[8, 2.5], [11, 4], [13, 5]];
 export const KEY_STATION_STROKE_STOPS: ZoomStops = [[8, 1], [12, 2]];
 export const ORDINARY_STATION_RADIUS_STOPS: ZoomStops = [[ORDINARY_STATION_MIN_ZOOM, 2.5], [13, 4], [14, 5]];
 export const ORDINARY_STATION_STROKE_STOPS: ZoomStops = [[ORDINARY_STATION_MIN_ZOOM, 1], [13, 2]];
+export const GOAL_STATION_RING_RADIUS_STOPS: ZoomStops = [[8, 7], [11, 9], [13, 12]];
+export const GOAL_STATION_RING_COLOR = "#b26a00";
+export const GOAL_STATION_RING_WIDTH = 3;
 export const STATION_STROKE_COLOR = "#333333";
 export const STATION_FILL_COLOR = "#ffffff";
 export const LABEL_FONT = ["Noto Sans Regular"];

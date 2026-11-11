@@ -671,6 +671,21 @@ button[aria-disabled="true"] {
   width: 100%;
 }
 
+/* The short wording is shown only in the short-landscape HUD. */
+.goal-guidance__short {
+  display: none;
+}
+
+/* Goal guidance occupies the progress-bar slot: same flex item, same row height, one line. */
+.game-panel__stats .target-progress--guidance {
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .target-progress__segments {
   display: flex;
   flex-flow: row nowrap;
@@ -1989,7 +2004,8 @@ button[aria-disabled="true"] {
     align-items: flex-start;
   }
 
-  .game-panel__stats .hud-stat__value {
+  .game-panel__stats .hud-stat__value,
+  .game-panel__stats .target-progress--guidance {
     font-size: 15px;
     line-height: 18px;
   }
@@ -2243,6 +2259,23 @@ button[aria-disabled="true"] {
 /* Short landscape screens and desktop zoom: keep the result and every action
    in view while the longer route and legend details remain scrollable. */
 @media (min-width: 601px) and (max-height: 500px) {
+  /* Keep the numeric value whole; the guidance gives way. The full sentence stays exposed to assistive tech. */
+  .game-panel__stats dd:has(.target-progress--guidance) .hud-stat__value {
+    flex-shrink: 0;
+  }
+
+  .goal-guidance__short {
+    display: inline;
+  }
+
+  .goal-guidance__full {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
   .game-panel {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

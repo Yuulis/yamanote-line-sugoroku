@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { displayedHeading } from "../../src/features/game/mapGuidance";
@@ -8,7 +8,7 @@ import type { ItemGameState } from "../../src/types/network";
 import { LAYER_IDS, MAP_STYLE_URL } from "../../src/features/map/mapConfig";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { closeGameMenu, gamePanel, openGameMenu, openTitle, readMap, startNewGame, writeSaveText } from "./support/app";
+import { closeGameMenu, gamePanel, openGameMenu, openTitle, readMap, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 // S6V: the 1都3県 network must stay readable. Real data, both form factors.
 test.use({ dataset: "real" });
@@ -19,6 +19,10 @@ const TARGET_SERVICE_ID = "jr-yamanote";
 const MIN_COMPLETED_YAMANOTE_SEGMENTS = 4;
 const MAX_VISUAL_GAME_TURNS = 24;
 const MAX_VISUAL_GAME_SEEDS = 512;
+const MAX_THIRTY_SEGMENT_TURNS = 400;
+const REQUIRED_TARGET_SEGMENTS = 30;
+const PHONE_NARROW_VIEWPORT = { width: 320, height: 568 };
+const GOAL_RING_VIEW_ZOOM = 13;
 /** Tokyo to Yurakucho from the public jr-yamanote platform coordinates. */
 const TOKYO_OUTER_LOOP_BEARING = 205.15;
 /** Allowed offset of the target line's centre from the free area's centre. */
@@ -427,6 +431,153 @@ test("pending guidance and heading", async ({ page, railwayBundle }, testInfo) =
   const restoredHeading = (await readMap(page))?.headingMarker;
   expect(restoredHeading?.visible).toBe(true);
   expect(restoredHeading?.rotation).not.toBeNull();
+});
+
+interface ThirtyOfThirtyTurn {
+  before: ItemGameState;
+  after: ItemGameState;
+}
+
+/** First engine-played product game whose next turn completes every target segment away from the goal. */
+function turnCompletingThirtyOfThirty(bundle: RailwayBundle): ThirtyOfThirtyTurn {
+  const targetCount = (game: ItemGameState): number => game.completedSegmentIds.filter((id) => id.startsWith(`${TARGET_SERVICE_ID}:`)).length;
+  for (let seed = 0; seed < MAX_VISUAL_GAME_SEEDS; seed += 1) {
+    let game = createItemGame(ITEM_GAME_CONFIG, seed.toString(16).padStart(32, "0"), bundle.network);
+    for (let turn = 0; turn < MAX_THIRTY_SEGMENT_TURNS && game.status === "playing"; turn += 1) {
+      const result = playItemTurn(game, {}, bundle.network).state;
+      // A pending discard would put a dialog between the roll and the guidance.
+      if (result.pending !== null) break;
+      if (targetCount(game) < REQUIRED_TARGET_SEGMENTS && targetCount(result) === REQUIRED_TARGET_SEGMENTS && result.status === "playing") {
+        return { before: game, after: result };
+      }
+      game = result;
+    }
+  }
+  throw new Error("No engine-generated game completed 30/30 away from the goal station");
+}
+
+interface HudGeometry {
+  progressSlot: DOMRectJSON;
+  statsContainer: DOMRectJSON;
+  dice: DOMRectJSON;
+}
+type DOMRectJSON = { x: number; y: number; width: number; height: number };
+
+async function readHudGeometry(page: Page): Promise<HudGeometry> {
+  return page.evaluate(() => {
+    const rect = (element: Element | null | undefined): DOMRectJSON => {
+      if (!element) throw new Error("HUD element is missing");
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    return {
+      progressSlot: rect(document.querySelector('.game-panel [data-stat="progress"]')?.parentElement),
+      statsContainer: rect(document.querySelector(".game-panel__stats")),
+      dice: rect(document.querySelector(".game-panel__roll")),
+    };
+  });
+}
+
+async function readGoalRing(page: Page, stationId: string, center: [number, number]) {
+  return page.evaluate(({ layerId, id, coordinates }) => {
+    const map = (window as unknown as { __sugorokuE2E: { map: {
+      getFilter(layer: string): unknown;
+      jumpTo(options: { center: [number, number]; zoom: number }): void;
+      project(point: [number, number]): { x: number; y: number };
+      queryRenderedFeatures(point: { x: number; y: number }, options: { layers: string[] }): { properties: { id?: string } }[];
+    } } }).__sugorokuE2E.map;
+    return {
+      filter: map.getFilter(layerId),
+      rendered: map.queryRenderedFeatures(map.project(coordinates), { layers: [layerId] })
+        .some((feature) => feature.properties.id === id),
+    };
+  }, { layerId: LAYER_IDS.goalStation, id: stationId, coordinates: center });
+}
+
+const FULL_GOAL_GUIDANCE = "新橋に着けばクリア";
+const SHORT_GOAL_GUIDANCE = "あとは新橋へ";
+const SHORT_LANDSCAPE_VIEWPORTS = [{ width: 667, height: 375 }, { width: 601, height: 375 }];
+
+async function fitsOnOneLine(locator: Locator): Promise<boolean> {
+  return locator.evaluate((element) => element.scrollWidth <= element.clientWidth);
+}
+
+test("30 of 30 return guidance", async ({ page, railwayBundle }, testInfo) => {
+  const goalStationId = ITEM_GAME_CONFIG.startStationId;
+  const goalStation = railwayBundle.network.stationsById.get(goalStationId)!;
+  const { before, after } = turnCompletingThirtyOfThirty(railwayBundle);
+  expect(after.currentStationId).not.toBe(goalStationId);
+  const completedBefore = before.completedSegmentIds.filter((id) => id.startsWith(`${TARGET_SERVICE_ID}:`)).length;
+  expect(completedBefore).toBeLessThan(REQUIRED_TARGET_SEGMENTS);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  // Portrait phone / desktop first; the short-landscape HUD (desktop project only) swaps in the short wording.
+  const viewports = [
+    { viewport: isPhone(page) ? PHONE_NARROW_VIEWPORT : page.viewportSize()!, shortLandscape: false },
+    ...(testInfo.project.name === "desktop-chromium"
+      ? SHORT_LANDSCAPE_VIEWPORTS.map((viewport) => ({ viewport, shortLandscape: true }))
+      : []),
+  ];
+  for (const { viewport, shortLandscape } of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(before));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+
+    const progressValue = page.locator('.game-panel [data-stat="progress"]');
+    const slot = progressValue.locator("..");
+    await expect(progressValue).toHaveText(`${completedBefore}/${REQUIRED_TARGET_SEGMENTS}`);
+    await expect(slot.locator(".target-progress__segment")).toHaveCount(REQUIRED_TARGET_SEGMENTS);
+    await expect(slot.locator(".target-progress--guidance")).toHaveCount(0);
+    const preGeometry = await readHudGeometry(page);
+    expect((await readGoalRing(page, goalStationId, goalStation.coordinates)).filter).toEqual(["in", ["get", "id"], ["literal", []]]);
+
+    await rollOnce(page);
+
+    const guidance = slot.locator(".target-progress--guidance");
+    const full = guidance.locator(".goal-guidance__full");
+    const short = guidance.locator(".goal-guidance__short");
+    await expect(full).toHaveText(FULL_GOAL_GUIDANCE);
+    await expect(short).toHaveText(SHORT_GOAL_GUIDANCE);
+    // The full sentence stays the accessible text; the short wording is visual only.
+    await expect(guidance).toHaveAttribute("title", FULL_GOAL_GUIDANCE);
+    await expect(short).toHaveAttribute("aria-hidden", "true");
+    await expect(full).not.toHaveAttribute("aria-hidden", "true");
+    await expect(slot.getByText(FULL_GOAL_GUIDANCE)).toHaveCount(1);
+    const shortDisplay = await short.evaluate((element) => getComputedStyle(element).display);
+    const fullWidth = await full.evaluate((element) => element.getBoundingClientRect().width);
+    if (shortLandscape) {
+      expect(shortDisplay, "short-landscape shows the short wording").not.toBe("none");
+      expect(fullWidth, "the full sentence is visually hidden but still exposed").toBeLessThanOrEqual(1);
+    } else {
+      expect(shortDisplay, "the short wording is hidden outside short-landscape").toBe("none");
+      expect(fullWidth).toBeGreaterThan(1);
+    }
+    await expect(progressValue).toHaveText(`${REQUIRED_TARGET_SEGMENTS}/${REQUIRED_TARGET_SEGMENTS}`);
+    await expect(slot.locator(".target-progress__segment")).toHaveCount(0);
+    await expect(slot.getByRole("progressbar")).toHaveCount(0);
+    await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
+    await expect(gamePanel(page).getByRole("heading", { name: "クリア！" })).toHaveCount(0);
+
+    const postGeometry = await readHudGeometry(page);
+    expect(postGeometry.progressSlot).toEqual(preGeometry.progressSlot);
+    expect(postGeometry.statsContainer).toEqual(preGeometry.statsContainer);
+    expect(postGeometry.dice).toEqual(preGeometry.dice);
+    expect(await fitsOnOneLine(guidance), "the guidance is not ellipsized").toBe(true);
+    expect(await fitsOnOneLine(progressValue), "the numeric value is not ellipsized").toBe(true);
+
+    await page.evaluate(({ center, zoom }) => {
+      const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+      hook.map.jumpTo({ center, zoom });
+    }, { center: goalStation.coordinates, zoom: GOAL_RING_VIEW_ZOOM });
+    await expect.poll(async () => await readGoalRing(page, goalStationId, goalStation.coordinates)).toEqual({
+      filter: ["==", ["get", "id"], goalStationId],
+      rendered: true,
+    });
+  }
 });
 
 test("clicking an ordinary station opens exactly one popup naming it", async ({ page, railwayBundle }) => {

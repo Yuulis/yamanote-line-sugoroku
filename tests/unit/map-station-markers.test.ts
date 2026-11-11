@@ -10,7 +10,7 @@ import {
   ORDINARY_STATION_RADIUS_STOPS,
   ORDINARY_STATION_STROKE_STOPS,
 } from "../../src/features/map/mapConfig";
-import { addRailwayLayers } from "../../src/features/map/railwayLayers";
+import { addRailwayLayers, updateGoalStation } from "../../src/features/map/railwayLayers";
 import { buildStationCollection } from "../../src/features/map/stationCollection";
 import { bindStationInteractions, STATION_MARKER_LAYERS } from "../../src/features/map/stationInteraction";
 import {
@@ -132,8 +132,9 @@ describe("shipped network markers", () => {
     const isKeyLabel = ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM];
 
     expect(sources).toEqual(["railway-segments", "railway-stations", "game-current-position"]);
-    // Step 4b: 11 -> 12 layers. The casing sits below pending segments; the current-position circle is last.
-    expect(order).toHaveLength(12);
+    // Step 5: 12 -> 13 layers. The casing sits below pending segments; the goal ring sits above the key station
+    // circles and below the names; the current-position circle is last.
+    expect(order).toHaveLength(13);
     expect(order).toEqual([
       LAYER_IDS.base,
       LAYER_IDS.services,
@@ -144,10 +145,16 @@ describe("shipped network markers", () => {
       LAYER_IDS.segmentsFlash,
       LAYER_IDS.stationCirclesOrdinary,
       LAYER_IDS.stationCircles,
+      LAYER_IDS.goalStation,
       LAYER_IDS.stationLabelsOrdinary,
       LAYER_IDS.stationLabels,
       LAYER_IDS.currentPosition,
     ]);
+    expect(layers[LAYER_IDS.goalStation]).toMatchObject({
+      type: "circle",
+      source: "railway-stations",
+      filter: ["in", ["get", "id"], ["literal", []]],
+    });
     expect(layers[LAYER_IDS.segmentsCompleted]?.filter).toEqual(
       ["all", ["==", ["get", "serviceId"], TARGET], ["in", ["get", "featureId"], ["literal", []]]],
     );
@@ -168,6 +175,20 @@ describe("shipped network markers", () => {
         "text-ignore-placement": false,
       });
     }
+  });
+
+  it("rings the goal station by id and clears the ring with an empty filter", () => {
+    const filters: unknown[] = [];
+    const map = {
+      getLayer: (id: string) => (id === LAYER_IDS.goalStation ? { id } : undefined),
+      setFilter: (id: string, filter: unknown) => { expect(id).toBe(LAYER_IDS.goalStation); filters.push(filter); },
+    } as unknown as MapLibreMap;
+    updateGoalStation(map, "shimbashi");
+    updateGoalStation(map, null);
+    expect(filters).toEqual([["==", ["get", "id"], "shimbashi"], ["in", ["get", "id"], ["literal", []]]]);
+    const missing = { getLayer: () => undefined, setFilter: vi.fn() } as unknown as MapLibreMap;
+    updateGoalStation(missing, "shimbashi");
+    expect(missing.setFilter).not.toHaveBeenCalled();
   });
 
   it("keeps the current-position circle as the only marker style layer", () => {
