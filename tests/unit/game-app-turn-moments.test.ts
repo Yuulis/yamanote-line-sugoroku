@@ -6,7 +6,7 @@ import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
-import { beginItemTurn, createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { beginItemTurn, createItemGame, playItemTurn, resolveItemDiscard, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { itemActionIdentity, itemSessionView, itemLastMove } from "../../src/features/game/itemSession";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
@@ -196,6 +196,113 @@ function attemptFor(origin: GameSession): RollAttempt {
     stage: "released", rawRoll: 1, tumbleCompleted: true, skipRequested: false, motionOmitted: false,
     adjustObserved: false, recordAccepted: true, stampsRequired: false, newlyCompletedTargetSegmentIds: [] };
 }
+
+/** A playing classic session whose history already completed every target segment away from the goal. */
+function sessionWithCompletedTargetHistory(sessionId: number, completeAll: boolean): GameSession {
+  const session = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, sessionId);
+  const requiredIds = targetSegmentIds(session.game.config, network);
+  const doneIds = completeAll ? requiredIds : requiredIds.slice(1);
+  const movementHistory = [...doneIds].reverse().map((segmentId, index) => {
+    const segment = network.segmentsById.get(segmentId)!;
+    return { turn: index + 1, roll: 1, serviceId: segment.serviceId, direction: LEGACY_CAPITAL_REGION_CONFIG.targetDirection,
+      fromStationId: segment.from, toStationId: segment.to, traversedSegmentIds: [segmentId], stopReason: "roll" as const, landing: null };
+  });
+  const finalRecord = movementHistory.at(-1)!;
+  return { ...session, game: { ...session.game, status: "playing", turn: movementHistory.length,
+    currentStationId: finalRecord.toStationId, currentServiceId: LEGACY_CAPITAL_REGION_CONFIG.targetServiceId,
+    direction: LEGACY_CAPITAL_REGION_CONFIG.targetDirection, completedSegmentIds: [...doneIds], movementHistory } };
+}
+
+describe("GameApp goal guidance", () => {
+  const goalStationId = (): unknown => railwayMapProps.mock.calls.at(-1)?.[0].goalStationId;
+  const slot = (): HTMLElement => mounted!.container.querySelector<HTMLElement>('[data-stat="progress"]')!.parentElement!;
+
+  it("replaces the progress cells with the guidance text in the same slot once 30/30 is public", () => {
+    const session = sessionWithCompletedTargetHistory(51, true);
+    inject(session); render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: true }));
+    const guidance = slot().querySelector<HTMLElement>(".target-progress--guidance")!;
+    expect(guidance.querySelector(".goal-guidance__full")?.textContent).toBe("新橋に着けばクリア");
+    const short = guidance.querySelector(".goal-guidance__short");
+    expect(short?.textContent).toBe("あとは新橋へ");
+    expect(short?.getAttribute("aria-hidden")).toBe("true");
+    expect(guidance.title).toBe("新橋に着けばクリア");
+    expect(slot().querySelector('[data-stat="progress"]')?.textContent).toBe("30/30");
+    expect(slot().querySelector("[role=progressbar], .target-progress__segment")).toBeNull();
+    expect(slot().querySelectorAll(".target-progress")).toHaveLength(1);
+    expect(mounted!.container.querySelectorAll('.game-panel [role="status"]')).toHaveLength(1);
+    expect(goalStationId()).toBe("shimbashi");
+  });
+
+  it("keeps the bar cells and no goal ring before every target segment is complete", () => {
+    inject(sessionWithCompletedTargetHistory(52, false));
+    render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: true }));
+    expect(slot().querySelector("[role=progressbar]")?.getAttribute("aria-valuenow")).toBe("29");
+    expect(slot().querySelectorAll(".target-progress__segment")).toHaveLength(30);
+    expect(slot().querySelector(".target-progress--guidance")).toBeNull();
+    expect(goalStationId()).toBeNull();
+  });
+});
+
+describe("GameApp 30/30 milestone toast", () => {
+  const MILESTONE = "30区間を踏破！あとは新橋に着けばクリア";
+  const toastTexts = (): string[] => [...mounted!.container.querySelectorAll(".toast-host__toast")].map((toast) => toast.textContent ?? "");
+  const crossingAttempt = (sessionId: number): RollAttempt => ({ ...attemptFor(sessionWithCompletedTargetHistory(sessionId, false)), sessionId });
+  const restoredBoundary = { attempt: null, revealStage: "done" as const, restoredOrOmitted: true };
+  const arrivalBoundary = (sessionId: number) => ({ attempt: crossingAttempt(sessionId), revealStage: "arrival" as const, restoredOrOmitted: false });
+  /** Crafts an item game whose history (and pending discard record, when present) completes every target segment. */
+  function completingItemGame(game: ItemGameState): ItemGameState {
+    const requiredIds = targetSegmentIds(game.config, network);
+    const history = game.movementHistory.map((record, index) => ({
+      ...record, traversedSegmentIds: index === 0 ? requiredIds.slice(1) : [] }));
+    const pending = game.pending?.kind === "discard"
+      ? { ...game.pending, record: { ...game.pending.record, traversedSegmentIds: [requiredIds[0]!] } } : game.pending;
+    return { ...game, movementHistory: history, pending } as ItemGameState;
+  }
+
+  it("toasts once at the arrival that completes 30/30 and never again", () => {
+    vi.useFakeTimers();
+    const origin = sessionWithCompletedTargetHistory(53, false);
+    inject(origin); render(propsFor(restoredBoundary));
+    expect(toastTexts()).toEqual([]);
+    inject(sessionWithCompletedTargetHistory(53, true));
+    render(propsFor(arrivalBoundary(53)));
+    expect(toastTexts()).toEqual([MILESTONE]);
+    expect(status()).toBe("到着しました。新橋に着けばクリア");
+    render(propsFor({ ...arrivalBoundary(53), revealStage: "done" }));
+    expect(toastTexts()).toEqual([MILESTONE]);
+    expect(status()).not.toContain("新橋に着けばクリア");
+    act(() => { vi.advanceTimersByTime(60_000); });
+    expect(toastTexts()).toEqual([]);
+    render(propsFor({ ...arrivalBoundary(53), revealStage: "done" }));
+    render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    expect(toastTexts()).toEqual([]);
+  });
+
+  it("does not toast or announce a session restored at 30/30", () => {
+    inject(sessionWithCompletedTargetHistory(54, true));
+    render(propsFor(restoredBoundary));
+    // A recomputed display re-offers the milestone; only the entry baseline keeps it out.
+    render(propsFor({ ...restoredBoundary }));
+    expect(toastTexts()).toEqual([]);
+    expect(status()).not.toContain("新橋に着けばクリア");
+  });
+
+  it("does not toast a restored pending discard history, nor after the discard is resolved", () => {
+    const pending = completingItemGame(playItemTurn(itemScenario("discard", network), {}, network).state);
+    if (pending.pending?.kind !== "discard") throw new Error("Expected the engine-built discard decision");
+    const origin = resumeSession(pending, network, 55);
+    inject(origin); render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    // The guidance is public (the milestone would be eligible), so the empty queue proves the baseline suppression.
+    expect(mounted!.container.querySelector(".target-progress--guidance")).not.toBeNull();
+    render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    expect(toastTexts()).toEqual([]);
+    const resolved = completingItemGame(resolveItemDiscard(playItemTurn(itemScenario("discard", network), {}, network).state, pending.pending.item.id).state);
+    inject(resumeSession(resolved, network, 55));
+    render(propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }));
+    expect(toastTexts().filter((text) => text.includes("30区間"))).toEqual([]);
+    expect(status()).not.toContain("新橋に着けばクリア");
+  });
+});
 
 describe("GameApp publication lifecycle", () => {
   it.each([false, true])("keeps classic first movement silent and the previous summary during the next movement (reduced motion %s)", (reduced) => {

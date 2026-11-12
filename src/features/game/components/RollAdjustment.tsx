@@ -2,11 +2,14 @@ import { useId, useLayoutEffect, useRef, useState, type SyntheticEvent } from "r
 import type { ItemRollAdjustment } from "../../../types/network";
 import type { ItemSessionView } from "../itemSession";
 import { adjustedPips } from "../itemPresentation";
+import type { AdjustmentLanding } from "../mapGuidance";
 import { PhraseText } from "./PhraseText";
 
 export interface RollAdjustmentProps {
   announcement?: string;
   decision: Extract<NonNullable<ItemSessionView["decision"]>, { kind: "adjust" }>;
+  /** Exact landing of each legal choice, matched to the radios by `delta`; a missing entry omits the station. */
+  landings?: readonly AdjustmentLanding[];
   onContinue: (adjustment: ItemRollAdjustment | null) => void;
   /**
    * The shared presentation Skip. The native modal makes the panel's スキップ inert, so the dialog offers the same
@@ -19,7 +22,7 @@ export interface RollAdjustmentProps {
 
 type AdjustmentChoice = -1 | 0 | 1;
 
-export function RollAdjustment({ decision, onContinue, announcement, onSkip, canSkip = false }: RollAdjustmentProps) {
+export function RollAdjustment({ decision, onContinue, announcement, onSkip, canSkip = false, landings = [] }: RollAdjustmentProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const titleId = useId();
@@ -65,6 +68,8 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
           <legend>進むマス数を選ぶ</legend>
           {choices.map((delta) => {
             const pips = adjustedPips(decision.rawRoll, delta);
+            const landing = landings.find((candidate) => candidate.delta === delta);
+            const steps = landing?.travelledSteps ?? pips;
             const label = delta === 0 ? "そのまま" : `${delta === -1 ? "−1" : "+1"}`;
             return <label className="item-adjustment__choice" key={delta}>
               <input
@@ -74,7 +79,7 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
                 checked={choice === delta}
                 onChange={() => setChoice(delta)}
               />
-              <span><strong>{label}</strong><PhraseText text={`：出目 ${pips}、${pips}マス進む`} /></span>
+              <span><strong>{label}</strong><span className="item-adjustment__separator">：</span><PhraseText text={`出目 ${pips}、${steps}マス進む`} />{landing && <span className="item-adjustment__station"> → {landing.stationName}</span>}</span>
             </label>;
           })}
         </fieldset>

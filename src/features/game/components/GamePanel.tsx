@@ -66,6 +66,11 @@ export interface GamePanelProps {
   turnMomentTargets?: TurnMomentTargets;
 }
 
+/** Short-landscape wording of the goal guidance, built from the same reveal-gated station name. */
+function goalGuidanceShortText(stationName: string): string {
+  return `あとは${stationName}へ`;
+}
+
 function showAllLineGroups(): void {
   setVisibleLineGroupIds(null);
 }
@@ -297,6 +302,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         turn={turnDisplay.turn}
         completed={turnDisplay.progress.completedSegmentIds.filter((id) => requiredTargetIds.includes(id)).length}
         required={props.requiredCount}
+        goalGuidanceText={turnDisplay.goalGuidance?.text ?? null}
+        goalGuidanceShortText={turnDisplay.goalGuidance ? goalGuidanceShortText(turnDisplay.goalGuidance.stationName) : null}
         compactRoll={turnDisplay.compactRoll}
         saveStatus={saveStatus}
         saveStatusMessage={saveStatusMessage(saveStatus)}
@@ -382,6 +389,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       {turnDisplay.decision?.kind === "adjust" && <RollAdjustment
         announcement={turnDisplay.announcement}
         decision={turnDisplay.decision}
+        landings={turnDisplay.adjustmentLandings}
         onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
         onSkip={props.onSkip}
         canSkip={turnDisplay.canSkip}

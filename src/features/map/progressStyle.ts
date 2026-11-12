@@ -32,9 +32,7 @@ export interface CurrentPositionCollection {
 }
 
 /** A single-point collection for the player marker (empty when unknown). */
-export function currentPositionCollection(
-  position: Position | null,
-): CurrentPositionCollection {
+export function currentPositionCollection(position: Position | null): CurrentPositionCollection {
   const features = position
     ? [
         {

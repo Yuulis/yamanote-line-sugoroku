@@ -19,7 +19,16 @@ import { indexServiceGeometry } from "./serviceGeometry";
 import { buildMapPresentationIndex } from "./mapPresentation";
 import { updateLineGroupVisibility } from "./lineVisibility";
 import { useVisibleLineGroupIds } from "./lineVisibilityStore";
-import { initialOverviewServices, isUserCameraEvent, needsRecentre, USER_CAMERA_EVENTS } from "./camera";
+import {
+  adjustmentPreviewPadding,
+  adjustmentPreviewFitSignature,
+  bestUnobstructedPoint,
+  initialOverviewServices,
+  isUserCameraEvent,
+  needsRecentre,
+  USER_CAMERA_EVENTS,
+} from "./camera";
+import type { CameraPoint, CameraRect } from "./camera";
 import {
   FOLLOW_EASE_MS,
   MAP_CENTER,
@@ -27,6 +36,8 @@ import {
   MAP_MIN_ZOOM,
   MAP_STYLE_URL,
   MAP_ZOOM,
+  CURRENT_POSITION_RADIUS,
+  CURRENT_POSITION_STROKE_WIDTH,
   NETWORK_FIT_PADDING_DESKTOP,
   NETWORK_FIT_PADDING_PHONE,
   NETWORK_FIT_PANEL_GAP,
@@ -45,8 +56,15 @@ import {
   setSegmentFlashOpacity,
   updateCompletedSegments,
   updateCurrentPosition,
+  updateGoalStation,
   updateHighlightedService,
 } from "./railwayLayers";
+import { createHeadingMarker, type HeadingMarkerController } from "./headingMarker";
+import {
+  type AdjustmentCandidate,
+  mountAdjustmentCallouts,
+  measureAdjustmentCallouts,
+} from "./rollAdjustmentPreview";
 import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
@@ -65,6 +83,12 @@ interface RailwayMapProps {
   presentation?: PresentationResolver;
   /** Game progress to draw; omitted when no game is running. */
   progress?: MapProgress;
+  /** Reveal-gated heading from the shared turn display. */
+  markerBearing?: number | null;
+  /** Reveal-gated goal station id from the shared turn display; null/omitted clears the ring. */
+  goalStationId?: string | null;
+  /** Reveal-gated landings of the open roll-adjustment decision; empty/omitted shows no callouts. */
+  adjustmentCandidates?: readonly AdjustmentCandidate[];
   /** The presented arrival's flash of newly completed target segments; null/omitted clears the flash layer. */
   segmentFlash?: SegmentFlashRequest | null;
   /** Per-frame marker position of a running move; overrides the progress position once set. */
@@ -80,9 +104,14 @@ interface RailwayMapProps {
   minZoom?: number;
 }
 
-/** Elements whose size changes the follow-camera layout: the map container and the panel root. */
-export function cameraLayoutTargets(container: HTMLElement, panelRoot: HTMLElement | null): HTMLElement[] {
-  return panelRoot ? [container, panelRoot] : [container];
+/** Elements whose size can change the camera layout. */
+export function cameraLayoutTargets(
+  container: HTMLElement,
+  panelRoot: HTMLElement | null,
+  extraTargets: readonly HTMLElement[] = [],
+): HTMLElement[] {
+  const targets = panelRoot ? [container, panelRoot] : [container];
+  return [...targets, ...extraTargets.filter((target) => !targets.includes(target))];
 }
 
 /**
@@ -96,6 +125,8 @@ export function useCameraLayoutObserver(
   panelKey: number | undefined,
   onBind: () => void,
   onLayoutChange: () => void,
+  previewOpen = false,
+  previewKey = "",
 ): void {
   const callbacksRef = useRef({ onBind, onLayoutChange });
   useEffect(() => {
@@ -106,6 +137,10 @@ export function useCameraLayoutObserver(
     const container: HTMLElement = map.getContainer();
     callbacksRef.current.onBind();
     const panel = document.querySelector<HTMLElement>(".game-panel");
+    const previewTargets = previewOpen
+      ? PREVIEW_LAYOUT_SELECTORS.flatMap((selector) =>
+          [...document.querySelectorAll<HTMLElement>(selector)].filter(isVisibleLayoutTarget))
+      : [];
     let animationFrame = 0;
     const requestLayoutUpdate = () => {
       if (animationFrame) return;
@@ -117,14 +152,16 @@ export function useCameraLayoutObserver(
     const observer = typeof ResizeObserver === "undefined"
       ? null
       : new ResizeObserver(requestLayoutUpdate);
-    for (const target of cameraLayoutTargets(container, panel)) observer?.observe(target);
+    for (const target of cameraLayoutTargets(container, panel, previewTargets)) observer?.observe(target);
     window.addEventListener("resize", requestLayoutUpdate);
+    window.addEventListener("orientationchange", requestLayoutUpdate);
     return () => {
       observer?.disconnect();
       window.removeEventListener("resize", requestLayoutUpdate);
+      window.removeEventListener("orientationchange", requestLayoutUpdate);
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
     };
-  }, [map, panelKey]);
+  }, [map, panelKey, previewOpen, previewKey]);
 }
 
 /** Start time of the flash for one request key; kept across style reloads so a reload never restarts it. */
@@ -192,9 +229,176 @@ const NO_LIVE_POSITION: LivePosition = {
 };
 const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
 const ZERO_MAP_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
+const PREVIEW_LAYOUT_SELECTORS = [
+  ".item-adjustment",
+  ".map-overview",
+  ".maplibregl-ctrl-top-left",
+  ".maplibregl-ctrl-top-right",
+  ".maplibregl-ctrl-bottom-left",
+  ".maplibregl-ctrl-bottom-right",
+  "[data-map-adjustment-callout]",
+] as const;
+const PREVIEW_OBSTRUCTION_SELECTORS = [
+  ".game-panel",
+  ".item-adjustment",
+  ".map-overview",
+  ".maplibregl-ctrl-top-left",
+  ".maplibregl-ctrl-top-right",
+  ".maplibregl-ctrl-bottom-left",
+  ".maplibregl-ctrl-bottom-right",
+] as const;
+const ORIGIN_MARKER_RADIUS_PX = CURRENT_POSITION_RADIUS + CURRENT_POSITION_STROKE_WIDTH;
 
 function attributionPosition(atTop: boolean): "top-left" | "bottom-right" {
   return atTop ? "top-left" : "bottom-right";
+}
+
+function isVisibleLayoutTarget(element: HTMLElement): boolean {
+  if (element instanceof HTMLDialogElement && !element.open) return false;
+  return element.getClientRects().length > 0;
+}
+
+function toMapRect(rect: DOMRect, mapRect: DOMRect): CameraRect {
+  return {
+    left: rect.left - mapRect.left,
+    top: rect.top - mapRect.top,
+    right: rect.right - mapRect.left,
+    bottom: rect.bottom - mapRect.top,
+  };
+}
+
+function previewObstructions(container: HTMLElement): readonly CameraRect[] {
+  const mapBounds = container.getBoundingClientRect();
+  const elements = [...new Set(PREVIEW_OBSTRUCTION_SELECTORS.flatMap((selector) =>
+    [...document.querySelectorAll<HTMLElement>(selector)]))];
+  return elements
+    .filter(isVisibleLayoutTarget)
+    .map((element) => toMapRect(element.getBoundingClientRect(), mapBounds))
+    .filter((rect) => rect.right > 0 && rect.left < mapBounds.width && rect.bottom > 0 && rect.top < mapBounds.height);
+}
+
+function originMarkerIntersects(
+  point: CameraPoint,
+  radius: number,
+  obstruction: CameraRect,
+): boolean {
+  return point.x - radius < obstruction.right && point.x + radius > obstruction.left &&
+    point.y - radius < obstruction.bottom && point.y + radius > obstruction.top;
+}
+
+function keepOriginVisible(
+  map: MapLibreMap,
+  position: Position,
+  obstructions: readonly CameraRect[],
+): void {
+  const container = map.getContainer().getBoundingClientRect();
+  const viewport = { width: container.width, height: container.height };
+  const point = map.project(position);
+  const withinViewport = point.x >= ORIGIN_MARKER_RADIUS_PX &&
+    point.x <= viewport.width - ORIGIN_MARKER_RADIUS_PX &&
+    point.y >= ORIGIN_MARKER_RADIUS_PX &&
+    point.y <= viewport.height - ORIGIN_MARKER_RADIUS_PX;
+  const overlapsObstruction = obstructions.some((rect) =>
+    originMarkerIntersects(point, ORIGIN_MARKER_RADIUS_PX, rect));
+  if (withinViewport && !overlapsObstruction) return;
+
+  const target = bestUnobstructedPoint(viewport, obstructions, ORIGIN_MARKER_RADIUS_PX) ?? {
+    x: viewport.width / 2,
+    y: viewport.height / 2,
+  };
+  const cameraCenter = map.getCenter();
+  const projectedCenter = map.project([cameraCenter.lng, cameraCenter.lat]);
+  const shiftedCenter = map.unproject([
+    projectedCenter.x + point.x - target.x,
+    projectedCenter.y + point.y - target.y,
+  ]);
+  map.jumpTo({ center: shiftedCenter, zoom: map.getZoom(), padding: ZERO_MAP_PADDING });
+}
+
+function originCalloutBounds(map: MapLibreMap, position: Position | null): readonly { anchor: CameraPoint; rect: CameraRect }[] {
+  if (position === null) return [];
+  const anchor = map.project(position);
+  return [{
+    anchor,
+    rect: {
+      left: anchor.x - ORIGIN_MARKER_RADIUS_PX,
+      top: anchor.y - ORIGIN_MARKER_RADIUS_PX,
+      right: anchor.x + ORIGIN_MARKER_RADIUS_PX,
+      bottom: anchor.y + ORIGIN_MARKER_RADIUS_PX,
+    },
+  }];
+}
+
+function positionsBounds(positions: readonly Position[]): [Position, Position] | null {
+  if (positions.length === 0) return null;
+  const longitudes = positions.map(([longitude]) => longitude);
+  const latitudes = positions.map(([, latitude]) => latitude);
+  return [
+    [Math.min(...longitudes), Math.min(...latitudes)],
+    [Math.max(...longitudes), Math.max(...latitudes)],
+  ];
+}
+
+function fitAdjustmentPreview(
+  map: MapLibreMap,
+  origin: Position | null,
+  candidates: readonly AdjustmentCandidate[],
+  sessionKey: number | undefined,
+  candidateKey: string,
+  originKey: string,
+  previousSignature: string | null,
+): string | null {
+  const positions = [
+    ...(origin ? [origin] : []),
+    ...candidates.flatMap((candidate) => candidate.position ? [candidate.position] : []),
+  ];
+  const bounds = positionsBounds(positions);
+  if (!bounds) return null;
+
+  const container = map.getContainer();
+  const viewport = container.getBoundingClientRect();
+  const measurements = [...measureAdjustmentCallouts(map), ...originCalloutBounds(map, origin)];
+  const obstructions = previewObstructions(container);
+  const padding = adjustmentPreviewPadding(
+    { width: viewport.width, height: viewport.height },
+    obstructions,
+    measurements,
+  );
+  const signature = adjustmentPreviewFitSignature(
+    sessionKey,
+    candidateKey,
+    originKey,
+    { width: viewport.width, height: viewport.height },
+    padding,
+  );
+  if (signature === previousSignature) return signature;
+  try {
+    map.setPadding(ZERO_MAP_PADDING);
+    map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
+  } catch (error) {
+    console.warn("Map preview fit failed; centering the origin as a fallback.", error);
+    try {
+      map.setPadding(ZERO_MAP_PADDING);
+      const center = origin ?? positions[0];
+      if (center) map.jumpTo({ center, zoom: Math.min(map.getZoom(), MAP_ZOOM), padding: ZERO_MAP_PADDING });
+    } catch (fallbackError) {
+      console.error("Map preview fallback could not center the origin.", fallbackError);
+    }
+  } finally {
+    try {
+      map.setPadding(ZERO_MAP_PADDING);
+    } catch (error) {
+      console.error("Map preview padding could not be cleared.", error);
+    }
+    if (origin) {
+      try {
+        keepOriginVisible(map, origin, obstructions);
+      } catch (error) {
+        console.error("Map preview could not keep the origin in view.", error);
+      }
+    }
+  }
+  return signature;
 }
 
 /**
@@ -301,7 +505,9 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
+
+export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -325,6 +531,7 @@ export function RailwayMap({ data, presentation, progress, segmentFlash = null, 
   const [attempt, setAttempt] = useState(0);
   // The map instance once its layers exist, so progress can be applied to it.
   const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
+  const headingMarkerRef = useRef<HeadingMarkerController | null>(null);
   // Bumped when a replaced style forced the layers to be re-added, so the
   // progress and visibility effects below apply their state to them again.
   const [layersRevision, setLayersRevision] = useState(0);
@@ -444,6 +651,31 @@ export function RailwayMap({ data, presentation, progress, segmentFlash = null, 
   // Keyed by content: the list is rebuilt on every hop of a move but only
   // changes when a segment is finished, so the filters are set that often.
   const completedKey = completedFeatureIds?.join("\n");
+  const markerBearing = displayedBearing ?? null;
+  const previewOpen = adjustmentCandidates.length > 0;
+  const previewOriginKey = position?.join(",") ?? "unknown";
+  const previewOriginRef = useRef<Position | null>(position);
+  previewOriginRef.current = position;
+  const previewFitRef = useRef<{ map: MapLibreMap; signature: string } | null>(null);
+  useEffect(() => {
+    if (!loadedMap) return;
+    const headingMarker = createHeadingMarker(loadedMap);
+    headingMarkerRef.current = headingMarker;
+    return () => {
+      headingMarker.remove();
+      if (headingMarkerRef.current === headingMarker) headingMarkerRef.current = null;
+    };
+  }, [loadedMap]);
+  // Keyed by content: the parent rebuilds the array on every render.
+  const candidatesRef = useRef(adjustmentCandidates);
+  candidatesRef.current = adjustmentCandidates;
+  const candidatesKey = adjustmentCandidates
+    .map((candidate) => `${candidate.delta}:${candidate.stationId}:${candidate.travelledSteps}:${candidate.position?.join(",") ?? ""}`)
+    .join("|");
+  useEffect(() => {
+    if (!loadedMap || candidatesRef.current.length === 0) return;
+    return mountAdjustmentCallouts(loadedMap, candidatesRef.current);
+  }, [loadedMap, panelKey, candidatesKey]);
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, layersRevision, completedKey, targetServiceId]);
@@ -451,8 +683,13 @@ export function RailwayMap({ data, presentation, progress, segmentFlash = null, 
     if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
   }, [loadedMap, layersRevision, mapPresentationIndex, selectedGroupIds, targetServiceId]);
   useEffect(() => {
-    if (loadedMap) updateCurrentPosition(loadedMap, position);
-  }, [loadedMap, layersRevision, position]);
+    if (!loadedMap) return;
+    updateCurrentPosition(loadedMap, position);
+    headingMarkerRef.current?.update(position, markerBearing);
+  }, [loadedMap, layersRevision, position, markerBearing]);
+  useEffect(() => {
+    if (loadedMap) updateGoalStation(loadedMap, goalStationId);
+  }, [loadedMap, layersRevision, goalStationId]);
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
 
   useEffect(() => {
@@ -479,39 +716,72 @@ export function RailwayMap({ data, presentation, progress, segmentFlash = null, 
   // observed layout to be applied even if the marker is already centred.
   const appliedCameraLayoutRef = useRef<string | null>(null);
   useCameraLayoutObserver(
-    followEnabled ? loadedMap : null,
+    followEnabled || previewOpen ? loadedMap : null,
     panelKey,
     () => { appliedCameraLayoutRef.current = null; },
     () => {
       if (!loadedMap) return;
+      if (previewOpen) {
+        setCameraLayoutRevision((revision) => revision + 1);
+        return;
+      }
       // A resize that leaves the camera layout unchanged (any panel resize
       // on desktop) must not pull a moved camera back to the marker.
       if (cameraLayoutKey(loadedMap) === appliedCameraLayoutRef.current) return;
       setCameraLayoutRevision((revision) => revision + 1);
     },
+    previewOpen,
+    candidatesKey,
   );
+  useEffect(() => {
+    if (!loadedMap) return;
+    if (!previewOpen) {
+      const previousFit = previewFitRef.current;
+      previewFitRef.current = null;
+      if (previousFit?.map === loadedMap) loadedMap.setPadding(ZERO_MAP_PADDING);
+      return;
+    }
+    const previousSignature = previewFitRef.current?.map === loadedMap
+      ? previewFitRef.current.signature
+      : null;
+    const signature = fitAdjustmentPreview(
+      loadedMap,
+      previewOriginRef.current,
+      candidatesRef.current,
+      panelKey,
+      candidatesKey,
+      previewOriginKey,
+      previousSignature,
+    );
+    if (signature !== null) previewFitRef.current = { map: loadedMap, signature };
+  }, [loadedMap, previewOpen, panelKey, candidatesKey, previewOriginKey, cameraLayoutRevision]);
   // Declared before the camera effect: re-enabling following clears the
   // gesture flag before the camera recentres.
   useEffect(() => {
     if (followEnabled) userMovedRef.current = false;
   }, [followEnabled]);
   useEffect(() => {
-    if (!loadedMap || !followEnabled || userMovedRef.current || !position) return;
+    if (!loadedMap || !followEnabled || previewOpen || userMovedRef.current || !position) return;
     if (recentre(loadedMap, position, immediate)) {
       appliedCameraLayoutRef.current = cameraLayoutKey(loadedMap);
     }
-  }, [loadedMap, followEnabled, position, immediate]);
+  }, [loadedMap, followEnabled, previewOpen, position, immediate]);
   // Layout changes only: re-checked here because a revision queued before a
   // follow move applied the same layout is stale by the time it renders.
   useEffect(() => {
     if (handledCameraLayoutRevisionRef.current === cameraLayoutRevision) return;
-    if (!loadedMap || !followEnabled || userMovedRef.current || !position) return;
+    if (!loadedMap) return;
+    if (previewOpen) {
+      handledCameraLayoutRevisionRef.current = cameraLayoutRevision;
+      return;
+    }
+    if (!followEnabled || userMovedRef.current || !position) return;
     handledCameraLayoutRevisionRef.current = cameraLayoutRevision;
     const layoutKey = cameraLayoutKey(loadedMap);
     if (layoutKey === appliedCameraLayoutRef.current) return;
     recentre(loadedMap, position, immediate, true);
     appliedCameraLayoutRef.current = layoutKey;
-  }, [loadedMap, followEnabled, position, immediate, cameraLayoutRevision]);
+  }, [loadedMap, followEnabled, previewOpen, position, immediate, cameraLayoutRevision]);
 
   const retry = () => {
     setStyleFailed(false);

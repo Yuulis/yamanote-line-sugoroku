@@ -58,6 +58,7 @@ type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-sa
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
 const NO_MOVE_EVENTS: TurnMomentObservation["movementEvents"] = [];
+const NO_TOAST_INPUTS: readonly ToastInput[] = [];
 /** Phases in which `lastMove` still describes the previous turn: the current record is not yet save-attempted. */
 const PRE_RECORD_PHASES: ReadonlySet<GameSession["phase"]> = new Set(["committing", "awaiting-adjust", "resolving"]);
 
@@ -217,14 +218,15 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     restoredHistory,
     previousClassicAnnouncement: classicAnnouncement.current.text,
     revealKey: reveal.key,
-  }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, presentedRevealStage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory, reveal.key]);
+    entryTurn,
+  }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, presentedRevealStage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory, reveal.key, entryTurn]);
   if (!itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
     classicAnnouncement.current.text = turnDisplay.announcement;
   }
   // Presented permissions, read at call time so a direct or stale invocation cannot bypass them.
   const turnDisplayRef = useRef<TurnMomentDisplay | null>(null);
   turnDisplayRef.current = turnDisplay;
-  const toastInputs = turnDisplay?.toastInputs ?? [];
+  const toastInputs = turnDisplay?.toastInputs ?? NO_TOAST_INPUTS;
   useEffect(() => {
     if (toastBaseline.current.sessionId !== toastSessionId) {
       toastBaseline.current = {
@@ -236,12 +238,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
       setItemDialogOpen(false);
       return;
     }
-    if (!reveal.ready || !reveal.key) return;
     if (toastInputs !== processedToastInputs.current) {
       processedToastInputs.current = toastInputs;
       setAcceptedToastInputs(toastInputs.filter((input) => !toastBaseline.current.keys.has(input.key)));
     }
-  }, [toastSessionId, reveal.key, reveal.ready, toastInputs]);
+  }, [toastSessionId, toastInputs]);
   const progress = useMemo<MapProgress>(
     () =>
       turnDisplay
@@ -465,7 +466,10 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         targetServiceId={edition.config.targetServiceId}
         presentation={presentation}
         progress={progress}
+        markerBearing={turnDisplay?.markerBearing ?? null}
+        goalStationId={turnDisplay?.goalGuidance?.stationId ?? null}
         segmentFlash={turnDisplay?.segmentFlash ?? null}
+        adjustmentCandidates={turnDisplay?.adjustmentLandings}
         livePosition={livePosition}
         follow={mapFollow}
         panelKey={session && shown && !showClear ? session.sessionId : undefined}

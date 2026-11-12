@@ -76,8 +76,11 @@ bundle identity and presentation metadata. This classic measurement can be selec
 with `SIM_BUNDLE=public/data SIM_CONFIG=product`. For example, run
 a 200-game classic smoke with `SIM_BUNDLE=public/data SIM_CONFIG=product
 SIM_GAMES=200 npm run sim`. Do not infer the Tokyo suburban 2/3 Yamanote share from the
-legacy preset. These classic games use ruleset `tokyo-suburban-1` and bundle
-`dataVersion` `n02-2025-8a0970069659`.
+legacy preset. The current shipped bundle uses `dataVersion`
+`n02-2025-7974da15af8e`. The historical S7 classic measurement below used
+ruleset `tokyo-suburban-1` and bundle `dataVersion` `n02-2025-8a0970069659`;
+issue #62 superseded that bundle's direction-label output. The recorded S7
+measurements are unchanged.
 The playable edition now uses `DEFAULT_GAME_CONFIG` (`ITEM_GAME_CONFIG`); see
 the item-engine runner below for its measurements.
 

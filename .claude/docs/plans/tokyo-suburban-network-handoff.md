@@ -124,3 +124,7 @@ Next: retain **R3 D1/D2 as accepted proposals**, with **D3/D4 unconfirmed**. Imp
   `service-boundary`), unless the operator itself runs one named line across its own segments.
 - Stop pattern: weekday 各停; stations served only by non-各停 trains are reported but not included.
 - Sources: official operator route maps/timetables first; cite URLs. Mark anything unverified.
+
+## Supersession note (2026-11-12)
+
+Issue #62 corrected the live direction-label output, superseding the S4 direction-label output and its frozen product verification pins and derived-override equality. The `product_suburban verify` command and its recorded evidence are intentionally unchanged; their S4 label pins no longer describe the current bundle.

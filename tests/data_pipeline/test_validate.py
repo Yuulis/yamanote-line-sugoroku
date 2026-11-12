@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import dataclasses
 from collections.abc import Callable
 
@@ -39,6 +40,53 @@ def test_validate_published_data_passes(
     )
     assert report.metrics["length_km[jr-yamanote]"] == pytest.approx(34.5, abs=1.5)
     assert report.metrics["other_station_passes"] == 104
+
+
+@pytest.mark.parametrize(
+    "service_id,direction,actual_label,expected_label",
+    [
+        ("jr-keihin-tohoku", "forward", "蒲田方面", "大船方面"),
+        ("jr-keihin-tohoku", "backward", "赤羽方面", "大宮方面"),
+        ("tobu-nikko", "forward", "日光方面", "東武日光方面"),
+    ],
+    ids=["forward-endpoint", "backward-endpoint", "service-stop-name"],
+)
+def test_validate_live_direction_labels_match_endpoint_names(
+    installed_product_dataset: Dataset,
+    installed_product_overrides: Overrides,
+    service_id: str,
+    direction: str,
+    actual_label: str,
+    expected_label: str,
+) -> None:
+    dataset = copy.deepcopy(installed_product_dataset)
+    service = next(
+        item for item in dataset.service_patterns if item["id"] == service_id
+    )
+    service["directionLabels"][direction] = actual_label
+
+    errors = _errors(dataset, installed_product_overrides)
+
+    assert (
+        f"service {service_id} {direction} direction label {actual_label!r} "
+        f"does not match expected endpoint label {expected_label!r}"
+    ) in errors
+
+
+@pytest.mark.parametrize("service_id", ["jr-yamanote", "toei-oedo-loop"])
+def test_validate_live_circular_direction_labels_are_exempt(
+    installed_product_dataset: Dataset,
+    installed_product_overrides: Overrides,
+    service_id: str,
+) -> None:
+    errors = _errors(installed_product_dataset, installed_product_overrides)
+
+    assert not any(
+        error.startswith(f"service {service_id} ")
+        and "direction label" in error
+        and "does not match expected endpoint label" in error
+        for error in errors.splitlines()
+    )
 
 
 def test_validate_published_data_has_contract_shapes(

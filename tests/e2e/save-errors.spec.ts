@@ -139,11 +139,19 @@ test.describe("captured pre-S5 save against the live product bundle", () => {
     await openTitle(page);
     await writeSaveText(page, historical);
     await page.reload();
-    await expect(titleScreen(page).getByRole("alert")).toContainText("ルールが異なるセーブデータのため読み込めません。");
+    await expect(titleScreen(page).getByRole("alert")).toContainText("路線データが更新されたため、このセーブデータは使えません。");
     await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
     expect(await readSaveText(page)).toBe(historical);
     await page.reload();
+    await expect(titleScreen(page).getByRole("alert")).toContainText("路線データが更新されたため、このセーブデータは使えません。");
     expect(await readSaveText(page)).toBe(historical);
+
+    await titleScreen(page).getByRole("alert").getByRole("button", { name: "セーブデータを破棄" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "削除する" }).click();
+    await expect(dialog).toBeHidden();
+    expect(await readSaveText(page)).toBeNull();
   });
 
   test("reports an unsupported format, survives cancellation and reload, then can be discarded", async ({ page }) => {

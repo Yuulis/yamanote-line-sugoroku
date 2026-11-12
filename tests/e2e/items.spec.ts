@@ -1,10 +1,12 @@
 import type { Page } from "@playwright/test";
 import type { ItemGameState } from "../../src/types/network";
 import { playItemTurn, serializeGame } from "../../src/features/game/engine";
+import { advance } from "../../src/features/game/engine/movement";
 import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
+import { MAP_STYLE_URL, SOURCE_IDS } from "../../src/features/map/mapConfig";
 import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
 import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
@@ -26,6 +28,160 @@ async function scenario(page: Page, bundle: RailwayBundle, name: ItemScenario): 
   const game = itemScenario(name, bundle.network);
   await restore(page, game);
   return game;
+}
+
+interface PreviewRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+const ORIGIN_MARKER_HALF_SIZE_PX = 15;
+const VIEWPORT_TOLERANCE_PX = 1;
+const MIN_DIE_FACE = 1;
+const MAX_DIE_FACE = 6;
+const ADJUSTMENT_DELTAS = [-1, 0, 1] as const;
+
+async function expectPreviewGeometryVisible(page: Page, expectedCalloutCount: number): Promise<void> {
+  const geometry = await page.evaluate(async ({ markerSourceId, markerHalfSize }) => {
+    interface TestMap {
+      getContainer(): HTMLElement;
+      getPadding(): { top: number; right: number; bottom: number; left: number };
+      project(position: [number, number]): { x: number; y: number };
+      isMoving(): boolean;
+      on(event: "idle" | "moveend", listener: () => void): void;
+      off(event: "idle" | "moveend", listener: () => void): void;
+      getSource(id: string): {
+        getData(): Promise<{ features: { geometry: { coordinates: [number, number] } }[] }>;
+      } | undefined;
+    }
+    const map = (window as Window & { __sugorokuE2E?: { map?: TestMap | null } }).__sugorokuE2E?.map;
+    if (!map) return null;
+    const toRect = (element: Element): PreviewRect => {
+      const rect = element.getBoundingClientRect();
+      return { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom };
+    };
+    const mapRect = toRect(map.getContainer());
+    const calloutElements = [...document.querySelectorAll<HTMLElement>("[data-map-adjustment-callout]")];
+    const bubbles = calloutElements.flatMap((element) => {
+      const bubble = element.querySelector<HTMLElement>(".map-adjustment-callout__bubble");
+      const leader = element.querySelector<HTMLElement>(".map-adjustment-callout__leader");
+      return [bubble, leader].filter((part): part is HTMLElement => part !== null).map(toRect);
+    });
+    const obstacles = [...document.querySelectorAll<HTMLElement>(
+      ".game-panel, .item-adjustment, .map-overview, .maplibregl-ctrl-top-left, .maplibregl-ctrl-top-right, " +
+        ".maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right",
+    )]
+      .filter((element) => element.getClientRects().length > 0 &&
+        (element instanceof HTMLDialogElement ? element.open : true))
+      .map(toRect);
+    const source = await map.getSource(markerSourceId)?.getData();
+    const origin = source?.features[0]?.geometry.coordinates;
+    const projected = origin ? map.project(origin) : null;
+    const originMarker = projected
+      ? {
+          left: mapRect.left + projected.x - markerHalfSize,
+          top: mapRect.top + projected.y - markerHalfSize,
+          right: mapRect.left + projected.x + markerHalfSize,
+          bottom: mapRect.top + projected.y + markerHalfSize,
+        }
+      : null;
+    return {
+      mapRect,
+      bubbles,
+      obstacles,
+      originMarker,
+      calloutCount: calloutElements.length,
+      padding: map.getPadding(),
+    };
+  }, { markerSourceId: SOURCE_IDS.currentPosition, markerHalfSize: ORIGIN_MARKER_HALF_SIZE_PX });
+
+  expect(geometry).not.toBeNull();
+  if (!geometry) throw new Error("The map preview geometry must be available");
+  expect(geometry.padding).toEqual({ top: 0, right: 0, bottom: 0, left: 0 });
+  expect(geometry.calloutCount).toBe(expectedCalloutCount);
+  expect(geometry.originMarker, "the origin marker must be present in the map source").not.toBeNull();
+  if (!geometry.originMarker) throw new Error("The origin marker must be available for preview geometry checks");
+  const targets = [...geometry.bubbles, geometry.originMarker];
+  for (const target of targets) {
+    expect(target.left).toBeGreaterThanOrEqual(geometry.mapRect.left - VIEWPORT_TOLERANCE_PX);
+    expect(target.top).toBeGreaterThanOrEqual(geometry.mapRect.top - VIEWPORT_TOLERANCE_PX);
+    expect(target.right).toBeLessThanOrEqual(geometry.mapRect.right + VIEWPORT_TOLERANCE_PX);
+    expect(target.bottom).toBeLessThanOrEqual(geometry.mapRect.bottom + VIEWPORT_TOLERANCE_PX);
+    for (const obstacle of geometry.obstacles) {
+      const intersects = target.left < obstacle.right && target.right > obstacle.left &&
+        target.top < obstacle.bottom && target.bottom > obstacle.top;
+      expect(intersects, `preview target ${JSON.stringify(target)} overlaps ${JSON.stringify(obstacle)}`).toBe(false);
+    }
+  }
+}
+
+async function expectPreviewCalloutsVisible(page: Page, expectedCalloutCount: number): Promise<void> {
+  const callouts = page.locator("[data-map-adjustment-callout]");
+  await expect(callouts).toHaveCount(expectedCalloutCount);
+  for (let index = 0; index < expectedCalloutCount; index += 1) {
+    await expect(callouts.nth(index)).toBeVisible();
+  }
+  await expectPreviewGeometryVisible(page, expectedCalloutCount);
+}
+
+async function actAndWaitForPreviewMapSettled(page: Page, action: () => Promise<void>): Promise<void> {
+  await page.evaluate(() => {
+    interface TestMap {
+      isMoving(): boolean;
+      on(event: "idle" | "moveend", listener: () => void): void;
+      off(event: "idle" | "moveend", listener: () => void): void;
+    }
+    interface MapWaiter {
+      map: TestMap;
+      settled: boolean;
+      active: boolean;
+      cleanup: () => void;
+      start: () => void;
+    }
+    const windowWithWaiter = window as Window & { __rollAdjustmentMapWaiter?: MapWaiter };
+    const map = (window as Window & { __sugorokuE2E?: { map?: TestMap | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must be available before waiting for preview layout");
+    const waiter: MapWaiter = {
+      map,
+      settled: false,
+      active: false,
+      cleanup: () => {},
+      start: () => {},
+    };
+    const onSettled = () => {
+      if (!waiter.active || map.isMoving()) return;
+      waiter.settled = true;
+    };
+    waiter.cleanup = () => {
+      map.off("idle", onSettled);
+      map.off("moveend", onSettled);
+    };
+    waiter.start = () => { waiter.active = true; };
+    map.on("idle", onSettled);
+    map.on("moveend", onSettled);
+    windowWithWaiter.__rollAdjustmentMapWaiter = waiter;
+  });
+
+  await page.evaluate(() => {
+    const waiter = (window as Window & { __rollAdjustmentMapWaiter?: { start(): void } })
+      .__rollAdjustmentMapWaiter;
+    if (!waiter) throw new Error("The preview map settle waiter was not registered");
+    waiter.start();
+  });
+  await action();
+  await page.waitForFunction(() => {
+    const waiter = (window as Window & {
+      __rollAdjustmentMapWaiter?: { map: { isMoving(): boolean }; settled: boolean };
+    }).__rollAdjustmentMapWaiter;
+    return waiter?.settled === true && !waiter.map.isMoving();
+  });
+  await page.evaluate(() => {
+    const windowWithWaiter = window as Window & { __rollAdjustmentMapWaiter?: { cleanup(): void } };
+    windowWithWaiter.__rollAdjustmentMapWaiter?.cleanup();
+    delete windowWithWaiter.__rollAdjustmentMapWaiter;
+  });
 }
 
 async function finishReducedTurn(page: Page, turnBefore: number): Promise<void> {
@@ -227,6 +383,69 @@ for (const delta of [-1, 1] as const) {
   });
 }
 
+test("roll adjustment landing map preview", async ({ page, railwayBundle }) => {
+  const base = await scenario(page, railwayBundle, "adjust");
+  await expect.poll(async () => readMap(page)).not.toBeNull();
+  await page.evaluate(() => {
+    interface TestMap {
+      jumpTo(options: { center: [number, number]; zoom: number }): void;
+    }
+    const map = (window as Window & { __sugorokuE2E?: { map?: TestMap | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must be available before opening the preview");
+    map.jumpTo({ center: [-120, 30], zoom: 12 });
+  });
+  await actAndWaitForPreviewMapSettled(page, () => diceButton(page).click());
+  const dialog = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect(dialog).toBeVisible();
+  const pendingGame = await itemSave(page);
+  if (pendingGame.pending?.kind !== "roll") throw new Error("Expected a pending roll adjustment");
+  const { rawRoll, resolvedRide } = pendingGame.pending;
+  const previewPosition = {
+    ...base,
+    currentServiceId: resolvedRide.serviceId,
+    direction: resolvedRide.direction,
+  };
+  const expectedLandings = ADJUSTMENT_DELTAS.map((delta) => {
+    const pips = Math.max(1, rawRoll + delta);
+    const landing = advance(previewPosition, pips, railwayBundle.network);
+    const station = railwayBundle.network.stationsById.get(landing.stationId);
+    if (!station) throw new Error(`Missing landing station ${landing.stationId}`);
+    const label = delta === 0 ? "そのまま" : delta === -1 ? "−1" : "+1";
+    const separator = (page.viewportSize()?.width ?? 0) <= 600 ? " ：" : "：";
+    return {
+      accessibleName: `${label}${separator}出目 ${pips}、${landing.traversedSegmentIds.length}マス進む → ${station.name}`,
+      stationId: landing.stationId,
+    };
+  });
+  await expect(dialog.getByRole("radio")).toHaveCount(expectedLandings.length);
+  for (const landing of expectedLandings) {
+    await expect(dialog.getByRole("radio", { name: landing.accessibleName, exact: true })).toHaveCount(1);
+  }
+  const expectedCalloutCount = new Set(expectedLandings.map((landing) => landing.stationId)).size;
+  await expectPreviewCalloutsVisible(page, expectedCalloutCount);
+
+  await actAndWaitForPreviewMapSettled(page, async () => {
+    await page.evaluate((styleUrl) => {
+      const hook = (window as unknown as {
+        __sugorokuE2E: { map: { setStyle(style: string, options: { diff: boolean }): void } };
+      }).__sugorokuE2E;
+      hook.map.setStyle(styleUrl, { diff: false });
+    }, MAP_STYLE_URL);
+  });
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expectPreviewCalloutsVisible(page, expectedCalloutCount);
+
+  const viewport = page.viewportSize();
+  if (!viewport) throw new Error("Expected a configured viewport");
+  await actAndWaitForPreviewMapSettled(page, () => page.setViewportSize(viewport.width <= 600
+    ? { width: 320, height: 568 }
+    : { width: 1220, height: viewport.height }));
+  await expectPreviewCalloutsVisible(page, expectedCalloutCount);
+
+  await dialog.getByRole("button", { name: "そのまま続ける" }).click();
+  await expect(page.locator("[data-map-adjustment-callout]")).toHaveCount(0);
+});
+
 test("full inventory survives reload and reports the player's chosen discard", async ({ page, railwayBundle }) => {
   const base = await scenario(page, railwayBundle, "discard");
   await diceButton(page).click();
@@ -376,6 +595,27 @@ for (const name of ["route", "direction", "adjust", "discard"] as const) {
     if (name === "adjust") {
       const dialog = page.getByRole("dialog", { name: "出目を調整しますか？" });
       await expect(dialog.getByRole("heading")).toBeFocused();
+      const pendingGame = await itemSave(page);
+      const pendingRoll = pendingGame.pending;
+      if (pendingRoll?.kind !== "roll") throw new Error("Expected the pending roll adjustment");
+      const expectedLandingNames = ADJUSTMENT_DELTAS.flatMap((delta) => {
+        const pips = pendingRoll.rawRoll + delta;
+        if (pips < MIN_DIE_FACE || pips > MAX_DIE_FACE) return [];
+        const landing = advance({
+          ...base,
+          currentServiceId: pendingRoll.resolvedRide.serviceId,
+          direction: pendingRoll.resolvedRide.direction,
+        }, pips, railwayBundle.network);
+        const station = railwayBundle.network.stationsById.get(landing.stationId);
+        if (!station) throw new Error(`Missing landing station ${landing.stationId}`);
+        return [station.name];
+      });
+      const radios = dialog.getByRole("radio");
+      await expect(radios).toHaveCount(expectedLandingNames.length);
+      for (const [index, stationName] of expectedLandingNames.entries()) {
+        const escapedStationName = stationName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        await expect(radios.nth(index)).toHaveAccessibleName(new RegExp(escapedStationName));
+      }
       await page.keyboard.press("Escape");
     }
     await finishReducedTurn(page, base.turn);

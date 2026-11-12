@@ -78,13 +78,20 @@ uv run pytest -q
 
 Build options: `--raw-dir`, `--overrides-dir`, `--out-dir`, `--quiet`.
 
-## Current Tokyo suburban edition (S7 docs; bundle `n02-2025-8a0970069659`)
+## Current Tokyo suburban edition (current bundle `n02-2025-7974da15af8e`)
 
 The shipped catalogue has 135 services and 1,586 station identities in product
 order across 11 prefectures, with 3,988 directed segments and 30 target
 segments. `data/overrides/dataset.json` pins its reviewed expected catalogue;
-the live bundle is identified by `dataVersion` `n02-2025-8a0970069659`. It starts
-at `shimbashi`, targets `jr-yamanote`, uses the `capital-region` budget profile
+the live bundle is identified by `dataVersion` `n02-2025-7974da15af8e`. The
+previous bundle id `n02-2025-8a0970069659` is historical. Issue #62 corrected
+10 non-circular services' direction labels to match their displayed endpoint
+stop names. The validator now checks that, for gameplay datasets with
+`uiPresentation`, each
+non-circular service's forward and backward labels equal the displayed name of
+the corresponding endpoint stop plus `方面`; this uses service-stop display
+overrides when present. The bundle starts at `shimbashi`, targets
+`jr-yamanote`, uses the `capital-region` budget profile
 and simplifies geometry by 1 m. The playable ruleset is `tokyo-suburban-items-1`: when Yamanote
 is among at least two service candidates it receives 1/2 of the draw; the
 remaining probability is split equally among other services. `local` and

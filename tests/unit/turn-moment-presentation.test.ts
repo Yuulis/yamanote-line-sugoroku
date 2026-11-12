@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createGame, playItemTurn, playTurn, targetSegmentIds } from "../../src/features/game/engine";
+import {
+  beginItemTurn, buildRailwayNetwork, createGame, createItemGame, finishItemTurn, playItemTurn, playTurn, rollDie, targetSegmentIds,
+} from "../../src/features/game/engine";
+import type { ItemGameState, ItemRollAdjustment } from "../../src/types/network";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { LOOP_SEGMENT_IDS, M_LINE, M_START, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
 import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import { turnMomentArrivalModel } from "../../src/features/game/components/TurnMomentHost";
@@ -49,6 +54,39 @@ function attemptFor(session: GameSession, stage: RollAttempt["stage"] = "release
 
 function progressFor(session: GameSession) {
   return displayedProgress(sessionProgress(session), network, null);
+}
+
+function sessionWithTargetCompletionInHistory(): GameSession {
+  const session = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, 121);
+  const requiredIds = targetSegmentIds(session.game.config, network);
+  const movementHistory = [...requiredIds].reverse().map((segmentId, index) => {
+    const segment = network.segmentsById.get(segmentId)!;
+    return {
+      turn: index + 1,
+      roll: 1,
+      serviceId: segment.serviceId,
+      direction: LEGACY_CAPITAL_REGION_CONFIG.targetDirection,
+      fromStationId: segment.from,
+      toStationId: segment.to,
+      traversedSegmentIds: [segmentId],
+      stopReason: "roll" as const,
+      landing: null,
+    };
+  });
+  const finalRecord = movementHistory.at(-1)!;
+  return {
+    ...session,
+    game: {
+      ...session.game,
+      status: "playing",
+      turn: movementHistory.length,
+      currentStationId: finalRecord.toStationId,
+      currentServiceId: LEGACY_CAPITAL_REGION_CONFIG.targetServiceId,
+      direction: LEGACY_CAPITAL_REGION_CONFIG.targetDirection,
+      completedSegmentIds: [...requiredIds],
+      movementHistory,
+    },
+  };
 }
 
 describe("shared turn moment publication", () => {
@@ -114,11 +152,13 @@ describe("shared turn moment publication", () => {
       expect(display.arrivalText).toBe("1ターン目：品川に到着。踏破 4/30");
       expect(display.lotteryText).toBe("—");
       expect(display.candidateRows).toEqual([]);
+      expect(display.markerBearing).toBeCloseTo(225.61, 1);
       expect(display.showClear).toBe(false);
     }
     const display = deriveTurnMomentDisplay({ session: completed, network, presentation: resolver, progress: progressFor(completed),
       attempt, revealStage: "done", restoredOrOmitted: false });
     expect(display.ride).toEqual({ serviceId: "fixture-south", direction: 1 });
+    expect(display.markerBearing).toBeCloseTo(194.46, 1);
     expect(display.phase).toBe("published");
     expect(display.progress.position).toEqual([139.741535, 35.628135]);
     expect(display.rollText).toBe("4");
@@ -267,6 +307,115 @@ describe("shared turn moment publication", () => {
     expect(display.lotteryText).toBe("品川：山手線・テスト南線から抽選 → テスト南線 ／ 乗車方向は大森方面のみ");
     expect(display.showClear).toBe(false);
   });
+
+  it("uses the revealed ride for its heading and falls back to the incoming direction at an endpoint", () => {
+    const target = deriveTurnMomentDisplay({
+      session: before, network, presentation: resolver, progress: progressFor(before),
+      attempt: attemptFor(before, "waiting-roll"), revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(target.markerBearing).toBeCloseTo(184.55, 1);
+
+    const endpointSession: GameSession = {
+      ...before,
+      game: { ...before.game, currentStationId: "fixture-omori", currentServiceId: "fixture-south", direction: 1 },
+    };
+    const endpointProgress = progressFor(endpointSession);
+    const endpoint = deriveTurnMomentDisplay({
+      session: endpointSession, network, presentation: resolver, progress: endpointProgress,
+      attempt: null, revealStage: "waiting", restoredOrOmitted: true,
+    });
+    expect(endpoint.markerBearing).toBeCloseTo(196.73, 1);
+  });
+});
+
+describe("shared map guidance publication", () => {
+  const session = sessionWithTargetCompletionInHistory();
+  const requiredIds = targetSegmentIds(session.game.config, network);
+  const lastRequiredSegment = network.segmentsById.get(requiredIds[0]!)!;
+  const crossingAttempt: RollAttempt = {
+    ...attemptFor(session, "waiting-roll"),
+    recordTurn: requiredIds.length,
+    origin: {
+      ...attemptFor(session).origin,
+      stationId: lastRequiredSegment.from,
+      ride: { serviceId: lastRequiredSegment.serviceId, direction: 1 },
+      completedSegmentIds: requiredIds.slice(1),
+      turn: requiredIds.length - 1,
+    },
+  };
+
+  it("withholds a new 30/30 guidance crossing before arrival and publishes it at arrival", () => {
+    const preMove = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: crossingAttempt, revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(preMove.goalGuidance).toBeNull();
+
+    const movingSession = { ...session, phase: "animating" as const };
+    const moving = deriveTurnMomentDisplay({
+      session: movingSession, network, presentation: resolver,
+      progress: { ...progressFor(session), stepsCompleted: 1 },
+      attempt: { ...crossingAttempt, stage: "released" }, revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(moving.goalGuidance).toBeNull();
+
+    const arrival = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: { ...crossingAttempt, stage: "released" }, revealStage: "arrival", restoredOrOmitted: false,
+    });
+    expect(arrival.goalGuidance).toEqual({ stationId: "shimbashi", stationName: "新橋", text: "新橋に着けばクリア" });
+    // "重要なときだけ" publishes the arrival through segment-flash instead of the arrival stage.
+    const flash = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: { ...crossingAttempt, stage: "released" }, revealStage: "segment-flash", restoredOrOmitted: false,
+    });
+    expect(flash.phase).toBe("segment-flash");
+    expect(flash.goalGuidance).toEqual({ stationId: "shimbashi", stationName: "新橋", text: "新橋に着けばクリア" });
+  });
+
+  it("retains published guidance during a later move", () => {
+    const laterMove = deriveTurnMomentDisplay({
+      session, network, presentation: resolver, progress: progressFor(session),
+      attempt: { ...attemptFor(session, "waiting-roll"), recordTurn: session.game.turn + 1 },
+      revealStage: "waiting", restoredOrOmitted: false,
+    });
+    expect(laterMove.phase).toBe("pre-move");
+    expect(laterMove.goalGuidance).toEqual({ stationId: "shimbashi", stationName: "新橋", text: "新橋に着けばクリア" });
+  });
+});
+
+describe("30/30 guidance announcement without presented moments", () => {
+  const SENTENCE = "新橋に着けばクリア";
+  const base = itemScenario("route", network);
+  const requiredIds = targetSegmentIds(base.config, network);
+  const played = playItemTurn(base, {}, network).state;
+  // The played turn is crafted to complete every target segment (and nothing earlier does).
+  const completing = {
+    ...played,
+    movementHistory: played.movementHistory.map((record, index, history) => ({
+      ...record, traversedSegmentIds: index === history.length - 1 ? requiredIds : [] })),
+  };
+  const origin = resumeSession(base, network, 91);
+  const result = resumeSession(completing, network, 91);
+  const derive = (phase: "idle" | "animating", revealStage: "waiting" | "done", entryTurn?: number) => deriveTurnMomentDisplay({
+    session: { ...result, phase }, network, presentation: resolver, progress: progressFor(result),
+    attempt: { ...attemptFor(origin, "released"), policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "none" }) },
+    revealStage, restoredOrOmitted: false, itemView: itemSessionView(result, network), entryTurn,
+  });
+
+  it("announces the sentence exactly once at publication when the level plans no arrival stage", () => {
+    expect(result.game.status).toBe("playing");
+    const moving = derive("animating", "waiting");
+    expect(moving.goalGuidance).toBeNull();
+    expect(moving.announcement).not.toContain(SENTENCE);
+    const published = derive("idle", "done");
+    expect(published.phase).toBe("published");
+    expect(published.announcement.split(SENTENCE)).toHaveLength(2);
+  });
+
+  it("does not announce it for a history entered at or after the completing turn", () => {
+    expect(derive("idle", "done", result.game.turn).announcement).not.toContain(SENTENCE);
+  });
 });
 
 describe("S12 arrival and goal publication", () => {
@@ -275,7 +424,7 @@ describe("S12 arrival and goal publication", () => {
   const goalState = playItemTurn(base, { command: { items: [{ kind: "rapid", instanceId: ticket.id }] } }, network).state;
   const origin = resumeSession(base, network, 81);
   const goal = resumeSession(goalState, network, 81);
-  const derive = (session: GameSession, revealStage: "waiting" | "arrival" | "done") => deriveTurnMomentDisplay({
+  const derive = (session: GameSession, revealStage: "waiting" | "arrival" | "segment-flash" | "done") => deriveTurnMomentDisplay({
     session, network, presentation: resolver, progress: progressFor(session), attempt: attemptFor(origin, "released"),
     revealStage, restoredOrOmitted: false, itemView: itemSessionView(session, network),
   });
@@ -318,7 +467,9 @@ describe("S12 arrival and goal publication", () => {
     expect(arrival.canRoll).toBe(false);
     expect(arrival.itemUseLocked).toBe(true);
     expect(arrival.canSkip).toBe(true);
+    expect(arrival.goalGuidance).toBeNull();
     expect(arrival.announcement).toBe("8ターン目：新橋に到着。踏破 30/30");
+    expect(derive(goal, "segment-flash").goalGuidance).toBeNull();
     expect(arrival.clearAnnouncement).toBe("");
     expect(arrival.toastInputs).toEqual([]);
 
@@ -487,4 +638,103 @@ it.each(["all", "important", "none"] as const)("keeps goal publication and its a
     expect(published.clearAnnouncement.match(/ゴールに到着しました/g)).toHaveLength(1);
     expect(published.itemUseLocked).toBe(false);
   }
+});
+
+describe("roll adjustment landing preview", () => {
+  const multiNetwork = buildRailwayNetwork(multiServiceInput());
+  const multiResolver = createPresentationResolver(multiNetwork);
+  const config = {
+    ...multiConfig(), rulesetVersion: "test-items-1",
+    serviceLottery: { kindWeights: { local: 1, rapid: 1 }, target: { kind: "share" as const, numerator: 1, denominator: 2 } },
+    directionLottery: { towardTargetWeight: 3, awayFromTargetWeight: 2 },
+    itemPolicy: { ...ITEM_GAME_CONFIG.itemPolicy!, dropChancePerMille: 0 },
+  };
+
+  /** A restored session at `overrides` with a revealed `face` and one held roll-adjust ticket. */
+  function pendingGame(face: number, overrides: Partial<ItemGameState> = {}): ItemGameState {
+    for (let seed = 0; seed < 100; seed += 1) {
+      const state = createItemGame(config, `preview-${seed}`, multiNetwork);
+      if (rollDie(state.rngState).value !== face) continue;
+      const held = { ...state, ...overrides, inventory: [{ id: "held-0", kind: "roll-adjust" as const }] };
+      return JSON.parse(JSON.stringify(beginItemTurn(held, { items: [] }, multiNetwork).state)) as ItemGameState;
+    }
+    throw new Error(`No seed for face ${face}`);
+  }
+
+  function previewFor(game: ItemGameState, attempt: RollAttempt | null = null) {
+    const session = resumeSession(game, multiNetwork, 5);
+    const input = { session, network: multiNetwork, presentation: multiResolver, attempt,
+      progress: displayedProgress(sessionProgress(session), multiNetwork, null), itemView: itemSessionView(session, multiNetwork),
+      revealStage: "waiting" as const, restoredOrOmitted: attempt === null };
+    const serialized = JSON.stringify(session);
+    const streams = [game.rngState, game.itemRngState];
+    const display = deriveTurnMomentDisplay(input);
+    expect(JSON.stringify(session)).toBe(serialized);
+    expect([game.rngState, game.itemRngState]).toEqual(streams);
+    return { session, display };
+  }
+
+  /** The station each choice really reaches, plus its truncation facts. */
+  function resolved(game: ItemGameState, delta: -1 | 0 | 1) {
+    const adjustment: ItemRollAdjustment | null = delta === 0 ? null : { instanceId: "held-0", delta };
+    const { record } = finishItemTurn(game, adjustment, multiNetwork);
+    if (record?.kind !== "item-ride") throw new Error("Expected item ride");
+    return { stationId: record.toStationId, stopReason: record.stopReason, pips: record.pips, travelled: record.traversedSegmentIds.length };
+  }
+
+  function expectPreviewMatchesEngine(game: ItemGameState) {
+    const { display } = previewFor(game);
+    for (const landing of display.adjustmentLandings) {
+      const real = resolved(game, landing.delta);
+      expect(landing).toMatchObject({ stationId: real.stationId, stopReason: real.stopReason, pips: real.pips, travelledSteps: real.travelled });
+      expect(landing.stationName).toBe(multiResolver.stationName(real.stationId));
+      expect(landing.position).toEqual(multiNetwork.servicesById.get(game.currentServiceId)!.platformCoordinates[real.stationId]);
+    }
+    return display.adjustmentLandings;
+  }
+
+  it.each([[1, [0, 1]], [6, [-1, 0]], [3, [-1, 0, 1]]] as const)("lists only the legal choices for a roll of %i", (face, deltas) => {
+    const landings = expectPreviewMatchesEngine(pendingGame(face));
+    expect(landings.map(({ delta }) => delta)).toEqual(deltas);
+  });
+
+  it("keeps duplicate endpoint landings as separate entries with the truncated travel", () => {
+    const landings = expectPreviewMatchesEngine(pendingGame(3, { currentStationId: "y", currentServiceId: M_LINE, direction: 1 }));
+    expect(landings.map(({ stationId }) => stationId)).toEqual(["z", "z", "z"]);
+    expect(landings.map(({ stopReason }) => stopReason)).toEqual(["roll", "endpoint", "endpoint"]);
+    expect(landings.map(({ travelledSteps }) => travelledSteps)).toEqual([2, 2, 2]);
+  });
+
+  it("truncates every choice that reaches the goal arrival to the goal station", () => {
+    const completedSegmentIds = LOOP_SEGMENT_IDS.slice(0, -1);
+    const landings = expectPreviewMatchesEngine(pendingGame(3, { currentStationId: "e", completedSegmentIds }));
+    expect(landings.map(({ stationId, stopReason }) => [stationId, stopReason])).toEqual(Array(3).fill([M_START, "goal"]));
+    expect(landings.map(({ stationName }) => stationName)).toEqual(Array(3).fill(multiResolver.stationName(M_START)));
+  });
+
+  it("previews a restored pending roll without consuming either random stream", () => {
+    const game = pendingGame(4, { currentStationId: "a" });
+    const { session, display } = previewFor(game);
+    expect(session.phase).toBe("awaiting-adjust");
+    expect(display.adjustmentLandings).toHaveLength(3);
+    expect(display.adjustmentLandings).toEqual(previewFor(game).display.adjustmentLandings);
+  });
+
+  it("publishes candidates only while the adjustment decision is visible", () => {
+    const game = pendingGame(3);
+    const attempt: RollAttempt = { ...attemptFor(resumeSession(game, multiNetwork, 5), "tumble"), rawRoll: 3 };
+    expect(previewFor(game, attempt).display.adjustmentLandings).toEqual([]);
+    attempt.stage = "awaiting-adjust";
+    expect(previewFor(game, attempt).display.adjustmentLandings).toHaveLength(3);
+    attempt.stage = "stamps";
+    expect(previewFor(game, attempt).display.adjustmentLandings).toEqual([]);
+  });
+
+  it("is empty when no adjustment is pending", () => {
+    const idle = resumeSession(createItemGame(config, "preview-idle", multiNetwork), multiNetwork, 5);
+    const display = deriveTurnMomentDisplay({ session: idle, network: multiNetwork, presentation: multiResolver,
+      progress: displayedProgress(sessionProgress(idle), multiNetwork, null), itemView: itemSessionView(idle, multiNetwork),
+      attempt: null, revealStage: "done", restoredOrOmitted: true });
+    expect(display.adjustmentLandings).toEqual([]);
+  });
 });

@@ -16,6 +16,9 @@ import {
   CURRENT_POSITION_STROKE_COLOR,
   CURRENT_POSITION_STROKE_WIDTH,
   CURRENT_SERVICE_LINE_WIDTH,
+  GOAL_STATION_RING_COLOR,
+  GOAL_STATION_RING_RADIUS_STOPS,
+  GOAL_STATION_RING_WIDTH,
   KEY_STATION_RADIUS_STOPS,
   KEY_STATION_STROKE_STOPS,
   LABEL_MIN_ZOOM,
@@ -31,6 +34,9 @@ import {
   ORDINARY_STATION_STROKE_STOPS,
   OTHER_SERVICE_LINE_OPACITY,
   OTHER_SERVICE_LINE_WIDTH,
+  PENDING_SEGMENT_CASING_COLOR,
+  PENDING_SEGMENT_CASING_DASH,
+  PENDING_SEGMENT_CASING_WIDTH,
   PENDING_SEGMENT_COLOR,
   PENDING_SEGMENT_DASH,
   PENDING_SEGMENT_WIDTH,
@@ -130,6 +136,18 @@ export function addRailwayLayers(
     });
     // Two layers so progress is told by line style as well as colour (spec 6.3).
     map.addLayer({
+      id: LAYER_IDS.segmentsPendingCasing,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: pendingSegmentFilter([], targetServiceId),
+      layout: { "line-cap": "butt", "line-join": "round" },
+      paint: {
+        "line-color": PENDING_SEGMENT_CASING_COLOR,
+        "line-width": PENDING_SEGMENT_CASING_WIDTH,
+        "line-dasharray": PENDING_SEGMENT_CASING_DASH,
+      },
+    });
+    map.addLayer({
       id: LAYER_IDS.segmentsPending,
       type: "line",
       source: SOURCE_IDS.segments,
@@ -215,6 +233,20 @@ export function addRailwayLayers(
         "circle-stroke-width": zoomInterpolation(KEY_STATION_STROKE_STOPS),
       },
     });
+    // Goal ring above every station marker, below the names; starts empty until the guidance is public.
+    map.addLayer({
+      id: LAYER_IDS.goalStation,
+      type: "circle",
+      source: SOURCE_IDS.stations,
+      filter: goalStationFilter(null),
+      paint: {
+        "circle-radius": zoomInterpolation(GOAL_STATION_RING_RADIUS_STOPS),
+        "circle-color": GOAL_STATION_RING_COLOR,
+        "circle-opacity": 0,
+        "circle-stroke-color": GOAL_STATION_RING_COLOR,
+        "circle-stroke-width": GOAL_STATION_RING_WIDTH,
+      },
+    });
     // Ordinary names below key ones, so key names are placed first; separate
     // layers (not a zero text-size) keep hidden names from being shaped at all.
     map.addLayer(stationLabelLayer(LAYER_IDS.stationLabelsOrdinary, LABEL_ORDINARY_MIN_ZOOM, ["!", isKeyLabel]));
@@ -235,6 +267,13 @@ export function addRailwayLayers(
       "circle-stroke-width": CURRENT_POSITION_STROKE_WIDTH,
     },
   });
+}
+
+/** Matches exactly the goal station; an empty `in` filter matches nothing. */
+function goalStationFilter(stationId: string | null): ExpressionSpecification {
+  return stationId === null
+    ? ["in", ["get", "id"], ["literal", []]]
+    : ["==", ["get", "id"], stationId];
 }
 
 /** Collision-aware station names of one tier, shown from `minzoom` up. */
@@ -275,13 +314,21 @@ export function updateCompletedSegments(
 ): void {
   if (!map.getLayer(LAYER_IDS.segmentsCompleted)) return;
   map.setFilter(LAYER_IDS.segmentsCompleted, completedSegmentFilter(completedFeatureIds, targetServiceId));
-  map.setFilter(LAYER_IDS.segmentsPending, pendingSegmentFilter(completedFeatureIds, targetServiceId));
+  const filter = pendingSegmentFilter(completedFeatureIds, targetServiceId);
+  map.setFilter(LAYER_IDS.segmentsPending, filter);
+  if (map.getLayer(LAYER_IDS.segmentsPendingCasing)) map.setFilter(LAYER_IDS.segmentsPendingCasing, filter);
 }
 
 /** Move the player marker (called on every animation frame). */
 export function updateCurrentPosition(map: MapLibreMap, position: Position | null): void {
   const source = map.getSource<GeoJSONSource>(SOURCE_IDS.currentPosition);
   source?.setData(currentPositionCollection(position));
+}
+
+/** Ring the goal station, or clear the ring with `null`; skipped while the layer is missing. */
+export function updateGoalStation(map: MapLibreMap, stationId: string | null): void {
+  if (!map.getLayer(LAYER_IDS.goalStation)) return;
+  map.setFilter(LAYER_IDS.goalStation, goalStationFilter(stationId));
 }
 
 /** Highlight by referenced feature IDs, never by primitive owner. */
