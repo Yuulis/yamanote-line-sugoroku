@@ -9,6 +9,7 @@ import {
 import { buildLineColorExpression, buildTrackColorExpression } from "../../src/features/map/lineColor";
 import { buildStationCollection } from "../../src/features/map/stationCollection";
 import { currentPositionCollection } from "../../src/features/map/progressStyle";
+import { adjustmentPreviewFitSignature, adjustmentPreviewPadding, bestUnobstructedPoint } from "../../src/features/map/camera";
 import {
   buildMapPresentationIndex,
   visiblePrimitiveFeatureIds,
@@ -23,7 +24,7 @@ import { labelSortKey, isStationLabelEligible } from "../../src/features/map/sta
 import { updateLineGroupSelection } from "../../src/features/map/lineVisibilityStore";
 import { LAYER_IDS, SOURCE_IDS, isBasemapError } from "../../src/features/map/mapConfig";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
-import { RailwayMap } from "../../src/features/map/RailwayMap";
+import { cameraLayoutTargets, RailwayMap } from "../../src/features/map/RailwayMap";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { validManifest, validService, validStation } from "./fixtures/railway";
 
@@ -231,6 +232,99 @@ describe("currentPositionCollection", () => {
 
   it("clears the marker source when the position is unknown", () => {
     expect(currentPositionCollection(null).features).toEqual([]);
+  });
+});
+
+describe("preview camera layout targets", () => {
+  it("observes the adjustment sheet, map controls, and callouts while a preview is open", () => {
+    const container = {} as unknown as HTMLElement;
+    const panel = {} as unknown as HTMLElement;
+    const dialog = {} as unknown as HTMLElement;
+    const overview = {} as unknown as HTMLElement;
+    const mapControls = {} as unknown as HTMLElement;
+    const callout = {} as unknown as HTMLElement;
+
+    const targets = cameraLayoutTargets(container, panel, [dialog, overview, mapControls, callout]);
+
+    expect(targets).toEqual([container, panel, dialog, overview, mapControls, callout]);
+  });
+});
+
+describe("adjustment preview camera padding", () => {
+  it("requires a new fit when the session changes even if the viewport and padding are unchanged", () => {
+    const viewport = { width: 400, height: 300 };
+    const padding = { top: 20, right: 30, bottom: 40, left: 50 };
+    const previousFit = adjustmentPreviewFitSignature(12, "landing-set", "139.7,35.6", viewport, padding);
+    const nextFit = adjustmentPreviewFitSignature(13, "landing-set", "139.7,35.6", viewport, padding);
+
+    expect(nextFit).not.toBe(previousFit);
+  });
+
+  it("finds a usable rectangle outside every obstruction and around callout leaders", () => {
+    const viewport = { width: 400, height: 300 };
+    const obstructions = [
+      { left: 0, top: 0, right: 100, bottom: 280 },
+      { left: 300, top: 200, right: 400, bottom: 300 },
+      { left: 350, top: 0, right: 400, bottom: 120 },
+    ];
+    const callouts = [{
+      anchor: { x: 200, y: 150 },
+      rect: { left: 160, top: 100, right: 240, bottom: 190 },
+    }];
+
+    const padding = adjustmentPreviewPadding(viewport, obstructions, callouts);
+    const safeArea = {
+      left: padding.left,
+      top: padding.top,
+      right: viewport.width - padding.right,
+      bottom: viewport.height - padding.bottom,
+    };
+
+    expect(safeArea.right - safeArea.left).toBeGreaterThanOrEqual(64);
+    expect(safeArea.bottom - safeArea.top).toBeGreaterThanOrEqual(64);
+    for (const obstruction of obstructions) {
+      const intersects = safeArea.left < obstruction.right && safeArea.right > obstruction.left &&
+        safeArea.top < obstruction.bottom && safeArea.bottom > obstruction.top;
+      expect(intersects).toBe(false);
+    }
+  });
+
+  it("reduces padding when measured overlays leave less than a minimum map area", () => {
+    const padding = adjustmentPreviewPadding(
+      { width: 320, height: 568 },
+      [
+        { left: 0, top: 200, right: 320, bottom: 568 },
+        { left: 280, top: 0, right: 320, bottom: 200 },
+      ],
+      [{ anchor: { x: 160, y: 180 }, rect: { left: 20, top: 100, right: 300, bottom: 250 } }],
+    );
+
+    expect(320 - padding.left - padding.right).toBeGreaterThanOrEqual(64);
+    expect(568 - padding.top - padding.bottom).toBeGreaterThanOrEqual(64);
+  });
+
+  it("places the origin marker in the remaining free strip when overlays leave no full fit area", () => {
+    const obstructions = [
+      { left: 12, top: 85, right: 452, bottom: 367 },
+      { left: 318, top: 8, right: 659, bottom: 367 },
+      { left: 10, top: 10, right: 54, bottom: 54 },
+      { left: 625, top: 10, right: 657, bottom: 100 },
+      { left: 599, top: 156, right: 659, bottom: 260 },
+    ];
+    const markerRadius = 13;
+    const point = bestUnobstructedPoint({ width: 667, height: 375 }, obstructions, markerRadius);
+
+    expect(point).not.toBeNull();
+    if (!point) throw new Error("Expected a free origin marker location");
+    expect(point.x).toBeGreaterThanOrEqual(markerRadius);
+    expect(point.x).toBeLessThanOrEqual(667 - markerRadius);
+    expect(point.y).toBeGreaterThanOrEqual(markerRadius);
+    expect(point.y).toBeLessThanOrEqual(375 - markerRadius);
+    for (const obstruction of obstructions) {
+      const intersects = point.x - markerRadius < obstruction.right && point.x + markerRadius > obstruction.left &&
+        point.y - markerRadius < obstruction.bottom && point.y + markerRadius > obstruction.top;
+      expect(intersects).toBe(false);
+    }
   });
 });
 

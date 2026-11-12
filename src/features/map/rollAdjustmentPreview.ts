@@ -1,6 +1,7 @@
 import { Marker } from "maplibre-gl";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { Position } from "../../types/data";
+import type { PreviewCalloutBounds } from "./camera";
 
 /** The part of a landing the map needs; `AdjustmentLanding` satisfies it structurally. */
 export interface AdjustmentCandidate {
@@ -126,9 +127,14 @@ function layoutLanes(map: MapLibreMap, callouts: readonly Callout[]): void {
  * Mount one non-interactive speech bubble per distinct landing station and
  * return the teardown. Lanes are recomputed only when a camera move ends.
  */
-export function mountAdjustmentCallouts(map: MapLibreMap, candidates: readonly AdjustmentCandidate[]): () => void {
+export function mountAdjustmentCallouts(
+  map: MapLibreMap,
+  candidates: readonly AdjustmentCandidate[],
+): () => void {
   const callouts: Callout[] = groupCandidatesByStation(candidates).map((group) => {
     const { element, bubble, leader } = createCalloutElement(group.rows);
+    element.dataset.longitude = String(group.position[0]);
+    element.dataset.latitude = String(group.position[1]);
     const marker = new Marker({
       element,
       anchor: "bottom",
@@ -147,4 +153,27 @@ export function mountAdjustmentCallouts(map: MapLibreMap, candidates: readonly A
     map.off("moveend", relayout);
     for (const callout of callouts) callout.marker.remove();
   };
+}
+
+/** Measure each live bubble and its leader from the browser's current layout. */
+export function measureAdjustmentCallouts(map: MapLibreMap): readonly PreviewCalloutBounds[] {
+  const container = map.getContainer().getBoundingClientRect();
+  return [...map.getContainer().querySelectorAll<HTMLElement>("[data-map-adjustment-callout]")]
+    .flatMap((element) => {
+      const longitude = Number(element.dataset.longitude);
+      const latitude = Number(element.dataset.latitude);
+      if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return [];
+      const position: Position = [longitude, latitude];
+      const rect = element.getBoundingClientRect();
+      const anchor = map.project(position);
+      return [{
+        anchor,
+        rect: {
+          left: rect.left - container.left,
+          top: rect.top - container.top,
+          right: rect.right - container.left,
+          bottom: rect.bottom - container.top,
+        },
+      }];
+    });
 }
