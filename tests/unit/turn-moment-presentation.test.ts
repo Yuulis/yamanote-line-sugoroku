@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { createGame, playItemTurn, playTurn, targetSegmentIds } from "../../src/features/game/engine";
+import {
+  beginItemTurn, buildRailwayNetwork, createGame, createItemGame, finishItemTurn, playItemTurn, playTurn, rollDie, targetSegmentIds,
+} from "../../src/features/game/engine";
+import type { ItemGameState, ItemRollAdjustment } from "../../src/types/network";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { LOOP_SEGMENT_IDS, M_LINE, M_START, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
 import { captureTurnPresentationPolicy } from "../../src/features/game/animation/turnMomentPolicy";
 import { turnMomentArrivalModel } from "../../src/features/game/components/TurnMomentHost";
@@ -633,4 +638,103 @@ it.each(["all", "important", "none"] as const)("keeps goal publication and its a
     expect(published.clearAnnouncement.match(/ゴールに到着しました/g)).toHaveLength(1);
     expect(published.itemUseLocked).toBe(false);
   }
+});
+
+describe("roll adjustment landing preview", () => {
+  const multiNetwork = buildRailwayNetwork(multiServiceInput());
+  const multiResolver = createPresentationResolver(multiNetwork);
+  const config = {
+    ...multiConfig(), rulesetVersion: "test-items-1",
+    serviceLottery: { kindWeights: { local: 1, rapid: 1 }, target: { kind: "share" as const, numerator: 1, denominator: 2 } },
+    directionLottery: { towardTargetWeight: 3, awayFromTargetWeight: 2 },
+    itemPolicy: { ...ITEM_GAME_CONFIG.itemPolicy!, dropChancePerMille: 0 },
+  };
+
+  /** A restored session at `overrides` with a revealed `face` and one held roll-adjust ticket. */
+  function pendingGame(face: number, overrides: Partial<ItemGameState> = {}): ItemGameState {
+    for (let seed = 0; seed < 100; seed += 1) {
+      const state = createItemGame(config, `preview-${seed}`, multiNetwork);
+      if (rollDie(state.rngState).value !== face) continue;
+      const held = { ...state, ...overrides, inventory: [{ id: "held-0", kind: "roll-adjust" as const }] };
+      return JSON.parse(JSON.stringify(beginItemTurn(held, { items: [] }, multiNetwork).state)) as ItemGameState;
+    }
+    throw new Error(`No seed for face ${face}`);
+  }
+
+  function previewFor(game: ItemGameState, attempt: RollAttempt | null = null) {
+    const session = resumeSession(game, multiNetwork, 5);
+    const input = { session, network: multiNetwork, presentation: multiResolver, attempt,
+      progress: displayedProgress(sessionProgress(session), multiNetwork, null), itemView: itemSessionView(session, multiNetwork),
+      revealStage: "waiting" as const, restoredOrOmitted: attempt === null };
+    const serialized = JSON.stringify(session);
+    const streams = [game.rngState, game.itemRngState];
+    const display = deriveTurnMomentDisplay(input);
+    expect(JSON.stringify(session)).toBe(serialized);
+    expect([game.rngState, game.itemRngState]).toEqual(streams);
+    return { session, display };
+  }
+
+  /** The station each choice really reaches, plus its truncation facts. */
+  function resolved(game: ItemGameState, delta: -1 | 0 | 1) {
+    const adjustment: ItemRollAdjustment | null = delta === 0 ? null : { instanceId: "held-0", delta };
+    const { record } = finishItemTurn(game, adjustment, multiNetwork);
+    if (record?.kind !== "item-ride") throw new Error("Expected item ride");
+    return { stationId: record.toStationId, stopReason: record.stopReason, pips: record.pips, travelled: record.traversedSegmentIds.length };
+  }
+
+  function expectPreviewMatchesEngine(game: ItemGameState) {
+    const { display } = previewFor(game);
+    for (const landing of display.adjustmentLandings) {
+      const real = resolved(game, landing.delta);
+      expect(landing).toMatchObject({ stationId: real.stationId, stopReason: real.stopReason, pips: real.pips, travelledSteps: real.travelled });
+      expect(landing.stationName).toBe(multiResolver.stationName(real.stationId));
+      expect(landing.position).toEqual(multiNetwork.servicesById.get(game.currentServiceId)!.platformCoordinates[real.stationId]);
+    }
+    return display.adjustmentLandings;
+  }
+
+  it.each([[1, [0, 1]], [6, [-1, 0]], [3, [-1, 0, 1]]] as const)("lists only the legal choices for a roll of %i", (face, deltas) => {
+    const landings = expectPreviewMatchesEngine(pendingGame(face));
+    expect(landings.map(({ delta }) => delta)).toEqual(deltas);
+  });
+
+  it("keeps duplicate endpoint landings as separate entries with the truncated travel", () => {
+    const landings = expectPreviewMatchesEngine(pendingGame(3, { currentStationId: "y", currentServiceId: M_LINE, direction: 1 }));
+    expect(landings.map(({ stationId }) => stationId)).toEqual(["z", "z", "z"]);
+    expect(landings.map(({ stopReason }) => stopReason)).toEqual(["roll", "endpoint", "endpoint"]);
+    expect(landings.map(({ travelledSteps }) => travelledSteps)).toEqual([2, 2, 2]);
+  });
+
+  it("truncates every choice that reaches the goal arrival to the goal station", () => {
+    const completedSegmentIds = LOOP_SEGMENT_IDS.slice(0, -1);
+    const landings = expectPreviewMatchesEngine(pendingGame(3, { currentStationId: "e", completedSegmentIds }));
+    expect(landings.map(({ stationId, stopReason }) => [stationId, stopReason])).toEqual(Array(3).fill([M_START, "goal"]));
+    expect(landings.map(({ stationName }) => stationName)).toEqual(Array(3).fill(multiResolver.stationName(M_START)));
+  });
+
+  it("previews a restored pending roll without consuming either random stream", () => {
+    const game = pendingGame(4, { currentStationId: "a" });
+    const { session, display } = previewFor(game);
+    expect(session.phase).toBe("awaiting-adjust");
+    expect(display.adjustmentLandings).toHaveLength(3);
+    expect(display.adjustmentLandings).toEqual(previewFor(game).display.adjustmentLandings);
+  });
+
+  it("publishes candidates only while the adjustment decision is visible", () => {
+    const game = pendingGame(3);
+    const attempt: RollAttempt = { ...attemptFor(resumeSession(game, multiNetwork, 5), "tumble"), rawRoll: 3 };
+    expect(previewFor(game, attempt).display.adjustmentLandings).toEqual([]);
+    attempt.stage = "awaiting-adjust";
+    expect(previewFor(game, attempt).display.adjustmentLandings).toHaveLength(3);
+    attempt.stage = "stamps";
+    expect(previewFor(game, attempt).display.adjustmentLandings).toEqual([]);
+  });
+
+  it("is empty when no adjustment is pending", () => {
+    const idle = resumeSession(createItemGame(config, "preview-idle", multiNetwork), multiNetwork, 5);
+    const display = deriveTurnMomentDisplay({ session: idle, network: multiNetwork, presentation: multiResolver,
+      progress: displayedProgress(sessionProgress(idle), multiNetwork, null), itemView: itemSessionView(idle, multiNetwork),
+      attempt: null, revealStage: "done", restoredOrOmitted: true });
+    expect(display.adjustmentLandings).toEqual([]);
+  });
 });

@@ -2,11 +2,27 @@ import type { Position } from "../../types/data";
 import type { Direction } from "../../types/network";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { nextStationId, platformPosition, type RailwayNetwork } from "./engine";
+import { advance, assertSettledPosition, type GamePosition } from "./engine/movement";
+import { adjustedPips } from "./itemPresentation";
+import type { PresentationResolver } from "./presentationResolver";
 
 export interface GoalGuidance {
   stationId: string;
   stationName: string;
   text: string;
+}
+
+/** One legal roll-adjustment choice and the exact station its real resolution stops at. */
+export interface AdjustmentLanding {
+  delta: -1 | 0 | 1;
+  pips: number;
+  stationId: string;
+  stationName: string;
+  /** Platform of the landing station on the resolved ride; null if the data has none. */
+  position: Position | null;
+  /** Hops actually travelled; less than `pips` when the move truncates. */
+  travelledSteps: number;
+  stopReason: "roll" | "endpoint" | "goal";
 }
 
 type DisplayRide = Readonly<{ serviceId: string; direction: Direction }>;
@@ -86,4 +102,33 @@ export function firstTargetCompletionTurn(
     if (required.size === completed.size) return record.turn;
   }
   return null;
+}
+
+/**
+ * Exact landing of every legal choice (−1 / そのまま / +1), in that order. Duplicates stay separate entries.
+ * Pure: the engine's `advance` copies its input, and neither RNG stream is drawn (the landing lottery runs
+ * only after the stopping station is fixed). `position` carries the visible decision's resolved ride.
+ */
+export function adjustmentLandings(
+  position: GamePosition,
+  rawRoll: number,
+  allowedDeltas: readonly (-1 | 1)[],
+  network: RailwayNetwork,
+  presentation: PresentationResolver,
+): readonly AdjustmentLanding[] {
+  assertSettledPosition(position, network);
+  const deltas = ([-1, 0, 1] as const).filter((delta) => delta === 0 || allowedDeltas.includes(delta));
+  return deltas.map((delta) => {
+    const pips = adjustedPips(rawRoll, delta);
+    const moved = advance(position, pips, network);
+    return {
+      delta,
+      pips,
+      stationId: moved.stationId,
+      stationName: presentation.stationName(moved.stationId),
+      position: platformPosition(network, position.currentServiceId, moved.stationId),
+      travelledSteps: moved.traversedSegmentIds.length,
+      stopReason: moved.stopReason,
+    };
+  });
 }

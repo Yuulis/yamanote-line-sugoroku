@@ -11,7 +11,7 @@ import type { PresentationResolver } from "./presentationResolver";
 import type { ItemSessionView } from "./itemSession";
 import { targetSegmentsMilestoneToast, turnToasts, type ToastInput } from "./toastQueue";
 import { maskTurnMomentItemView } from "./turnMomentItems";
-import { displayedHeading, firstTargetCompletionTurn, type GoalGuidance } from "./mapGuidance";
+import { adjustmentLandings, displayedHeading, firstTargetCompletionTurn, type AdjustmentLanding, type GoalGuidance } from "./mapGuidance";
 
 export type TurnPublicationPhase = "pre-move" | "moving" | TurnRevealStageKey | "published";
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
@@ -45,6 +45,8 @@ export interface TurnMomentDisplay {
   ride: Readonly<{ serviceId: string; direction: Direction }>;
   markerBearing: number | null;
   goalGuidance: GoalGuidance | null;
+  /** Exact landing per legal choice; non-empty only while the adjustment decision is visible. */
+  adjustmentLandings: readonly AdjustmentLanding[];
   compactRoll: string;
   rollText: string;
   arrivalText: string | null;
@@ -145,6 +147,13 @@ function visibleDecision(
   return null;
 }
 
+/** Previews read the dialog's own pending roll, so they appear and disappear with the decision. */
+function visibleAdjustmentLandings(input: TurnMomentDisplayInput, decision: ItemSessionView["decision"]): readonly AdjustmentLanding[] {
+  if (decision?.kind !== "adjust") return [];
+  const position = { ...input.session.game, currentServiceId: decision.resolvedRide.serviceId, direction: decision.resolvedRide.direction };
+  return adjustmentLandings(position, decision.rawRoll, decision.allowedDeltas, input.network, input.presentation);
+}
+
 function visibleCandidates(move: LastMove | null, presentation: PresentationResolver): PresentationCandidateRow[] {
   if (!move?.landing || (!move.landing.serviceDrawRequired && !move.landing.directionDrawRequired)) return [];
   return presentation.candidateRows(move.landing.serviceCandidates);
@@ -227,6 +236,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   // 「この内容でサイコロを振る」 or a staged summary) while the arrival is presented.
   const itemView = maskedView && liveView && record && maskedView !== liveView ? { ...maskedView, draft: liveView.draft } : maskedView;
   const decision = visibleDecision(liveView, attempt, active, resultPublished);
+  const landings = visibleAdjustmentLandings(input, decision);
   const turn = record?.turn ?? input.session.game.turn;
   const effectTurn = resultPublished ? turn : attempt?.origin.turn ?? turn;
   const effectModels = itemView && phase !== "moving"
@@ -285,6 +295,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     ride,
     markerBearing,
     goalGuidance,
+    adjustmentLandings: landings,
     compactRoll,
     rollText,
     arrivalText,
