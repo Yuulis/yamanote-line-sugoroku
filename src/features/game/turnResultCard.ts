@@ -1,4 +1,4 @@
-import type { DeepReadonly, ItemKind, ItemTurnRecord, MoveRecord } from "../../types/network";
+import type { DeepReadonly, ItemKind, ItemTurnRecord, MoveRecord, PendingItemTurn } from "../../types/network";
 import type { LastMove } from "./gameSession";
 import { directionLabel, serviceName } from "./presentation";
 import { lineBadgeFor, type LineBadgeModel } from "./lineBadge";
@@ -52,6 +52,67 @@ export function turnResultRollText(move: LastMove): string {
 export function turnResultFaceText(move: LastMove): string {
   return move.roll === null ? "回送" : String(move.roll);
 }
+
+export function normalizeTurnResultRecords(
+  movementHistory: readonly TurnResultRecord[],
+  pending: DeepReadonly<PendingItemTurn> | null = null,
+): readonly TurnResultRecord[] {
+  const records = [...movementHistory];
+  if (pending?.kind === "discard" && !records.some((record) => record.turn === pending.record.turn)) records.push(pending.record);
+  return records.sort((first, second) => first.turn - second.turn);
+}
+
+export function replayTurnResultHistory(
+  records: readonly TurnResultRecord[],
+  turn: number,
+  targetSegmentIds: readonly string[],
+  initialServiceId: string,
+  presentation: PresentationResolver,
+): TurnResultHistoryFacts {
+  const targets = new Set(targetSegmentIds);
+  const seen = new Set<string>();
+  let newTargetSegmentCount = 0;
+  let transferCount = 0;
+  let previousServiceId = initialServiceId;
+  const chronologicalRecords = [...records].sort((first, second) => first.turn - second.turn);
+
+  for (const record of chronologicalRecords) {
+    if (record.turn > turn) break;
+    for (const segmentId of record.traversedSegmentIds) {
+      const unseen = !seen.has(segmentId);
+      seen.add(segmentId);
+      if (record.turn === turn && unseen && targets.has(segmentId)) newTargetSegmentCount += 1;
+    }
+
+    const riddenServiceId = "kind" in record
+      ? record.kind === "deadhead" ? record.relocation.serviceId : record.resolvedRide.serviceId
+      : record.serviceId;
+    if (record.turn === turn && previousServiceId !== riddenServiceId &&
+      !presentation.sameLineGroup(previousServiceId, riddenServiceId)) transferCount += 1;
+    const landingServiceId = record.landing?.serviceId;
+    if (landingServiceId && record.turn === turn && riddenServiceId !== landingServiceId &&
+      !presentation.sameLineGroup(riddenServiceId, landingServiceId)) transferCount += 1;
+    previousServiceId = landingServiceId ?? riddenServiceId;
+  }
+
+  return { newTargetSegmentCount, transferCount };
+}
+
+/** Progress and transfer chips for the selected turn; zero counts are omitted. */
+export function turnResultHistoryChips(turn: number, facts: TurnResultHistoryFacts): readonly TurnResultChip[] {
+  const segments = facts.newTargetSegmentCount;
+  const transfers = facts.transferCount;
+  const segmentChips: TurnResultChip[] = segments > 0
+    ? [{ kind: "segments", count: segments, key: `${turn}:segments`, label: `+${segments}区間`,
+      text: `このターンで目標区間を${segments}区間はじめて通過` }]
+    : [];
+  const transferChips: TurnResultChip[] = transfers > 0
+    ? [{ kind: "transfer", count: transfers, key: `${turn}:transfer`, label: "乗換",
+      text: `このターンで${transfers}回乗り換え` }]
+    : [];
+  return [...segmentChips, ...transferChips];
+}
+
 export function shortTurnResultRide(
   move: LastMove,
   network: RailwayNetwork,

@@ -40,8 +40,8 @@ validation `.claude/logs/codex/20261112T073626Z-turn-result-card-validate.md` (N
 
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
-| 1 model contracts + roll/ride wording | done, verified, **uncommitted** (awaiting user review) | — (base 4174377) | Luna `.claude/logs/codex/20261112T080801Z-turn-result-card-s1.md`; Sol low APPROVE, no findings `.claude/logs/codex/20261112T081640Z-turn-result-card-s1-review.md`; lead: typecheck 0, new file 17/17, `npx vitest run` 82 files 2054 passed + 1 skipped (baseline 81 / 2037 + 1), build 0; verify_delegation no weakened tests / out-of-scope (5 placeholder hits = 'TODO' prose in untracked .claude docs only); tracked diff empty |
-| 2 history replay (+N区間, 乗換) | pending | | |
+| 1 model contracts + roll/ride wording | done, committed | 8b3d119 (base 4174377) | Luna `.claude/logs/codex/20261112T080801Z-turn-result-card-s1.md`; Sol low APPROVE, no findings `.claude/logs/codex/20261112T081640Z-turn-result-card-s1-review.md`; lead: typecheck 0, new file 17/17, `npx vitest run` 82 files 2054 passed + 1 skipped (baseline 81 / 2037 + 1), build 0; verify_delegation no weakened tests / out-of-scope (5 placeholder hits = 'TODO' prose in untracked .claude docs only); tracked diff empty |
+| 2 history replay (+N区間, 乗換) | done, verified, **uncommitted** (awaiting user review) | — (base 8b3d119) | Luna `.claude/logs/codex/20261112T082450Z-turn-result-card-s2.md` (replay + normalization, no chip builders); Sol low REQUEST_CHANGES (2×P2: missing `segments`/`transfer` chip builders, missing resume/order tests; P3: local pending type) `.claude/logs/codex/20261112T083207Z-turn-result-card-s2-review.md` → fixed by lead direct edit (`turnResultHistoryChips`, `DeepReadonly<PendingItemTurn>`, engine-derived pending-discard and summarizeGame cross-check tests); lead: typecheck 0, file 25/25, `npx vitest run` 82 files 2062 passed + 1 skipped, build 0; verify_delegation no weakened tests / out-of-scope (exit 2 = 4 'TODO' prose hits in untracked .claude research docs only); forbidden-path diff empty; +160/−3 lines (slightly over the ~150 cap, from review-requested tests) |
 | 3 item chips + complete model | pending | | |
 | 4 reveal-gated publication + classic fallback | pending | | |
 | 5 desktop card + HUD slot + #65 reserve | pending | | |
@@ -56,7 +56,7 @@ validation `.claude/logs/codex/20261112T073626Z-turn-result-card-validate.md` (N
 
 ## Next
 
-Step 1 files: `src/features/game/turnResultCard.ts` (74 lines), `tests/unit/turn-result-card.test.ts` (74 lines). After user review: commit Step 1, push, check CI, then Step 2 (history replay) with `<BASE_SHA>` = the Step 1 commit.
+Step 2 adds to `src/features/game/turnResultCard.ts` (135 lines): `normalizeTurnResultRecords(history, pending)`, `replayTurnResultHistory(...)`, `turnResultHistoryChips(turn, facts)` (chip keys `${turn}:segments` / `${turn}:transfer`, labels `+N区間` / `乗換`). Tests in `tests/unit/turn-result-card.test.ts` (170 lines). After user review: commit Step 2, push, check CI, then Step 3 (item chips + `deriveTurnResult`, which must call `normalizeTurnResultRecords` → `replayTurnResultHistory` → `turnResultHistoryChips` and take `compact.segmentsText` from the same facts) with `<BASE_SHA>` = the Step 2 commit.
 
 ## How to resume
 

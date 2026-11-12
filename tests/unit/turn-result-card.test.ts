@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
+import { playItemTurn, targetSegmentIds } from "../../src/features/game/engine";
+import { summarizeGame } from "../../src/features/game/gameSummary";
 import { itemLastMove } from "../../src/features/game/itemSession";
 import type { LastMove } from "../../src/features/game/gameSession";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
-import { shortTurnResultRide, turnResultFaceText, turnResultRollText } from "../../src/features/game/turnResultCard";
-import type { ItemRideRecord } from "../../src/types/network";
+import {
+  normalizeTurnResultRecords, replayTurnResultHistory, shortTurnResultRide, turnResultFaceText, turnResultHistoryChips,
+  turnResultRollText,
+} from "../../src/features/game/turnResultCard";
+import type { ItemDeadheadRecord, ItemRideRecord, MoveRecord, PendingItemRoll } from "../../src/types/network";
 import { loadBundle } from "../e2e/fixtures/bundle";
+import { itemScenario } from "../e2e/fixtures/itemScenarios";
 
 const { network } = await loadBundle("fixture");
 const presentation = createPresentationResolver(network);
@@ -17,6 +23,19 @@ function rideRecord(overrides: Partial<ItemRideRecord> = {}): ItemRideRecord {
     traversedSegmentIds: [], landing: null, landingSnapshot: null, itemEvents: [], discardedInstanceId: null,
     resolvedRide: { serviceId: "jr-yamanote", direction: 1 }, rawRoll: 3, effectiveFace: 3, adjustment: null,
     movementMode: "normal", pips: 3, hopBudget: 3, physicalHops: 3, unusedPips: 0, stopReason: "roll", ...overrides };
+}
+function historyMove(turn: number, serviceId: string, landingServiceId: string | null, segments: string[] = []): MoveRecord {
+  return { turn, roll: segments.length, serviceId, direction: 1, fromStationId: "a", toStationId: "b",
+    traversedSegmentIds: segments, stopReason: "roll", landing: landingServiceId ? { serviceId: landingServiceId, direction: 1 } : null };
+}
+function deadheadRecord(turn: number, serviceId: string): ItemDeadheadRecord {
+  return { kind: "deadhead", turn, fromStationId: "a", toStationId: "b", command: { items: [] }, traversedSegmentIds: [],
+    landing: null, landingSnapshot: null, itemEvents: [], discardedInstanceId: null, resolvedRide: null, rawRoll: null,
+    effectiveFace: null, adjustment: null, movementMode: "deadhead", pips: null, hopBudget: null, physicalHops: 0,
+    unusedPips: null, stopReason: "relocation", relocation: { fromStationId: "a", toStationId: "b", serviceId, direction: 1, distance: 1 } };
+}
+function lineGroups(groups: Readonly<Record<string, string>> = {}) {
+  return { ...presentation, sameLineGroup: (first: string, second: string) => (groups[first] ?? first) === (groups[second] ?? second) };
 }
 describe("turn result roll wording", () => {
   it.each([
@@ -70,5 +89,82 @@ describe("short turn result ride", () => {
     const incompleteNetwork = { ...network, servicesById: new Map([...network.servicesById].map(([id, value]) =>
       [id, id === service.id ? { ...value, directionLabels: { forward: "1", backward: "-1" } } : value] as const)) };
     expect(shortTurnResultRide(move({ direction: -1 }), incompleteNetwork, presentation).directionText).toBe("方向不明");
+  });
+});
+
+describe("turn result history replay", () => {
+  it("counts only first target traversals through the selected turn", () => {
+    const records = [historyMove(1, "a", null, ["target-a", "off-target"]),
+      historyMove(2, "a", null, ["target-a", "off-target-2", "target-b", "target-b"]), historyMove(3, "b", null, ["target-c"])];
+    const targets = ["target-a", "target-b", "target-c"];
+    expect(replayTurnResultHistory(records, 2, targets, "a", presentation))
+      .toEqual({ newTargetSegmentCount: 1, transferCount: 0 });
+    expect(replayTurnResultHistory([...records].reverse(), 2, targets, "a", presentation))
+      .toEqual({ newTargetSegmentCount: 1, transferCount: 0 });
+  });
+
+  it("returns no progress for missing history or deadhead", () => {
+    expect(replayTurnResultHistory([], 1, ["target-a"], "a", presentation))
+      .toEqual({ newTargetSegmentCount: 0, transferCount: 0 });
+    expect(replayTurnResultHistory([deadheadRecord(1, "b")], 1, ["target-a"], "a", presentation))
+      .toEqual({ newTargetSegmentCount: 0, transferCount: 1 });
+  });
+
+  it("replays an engine pending discard as the selected turn, appended once, and ignores pending rolls", () => {
+    const base = itemScenario("discard", network);
+    const next = playItemTurn(base, {}, network).state;
+    const pending = next.pending;
+    if (pending?.kind !== "discard") throw new Error(`Expected pending discard, got ${pending?.kind ?? "none"}`);
+    const targets = targetSegmentIds(base.config, network);
+    const before = new Set(base.completedSegmentIds);
+    const expected = pending.position.completedSegmentIds.filter((id) => !before.has(id) && targets.includes(id)).length;
+    expect(expected, "fixture pending turn must complete a target segment").toBeGreaterThan(0);
+    const appended = normalizeTurnResultRecords(next.movementHistory, pending);
+    expect(appended.at(-1)).toBe(pending.record);
+    expect(normalizeTurnResultRecords(appended, pending)).toEqual(appended);
+    const facts = (records: typeof appended) => replayTurnResultHistory(records, pending.turn, targets,
+      base.config.targetServiceId, presentation).newTargetSegmentCount;
+    expect([facts(appended), facts(normalizeTurnResultRecords(appended, pending))]).toEqual([expected, expected]);
+    const roll: PendingItemRoll = { kind: "roll", turn: 2, command: { items: [] },
+      resolvedRide: { serviceId: "a", direction: 1 }, rawRoll: 3, rngStateAfterRoll: "0" };
+    expect(normalizeTurnResultRecords([historyMove(1, "a", null)], roll)).toEqual([historyMove(1, "a", null)]);
+  });
+
+  it("recomputes same-length histories instead of reusing old facts", () => {
+    const first = [historyMove(1, "a", null, ["target-a"]), historyMove(2, "a", null)];
+    const replacement = [historyMove(1, "a", null, ["off-target"]), historyMove(2, "a", null)];
+    const facts = (records: readonly MoveRecord[]) => replayTurnResultHistory(records, 1, ["target-a"], "a", presentation);
+    expect(facts(first).newTargetSegmentCount).toBe(1);
+    expect(facts(replacement).newTargetSegmentCount).toBe(0);
+  });
+
+  it("counts route-ticket and landing group changes on the selected turn", () => {
+    const ticketRide = rideRecord({ turn: 2, resolvedRide: { serviceId: "c", direction: 1 }, landing: { serviceId: "d", direction: 1 } });
+    const records = [historyMove(1, "a", "b"), ticketRide, historyMove(3, "d", "e")];
+    expect(replayTurnResultHistory(records, 2, [], "a", lineGroups()))
+      .toEqual({ newTargetSegmentCount: 0, transferCount: 2 });
+  });
+
+  it("sums per-turn transfers to the game summary total", () => {
+    const game = itemScenario("route", network);
+    const perTurn = game.movementHistory.map(({ turn }) => replayTurnResultHistory(game.movementHistory, turn, [],
+      game.config.targetServiceId, presentation).transferCount);
+    expect(summarizeGame(game, presentation).transfers, "route fixture must transfer").toBeGreaterThan(0);
+    expect(perTurn.reduce((sum, count) => sum + count, 0)).toBe(summarizeGame(game, presentation).transfers);
+  });
+
+  it("builds +N区間 and one 乗換 chip with stable keys, omitting zero counts", () => {
+    expect(turnResultHistoryChips(4, { newTargetSegmentCount: 0, transferCount: 0 })).toEqual([]);
+    expect(turnResultHistoryChips(4, { newTargetSegmentCount: 2, transferCount: 3 })).toEqual([
+      { kind: "segments", count: 2, key: "4:segments", label: "+2区間", text: "このターンで目標区間を2区間はじめて通過" },
+      { kind: "transfer", count: 3, key: "4:transfer", label: "乗換", text: "このターンで3回乗り換え" },
+    ]);
+    expect(turnResultHistoryChips(4, { newTargetSegmentCount: 0, transferCount: 1 }).map((chip) => chip.label)).toEqual(["乗換"]);
+  });
+
+  it("does not count same-group service changes or direction reversals", () => {
+    const reversed = { ...historyMove(1, "b", "c"), direction: -1 as const,
+      landing: { serviceId: "a", direction: -1 as const } };
+    expect(replayTurnResultHistory([reversed], 1, [], "a", lineGroups({ a: "group", b: "group", c: "group" })).transferCount).toBe(0);
   });
 });
