@@ -1894,6 +1894,169 @@ button[aria-disabled="true"] {
   width: 100%;
 }
 
+/* Roll adjustment: a compact sheet anchored bottom-right so the map stays visible. Scoped to this dialog; the
+   shared `.dialog::backdrop` keeps its dim for every other dialog. The native modal still isolates the page. */
+.item-adjustment::backdrop {
+  background: transparent;
+}
+
+.item-adjustment {
+  --item-adjustment-edge: 12px;
+  inset: auto calc(var(--item-adjustment-edge) + env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) auto;
+  /* Clear of the left HUD panel (12px + 310px) plus a 12px gap, then the right edge gap. */
+  width: min(340px, calc(100vw - 346px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  margin: 0;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 45%);
+}
+
+.item-adjustment .dialog__body {
+  padding: 12px;
+}
+
+.item-adjustment .dialog__title {
+  margin-bottom: 4px;
+  font-size: 16px;
+}
+
+.item-adjustment .item-dialog__hint {
+  margin-bottom: 6px;
+  line-height: 1.45;
+}
+
+.item-adjustment__station {
+  overflow-wrap: anywhere;
+}
+
+/* Short landscape: the HUD panel is wider than the free map column, so the sheet may overlay its right edge. */
+@media (min-width: 601px) and (max-height: 500px) {
+  .item-adjustment {
+    inset: auto calc(8px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) auto;
+    width: min(340px, calc(100vw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+    max-height: calc(100vh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    /* The dynamic viewport excludes a visible mobile toolbar, so the sheet's top stays on screen. */
+    max-height: calc(100dvh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Phones: a bottom strip over the HUD area (same 8px margins as .game-panel), three segmented native radios,
+   then the Continue / Skip actions. The map above the strip stays visible. */
+@media (max-width: 600px) {
+  .item-adjustment {
+    inset: auto calc(8px + env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) calc(8px + env(safe-area-inset-left, 0px));
+    width: auto;
+    /* Without this the UA `dialog:modal` max-width over-constrains the box and drops the right inset. */
+    max-width: none;
+    max-height: 45%;
+  }
+
+  .item-adjustment .dialog__body {
+    padding: 8px 10px;
+  }
+
+  .item-adjustment .dialog__title {
+    margin-bottom: 2px;
+    font-size: 15px;
+  }
+
+  .item-adjustment .item-dialog__hint {
+    margin-bottom: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .item-adjustment .item-dialog__group {
+    display: grid;
+    grid-auto-columns: minmax(0, 1fr);
+    grid-auto-flow: column;
+    gap: 6px;
+    margin: 4px 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .item-adjustment .item-dialog__group legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .item-adjustment__choice {
+    position: relative;
+    align-items: stretch;
+    justify-content: center;
+    padding: 4px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.35;
+    text-align: center;
+  }
+
+  .item-adjustment__choice:has(input:checked) {
+    border-color: var(--color-brand);
+    background: var(--color-brand-tint);
+    box-shadow: inset 0 0 0 1px var(--color-brand);
+  }
+
+  /* Forced colors drop the tint and shadow and the radio is invisible, so mark the choice by border width. */
+  @media (forced-colors: active) {
+    .item-adjustment__choice:has(input:checked) {
+      border-width: 3px;
+    }
+  }
+
+  .item-adjustment__choice:has(input:focus-visible) {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+  }
+
+  /* The native radio stays the control: it covers the segment invisibly and keeps its keyboard behaviour. */
+  .item-adjustment__choice input {
+    position: absolute;
+    inset: 0;
+    flex: none;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .item-adjustment__choice > span {
+    flex: 1;
+  }
+
+  .item-adjustment__choice strong {
+    display: block;
+    font-size: 14px;
+  }
+
+  .item-adjustment__station {
+    display: block;
+    font-weight: bold;
+  }
+
+  /* Hidden without display:none or out-of-flow positioning (both change the computed accessible name): the
+     inline "：" collapses to zero size but stays in the segment's name on every viewport. */
+  .item-adjustment__separator {
+    font-size: 0;
+    line-height: 0;
+  }
+
+  .item-adjustment .dialog__actions {
+    flex-wrap: nowrap;
+  }
+
+  .item-adjustment .dialog__actions button {
+    flex: 1 1 0;
+    min-width: 0;
+    width: auto;
+  }
+}
+
 @media (max-width: 360px) {
   .dialog__body {
     padding: 12px;
