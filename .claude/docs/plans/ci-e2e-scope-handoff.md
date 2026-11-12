@@ -40,3 +40,9 @@ sharding; two shards estimated ~11 min wall, so three shards (est. max ~6.5 min 
 
 Confirm the 3-shard WebKit legs on PR #88 CI (~10 min or less), then merge into develop (user-approved on that condition). Not run: actionlint
 (unavailable), local E2E (tags select tests only; CI runs them).
+
+## Result (2026-11-12)
+
+- 3-shard WebKit on PR #88 (run 43167451999): webkit 5.9 / 5.2 / 4.6 min, chromium 9.4, firefox 6.9, phone 6.1; all green.
+  PR #88 merged into develop (762f997). Issue #83 closes when develop reaches master.
+- Follow-up `feature/ci-chromium-shards`: desktop-chromium split into two shards in both scopes (target ~7 min).
