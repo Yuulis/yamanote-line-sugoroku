@@ -134,7 +134,7 @@ jobs:
             *) scope=quick ;;
           esac
           if [ "$scope" = full ]; then
-            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium"},{"project":"phone-chromium","browser":"chromium"},{"project":"desktop-firefox","browser":"firefox"},{"project":"desktop-webkit","browser":"webkit"}]}'
+            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium"},{"project":"phone-chromium","browser":"chromium"},{"project":"desktop-firefox","browser":"firefox"},{"project":"desktop-webkit","browser":"webkit","shard_index":1,"shard_total":3},{"project":"desktop-webkit","browser":"webkit","shard_index":2,"shard_total":3},{"project":"desktop-webkit","browser":"webkit","shard_index":3,"shard_total":3}]}'
           else
             matrix='{"include":[{"project":"desktop-chromium","browser":"chromium"}]}'
           fi
@@ -199,9 +199,14 @@ jobs:
   # One leg per Playwright project (decision A, 2026-10-20): same tests,
   # 2 workers, retries, xvfb. Which legs run comes from `changes` (decision D):
   # all four for full scope, desktop-chromium only for quick scope.
+  # desktop-webkit is split into three Playwright shards (issue #83 follow-up,
+  # 2026-11-12): its tests run ~1.7x slower than Chromium, one leg averaged
+  # 13-14 min and hit the 20 min timeout twice (2026-11-10). --shard splits by
+  # test count, not time; two shards were estimated at ~5.6 and ~9.5 min of
+  # tests, three at ~3.9 / 4.7 / 6.5. Each shard keeps the same 2 workers.
   # Runs in parallel with `frontend`: it builds its own e2e bundle.
   e2e-matrix:
-    name: E2E leg (${{ matrix.project }})
+    name: E2E leg (${{ matrix.project }}${{ matrix.shard_index && format(' {0}/{1}', matrix.shard_index, matrix.shard_total) || '' }})
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
     # Pinned: ubuntu-latest moved to ubuntu-26.04 (2026-10-30) and Playwright's
@@ -259,12 +264,19 @@ jobs:
       - name: Run E2E tests
         env:
           PROJECT: ${{ matrix.project }}
-        run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT"
+          SHARD_INDEX: ${{ matrix.shard_index }}
+          SHARD_TOTAL: ${{ matrix.shard_total }}
+        run: |
+          args=(--project="$PROJECT")
+          if [ -n "$SHARD_INDEX" ]; then
+            args+=(--shard="$SHARD_INDEX/$SHARD_TOTAL")
+          fi
+          xvfb-run --auto-servernum npm run test:e2e -- "${args[@]}"
       - name: Upload Playwright report and traces
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-artifacts-${{ matrix.project }}
+          name: playwright-artifacts-${{ matrix.project }}${{ matrix.shard_index && format('-{0}', matrix.shard_index) || '' }}
           path: |
             playwright-report/
             test-results/
