@@ -33,7 +33,23 @@ PC 幅の Chromium・スマートフォン幅の Chromium（タッチ）・PC �
 npm run test:e2e:install  # 初回のみ: Chromium と Firefox を取得
 npm run test:e2e          # ビルド → プレビュー起動 → 全テスト
 npx playwright test --project=desktop-chromium  # 1 プロジェクトだけ
+npx playwright test tests/e2e/items.spec.ts --project=desktop-chromium  # 変更した spec だけ
+npx playwright test --project=desktop-chromium --grep @layout  # レイアウト系だけ
 ```
+
+- スマートフォン幅の Chromium（`phone-chromium`）では、`@layout` タグの付いたテストだけを実行します
+  （`playwright.config.ts` の `grep`）。PC 幅の各プロジェクトは全件です。
+  画面幅・タッチ・配置に結果が左右されるテスト（HUD の配置、文字の折り返し、地図とパネルの重なり、
+  ダイアログやトーストの位置、スマートフォンでだけ動く分岐など）には
+  `test("…", { tag: "@layout" }, …)` を付けます。迷うものには付けます。
+- GitHub Actions の E2E は、実行のきっかけによって範囲が変わります。
+  - 作業ブランチへの push: `desktop-chromium` だけ。チェック名は「E2E quick (desktop-chromium)」で、
+    マージに必要なチェックにはなりません。
+  - `develop` / `master` 向けの PR、`develop` / `master` への push、手動実行（Actions の「Run workflow」）:
+    4 プロジェクトすべて。マージに必要なチェック「E2E (Playwright)」はこの結果で決まります。
+  - 表示に大きく関わる変更を PR 前に全ブラウザで確かめたいときは、そのブランチで CI を手動実行します
+    （`gh workflow run CI --ref <branch>`）。手元で Firefox / WebKit の全件は回さず、変更した spec だけを回します。
+  - 文書だけの変更では、今までどおり E2E を省略します（分岐元の E2E が成功している場合だけ）。
 
 - 背景地図（スタイル・タイル・フォント）はテスト内でスタブ化しており、インターネット接続は不要です。
   スタブを通らない外部通信は失敗させ、テストも失敗します。

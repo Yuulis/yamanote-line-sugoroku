@@ -1,17 +1,20 @@
 name: CI
 
-# One run per pushed commit (decision B, 2026-10-20). Every branch of this
-# repository runs on push, including feature branches before a PR exists, and
-# branch protection matches required checks by name on the PR head SHA
-# regardless of the event that produced them, so a PR is gated by the push run
-# of its head commit. There is deliberately no pull_request trigger: it re-ran
-# the same SHA a second time, and skipping it per job would leave same-named
-# "skipped" (= passing) check runs on the head SHA beside the real ones.
-# Consequence: PRs from forks get no CI and stay blocked until a maintainer
-# pushes the commit to a branch here.
+# Decision D (2026-11-12, issue #83; supersedes decision B of 2026-10-20,
+# which ran CI on push only). A push to a working branch runs E2E on
+# desktop-chromium only; a PR into develop/master, a push to develop/master
+# and a manual dispatch run all four projects.
+# Rulesets protect-develop / protect-master match required checks by name on
+# the PR head SHA, whatever event produced them. So only full-scope runs may
+# use the name "E2E (Playwright)"; the quick run is named differently and can
+# never satisfy it. Frontend and pipeline run on every event, PRs included:
+# skipping them per event would leave same-named "skipped" (= passing) check
+# runs on the head SHA beside the real ones. PRs from forks now get CI too.
 on:
   push:
     branches: ["**"]
+  pull_request:
+    branches: [develop, master]
   workflow_dispatch:
 
 # Deployment stays with the Vercel Git integration; CI only runs quality gates.
@@ -77,16 +80,13 @@ jobs:
       # Reads only the committed public/data/ and the override tables.
       - run: uv run python -m scripts.data_pipeline.validate
 
-  # Decides whether the E2E legs run (decision C, 2026-10-20). Only a push to
-  # a working branch whose whole diff against its develop fork point is
-  # documentation may skip E2E; the same scope a PR base...head diff would
-  # see, so an earlier code commit on the branch is never hidden behind a
-  # later docs-only push. The fork point must itself carry a passing
-  # "E2E (Playwright)", so a skip only ever inherits a verified result (and a
-  # docs-only branch off a red develop cannot turn green). Every other case,
-  # and every doubt, runs the suite.
+  # Decision D (2026-11-12): choose full or quick E2E scope once here. Keep the
+  # full-scope event/ref rule in sync with the aggregate job name expression.
+  # Docs-only changes on working-branch pushes and PRs may skip the selected
+  # legs only when their merge-base has a passing E2E (Playwright) check.
+  # Protected-branch pushes, manual dispatches, and every uncertain case run.
   changes:
-    name: Detect docs-only change
+    name: Detect E2E scope and docs-only change
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -94,6 +94,8 @@ jobs:
       checks: read
     outputs:
       e2e: ${{ steps.detect.outputs.e2e }}
+      matrix: ${{ steps.detect.outputs.matrix }}
+      scope: ${{ steps.detect.outputs.scope }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -107,7 +109,9 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           GIT_REF: ${{ github.ref }}
-          HEAD_SHA: ${{ github.sha }}
+          PUSH_HEAD_SHA: ${{ github.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASELINE_REF: origin/develop
           REPO: ${{ github.repository }}
           GH_TOKEN: ${{ github.token }}
@@ -115,9 +119,45 @@ jobs:
           set -euo pipefail
           run_e2e() {
             echo "e2e=true" >> "$GITHUB_OUTPUT"
-            echo "Full E2E: $1"
+            echo "E2E runs: $1"
             exit 0
           }
+          # Keep this scope rule in sync with the aggregate job name expression.
+          case "$EVENT_NAME" in
+            pull_request | workflow_dispatch)
+              scope=full ;;
+            push)
+              case "$GIT_REF" in
+                refs/heads/develop | refs/heads/master) scope=full ;;
+                *) scope=quick ;;
+              esac ;;
+            *) scope=quick ;;
+          esac
+          if [ "$scope" = full ]; then
+            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium"},{"project":"phone-chromium","browser":"chromium"},{"project":"desktop-firefox","browser":"firefox"},{"project":"desktop-webkit","browser":"webkit","shard_index":1,"shard_total":3},{"project":"desktop-webkit","browser":"webkit","shard_index":2,"shard_total":3},{"project":"desktop-webkit","browser":"webkit","shard_index":3,"shard_total":3}]}'
+          else
+            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium"}]}'
+          fi
+          echo "scope=$scope" >> "$GITHUB_OUTPUT"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            run_e2e "workflow_dispatch always runs the full suite"
+          fi
+          if [ "$EVENT_NAME" = push ]; then
+            case "$GIT_REF" in
+              refs/heads/master | refs/heads/develop)
+                run_e2e "push to a protected branch always runs the full suite" ;;
+            esac
+            BASE_REF=$BASELINE_REF
+            HEAD_SHA=$PUSH_HEAD_SHA
+          elif [ "$EVENT_NAME" = pull_request ]; then
+            BASE_REF=$PR_BASE_SHA
+            HEAD_SHA=$PR_HEAD_SHA
+          else
+            run_e2e "event '$EVENT_NAME' always runs its configured scope"
+          fi
+
           # Documentation only. Code, data, tests and CI paths never count,
           # even for a .md file inside them.
           is_docs() {
@@ -128,45 +168,45 @@ jobs:
               *) return 1 ;;
             esac
           }
-          if [ "$EVENT_NAME" != push ]; then
-            run_e2e "event '$EVENT_NAME' always runs the full suite"
-          fi
-          case "$GIT_REF" in
-            refs/heads/master | refs/heads/develop)
-              run_e2e "post-merge run on a protected branch" ;;
-          esac
-          if ! baseline=$(git merge-base "$BASELINE_REF" "$HEAD_SHA"); then
-            run_e2e "no merge base with $BASELINE_REF"
+          if ! baseline=$(git merge-base "$BASE_REF" "$HEAD_SHA"); then
+            run_e2e "no merge base with $BASE_REF"
           fi
           if ! changed=$(git diff --no-renames --name-only "$baseline" "$HEAD_SHA"); then
             run_e2e "git diff against $baseline failed"
           fi
           if [ -z "$changed" ]; then
-            run_e2e "no change against $BASELINE_REF"
+            run_e2e "no change against $BASE_REF"
           fi
           while IFS= read -r path; do
             if ! is_docs "$path"; then
               run_e2e "non-docs change: $path"
             fi
           done <<< "$changed"
-          # Every GitHub Actions "E2E (Playwright)" run on the fork point must
-          # be completed and successful, and there must be at least one.
+          # The latest GitHub Actions "E2E (Playwright)" check run(s) on this
+          # merge-base (the API's default filter=latest) must be completed and
+          # successful, and there must be at least one.
           if ! verdicts=$(gh api "repos/$REPO/commits/$baseline/check-runs?check_name=E2E%20(Playwright)&per_page=100" \
             --jq '[.check_runs[] | select(.app.slug == "github-actions") | .conclusion // "pending"] | unique | join(",")'); then
             run_e2e "could not read the E2E result of $baseline"
           fi
           if [ "$verdicts" != success ]; then
-            run_e2e "fork point $baseline has no clean E2E pass ('$verdicts')"
+            run_e2e "merge-base $baseline has no clean E2E pass ('$verdicts')"
           fi
           echo "e2e=false" >> "$GITHUB_OUTPUT"
-          echo "Docs-only change against $BASELINE_REF ($baseline); E2E legs are skipped:"
+          echo "Docs-only change against $BASE_REF ($baseline); E2E legs are skipped:"
           echo "$changed"
 
-  # One leg per Playwright project (decision A, 2026-10-20), each exactly the
-  # old job's work for that project: same tests, 2 workers, retries, xvfb.
+  # One leg per Playwright project (decision A, 2026-10-20): same tests,
+  # 2 workers, retries, xvfb. Which legs run comes from `changes` (decision D):
+  # all four for full scope, desktop-chromium only for quick scope.
+  # desktop-webkit is split into three Playwright shards (issue #83 follow-up,
+  # 2026-11-12): its tests run ~1.7x slower than Chromium, one leg averaged
+  # 13-14 min and hit the 20 min timeout twice (2026-11-10). --shard splits by
+  # test count, not time; two shards were estimated at ~5.6 and ~9.5 min of
+  # tests, three at ~3.9 / 4.7 / 6.5. Each shard keeps the same 2 workers.
   # Runs in parallel with `frontend`: it builds its own e2e bundle.
   e2e-matrix:
-    name: E2E leg (${{ matrix.project }})
+    name: E2E leg (${{ matrix.project }}${{ matrix.shard_index && format(' {0}/{1}', matrix.shard_index, matrix.shard_total) || '' }})
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
     # Pinned: ubuntu-latest moved to ubuntu-26.04 (2026-10-30) and Playwright's
@@ -175,12 +215,7 @@ jobs:
     timeout-minutes: 20
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { project: desktop-chromium, browser: chromium }
-          - { project: phone-chromium, browser: chromium }
-          - { project: desktop-firefox, browser: firefox }
-          - { project: desktop-webkit, browser: webkit }
+      matrix: ${{ fromJSON(needs.changes.outputs.matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -229,25 +264,35 @@ jobs:
       - name: Run E2E tests
         env:
           PROJECT: ${{ matrix.project }}
-        run: xvfb-run --auto-servernum npm run test:e2e -- --project="$PROJECT"
+          SHARD_INDEX: ${{ matrix.shard_index }}
+          SHARD_TOTAL: ${{ matrix.shard_total }}
+        run: |
+          args=(--project="$PROJECT")
+          if [ -n "$SHARD_INDEX" ]; then
+            args+=(--shard="$SHARD_INDEX/$SHARD_TOTAL")
+          fi
+          xvfb-run --auto-servernum npm run test:e2e -- "${args[@]}"
       - name: Upload Playwright report and traces
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: playwright-artifacts-${{ matrix.project }}
+          name: playwright-artifacts-${{ matrix.project }}${{ matrix.shard_index && format('-{0}', matrix.shard_index) || '' }}
           path: |
             playwright-report/
             test-results/
           retention-days: 7
           if-no-files-found: ignore
 
-  # Keeps the required status-check context "E2E (Playwright)" (rulesets
-  # protect-develop / protect-master). Passes only when every leg succeeded,
-  # or when change detection succeeded, chose docs-only, and the legs were
-  # skipped for that reason. A failed, cancelled or otherwise skipped leg, or
-  # a failed detection job, fails it.
+  # Full scope keeps the required status-check context "E2E (Playwright)";
+  # quick scope reports "E2E quick (desktop-chromium)" (decision D). The name
+  # uses only the github context, so it is fixed even if `changes` fails, and
+  # its event/ref rule must stay in sync with the scope rule in `changes`.
+  # Passes only when every selected leg succeeded, or when change detection
+  # succeeded, chose docs-only, and the legs were skipped for that reason. A
+  # failed, cancelled or otherwise skipped leg, or a failed detection job,
+  # fails it.
   e2e:
-    name: E2E (Playwright)
+    name: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master'))) && 'E2E (Playwright)' || 'E2E quick (desktop-chromium)' }}
     needs: [changes, e2e-matrix]
     if: always()
     runs-on: ubuntu-latest
