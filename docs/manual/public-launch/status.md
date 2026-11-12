@@ -2,7 +2,7 @@
 
 更新日：2026-11-12。進め方と判断の根拠は[提案](proposal.md)にあります。
 
-## v0.14.0（地図の案内と方面表示）として公開準備中（2026-11-12、PR #84）
+## v0.14.0（地図の案内と方面表示）として本番公開済み（2026-11-12、PR #86）
 
 | 項目 | 内容 | PR |
 |---|---|---|
@@ -11,8 +11,9 @@
 | 出目調整の行き先（Issue #62） | ダイアログを地図が見える配置にし、選択肢に着く駅名を添えた。地図上の候補駅に吹き出しを出し、カメラを候補に合わせる | #84 |
 
 - 路線データの版が `n02-2025-8a0970069659` から `n02-2025-7974da15af8e` に変わり、更新前の途中セーブは再開できない。[配信とデータ更新の方針](data-update-policy.md)の「大型更新」に当たるため、アプリの版をマイナー番号で上げる（0.13.1 → 0.14.0）。
-- 方針では公開前に GitHub Releases と X で予告する。予告するかどうかは作者の判断待ち（v0.10.0 は宣伝前のため予告せずに公開した）。
-- 公開時の本文は GitHub Releases の v0.14.0 に載せる（文面は[リリースノート](release-notes-0.14.0.md)）。
+- 方針では公開前に GitHub Releases と X で予告するが、v0.10.0 と同じく作者の判断で予告せずに公開した。
+- 公開時の本文は [GitHub Releases の v0.14.0](https://github.com/Yuulis/yamanote-line-sugoroku/releases/tag/v0.14.0) に載せた（文面は[リリースノート](release-notes-0.14.0.md)）。
+- 公開後の確認：本番の JS に v0.14.0 とコミット `73343eb`、新しいコード（`data-map-heading-marker`・`data-map-adjustment-callout`・`railway-goal-station`・`railway-segments-pending-casing`・30区間踏破のトースト）が入っていること、E2E 専用の切り替えが含まれないこと、`/data/manifest.json` の `dataVersion` が `n02-2025-7974da15af8e` で `services.json` に「大船方面」があること、`/assets/*` が1年の immutable、HTML と `/data/*` が `max-age=0, must-revalidate` であることを確認した。
 - 未確認：スマホ実機での出目調整の吹き出しとカメラ、スマホ横向き（667×375 程度）では吹き出しがすべては収まらない。
 
 ## v0.13.1（文字の折り返しと HUD の読みやすさ）として本番公開済み（2026-11-10、PR #81）
