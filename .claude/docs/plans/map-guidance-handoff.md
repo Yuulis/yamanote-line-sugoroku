@@ -30,6 +30,7 @@ Resume from here. Plan: `.claude/docs/plans/map-guidance-plan.md` (Codex validat
 
 - CI flake: `auto-roll-decisions.spec.ts` 'Enter/Space from a non-interactive focus makes one manual roll while auto-roll is ON' failed on desktop-chromium in CI run 42794944265 (save turn 0, expected 1, after `clock.runFor(1)`); passes locally. Watch later runs. Recurred on desktop-webkit (Enter variant, passed on retry) in run 42948492066.
 
+- CI flake: resume.spec.ts 'reload during lottery-settle resumes…' timed out at 31 s twice on phone-chromium in run 43143286053 (it takes 16–27 s there; 18.0 s in the next run on the same code).
 - CI flake: text-wrapping `panel wrapping` timed out once on WebKit (run 43127113503), passed on retry.
 - CI: the `playwright install --with-deps` apt stall recurred on WebKit (run 42819235228, 16.7 min). Related to issue #83 (E2E scope) and the #70 follow-up about caching apt dependencies.
 
@@ -37,4 +38,4 @@ Resume from here. Plan: `.claude/docs/plans/map-guidance-plan.md` (Codex validat
 
 ## Next
 
-PRs and release prep: feature → develop PR, then chore/release-0.14.0 (minor bump per data-update-policy), then develop → master after the user decides the advance notice (GitHub Releases + X) the policy requires.
+PR #84 (feature → develop) merged 2026-11-12 as 059defb after CI run 43144927573 green on e595ce1. Release prep on `chore/release-0.14.0`: version 0.14.0, `release-notes-0.14.0.md`, status.md section. Remaining: release PR → develop, develop → master PR; before merging master the user decides on the advance notice (GitHub Releases + X) that data-update-policy requires for a 大型更新; then production checks, `gh release create v0.14.0` by the user, docs/release-0.14.0-status.
