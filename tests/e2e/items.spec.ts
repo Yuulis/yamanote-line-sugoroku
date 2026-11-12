@@ -233,7 +233,7 @@ test("stages and uses a double ticket, shows physical movement and restores its 
   await expect(notices(page)).toContainText("倍速券を使いました");
 });
 
-test("inventory shows icon slots with short names, persistent descriptions and a hoverable tooltip", async ({ page, railwayBundle }) => {
+test("inventory shows icon slots with short names, persistent descriptions and a hoverable tooltip", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "はじめから" }).click();
   await expect(gamePanel(page).locator(".item-slot--empty")).toHaveText(["空き枠", "空き枠", "空き枠"]);
@@ -345,7 +345,7 @@ test("reduced motion leaves slot tooltips without transitions", async ({ page, r
   expect(durations.map((duration) => duration.split(",").map((entry) => entry.trim()))).toEqual([["0s"], ["0s", "0s", "0s"]]);
 });
 
-test("a touch tap opens an item card and stages it without a tooltip", async ({ page, railwayBundle }) => {
+test("a touch tap opens an item card and stages it without a tooltip", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(!test.info().project.use.hasTouch, "needs a touch device");
   await scenario(page, railwayBundle, "double");
   const slot = inventoryItem(page, "倍速券");
@@ -383,7 +383,7 @@ for (const delta of [-1, 1] as const) {
   });
 }
 
-test("roll adjustment landing map preview", async ({ page, railwayBundle }) => {
+test("roll adjustment landing map preview", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const base = await scenario(page, railwayBundle, "adjust");
   await expect.poll(async () => readMap(page)).not.toBeNull();
   await page.evaluate(() => {
@@ -649,7 +649,7 @@ for (const name of ["rapid", "oversleep"] as const) {
   });
 }
 
-test("item controls and the decision sheet fit 320 and 390 pixel widths", async ({ page, railwayBundle }) => {
+test("item controls and the decision sheet fit 320 and 390 pixel widths", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   for (const width of [320, 390]) {
     await page.setViewportSize({ width, height: 740 });
     await scenario(page, railwayBundle, "adjust");

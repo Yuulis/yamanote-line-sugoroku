@@ -40,7 +40,7 @@ test.describe("game keyboard shortcuts", () => {
   for (const [rollKey, skipKey, focus] of [
     ["Space", "s", "heading"], ["Enter", "Escape", "body"],
   ] as const) {
-    test(`${rollKey} rolls from ${focus} and ${skipKey} skips only the presentation`, async ({ page }) => {
+    test(`${rollKey} rolls from ${focus} and ${skipKey} skips only the presentation`, { tag: "@layout" }, async ({ page }) => {
       await openTitle(page);
       await page.getByRole("button", { name: "はじめから" }).click();
       await freezeClock(page);
@@ -376,7 +376,7 @@ test.describe("game accessibility and text navigation", () => {
     await expect(route.getByRole("region", { name: "乗車中の次の駅" })).toContainText(nextName);
   });
 
-  test("resume and clear transitions focus their headings and keep the clear sheet at its top", async ({ page }) => {
+  test("resume and clear transitions focus their headings and keep the clear sheet at its top", { tag: "@layout" }, async ({ page }) => {
     await openTitle(page);
     const savedGame = readFileSync("tests/e2e/fixtures/tokyo-suburban-before-clear-save.json", "utf8").trimEnd();
     await writeSaveText(page, savedGame);
@@ -597,7 +597,7 @@ test.describe("turn log disclosure", () => {
   });
 });
 
-test.describe("compact layouts and map follow padding", () => {
+test.describe("compact layouts and map follow padding", { tag: "@layout" }, () => {
   test.use({ reducedMotion: "reduce" });
 
   test("landscape 667 by 375 keeps the lottery and options visible", async ({ page }) => {

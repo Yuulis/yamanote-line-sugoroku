@@ -113,7 +113,7 @@ test("[8.3-6] tiles failing before the map loads: retry message, game kept, retr
   expect(await readSave(page)).toEqual(save);
 });
 
-test("[8.3-6] tiles failing after the map loaded are tolerated without losing the game", async ({
+test("[8.3-6] tiles failing after the map loaded are tolerated without losing the game", { tag: "@layout" }, async ({
   page,
   mapStub,
 }) => {

@@ -146,7 +146,7 @@ async function expectFit(page: Page, bundle: RailwayBundle, targetOnly: boolean)
   }
 }
 
-test("regional target view and full overview fit outside the panel; operator line groups are selectable", async ({ page, railwayBundle }) => {
+test("regional target view and full overview fit outside the panel; operator line groups are selectable", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await openTitle(page);
   await startNewGame(page);
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
@@ -382,7 +382,7 @@ test.describe("current product scenarios", () => {
     });
   });
 
-  test("clear history pages retain every product record, and reopened results restore the saved history", async ({ page, railwayBundle }) => {
+  test("clear history pages retain every product record, and reopened results restore the saved history", { tag: "@layout" }, async ({ page, railwayBundle }) => {
     let game = createGame(DEFAULT_GAME_CONFIG, PRODUCT_HISTORY_GAME_SEED, railwayBundle.network);
     while (game.status === "playing" && game.turn < 100) game = playTurn(game, railwayBundle.network).state;
     expect(game).toMatchObject({ status: "completed", turn: PRODUCT_HISTORY_SCENARIO_TURNS.completed, currentStationId: "shimbashi" });
