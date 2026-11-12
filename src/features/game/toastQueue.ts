@@ -112,6 +112,31 @@ export function turnToasts(
   return toasts;
 }
 
+/** Target-segment count whose completion is announced; #65 adds thresholds as further negative indexes. */
+const TARGET_SEGMENTS_MILESTONE = 30;
+/** Negative, so the milestone sorts before every item event (indexes start at zero) of its turn. */
+const MILESTONE_EVENT_INDEX = -1;
+
+/**
+ * One-time notice that every target segment is complete. Keyed by session, it is queued at the first completion
+ * turn, so the cursor rejects it on every later turn and after it expired.
+ */
+export function targetSegmentsMilestoneToast(
+  sessionId: number,
+  completionTurn: number,
+  goalStationName: string,
+): ToastInput {
+  return {
+    key: `${sessionId}:milestone:target-segments:${TARGET_SEGMENTS_MILESTONE}`,
+    sessionId,
+    turn: completionTurn,
+    eventIndex: MILESTONE_EVENT_INDEX,
+    text: `${TARGET_SEGMENTS_MILESTONE}区間を踏破！あとは${goalStationName}に着けばクリア`,
+    tone: "good",
+    sticky: false,
+  };
+}
+
 export function saveFailureToast(sessionId: number | null): ToastInput {
   return {
     key: `${sessionId}:save-failed`,

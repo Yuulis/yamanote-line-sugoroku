@@ -49,7 +49,9 @@ export const LAYER_IDS = {
   services: "railway-services",
   base: "railway-base",
   currentService: "railway-current-service",
-  /** Not yet traversed: grey dashed line. */
+  /** White dashed casing beneath the not-yet-traversed target segments. */
+  segmentsPendingCasing: "railway-segments-pending-casing",
+  /** Not yet traversed: magenta dashed line. */
   segmentsPending: "railway-segments-pending",
   /** Traversed: solid line in the service colour. */
   segmentsCompleted: "railway-segments-completed",
@@ -59,6 +61,8 @@ export const LAYER_IDS = {
   stationCircles: "railway-stations-circle",
   /** Every other station: marked from ORDINARY_STATION_MIN_ZOOM up. */
   stationCirclesOrdinary: "railway-stations-circle-ordinary",
+  /** Ring around the goal station once the goal guidance is public; empty filter otherwise. */
+  goalStation: "railway-goal-station",
   /** Transfer and target-line station names, from LABEL_MIN_ZOOM up. */
   stationLabels: "railway-stations-label",
   /** Every other station name, from LABEL_ORDINARY_MIN_ZOOM up. */
@@ -86,10 +90,17 @@ export const SEGMENT_FLASH_LINE_WIDTH = 11;
 export const SEGMENT_FLASH_LINE_BLUR = 3;
 /** Peak opacity of the single pulse, reached at the middle of the arrival. */
 export const SEGMENT_FLASH_MAX_OPACITY = 0.85;
-export const PENDING_SEGMENT_COLOR = "#8a8a8a";
-export const PENDING_SEGMENT_WIDTH = 3;
+export const PENDING_SEGMENT_COLOR = "#c040cf";
+export const PENDING_SEGMENT_WIDTH = 4;
 /** Dash and gap lengths, in line widths. */
 export const PENDING_SEGMENT_DASH: [number, number] = [2, 1.5];
+export const PENDING_SEGMENT_CASING_COLOR = "#ffffff";
+export const PENDING_SEGMENT_CASING_WIDTH = 8;
+/** Match casing dash lengths to the core's pixel pattern. */
+export const PENDING_SEGMENT_CASING_DASH: [number, number] = [
+  PENDING_SEGMENT_DASH[0] * PENDING_SEGMENT_WIDTH / PENDING_SEGMENT_CASING_WIDTH,
+  PENDING_SEGMENT_DASH[1] * PENDING_SEGMENT_WIDTH / PENDING_SEGMENT_CASING_WIDTH,
+];
 export const CURRENT_POSITION_RADIUS = 10;
 export const CURRENT_POSITION_COLOR = "#e53935";
 export const CURRENT_POSITION_STROKE_COLOR = "#ffffff";
@@ -104,6 +115,9 @@ export const KEY_STATION_RADIUS_STOPS: ZoomStops = [[8, 2.5], [11, 4], [13, 5]];
 export const KEY_STATION_STROKE_STOPS: ZoomStops = [[8, 1], [12, 2]];
 export const ORDINARY_STATION_RADIUS_STOPS: ZoomStops = [[ORDINARY_STATION_MIN_ZOOM, 2.5], [13, 4], [14, 5]];
 export const ORDINARY_STATION_STROKE_STOPS: ZoomStops = [[ORDINARY_STATION_MIN_ZOOM, 1], [13, 2]];
+export const GOAL_STATION_RING_RADIUS_STOPS: ZoomStops = [[8, 7], [11, 9], [13, 12]];
+export const GOAL_STATION_RING_COLOR = "#b26a00";
+export const GOAL_STATION_RING_WIDTH = 3;
 export const STATION_STROKE_COLOR = "#333333";
 export const STATION_FILL_COLOR = "#ffffff";
 export const LABEL_FONT = ["Noto Sans Regular"];

@@ -697,6 +697,64 @@ describe("item controls", () => {
     expect(onContinue).toHaveBeenCalledWith(null);
   });
 
+  it("names each legal adjustment with its pips, steps and landing station, and keeps select-then-confirm", () => {
+    const onContinue = vi.fn();
+    const decision = {
+      kind: "adjust" as const,
+      turn: 1,
+      rawRoll: 4,
+      resolvedRide: { serviceId: "line-a", direction: 1 as const },
+      allowedDeltas: [-1, 1] as const,
+      itemInstanceIds: ["adjust-1"],
+      canContinue: true as const,
+    };
+    const landings = [
+      { delta: -1 as const, pips: 3, stationId: "a", stationName: "渋谷", position: null, travelledSteps: 3, stopReason: "roll" as const },
+      { delta: 0 as const, pips: 4, stationId: "b", stationName: "原宿", position: null, travelledSteps: 4, stopReason: "roll" as const },
+      { delta: 1 as const, pips: 5, stationId: "c", stationName: "大宮", position: null, travelledSteps: 2, stopReason: "endpoint" as const },
+    ];
+    const mount = mountReact(createElement(RollAdjustment, { decision, landings, onContinue }));
+    mounted.push(mount);
+
+    const names = [...mount.container.querySelectorAll<HTMLLabelElement>(".item-adjustment__choice")]
+      .map((label) => label.textContent);
+    expect(names).toEqual([
+      "−1：出目 3、3マス進む → 渋谷",
+      "そのまま：出目 4、4マス進む → 原宿",
+      "+1：出目 5、2マス進む → 大宮",
+    ]);
+    const separators = [...mount.container.querySelectorAll(".item-adjustment__separator")];
+    expect(separators.map((separator) => separator.textContent)).toEqual(["：", "：", "："]);
+    const plus = mount.container.querySelector<HTMLInputElement>("input[value='1']")!;
+    dispatchReactEvent(plus, new MouseEvent("click", { bubbles: true }));
+    expect(onContinue).not.toHaveBeenCalled();
+    const continueButton = [...mount.container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "出目5で続ける")!;
+    dispatchReactEvent(continueButton, new MouseEvent("click", { bubbles: true }));
+    expect(onContinue).toHaveBeenCalledWith({ instanceId: "adjust-1", delta: 1 });
+  });
+
+  it("falls back to the stationless label for a choice without a landing", () => {
+    const decision = {
+      kind: "adjust" as const,
+      turn: 1,
+      rawRoll: 3,
+      resolvedRide: { serviceId: "line-a", direction: 1 as const },
+      allowedDeltas: [1] as const,
+      itemInstanceIds: ["adjust-1"],
+      canContinue: true as const,
+    };
+    const landings = [
+      { delta: 0 as const, pips: 3, stationId: "b", stationName: "原宿", position: null, travelledSteps: 3, stopReason: "roll" as const },
+    ];
+    const mount = mountReact(createElement(RollAdjustment, { decision, landings, onContinue: vi.fn() }));
+    mounted.push(mount);
+
+    const names = [...mount.container.querySelectorAll<HTMLLabelElement>(".item-adjustment__choice")]
+      .map((label) => label.textContent);
+    expect(names).toEqual(["そのまま：出目 3、3マス進む → 原宿", "+1：出目 4、4マス進む"]);
+  });
+
   it("requires one of the four inventory candidates to be discarded and marks the new pickup", () => {
     const onDiscard = vi.fn();
     const decision = {

@@ -184,3 +184,29 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Scope all of #70 in one PR; phone HUD 2-line wrap, not tap-to-expand (user 2026-11-10).
 - Lean test scope over the 20-unit validated plan (user 2026-11-10).
 - Pause after every step; implementer Codex Luna xhigh, lead verifies (user 2026-11-10).
+
+---
+
+## Current Feature: Issue #62: map guidance and direction
+<!-- orchestra:block-id: issue-62-map-guidance-and-direction -->
+
+### Context
+
+- Goal: HUD 進行方向 always names the terminus (10 stale JR labels fixed + validator rule); pending Yamanote segments emphasised; marker shows heading; after 30/30 HUD/map/toast say only 新橋 remains; roll-adjust shows landing bubbles on the map.
+- Branch: feature/map-guidance (from develop 33ff82c)
+- Plan: .claude/docs/plans/map-guidance-plan.md (12 steps, Codex validated); handoff: map-guidance-handoff.md; prompts: map-guidance-prompts.md
+- Research: .claude/docs/research/feature-map-guidance-and-direction-{brief,codebase}.md
+- Dependencies: none new
+- Complexity: COMPLEX (12 steps, 785-1,100 LOC)
+
+### Architecture
+
+- Heading, pending emphasis, 30/30 state and goal ring derive from reveal-gated turnDisplay, never raw game state.
+- Roll-adjust landings from pure advance(position, roll±1); modal kept with transparent backdrop; DOM speech-bubble markers; zero-duration camera fit.
+- Data change bumps dataVersion; regenerated pinned saves; classic fixture keeps bytes, checked against a test-only historical network view.
+
+### Decisions
+
+- One PR for all of #62; stop after every step; implementer Codex Luna xhigh, Sol low reviews, lead verifies (user 2026-11-10).
+- Old saves may be rejected; product_suburban verify superseded, not edited (user 2026-11-10).
+- Map bubbles with step counts, map kept visible; layout and colour choices per DESIGN.md 2026-11-10 rows (plan approved by user 2026-11-10).

@@ -33,6 +33,13 @@ export interface MapSnapshot {
   marker: [number, number] | null;
   /** The marker layer draws a visible feature at `marker` (not just stored). */
   markerRendered: boolean;
+  /** The DOM beak, including its applied world bearing and screen alignment. */
+  headingMarker: {
+    visible: boolean;
+    rotation: number | null;
+    center: { x: number; y: number };
+    projectedCenter: { x: number; y: number } | null;
+  } | null;
   /** Geometry feature ids in the completed layer's `in` filter literal. */
   completedFilterIds: string[];
   /** Geometry feature ids the completed / pending line layers actually render. */
@@ -319,7 +326,9 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         getFilter(layerId: string): unknown;
         getPaintProperty(layerId: string, name: string): unknown;
         getSource(id: string): { getData(): Promise<unknown> } | undefined;
-        project(lngLat: [number, number]): unknown;
+        project(lngLat: [number, number]): { x: number; y: number };
+        getContainer(): HTMLElement;
+        getBearing(): number;
         queryRenderedFeatures(
           pointOrOptions?: unknown,
           options?: { layers: string[] },
@@ -330,10 +339,36 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
       const map = hook?.map;
       // A replaced style drops the railway layers until "style.load" re-adds them.
       if (!map || !map.getLayer(layers.completed)) return null;
-      const data =(await map.getSource(markerSourceId)?.getData()) as
+      const data = (await map.getSource(markerSourceId)?.getData()) as
         | { features: { geometry: { coordinates: [number, number] } }[] }
         | undefined;
-      const marker = data?.features[0]?.geometry.coordinates ?? null;
+      const markerFeature = data?.features[0];
+      const marker = markerFeature?.geometry.coordinates ?? null;
+      const headingElement = document.querySelector<HTMLElement>("[data-map-heading-marker]");
+      const headingBounds = headingElement?.getBoundingClientRect();
+      const mapBounds = map.getContainer().getBoundingClientRect();
+      const markerProjection = marker === null ? null : map.project(marker);
+      const cssRotation = headingElement?.style.transform.match(/rotateZ\((-?[\d.]+)deg\)/);
+      const cssRotationDegrees = cssRotation ? Number(cssRotation[1]) : null;
+      const headingRotation = cssRotationDegrees === null
+        ? null
+        : ((cssRotationDegrees + map.getBearing()) % 360 + 360) % 360;
+      const headingVisibility = headingElement ? window.getComputedStyle(headingElement) : null;
+      const headingMarker = headingElement && headingBounds
+        ? {
+            visible: !headingElement.hidden && headingVisibility?.visibility === "visible" &&
+              headingVisibility.display !== "none" && headingVisibility.opacity !== "0" &&
+              headingElement.getClientRects().length > 0,
+            rotation: headingRotation,
+            center: {
+              x: headingBounds.left + headingBounds.width / 2,
+              y: headingBounds.top + headingBounds.height / 2,
+            },
+            projectedCenter: markerProjection
+              ? { x: mapBounds.left + markerProjection.x, y: mapBounds.top + markerProjection.y }
+              : null,
+          }
+        : null;
       const renderedIds = (layerId: string): string[] => {
         if (!map.getLayer(layerId)) return [];
         const features = map.queryRenderedFeatures({ layers: [layerId] });
@@ -364,6 +399,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
           map.queryRenderedFeatures(map.project(marker), { layers: [layers.marker] }).length > 0 &&
           isPositive(map.getPaintProperty(layers.marker, "circle-radius")) &&
           isPositive(map.getPaintProperty(layers.marker, "circle-opacity") ?? 1),
+        headingMarker,
         completedFilterIds: filter?.[2]?.[2]?.[1] ?? [],
         completedRenderedIds: renderedIds(layers.completed),
         pendingRenderedIds: renderedIds(layers.pending),

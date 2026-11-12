@@ -1,9 +1,14 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import type { Page } from "@playwright/test";
-import { LAYER_IDS } from "../../src/features/map/mapConfig";
+import type { Locator, Page } from "@playwright/test";
+import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { displayedHeading } from "../../src/features/game/mapGuidance";
+import type { ItemGameState } from "../../src/types/network";
+import { LAYER_IDS, MAP_STYLE_URL } from "../../src/features/map/mapConfig";
 import { expect, test } from "./fixtures";
-import { closeGameMenu, gamePanel, openGameMenu, openTitle, readMap, startNewGame } from "./support/app";
+import type { RailwayBundle } from "./fixtures/bundle";
+import { closeGameMenu, diceReady, gamePanel, openGameMenu, openTitle, readMap, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 // S6V: the 1都3県 network must stay readable. Real data, both form factors.
 test.use({ dataset: "real" });
@@ -11,6 +16,15 @@ test.use({ dataset: "real" });
 const SCREENSHOT_DIR = resolve(".claude/logs/jrcr-s6v/screenshots");
 const JRCR_S7_SCREENSHOT_DIR = resolve(".claude/logs/jrcr-s7/screenshots");
 const TARGET_SERVICE_ID = "jr-yamanote";
+const MIN_COMPLETED_YAMANOTE_SEGMENTS = 4;
+const MAX_VISUAL_GAME_TURNS = 24;
+const MAX_VISUAL_GAME_SEEDS = 512;
+const MAX_THIRTY_SEGMENT_TURNS = 400;
+const REQUIRED_TARGET_SEGMENTS = 30;
+const PHONE_NARROW_VIEWPORT = { width: 320, height: 568 };
+const GOAL_RING_VIEW_ZOOM = 13;
+/** Tokyo to Yurakucho from the public jr-yamanote platform coordinates. */
+const TOKYO_OUTER_LOOP_BEARING = 205.15;
 /** Allowed offset of the target line's centre from the free area's centre. */
 const CENTRE_TOLERANCE_SHARE = 0.12;
 
@@ -138,6 +152,20 @@ async function startReadyGame(page: Page): Promise<void> {
 
 function deviceName(page: Page): "phone" | "desktop" {
   return isPhone(page) ? "phone" : "desktop";
+}
+
+function midGameWithYamanoteProgress(bundle: RailwayBundle): ItemGameState {
+  for (let seed = 0; seed < MAX_VISUAL_GAME_SEEDS; seed += 1) {
+    const seedText = seed.toString(16).padStart(32, "0");
+    let game = createItemGame(ITEM_GAME_CONFIG, seedText, bundle.network);
+    for (let turn = 0; turn < MAX_VISUAL_GAME_TURNS && game.status === "playing"; turn += 1) {
+      game = playItemTurn(game, {}, bundle.network).state;
+      if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+      const completedTargetCount = game.completedSegmentIds.filter((id) => id.startsWith(`${TARGET_SERVICE_ID}:`)).length;
+      if (completedTargetCount >= MIN_COMPLETED_YAMANOTE_SEGMENTS && game.currentServiceId === TARGET_SERVICE_ID) return game;
+    }
+  }
+  throw new Error("No engine-generated game reached the map guidance screenshot state");
 }
 
 test("the target line starts centred in the free map area and 全体 shows every platform unclipped", async ({ page, railwayBundle }) => {
@@ -313,6 +341,278 @@ test("the service legend collapses; 山手線 progress and 現在地 stay visibl
   await expect(serviceRow).toBeHidden();
   await toggle.click();
   await expect(serviceRow).toBeVisible();
+});
+
+test("pending guidance and heading", async ({ page, railwayBundle }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop-chromium", "This paint comparison uses one desktop viewport");
+  const game = midGameWithYamanoteProgress(railwayBundle);
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(game));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+
+  const expectedBearing = displayedHeading(
+    { stationId: game.currentStationId },
+    { serviceId: game.currentServiceId, direction: game.direction },
+    railwayBundle.network,
+  );
+  expect(game.turn).toBe(18);
+  expect(game.currentStationId).toBe("tokyo");
+  expect(game.direction).toBe(1);
+  expect(expectedBearing).not.toBeNull();
+  expect(expectedBearing).toBeCloseTo(TOKYO_OUTER_LOOP_BEARING, 1);
+  const snapshot = await readMap(page);
+  expect(snapshot?.markerRendered).toBe(true);
+  expect(snapshot?.headingMarker).not.toBeNull();
+  const headingMarker = snapshot!.headingMarker!;
+  expect(headingMarker.visible).toBe(true);
+  expect(headingMarker.rotation).not.toBeNull();
+  const rotationDifference = Math.abs((headingMarker.rotation! - expectedBearing! + 540) % 360 - 180);
+  expect(rotationDifference, "the DOM beak should apply the reveal-gated bearing").toBeLessThanOrEqual(1);
+  expect(headingMarker.projectedCenter).not.toBeNull();
+  expect(Math.abs(headingMarker.center.x - headingMarker.projectedCenter!.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(headingMarker.center.y - headingMarker.projectedCenter!.y)).toBeLessThanOrEqual(2);
+
+  const casingPaint = await page.evaluate((layerId) => {
+    const map = (window as unknown as { __sugorokuE2E: { map: {
+      getPaintProperty(id: string, name: string): unknown;
+    } } }).__sugorokuE2E.map;
+    return {
+      color: map.getPaintProperty(layerId, "line-color"),
+      width: map.getPaintProperty(layerId, "line-width"),
+      dash: map.getPaintProperty(layerId, "line-dasharray"),
+    };
+  }, LAYER_IDS.segmentsPendingCasing);
+  expect(casingPaint).toEqual({ color: "#ffffff", width: 8, dash: [1, 0.75] });
+
+  const backgroundId = await page.evaluate(() => {
+    const map = (window as unknown as { __sugorokuE2E: { map: {
+      getStyle(): { layers: { id: string; type: string }[] };
+    } } }).__sugorokuE2E.map;
+    const background = map.getStyle().layers.find((layer) => layer.type === "background");
+    if (!background) throw new Error("The basemap background layer is missing");
+    return background.id;
+  });
+  const backgroundPaints = ["#faf7ef", "#263238"] as const;
+  for (const color of backgroundPaints) {
+    const appliedColor = await page.evaluate(({ layerId, backgroundColor }) => {
+      const map = (window as unknown as { __sugorokuE2E: { map: {
+        setPaintProperty(id: string, name: string, value: string): void;
+        getPaintProperty(id: string, name: string): unknown;
+      } } }).__sugorokuE2E.map;
+      map.setPaintProperty(layerId, "background-color", backgroundColor);
+      return map.getPaintProperty(layerId, "background-color");
+    }, { layerId: backgroundId, backgroundColor: color });
+    expect(appliedColor).toBe(color);
+
+    const snapshot = await readMap(page);
+    expect(snapshot).not.toBeNull();
+    expect(snapshot!.markerRendered).toBe(true);
+    expect(snapshot!.headingMarker?.visible).toBe(true);
+    expect(snapshot!.headingMarker?.rotation).toEqual(expect.any(Number));
+    expect(snapshot!.pendingPaint.color).toBe("#c040cf");
+    expect(snapshot!.pendingPaint.dash).toEqual([2, 1.5]);
+    expect(snapshot!.completedPaint.dash).toBeNull();
+    expect(snapshot!.completedPaint.color).not.toEqual(snapshot!.pendingPaint.color);
+    expect(snapshot!.completedRenderedIds.length).toBeGreaterThan(0);
+    expect(snapshot!.pendingRenderedIds.length).toBeGreaterThan(0);
+  }
+
+  const headingElement = page.locator("[data-map-heading-marker]");
+  await expect(headingElement).toHaveCount(1);
+  await page.evaluate((styleUrl) => {
+    const map = (window as unknown as { __sugorokuE2E: { map: { setStyle(style: string, options: { diff: boolean }): void } } }).__sugorokuE2E.map;
+    map.setStyle(styleUrl, { diff: false });
+  }, MAP_STYLE_URL);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(headingElement).toHaveCount(1);
+  const restoredHeading = (await readMap(page))?.headingMarker;
+  expect(restoredHeading?.visible).toBe(true);
+  expect(restoredHeading?.rotation).not.toBeNull();
+});
+
+interface ThirtyOfThirtyTurn {
+  before: ItemGameState;
+  after: ItemGameState;
+}
+
+/** First engine-played product game whose next turn completes every target segment away from the goal. */
+function turnCompletingThirtyOfThirty(bundle: RailwayBundle): ThirtyOfThirtyTurn {
+  const targetCount = (game: ItemGameState): number => game.completedSegmentIds.filter((id) => id.startsWith(`${TARGET_SERVICE_ID}:`)).length;
+  for (let seed = 0; seed < MAX_VISUAL_GAME_SEEDS; seed += 1) {
+    let game = createItemGame(ITEM_GAME_CONFIG, seed.toString(16).padStart(32, "0"), bundle.network);
+    for (let turn = 0; turn < MAX_THIRTY_SEGMENT_TURNS && game.status === "playing"; turn += 1) {
+      const result = playItemTurn(game, {}, bundle.network).state;
+      // A pending discard would put a dialog between the roll and the guidance.
+      if (result.pending !== null) break;
+      if (targetCount(game) < REQUIRED_TARGET_SEGMENTS && targetCount(result) === REQUIRED_TARGET_SEGMENTS && result.status === "playing") {
+        return { before: game, after: result };
+      }
+      game = result;
+    }
+  }
+  throw new Error("No engine-generated game completed 30/30 away from the goal station");
+}
+
+interface HudGeometry {
+  progressSlot: DOMRectJSON;
+  statsContainer: DOMRectJSON;
+  dice: DOMRectJSON;
+}
+type DOMRectJSON = { x: number; y: number; width: number; height: number };
+
+async function readHudGeometry(page: Page): Promise<HudGeometry> {
+  return page.evaluate(() => {
+    const rect = (element: Element | null | undefined): DOMRectJSON => {
+      if (!element) throw new Error("HUD element is missing");
+      const { x, y, width, height } = element.getBoundingClientRect();
+      return { x, y, width, height };
+    };
+    return {
+      progressSlot: rect(document.querySelector('.game-panel [data-stat="progress"]')?.parentElement),
+      statsContainer: rect(document.querySelector(".game-panel__stats")),
+      dice: rect(document.querySelector(".game-panel__roll")),
+    };
+  });
+}
+
+async function readGoalRing(page: Page, stationId: string, center: [number, number]) {
+  return page.evaluate(({ layerId, id, coordinates }) => {
+    const map = (window as unknown as { __sugorokuE2E: { map: {
+      getFilter(layer: string): unknown;
+      jumpTo(options: { center: [number, number]; zoom: number }): void;
+      project(point: [number, number]): { x: number; y: number };
+      queryRenderedFeatures(point: { x: number; y: number }, options: { layers: string[] }): { properties: { id?: string } }[];
+    } } }).__sugorokuE2E.map;
+    return {
+      filter: map.getFilter(layerId),
+      rendered: map.queryRenderedFeatures(map.project(coordinates), { layers: [layerId] })
+        .some((feature) => feature.properties.id === id),
+    };
+  }, { layerId: LAYER_IDS.goalStation, id: stationId, coordinates: center });
+}
+
+const FULL_GOAL_GUIDANCE = "新橋に着けばクリア";
+const SHORT_GOAL_GUIDANCE = "あとは新橋へ";
+// Three viewports on desktop plus a real-time arrival presentation.
+const MILESTONE_TEST_TIMEOUT_MS = 60_000;
+const MILESTONE_TOAST = "30区間を踏破！あとは新橋に着けばクリア";
+const SHORT_LANDSCAPE_VIEWPORTS = [{ width: 667, height: 375 }, { width: 601, height: 375 }];
+
+async function fitsOnOneLine(locator: Locator): Promise<boolean> {
+  return locator.evaluate((element) => element.scrollWidth <= element.clientWidth);
+}
+
+test("30 of 30 return guidance", async ({ page, railwayBundle }, testInfo) => {
+  test.setTimeout(MILESTONE_TEST_TIMEOUT_MS);
+  const goalStationId = ITEM_GAME_CONFIG.startStationId;
+  const goalStation = railwayBundle.network.stationsById.get(goalStationId)!;
+  const { before, after } = turnCompletingThirtyOfThirty(railwayBundle);
+  expect(after.currentStationId).not.toBe(goalStationId);
+  const completedBefore = before.completedSegmentIds.filter((id) => id.startsWith(`${TARGET_SERVICE_ID}:`)).length;
+  expect(completedBefore).toBeLessThan(REQUIRED_TARGET_SEGMENTS);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  // Portrait phone / desktop first; the short-landscape HUD (desktop project only) swaps in the short wording.
+  const viewports = [
+    { viewport: isPhone(page) ? PHONE_NARROW_VIEWPORT : page.viewportSize()!, shortLandscape: false },
+    ...(testInfo.project.name === "desktop-chromium"
+      ? SHORT_LANDSCAPE_VIEWPORTS.map((viewport) => ({ viewport, shortLandscape: true }))
+      : []),
+  ];
+  for (const { viewport, shortLandscape } of viewports) {
+    await page.setViewportSize(viewport);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(before));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+
+    const progressValue = page.locator('.game-panel [data-stat="progress"]');
+    const slot = progressValue.locator("..");
+    await expect(progressValue).toHaveText(`${completedBefore}/${REQUIRED_TARGET_SEGMENTS}`);
+    await expect(slot.locator(".target-progress__segment")).toHaveCount(REQUIRED_TARGET_SEGMENTS);
+    await expect(slot.locator(".target-progress--guidance")).toHaveCount(0);
+    const preGeometry = await readHudGeometry(page);
+    expect((await readGoalRing(page, goalStationId, goalStation.coordinates)).filter).toEqual(["in", ["get", "id"], ["literal", []]]);
+
+    await rollOnce(page);
+
+    // The milestone is delivered once with the arrival publication, ahead of this turn's own item-event toasts.
+    const toasts = page.locator(".toast-host__toast");
+    await expect(toasts.filter({ hasText: MILESTONE_TOAST })).toHaveCount(1);
+    await expect(toasts.first()).toHaveText(MILESTONE_TOAST);
+
+    const guidance = slot.locator(".target-progress--guidance");
+    const full = guidance.locator(".goal-guidance__full");
+    const short = guidance.locator(".goal-guidance__short");
+    await expect(full).toHaveText(FULL_GOAL_GUIDANCE);
+    await expect(short).toHaveText(SHORT_GOAL_GUIDANCE);
+    // The full sentence stays the accessible text; the short wording is visual only.
+    await expect(guidance).toHaveAttribute("title", FULL_GOAL_GUIDANCE);
+    await expect(short).toHaveAttribute("aria-hidden", "true");
+    await expect(full).not.toHaveAttribute("aria-hidden", "true");
+    await expect(slot.getByText(FULL_GOAL_GUIDANCE)).toHaveCount(1);
+    const shortDisplay = await short.evaluate((element) => getComputedStyle(element).display);
+    const fullWidth = await full.evaluate((element) => element.getBoundingClientRect().width);
+    if (shortLandscape) {
+      expect(shortDisplay, "short-landscape shows the short wording").not.toBe("none");
+      expect(fullWidth, "the full sentence is visually hidden but still exposed").toBeLessThanOrEqual(1);
+    } else {
+      expect(shortDisplay, "the short wording is hidden outside short-landscape").toBe("none");
+      expect(fullWidth).toBeGreaterThan(1);
+    }
+    await expect(progressValue).toHaveText(`${REQUIRED_TARGET_SEGMENTS}/${REQUIRED_TARGET_SEGMENTS}`);
+    await expect(slot.locator(".target-progress__segment")).toHaveCount(0);
+    await expect(slot.getByRole("progressbar")).toHaveCount(0);
+    await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
+    await expect(gamePanel(page).getByRole("heading", { name: "クリア！" })).toHaveCount(0);
+
+    const postGeometry = await readHudGeometry(page);
+    expect(postGeometry.progressSlot).toEqual(preGeometry.progressSlot);
+    expect(postGeometry.statsContainer).toEqual(preGeometry.statsContainer);
+    expect(postGeometry.dice).toEqual(preGeometry.dice);
+    expect(await fitsOnOneLine(guidance), "the guidance is not ellipsized").toBe(true);
+    expect(await fitsOnOneLine(progressValue), "the numeric value is not ellipsized").toBe(true);
+
+    await page.evaluate(({ center, zoom }) => {
+      const hook = (window as unknown as { __sugorokuE2E: { map: { jumpTo(options: { center: [number, number]; zoom: number }): void } } }).__sugorokuE2E;
+      hook.map.jumpTo({ center, zoom });
+    }, { center: goalStation.coordinates, zoom: GOAL_RING_VIEW_ZOOM });
+    await expect.poll(async () => await readGoalRing(page, goalStationId, goalStation.coordinates)).toEqual({
+      filter: ["==", ["get", "id"], goalStationId],
+      rendered: true,
+    });
+
+    // A reload and resume at 30/30 never replays the milestone.
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await expect(guidance).toHaveCount(1);
+    await expect(toasts).toHaveCount(0);
+  }
+
+  // With motion on, the milestone is delivered while the arrival banner is still up, not at publication.
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(before));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  await page.evaluate((text) => {
+    const seen = window as unknown as { __milestoneDuringArrival: boolean };
+    seen.__milestoneDuringArrival = false;
+    new MutationObserver(() => {
+      const banner = document.querySelector(".turn-moment-host .arrival-banner");
+      const toast = [...document.querySelectorAll(".toast-host__toast")].some((entry) => entry.textContent?.includes(text));
+      if (banner && toast) seen.__milestoneDuringArrival = true;
+    }).observe(document.body, { subtree: true, childList: true, characterData: true });
+  }, MILESTONE_TOAST);
+  await diceReady(page).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { __milestoneDuringArrival: boolean }).__milestoneDuringArrival), { timeout: 20_000 }).toBe(true);
 });
 
 test("clicking an ordinary station opens exactly one popup naming it", async ({ page, railwayBundle }) => {

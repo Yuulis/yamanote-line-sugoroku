@@ -168,6 +168,7 @@ describe("scaled map and presentation", () => {
     expect(layers[LAYER_IDS.base]?.paint).toMatchObject({ "line-color": buildTrackColorExpression(services.lines) });
     expect(layers[LAYER_IDS.services]?.paint).not.toHaveProperty("line-offset");
     expect(layers[LAYER_IDS.segmentsPending]?.filter).toEqual(expect.arrayContaining([["==", ["get", "serviceId"], "custom-target"]]));
+    expect(layers[LAYER_IDS.segmentsPendingCasing]?.filter).toEqual(layers[LAYER_IDS.segmentsPending]?.filter);
     // S13: the flash layer is scoped to the configured target, empty and transparent until an arrival flashes.
     expect(layers[LAYER_IDS.segmentsFlash]?.filter).toEqual(["all", ["==", ["get", "serviceId"], "custom-target"], ["in", ["get", "featureId"], ["literal", []]]]);
     expect(layers[LAYER_IDS.segmentsFlash]?.paint).toMatchObject({ "line-opacity": 0 });

@@ -1,6 +1,6 @@
 import type { Direction } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
-import { platformPosition, targetSegmentIds } from "./engine";
+import { isItemSave, platformPosition, targetSegmentIds } from "./engine";
 import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { segmentFlashFeatureIds, type TurnRevealStageKey, type RollAttempt } from "./animation/turnMoments";
@@ -9,8 +9,9 @@ import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel
 import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, stationName, turnMomentAnnouncement } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
 import type { ItemSessionView } from "./itemSession";
-import { turnToasts, type ToastInput } from "./toastQueue";
+import { targetSegmentsMilestoneToast, turnToasts, type ToastInput } from "./toastQueue";
 import { maskTurnMomentItemView } from "./turnMomentItems";
+import { adjustmentLandings, displayedHeading, firstTargetCompletionTurn, type AdjustmentLanding, type GoalGuidance } from "./mapGuidance";
 
 export type TurnPublicationPhase = "pre-move" | "moving" | TurnRevealStageKey | "published";
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
@@ -32,6 +33,8 @@ export interface TurnMomentDisplayInput {
   previousClassicAnnouncement?: string;
   /** Key of the reveal being presented; it keys the arrival's segment flash. */
   revealKey?: string | null;
+  /** Latest turn the session was entered with; a completion at or before it is never announced as new. */
+  entryTurn?: number;
 }
 
 /** Shared gameplay values and permissions; visual moment models are added in later steps. */
@@ -40,6 +43,10 @@ export interface TurnMomentDisplay {
   turn: number;
   progress: DisplayedProgress;
   ride: Readonly<{ serviceId: string; direction: Direction }>;
+  markerBearing: number | null;
+  goalGuidance: GoalGuidance | null;
+  /** Exact landing per legal choice; non-empty only while the adjustment decision is visible. */
+  adjustmentLandings: readonly AdjustmentLanding[];
   compactRoll: string;
   rollText: string;
   arrivalText: string | null;
@@ -140,6 +147,13 @@ function visibleDecision(
   return null;
 }
 
+/** Previews read the dialog's own pending roll, so they appear and disappear with the decision. */
+function visibleAdjustmentLandings(input: TurnMomentDisplayInput, decision: ItemSessionView["decision"]): readonly AdjustmentLanding[] {
+  if (decision?.kind !== "adjust") return [];
+  const position = { ...input.session.game, currentServiceId: decision.resolvedRide.serviceId, direction: decision.resolvedRide.direction };
+  return adjustmentLandings(position, decision.rawRoll, decision.allowedDeltas, input.network, input.presentation);
+}
+
 function visibleCandidates(move: LastMove | null, presentation: PresentationResolver): PresentationCandidateRow[] {
   if (!move?.landing || (!move.landing.serviceDrawRequired && !move.landing.directionDrawRequired)) return [];
   return presentation.candidateRows(move.landing.serviceCandidates);
@@ -168,6 +182,28 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const completedIds = new Set(progress.completedSegmentIds);
   const completedCount = targetIds.filter((id) => completedIds.has(id)).length;
   const requiredCount = targetIds.length;
+  const goal = input.session.game.status === "completed";
+  const historicalRecords = input.session.game.movementHistory.map(({ turn: recordTurn, traversedSegmentIds }) => ({
+    turn: recordTurn,
+    traversedSegmentIds,
+  }));
+  const pendingDiscardRecord = isItemSave(input.session.game) && input.session.game.pending?.kind === "discard"
+    ? input.session.game.pending.record : null;
+  const completionRecords = pendingDiscardRecord
+    ? [...historicalRecords, pendingDiscardRecord]
+    : historicalRecords;
+  const firstCompletionTurn = firstTargetCompletionTurn(completionRecords, targetIds);
+  const publicationTurn = attempt?.recordTurn ?? current?.itemRecord?.turn ?? input.session.game.turn;
+  const completionArrivalPublished = !isBeforeArrival;
+  const goalGuidancePublished = firstCompletionTurn !== null && (
+    firstCompletionTurn < publicationTurn || (firstCompletionTurn === publicationTurn && completionArrivalPublished)
+  );
+  const goalStationId = input.session.game.config.startStationId;
+  const goalStationName = input.presentation.stationName(goalStationId);
+  const goalGuidance: GoalGuidance | null = goalGuidancePublished && !(goal && completionArrivalPublished)
+    ? { stationId: goalStationId, stationName: goalStationName, text: `${goalStationName}に着けばクリア` }
+    : null;
+  const markerBearing = displayedHeading(progress, ride, input.network);
   const arrivalText = isBeforeArrival || !current ? null : arrivalLogText(
     current.itemRecord?.turn ?? input.session.game.turn,
     current,
@@ -183,7 +219,6 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const candidateMove = lotteryPublished ? current : previousLastMove(input);
   const candidateRows = visibleCandidates(candidateMove, input.presentation);
   const candidateDrawSlotCount = candidateMove?.landing?.serviceCandidates.length ?? 0;
-  const goal = input.session.game.status === "completed";
   const showClear = goal && isPublished;
   const liveView = input.itemView ?? null;
   const preMoveActive = Boolean(attempt && PRE_MOVE_STAGES.has(attempt.stage));
@@ -201,16 +236,23 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   // 「この内容でサイコロを振る」 or a staged summary) while the arrival is presented.
   const itemView = maskedView && liveView && record && maskedView !== liveView ? { ...maskedView, draft: liveView.draft } : maskedView;
   const decision = visibleDecision(liveView, attempt, active, resultPublished);
+  const landings = visibleAdjustmentLandings(input, decision);
   const turn = record?.turn ?? input.session.game.turn;
   const effectTurn = resultPublished ? turn : attempt?.origin.turn ?? turn;
   const effectModels = itemView && phase !== "moving"
     ? effectChipModels(itemView.effects, effectTurn, input.network, input.presentation) : [];
   const showItemNotice = resultPublished && Boolean(record?.itemEvents.length);
-  const toastInputs = resultPublished && input.session.lastMove && (!attempt || record)
+  // Toasts wait for the movement to finish, exactly like the reveal's `ready` that GameApp used to check.
+  const movementComplete = input.session.phase !== "animating";
+  const itemToasts = resultPublished && movementComplete && input.session.lastMove && (!attempt || record)
     ? turnToasts(input.session.sessionId, input.session.lastMove, input.network, input.presentation) : [];
+  // The milestone is public with the guidance (arrival); it precedes this turn's item events.
+  const milestoneToasts = goalGuidance && firstCompletionTurn !== null && movementComplete
+    ? [targetSegmentsMilestoneToast(input.session.sessionId, firstCompletionTurn, goalGuidance.stationName)] : [];
+  const toastInputs = [...milestoneToasts, ...itemToasts];
   const canRoll = !active && input.session.phase === "idle" && input.session.game.status === "playing";
   const announcementStage = getAnnouncementStage(input, phase, showClear, decision);
-  const announcement = !liveView && input.restoredHistory ? ""
+  const baseAnnouncement = !liveView && input.restoredHistory ? ""
     : !liveView && !attempt && input.session.phase !== "idle" ? input.previousClassicAnnouncement ?? ""
     : !liveView && phase === "published" && current
       ? arrivalSummary(current.itemRecord?.turn ?? input.session.game.turn, current, completedCount, requiredCount, input.network, input.presentation)
@@ -226,6 +268,15 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
         ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation)
         : turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
           stage: announcementStage, canRoll, completedCount, requiredCount, network: input.network, presentation: input.presentation });
+  // Announced once: while the arrival is presented, or at the publication of a turn that never presented it
+  // (classic, reduced motion, Skip, or 演出 なし, which plans no arrival stage).
+  const milestoneAnnounced = goalGuidance !== null && firstCompletionTurn === publicationTurn
+    && firstCompletionTurn > (input.entryTurn ?? 0)
+    && (phase === "arrival" || phase === "segment-flash"
+      || (isPublished && (!liveView || input.restoredOrOmitted || attempt?.skipRequested === true
+        || attempt?.policy.showImportantMoments === false)));
+  const announcement = milestoneAnnounced && goalGuidance && baseAnnouncement
+    ? `${baseAnnouncement.replace(/。$/, "")}。${goalGuidance.text}` : baseAnnouncement;
   const hasPublishedSummary = phase === "published" && current !== null && !showClear && (liveView
     ? input.session.phase !== "animating" && input.session.phase !== "committing" && input.session.phase !== "resolving" &&
       !liveView.draft.items.length && decision?.kind !== "adjust"
@@ -242,6 +293,9 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
       : current?.itemRecord?.turn ?? input.session.game.turn,
     progress,
     ride,
+    markerBearing,
+    goalGuidance,
+    adjustmentLandings: landings,
     compactRoll,
     rollText,
     arrivalText,

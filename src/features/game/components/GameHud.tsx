@@ -20,6 +20,10 @@ export interface GameHudProps {
   turn: number;
   completed: number;
   required: number;
+  /** Reveal-gated goal guidance; replaces the progress bar cells in the same slot once public. */
+  goalGuidanceText?: string | null;
+  /** Shorter wording for the short-landscape HUD; visual only, the full text stays the accessible name. */
+  goalGuidanceShortText?: string | null;
   compactRoll: string;
   saveStatus: SaveWriteResult | null;
   saveStatusMessage: string;
@@ -53,7 +57,7 @@ function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element
 export function GameHud({
   inventory,
   title, subtitle, headingRef,
-  station, ride, lineBadge, direction, turn, completed, required, compactRoll, saveStatus, saveStatusMessage,
+  station, ride, lineBadge, direction, turn, completed, required, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
   canRoll, canSkip, autoRollEnabled, animating, draftSelected, rollButtonRef, onRoll, onSkip, onToggleAutoRoll, effects,
   rideTargetRef, directionTargetRef,
 }: GameHudProps): React.JSX.Element {
@@ -80,7 +84,11 @@ export function GameHud({
         <dt>ターン数</dt>
         <dd><span className="hud-stat__value" data-stat="turn" title={String(turn)}>{turn}</span></dd>
         <dt>踏破区間</dt>
-        <dd><span className="hud-stat__value" data-stat="progress" title={`${completed}/${required}`}>{completed}/{required}</span><TargetProgressBar completed={completed} required={required} /></dd>
+        <dd><span className="hud-stat__value" data-stat="progress" title={`${completed}/${required}`}>{completed}/{required}</span>{goalGuidanceText
+          ? <span className="target-progress target-progress--guidance" title={goalGuidanceText}><span className="goal-guidance__full"><PhraseText text={goalGuidanceText} /></span>
+            {goalGuidanceShortText && <span className="goal-guidance__short" aria-hidden="true"><PhraseText text={goalGuidanceShortText} /></span>}
+          </span>
+          : <TargetProgressBar completed={completed} required={required} />}</dd>
         <dt>出目</dt>
         <dd><span className="hud-stat__value" data-stat="roll-compact" title={compactRoll}>{compactRoll}</span></dd>
       </dl>

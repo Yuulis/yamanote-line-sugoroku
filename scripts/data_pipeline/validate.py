@@ -173,6 +173,29 @@ def check_services(
     report: Report,
 ) -> tuple[list[ServiceStops], dict[tuple[str, str], Point]]:
     """Strict v3 metadata, topology and platform coordinates against overrides."""
+    validate_endpoint_direction_labels = (
+        overrides.dataset.validation_profile == "gameplay"
+        and overrides.dataset.ui_presentation is not None
+    )
+    registry_stations = overrides.registry.by_id()
+    service_stop_names: dict[tuple[str, str], str] = {}
+    if validate_endpoint_direction_labels:
+        ui_presentation = overrides.dataset.ui_presentation
+        if ui_presentation is not None:
+            stop_names = ui_presentation.get("serviceStopNames", [])
+            if isinstance(stop_names, list):
+                for stop_name in stop_names:
+                    if not isinstance(stop_name, dict):
+                        continue
+                    service_id = stop_name.get("serviceId")
+                    station_id = stop_name.get("stationId")
+                    name = stop_name.get("name")
+                    if (
+                        isinstance(service_id, str)
+                        and isinstance(station_id, str)
+                        and isinstance(name, str)
+                    ):
+                        service_stop_names[(service_id, station_id)] = name
     if not isinstance(services, dict) or set(services) != {"lines", "services"}:
         report.errors.append("services.json must be a v3 {lines, services} object")
         return [], {}
@@ -250,6 +273,31 @@ def check_services(
                 f"service {service_id} stationIds must be an array of strings"
             )
             continue
+        if validate_endpoint_direction_labels and not definition.circular and stop_ids:
+            direction_labels = raw.get("directionLabels")
+            endpoints = (
+                ("forward", stop_ids[-1]),
+                ("backward", stop_ids[0]),
+            )
+            for direction, station_id in endpoints:
+                station = registry_stations.get(station_id)
+                if station is None:
+                    continue
+                endpoint_name = service_stop_names.get(
+                    (service_id, station_id), station.name
+                )
+                expected_label = f"{endpoint_name}方面"
+                actual_label = (
+                    direction_labels.get(direction)
+                    if isinstance(direction_labels, dict)
+                    else direction_labels
+                )
+                if actual_label != expected_label:
+                    report.errors.append(
+                        f"service {service_id} {direction} direction label "
+                        f"{actual_label!r} does not match expected endpoint label "
+                        f"{expected_label!r}"
+                    )
         service = ServiceStops(service_id, tuple(stop_ids), definition.circular)
         parsed.append(service)
         rules.check_stop_list(service, expected.station_ids, positions, report)

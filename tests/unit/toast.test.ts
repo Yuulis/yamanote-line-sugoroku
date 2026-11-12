@@ -3,7 +3,7 @@ import { act, createElement } from "react";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   createReadingClock, createToastQueue, INITIAL_TOAST_QUEUE, MAX_VISIBLE_TOASTS, pauseReadingClock,
-  readingRemainingMs, resumeReadingClock, saveFailureToast, toastQueueReducer, TOAST_READING_MS,
+  readingRemainingMs, resumeReadingClock, saveFailureToast, targetSegmentsMilestoneToast, toastQueueReducer, TOAST_READING_MS,
   turnToasts, visibleToasts, type ToastInput, type ToastQueueAction, type ToastQueueState,
 } from "../../src/features/game/toastQueue";
 import { lastMoveOf } from "../../src/features/game/gameSession";
@@ -334,6 +334,39 @@ describe("bounded toast queue", () => {
     state = apply(state, { type: "saveSucceeded" });
     state = apply(state, { type: "resetScope", sessionId: 8 });
     expect(state).toEqual(createToastQueue(8));
+  });
+});
+
+describe("target-segment milestone toast", () => {
+  const milestone = (turn: number, sessionId = 7): ToastInput => targetSegmentsMilestoneToast(sessionId, turn, "新橋");
+
+  it("is a stable, text-only good toast queued at the completion turn before item events", () => {
+    expect(milestone(9)).toEqual({
+      key: "7:milestone:target-segments:30", sessionId: 7, turn: 9, eventIndex: -1,
+      text: "30区間を踏破！あとは新橋に着けばクリア", tone: "good", sticky: false,
+    });
+    expect(milestone(9, 8).key).toBe("8:milestone:target-segments:30");
+  });
+
+  it("is accepted at arrival and does not block that turn's later item events", () => {
+    let state = enqueue(createToastQueue(7), [milestone(9)]);
+    expect(visibleToasts(state).map((item) => item.key)).toEqual(["7:milestone:target-segments:30"]);
+    state = enqueue(state, [milestone(9), toast("7:9:0", 9, 0), toast("7:9:1", 9, 1)]);
+    expect(state.items.map((item) => item.key)).toEqual(["7:milestone:target-segments:30", "7:9:0", "7:9:1"]);
+  });
+
+  it("is ignored again after it expired", () => {
+    let state = enqueue(createToastQueue(7), [milestone(9)]);
+    state = dispatch(state, { type: "expire", key: milestone(9).key });
+    expect(state.items).toEqual([]);
+    expect(enqueue(state, [milestone(9)])).toBe(state);
+  });
+
+  it("is not repeated on another turn", () => {
+    let state = enqueue(createToastQueue(7), [milestone(9)]);
+    state = enqueue(state, [toast("7:10:0", 10, 0)]);
+    state = dispatch(state, { type: "expire", key: milestone(9).key });
+    expect(enqueue(state, [milestone(9), toast("7:11:0", 11, 0)]).items.map((item) => item.key)).toEqual(["7:10:0", "7:11:0"]);
   });
 });
 
