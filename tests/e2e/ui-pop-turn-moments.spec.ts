@@ -31,6 +31,7 @@ import {
 } from "./support/app";
 import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble, awaitStage, arrivalStagesForSpeed, advanceStageForSpeed, FRAME_MS, NORMAL_STEP_MS, stageDurationMs, stageMsForSpeed, type PresentedStage, type MomentSpeedId } from "./support/turnMoments";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import { displayedHeading } from "../../src/features/game/mapGuidance";
 import { directionLabel } from "../../src/features/game/presentation";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
@@ -616,6 +617,18 @@ test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stati
   const record = saved.movementHistory.at(-1)!;
   if (record.kind !== "item-ride") throw new Error("expected ride");
   expect(record.landingSnapshot!.services.length).toBeGreaterThan(1);
+  const oldRideHeading = displayedHeading(
+    { stationId: saved.currentStationId },
+    record.resolvedRide,
+    railwayBundle.network,
+  );
+  const newRideHeading = displayedHeading(
+    { stationId: saved.currentStationId },
+    { serviceId: saved.currentServiceId, direction: saved.direction },
+    railwayBundle.network,
+  );
+  expect(oldRideHeading).not.toBeNull();
+  expect(newRideHeading).not.toBeNull();
   const status = gamePanel(page).getByRole("status");
   const arrivalCopy = await status.textContent();
   await expect(status).toContainText("抽選結果を表示しています");
@@ -626,6 +639,8 @@ test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stati
     await awaitStage(page, stage);
     await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, record.resolvedRide.serviceId));
     await expect(panelStat(page, "進行方向")).toHaveText(directionLabel(railwayBundle.network, record.resolvedRide.serviceId, record.resolvedRide.direction));
+    await expect.poll(async () => (await readMap(page))?.headingMarker?.rotation ?? null)
+      .toBeCloseTo(oldRideHeading!, 1);
     await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
       .toEqual([...new Set([...railwayBundle.network.segmentsById.values()].filter((segment) => segment.serviceId === record.resolvedRide.serviceId).flatMap((segment) => segment.geometryFeatureIds))]);
     await expect.poll(async () => (await readMap(page))?.marker)
@@ -645,6 +660,9 @@ test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stati
   await advanceLotterySettle(page);
   await expect(board).toHaveCount(0);
   await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, saved.currentServiceId));
+  await expect(panelStat(page, "進行方向")).toHaveText(directionLabel(railwayBundle.network, saved.currentServiceId, saved.direction));
+  await expect.poll(async () => (await readMap(page))?.headingMarker?.rotation ?? null)
+    .toBeCloseTo(newRideHeading!, 1);
   await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, saved));
   await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)
     .toEqual([...new Set([...railwayBundle.network.segmentsById.values()].filter((segment) => segment.serviceId === saved.currentServiceId).flatMap((segment) => segment.geometryFeatureIds))]);

@@ -6,7 +6,7 @@ import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/featu
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { SOURCE_IDS } from "../../src/features/map/mapConfig";
+import { MAP_STYLE_URL, SOURCE_IDS } from "../../src/features/map/mapConfig";
 import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
 import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 
@@ -39,6 +39,9 @@ interface PreviewRect {
 
 const ORIGIN_MARKER_HALF_SIZE_PX = 15;
 const VIEWPORT_TOLERANCE_PX = 1;
+const MIN_DIE_FACE = 1;
+const MAX_DIE_FACE = 6;
+const ADJUSTMENT_DELTAS = [-1, 0, 1] as const;
 
 async function expectPreviewGeometryVisible(page: Page, expectedCalloutCount: number): Promise<void> {
   const geometry = await page.evaluate(async ({ markerSourceId, markerHalfSize }) => {
@@ -112,6 +115,15 @@ async function expectPreviewGeometryVisible(page: Page, expectedCalloutCount: nu
       expect(intersects, `preview target ${JSON.stringify(target)} overlaps ${JSON.stringify(obstacle)}`).toBe(false);
     }
   }
+}
+
+async function expectPreviewCalloutsVisible(page: Page, expectedCalloutCount: number): Promise<void> {
+  const callouts = page.locator("[data-map-adjustment-callout]");
+  await expect(callouts).toHaveCount(expectedCalloutCount);
+  for (let index = 0; index < expectedCalloutCount; index += 1) {
+    await expect(callouts.nth(index)).toBeVisible();
+  }
+  await expectPreviewGeometryVisible(page, expectedCalloutCount);
 }
 
 async function actAndWaitForPreviewMapSettled(page: Page, action: () => Promise<void>): Promise<void> {
@@ -393,7 +405,7 @@ test("roll adjustment landing map preview", async ({ page, railwayBundle }) => {
     currentServiceId: resolvedRide.serviceId,
     direction: resolvedRide.direction,
   };
-  const expectedLandings = [-1, 0, 1].map((delta) => {
+  const expectedLandings = ADJUSTMENT_DELTAS.map((delta) => {
     const pips = Math.max(1, rawRoll + delta);
     const landing = advance(previewPosition, pips, railwayBundle.network);
     const station = railwayBundle.network.stationsById.get(landing.stationId);
@@ -409,16 +421,26 @@ test("roll adjustment landing map preview", async ({ page, railwayBundle }) => {
   for (const landing of expectedLandings) {
     await expect(dialog.getByRole("radio", { name: landing.accessibleName, exact: true })).toHaveCount(1);
   }
-  await expect(page.locator("[data-map-adjustment-callout]").first()).toBeVisible();
   const expectedCalloutCount = new Set(expectedLandings.map((landing) => landing.stationId)).size;
-  await expectPreviewGeometryVisible(page, expectedCalloutCount);
+  await expectPreviewCalloutsVisible(page, expectedCalloutCount);
+
+  await actAndWaitForPreviewMapSettled(page, async () => {
+    await page.evaluate((styleUrl) => {
+      const hook = (window as unknown as {
+        __sugorokuE2E: { map: { setStyle(style: string, options: { diff: boolean }): void } };
+      }).__sugorokuE2E;
+      hook.map.setStyle(styleUrl, { diff: false });
+    }, MAP_STYLE_URL);
+  });
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expectPreviewCalloutsVisible(page, expectedCalloutCount);
 
   const viewport = page.viewportSize();
   if (!viewport) throw new Error("Expected a configured viewport");
   await actAndWaitForPreviewMapSettled(page, () => page.setViewportSize(viewport.width <= 600
     ? { width: 320, height: 568 }
     : { width: 1220, height: viewport.height }));
-  await expectPreviewGeometryVisible(page, expectedCalloutCount);
+  await expectPreviewCalloutsVisible(page, expectedCalloutCount);
 
   await dialog.getByRole("button", { name: "そのまま続ける" }).click();
   await expect(page.locator("[data-map-adjustment-callout]")).toHaveCount(0);
@@ -573,6 +595,27 @@ for (const name of ["route", "direction", "adjust", "discard"] as const) {
     if (name === "adjust") {
       const dialog = page.getByRole("dialog", { name: "出目を調整しますか？" });
       await expect(dialog.getByRole("heading")).toBeFocused();
+      const pendingGame = await itemSave(page);
+      const pendingRoll = pendingGame.pending;
+      if (pendingRoll?.kind !== "roll") throw new Error("Expected the pending roll adjustment");
+      const expectedLandingNames = ADJUSTMENT_DELTAS.flatMap((delta) => {
+        const pips = pendingRoll.rawRoll + delta;
+        if (pips < MIN_DIE_FACE || pips > MAX_DIE_FACE) return [];
+        const landing = advance({
+          ...base,
+          currentServiceId: pendingRoll.resolvedRide.serviceId,
+          direction: pendingRoll.resolvedRide.direction,
+        }, pips, railwayBundle.network);
+        const station = railwayBundle.network.stationsById.get(landing.stationId);
+        if (!station) throw new Error(`Missing landing station ${landing.stationId}`);
+        return [station.name];
+      });
+      const radios = dialog.getByRole("radio");
+      await expect(radios).toHaveCount(expectedLandingNames.length);
+      for (const [index, stationName] of expectedLandingNames.entries()) {
+        const escapedStationName = stationName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        await expect(radios.nth(index)).toHaveAccessibleName(new RegExp(escapedStationName));
+      }
       await page.keyboard.press("Escape");
     }
     await finishReducedTurn(page, base.turn);
