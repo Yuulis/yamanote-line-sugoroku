@@ -518,6 +518,49 @@ button[aria-disabled="true"] {
   inset: 0;
 }
 
+/* Roll-adjustment speech bubbles (RailwayMap DOM markers; never interactive). */
+.map-adjustment-callout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.map-adjustment-callout__bubble {
+  padding: 3px 8px;
+  border: 2px solid var(--color-brand-strong);
+  border-radius: 10px;
+  background: var(--color-cream);
+  color: var(--color-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 30%);
+}
+
+.map-adjustment-callout__row strong {
+  color: var(--color-brand-strong);
+}
+
+/* The leader is the tail: a short line that grows when bubbles stack in lanes, ending in an arrowhead. */
+.map-adjustment-callout__leader {
+  position: relative;
+  width: 0;
+  height: 8px;
+  border-left: 2px solid var(--color-brand-strong);
+}
+
+.map-adjustment-callout__leader::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: -6px;
+  border-top: 7px solid var(--color-brand-strong);
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+}
+
 .loading {
   display: grid;
   place-items: center;

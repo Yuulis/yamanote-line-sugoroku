@@ -49,6 +49,7 @@ import {
   updateHighlightedService,
 } from "./railwayLayers";
 import { createHeadingMarker, type HeadingMarkerController } from "./headingMarker";
+import { type AdjustmentCandidate, mountAdjustmentCallouts } from "./rollAdjustmentPreview";
 import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
@@ -71,6 +72,8 @@ interface RailwayMapProps {
   markerBearing?: number | null;
   /** Reveal-gated goal station id from the shared turn display; null/omitted clears the ring. */
   goalStationId?: string | null;
+  /** Reveal-gated landings of the open roll-adjustment decision; empty/omitted shows no callouts. */
+  adjustmentCandidates?: readonly AdjustmentCandidate[];
   /** The presented arrival's flash of newly completed target segments; null/omitted clears the flash layer. */
   segmentFlash?: SegmentFlashRequest | null;
   /** Per-frame marker position of a running move; overrides the progress position once set. */
@@ -307,7 +310,9 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
-export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, goalStationId = null, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
+
+export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -461,6 +466,16 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
       if (headingMarkerRef.current === headingMarker) headingMarkerRef.current = null;
     };
   }, [loadedMap]);
+  // Keyed by content: the parent rebuilds the array on every render.
+  const candidatesRef = useRef(adjustmentCandidates);
+  candidatesRef.current = adjustmentCandidates;
+  const candidatesKey = adjustmentCandidates
+    .map((candidate) => `${candidate.delta}:${candidate.stationId}:${candidate.travelledSteps}:${candidate.position?.join(",") ?? ""}`)
+    .join("|");
+  useEffect(() => {
+    if (!loadedMap || candidatesRef.current.length === 0) return;
+    return mountAdjustmentCallouts(loadedMap, candidatesRef.current);
+  }, [loadedMap, candidatesKey]);
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, layersRevision, completedKey, targetServiceId]);

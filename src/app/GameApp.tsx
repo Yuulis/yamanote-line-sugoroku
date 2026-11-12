@@ -469,6 +469,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         markerBearing={turnDisplay?.markerBearing ?? null}
         goalStationId={turnDisplay?.goalGuidance?.stationId ?? null}
         segmentFlash={turnDisplay?.segmentFlash ?? null}
+        adjustmentCandidates={turnDisplay?.adjustmentLandings}
         livePosition={livePosition}
         follow={mapFollow}
         panelKey={session && shown && !showClear ? session.sessionId : undefined}
