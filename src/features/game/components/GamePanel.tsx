@@ -34,6 +34,7 @@ import { TurnLogDrawer } from "./TurnLogDrawer";
 import { useGameShortcuts } from "../useGameShortcuts";
 import { useAutoRoll } from "../useAutoRoll";
 import { PhraseText } from "./PhraseText";
+import { TurnResultCard } from "./TurnResultCard";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -277,6 +278,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   return (
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <GameHud
+        turnResult={<TurnResultCard model={turnDisplay.turnResult} />}
         inventory={<>
           {itemView && <InventoryPanel
             view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem}
