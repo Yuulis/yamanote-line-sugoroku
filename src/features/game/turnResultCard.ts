@@ -1,6 +1,7 @@
-import type { DeepReadonly, ItemKind, ItemTurnRecord, MoveRecord, PendingItemTurn } from "../../types/network";
+import type { DeepReadonly, ItemEvent, ItemKind, ItemTurnRecord, MoveRecord, PendingItemTurn } from "../../types/network";
 import type { LastMove } from "./gameSession";
-import { directionLabel, serviceName } from "./presentation";
+import { directionLabel, itemEventTexts, serviceName } from "./presentation";
+import { ITEM_DESCRIPTIONS } from "./itemPresentation";
 import { lineBadgeFor, type LineBadgeModel } from "./lineBadge";
 import type { RailwayNetwork } from "./engine";
 import type { PresentationResolver } from "./presentationResolver";
@@ -39,12 +40,14 @@ export interface TurnResultInput {
   readonly records: readonly TurnResultRecord[]; readonly targetSegmentIds: readonly string[];
   readonly initialServiceId: string; readonly itemsPublished: boolean;
   readonly network: RailwayNetwork; readonly presentation: PresentationResolver;
+  readonly pending?: DeepReadonly<PendingItemTurn> | null;
 }
 
 export interface TurnResultHistoryFacts { readonly newTargetSegmentCount: number; readonly transferCount: number }
 
 const UNKNOWN_SERVICE = "路線不明";
 const UNKNOWN_DIRECTION = "方向不明";
+const UNKNOWN_STATION = "駅不明";
 export function turnResultRollText(move: LastMove): string {
   return move.roll === null ? "回送" : `出目${move.roll}`;
 }
@@ -111,6 +114,110 @@ export function turnResultHistoryChips(turn: number, facts: TurnResultHistoryFac
       text: `このターンで${transfers}回乗り換え` }]
     : [];
   return [...segmentChips, ...transferChips];
+}
+
+const PENDING_PICKUP_SUFFIX = "（選択待ち）";
+const CANCELLED_PICKUP_SUFFIX = "（打ち消し）";
+const ROLL_ADJUST_LABEL = "出目調整";
+
+interface ItemChipContext {
+  readonly move: LastMove; readonly turn: number;
+  readonly network: RailwayNetwork; readonly presentation: PresentationResolver;
+}
+
+/** `itemEventTexts` emits one text per single chip-producing event; the label is a visible, never-empty fallback. */
+function verifiedEventText(event: DeepReadonly<ItemEvent>, label: string, context: ItemChipContext): string {
+  return itemEventTexts([event], context.turn, context.network, context.presentation)[0] ?? label;
+}
+
+/** Signed label and raw → effective text; null when the record lacks adjustment metadata. */
+function rollAdjustWording(move: LastMove): { readonly label: string; readonly text: string } | null {
+  const record = move.itemRecord;
+  if (record?.kind !== "item-ride" || !record.adjustment) return null;
+  const sign = record.adjustment.delta > 0 ? "+" : "-";
+  return {
+    label: `${ROLL_ADJUST_LABEL} ${sign}${Math.abs(record.adjustment.delta)}`,
+    text: `${ITEM_DESCRIPTIONS["roll-adjust"].name}を使いました（出目${record.rawRoll} → ${record.effectiveFace}）`,
+  };
+}
+
+function itemEventChip(
+  event: DeepReadonly<ItemEvent>, index: number, context: ItemChipContext, pickedIds: Set<string>,
+): TurnResultChip | null {
+  const key = `${context.turn}:${event.type}`;
+  switch (event.type) {
+    case "pickup-retained":
+    case "pickup-pending-discard": {
+      if (pickedIds.has(event.item.id)) return null;
+      pickedIds.add(event.item.id);
+      const pending = event.type === "pickup-pending-discard";
+      const label = `${ITEM_DESCRIPTIONS[event.item.kind].name}${pending ? PENDING_PICKUP_SUFFIX : ""}`;
+      return { kind: "pickup", outcome: pending ? "pending-discard" : "retained", itemKind: event.item.kind,
+        key: `${key}:${event.item.id}`, label, text: verifiedEventText(event, label, context) };
+    }
+    case "harmful-scheduled": {
+      const label = ITEM_DESCRIPTIONS[event.item].name;
+      return { kind: "pickup", outcome: "harmful", itemKind: event.item,
+        key: `${key}:${event.effect}:${index}`, label, text: verifiedEventText(event, label, context) };
+    }
+    case "cancelled-by-certificate": {
+      const label = `${ITEM_DESCRIPTIONS[event.item].name}${CANCELLED_PICKUP_SUFFIX}`;
+      return { kind: "pickup", outcome: "cancelled", itemKind: event.item,
+        key: `${key}:${event.certificate.id}`, label, text: verifiedEventText(event, label, context) };
+    }
+    case "consumed": {
+      const label = ITEM_DESCRIPTIONS[event.item.kind].name;
+      const adjusted = event.item.kind === "roll-adjust" ? rollAdjustWording(context.move) : null;
+      return { kind: "effect", outcome: "consumed", itemKind: event.item.kind, key: `${key}:${event.item.id}`,
+        label: adjusted?.label ?? label, text: adjusted?.text ?? verifiedEventText(event, label, context) };
+    }
+    case "effect-activated": {
+      const label = ITEM_DESCRIPTIONS[event.effect].name;
+      return { kind: "effect", outcome: "activated", itemKind: event.effect,
+        key: `${key}:${event.effect}:${index}`, label, text: verifiedEventText(event, label, context) };
+    }
+    case "discarded":
+    case "effect-expired":
+      return null;
+  }
+}
+
+/** Item outcomes from this selected move only; inventory is never consulted. */
+export function turnResultItemChips(
+  move: LastMove, turn: number, network: RailwayNetwork, presentation: PresentationResolver,
+): readonly TurnResultChip[] {
+  if (!move.itemRecord) return [];
+  const context: ItemChipContext = { move, turn, network, presentation };
+  const pickedIds = new Set<string>();
+  return move.itemRecord.itemEvents.flatMap((event, index) => itemEventChip(event, index, context, pickedIds) ?? []);
+}
+
+/** Phone pill / short-landscape content; never truncated in data. */
+export function turnResultCompact(
+  heading: string, faceText: string, stationText: string, newTargetSegmentCount: number,
+): TurnResultCompact {
+  const segmentsText = newTargetSegmentCount >= 1 ? `+${newTargetSegmentCount}区間` : null;
+  const text = segmentsText ? `${faceText} → ${stationText} ${segmentsText}` : `${faceText} → ${stationText}`;
+  return { faceText, stationText, segmentsText, text, accessibleName: `${heading}：${text}` };
+}
+
+export function deriveTurnResult(input: TurnResultInput): TurnResultModel | null {
+  const { move, turn, network, presentation } = input;
+  if (!move || turn <= 0) return null;
+  const heading = `前のターン（${turn}ターン目）`;
+  const arrivalStation = network.stationsById.has(move.stopStationId)
+    ? presentation.stationName(move.stopStationId) : UNKNOWN_STATION;
+  const records = normalizeTurnResultRecords(input.records, input.pending ?? null);
+  const facts = replayTurnResultHistory(records, turn, input.targetSegmentIds, input.initialServiceId, presentation);
+  const itemChips = input.itemsPublished ? turnResultItemChips(move, turn, network, presentation) : [];
+  const rollText = turnResultRollText(move);
+  return {
+    key: `${input.sessionId}:turn:${turn}`, turn, heading, rollText, arrivalStation,
+    moveText: `${rollText} → ${arrivalStation}`,
+    ride: shortTurnResultRide(move, network, presentation),
+    chips: [...turnResultHistoryChips(turn, facts), ...itemChips],
+    compact: turnResultCompact(heading, turnResultFaceText(move), arrivalStation, facts.newTargetSegmentCount),
+  };
 }
 
 export function shortTurnResultRide(
