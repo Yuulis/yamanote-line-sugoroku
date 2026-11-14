@@ -18,6 +18,13 @@ export function TurnResultCard({ model }: { model: TurnResultModel | null }): Re
   const headingId: string = useId();
   return (
     <>
+      {model && <div className="turn-result__compact">
+        <span className="visually-hidden">{model.heading}：</span>
+        <span className="turn-result__compact-face">{model.compact.faceText} → </span>
+        <span className="turn-result__compact-station">{model.compact.stationText}</span>
+        {model.compact.segmentsText !== null &&
+          <span className="turn-result__compact-segments"> {model.compact.segmentsText}</span>}
+      </div>}
       {model && (
         <section className="turn-result" aria-labelledby={headingId}>
           <div className="turn-result__lead">

@@ -3,13 +3,29 @@ import { itemLastMove } from "../../src/features/game/itemSession";
 import { deriveTurnResult, replayTurnResultHistory } from "../../src/features/game/turnResultCard";
 import { serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { expect, test } from "./fixtures";
+import type { Page, Locator } from "@playwright/test";
+import type { RailwayBundle } from "./fixtures/bundle";
 import { itemScenario } from "./fixtures/itemScenarios";
-import { diceReady, gamePanel, panelStat, readSave, writeSaveText } from "./support/app";
+import { diceReady, gamePanel, hudCompactRoll, panelStat, readSave, writeSaveText } from "./support/app";
 
-test.use({ dataset: "fixture" });
+const MAX_SHORT_LANDSCAPE_ROW_HEIGHT_PX = 22;
+const ELLIPSIS_PROBE_WIDTH_PX = 160;
+const LONG_STATION_NAME = "羽田空港第1・第2ターミナル".repeat(3);
 
-test("desktop result, inline heading and #65 slot fit", async ({ page, railwayBundle }, testInfo) => {
-  await page.setViewportSize({ width: 1280, height: 800 });
+type PreparedR1 = {
+  readonly panel: Locator;
+  readonly record: ReturnType<typeof itemScenario>["movementHistory"][number];
+  readonly expected: NonNullable<ReturnType<typeof deriveTurnResult>>;
+  readonly predicates: {
+    readonly turn: number;
+    readonly newTargetSegmentCount: number;
+    readonly chipLabels: string[];
+    readonly rideText: string | null;
+  };
+  readonly diagnostic: string;
+};
+
+async function prepareR1(page: Page, railwayBundle: RailwayBundle): Promise<PreparedR1> {
   const recipe = itemScenario("route", railwayBundle.network);
   await page.goto("/");
   await writeSaveText(page, serializeGame(recipe));
@@ -22,7 +38,6 @@ test("desktop result, inline heading and #65 slot fit", async ({ page, railwayBu
   if (!restoredState) throw new Error("R1 save was not available after restore");
   const record = restoredState.movementHistory.at(-1);
   if (!record) throw new Error("R1 restored state has no completed record");
-
   const presentation = createPresentationResolver(railwayBundle.network,
     railwayBundle.data.manifest.ok ? railwayBundle.data.manifest.value.uiPresentation : undefined);
   const move = itemLastMove(record, railwayBundle.network);
@@ -45,14 +60,21 @@ test("desktop result, inline heading and #65 slot fit", async ({ page, railwayBu
     rideText: expected?.ride.text ?? null,
   };
   const diagnostic: string = `R1 fixture predicates failed: ${JSON.stringify({ predicates, state: restoredState }, null, 2)}`;
+  if (!expected) throw new Error(diagnostic);
+  return { panel, record, expected, predicates, diagnostic };
+}
+
+test.use({ dataset: "fixture" });
+
+test("desktop result, inline heading and #65 slot fit", async ({ page, railwayBundle }, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const { panel, record, expected, predicates, diagnostic } = await prepareR1(page, railwayBundle);
   expect(predicates, diagnostic).toMatchObject({
     turn: 2, newTargetSegmentCount: 2, landingServiceId: "fixture-south",
     serviceDrawRequired: true, candidateCount: 2,
   });
   expect(predicates.chipLabels, diagnostic).toEqual(expect.arrayContaining(["+2区間", "乗換"]));
   expect(predicates.rideText?.startsWith("抽選:")).toBe(true);
-  if (!expected) throw new Error(diagnostic);
-
   expect(expected.heading).toBe(`前のターン（${record.turn}ターン目）`);
   const card = panel.getByRole("region", { name: expected.heading, exact: true });
   await expect(card).toBeVisible();
@@ -127,6 +149,99 @@ test("desktop result, inline heading and #65 slot fit", async ({ page, railwayBu
   expect(Math.abs(measurements.reserveGap)).toBeLessThanOrEqual(1);
   expect(measurements.cardInsidePanel).toBe(true);
   expect(measurements.reserveInsidePanel).toBe(true);
+});
+
+test("short landscape shows one result row", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+  for (const viewport of [{ width: 667, height: 375 }, { width: 640, height: 400 }]) {
+    await page.setViewportSize(viewport);
+    const { panel, expected, predicates, diagnostic } = await prepareR1(page, railwayBundle);
+    expect(predicates, diagnostic).toMatchObject({ turn: 2, newTargetSegmentCount: 2 });
+    expect(predicates.chipLabels, diagnostic).toContain("+2区間");
+    const row = panel.locator(".turn-result__compact");
+    await expect(row).toBeVisible();
+    // The row's own innerText puts line breaks between flex items, so join the parts' rendered text.
+    // No separator is added here: the rendered spaces must come from the parts themselves.
+    const faceText = await row.locator(".turn-result__compact-face").innerText();
+    const stationText = await row.locator(".turn-result__compact-station").innerText();
+    const segments = row.locator(".turn-result__compact-segments");
+    const segmentsText = await segments.count() ? await segments.innerText() : "";
+    const visibleText = `${faceText}${stationText}${segmentsText}`;
+    expect([visibleText, await row.textContent()]).toEqual([expected.compact.text, expected.compact.accessibleName]);
+    expect(await row.innerText()).not.toMatch(/抽選|乗車|乗換/);
+    await expect(panel.locator(".turn-result")).toBeHidden();
+    await expect(page.locator(".turn-result__pill")).toHaveCount(0);
+    await expect(hudCompactRoll(page)).toBeVisible();
+    await expect(diceReady(page)).toBeVisible();
+    const inventory = panel.locator(".item-inventory");
+    await expect(inventory).toBeVisible();
+    await expect(row.locator("[aria-live], [role='status']")).toHaveCount(0);
+    const measurements = await panel.evaluate((root) => {
+      const rect = (selector: string) => root.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
+      const row = rect(".turn-result__compact");
+      const dice = rect(".game-panel__roll");
+      const inventory = rect(".item-inventory");
+      const rowElement = root.querySelector<HTMLElement>(".turn-result__compact")!;
+      const style = getComputedStyle(rowElement);
+      const lineHeight = Number.parseFloat(style.lineHeight);
+      const rowOuterHeight = row.height + Number.parseFloat(style.marginTop) + Number.parseFloat(style.marginBottom);
+      return {
+        inDomOrder: Boolean(root.querySelector(".game-panel__actions")!.compareDocumentPosition(rowElement) & Node.DOCUMENT_POSITION_FOLLOWING) &&
+          Boolean(rowElement.compareDocumentPosition(root.querySelector(".item-inventory")!) & Node.DOCUMENT_POSITION_FOLLOWING),
+        belowDice: row.top >= dice.bottom,
+        diceInsidePanel: dice.top >= root.getBoundingClientRect().top && dice.bottom <= root.getBoundingClientRect().bottom,
+        rowHeight: row.height,
+        rowOuterHeight,
+        oneLine: row.height <= lineHeight + 1,
+        // +N区間 follows the station name directly instead of being pushed to the row's right edge.
+        segmentsAdjacent: (() => {
+          const stationText = document.createRange();
+          stationText.selectNodeContents(root.querySelector(".turn-result__compact-station")!);
+          return Math.abs(rect(".turn-result__compact-segments").left - stationText.getBoundingClientRect().right) <= 1;
+        })(),
+        scrollHeight: root.scrollHeight,
+        clientHeight: root.clientHeight,
+        scrollTop: root.scrollTop,
+        contentInsidePanel: row.top >= root.getBoundingClientRect().top && inventory.bottom <= root.getBoundingClientRect().bottom,
+      };
+    });
+    testInfo.annotations.push({ type: "measurement", description: `${viewport.width}x${viewport.height} ${JSON.stringify(measurements)}` });
+    console.info(`${viewport.width}x${viewport.height} short-landscape turn-result measurements`, measurements);
+    expect([measurements.inDomOrder, measurements.belowDice, measurements.diceInsidePanel, measurements.oneLine,
+      measurements.segmentsAdjacent]).toEqual([true, true, true, true, true]);
+    expect(measurements.rowOuterHeight).toBeLessThanOrEqual(MAX_SHORT_LANDSCAPE_ROW_HEIGHT_PX);
+    expect([measurements.scrollTop, measurements.contentInsidePanel]).toEqual([0, true]);
+    if (viewport.width === 640) {
+      const overflow = await row.evaluate((element, probe) => {
+        const row = element as HTMLElement;
+        row.style.cssText += `;width:${probe.width}px;max-width:${probe.width}px`;
+        const station = row.querySelector<HTMLElement>(".turn-result__compact-station")!;
+        station.textContent = probe.station;
+        const face = row.querySelector<HTMLElement>(".turn-result__compact-face")!;
+        const segments = row.querySelector<HTMLElement>(".turn-result__compact-segments")!;
+        const rect = row.getBoundingClientRect();
+        const inside = (part: HTMLElement) => {
+          const partRect = part.getBoundingClientRect();
+          return partRect.left >= rect.left && partRect.right <= rect.right;
+        };
+        return {
+          stationOverflow: station.scrollWidth > station.clientWidth,
+          textOverflow: getComputedStyle(station).textOverflow,
+          faceFits: face.scrollWidth <= face.clientWidth,
+          segmentsFit: segments.scrollWidth <= segments.clientWidth,
+          faceInside: inside(face), segmentsInside: inside(segments),
+        };
+      }, { width: ELLIPSIS_PROBE_WIDTH_PX, station: LONG_STATION_NAME });
+      expect(overflow).toEqual({ stationOverflow: true, textOverflow: "ellipsis", faceFits: true, segmentsFit: true, faceInside: true, segmentsInside: true });
+    }
+  }
+});
+
+test("short landscape row hidden at turn 0", { tag: "@layout" }, async ({ page }) => {
+  await page.setViewportSize({ width: 667, height: 375 });
+  await page.goto("/");
+  await page.getByRole("button", { name: "はじめから" }).click();
+  await expect(panelStat(page, "ターン数")).toHaveText("0");
+  await expect(gamePanel(page).locator(".turn-result__compact")).toHaveCount(0);
 });
 
 test("desktop card hidden at turn 0", async ({ page }) => {

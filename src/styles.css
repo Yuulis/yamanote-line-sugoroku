@@ -721,6 +721,32 @@ button[aria-disabled="true"] {
   min-height: var(--turn-result-reserve-height);
 }
 
+.turn-result__compact {
+  --turn-result-compact-line-height: 18px;
+  display: none;
+  min-width: 0;
+  margin: 2px 0;
+  font-size: 12px;
+  line-height: var(--turn-result-compact-line-height);
+  white-space: nowrap;
+}
+
+/* Flex items drop their edge spaces, so `pre` keeps the " → " and " +N区間" separators visible. */
+.turn-result__compact-face,
+.turn-result__compact-segments {
+  flex: none;
+  white-space: pre;
+}
+
+/* Shrinks (never grows) so +N区間 stays next to the station name. */
+.turn-result__compact-station {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .visually-hidden {
   position: absolute !important;
   width: 1px;
@@ -2565,6 +2591,11 @@ button[aria-disabled="true"] {
     display: none;
   }
 
+  .turn-result__compact {
+    display: flex;
+    grid-area: result;
+  }
+
   /* Keep the numeric value whole; the guidance gives way. The full sentence stays exposed to assistive tech. */
   .game-panel__stats dd:has(.target-progress--guidance) .hud-stat__value {
     flex-shrink: 0;
@@ -2590,6 +2621,7 @@ button[aria-disabled="true"] {
     grid-template-areas:
       "stats stats"
       "actions actions"
+      "result result"
       "inventory inventory"
       "staged staged"
       "chips chips"
@@ -2598,7 +2630,7 @@ button[aria-disabled="true"] {
       "lottery lottery"
       "legend legend"
       "shortcuts shortcuts";
-    grid-template-rows: repeat(10, max-content);
+    grid-template-rows: repeat(11, max-content);
     align-content: start;
     align-items: start;
     --hud-column-gap: 12px;
