@@ -31,7 +31,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | 1 | Proximity model | done | `ff204ca` | unit 4/4, full vitest 2166 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s1-review.json`) |
 | 2 | Collection model | done | `9de1b0b` | unit 5/5, full vitest 2171 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s2-review.json`) |
 | 3 | Gated A+C publication | done | `7dcefa8` | unit 42/42 (publication + turn-moment), full vitest pass, typecheck ok; verify_delegation actionable 0; Sol-low review REQUEST_CHANGES (2×P2 test gaps: A timing, pending-only discard) → one Luna test follow-up → re-review APPROVE (`.claude/logs/codex/hud65-s3-review2.json`); test file ~193 lines (cap waived for the reveal-boundary tests) |
-| 4 | Crossings + toast builder | pending | — | — |
+| 4 | Crossings + toast builder | done | `6b899f7` | unit 70/70 (milestones + toast), full vitest 2184 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s4-review.json`); note: thresholds absolute, copy assumes 30 required (per D9/D11) |
 | 5 | Milestone publication + once-only announcement | pending | — | — |
 | 6 | Progress-bar flash | pending | — | — |
 | 7 | Desktop A+C row | pending | — | — |
@@ -45,6 +45,6 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. Step 4 (Crossings + toast builder): build the prompt from the impl-prompts doc (Common body + Step 4 block, `<BASE_SHA>` =
+1. Step 5 (Milestone publication + once-only announcement): build the prompt from the impl-prompts doc (Common body + Step 5 block, `<BASE_SHA>` =
    branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
