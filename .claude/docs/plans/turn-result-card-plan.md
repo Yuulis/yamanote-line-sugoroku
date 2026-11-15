@@ -932,6 +932,44 @@ npx playwright test tests/e2e/turn-result-card.spec.ts --project=desktop-chromiu
 
 Moment surfaces do not intersect the persistent pill; pickup icon positioning remains correct; desktop item chips respect the publication boundary.
 
+#### Step 10a — Lottery board fit (user 2026-11-15)
+
+Avoiding the pill left ≈148px above it at 320×480 for the ≈196px split-flap card, so the direction flap was clipped
+(and 568×320 already clipped ≈79px at the base). User decision (option A of the Step 10 review): scale the board down to
+fit instead of clipping; the pill and the whole board stay visible.
+
+**Files**
+
+- Modify `src/features/game/components/TurnMomentHost.tsx` (pure `lotteryFitScale`, `LOTTERY_FIT_MIN_SCALE`; the
+  lottery card in the usual placement is measured at its natural size and uniformly scaled).
+- Modify `src/features/game/components/LotteryReveal.tsx` (optional `boardScale`; the settle flight divides its
+  viewport-pixel translation by it, because rows translate inside the scaled card).
+- New `tests/unit/lottery-board-fit.test.ts`; modify the turn-result E2E spec (Step 10 titles only).
+
+**Change**
+
+- available = placement rectangle minus the existing control insets (the free space above the pill/panel after the
+  top inset); sizes are unscaled (drawn rect ÷ applied `scale`). If the drawn `.lottery-reveal` board fits on both axes
+  the scale is exactly 1, even when the card box (board + the last row's margin collapsing through it, ≈5.6px) is a
+  little larger (Firefox at 320×568). Otherwise `scale = min((available − 1px) / card)` on both axes, so the whole
+  tappable card box, not only the drawn board, stays clear of the pill even while the settling region is
+  `overflow: visible`.
+- Floor `LOTTERY_FIT_MIN_SCALE` = 0.5. Below it the board stays at 0.5, centred, and the region clips the excess (the
+  pre-fit behaviour). No viewport in the phone matrix reaches the floor (568×320 is ≈0.57).
+- Re-fit on every placement change (resize, scroll, `TURN_RESULT_PILL_LAYOUT_EVENT`, observed map/panel/pill/card
+  size). The card's `max-height` is lifted for the lottery so the natural height is measurable; the lottery card is
+  transparent, so a fitting board renders exactly as before. The alternate-strip fit path, dice, arrival and pickup
+  are unchanged.
+- The 112px effective-width minimum of the alternate-strip fit does not apply to the lottery fit; the scale floor
+  replaces it.
+
+**Tests**
+
+Unit: fit/no-fit/exact-fit, width-bound, floor, invalid inputs; flight translation compensation; host re-fit on the
+pill layout event, resize and card resize (back to 1). E2E (Step 10 title `moments preserve and avoid previous result`):
+lottery scale 1 at 320×568, < 1 and ≥ floor at 320×480, no clipping (≤0.5px), a fitted card box ending at or above the
+pill top, and each flying row's settled box landing on its HUD target within 1px (CSS animation seeked to its end).
+
 #### Step 11 — Map preview avoidance
 
 **Files**

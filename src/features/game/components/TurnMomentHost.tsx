@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode, RefCallback, RefObject } from "react";
 import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
 import type { RollAttempt } from "../animation/turnMoments";
 import type { TurnPublicationPhase, TurnRevealState } from "../turnMomentPresentation";
+import { TURN_RESULT_PILL_LAYOUT_EVENT } from "../turnResultPillLayout";
 import { LotteryReveal, type LotteryRevealProps } from "./LotteryReveal";
 import { ItemPickupMoment } from "./ItemPickupMoment";
 import type { ItemPickupMomentProps } from "./ItemPickupMoment";
@@ -57,6 +58,8 @@ export interface TurnMomentTargets {
 
 export const TURN_MOMENT_MAP_SELECTOR: string = ".map-container";
 export const TURN_MOMENT_PANEL_SELECTOR: string = ".game-panel";
+export const TURN_RESULT_PILL_SELECTOR: string = ".turn-result__pill";
+const LOTTERY_BOARD_SELECTOR: string = ".lottery-reveal";
 
 const EMPTY_RECT: RectBox = { left: 0, top: 0, width: 0, height: 0 };
 const FADE_OPACITY_FROM: number = 1;
@@ -207,6 +210,44 @@ export function mapControlInsets(rect: RectBox, viewport: RectBox): EdgeInsets {
   return { top, right, bottom, left };
 }
 
+/**
+ * Smallest uniform scale for the split-flap lottery board. Below it the board stays at this scale, centred, and its
+ * region clips the excess (the pre-fit behaviour) rather than shrinking into illegibility.
+ */
+export const LOTTERY_FIT_MIN_SCALE: number = 0.5;
+
+export interface BoxSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+function isUsableSize(size: BoxSize | null | undefined): size is BoxSize {
+  if (!size) return false;
+  return Number.isFinite(size.width) && Number.isFinite(size.height) && size.width > 0 && size.height > 0;
+}
+
+/**
+ * Uniform scale for the lottery card inside the region's content box (`rect` minus `insets`), from unscaled sizes.
+ * A drawn `board` that already fits keeps exactly 1, even when the card box (`card`, which also holds the last row's
+ * collapsed margin) is a little larger. Otherwise the whole card box is scaled to the free space minus a subpixel
+ * guard, so no part of the tappable card reaches the pill or panel, never below `LOTTERY_FIT_MIN_SCALE`.
+ * An unmeasurable board or free space keeps 1; an unmeasurable card falls back to the board.
+ */
+export function lotteryFitScale(board: BoxSize | null | undefined, rect: RectBox, insets: EdgeInsets,
+  card?: BoxSize | null): number {
+  if (!isUsableSize(board)) return 1;
+  const availableWidth: number = rect.width - insets.left - insets.right;
+  const availableHeight: number = rect.height - insets.top - insets.bottom;
+  if (!Number.isFinite(availableWidth) || !Number.isFinite(availableHeight)) return 1;
+  if (board.width <= availableWidth && board.height <= availableHeight) return 1;
+  const box: BoxSize = isUsableSize(card)
+    ? { width: Math.max(board.width, card.width), height: Math.max(board.height, card.height) }
+    : board;
+  const scale: number = Math.min((availableWidth - CARD_FIT_GAP_PX) / box.width,
+    (availableHeight - CARD_FIT_GAP_PX) / box.height);
+  return Math.min(1, Math.max(LOTTERY_FIT_MIN_SCALE, scale));
+}
+
 interface CardLayout {
   readonly placement: TurnMomentPlacement;
   readonly insets: EdgeInsets;
@@ -311,6 +352,7 @@ export interface TurnMomentRects {
   readonly viewport: RectBox;
   readonly map: RectBox | null;
   readonly panel: RectBox | null;
+  readonly pill: RectBox | null;
   readonly controls: readonly RectBox[];
   readonly attribution: readonly RectBox[];
 }
@@ -318,12 +360,33 @@ export interface TurnMomentRects {
 export interface TurnMomentRectSources {
   readonly resolveMap?: () => Element | null;
   readonly resolvePanel?: () => Element | null;
+  readonly resolvePill?: () => Element | null;
+}
+
+/** The panel and visible result pill together form the occupied area for moment placement. */
+export function occupiedPanelRect(panel: RectBox | null | undefined, pill: RectBox | null | undefined): RectBox | null {
+  if (!isUsableRect(pill)) return isUsableRect(panel) ? panel : null;
+  if (!isUsableRect(panel)) return pill;
+  const left: number = Math.min(panel.left, pill.left);
+  const top: number = Math.min(panel.top, pill.top);
+  const right: number = Math.max(panel.left + panel.width, pill.left + pill.width);
+  const bottom: number = Math.max(panel.top + panel.height, pill.top + pill.height);
+  const union: RectBox = { left, top, width: right - left, height: bottom - top };
+  return isUsableRect(union) ? union : null;
 }
 
 function boxOf(element: Element | null): RectBox | null {
   if (!element) return null;
   const rect: DOMRect = element.getBoundingClientRect();
   return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
+}
+
+function visiblePillBox(element: Element | null): RectBox | null {
+  if (!element) return null;
+  const style: CSSStyleDeclaration = getComputedStyle(element);
+  if (style.visibility === "hidden" || style.display === "none") return null;
+  const rect: RectBox | null = boxOf(element);
+  return isUsableRect(rect) ? rect : null;
 }
 
 function viewportBox(): RectBox {
@@ -337,6 +400,7 @@ function sameBox(a: RectBox | null, b: RectBox | null): boolean {
 
 function sameRects(a: TurnMomentRects | null, b: TurnMomentRects): boolean {
   return a !== null && sameBox(a.viewport, b.viewport) && sameBox(a.map, b.map) && sameBox(a.panel, b.panel)
+    && sameBox(a.pill, b.pill)
     && a.controls.length === b.controls.length && a.controls.every((rect, index) => sameBox(rect, b.controls[index]!))
     && a.attribution.length === b.attribution.length && a.attribution.every((rect, index) => sameBox(rect, b.attribution[index]!));
 }
@@ -348,7 +412,7 @@ function sameRects(a: TurnMomentRects | null, b: TurnMomentRects): boolean {
  */
 export function useTurnMomentRects(active: boolean, sources: TurnMomentRectSources = {}): TurnMomentRects | null {
   const [rects, setRects] = useState<TurnMomentRects | null>(null);
-  const { resolveMap, resolvePanel } = sources;
+  const { resolveMap, resolvePanel, resolvePill } = sources;
   useLayoutEffect(() => {
     if (!active) {
       setRects(null);
@@ -356,26 +420,31 @@ export function useTurnMomentRects(active: boolean, sources: TurnMomentRectSourc
     }
     const mapElement: Element | null = resolveMap ? resolveMap() : document.querySelector(TURN_MOMENT_MAP_SELECTOR);
     const panelElement: Element | null = resolvePanel ? resolvePanel() : document.querySelector(TURN_MOMENT_PANEL_SELECTOR);
+    const pillElement: Element | null = resolvePill ? resolvePill() : document.querySelector(TURN_RESULT_PILL_SELECTOR);
     const measure = (): void => {
       const controls: readonly RectBox[] = Array.from(document.querySelectorAll(
         ".map-overview, .maplibregl-ctrl-top-right .maplibregl-ctrl-group",
       ), boxOf).filter(isUsableRect);
       const attribution: readonly RectBox[] = Array.from(document.querySelectorAll(".maplibregl-ctrl-attrib"), boxOf).filter(isUsableRect);
-      const next: TurnMomentRects = { viewport: viewportBox(), map: boxOf(mapElement), panel: boxOf(panelElement), controls, attribution };
+      const next: TurnMomentRects = { viewport: viewportBox(), map: boxOf(mapElement), panel: boxOf(panelElement),
+        pill: visiblePillBox(pillElement), controls, attribution };
       setRects((current: TurnMomentRects | null) => sameRects(current, next) ? current : next);
     };
     measure();
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, { capture: true, passive: true });
+    window.addEventListener(TURN_RESULT_PILL_LAYOUT_EVENT, measure);
     const observer: ResizeObserver | null = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
     if (mapElement) observer?.observe(mapElement);
     if (panelElement) observer?.observe(panelElement);
+    if (pillElement) observer?.observe(pillElement);
     return () => {
       window.removeEventListener("resize", measure);
       window.removeEventListener("scroll", measure, { capture: true });
+      window.removeEventListener(TURN_RESULT_PILL_LAYOUT_EVENT, measure);
       observer?.disconnect();
     };
-  }, [active, resolveMap, resolvePanel]);
+  }, [active, resolveMap, resolvePanel, resolvePill]);
   return rects;
 }
 
@@ -397,9 +466,9 @@ function preventFocusMove(event: { preventDefault: () => void }): void {
  * no focusable descendants and never takes focus. The host ignores pointer events; only the visible card receives
  * them, and pressing it does not move keyboard focus.
  */
-export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, resolvePanel }: TurnMomentHostProps): React.JSX.Element {
+export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, resolvePanel, resolvePill }: TurnMomentHostProps): React.JSX.Element {
   const hasCard: boolean = Boolean(lottery || pickup) || Children.toArray(children).length > 0;
-  const rects: TurnMomentRects | null = useTurnMomentRects(hasCard, { resolveMap, resolvePanel });
+  const rects: TurnMomentRects | null = useTurnMomentRects(hasCard, { resolveMap, resolvePanel, resolvePill });
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardScale, setCardScale] = useState<number>(1);
   const [cardVisible, setCardVisible] = useState<boolean>(true);
@@ -407,14 +476,16 @@ export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, r
     () => {
       if (!hasCard) return null;
       const viewport: RectBox = rects?.viewport ?? viewportBox();
-      const chosen: TurnMomentPlacement = chooseTurnMomentPlacement(viewport, rects?.map, rects?.panel);
+      const panel: RectBox | null = occupiedPanelRect(rects?.panel, rects?.pill);
+      const chosen: TurnMomentPlacement = chooseTurnMomentPlacement(viewport, rects?.map, panel);
       return cardLayout(chosen, viewport, rects?.controls ?? [], rects?.attribution ?? []);
     },
     [hasCard, rects],
   );
+  const fitsLottery: boolean = Boolean(lottery) && !layout?.fit;
   useLayoutEffect(() => {
     const card: HTMLDivElement | null = cardRef.current;
-    if (pickup || !layout?.fit || !card) return;
+    if (pickup || !card || !layout || !(layout.fit || fitsLottery)) return;
     const fit = (): void => {
       // Undo our own scale to retain fractional layout pixels (offset sizes round and can overflow the viewport).
       // The card itself has no decorative animation; its children's transforms do not affect these bounds.
@@ -423,6 +494,16 @@ export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, r
       const width: number = bounds.width / appliedScale;
       const height: number = bounds.height / appliedScale;
       if (width <= 0 || height <= 0) return;
+      if (!layout.fit) {
+        // The usual placement keeps the board's own width; only a drawn board taller or wider than the free space
+        // shrinks. Its last row's margin collapses into the card box, so the board itself decides whether it fits.
+        const board: DOMRect | undefined = card.querySelector(LOTTERY_BOARD_SELECTOR)?.getBoundingClientRect();
+        const boardSize: BoxSize = board ? { width: board.width / appliedScale, height: board.height / appliedScale }
+          : { width, height };
+        setCardScale(lotteryFitScale(boardSize, layout.placement.rect, layout.insets, { width, height }));
+        setCardVisible(true);
+        return;
+      }
       const scale: number = Math.min(1, (layout.placement.rect.width - CARD_FIT_GAP_PX) / width,
         (layout.placement.rect.height - CARD_FIT_GAP_PX) / height);
       // Fitted cards must remain legible; the viewport-positioned pickup bypasses fitting.
@@ -433,7 +514,13 @@ export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, r
     const observer: ResizeObserver | null = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(fit);
     observer?.observe(card);
     return () => observer?.disconnect();
-  }, [layout, children, lottery, pickup]);
+  }, [layout, fitsLottery, children, lottery, pickup]);
+  const cardStyle: CSSProperties | undefined = !layout || pickup ? undefined
+    : layout.fit ? { width: "100%", maxHeight: "none", flexShrink: 0, scale: cardScale, visibility: cardVisible ? undefined : "hidden" }
+    // The board is measured at its natural height, so the card must not clamp it to the region.
+    : fitsLottery ? { maxHeight: "none", scale: cardScale }
+    : undefined;
+  const boardScale: number = cardStyle?.scale === undefined ? 1 : cardScale;
   return (
     <div className="turn-moment-host" aria-hidden="true">
       {layout && <div
@@ -451,12 +538,11 @@ export function TurnMomentHost({ children, lottery, pickup, onTap, resolveMap, r
         <div
           ref={cardRef}
           className={`turn-moment-host__card${lottery ? " turn-moment-host__card--lottery" : ""}${pickup ? " turn-moment-host__card--pickup" : ""}`}
-          style={layout.fit && !pickup ? { width: "100%", maxHeight: "none", flexShrink: 0,
-            scale: cardScale, visibility: cardVisible ? undefined : "hidden" } : undefined}
+          style={cardStyle}
           onPointerDown={preventFocusMove}
           onMouseDown={preventFocusMove}
           onClick={onTap}
-        >{lottery ? <LotteryReveal {...lottery} /> : pickup
+        >{lottery ? <LotteryReveal {...lottery} boardScale={boardScale} /> : pickup
           ? <ItemPickupMoment {...pickup} centerX={layout.placement.centerX} centerY={layout.placement.centerY} />
           : children}</div>
       </div>}

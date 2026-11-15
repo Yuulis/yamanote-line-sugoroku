@@ -1,9 +1,12 @@
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { itemLastMove } from "../../src/features/game/itemSession";
 import { deriveTurnResult, replayTurnResultHistory } from "../../src/features/game/turnResultCard";
-import { serializeGame, targetSegmentIds } from "../../src/features/game/engine";
+import { playItemTurn, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
+import type { ItemGameState, ItemTurnRecord } from "../../src/types/network";
 import { CURRENT_POSITION_RADIUS, CURRENT_POSITION_STROKE_WIDTH } from "../../src/features/map/mapConfig";
 import { TURN_RESULT_PILL_GAP_PX } from "../../src/features/game/turnResultPillLayout";
+import { LOTTERY_FIT_MIN_SCALE, MIN_CARD_REGION_PX } from "../../src/features/game/components/TurnMomentHost";
+import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
 import { expect, test } from "./fixtures";
 import type { Page, Locator } from "@playwright/test";
 import type { RailwayBundle } from "./fixtures/bundle";
@@ -19,8 +22,14 @@ import {
   rollOnce,
   startNewGame,
   writeSaveText,
+  combinedMomentGame,
+  freezeClock,
+  clickDice,
+  stampsExpected,
   type SavedGame,
 } from "./support/app";
+import { advanceArrival, advanceLotteryFlip, advanceLotterySettle, advanceMovement, advancePickup,
+  advanceStamps, advanceTumble, awaitStage } from "./support/turnMoments";
 
 const MAX_SHORT_LANDSCAPE_ROW_HEIGHT_PX = 22;
 const ELLIPSIS_PROBE_WIDTH_PX = 160;
@@ -29,6 +38,115 @@ const PILL_RIGHT_CLEARANCE_PX = 92;
 const MIN_TOUCH_TARGET_PX = 44;
 const PHONE_STATS_HEIGHT_PX = 104;
 const LONG_STATION_NAME = "羽田空港第1・第2ターミナル".repeat(3);
+const PAST_ANY_MOVEMENT_MS = 6_100;
+const MAX_CLIP_TOLERANCE_PX = 0.5;
+/** Allowed distance between a settled lottery row and its HUD target (subpixel rounding of measured boxes). */
+const MAX_FLIGHT_LANDING_ERROR_PX = 1;
+
+type ResultModel = NonNullable<ReturnType<typeof deriveTurnResult>>;
+
+interface R3Results {
+  readonly base: ItemGameState;
+  readonly predicted: ItemGameState;
+  readonly record: ItemGameState["movementHistory"][number];
+  readonly previous: ResultModel;
+  readonly pickup: ResultModel;
+  readonly published: ResultModel;
+  readonly pickupName: string;
+  readonly pickupLabel: string;
+  readonly hasLottery: boolean;
+}
+
+function r3Results(bundle: RailwayBundle): R3Results {
+  const base: ItemGameState = combinedMomentGame(bundle);
+  const replay = playItemTurn(base, {}, bundle.network);
+  const predicted: ItemGameState = replay.state;
+  if (predicted.pending?.kind !== "discard") throw new Error("R3 replay did not produce the turn 11 discard");
+  const record: ItemTurnRecord = structuredClone(predicted.pending.record) as ItemTurnRecord;
+  if (record.turn !== 11) throw new Error(`R3 replay expected turn 11, received ${record.turn}`);
+  const presentation = createPresentationResolver(bundle.network,
+    bundle.data.manifest.ok ? bundle.data.manifest.value.uiPresentation : undefined);
+  const targetIds = targetSegmentIds(base.config, bundle.network);
+  const derive = (turnRecord: typeof record, itemsPublished: boolean): ResultModel => {
+    const move = itemLastMove(turnRecord, bundle.network);
+    const result = deriveTurnResult({ sessionId: 1, turn: turnRecord.turn, move, records: predicted.movementHistory,
+      pending: predicted.pending, targetSegmentIds: targetIds, initialServiceId: base.config.targetServiceId,
+      itemsPublished, network: bundle.network, presentation });
+    if (!result) throw new Error(`R3 turn ${turnRecord.turn} did not derive a result model`);
+    return result;
+  };
+  const previousRecord = base.movementHistory.at(-1);
+  if (!previousRecord) throw new Error("R3 base has no previous turn result");
+  const previousMove = itemLastMove(previousRecord, bundle.network);
+  const previous = deriveTurnResult({ sessionId: 1, turn: previousRecord.turn, move: previousMove,
+    records: base.movementHistory, targetSegmentIds: targetIds, initialServiceId: base.config.targetServiceId,
+    itemsPublished: true, network: bundle.network, presentation });
+  if (!previous) throw new Error("R3 previous turn did not derive a result model");
+  const pickup = derive(record, false);
+  const published = derive(record, true);
+  const pickupChip = published.chips.find((chip) => chip.kind === "pickup");
+  if (!pickupChip || record.kind !== "item-ride") throw new Error("R3 turn has no derived pickup item");
+  const pickupEvent = record.itemEvents.find((event) => event.type === "pickup-pending-discard");
+  if (pickupEvent?.type !== "pickup-pending-discard") throw new Error("R3 turn is missing the pickup event");
+  const selected = record.landingSnapshot?.services.find((service) => service.serviceId === record.landing?.serviceId);
+  const hasLottery = (record.landingSnapshot?.services.length ?? 0) > 1 || (selected?.directions.length ?? 0) > 1;
+  return { base, predicted, record, previous, pickup, published,
+    pickupName: ITEM_DESCRIPTIONS[pickupEvent.item.kind].name, pickupLabel: pickupChip.label, hasLottery };
+}
+
+interface MomentGeometry {
+  readonly region: string | null;
+  readonly scale: number | null;
+  readonly card: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly width: number; readonly height: number } | null;
+  readonly pill: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly width: number; readonly height: number };
+  readonly panel: { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+  readonly intersectsPill: boolean;
+  readonly intersectsPanel: boolean;
+  readonly gapPx: number | null;
+  readonly clippedPx: number | null;
+}
+
+async function readMomentGeometry(page: Page): Promise<MomentGeometry> {
+  return page.evaluate(() => {
+    const box = (element: Element) => {
+      const { left, top, right, bottom, width, height } = element.getBoundingClientRect();
+      return { left, top, right, bottom, width, height };
+    };
+    const pill = document.querySelector<HTMLElement>(".turn-result__pill");
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    const card = document.querySelector<HTMLElement>(".turn-moment-host__card");
+    const region = document.querySelector<HTMLElement>(".turn-moment-host__region");
+    if (!pill || !panel) throw new Error("R3 pill or panel is missing");
+    const pillBox = box(pill);
+    const panelBox = box(panel);
+    if (!card || !region) return { region: null, scale: null, card: null, pill: pillBox, panel: panelBox,
+      intersectsPill: false, intersectsPanel: false, gapPx: null, clippedPx: null };
+    // The arrival banner and split-flap board can overflow their card box; measure what is actually drawn.
+    const cardBox = box(card.querySelector(".lottery-reveal, .arrival-banner") ?? card);
+    const regionBox = box(region);
+    const clippedPx = Math.max(0, regionBox.top - cardBox.top, cardBox.bottom - regionBox.bottom,
+      regionBox.left - cardBox.left, cardBox.right - regionBox.right);
+    const overlaps = (a: typeof cardBox, b: typeof pillBox): boolean =>
+      a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    const dx = Math.max(0, pillBox.left - cardBox.right, cardBox.left - pillBox.right);
+    const dy = Math.max(0, pillBox.top - cardBox.bottom, cardBox.top - pillBox.bottom);
+    const scaleValue = getComputedStyle(card).scale;
+    return { region: region.dataset.region ?? null, scale: scaleValue === "none" ? 1 : Number.parseFloat(scaleValue),
+      card: cardBox, pill: pillBox, panel: panelBox, intersectsPill: overlaps(cardBox, pillBox),
+      intersectsPanel: overlaps(cardBox, panelBox), gapPx: Math.hypot(dx, dy), clippedPx };
+  });
+}
+
+async function restoreFrozenR3(page: Page, state: ItemGameState): Promise<void> {
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  await page.clock.install();
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(state));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  await freezeClock(page);
+}
 
 type PreparedR1 = {
   readonly panel: Locator;
@@ -532,4 +650,144 @@ test("phone HUD omits roll stat", { tag: "@layout" }, async ({ page, railwayBund
       await expect(hudCompactRoll(page)).toBeVisible();
     }
   }
+});
+
+async function assertPhoneMoment(page: Page, model: ResultModel, stage: string, viewport: { width: number; height: number },
+  testInfo: { annotations: { type: string; description?: string }[] }): Promise<void> {
+  const pill = page.locator(".turn-result__pill");
+  await expect(pill).toBeVisible();
+  await expect(pill).toHaveAccessibleName(`${model.compact.accessibleName}。ターンのログを開く`);
+  const geometry = await readMomentGeometry(page);
+  testInfo.annotations.push({ type: "moment-clearance", description: `${viewport.width}x${viewport.height} ${stage}: ${JSON.stringify(geometry)}` });
+  console.info(`${viewport.width}x${viewport.height} ${stage} moment geometry`, geometry);
+  if (!geometry.card || geometry.scale === null) throw new Error(`${stage}: moment card is hidden; measurement=${JSON.stringify(geometry)}`);
+  await expect(page.locator(".turn-moment-host__card")).toBeVisible();
+  expect(geometry.pill.width).toBeGreaterThan(0);
+  expect(geometry.pill.height).toBeGreaterThan(0);
+  expect(geometry.intersectsPill, `${stage}: moment card overlaps pill`).toBe(false);
+  expect(geometry.intersectsPanel, `${stage}: moment card overlaps panel`).toBe(false);
+  expect(geometry.clippedPx, `${stage}: moment content clipped by its region`).toBeLessThanOrEqual(MAX_CLIP_TOLERANCE_PX);
+  expect(geometry.scale, `${stage}: card scale`).toBeGreaterThan(0);
+  if (stage.startsWith("lottery")) {
+    // Step 10a: the split-flap board scales to the free space above the pill instead of a 112px width minimum.
+    expect(geometry.scale, `${stage}: lottery board scale`).toBeLessThanOrEqual(1);
+    expect(geometry.scale, `${stage}: lottery board scale floor`).toBeGreaterThanOrEqual(LOTTERY_FIT_MIN_SCALE);
+    if (viewport.height === 568) expect(geometry.scale, `${stage}: board that fits keeps scale 1`).toBe(1);
+    if (viewport.height === 480) expect(geometry.scale, `${stage}: board above the pill is fitted`).toBeLessThan(1);
+    if (geometry.scale < 1) {
+      // A shrunk card is fitted as a whole, so even its tappable box stays above the pill while settling unclipped.
+      const cardBottom = await page.locator(".turn-moment-host__card").evaluate((element) => element.getBoundingClientRect().bottom);
+      expect(cardBottom, `${stage}: fitted card box bottom vs pill top`).toBeLessThanOrEqual(geometry.pill.top + MAX_CLIP_TOLERANCE_PX);
+    }
+  } else if (geometry.scale < 1) {
+    expect(geometry.card.width, `${stage}: scaled card width`).toBeGreaterThanOrEqual(MIN_CARD_REGION_PX);
+  }
+}
+
+interface FlightLanding {
+  readonly motion: string | null;
+  readonly end: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  readonly target: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+}
+
+/** Seeks each lottery row's settle animation to its end and pairs the landed box with its HUD target. */
+async function readSettleLandings(page: Page): Promise<readonly FlightLanding[]> {
+  return page.locator(".lottery-reveal").evaluate((board) => {
+    const box = (node: Element) => {
+      const rect = node.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+    };
+    const targets = ['[data-stat="ride"]', '[data-stat="direction"]'];
+    return [...board.querySelectorAll<HTMLElement>(".lottery-reveal__row")].map((row, index) => {
+      const target = box(document.querySelector(targets[index]!)!);
+      const animation = row.getAnimations().find((candidate) =>
+        candidate instanceof CSSAnimation && candidate.animationName === "lottery-settle");
+      if (!animation) throw new Error("Expected the lottery settle CSS animation");
+      animation.pause();
+      animation.currentTime = Number(animation.effect!.getComputedTiming().duration);
+      const end = box(row);
+      animation.currentTime = 0;
+      return { motion: row.dataset.motion ?? null, end, target };
+    });
+  });
+}
+
+for (const viewport of [{ width: 320, height: 568 }, { width: 320, height: 480 }]) {
+  test(`moments preserve and avoid previous result at ${viewport.width}x${viewport.height}`, { tag: "@layout" },
+    async ({ page, railwayBundle }, testInfo) => {
+      test.setTimeout(60_000);
+      await page.setViewportSize(viewport);
+      const results = r3Results(railwayBundle);
+      await restoreFrozenR3(page, results.base);
+      await clickDice(page);
+      await awaitStage(page, "tumble");
+      await assertPhoneMoment(page, results.previous, "tumble", viewport, testInfo);
+      await advanceTumble(page);
+      if (stampsExpected(results.record)) {
+        await awaitStage(page, "stamps");
+        await assertPhoneMoment(page, results.previous, "stamps", viewport, testInfo);
+        await advanceStamps(page);
+      }
+      await expect.poll(async () => await readSave(page)).toEqual(results.predicted);
+      await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+      await awaitStage(page, "arrival");
+      await assertPhoneMoment(page, results.previous, "arrival", viewport, testInfo);
+      await advanceArrival(page);
+      if (results.hasLottery) {
+        await awaitStage(page, "lottery-flip");
+        await assertPhoneMoment(page, results.previous, "lottery-flip", viewport, testInfo);
+        await advanceLotteryFlip(page);
+        await awaitStage(page, "lottery-settle");
+        await assertPhoneMoment(page, results.previous, "lottery-settle", viewport, testInfo);
+        const landings = await readSettleLandings(page);
+        testInfo.annotations.push({ type: "settle-landing", description: JSON.stringify(landings) });
+        expect(landings.filter((landing) => landing.motion === "flight").length, "rows flying to the HUD").toBeGreaterThan(0);
+        for (const landing of landings.filter((candidate) => candidate.motion === "flight")) {
+          const centre = (rect: FlightLanding["end"]) => ({ x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 });
+          expect(Math.abs(centre(landing.end).x - centre(landing.target).x), "settled row centre x").toBeLessThanOrEqual(MAX_FLIGHT_LANDING_ERROR_PX);
+          expect(Math.abs(centre(landing.end).y - centre(landing.target).y), "settled row centre y").toBeLessThanOrEqual(MAX_FLIGHT_LANDING_ERROR_PX);
+          expect(Math.abs(landing.end.width - landing.target.width), "settled row width").toBeLessThanOrEqual(MAX_FLIGHT_LANDING_ERROR_PX);
+          expect(Math.abs(landing.end.height - landing.target.height), "settled row height").toBeLessThanOrEqual(MAX_FLIGHT_LANDING_ERROR_PX);
+        }
+        await advanceLotterySettle(page);
+      }
+      await awaitStage(page, "pickup");
+      await assertPhoneMoment(page, results.pickup, "pickup", viewport, testInfo);
+      const pickupName = await page.locator(".turn-result__pill").getAttribute("aria-label");
+      expect(pickupName).toBe(`${results.pickup.compact.accessibleName}。ターンのログを開く`);
+      expect(pickupName).not.toContain(results.pickupName);
+      await advancePickup(page);
+      await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+      await expect(page.locator(".turn-result__pill")).toHaveAccessibleName(pickupName!);
+      await expect(page.locator(".turn-result__pill")).not.toContainText(results.pickupName);
+      await page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })
+        .getByRole("button", { name: "このアイテムを捨てる" }).last().click();
+    });
+}
+
+test("desktop card gates item chips until publication", async ({ page, railwayBundle }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const results = r3Results(railwayBundle);
+  await restoreFrozenR3(page, results.base);
+  await clickDice(page);
+  await advanceTumble(page);
+  if (stampsExpected(results.record)) await advanceStamps(page);
+  await expect.poll(async () => await readSave(page)).toEqual(results.predicted);
+  await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
+  await advanceArrival(page);
+  if (results.hasLottery) {
+    await advanceLotteryFlip(page);
+    await advanceLotterySettle(page);
+  }
+  await awaitStage(page, "pickup");
+  const card = gamePanel(page).locator(".turn-result");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".turn-result__heading")).toHaveText(results.pickup.heading);
+  await expect(card.locator(".turn-result__chip-label").filter({ hasText: results.pickupLabel })).toHaveCount(0);
+  await advancePickup(page);
+  await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
+  await expect(card.locator(".turn-result__heading")).toHaveText(results.published.heading);
+  await expect(card.locator(".turn-result__chip-label").filter({ hasText: results.pickupLabel })).toBeVisible();
+  await page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })
+    .getByRole("button", { name: "このアイテムを捨てる" }).last().click();
 });
