@@ -29,7 +29,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | Step | Unit | Status | Commit | Evidence |
 |---|---|---|---|---|
 | 1 | Proximity model | done | `ff204ca` | unit 4/4, full vitest 2166 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s1-review.json`) |
-| 2 | Collection model | pending | — | — |
+| 2 | Collection model | done | `9de1b0b` | unit 5/5, full vitest 2171 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s2-review.json`) |
 | 3 | Gated A+C publication | pending | — | — |
 | 4 | Crossings + toast builder | pending | — | — |
 | 5 | Milestone publication + once-only announcement | pending | — | — |
@@ -45,6 +45,6 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. Step 2 (Collection model): build the prompt from the impl-prompts doc (Common body + Step 2 block, `<BASE_SHA>` =
+1. Step 3 (Gated A+C publication): build the prompt from the impl-prompts doc (Common body + Step 3 block, `<BASE_SHA>` =
    branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
