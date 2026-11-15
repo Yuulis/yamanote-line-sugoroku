@@ -31,6 +31,10 @@ import {
 } from "./support/app";
 import { advanceArrival, advanceLotteryFlip, advanceLotterySettle, advanceMovement, advancePickup,
   advanceStamps, advanceTumble, awaitStage } from "./support/turnMoments";
+import { seedGameSettings } from "./support/settings";
+import { pressSkip } from "./support/turnMoments";
+import { acceptOfflineTurn, findTargetTurn, replayFixtureClear, replayLongestProductResult,
+  restoreResultState } from "./support/turnResult";
 
 const MAX_SHORT_LANDSCAPE_ROW_HEIGHT_PX = 22;
 const ELLIPSIS_PROBE_WIDTH_PX = 160;
@@ -230,6 +234,25 @@ function expectedSavedResult(saved: SavedGame, railwayBundle: RailwayBundle) {
   });
   if (!model) throw new Error("Saved turn did not produce a published result model");
   return model;
+}
+
+async function compactText(locator: Locator): Promise<string> {
+  return locator.evaluate((element) => ["face", "station", "segments"].map((part) =>
+    element.querySelector<HTMLElement>(`.turn-result__compact-${part}`)?.textContent ?? "").join(""));
+}
+
+function predictR1NextTurn(railwayBundle: RailwayBundle): { readonly before: ItemGameState; readonly after: ItemGameState } {
+  const before: ItemGameState = itemScenario("route", railwayBundle.network);
+  const after: ItemGameState = acceptOfflineTurn(before, railwayBundle.network);
+  const record = after.movementHistory.at(-1);
+  const predicates = { turnAdvanced: after.turn === before.turn + 1, status: after.status,
+    hasAdjustmentChoice: before.inventory.some((item) => item.kind === "roll-adjust"),
+    pending: after.pending?.kind ?? null,
+    hasDiscardChoice: record?.itemEvents.some((event) => event.type === "pickup-pending-discard") ?? null };
+  if (!record || !predicates.turnAdvanced || after.pending !== null || predicates.hasAdjustmentChoice || predicates.hasDiscardChoice) {
+    throw new Error(`R1 next-turn predicates failed: ${JSON.stringify(predicates)}`);
+  }
+  return { before, after };
 }
 
 test.use({ dataset: "fixture" });
@@ -1083,4 +1106,369 @@ test("follow camera keeps marker clear of result pill", { tag: "@layout" }, asyn
         .toBe(false);
     }
   }
+});
+
+const RECT_CONTAINMENT_TOLERANCE_PX = 1;
+const FORCED_TRUNCATION_STATION_CHARACTERS = 3;
+const R5_VIEWPORT = { width: 320, height: 568 } as const;
+const RESULT_VARIANT_SELECTORS = [".turn-result", ".turn-result__compact", ".turn-result__pill"] as const;
+type ResultVariantSelector = (typeof RESULT_VARIANT_SELECTORS)[number];
+const ROTATION_SEQUENCE: readonly { readonly width: number; readonly height: number; readonly variant: ResultVariantSelector }[] = [
+  { width: 390, height: 844, variant: ".turn-result__pill" },
+  { width: 667, height: 375, variant: ".turn-result__compact" },
+  { width: 1280, height: 800, variant: ".turn-result" },
+  { width: 320, height: 568, variant: ".turn-result__pill" },
+  { width: 844, height: 390, variant: ".turn-result__compact" },
+  { width: 390, height: 844, variant: ".turn-result__pill" },
+];
+
+test("result variants rotate without duplicates", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+  const [firstSize] = ROTATION_SEQUENCE;
+  if (!firstSize) throw new Error("Rotation sequence is empty");
+  await page.setViewportSize(firstSize);
+  const { expected } = await prepareR1(page, railwayBundle);
+  const pillName = `${expected.compact.accessibleName}。ターンのログを開く`;
+  let firstLiveCount: number | null = null;
+  for (const size of ROTATION_SEQUENCE) {
+    const label = `${size.width}x${size.height}`;
+    await page.setViewportSize(size);
+    // Rendered variants (not display:none, not visibility:hidden, with a box), re-read until the layout settles.
+    await expect.poll(async () => page.evaluate((selectors) => selectors.filter((selector) => {
+      const element = document.querySelector<HTMLElement>(selector);
+      if (!element || element.getClientRects().length === 0) return false;
+      const style = getComputedStyle(element);
+      return style.display !== "none" && style.visibility !== "hidden";
+    }), RESULT_VARIANT_SELECTORS), `${label} rendered variants`).toEqual([size.variant]);
+    const visibleVariant = page.locator(size.variant);
+    const headingInstances = await page.evaluate(({ selectors, heading }) => selectors
+      .flatMap((selector) => [...document.querySelectorAll<HTMLElement>(selector)])
+      .filter((element) => element.getClientRects().length > 0 &&
+        `${element.innerText}\n${element.getAttribute("aria-label") ?? ""}`.includes(heading)).length,
+    { selectors: RESULT_VARIANT_SELECTORS, heading: expected.heading });
+    expect(headingInstances, `${label} turn heading exposed by one visible variant`).toBe(1);
+    if (size.variant === ".turn-result") {
+      await expect(visibleVariant).toHaveAccessibleName(expected.heading);
+      await expect(visibleVariant.locator(".turn-result__heading")).toHaveText(expected.heading);
+      await expect(visibleVariant.locator(".turn-result__move")).toHaveText(expected.moveText);
+    } else {
+      await expect(visibleVariant).toContainText(expected.heading);
+      expect(await compactText(visibleVariant)).toBe(expected.compact.text);
+    }
+    const pill = page.locator(".turn-result__pill");
+    if (size.variant !== ".turn-result__pill") await expect(pill).toBeEmpty();
+    if (size.variant === ".turn-result__pill") {
+      await expect(pill).toHaveAccessibleName(pillName);
+      const readGeometry = async () => page.evaluate(() => {
+        const pillElement = document.querySelector<HTMLElement>(".turn-result__pill");
+        const panel = document.querySelector<HTMLElement>(".game-panel");
+        if (!pillElement || !panel) throw new Error("Phone result geometry is missing");
+        const pillRect = pillElement.getBoundingClientRect();
+        return { pill: { left: pillRect.left, top: pillRect.top, right: pillRect.right, bottom: pillRect.bottom },
+          panelTop: panel.getBoundingClientRect().top, viewportWidth: innerWidth };
+      });
+      // Pill bottom and panel top are read in one evaluation, retried until the measured position commits.
+      await expect.poll(async () => {
+        const geometry = await readGeometry();
+        return Math.abs(geometry.pill.bottom - (geometry.panelTop - TURN_RESULT_PILL_GAP_PX));
+      }, `${label} pill sits on the measured panel top`).toBeLessThanOrEqual(PILL_POSITION_CHANGE_TOLERANCE_PX);
+      const geometry = await readGeometry();
+      expect(geometry.pill.right).toBeLessThanOrEqual(geometry.viewportWidth - PILL_RIGHT_CLEARANCE_PX);
+      testInfo.annotations.push({ type: "variant-phone-geometry", description: `${label}: ${JSON.stringify(geometry)}` });
+    }
+    const liveCount = await page.locator('[aria-live], [role="status"]').count();
+    firstLiveCount ??= liveCount;
+    expect(liveCount, `live region count at ${label}`).toBe(firstLiveCount);
+    testInfo.annotations.push({ type: "variant-measurement", description: `${label}: ${size.variant}, live=${liveCount}` });
+  }
+});
+
+test.describe("product R5", () => {
+  test.use({ dataset: "real" });
+  test.describe.configure({ timeout: 90_000 });
+
+  test("long result truncates with complete accessible name", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+    const presentation = createPresentationResolver(railwayBundle.network,
+      railwayBundle.data.manifest.ok ? railwayBundle.data.manifest.value.uiPresentation : undefined);
+    const state = replayLongestProductResult(railwayBundle.network, presentation);
+    const expected = expectedSavedResult(state, railwayBundle);
+    const segmentChip = expected.chips.find((chip) => chip.kind === "segments");
+    if (!segmentChip || segmentChip.kind !== "segments") {
+      throw new Error(`R5 selected result has no new target segments: ${JSON.stringify({ turn: expected.turn, chips: expected.chips })}`);
+    }
+    await page.setViewportSize(R5_VIEWPORT);
+    await restoreResultState(page, state);
+    const pill = page.locator(".turn-result__pill");
+    await expect(pill).toBeVisible();
+    const accessibleName = `${expected.compact.accessibleName}。ターンのログを開く`;
+    await expect(pill).toHaveAccessibleName(accessibleName);
+    expect(expected.compact.text).toContain(expected.arrivalStation);
+    expect(expected.compact.text).toContain(`+${segmentChip.count}区間`);
+    const readParts = async () => pill.evaluate((element) => {
+      const part = (name: string): HTMLElement => {
+        const found = element.querySelector<HTMLElement>(`.turn-result__compact-${name}`);
+        if (!found) throw new Error(`R5 pill is missing ${name}`);
+        return found;
+      };
+      const face = part("face");
+      const station = part("station");
+      const segments = part("segments");
+      const pillRect = element.getBoundingClientRect();
+      const box = (node: HTMLElement) => {
+        const rect = node.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, width: rect.width,
+          clientWidth: node.clientWidth, scrollWidth: node.scrollWidth };
+      };
+      const style = (node: HTMLElement) => {
+        const computed = getComputedStyle(node);
+        return { overflow: computed.overflow, textOverflow: computed.textOverflow };
+      };
+      return { pill: { left: pillRect.left, right: pillRect.right }, face: box(face), station: box(station),
+        segments: box(segments), faceStyle: style(face), stationStyle: style(station), segmentsStyle: style(segments) };
+    });
+    const contains = (part: { left: number; right: number }, pillBox: { left: number; right: number }): boolean =>
+      part.left >= pillBox.left - RECT_CONTAINMENT_TOLERANCE_PX && part.right <= pillBox.right + RECT_CONTAINMENT_TOLERANCE_PX;
+    let measurements = await readParts();
+    let truncationBranch = "natural";
+    if (measurements.station.scrollWidth <= measurements.station.clientWidth) {
+      truncationBranch = "forced-measured-width";
+      const cap = await pill.evaluate((element, characterCount) => {
+        const face = element.querySelector<HTMLElement>(".turn-result__compact-face");
+        const station = element.querySelector<HTMLElement>(".turn-result__compact-station");
+        const segments = element.querySelector<HTMLElement>(".turn-result__compact-segments");
+        if (!face || !station || !segments) throw new Error("R5 truncation parts are missing");
+        const computed = getComputedStyle(element);
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d");
+        if (!context) throw new Error("Canvas text measurement is unavailable");
+        context.font = getComputedStyle(station).font;
+        const characterWidth = context.measureText(station.textContent?.trim().charAt(0) ?? "駅").width;
+        const width = face.getBoundingClientRect().width + segments.getBoundingClientRect().width + characterWidth * characterCount +
+          Number.parseFloat(computed.paddingLeft) + Number.parseFloat(computed.paddingRight) +
+          Number.parseFloat(computed.borderLeftWidth) + Number.parseFloat(computed.borderRightWidth);
+        element.style.maxWidth = `${width}px`;
+        return { width, characterWidth };
+      }, FORCED_TRUNCATION_STATION_CHARACTERS);
+      await expect.poll(async () => (await readParts()).station.scrollWidth > (await readParts()).station.clientWidth).toBe(true);
+      await expect(pill).toHaveAccessibleName(accessibleName);
+      testInfo.annotations.push({ type: "r5-measured-cap", description: JSON.stringify(cap) });
+      measurements = await readParts();
+    }
+    expect(measurements.face.scrollWidth).toBeLessThanOrEqual(measurements.face.clientWidth);
+    expect(measurements.segments.scrollWidth).toBeLessThanOrEqual(measurements.segments.clientWidth);
+    expect(measurements.station.scrollWidth).toBeGreaterThan(measurements.station.clientWidth);
+    expect(measurements.stationStyle).toEqual({ overflow: "hidden", textOverflow: "ellipsis" });
+    expect(measurements.faceStyle.overflow).not.toBe("hidden");
+    expect(measurements.faceStyle.textOverflow).not.toBe("ellipsis");
+    expect(measurements.segmentsStyle.overflow).not.toBe("hidden");
+    expect(measurements.segmentsStyle.textOverflow).not.toBe("ellipsis");
+    expect(contains(measurements.face, measurements.pill)).toBe(true);
+    expect(contains(measurements.segments, measurements.pill)).toBe(true);
+    expect(measurements.pill.right).toBeLessThanOrEqual(R5_VIEWPORT.width - PILL_RIGHT_CLEARANCE_PX);
+    await expect(pill).toHaveAccessibleName(accessibleName);
+    testInfo.annotations.push({ type: "r5-truncation", description: `${truncationBranch}; station=${expected.arrivalStation}; ` +
+      `length=${expected.arrivalStation.length}; N=${segmentChip.count}; ${JSON.stringify(measurements)}` });
+  });
+});
+
+test("native dialog Escape preserves log", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const recipe = itemScenario("adjust", railwayBundle.network);
+  await restoreResultState(page, recipe);
+  await expect(page.getByRole("heading", { name: ITEM_DESCRIPTIONS["roll-adjust"].name, exact: true })).toBeVisible();
+  await expect(diceReady(page)).toBeVisible();
+  const savedBefore = await readSave(page);
+  if (!savedBefore) throw new Error("R2 save was unavailable before opening the log");
+  const turnBefore = savedBefore.turn;
+  const pill = page.locator(".turn-result__pill");
+  const trigger = gamePanel(page).getByRole("button", { name: "ログ", exact: true });
+  const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
+  await pill.click();
+  await expect(log).toBeVisible();
+  await expect(log).toBeFocused();
+  await diceButton(page).click();
+  const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect(adjustment).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(adjustment).toBeHidden();
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(log).toBeVisible();
+  await expect.poll(async () => {
+    const saved = await readSave(page);
+    return saved?.pending?.kind === "discard" || saved?.turn === turnBefore + 1;
+  }).toBe(true);
+  if ((await readSave(page))?.pending?.kind === "discard") {
+    const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    await expect(discard).toBeVisible();
+    await discard.getByRole("button").last().click();
+  }
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(turnBefore + 1);
+  await expect(diceReady(page).or(page.locator("#clear-title"))).toBeVisible();
+  await expect(trigger).toHaveAttribute("aria-expanded", "true");
+  await expect(log).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(log).toBeHidden();
+  await expect(pill).toBeFocused();
+  await pill.click();
+  await expect(log).toBeVisible();
+  // One disclosure surface at a time (pre-existing GamePanel contract): the menu replaces the pill-opened log and
+  // clears its opener, so closing the menu returns focus to the menu trigger and never to the pill.
+  await openGameMenu(page);
+  const menu = gamePanel(page).getByRole("region", { name: "メニュー", exact: true });
+  const menuTrigger = gamePanel(page).getByRole("button", { name: "メニュー", exact: true });
+  await expect(log).toBeHidden();
+  await expect(pill).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(menuTrigger).toBeFocused();
+  await expect(log).toBeHidden();
+  await expect(pill).not.toBeFocused();
+  await trigger.click();
+  await expect(log).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(log).toBeHidden();
+  await expect(trigger).toBeFocused();
+  await expect(pill).not.toBeFocused();
+});
+
+test("turn zero and clear remove visible results", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+  const clear = replayFixtureClear(railwayBundle.network);
+  const predicted = acceptOfflineTurn(clear.predecessor, railwayBundle.network);
+  const clearPredicates = { predecessorTurn: clear.predecessor.turn, predictedStatus: predicted.status,
+    predictedTurn: predicted.turn, completedTurn: clear.completed.turn };
+  if (predicted.status !== "completed" || predicted.turn !== clear.completed.turn) {
+    throw new Error(`Pre-clear fixture predicates failed: ${JSON.stringify(clearPredicates)}`);
+  }
+  testInfo.annotations.push({ type: "pre-clear-turn", description: JSON.stringify(clearPredicates) });
+  await seedGameSettings(page, { speedId: "normal", follow: false, presentationLevel: "none" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await startNewGame(page);
+  const pill = page.locator(".turn-result__pill");
+  await expect(panelStat(page, "ターン数")).toHaveText("0");
+  await expect(pill).toBeHidden();
+  await expect(pill).toBeEmpty();
+  await expect(gamePanel(page).locator(".turn-result, .turn-result__compact")).toBeHidden();
+  await expect(page.getByRole("button", { name: /ターンのログを開く/ })).toHaveCount(0);
+  const expectedBefore = expectedSavedResult(clear.predecessor, railwayBundle);
+  await restoreResultState(page, clear.predecessor);
+  await expect(pill).toBeVisible();
+  await expect(pill).toHaveAccessibleName(`${expectedBefore.compact.accessibleName}。ターンのログを開く`);
+  const formerPill = await pill.boundingBox();
+  if (!formerPill) throw new Error("Pre-clear result pill had no measured rectangle");
+  await diceReady(page).click();
+  await expect(page.locator(".clear-screen")).toBeVisible();
+  await expect(page.locator("#clear-title")).toBeVisible();
+  const checkClear = async () => {
+    await expect(page.locator(".game-panel")).toHaveCount(0);
+    await expect(page.locator(".turn-result__pill, .turn-result, .turn-result__compact")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /ターンのログを開く/ })).toHaveCount(0);
+    const leftover = await page.evaluate(({ x, y }) => document.elementsFromPoint(x, y).some((element) =>
+      element.matches(".turn-result__pill, .turn-result, .turn-result__compact") ||
+      element.closest(".turn-result__pill, .turn-result, .turn-result__compact") !== null),
+    { x: formerPill.x + formerPill.width / 2, y: formerPill.y + formerPill.height / 2 });
+    expect(leftover, "former phone pill centre must not contain result UI").toBe(false);
+  };
+  await checkClear();
+  for (const size of [{ width: 1280, height: 800 }, { width: 667, height: 375 }] as const) {
+    await page.setViewportSize(size);
+    await expect(page.locator(".clear-screen")).toBeVisible();
+    await expect(page.locator("#clear-title")).toBeVisible();
+    await checkClear();
+  }
+});
+
+test("resume shows the last turn after reload", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+  const chosen = findTargetTurn(itemScenario("route", railwayBundle.network), railwayBundle.network);
+  const resultCount = chosen.newTargetSegmentCount;
+  testInfo.annotations.push({ type: "resume-replay", description: JSON.stringify({ before: chosen.before.turn,
+    after: chosen.after.turn, newTargetSegmentCount: resultCount, pending: chosen.after.pending?.kind ?? null }) });
+  await seedGameSettings(page, { speedId: "normal", follow: false, presentationLevel: "none" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await restoreResultState(page, chosen.before);
+  await diceReady(page).click();
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(chosen.before.turn + 1);
+  const saved = await readSave(page);
+  if (!saved) throw new Error("Resume result save was unavailable");
+  const expected = expectedSavedResult(saved, railwayBundle);
+  expect(expected.turn).toBe(chosen.before.turn + 1);
+  const segmentChip = expected.chips.find((chip) => chip.kind === "segments");
+  if (!segmentChip || segmentChip.kind !== "segments" || segmentChip.count !== resultCount) {
+    throw new Error(`Resume result count did not match offline replay: ${JSON.stringify({ resultCount, chips: expected.chips })}`);
+  }
+  const pill = page.locator(".turn-result__pill");
+  await expect(pill).toBeVisible();
+  const expectedName = `${expected.compact.accessibleName}。ターンのログを開く`;
+  await expect(pill).toHaveAccessibleName(expectedName);
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(pill).toHaveAccessibleName(expectedName);
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(expected.turn);
+  const resumed = await readSave(page);
+  if (!resumed) throw new Error("Resumed result save was unavailable");
+  expect(await pill.getAttribute("aria-label")).toBe(`${expectedSavedResult(resumed, railwayBundle).compact.accessibleName}。ターンのログを開く`);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const card = gamePanel(page).locator(".turn-result");
+  await expect(card).toBeVisible();
+  await expect(card.locator(".turn-result__heading")).toHaveText(expected.heading);
+  await expect(card.locator(".turn-result__move")).toHaveText(expected.moveText);
+  await expect(card.locator(".turn-result__chip-label").filter({ hasText: `+${resultCount}区間` })).toBeVisible();
+});
+
+test("presentation none and skip publish immediately — 演出なし", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  const prediction = predictR1NextTurn(railwayBundle);
+  const previous = expectedSavedResult(prediction.before, railwayBundle);
+  const expected = expectedSavedResult(prediction.after, railwayBundle);
+  expect(expected.turn).toBe(previous.turn + 1);
+  expect(expected.compact.accessibleName).not.toBe(previous.compact.accessibleName);
+  await seedGameSettings(page, { speedId: "normal", follow: false, presentationLevel: "none" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await prepareR1(page, railwayBundle);
+  const pill = page.locator(".turn-result__pill");
+  await expect(pill).toHaveAccessibleName(`${previous.compact.accessibleName}。ターンのログを開く`);
+  // Record the pill name in the same DOM mutation callback in which the HUD turn first advances with the dice
+  // ready again, so a publication later than the returning dice cannot be absorbed by a retrying assertion.
+  await page.evaluate(() => {
+    const state = window as Window & { __turnResultAtReady?: string | null };
+    const turnStat = document.querySelector<HTMLElement>('.game-panel [data-stat="turn"]');
+    if (!turnStat) throw new Error("HUD turn stat is missing");
+    const turnBefore = turnStat.textContent;
+    state.__turnResultAtReady = null;
+    const observer = new MutationObserver(() => {
+      const dice = document.querySelector<HTMLElement>(".game-panel .game-panel__roll");
+      const turnNow = document.querySelector<HTMLElement>('.game-panel [data-stat="turn"]')?.textContent;
+      if (turnNow === turnBefore || dice?.getAttribute("aria-disabled") !== "false") return;
+      state.__turnResultAtReady = document.querySelector(".turn-result__pill")?.getAttribute("aria-label") ?? "";
+      observer.disconnect();
+    });
+    observer.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+  });
+  await diceReady(page).click();
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(prediction.after.turn);
+  await expect(diceReady(page)).toBeVisible();
+  const atReady = await page.evaluate(() => (window as Window & { __turnResultAtReady?: string | null }).__turnResultAtReady);
+  expect(atReady, "pill name when the dice first became ready").toBe(`${expected.compact.accessibleName}。ターンのログを開く`);
+  await expect(pill).not.toContainText(`${previous.turn}ターン目`);
+  expect(await compactText(pill)).toBe(expected.compact.text);
+});
+
+test("presentation none and skip publish immediately — Skip", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  const prediction = predictR1NextTurn(railwayBundle);
+  await seedGameSettings(page, { speedId: "normal", follow: false, presentationLevel: "all" });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await restoreFrozenR3(page, prediction.before);
+  const previous = expectedSavedResult(prediction.before, railwayBundle);
+  const pill = page.locator(".turn-result__pill");
+  await expect(pill).toHaveAccessibleName(`${previous.compact.accessibleName}。ターンのログを開く`);
+  await diceButton(page).click();
+  await awaitStage(page, "tumble");
+  await expect(pill).toHaveAccessibleName(`${previous.compact.accessibleName}。ターンのログを開く`);
+  await pressSkip(page);
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(prediction.after.turn);
+  await expect(diceReady(page)).toBeVisible();
+  const saved = await readSave(page);
+  if (!saved) throw new Error("Skip result save was unavailable");
+  const expected = expectedSavedResult(saved, railwayBundle);
+  await expect(pill).toHaveAccessibleName(`${expected.compact.accessibleName}。ターンのログを開く`);
+  expect(await compactText(pill)).toBe(expected.compact.text);
+  await expect(page.locator(".turn-moment-host__card")).toHaveCount(0);
 });
