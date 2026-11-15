@@ -32,7 +32,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | 2 | Collection model | done | `9de1b0b` | unit 5/5, full vitest 2171 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s2-review.json`) |
 | 3 | Gated A+C publication | done | `7dcefa8` | unit 42/42 (publication + turn-moment), full vitest pass, typecheck ok; verify_delegation actionable 0; Sol-low review REQUEST_CHANGES (2×P2 test gaps: A timing, pending-only discard) → one Luna test follow-up → re-review APPROVE (`.claude/logs/codex/hud65-s3-review2.json`); test file ~193 lines (cap waived for the reveal-boundary tests) |
 | 4 | Crossings + toast builder | done | `6b899f7` | unit 70/70 (milestones + toast), full vitest 2184 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s4-review.json`); note: thresholds absolute, copy assumes 30 required (per D9/D11) |
-| 5 | Milestone publication + once-only announcement | pending | — | — |
+| 5 | Milestone publication (stateless; once-only dropped by user) | done | `88f928f` | full vitest 2195 pass, typecheck + build ok, existing tests byte-identical. Attempts: Luna ×3 failed (S16 re-announcement; Sol 3×P2 on consumed keys; simplified rule still dropped suffix at lottery) → user: simplify, then escalate → Fable landed stateless rule (`.claude/docs/reviews/hud65-step5-fable.md`). Deviations from plan: toast only at arrival or card-less published; no historical <30 toasts (resume via entryTurn). Final Sol-low review REQUEST_CHANGES 1×P2 (re-read after item select/unselect in card-less published) → user accepted, filed #96 together with arrival→Skip repeat |
 | 6 | Progress-bar flash | pending | — | — |
 | 7 | Desktop A+C row | pending | — | — |
 | 8 | Clear-screen counters | pending | — | — |
@@ -43,8 +43,13 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | 13 | Phone surface + pill integration | pending | — | — |
 | 14 | Final acceptance | pending | — | — |
 
+## Notes
+
+- Local `uv run pytest tests/data_pipeline` shows 4 failed + 5 errors (`StageError: handoff is incomplete`) on 2026-11-15; branch has no Python/data change and CI Data pipeline is green → local environment issue, not investigated.
+- Step 5 consumed-key / once-only announcement is out of scope → #96.
+
 ## Next
 
-1. Step 5 (Milestone publication + once-only announcement): build the prompt from the impl-prompts doc (Common body + Step 5 block, `<BASE_SHA>` =
+1. Step 6 (Progress-bar flash): build the prompt from the impl-prompts doc (Common body + Step 6 block, `<BASE_SHA>` =
    branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
