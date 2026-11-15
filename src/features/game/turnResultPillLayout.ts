@@ -1,6 +1,7 @@
 /** Keep an 8px visual gap between the measured panel edge and the pill. */
 export const TURN_RESULT_PILL_GAP_PX = 8;
 export const TURN_RESULT_PILL_LAYOUT_EVENT = "turn-result-pill-layout";
+export const TURN_RESULT_PILL_SELECTOR = ".turn-result__pill";
 
 export type TurnResultPillPosition =
   | { readonly visible: false }

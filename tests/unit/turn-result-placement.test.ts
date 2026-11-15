@@ -12,6 +12,7 @@ import {
   type TurnMomentRectSources,
   type TurnMomentRects,
 } from "../../src/features/game/components/TurnMomentHost";
+import { previewObstructions, useCameraLayoutObserver } from "../../src/features/map/RailwayMap";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
 class FakeResizeObserver {
@@ -30,6 +31,7 @@ class FakeResizeObserver {
 
 const VIEWPORT: RectBox = { left: 0, top: 0, width: 320, height: 600 };
 const PANEL: RectBox = { left: 8, top: 400, width: 304, height: 200 };
+const CAMERA_PANEL_KEY = 1;
 let mounted: MountedReact | null = null;
 
 function setRect(element: Element, value: RectBox | (() => RectBox)): void {
@@ -75,6 +77,32 @@ function renderHarness(active: boolean, sources: TurnMomentRectSources, report: 
   const node = createElement(Harness, { active, sources, report });
   if (mounted) act(() => mounted?.root.render(node));
   else mounted = mountReact(node);
+}
+
+interface CameraHarnessProps {
+  readonly map: { getContainer(): HTMLElement } | null;
+  readonly previewOpen: boolean;
+  readonly onLayoutChange: () => void;
+}
+
+function CameraHarness({ map, previewOpen, onLayoutChange }: CameraHarnessProps): null {
+  useCameraLayoutObserver(map, CAMERA_PANEL_KEY, vi.fn(), onLayoutChange, previewOpen);
+  return null;
+}
+
+function renderCameraHarness(props: CameraHarnessProps): void {
+  const node = createElement(CameraHarness, props);
+  if (mounted) act(() => mounted?.root.render(node));
+  else mounted = mountReact(node);
+}
+
+function makeVisible(element: HTMLElement, rect: DOMRect | (() => DOMRect)): void {
+  const readRect = typeof rect === "function" ? rect : (): DOMRect => rect;
+  vi.spyOn(element, "getClientRects").mockImplementation(() => {
+    const rects = element.style.display === "none" ? [] : [readRect()];
+    return rects as unknown as DOMRectList;
+  });
+  vi.spyOn(element, "getBoundingClientRect").mockImplementation(readRect);
 }
 
 function lastRects(report: ReturnType<typeof vi.fn>): TurnMomentRects | null | undefined {
@@ -188,6 +216,97 @@ describe("useTurnMomentRects pill lifecycle", () => {
     expect(remove.mock.calls.map(([name]) => name)).toEqual(
       expect.arrayContaining(["resize", "scroll", TURN_RESULT_PILL_LAYOUT_EVENT]),
     );
+  });
+});
+
+describe("preview pill map layout", () => {
+  it("registers a visible pill as an obstruction and a layout target, excluding hidden shells", () => {
+    const container = document.createElement("div");
+    const panel = document.createElement("main");
+    const visiblePill = document.createElement("button");
+    const displayHiddenPill = document.createElement("button");
+    const visibilityHiddenPill = document.createElement("button");
+    panel.className = "game-panel";
+    visiblePill.className = displayHiddenPill.className = visibilityHiddenPill.className = "turn-result__pill";
+    displayHiddenPill.style.display = "none";
+    visibilityHiddenPill.style.visibility = "hidden";
+    document.body.append(panel, visiblePill, displayHiddenPill, visibilityHiddenPill);
+    const panelRect = new DOMRect(0, 400, 320, 168);
+    const pillRect = new DOMRect(8, 348, 120, 44);
+    const hiddenRect = new DOMRect(8, 348, 120, 44);
+    makeVisible(panel, panelRect);
+    makeVisible(visiblePill, pillRect);
+    makeVisible(displayHiddenPill, hiddenRect);
+    makeVisible(visibilityHiddenPill, hiddenRect);
+    const mapRect = new DOMRect(0, 0, 320, 568);
+    makeVisible(container, mapRect);
+    const map = { getContainer: (): HTMLElement => container };
+
+    expect(previewObstructions(container)).toEqual([
+      { left: 0, top: 400, right: 320, bottom: 568 },
+      { left: 8, top: 348, right: 128, bottom: 392 },
+    ]);
+
+    renderCameraHarness({ map, previewOpen: true, onLayoutChange: vi.fn() });
+    const observer = FakeResizeObserver.instances.at(-1);
+    expect(observer?.observe).toHaveBeenCalledWith(visiblePill);
+    expect(observer?.observe).not.toHaveBeenCalledWith(displayHiddenPill);
+    expect(observer?.observe).not.toHaveBeenCalledWith(visibilityHiddenPill);
+  });
+
+  it("coalesces position-only pill notifications only while the preview is open", () => {
+    const container = document.createElement("div");
+    const pill = document.createElement("button");
+    pill.className = "turn-result__pill";
+    document.body.append(pill);
+    let pillRect = new DOMRect(8, 100, 120, 44);
+    makeVisible(pill, () => pillRect);
+    const map = { getContainer: (): HTMLElement => container };
+    const onLayoutChange = vi.fn();
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback): number => {
+      frames.push(callback);
+      return frames.length;
+    });
+    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+    renderCameraHarness({ map, previewOpen: true, onLayoutChange });
+
+    const initialPillRect = pill.getBoundingClientRect();
+    pillRect = new DOMRect(8, 80, 120, 44);
+    expect(pill.getBoundingClientRect().width).toBe(initialPillRect.width);
+    expect(pill.getBoundingClientRect().height).toBe(initialPillRect.height);
+    expect(pill.getBoundingClientRect().top).not.toBe(initialPillRect.top);
+    act(() => {
+      window.dispatchEvent(new Event(TURN_RESULT_PILL_LAYOUT_EVENT));
+      window.dispatchEvent(new Event(TURN_RESULT_PILL_LAYOUT_EVENT));
+    });
+    expect(frames).toHaveLength(1);
+    expect(onLayoutChange).not.toHaveBeenCalled();
+    expect(FakeResizeObserver.instances.at(-1)?.observe).toHaveBeenCalledWith(pill);
+    act(() => frames[0]?.(0));
+    expect(onLayoutChange).toHaveBeenCalledTimes(1);
+
+    renderCameraHarness({ map, previewOpen: false, onLayoutChange });
+    act(() => window.dispatchEvent(new Event(TURN_RESULT_PILL_LAYOUT_EVENT)));
+    expect(onLayoutChange).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["unmount", "preview closes"] as const)("removes the pill listener on %s", (end) => {
+    const container = document.createElement("div");
+    const map = { getContainer: (): HTMLElement => container };
+    const onLayoutChange = vi.fn();
+    const remove = vi.spyOn(window, "removeEventListener");
+    renderCameraHarness({ map, previewOpen: true, onLayoutChange });
+
+    if (end === "preview closes") renderCameraHarness({ map, previewOpen: false, onLayoutChange });
+    else {
+      mounted?.cleanup();
+      mounted = null;
+    }
+
+    expect(remove).toHaveBeenCalledWith(TURN_RESULT_PILL_LAYOUT_EVENT, expect.any(Function));
+    act(() => window.dispatchEvent(new Event(TURN_RESULT_PILL_LAYOUT_EVENT)));
+    expect(onLayoutChange).not.toHaveBeenCalled();
   });
 });
 

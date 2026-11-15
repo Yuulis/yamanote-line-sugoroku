@@ -3,7 +3,7 @@ import { itemLastMove } from "../../src/features/game/itemSession";
 import { deriveTurnResult, replayTurnResultHistory } from "../../src/features/game/turnResultCard";
 import { playItemTurn, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import type { ItemGameState, ItemTurnRecord } from "../../src/types/network";
-import { CURRENT_POSITION_RADIUS, CURRENT_POSITION_STROKE_WIDTH } from "../../src/features/map/mapConfig";
+import { CURRENT_POSITION_RADIUS, CURRENT_POSITION_STROKE_WIDTH, SOURCE_IDS } from "../../src/features/map/mapConfig";
 import { TURN_RESULT_PILL_GAP_PX } from "../../src/features/game/turnResultPillLayout";
 import { LOTTERY_FIT_MIN_SCALE, MIN_CARD_REGION_PX } from "../../src/features/game/components/TurnMomentHost";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
@@ -12,6 +12,7 @@ import type { Page, Locator } from "@playwright/test";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { itemScenario } from "./fixtures/itemScenarios";
 import {
+  diceButton,
   diceReady,
   gamePanel,
   hudCompactRoll,
@@ -42,6 +43,15 @@ const PAST_ANY_MOVEMENT_MS = 6_100;
 const MAX_CLIP_TOLERANCE_PX = 0.5;
 /** Allowed distance between a settled lottery row and its HUD target (subpixel rounding of measured boxes). */
 const MAX_FLIGHT_LANDING_ERROR_PX = 1;
+const PREVIEW_PANEL_RESIZE_PX = 24;
+const FOLLOW_NORMAL_TURN_COUNT = 3;
+const PILL_POSITION_CHANGE_TOLERANCE_PX = 1;
+const MARKER_HALF_SIZE_PX = CURRENT_POSITION_RADIUS + CURRENT_POSITION_STROKE_WIDTH;
+const PREVIEW_VIEWPORTS = [{ width: 320, height: 568 }, { width: 568, height: 320 }] as const;
+const FOLLOW_VIEWPORTS = [
+  { width: 320, height: 568 }, { width: 375, height: 667 },
+  { width: 320, height: 480 }, { width: 568, height: 320 },
+] as const;
 
 type ResultModel = NonNullable<ReturnType<typeof deriveTurnResult>>;
 
@@ -790,4 +800,287 @@ test("desktop card gates item chips until publication", async ({ page, railwayBu
   await expect(card.locator(".turn-result__chip-label").filter({ hasText: results.pickupLabel })).toBeVisible();
   await page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })
     .getByRole("button", { name: "このアイテムを捨てる" }).last().click();
+});
+
+interface LayoutRect {
+  readonly left: number;
+  readonly top: number;
+  readonly right: number;
+  readonly bottom: number;
+}
+
+interface PreviewAvoidanceGeometry {
+  readonly viewport: { readonly width: number; readonly height: number };
+  readonly map: LayoutRect;
+  readonly pill: LayoutRect;
+  readonly panel: LayoutRect;
+  readonly dialog: LayoutRect | null;
+  readonly targets: readonly { readonly kind: "bubble" | "leader" | "origin"; readonly rect: LayoutRect }[];
+}
+
+interface MarkerPillMeasurement {
+  readonly viewport: { readonly width: number; readonly height: number };
+  readonly marker: LayoutRect;
+  readonly pill: LayoutRect;
+  readonly verticalClearancePx: number;
+  readonly horizontalClearancePx: number;
+  readonly intersects: boolean;
+}
+
+function rectGap(a: LayoutRect, b: LayoutRect): number {
+  const horizontal = Math.max(0, b.left - a.right, a.left - b.right);
+  const vertical = Math.max(0, b.top - a.bottom, a.top - b.bottom);
+  return Math.hypot(horizontal, vertical);
+}
+
+function minimumGap(targets: PreviewAvoidanceGeometry["targets"], kind: "bubble" | "leader" | "origin", pill: LayoutRect): number {
+  const gaps = targets.filter((target) => target.kind === kind).map((target) => rectGap(target.rect, pill));
+  if (gaps.length === 0) throw new Error(`No ${kind} geometry was measured`);
+  return Math.min(...gaps);
+}
+
+async function readPreviewAvoidanceGeometry(page: Page): Promise<PreviewAvoidanceGeometry> {
+  const mapSnapshot = await readMap(page);
+  if (!mapSnapshot?.marker) throw new Error("The adjustment preview map marker was not available");
+  const geometry = await page.evaluate(async ({ marker, markerHalfSize, markerSourceId }) => {
+    interface PreviewMap {
+      getContainer(): HTMLElement;
+      project(position: [number, number]): { readonly x: number; readonly y: number };
+      getSource(id: string): { getData(): Promise<{ features: { geometry: { coordinates: [number, number] } }[] }> } | undefined;
+    }
+    const map = (window as Window & { __sugorokuE2E?: { map?: PreviewMap | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The preview map hook was unavailable");
+    const rectOf = (element: Element): LayoutRect => {
+      const { left, top, right, bottom } = element.getBoundingClientRect();
+      return { left, top, right, bottom };
+    };
+    const pill = document.querySelector<HTMLElement>(".turn-result__pill");
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    const dialogElement = document.querySelector<HTMLDialogElement>(".item-adjustment");
+    if (!pill || !panel) throw new Error("The preview pill or game panel was missing");
+    const mapRect = rectOf(map.getContainer());
+    const source = await map.getSource(markerSourceId)?.getData();
+    const origin = source?.features[0]?.geometry.coordinates ?? marker;
+    const projected = map.project(origin);
+    const targets: { kind: "bubble" | "leader" | "origin"; rect: LayoutRect }[] = [];
+    for (const bubble of document.querySelectorAll<HTMLElement>(".map-adjustment-callout__bubble")) {
+      targets.push({ kind: "bubble", rect: rectOf(bubble) });
+    }
+    for (const leader of document.querySelectorAll<HTMLElement>(".map-adjustment-callout__leader")) {
+      targets.push({ kind: "leader", rect: rectOf(leader) });
+    }
+    targets.push({ kind: "origin", rect: {
+      left: mapRect.left + projected.x - markerHalfSize,
+      top: mapRect.top + projected.y - markerHalfSize,
+      right: mapRect.left + projected.x + markerHalfSize,
+      bottom: mapRect.top + projected.y + markerHalfSize,
+    } });
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      map: mapRect,
+      pill: rectOf(pill),
+      panel: rectOf(panel),
+      dialog: dialogElement?.open && dialogElement.getClientRects().length > 0 ? rectOf(dialogElement) : null,
+      targets,
+    };
+  }, { marker: mapSnapshot.marker, markerHalfSize: MARKER_HALF_SIZE_PX, markerSourceId: SOURCE_IDS.currentPosition });
+  return geometry;
+}
+
+function assertPreviewAvoidance(geometry: PreviewAvoidanceGeometry): void {
+  expect(geometry.dialog, "the adjustment dialog should be part of the preview geometry").not.toBeNull();
+  expect(geometry.targets.some((target) => target.kind === "bubble")).toBe(true);
+  expect(geometry.targets.some((target) => target.kind === "leader")).toBe(true);
+  const obstacles = [geometry.pill, geometry.panel, ...(geometry.dialog ? [geometry.dialog] : [])];
+  for (const target of geometry.targets) {
+    expect(target.rect.left, `${target.kind} left must stay in map ${JSON.stringify(geometry.map)}`).toBeGreaterThanOrEqual(geometry.map.left);
+    expect(target.rect.top, `${target.kind} top must stay in map ${JSON.stringify(geometry.map)}`).toBeGreaterThanOrEqual(geometry.map.top);
+    expect(target.rect.right, `${target.kind} right must stay in map ${JSON.stringify(geometry.map)}`).toBeLessThanOrEqual(geometry.map.right);
+    expect(target.rect.bottom, `${target.kind} bottom must stay in map ${JSON.stringify(geometry.map)}`).toBeLessThanOrEqual(geometry.map.bottom);
+    for (const obstacle of obstacles) {
+      const intersects = target.rect.left < obstacle.right && target.rect.right > obstacle.left &&
+        target.rect.top < obstacle.bottom && target.rect.bottom > obstacle.top;
+      expect(intersects, `${target.kind} ${JSON.stringify(target.rect)} overlaps ${JSON.stringify(obstacle)}`).toBe(false);
+    }
+  }
+}
+
+async function actAndWaitForPreviewMapSettled(page: Page, action: () => Promise<void>): Promise<void> {
+  await page.evaluate(() => {
+    interface PreviewMap {
+      isMoving(): boolean;
+      on(event: "idle" | "moveend", listener: () => void): void;
+      off(event: "idle" | "moveend", listener: () => void): void;
+    }
+    interface MapWaiter {
+      readonly map: PreviewMap;
+      settled: boolean;
+      active: boolean;
+      cleanup(): void;
+      start(): void;
+    }
+    const windowWithWaiter = window as Window & { __turnResultPreviewWaiter?: MapWaiter };
+    const map = (window as Window & { __sugorokuE2E?: { map?: PreviewMap | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must be ready before changing preview layout");
+    const onSettled = (): void => {
+      if (waiter.active && !map.isMoving()) waiter.settled = true;
+    };
+    const waiter: MapWaiter = {
+      map,
+      settled: false,
+      active: false,
+      cleanup: () => {
+        map.off("idle", onSettled);
+        map.off("moveend", onSettled);
+      },
+      start: () => { waiter.active = true; },
+    };
+    map.on("idle", onSettled);
+    map.on("moveend", onSettled);
+    windowWithWaiter.__turnResultPreviewWaiter = waiter;
+  });
+  await page.evaluate(() => {
+    const waiter = (window as Window & { __turnResultPreviewWaiter?: { start(): void } }).__turnResultPreviewWaiter;
+    if (!waiter) throw new Error("The preview settle waiter was not registered");
+    waiter.start();
+  });
+  await action();
+  await page.waitForFunction(() => {
+    const waiter = (window as Window & {
+      __turnResultPreviewWaiter?: { readonly map: { isMoving(): boolean }; readonly settled: boolean };
+    }).__turnResultPreviewWaiter;
+    return waiter?.settled === true && !waiter.map.isMoving();
+  });
+  await page.evaluate(() => {
+    const windowWithWaiter = window as Window & { __turnResultPreviewWaiter?: { cleanup(): void } };
+    windowWithWaiter.__turnResultPreviewWaiter?.cleanup();
+    delete windowWithWaiter.__turnResultPreviewWaiter;
+  });
+}
+
+test("adjustment preview avoids result pill", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+  for (const viewport of PREVIEW_VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    const recipe = itemScenario("adjust", railwayBundle.network);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(recipe));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    const pill = page.locator(".turn-result__pill");
+    await expect(pill).toBeVisible();
+    await expect(pill).toHaveAccessibleName(/\S/);
+    await expect(diceReady(page)).toBeVisible();
+    await expect.poll(async () => readMap(page)).not.toBeNull();
+
+    const dialog = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await actAndWaitForPreviewMapSettled(page, () => diceButton(page).click());
+    await expect(dialog).toBeVisible();
+    const initial = await readPreviewAvoidanceGeometry(page);
+    assertPreviewAvoidance(initial);
+    const initialGaps = {
+      bubble: minimumGap(initial.targets, "bubble", initial.pill),
+      leader: minimumGap(initial.targets, "leader", initial.pill),
+      origin: minimumGap(initial.targets, "origin", initial.pill),
+    };
+
+    const resizedViewport = { width: viewport.width, height: viewport.height - PREVIEW_PANEL_RESIZE_PX };
+    await actAndWaitForPreviewMapSettled(page, () => page.setViewportSize(resizedViewport));
+    await expect.poll(async () => {
+      const current = await readPreviewAvoidanceGeometry(page);
+      const samePillSize = current.pill.right - current.pill.left === initial.pill.right - initial.pill.left &&
+        current.pill.bottom - current.pill.top === initial.pill.bottom - initial.pill.top;
+      const pillMoved = Math.abs(current.pill.top - initial.pill.top) > PILL_POSITION_CHANGE_TOLERANCE_PX;
+      const initialCallouts = initial.targets.filter((target) => target.kind !== "origin").map((target) => target.rect);
+      const currentCallouts = current.targets.filter((target) => target.kind !== "origin").map((target) => target.rect);
+      return samePillSize && pillMoved && JSON.stringify(currentCallouts) !== JSON.stringify(initialCallouts);
+    }).toBe(true);
+    const resized = await readPreviewAvoidanceGeometry(page);
+    assertPreviewAvoidance(resized);
+    const resizedGaps = {
+      bubble: minimumGap(resized.targets, "bubble", resized.pill),
+      leader: minimumGap(resized.targets, "leader", resized.pill),
+      origin: minimumGap(resized.targets, "origin", resized.pill),
+    };
+    const measurements = {
+      initial: { viewport, pill: initial.pill, panel: initial.panel, minGapsPx: initialGaps },
+      afterPanelGeometryChange: { viewport: resizedViewport, pill: resized.pill, panel: resized.panel, minGapsPx: resizedGaps },
+    };
+    testInfo.annotations.push({ type: "preview-pill-clearance", description: JSON.stringify(measurements) });
+    console.info("adjustment preview pill clearance", measurements);
+    await dialog.getByRole("button", { name: "そのまま続ける" }).click();
+    await expect(dialog).toBeHidden();
+  }
+});
+
+async function readMarkerPillMeasurement(page: Page): Promise<MarkerPillMeasurement> {
+  const mapSnapshot = await readMap(page);
+  if (!mapSnapshot?.marker) throw new Error("The current-position marker was not available");
+  return page.evaluate(({ marker, markerHalfSize }) => {
+    interface MarkerMap {
+      getContainer(): HTMLElement;
+      project(position: [number, number]): { readonly x: number; readonly y: number };
+    }
+    const map = (window as Window & { __sugorokuE2E?: { map?: MarkerMap | null } }).__sugorokuE2E?.map;
+    const pill = document.querySelector<HTMLElement>(".turn-result__pill");
+    if (!map || !pill) throw new Error("The map hook or visible result pill was missing");
+    const mapRect = map.getContainer().getBoundingClientRect();
+    const pillBounds = pill.getBoundingClientRect();
+    const projected = map.project(marker);
+    const centerX = mapRect.left + projected.x;
+    const centerY = mapRect.top + projected.y;
+    const markerRect = {
+      left: centerX - markerHalfSize,
+      top: centerY - markerHalfSize,
+      right: centerX + markerHalfSize,
+      bottom: centerY + markerHalfSize,
+    };
+    const pillRect = { left: pillBounds.left, top: pillBounds.top, right: pillBounds.right, bottom: pillBounds.bottom };
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      marker: markerRect,
+      pill: pillRect,
+      verticalClearancePx: pillRect.top - markerRect.bottom,
+      horizontalClearancePx: Math.max(pillRect.left - markerRect.right, markerRect.left - pillRect.right),
+      intersects: markerRect.left < pillRect.right && markerRect.right > pillRect.left &&
+        markerRect.top < pillRect.bottom && markerRect.bottom > pillRect.top,
+    };
+  }, { marker: mapSnapshot.marker, markerHalfSize: MARKER_HALF_SIZE_PX });
+}
+
+test("follow camera keeps marker clear of result pill", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+  for (const viewport of FOLLOW_VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    await prepareR1(page, railwayBundle);
+    const pill = page.locator(".turn-result__pill");
+    await expect(pill).toBeVisible();
+    for (let turnIndex = 0; turnIndex < FOLLOW_NORMAL_TURN_COUNT; turnIndex += 1) {
+      const turnBefore = (await readSave(page))?.turn;
+      if (turnBefore === undefined) throw new Error("R1 save was not available before a normal turn");
+      await rollOnce(page);
+      const saved = await readSave(page);
+      const record = saved?.movementHistory.at(-1);
+      if (saved?.turn !== turnBefore + 1 || !record) throw new Error(`Normal turn ${turnBefore + 1} did not finish`);
+      expect(saved.pending, `turn ${saved.turn} must not leave a pending discard`).toBeNull();
+      expect(record.kind, `turn ${saved.turn} must remain a normal item ride`).toBe("item-ride");
+      if (record.kind !== "item-ride") throw new Error(`turn ${saved.turn} was not an item ride`);
+      expect(record.adjustment, `turn ${saved.turn} must not adjust the die`).toBeNull();
+      expect(record.itemEvents.some((event) => event.type === "pickup-pending-discard"),
+        `turn ${saved.turn} must not require a discard`).toBe(false);
+      await expect(diceReady(page)).toBeVisible();
+      await expect.poll(async () => page.evaluate(() => {
+        const map = (window as Window & { __sugorokuE2E?: { map?: { isMoving(): boolean } | null } }).__sugorokuE2E?.map;
+        return map !== undefined && map !== null && !map.isMoving();
+      })).toBe(true);
+      const measurement = await readMarkerPillMeasurement(page);
+      testInfo.annotations.push({
+        type: "follow-marker-pill-clearance",
+        description: `turn ${saved.turn} ${JSON.stringify(measurement)}`,
+      });
+      console.info("follow camera marker vs result pill", { turn: saved.turn, ...measurement });
+      expect(measurement.intersects,
+        `turn ${saved.turn} marker ${JSON.stringify(measurement.marker)} overlaps pill ${JSON.stringify(measurement.pill)}`)
+        .toBe(false);
+    }
+  }
 });

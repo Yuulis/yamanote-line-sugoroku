@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode, RefCallback, RefObject } from "react";
 import type { DeepReadonly, ItemTurnRecord } from "../../../types/network";
 import type { RollAttempt } from "../animation/turnMoments";
 import type { TurnPublicationPhase, TurnRevealState } from "../turnMomentPresentation";
-import { TURN_RESULT_PILL_LAYOUT_EVENT } from "../turnResultPillLayout";
+import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../turnResultPillLayout";
 import { LotteryReveal, type LotteryRevealProps } from "./LotteryReveal";
 import { ItemPickupMoment } from "./ItemPickupMoment";
 import type { ItemPickupMomentProps } from "./ItemPickupMoment";
@@ -58,7 +58,7 @@ export interface TurnMomentTargets {
 
 export const TURN_MOMENT_MAP_SELECTOR: string = ".map-container";
 export const TURN_MOMENT_PANEL_SELECTOR: string = ".game-panel";
-export const TURN_RESULT_PILL_SELECTOR: string = ".turn-result__pill";
+export { TURN_RESULT_PILL_SELECTOR };
 const LOTTERY_BOARD_SELECTOR: string = ".lottery-reveal";
 
 const EMPTY_RECT: RectBox = { left: 0, top: 0, width: 0, height: 0 };
