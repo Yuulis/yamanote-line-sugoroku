@@ -33,8 +33,9 @@ import { advanceArrival, advanceLotteryFlip, advanceLotterySettle, advanceMoveme
   advanceStamps, advanceTumble, awaitStage } from "./support/turnMoments";
 import { seedGameSettings } from "./support/settings";
 import { pressSkip } from "./support/turnMoments";
-import { acceptOfflineTurn, findTargetTurn, replayFixtureClear, replayLongestProductResult,
-  restoreResultState } from "./support/turnResult";
+import { acceptOfflineTurn, findTargetTurn, openPopulatedResult, populatedResultState, replayFixtureClear,
+  replayLongestProductResult, replayUninterruptedAutoRoll, restoreResultState } from "./support/turnResult";
+import { AUTO_ROLL_GAP_MS } from "../../src/features/game/autoRoll";
 
 const MAX_SHORT_LANDSCAPE_ROW_HEIGHT_PX = 22;
 const ELLIPSIS_PROBE_WIDTH_PX = 160;
@@ -1471,4 +1472,110 @@ test("presentation none and skip publish immediately — Skip", { tag: "@layout"
   await expect(pill).toHaveAccessibleName(`${expected.compact.accessibleName}。ターンのログを開く`);
   expect(await compactText(pill)).toBe(expected.compact.text);
   await expect(page.locator(".turn-moment-host__card")).toHaveCount(0);
+});
+
+test.describe("product R4", () => {
+  test.use({ dataset: "real", reducedMotion: "reduce" });
+  // The first test in each worker scans real-data seeds for the populated save (same budget as ui-pop's S23).
+  test.describe.configure({ timeout: 90_000 });
+
+  test("populated result preserves desktop budget", async ({ page, railwayBundle }, testInfo) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    const populated = populatedResultState(railwayBundle.network);
+    const expected = expectedSavedResult(populated.next, railwayBundle);
+    await openPopulatedResult(page, populated);
+    const panel = gamePanel(page);
+    const card = panel.getByRole("region", { name: expected.heading, exact: true });
+    await expect(card).toBeVisible();
+    await expect(card.locator(".turn-result__move")).toHaveText(expected.moveText);
+    expect(await card.locator(".turn-result__chip-label").allTextContents()).toEqual(expected.chips.map((chip) => chip.label));
+    expect(await panel.locator(".item-slot:not(.item-slot--empty)").count()).toBe(3);
+    expect(await panel.locator(".effect-chip").count()).toBeGreaterThanOrEqual(2);
+    await expect(panel.locator(".game-panel__save")).toContainText("失敗");
+
+    const measurements = await panel.evaluate((root) => {
+      const panelRect = root.getBoundingClientRect();
+      const fits = (element: Element): boolean => {
+        const box = element.getBoundingClientRect();
+        return box.top >= panelRect.top - 1 && box.bottom <= panelRect.bottom + 1;
+      };
+      const allFit = (selector: string): boolean => {
+        const elements = [...root.querySelectorAll(selector)];
+        return elements.length > 0 && elements.every(fits);
+      };
+      const box = (selector: string): DOMRect => root.querySelector<HTMLElement>(selector)!.getBoundingClientRect();
+      return {
+        scrollHeight: root.scrollHeight,
+        clientHeight: root.clientHeight,
+        reserveHeight: box(".turn-result__reserve").height,
+        headingMoveTopDelta: box(".turn-result__move").top - box(".turn-result__heading").top,
+        card: allFit(".turn-result"),
+        reserve: allFit(".turn-result__reserve"),
+        chips: root.querySelector(".turn-result__chip") === null || allFit(".turn-result__chip"),
+        staged: allFit(".item-staged-summary"),
+        slots: allFit(".item-slot"),
+        effects: allFit(".effect-chip"),
+        save: allFit(".game-panel__save"),
+        dice: allFit(".game-panel__roll"),
+      };
+    });
+    testInfo.annotations.push({ type: "measurement", description: `1280x800 R4 ${JSON.stringify(measurements)}` });
+    expect(measurements.scrollHeight).toBeLessThanOrEqual(measurements.clientHeight + 1);
+    // #65 slot is named but reserves no space (Revision 4, user 2026-11-14).
+    expect(measurements.reserveHeight).toBe(0);
+    expect(Math.abs(measurements.headingMoveTopDelta)).toBeLessThanOrEqual(1);
+    expect(measurements).toMatchObject({ card: true, reserve: true, chips: true, staged: true, slots: true,
+      effects: true, save: true, dice: true });
+  });
+});
+
+const AUTO_ROLL_CLOCK_STEP_MS = 100;
+const AUTO_ROLL_MAX_CLOCK_STEPS = 200;
+
+test("auto roll publishes result and pauses for log", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  const replay = replayUninterruptedAutoRoll(railwayBundle.network);
+  const pillName = (game: ItemGameState): string => `${expectedSavedResult(game, railwayBundle).compact.accessibleName}。ターンのログを開く`;
+  const names = [pillName(replay.before), pillName(replay.first), pillName(replay.second)];
+  expect(new Set(names).size, "each predicted publication must change the pill name").toBe(3);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.clock.install();
+  await restoreResultState(page, replay.before);
+  await freezeClock(page);
+  const pill = page.locator(".turn-result__pill");
+  await expect(pill).toHaveAccessibleName(names[0]!);
+  await page.evaluate(() => {
+    const state = window as Window & { __pillNames?: string[] };
+    // Seed with the restored name so only later publications append.
+    const names: string[] = [document.querySelector(".turn-result__pill")?.getAttribute("aria-label") ?? ""];
+    state.__pillNames = names;
+    new MutationObserver(() => {
+      const name = document.querySelector(".turn-result__pill")?.getAttribute("aria-label") ?? "";
+      if (name !== "" && name !== names.at(-1)) names.push(name);
+    }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-label"] });
+  });
+  const toggle = gamePanel(page).getByRole("button", { name: "おまかせで進む" });
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+
+  // Step the frozen clock until the second publication is ready; the next auto-roll delay then has ≥ 1100ms left.
+  const readyAfterSecond = async (): Promise<boolean> => (await readSave(page))?.turn === replay.second.turn
+    && await pill.getAttribute("aria-label") === names[2] && await diceButton(page).getAttribute("aria-disabled") === "false";
+  let steps = 0;
+  while (!(await readyAfterSecond())) {
+    if (steps >= AUTO_ROLL_MAX_CLOCK_STEPS) throw new Error(`Auto-roll did not publish two turns: ${JSON.stringify(await readSave(page))}`);
+    await page.clock.runFor(AUTO_ROLL_CLOCK_STEP_MS);
+    steps += 1;
+  }
+  const observed = await page.evaluate(() => (window as Window & { __pillNames?: string[] }).__pillNames ?? []);
+  expect(observed, "restored pill name, then one per auto-roll publication, in order").toEqual(names);
+
+  await pill.click();
+  const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
+  await Promise.all([expect(log).toBeVisible(), expect(log).toBeFocused(), expect(pill).toHaveAttribute("aria-expanded", "true")]);
+  await page.clock.runFor(AUTO_ROLL_GAP_MS + AUTO_ROLL_CLOCK_STEP_MS);
+  expect((await readSave(page))?.turn).toBe(replay.second.turn);
+  await expect(pill).toHaveAccessibleName(names[2]!);
+  await expect(log).toBeVisible();
+  await expect(toggle).toHaveAttribute("aria-pressed", "true");
 });
