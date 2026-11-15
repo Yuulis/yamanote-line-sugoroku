@@ -2,6 +2,7 @@ import { useCallback, type ReactNode, type RefObject } from "react";
 import type { SaveWriteResult } from "../store/persistence";
 import type { LineBadgeModel } from "../lineBadge";
 import type { EffectChipModel } from "../hudPresentation";
+import type { MilestoneFlash } from "../progressMilestones";
 import { setTargetRef, type TurnMomentTargetRef } from "./TurnMomentHost";
 import { EffectChips } from "./EffectChips";
 import { LineBadge } from "./LineBadge";
@@ -22,6 +23,7 @@ export interface GameHudProps {
   turn: number;
   completed: number;
   required: number;
+  milestoneFlash?: MilestoneFlash | null;
   /** Reveal-gated goal guidance; replaces the progress bar cells in the same slot once public. */
   goalGuidanceText?: string | null;
   /** Shorter wording for the short-landscape HUD; visual only, the full text stays the accessible name. */
@@ -60,7 +62,7 @@ export function GameHud({
   turnResult,
   inventory,
   title, subtitle, headingRef,
-  station, ride, lineBadge, direction, turn, completed, required, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
+  station, ride, lineBadge, direction, turn, completed, required, milestoneFlash = null, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
   canRoll, canSkip, autoRollEnabled, animating, draftSelected, rollButtonRef, onRoll, onSkip, onToggleAutoRoll, effects,
   rideTargetRef, directionTargetRef,
 }: GameHudProps): React.JSX.Element {
@@ -91,7 +93,7 @@ export function GameHud({
           ? <span className="target-progress target-progress--guidance" title={goalGuidanceText}><span className="goal-guidance__full"><PhraseText text={goalGuidanceText} /></span>
             {goalGuidanceShortText && <span className="goal-guidance__short" aria-hidden="true"><PhraseText text={goalGuidanceShortText} /></span>}
           </span>
-          : <TargetProgressBar completed={completed} required={required} />}</dd>
+          : <TargetProgressBar completed={completed} required={required} milestoneFlash={milestoneFlash} />}</dd>
         <dt>出目</dt>
         <dd><span className="hud-stat__value" data-stat="roll-compact" title={compactRoll}>{compactRoll}</span></dd>
       </dl>

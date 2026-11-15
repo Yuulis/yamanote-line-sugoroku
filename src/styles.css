@@ -831,6 +831,7 @@ button[aria-disabled="true"] {
 }
 
 .target-progress {
+  position: relative;
   width: 100%;
 }
 
@@ -867,6 +868,27 @@ button[aria-disabled="true"] {
 
 .target-progress__segment--completed {
   background: var(--color-brand);
+}
+
+.target-progress__flash {
+  position: absolute;
+  inset: 0;
+  background: var(--color-brand);
+  /* Rests invisible: the element outlives its one-shot animation while the key stays current. */
+  opacity: 0;
+  pointer-events: none;
+  animation: target-progress-flash var(--motion-slow) ease-out 1;
+}
+
+@keyframes target-progress-flash {
+  from { opacity: 0.85; }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .target-progress__flash {
+    display: none;
+  }
 }
 
 .effect-chips {

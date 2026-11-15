@@ -326,6 +326,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <GameHud
         turnResult={<TurnResultCard model={turnDisplay.turnResult} />}
+        milestoneFlash={turnDisplay.milestoneFlash}
         inventory={<>
           {itemView && <InventoryPanel
             view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem}
