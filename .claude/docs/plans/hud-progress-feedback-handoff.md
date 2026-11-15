@@ -47,6 +47,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 - Local `uv run pytest tests/data_pipeline` shows 4 failed + 5 errors (`StageError: handoff is incomplete`) on 2026-11-15; branch has no Python/data change and CI Data pipeline is green → local environment issue, not investigated.
 - Step 5 consumed-key / once-only announcement is out of scope → #96.
+- Step 5 CI (`f2b6b16`) failed E2E `S15 … adds the discard toast without replay`: the discard fixture turn crosses 20, so the milestone toast takes one of the 2 ordinary toast slots and the discard toast waits ~4 s. User (2026-11-16) accepted the delay; test updated in `56ae830` (item-toast assertions scoped; milestone expiry then discard toast, pickup not replayed). Local: whole `ui-pop-turn-moments.spec.ts` 50/50 desktop-chromium.
 
 ## Next
 
