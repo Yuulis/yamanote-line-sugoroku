@@ -15,10 +15,13 @@ function TurnResultCompactParts({ model }: { model: TurnResultModel }): React.JS
   </>;
 }
 
-export function TurnResultPill({ model, active, position }: {
+export function TurnResultPill({ model, active, position, logRegionId, expanded, onActivate }: {
   model: TurnResultModel | null;
   active: boolean;
   position: TurnResultPillPosition;
+  logRegionId: string;
+  expanded: boolean;
+  onActivate: (opener: HTMLButtonElement) => void;
 }): React.JSX.Element {
   // display:none while inactive (non-phone, turn 0); visibility:hidden keeps the box measurable until a position commits.
   const style = {
@@ -29,9 +32,12 @@ export function TurnResultPill({ model, active, position }: {
       "--turn-result-pill-left": `${position.leftPx}px`,
     } : {}),
   } as React.CSSProperties;
-  return <div className="turn-result__pill" style={style}>
+  return <button type="button" className="turn-result__pill" style={style}
+    aria-controls={logRegionId} aria-expanded={expanded}
+    aria-label={active && model ? `${model.compact.accessibleName}。ターンのログを開く` : undefined}
+    onClick={(event) => onActivate(event.currentTarget)}>
     {active && model && <TurnResultCompactParts model={model} />}
-  </div>;
+  </button>;
 }
 
 function TurnResultChipView({ chip }: { chip: TurnResultChip }): React.JSX.Element {

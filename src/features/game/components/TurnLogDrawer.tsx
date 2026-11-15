@@ -1,9 +1,11 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { modalDialogOpen } from "./GameMenu";
 
 export interface TurnLogDrawerProps {
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  logRegionId: string;
+  logOpenerRef: React.RefObject<HTMLElement | null>;
   arrival: string | null;
   roll: string;
   lottery: React.ReactNode;
@@ -14,11 +16,29 @@ export interface TurnLogDrawerProps {
 }
 
 const LOG_ICON_SIZE = 16;
+export const LOG_REVEAL_PADDING_PX = 8;
+
+/** True when the element is connected, laid out and not CSS-hidden, so focusing it lands somewhere visible. */
+function isVisible(element: HTMLElement | null): element is HTMLElement {
+  if (!element?.isConnected || element.getClientRects().length === 0) return false;
+  const style: CSSStyleDeclaration = getComputedStyle(element);
+  return style.display !== "none" && style.visibility !== "hidden";
+}
+
+function revealInPanel(element: HTMLElement): void {
+  const panel = element.closest<HTMLElement>(".game-panel");
+  if (!panel) return;
+  const panelRect = panel.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  if (elementRect.top < panelRect.top || elementRect.bottom > panelRect.bottom) panel.scrollTop += elementRect.top - panelRect.top - LOG_REVEAL_PADDING_PX;
+}
 
 /** Persistent turn transcript and text route view, hidden as one disclosure. */
 export function TurnLogDrawer({
   expanded,
   onExpandedChange,
+  logRegionId,
+  logOpenerRef,
   arrival,
   roll,
   lottery,
@@ -28,7 +48,6 @@ export function TurnLogDrawer({
   effectTexts,
 }: TurnLogDrawerProps): React.JSX.Element {
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const regionId = useId();
 
   useEffect(() => {
     if (!expanded) return;
@@ -38,16 +57,27 @@ export function TurnLogDrawer({
       // A native modal owns Escape: preventing it here would keep the dialog open.
       if (modalDialogOpen()) return;
       event.preventDefault();
+      const opener = logOpenerRef.current;
       onExpandedChange(false);
-      triggerRef.current?.focus({ preventScroll: true });
+      logOpenerRef.current = null;
+      const returnTarget = isVisible(opener) ? opener : triggerRef.current;
+      if (!returnTarget) return;
+      if (returnTarget === triggerRef.current) revealInPanel(returnTarget);
+      returnTarget.focus({ preventScroll: true });
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [expanded, onExpandedChange]);
+  }, [expanded, onExpandedChange, logOpenerRef]);
 
   const close = (): void => {
+    logOpenerRef.current = null;
     onExpandedChange(false);
     triggerRef.current?.focus({ preventScroll: true });
+  };
+
+  const open = (): void => {
+    logOpenerRef.current = triggerRef.current;
+    onExpandedChange(true);
   };
 
   return (
@@ -57,8 +87,8 @@ export function TurnLogDrawer({
         type="button"
         className="game-panel__log-trigger"
         aria-expanded={expanded}
-        aria-controls={regionId}
-        onClick={() => expanded ? close() : onExpandedChange(true)}
+        aria-controls={logRegionId}
+        onClick={() => expanded ? close() : open()}
       >
         <svg className="game-panel__log-icon" aria-hidden="true" focusable="false" width={LOG_ICON_SIZE} height={LOG_ICON_SIZE} viewBox="0 0 16 16">
           <path d="M2.5 3.5h1M6 3.5h7.5M2.5 8h1M6 8h7.5M2.5 12.5h1M6 12.5h7.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -68,7 +98,7 @@ export function TurnLogDrawer({
           <path d={expanded ? "M3 10.5 8 5.5l5 5" : "M3 5.5 8 10.5l5-5"} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      <section id={regionId} className="game-panel__log" aria-label="ターンのログ" hidden={!expanded}>
+      <section id={logRegionId} className="game-panel__log" aria-label="ターンのログ" tabIndex={-1} hidden={!expanded}>
         <div className="game-panel__turn-facts">
           <h2>このターン</h2>
           <dl>

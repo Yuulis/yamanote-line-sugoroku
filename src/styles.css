@@ -2460,8 +2460,10 @@ button[aria-disabled="true"] {
     border-radius: 999px;
     background: rgb(255 255 255 / 94%);
     box-shadow: 0 1px 6px rgb(0 0 0 / 30%);
+    font: inherit;
     font-size: 12px;
     line-height: 18px;
+    text-align: left;
     /* The face/station/segments parts reuse the global .turn-result__compact-* rules:
        `pre` separators, and only the station segment ellipsizes. */
     white-space: nowrap;

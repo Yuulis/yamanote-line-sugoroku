@@ -12,6 +12,7 @@ import {
   diceReady,
   gamePanel,
   hudCompactRoll,
+  openGameMenu,
   panelStat,
   readMap,
   readSave,
@@ -407,6 +408,93 @@ test("phone pill follows measured panel", { tag: "@layout" }, async ({ page, rai
       testInfo.annotations.push({ type: "toast-pill-geometry", description: JSON.stringify(toastMeasurement) });
     }
   }
+});
+
+test("pill repeatedly reveals log and restores focus", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  const { panel, expected } = await prepareR1(page, railwayBundle);
+  const pill = page.locator(".turn-result__pill");
+  const log = panel.locator(".game-panel__log");
+  const trigger = panel.getByRole("button", { name: "ログ", exact: true });
+  const menuTrigger = panel.getByRole("button", { name: "メニュー", exact: true });
+  const regionId = await log.getAttribute("id");
+  if (!regionId) throw new Error("turn log region has no id");
+  await expect(pill).toBeVisible();
+  await expect(pill).toHaveRole("button");
+  await expect(pill).toHaveAccessibleName(`${expected.compact.accessibleName}。ターンのログを開く`);
+  await expect(pill).toHaveAttribute("aria-label", `${expected.compact.accessibleName}。ターンのログを開く`);
+  await Promise.all([expect(pill).toHaveAttribute("aria-controls", regionId), expect(trigger).toHaveAttribute("aria-controls", regionId)]);
+  await expect(pill).toHaveAttribute("aria-expanded", "false");
+  const pillBox = await pill.boundingBox();
+  if (!pillBox) throw new Error("phone pill has no measurable box");
+  const revealMeasurements: number[][] = [];
+  const panelElementBounds = (selector: string): Promise<number[]> => panel.evaluate((root, target) => {
+    const panelRect = root.getBoundingClientRect();
+    const elementRect = root.querySelector<HTMLElement>(target)!.getBoundingClientRect();
+    return [panelRect.top, panelRect.bottom, elementRect.top, elementRect.bottom];
+  }, selector);
+  const assertRevealed = async (): Promise<void> => {
+    await Promise.all([expect(log).toBeVisible(), expect(log).toBeFocused()]);
+    await expect(pill).toHaveAttribute("aria-expanded", "true");
+    const bounds = await panelElementBounds(".game-panel__log");
+    const [panelTop, panelBottom, logTop] = bounds;
+    expect(logTop, `log top ${logTop} must be at or below panel top ${panelTop}`).toBeGreaterThanOrEqual(panelTop!);
+    expect(logTop, `log top ${logTop} must be above panel bottom ${panelBottom}`).toBeLessThan(panelBottom!);
+    revealMeasurements.push(bounds);
+  };
+  await pill.click();
+  await expect(pill).toHaveAttribute("aria-expanded", "true");
+  await assertRevealed();
+  await panel.evaluate((element) => { element.scrollTop = 0; });
+  await expect.poll(() => panel.evaluate((root) => root.querySelector<HTMLElement>(".game-panel__log")!.getBoundingClientRect().top - root.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(0);
+  await pill.click();
+  await expect(pill).toHaveAttribute("aria-expanded", "true");
+  await assertRevealed();
+  await openGameMenu(page);
+  await pill.click();
+  await expect(menuTrigger).toHaveAttribute("aria-expanded", "false");
+  await assertRevealed();
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(pill).toBeHidden();
+  await page.keyboard.press("Escape");
+  await expect(log).toBeHidden();
+  await expect(trigger).toBeFocused();
+  const triggerBounds = await panelElementBounds(".game-panel__log-trigger");
+  const [panelTop, panelBottom, triggerTop, triggerBottom] = triggerBounds;
+  expect(triggerTop, `trigger top ${triggerTop} must be at or below panel top ${panelTop}`).toBeGreaterThanOrEqual(panelTop!);
+  expect(triggerBottom, `trigger bottom ${triggerBottom} must be within panel bottom ${panelBottom}`).toBeLessThanOrEqual(panelBottom!);
+  console.info("320x568 pill and reveal measurements", { pill: { width: pillBox.width, height: pillBox.height }, reveals: revealMeasurements });
+});
+
+test("pill-opened log does not leave a stale opener", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  const { panel } = await prepareR1(page, railwayBundle);
+  const pill = page.locator(".turn-result__pill");
+  const log = panel.locator(".game-panel__log");
+  const trigger = panel.getByRole("button", { name: "ログ", exact: true });
+  await pill.click();
+  await expect(log).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(log).toBeHidden(); await expect(pill).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(log).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(pill).toBeFocused();
+  await trigger.focus();
+  await page.keyboard.press("Enter");
+  await expect(log).toBeVisible();
+  await Promise.all([expect(trigger).toHaveAttribute("aria-expanded", "true"), expect(trigger).toBeFocused()]);
+  await page.keyboard.press("Escape");
+  await expect(log).toBeHidden(); await expect(trigger).toBeFocused();
+  await pill.focus();
+  await page.keyboard.press("Space");
+  await expect(log).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(pill).toBeFocused();
+  await trigger.click();
+  await expect(log).toBeVisible();
+  await trigger.click();
+  await expect(log).toBeHidden(); await expect(trigger).toBeFocused();
 });
 
 test("phone pill appears after first publication", { tag: "@layout" }, async ({ page, railwayBundle }) => {
