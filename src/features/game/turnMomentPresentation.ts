@@ -5,6 +5,8 @@ import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { segmentFlashFeatureIds, type TurnRevealStageKey, type RollAttempt } from "./animation/turnMoments";
 import { lastMoveOf, type GameSession, type LastMove } from "./gameSession";
+import { deriveCollectionProgress, type CollectionProgress, type CollectionVisit } from "./collectionProgress";
+import { deriveTargetProximity, type TargetProximity } from "./targetProximity";
 import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel } from "./hudPresentation";
 import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, stationName, turnMomentAnnouncement } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
@@ -38,12 +40,14 @@ export interface TurnMomentDisplayInput {
   entryTurn?: number;
 }
 
-/** Shared gameplay values and permissions; visual moment models are added in later steps. */
+/** Shared gameplay values, publication permissions and HUD progress models. */
 export interface TurnMomentDisplay {
   phase: TurnPublicationPhase;
   turn: number;
   progress: DisplayedProgress;
   ride: Readonly<{ serviceId: string; direction: Direction }>;
+  proximity: TargetProximity | null;
+  collection: CollectionProgress;
   markerBearing: number | null;
   goalGuidance: GoalGuidance | null;
   /** Exact landing per legal choice; non-empty only while the adjustment decision is visible. */
@@ -140,6 +144,24 @@ function visibleRide(input: TurnMomentDisplayInput, phase: TurnPublicationPhase,
   return input.attempt?.origin.ride ?? displayedRide(input.session);
 }
 
+function visibleTraversalVisits(input: TurnMomentDisplayInput, phase: TurnPublicationPhase): readonly CollectionVisit[] {
+  const { session } = input;
+  const history = session.game.movementHistory;
+  const pending = isItemSave(session.game) && session.game.pending?.kind === "discard" ? session.game.pending.record : null;
+  const records = pending && !history.some((record) => record.turn === pending.turn) ? [...history, pending] : [...history];
+  const activeTurn = session.animation?.turn ?? input.attempt?.recordTurn;
+  return records.flatMap((record) => {
+    const current = record.turn === activeTurn;
+    if (current && phase === "pre-move") return [];
+    const traversedSegmentIds = current && phase === "moving"
+      ? record.traversedSegmentIds.slice(0, input.progress.stepsCompleted) : record.traversedSegmentIds;
+    if ("kind" in record && record.kind === "deadhead") {
+      return [{ traversedSegmentIds, ...(current && phase === "moving" ? {} : { relocationDestinationId: record.toStationId }) }];
+    }
+    return [{ traversedSegmentIds }];
+  });
+}
+
 function visibleDecision(
   view: ItemSessionView | null, attempt: RollAttempt | null, active: boolean, resultPublished: boolean,
 ): ItemSessionView["decision"] {
@@ -229,6 +251,10 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const completedIds = new Set(progress.completedSegmentIds);
   const completedCount = targetIds.filter((id) => completedIds.has(id)).length;
   const requiredCount = targetIds.length;
+  const proximity = deriveTargetProximity({ stationId: progress.stationId, ride,
+    targetServiceId: input.session.game.config.targetServiceId, targetComplete: completedCount >= requiredCount }, input.network);
+  const collection = deriveCollectionProgress(input.session.game.config.startStationId,
+    visibleTraversalVisits(input, phase), input.network, input.presentation);
   const goal = input.session.game.status === "completed";
   const historicalRecords = input.session.game.movementHistory.map(({ turn: recordTurn, traversedSegmentIds }) => ({
     turn: recordTurn,
@@ -341,6 +367,8 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
       : current?.itemRecord?.turn ?? input.session.game.turn,
     progress,
     ride,
+    proximity,
+    collection,
     markerBearing,
     goalGuidance,
     adjustmentLandings: landings,
