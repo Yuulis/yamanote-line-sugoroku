@@ -55,7 +55,7 @@ function gameWithActiveSuspension(bundle: RailwayBundle): ItemGameState {
   throw new Error("No deterministic fixture seed produced two active effects including a suspension");
 }
 
-test("keeps the dice button at one HUD position across variable content and save states", async ({ page, railwayBundle }, testInfo) => {
+test("keeps the dice button at one HUD position across variable content and save states", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
   await openTitle(page);
   await startNewGame(page);
   const positions: DicePosition[] = [await measureDice(page, "turn 0")];
@@ -138,7 +138,7 @@ test("keeps the dice button at one HUD position across variable content and save
   testInfo.annotations.push({ type: "dice-positions", description: JSON.stringify(positions) });
 });
 
-test("fits all three action labels on one line from phone to compact landscape", async ({ page }) => {
+test("fits all three action labels on one line from phone to compact landscape", { tag: "@layout" }, async ({ page }) => {
   await openTitle(page);
   await startNewGame(page);
   const actions = gamePanel(page).locator(".game-panel__actions");

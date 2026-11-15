@@ -50,7 +50,7 @@ test("very-fast menu speed survives reload with the existing settings payload", 
 });
 
 for (const width of [1280, 390]) {
-  test(`presentation cycles and survives reload and new game with one-line menu labels at ${width}px`, async ({ page }, testInfo) => {
+  test(`presentation cycles and survives reload and new game with one-line menu labels at ${width}px`, { tag: "@layout" }, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 800 });
     await openTitle(page);
     await startNewGame(page);

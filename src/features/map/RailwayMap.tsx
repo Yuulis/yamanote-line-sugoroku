@@ -68,6 +68,7 @@ import {
 import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
+import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
 
 export interface MapFollow {
   enabled: boolean;
@@ -155,10 +156,12 @@ export function useCameraLayoutObserver(
     for (const target of cameraLayoutTargets(container, panel, previewTargets)) observer?.observe(target);
     window.addEventListener("resize", requestLayoutUpdate);
     window.addEventListener("orientationchange", requestLayoutUpdate);
+    if (previewOpen) window.addEventListener(TURN_RESULT_PILL_LAYOUT_EVENT, requestLayoutUpdate);
     return () => {
       observer?.disconnect();
       window.removeEventListener("resize", requestLayoutUpdate);
       window.removeEventListener("orientationchange", requestLayoutUpdate);
+      if (previewOpen) window.removeEventListener(TURN_RESULT_PILL_LAYOUT_EVENT, requestLayoutUpdate);
       if (animationFrame) window.cancelAnimationFrame(animationFrame);
     };
   }, [map, panelKey, previewOpen, previewKey]);
@@ -237,6 +240,7 @@ const PREVIEW_LAYOUT_SELECTORS = [
   ".maplibregl-ctrl-bottom-left",
   ".maplibregl-ctrl-bottom-right",
   "[data-map-adjustment-callout]",
+  TURN_RESULT_PILL_SELECTOR,
 ] as const;
 const PREVIEW_OBSTRUCTION_SELECTORS = [
   ".game-panel",
@@ -246,6 +250,7 @@ const PREVIEW_OBSTRUCTION_SELECTORS = [
   ".maplibregl-ctrl-top-right",
   ".maplibregl-ctrl-bottom-left",
   ".maplibregl-ctrl-bottom-right",
+  TURN_RESULT_PILL_SELECTOR,
 ] as const;
 const ORIGIN_MARKER_RADIUS_PX = CURRENT_POSITION_RADIUS + CURRENT_POSITION_STROKE_WIDTH;
 
@@ -255,6 +260,7 @@ function attributionPosition(atTop: boolean): "top-left" | "bottom-right" {
 
 function isVisibleLayoutTarget(element: HTMLElement): boolean {
   if (element instanceof HTMLDialogElement && !element.open) return false;
+  if (element.matches(TURN_RESULT_PILL_SELECTOR) && getComputedStyle(element).visibility === "hidden") return false;
   return element.getClientRects().length > 0;
 }
 
@@ -267,7 +273,7 @@ function toMapRect(rect: DOMRect, mapRect: DOMRect): CameraRect {
   };
 }
 
-function previewObstructions(container: HTMLElement): readonly CameraRect[] {
+export function previewObstructions(container: HTMLElement): readonly CameraRect[] {
   const mapBounds = container.getBoundingClientRect();
   const elements = [...new Set(PREVIEW_OBSTRUCTION_SELECTORS.flatMap((selector) =>
     [...document.querySelectorAll<HTMLElement>(selector)]))];

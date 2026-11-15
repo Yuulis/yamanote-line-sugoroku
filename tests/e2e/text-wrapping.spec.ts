@@ -224,7 +224,7 @@ async function expectPhoneHudState(page: Page, viewport: { width: number; height
   return { offset: measurement.dice.offset, viewportY: measurement.dice.viewportY };
 }
 
-test("layout measurement", async ({ page }, testInfo) => {
+test("layout measurement", { tag: "@layout" }, async ({ page }, testInfo) => {
   await page.setContent(`<!doctype html>
     <style>
       body { margin: 0; font-family: Arial, sans-serif; }
@@ -314,7 +314,7 @@ test("layout measurement", async ({ page }, testInfo) => {
   expect(clipped.visibleGlyphRectCount).toBeLessThan(clipped.glyphRectCount);
 });
 
-test("phone HUD budget", async ({ page, railwayBundle }) => {
+test("phone HUD budget", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const longRide: ItemGameState = longestRideState(railwayBundle).game;
   await page.setViewportSize(NARROW_PHONE_VIEWPORT);
   await openTitle(page);
@@ -428,7 +428,7 @@ async function expectRestoredTurnRoundTrip(page: Page, bundle: RailwayBundle, ga
   expect(await readSave(page)).toEqual(saved);
 }
 
-test("longest text", async ({ page, railwayBundle }) => {
+test("longest text", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.setTimeout(LONGEST_TEXT_TEST_TIMEOUT_MS);
   const rideState = longestRideState(railwayBundle);
   const directionState = longestDirectionState(railwayBundle);
@@ -465,7 +465,7 @@ test("longest text", async ({ page, railwayBundle }) => {
   }
 });
 
-test("fallback wrapping", async ({ page, railwayBundle }, testInfo) => {
+test("fallback wrapping", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
   const state = longestRideState(railwayBundle);
   await page.setViewportSize(FALLBACK_TEXT_VIEWPORT);
   await restoreGame(page, state.game);
@@ -498,7 +498,7 @@ test("fallback wrapping", async ({ page, railwayBundle }, testInfo) => {
   }
 });
 
-test("Step 7 visual evidence", async ({ page, railwayBundle }) => {
+test("Step 7 visual evidence", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(process.env.TTW_SCREENSHOTS !== "1", "visual evidence is generated only on explicit request");
   test.setTimeout(VISUAL_EVIDENCE_TEST_TIMEOUT_MS);
   mkdirSync(VISUAL_EVIDENCE_DIRECTORY, { recursive: true });
@@ -526,7 +526,7 @@ test("Step 7 visual evidence", async ({ page, railwayBundle }) => {
   await lotteryReveal.screenshot({ path: join(VISUAL_EVIDENCE_DIRECTORY, "lottery-reveal-long-line.png") });
 });
 
-test("HUD breakpoint isolation", async ({ page }) => {
+test("HUD breakpoint isolation", { tag: "@layout" }, async ({ page }) => {
   await page.setViewportSize({ width: PHONE_BREAKPOINT_WIDTH_PX, height: BREAKPOINT_TEST_HEIGHT_PX });
   await openTitle(page);
   await startNewGame(page);
@@ -571,7 +571,7 @@ test("HUD breakpoint isolation", async ({ page }) => {
   }
 });
 
-test("dialog wrapping", async ({ page, railwayBundle }) => {
+test("dialog wrapping", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   // Two viewports, each restoring two saves and opening two native dialogs: about 28 s on a loaded
   // local Firefox, close to the default 30 s budget.
   test.slow();
@@ -621,7 +621,7 @@ test("dialog wrapping", async ({ page, railwayBundle }) => {
   }
 });
 
-test("clear-screen wrapping", async ({ page, railwayBundle }) => {
+test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const { beforeFinalTurn, completedGame } = completedHistoryGame(railwayBundle);
   expect(completedGame.turn).toBe(PRODUCT_HISTORY_SCENARIO_TURNS.completed);
   await page.setViewportSize(CLEAR_SCREEN_VIEWPORT);
@@ -684,7 +684,7 @@ test("clear-screen wrapping", async ({ page, railwayBundle }) => {
   await expectPageNoHorizontalOverflow(page);
 });
 
-test("panel wrapping", async ({ page, railwayBundle }) => {
+test("panel wrapping", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const routeGame: ItemGameState = itemScenario("route", railwayBundle.network);
   await page.setViewportSize(NARROW_PHONE_VIEWPORT);
   await restoreGame(page, routeGame);

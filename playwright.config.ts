@@ -75,6 +75,8 @@ export default defineConfig({
     {
       // Phone-sized Chromium with touch (Pixel 7: 412x839 CSS px).
       name: "phone-chromium",
+      // Issue #83: grep matches @layout in either test titles or test tags.
+      grep: /@layout/,
       use: { ...devices["Pixel 7"] },
     },
     {

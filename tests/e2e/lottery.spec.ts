@@ -5,7 +5,7 @@ import { advanceStamps, advanceTumble, primeMovementFrame } from "./support/turn
 
 test.use({ dataset: "fixture" });
 
-test("arrival lottery, both endpoint kinds and a direction-only draw are visible", async ({ page }) => {
+test("arrival lottery, both endpoint kinds and a direction-only draw are visible", { tag: "@layout" }, async ({ page }) => {
   await openTitle(page);
   await startNewGame(page);
   await rollOnce(page);

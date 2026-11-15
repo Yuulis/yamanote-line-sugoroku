@@ -168,7 +168,7 @@ function midGameWithYamanoteProgress(bundle: RailwayBundle): ItemGameState {
   throw new Error("No engine-generated game reached the map guidance screenshot state");
 }
 
-test("the target line starts centred in the free map area and 全体 shows every platform unclipped", async ({ page, railwayBundle }) => {
+test("the target line starts centred in the free map area and 全体 shows every platform unclipped", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const services = [...railwayBundle.network.servicesById.values()];
   const targetPoints = Object.values(railwayBundle.network.servicesById.get(TARGET_SERVICE_ID)!.platformCoordinates);
   const allPoints = services.flatMap((service) => Object.values(service.platformCoordinates));
@@ -191,7 +191,7 @@ test("the target line starts centred in the free map area and 全体 shows every
   if (!isPhone(page)) await screenshotAt(page, JRCR_S7_SCREENSHOT_DIR, "after-desktop-overview.png");
 });
 
-test("phone 全体 fits the collapsed-legend map area and remains clear when expanded", async ({ page, railwayBundle }) => {
+test("phone 全体 fits the collapsed-legend map area and remains clear when expanded", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(!isPhone(page), "Phone-specific overview fit assertion");
   const allPoints = [...railwayBundle.network.servicesById.values()]
     .flatMap((service) => Object.values(service.platformCoordinates));
@@ -227,7 +227,7 @@ test("phone 全体 fits the collapsed-legend map area and remains clear when exp
   expect(expandedBottomGap).toBeLessThanOrEqual(maxBottomGap);
 });
 
-test("at overview zoom only transfer and target stations are marked; close zoom shows them all", async ({ page, railwayBundle }) => {
+test("at overview zoom only transfer and target stations are marked; close zoom shows them all", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await startReadyGame(page);
   await page.getByRole("button", { name: "全体", exact: true }).click();
   const { network } = railwayBundle;
@@ -262,7 +262,7 @@ test("at overview zoom only transfer and target stations are marked; close zoom 
   if (!isPhone(page)) await screenshot(page, "desktop-ueno-zoom");
 });
 
-test("real Japanese labels follow overview and zoom density at station hubs on desktop and phone", async ({ page, railwayBundle }, testInfo) => {
+test("real Japanese labels follow overview and zoom density at station hubs on desktop and phone", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
   await startReadyGame(page);
   await page.getByRole("button", { name: "全体", exact: true }).click();
   await expect.poll(async () => (await renderedStationLabels(page)).length).toBe(0);
@@ -310,7 +310,7 @@ test("real Japanese labels follow overview and zoom density at station hubs on d
   }
 });
 
-test("the service legend collapses; 山手線 progress and 現在地 stay visible", async ({ page }) => {
+test("the service legend collapses; 山手線 progress and 現在地 stay visible", { tag: "@layout" }, async ({ page }) => {
   await startReadyGame(page);
   await openGameMenu(page);
   const panel = gamePanel(page);
@@ -343,7 +343,7 @@ test("the service legend collapses; 山手線 progress and 現在地 stay visibl
   await expect(serviceRow).toBeVisible();
 });
 
-test("pending guidance and heading", async ({ page, railwayBundle }, testInfo) => {
+test("pending guidance and heading", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "This paint comparison uses one desktop viewport");
   const game = midGameWithYamanoteProgress(railwayBundle);
   await page.goto("/");
@@ -505,7 +505,7 @@ async function fitsOnOneLine(locator: Locator): Promise<boolean> {
   return locator.evaluate((element) => element.scrollWidth <= element.clientWidth);
 }
 
-test("30 of 30 return guidance", async ({ page, railwayBundle }, testInfo) => {
+test("30 of 30 return guidance", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
   test.setTimeout(MILESTONE_TEST_TIMEOUT_MS);
   const goalStationId = ITEM_GAME_CONFIG.startStationId;
   const goalStation = railwayBundle.network.stationsById.get(goalStationId)!;

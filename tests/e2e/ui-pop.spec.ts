@@ -170,7 +170,7 @@ test("menu, log, and item card transitions preserve a selected draft", async ({ 
   await expect(slot).toHaveClass(/item-slot--selected/);
 });
 
-test("reclicking the open slot closes it and switching slots opens the other card", async ({ page, railwayBundle }) => {
+test("reclicking the open slot closes it and switching slots opens the other card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "pointer click contract runs on desktop projects");
   await scenario(page, "discard", railwayBundle);
   const slots = gamePanel(page).locator(".item-slot");
@@ -195,7 +195,7 @@ test("reclicking the open slot closes it and switching slots opens the other car
   await expect(slots).toHaveCount(3);
 });
 
-test("phone tap opens, closes, and uses the item card", async ({ page, railwayBundle }) => {
+test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(!test.info().project.use.hasTouch, "needs a touch project");
   await scenario(page, "double", railwayBundle);
   const slot = inventoryItem(page, "倍速券");
@@ -232,7 +232,7 @@ test("phone tap opens, closes, and uses the item card", async ({ page, railwayBu
   await expect(diceButton(page)).toBeVisible();
 });
 
-test("unusable and passive items remain inspectable with the right card actions", async ({ page, railwayBundle }) => {
+test("unusable and passive items remain inspectable with the right card actions", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await scenario(page, "adjust", railwayBundle);
   const adjust = inventoryItem(page, "出目調整券");
   await adjust.getByRole("button").click();
@@ -290,7 +290,7 @@ test("unusable and passive items remain inspectable with the right card actions"
   }
 });
 
-test("keyboard opening, Escape focus return, and light dismiss keep the slot tooltip out of the card", async ({ page, railwayBundle }) => {
+test("keyboard opening, Escape focus return, and light dismiss keep the slot tooltip out of the card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "hover and light dismiss run on desktop projects");
   await scenario(page, "double", railwayBundle);
   const slot = inventoryItem(page, "倍速券");
@@ -340,7 +340,7 @@ test("direction ticket card opens its use dialog and cancellation restores its o
   await expect(opener).toBeFocused();
 });
 
-test("desktop card hides its own hover tooltip, keeps other slot hover, and closes on Tab out", async ({ page, railwayBundle }) => {
+test("desktop card hides its own hover tooltip, keeps other slot hover, and closes on Tab out", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "requires desktop hover and keyboard focus");
   await scenario(page, "discard", railwayBundle);
   const first = inventoryItem(page, "倍速券");
@@ -411,7 +411,7 @@ test.describe("S25 failed-save toast expiry", () => {
   });
 });
 
-test.describe("S23 populated responsive HUD", () => {
+test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
   test.use({ dataset: "real", reducedMotion: "reduce" });
   // The first test in each worker scans real-data seeds for the populated save, and each test checks several viewports.
   test.describe.configure({ timeout: 90_000 });

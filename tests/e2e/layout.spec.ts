@@ -45,7 +45,7 @@ const SAFE_AREA_SELECTORS = [
   ".map-overview", ".toast-host", ".game-panel",
 ] as const;
 
-test("viewport-fit=cover is set and fixed overlays stay inside safe-area insets", async ({ page, browserName }, testInfo) => {
+test("viewport-fit=cover is set and fixed overlays stay inside safe-area insets", { tag: "@layout" }, async ({ page, browserName }, testInfo) => {
   await openTitle(page);
   await startNewGame(page);
   const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute("content");
@@ -89,7 +89,7 @@ test("viewport-fit=cover is set and fixed overlays stay inside safe-area insets"
   await cdp.detach();
 });
 
-test("[8.3-1] title, then map and controls are visible without hiding the map", async ({
+test("[8.3-1] title, then map and controls are visible without hiding the map", { tag: "@layout" }, async ({
   page,
 }) => {
   await openTitle(page);
@@ -135,7 +135,7 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
   expect(overlapsPanel).toBe(false);
 });
 
-test("[8.3-8] data and map attribution are reachable on the title and play screens", async ({
+test("[8.3-8] data and map attribution are reachable on the title and play screens", { tag: "@layout" }, async ({
   page,
   railwayBundle,
 }, testInfo) => {

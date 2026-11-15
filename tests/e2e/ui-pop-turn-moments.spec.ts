@@ -183,7 +183,7 @@ test("Skip inside the adjustment keeps the chosen die and Continue, then nothing
   expect(await readSave(page)).toEqual(playItemTurn(base, { adjustment }, railwayBundle.network).state);
 });
 
-test("tapping the dice card is the one Skip and keeps keyboard focus on the dice", async ({ page }) => {
+test("tapping the dice card is the one Skip and keeps keyboard focus on the dice", { tag: "@layout" }, async ({ page }) => {
   await page.clock.install();
   await openTitle(page);
   await startNewGame(page);
@@ -205,7 +205,7 @@ test("tapping the dice card is the one Skip and keeps keyboard focus on the dice
   await expectAcceptedSave(page, 1);
 });
 
-test("the dice card stays clear of the panel and the map controls", async ({ page }) => {
+test("the dice card stays clear of the panel and the map controls", { tag: "@layout" }, async ({ page }) => {
   await page.clock.install();
   await openTitle(page);
   await startNewGame(page);
@@ -464,7 +464,7 @@ test("a reload during the arrival resumes the published result with no banner re
   expect(await readSave(page)).toEqual(expected.state);
 });
 
-test("the arrival card stays clear of the panel and the map controls", async ({ page, railwayBundle }) => {
+test("the arrival card stays clear of the panel and the map controls", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const base = itemScenario("route", railwayBundle.network);
   await page.clock.install();
   await page.goto("/");
@@ -961,7 +961,7 @@ for (const stage of ["movement", "lottery-flip", "pickup"] as const) {
 }
 
 for (const viewport of [{ width: 1280, height: 800 }, { width: 412, height: 839 }, { width: 320, height: 720 }, { width: 667, height: 375 }, { width: 640, height: 400 }]) {
-  test(`S16 usable map placement through all moments at ${viewport.width}x${viewport.height}`, async ({ page, railwayBundle }, testInfo) => {
+  test(`S16 usable map placement through all moments at ${viewport.width}x${viewport.height}`, { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
     // Six stages plus repeated hit testing can exceed 30 s with touch DPR and software WebGL.
     test.setTimeout(60_000);
     await page.setViewportSize(viewport);
@@ -1011,7 +1011,7 @@ for (const viewport of [{ width: 1280, height: 800 }, { width: 412, height: 839 
 
 for (const size of ["normal", "alternative"] as const) {
   for (const target of ["slot", "header"] as const) {
-    test(`S16 pickup viewport flight to ${target} at ${size} size`, async ({ page, railwayBundle }, testInfo) => {
+    test(`S16 pickup viewport flight to ${target} at ${size} size`, { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
       if (size === "alternative") await page.setViewportSize({ width: 640, height: 400 });
       if (target === "header") await combinedTo(page, railwayBundle, "pickup");
       else {

@@ -78,7 +78,7 @@ async function expectPlatformsInView(page: Page, points: [number, number][]): Pr
   }).toPass({ timeout: 7_000 });
 }
 
-test("the Oedo legend checkbox groups both services and works by keyboard and phone touch", async ({ page, railwayBundle }) => {
+test("the Oedo legend checkbox groups both services and works by keyboard and phone touch", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const oedo = productLineGroups(railwayBundle).find((group) => group.id === "toei-oedo");
   expect(oedo).toMatchObject({
     name: "大江戸線",
@@ -211,7 +211,7 @@ test("operator and line filters hide, restore, and resolve a Fukutoshin shared p
 });
 
 
-test("the shipped Tokyo suburban product network starts, moves and restores without console errors", async ({ page, railwayBundle }, testInfo) => {
+test("the shipped Tokyo suburban product network starts, moves and restores without console errors", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
   // One smoke over the full 1,586-station bundle with several reloads under
   // software WebGL; it measures 22-33 s locally, at the default 30 s limit.
   test.slow();

@@ -9,6 +9,8 @@ import { PhraseText } from "./PhraseText";
 import { TargetProgressBar } from "./TargetProgressBar";
 
 export interface GameHudProps {
+  /** 「前のターン」 slot, rendered after actions and before inventory. */
+  turnResult?: ReactNode;
   inventory?: ReactNode;
   title: string;
   subtitle: string;
@@ -55,6 +57,7 @@ function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element
 }
 
 export function GameHud({
+  turnResult,
   inventory,
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
@@ -113,6 +116,7 @@ export function GameHud({
           おまかせ: {autoRollEnabled ? "ON" : "OFF"}
         </button>
       </div>
+      {turnResult}
       {inventory}
       <EffectChips models={effects} />
       {!saveMark && <p

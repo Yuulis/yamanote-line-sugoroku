@@ -210,3 +210,30 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - One PR for all of #62; stop after every step; implementer Codex Luna xhigh, Sol low reviews, lead verifies (user 2026-11-10).
 - Old saves may be rejected; product_suburban verify superseded, not edited (user 2026-11-10).
 - Map bubbles with step counts, map kept visible; layout and colour choices per DESIGN.md 2026-11-10 rows (plan approved by user 2026-11-10).
+
+---
+
+## Current Feature: Issue #66: turn result card
+<!-- orchestra:block-id: issue-66-turn-result-card -->
+
+### Context
+
+- Goal: always-visible 前のターン result after every published turn. Desktop/tablet: 2-line card + chips under the dice (48px reserve for #65). Phone: bottom-left pill 「3 → 半蔵門 +1区間」 above the panel; short landscape: same compact row under the dice. Presentation only.
+- Branch: feature/turn-result-card (from develop 4174377)
+- Plan: .claude/docs/plans/turn-result-card-plan.md (Revisions 2-3); prompts: turn-result-card-prompts.md; handoff: turn-result-card-handoff.md
+- Research: .claude/docs/research/feature-turn-result-card-{brief,codebase}.md
+- Dependencies: none new
+- Complexity: MODERATE by scope, executed as 13 paused steps (~1,030-1,530 LOC incl. tests)
+
+### Architecture
+
+- Pure model in src/features/game/turnResultCard.ts; additive TurnMomentDisplay.turnResult, reveal-gated (lotteryPublished ? current : previousLastMove; item chips at resultPublished).
+- +N区間 and 乗換 via movementHistory replay (resume-safe).
+- Phone pill is a fixed sibling of .game-panel positioned from the measured panel top; max-width always clears .map-overview; TurnMomentHost and adjust preview avoid it.
+
+### Decisions
+
+- Phone shows less than desktop: pill = roll, station, +N区間 only; phone HUD 出目 hidden by CSS as a duplicate; other phone trimming deferred to #71 (comment posted) (user 2026-11-12).
+- Roll text has no modifier marks (出目N = effective face); effects shown only as chips; 回送 → 駅 (user 2026-11-12).
+- Turn 0 hidden; pill visible during moments; 10-turn log history out of scope (user 2026-11-12).
+- Pause after every step; Codex Luna xhigh implements, Sol low reviews, lead verifies (user 2026-11-12).

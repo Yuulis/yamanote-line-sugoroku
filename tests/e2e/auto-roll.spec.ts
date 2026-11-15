@@ -94,7 +94,7 @@ async function autoRollStatusChanges(page: import("@playwright/test").Page): Pro
   return page.evaluate(() => (window as Window & { __autoRollStatusChanges?: string[] }).__autoRollStatusChanges ?? []);
 }
 
-test("captures the dice row with auto-roll OFF and ON at desktop, phone, and compact landscape sizes", async ({ page }, testInfo) => {
+test("captures the dice row with auto-roll OFF and ON at desktop, phone, and compact landscape sizes", { tag: "@layout" }, async ({ page }, testInfo) => {
   if (testInfo.project.name !== "desktop-chromium") return;
   if (SCREENSHOT_DIRECTORY) mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
   await page.clock.install();
