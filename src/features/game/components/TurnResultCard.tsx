@@ -3,6 +3,36 @@ import type { TurnResultChip, TurnResultModel } from "../turnResultCard";
 import { ItemIcon } from "./ItemIcon";
 import { LineBadge } from "./LineBadge";
 import { PhraseText } from "./PhraseText";
+import type { TurnResultPillPosition } from "../turnResultPillLayout";
+
+function TurnResultCompactParts({ model }: { model: TurnResultModel }): React.JSX.Element {
+  return <>
+    <span className="visually-hidden">{model.heading}：</span>
+    <span className="turn-result__compact-face">{model.compact.faceText} → </span>
+    <span className="turn-result__compact-station">{model.compact.stationText}</span>
+    {model.compact.segmentsText !== null &&
+      <span className="turn-result__compact-segments"> {model.compact.segmentsText}</span>}
+  </>;
+}
+
+export function TurnResultPill({ model, active, position }: {
+  model: TurnResultModel | null;
+  active: boolean;
+  position: TurnResultPillPosition;
+}): React.JSX.Element {
+  // display:none while inactive (non-phone, turn 0); visibility:hidden keeps the box measurable until a position commits.
+  const style = {
+    ...(active ? {} : { display: "none" }),
+    ...(active && !position.visible ? { visibility: "hidden" } : {}),
+    ...(position.visible ? {
+      "--turn-result-pill-bottom": `${position.bottomPx}px`,
+      "--turn-result-pill-left": `${position.leftPx}px`,
+    } : {}),
+  } as React.CSSProperties;
+  return <div className="turn-result__pill" style={style}>
+    {active && model && <TurnResultCompactParts model={model} />}
+  </div>;
+}
 
 function TurnResultChipView({ chip }: { chip: TurnResultChip }): React.JSX.Element {
   return (
@@ -19,11 +49,7 @@ export function TurnResultCard({ model }: { model: TurnResultModel | null }): Re
   return (
     <>
       {model && <div className="turn-result__compact">
-        <span className="visually-hidden">{model.heading}：</span>
-        <span className="turn-result__compact-face">{model.compact.faceText} → </span>
-        <span className="turn-result__compact-station">{model.compact.stationText}</span>
-        {model.compact.segmentsText !== null &&
-          <span className="turn-result__compact-segments"> {model.compact.segmentsText}</span>}
+        <TurnResultCompactParts model={model} />
       </div>}
       {model && (
         <section className="turn-result" aria-labelledby={headingId}>

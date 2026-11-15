@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata, PreRollItemCommand } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
 import type { PresentationLevel } from "../gameSettings";
@@ -34,7 +34,9 @@ import { TurnLogDrawer } from "./TurnLogDrawer";
 import { useGameShortcuts } from "../useGameShortcuts";
 import { useAutoRoll } from "../useAutoRoll";
 import { PhraseText } from "./PhraseText";
-import { TurnResultCard } from "./TurnResultCard";
+import { TurnResultCard, TurnResultPill } from "./TurnResultCard";
+import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
+import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -74,6 +76,26 @@ function goalGuidanceShortText(stationName: string): string {
 
 function showAllLineGroups(): void {
   setVisibleLineGroupIds(null);
+}
+
+function phoneMediaQuery(): MediaQueryList | null {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia(PHONE_MEDIA_QUERY)
+    : null;
+}
+
+function subscribeToPhoneLayout(onChange: () => void): () => void {
+  const query = phoneMediaQuery();
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+}
+
+function getPhoneLayoutSnapshot(): boolean {
+  return phoneMediaQuery()?.matches ?? false;
+}
+
+function usePhoneLayout(): boolean {
+  return useSyncExternalStore(subscribeToPhoneLayout, getPhoneLayoutSnapshot, () => false);
 }
 
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
@@ -138,6 +160,9 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     return ids;
   }, [network, turnDisplay.progress.stationId, ride.direction, ride.serviceId]);
   const panelRef = useRef<HTMLElement>(null);
+  const isPhone = usePhoneLayout();
+  const pillActive = isPhone && turnDisplay.turnResult !== null;
+  const pillPosition = useTurnResultPillLayout(panelRef, pillActive);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const toggleGroup = useCallback((groupId: string, checked: boolean) => {
     setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, [groupId], checked));
@@ -276,6 +301,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   }, []);
 
   return (
+    <>
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <GameHud
         turnResult={<TurnResultCard model={turnDisplay.turnResult} />}
@@ -402,5 +428,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
       />}
     </main>
+    <TurnResultPill model={turnDisplay.turnResult} active={pillActive} position={pillPosition} />
+    </>
   );
 });

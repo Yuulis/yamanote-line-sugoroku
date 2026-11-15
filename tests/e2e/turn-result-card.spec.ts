@@ -2,14 +2,31 @@ import { createPresentationResolver } from "../../src/features/game/presentation
 import { itemLastMove } from "../../src/features/game/itemSession";
 import { deriveTurnResult, replayTurnResultHistory } from "../../src/features/game/turnResultCard";
 import { serializeGame, targetSegmentIds } from "../../src/features/game/engine";
+import { CURRENT_POSITION_RADIUS, CURRENT_POSITION_STROKE_WIDTH } from "../../src/features/map/mapConfig";
+import { TURN_RESULT_PILL_GAP_PX } from "../../src/features/game/turnResultPillLayout";
 import { expect, test } from "./fixtures";
 import type { Page, Locator } from "@playwright/test";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { itemScenario } from "./fixtures/itemScenarios";
-import { diceReady, gamePanel, hudCompactRoll, panelStat, readSave, writeSaveText } from "./support/app";
+import {
+  diceReady,
+  gamePanel,
+  hudCompactRoll,
+  panelStat,
+  readMap,
+  readSave,
+  rollOnce,
+  startNewGame,
+  writeSaveText,
+  type SavedGame,
+} from "./support/app";
 
 const MAX_SHORT_LANDSCAPE_ROW_HEIGHT_PX = 22;
 const ELLIPSIS_PROBE_WIDTH_PX = 160;
+/** 84px overview/toast column + 8px gutter the phone pill must leave free. */
+const PILL_RIGHT_CLEARANCE_PX = 92;
+const MIN_TOUCH_TARGET_PX = 44;
+const PHONE_STATS_HEIGHT_PX = 104;
 const LONG_STATION_NAME = "羽田空港第1・第2ターミナル".repeat(3);
 
 type PreparedR1 = {
@@ -62,6 +79,28 @@ async function prepareR1(page: Page, railwayBundle: RailwayBundle): Promise<Prep
   const diagnostic: string = `R1 fixture predicates failed: ${JSON.stringify({ predicates, state: restoredState }, null, 2)}`;
   if (!expected) throw new Error(diagnostic);
   return { panel, record, expected, predicates, diagnostic };
+}
+
+function expectedSavedResult(saved: SavedGame, railwayBundle: RailwayBundle) {
+  const record = saved.movementHistory.at(-1);
+  if (!record) throw new Error("Saved game has no completed turn result");
+  const move = itemLastMove(record, railwayBundle.network);
+  if (!move) throw new Error("Saved turn did not resolve to a move");
+  const presentation = createPresentationResolver(railwayBundle.network,
+    railwayBundle.data.manifest.ok ? railwayBundle.data.manifest.value.uiPresentation : undefined);
+  const model = deriveTurnResult({
+    sessionId: 1,
+    turn: record.turn,
+    move,
+    records: saved.movementHistory,
+    targetSegmentIds: targetSegmentIds(saved.config, railwayBundle.network),
+    initialServiceId: saved.config.targetServiceId,
+    itemsPublished: true,
+    network: railwayBundle.network,
+    presentation,
+  });
+  if (!model) throw new Error("Saved turn did not produce a published result model");
+  return model;
 }
 
 test.use({ dataset: "fixture" });
@@ -169,7 +208,9 @@ test("short landscape shows one result row", { tag: "@layout" }, async ({ page, 
     expect([visibleText, await row.textContent()]).toEqual([expected.compact.text, expected.compact.accessibleName]);
     expect(await row.innerText()).not.toMatch(/抽選|乗車|乗換/);
     await expect(panel.locator(".turn-result")).toBeHidden();
-    await expect(page.locator(".turn-result__pill")).toHaveCount(0);
+    // Step 8 keeps a persistent pill shell while the panel is mounted; short landscape keeps it hidden and empty.
+    await expect(page.locator(".turn-result__pill")).toBeHidden();
+    await expect(page.locator(".turn-result__pill")).toBeEmpty();
     await expect(hudCompactRoll(page)).toBeVisible();
     await expect(diceReady(page)).toBeVisible();
     const inventory = panel.locator(".item-inventory");
@@ -253,4 +294,154 @@ test("desktop card hidden at turn 0", async ({ page }) => {
   await expect(panelStat(page, "ターン数")).toHaveText("0");
   await expect(panel.locator(".turn-result")).toHaveCount(0);
   await expect(panel.locator(".turn-result__reserve")).toHaveCount(1);
+});
+
+test("phone pill follows measured panel", { tag: "@layout" }, async ({ page, railwayBundle }, testInfo) => {
+  const pill = page.locator(".turn-result__pill");
+  const viewports = [
+    { width: 320, height: 568 }, { width: 390, height: 844 },
+    { width: 320, height: 480 }, { width: 568, height: 320 },
+  ];
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport);
+    const { panel, expected } = await prepareR1(page, railwayBundle);
+    await expect(pill).toBeVisible();
+    await expect(page.locator(".map-overview")).toHaveCount(1);
+    await expect(page.locator(".maplibregl-ctrl-top-right .maplibregl-ctrl-group")).toHaveCount(1);
+    await expect(page.locator(".maplibregl-ctrl-top-left > .maplibregl-ctrl-attrib.maplibregl-compact")).toHaveCount(1);
+    const geometry = await page.evaluate(() => {
+      const rect = (selector: string) => {
+        const element = document.querySelector<HTMLElement>(selector);
+        if (!element) throw new Error(`Missing layout element: ${selector}`);
+        const { top, left, right, bottom, width, height } = element.getBoundingClientRect();
+        return { top, left, right, bottom, width, height };
+      };
+      const pill = rect(".turn-result__pill");
+      const panel = rect(".game-panel");
+      const overview = rect(".map-overview");
+      const zoom = rect(".maplibregl-ctrl-top-right .maplibregl-ctrl-group");
+      const attribution = rect(".maplibregl-ctrl-top-left > .maplibregl-ctrl-attrib.maplibregl-compact");
+      const overlaps = (a: typeof pill, b: typeof pill): boolean =>
+        a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+      const station = document.querySelector<HTMLElement>(".turn-result__pill .turn-result__compact-station");
+      if (!station) throw new Error("Pill station segment is missing");
+      const stationRange = document.createRange();
+      stationRange.selectNodeContents(station);
+      const segments = document.querySelector<HTMLElement>(".turn-result__pill .turn-result__compact-segments");
+      const stationLineRects = stationRange.getClientRects();
+      const stationEnd = stationRange.getBoundingClientRect().right;
+      return {
+        viewportWidth: innerWidth,
+        panel,
+        pill,
+        overview,
+        zoom,
+        attribution,
+        overlaps: {
+          overview: overlaps(pill, overview),
+          zoom: overlaps(pill, zoom),
+          attribution: overlaps(pill, attribution),
+        },
+        stationLineCount: stationLineRects.length,
+        segmentsDelta: segments ? segments.getBoundingClientRect().left - stationEnd : null,
+        renderedParts: ["face", "station", "segments"].map((part) =>
+          document.querySelector<HTMLElement>(`.turn-result__pill .turn-result__compact-${part}`)?.textContent ?? "").join(""),
+      };
+    });
+    expect(Math.abs(geometry.pill.bottom - (geometry.panel.top - TURN_RESULT_PILL_GAP_PX))).toBeLessThanOrEqual(1);
+    expect(Math.abs(geometry.pill.left - geometry.panel.left)).toBeLessThanOrEqual(1);
+    expect(geometry.pill.right).toBeLessThanOrEqual(geometry.viewportWidth - PILL_RIGHT_CLEARANCE_PX);
+    expect(geometry.pill.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET_PX);
+    expect(geometry.overlaps).toEqual({ overview: false, zoom: false, attribution: false });
+    expect(geometry.stationLineCount).toBe(1);
+    expect(expected.compact.segmentsText).not.toBeNull();
+    expect(geometry.segmentsDelta).not.toBeNull();
+    expect(Math.abs(geometry.segmentsDelta!)).toBeLessThanOrEqual(1);
+    expect(geometry.renderedParts).toBe(expected.compact.text);
+    testInfo.annotations.push({ type: "pill-geometry", description: `${viewport.width}x${viewport.height}: ${JSON.stringify(geometry)}` });
+
+    if ((viewport.width === 320 && viewport.height === 480) || (viewport.width === 568 && viewport.height === 320)) {
+      const marker = await readMap(page);
+      const center = marker?.headingMarker?.projectedCenter ?? null;
+      const markerRadius = CURRENT_POSITION_RADIUS + CURRENT_POSITION_STROKE_WIDTH / 2;
+      const markerRect = center ? {
+        left: center.x - markerRadius, right: center.x + markerRadius,
+        top: center.y - markerRadius, bottom: center.y + markerRadius,
+      } : null;
+      const comparison = { markerRect, pill: geometry.pill,
+        pillToMarkerGap: markerRect ? geometry.pill.top - markerRect.bottom : null };
+      console.info(`phone pill marker measurement ${viewport.width}x${viewport.height}`, comparison);
+      testInfo.annotations.push({ type: "marker-pill-geometry", description: JSON.stringify(comparison) });
+    }
+
+    if (viewport.width === 320 && viewport.height === 480) {
+      await panel.evaluate((element) => { element.style.height = "160px"; });
+      await expect.poll(async () => {
+        const panelRect = await panel.boundingBox();
+        const pillRect = await pill.boundingBox();
+        return panelRect && pillRect ? Math.abs(pillRect.y + pillRect.height - (panelRect.y - TURN_RESULT_PILL_GAP_PX)) : Number.POSITIVE_INFINITY;
+      }).toBeLessThanOrEqual(1);
+      await panel.evaluate((element) => { element.style.removeProperty("height"); });
+      await expect.poll(async () => {
+        const panelRect = await panel.boundingBox();
+        const pillRect = await pill.boundingBox();
+        return panelRect && pillRect ? Math.abs(pillRect.y + pillRect.height - (panelRect.y - TURN_RESULT_PILL_GAP_PX)) : Number.POSITIVE_INFINITY;
+      }).toBeLessThanOrEqual(1);
+
+      await page.evaluate(() => {
+        const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
+        storage.originalSetItem = storage.setItem;
+        storage.setItem = function (key: string, value: string): void {
+          if (key.includes("save")) throw new Error("quota");
+          storage.originalSetItem?.call(this, key, value);
+        };
+      });
+      await diceReady(page).click();
+      await expect(page.locator(".toast-host__toast").first()).toBeVisible();
+      const toastMeasurement = await page.evaluate(() => {
+        const toasts = [...document.querySelectorAll<HTMLElement>(".toast-host__toast")];
+        const pillTop = document.querySelector<HTMLElement>(".turn-result__pill")!.getBoundingClientRect().top;
+        return { count: toasts.length, maxBottom: Math.max(...toasts.map((toast) => toast.getBoundingClientRect().bottom)), pillTop };
+      });
+      console.info("320x480 toast stack vs phone pill", toastMeasurement);
+      testInfo.annotations.push({ type: "toast-pill-geometry", description: JSON.stringify(toastMeasurement) });
+    }
+  }
+});
+
+test("phone pill appears after first publication", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  await page.setViewportSize({ width: 320, height: 568 });
+  await page.goto("/");
+  await startNewGame(page);
+  const pill = page.locator(".turn-result__pill");
+  await expect(pill).toHaveCount(1);
+  await expect(pill).toBeHidden();
+  await rollOnce(page);
+  const saved = await readSave(page);
+  if (!saved) throw new Error("R0 save was unavailable after the first roll");
+  const expected = expectedSavedResult(saved, railwayBundle);
+  await expect(pill).toBeVisible();
+  const parts = await pill.evaluate((element) =>
+    ["face", "station", "segments"].map((part) =>
+      element.querySelector<HTMLElement>(`.turn-result__compact-${part}`)?.textContent ?? "").join(""));
+  expect(parts).toBe(expected.compact.text);
+  expect(await pill.getAttribute("role")).toBeNull();
+  expect(await pill.getAttribute("tabindex")).toBeNull();
+});
+
+test("phone HUD omits roll stat", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 1280, height: 800 }]) {
+    await page.setViewportSize(viewport);
+    const { panel } = await prepareR1(page, railwayBundle);
+    const rollLabel = panel.locator('.game-panel__stats dt:has(+ dd > [data-stat="roll-compact"])');
+    if (viewport.width === 320) {
+      await expect(rollLabel).toBeHidden();
+      await expect(hudCompactRoll(page)).toBeHidden();
+      const statsHeight = await panel.locator(".game-panel__stats").evaluate((element) => element.getBoundingClientRect().height);
+      expect(Math.abs(statsHeight - PHONE_STATS_HEIGHT_PX)).toBeLessThanOrEqual(0.5);
+    } else {
+      await expect(rollLabel).toBeVisible();
+      await expect(hudCompactRoll(page)).toBeVisible();
+    }
+  }
 });
