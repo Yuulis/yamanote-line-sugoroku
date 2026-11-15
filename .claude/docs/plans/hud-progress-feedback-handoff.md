@@ -1,17 +1,16 @@
 # HUD Progress Feedback (issue #65) — Handoff
 
 Resume from here. Plan: `.claude/docs/plans/hud-progress-feedback-plan.md` (Codex validation NEEDS_REVISION, five
-revisions applied by the lead, 2026-11-15; **awaiting user approval**). Brief:
+revisions applied by the lead; **approved by the user 2026-11-15**, defaults unchanged). Brief:
 `.claude/docs/research/feature-hud-progress-feedback-brief.md` (validate_doc feature-brief ok). Scan:
 `.claude/docs/research/feature-hud-progress-feedback-codebase.md`. Step prompts:
 `.claude/docs/plans/hud-progress-feedback-impl-prompts.md`. Codex consults (Sol, low, read-only): scope
 `.claude/logs/codex/20261115T110512Z-hud65-scope.md` (COMPLEX), design `.claude/logs/codex/20261115T111604Z-hud65-design.md`,
 validation `.claude/logs/codex/20261115T112140Z-hud65-validate.md` (NEEDS_REVISION → applied, no second round).
 
-- Branch: `feature/hud-progress-feedback` — **to be created from develop** (`05cace4` at planning time); no upstream
-  yet. Flow: feature → PR → develop → PR → master.
-- Pacing: to be confirmed by the user at approval (#66 paused after every step).
-- Implementer (proposed): Codex Luna xhigh (`--model "${CODEX_MODEL_LUNA:-gpt-6-luna}" --config
+- Branch: `feature/hud-progress-feedback` — created from develop `05cace4` on 2026-11-15; planning docs `fd49772`. Flow: feature → PR → develop → PR → master.
+- Pacing: **pause after every step** (user 2026-11-15): verify → commit → push → CI → handoff → report, then wait.
+- Implementer (user-confirmed): Codex Luna xhigh (`--model "${CODEX_MODEL_LUNA:-gpt-6-luna}" --config
   model_reasoning_effort=xhigh --timeout 2400`); reviews Sol low; lead verifies, commits, pushes, checks CI after every push.
 - Local E2E: targeted titles only, `--workers=2`; full matrix in CI (feature push = desktop-chromium; PR = full matrix;
   phone runs `@layout` only).
@@ -29,7 +28,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 | Step | Unit | Status | Commit | Evidence |
 |---|---|---|---|---|
-| 1 | Proximity model | pending | — | — |
+| 1 | Proximity model | done | `ff204ca` | unit 4/4, full vitest 2166 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s1-review.json`) |
 | 2 | Collection model | pending | — | — |
 | 3 | Gated A+C publication | pending | — | — |
 | 4 | Crossings + toast builder | pending | — | — |
@@ -46,8 +45,6 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. Present the plan and open items to the user; record approval (and any changed defaults) in the plan and here.
-2. `git switch develop && git pull && git switch -c feature/hud-progress-feedback`.
-3. Step 1: build the prompt from the impl-prompts doc (Common body + Step 1 block, `<BASE_SHA>` = branch HEAD), run
-   Luna, Sol-low review, lead verification commands, commit, update this table.
-4. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (not yet drafted).
+1. Step 2 (Collection model): build the prompt from the impl-prompts doc (Common body + Step 2 block, `<BASE_SHA>` =
+   branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
+2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
