@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata, PreRollItemCommand } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
 import type { PresentationLevel } from "../gameSettings";
@@ -30,10 +30,13 @@ import { ItemUseDialog } from "./ItemUseDialog";
 import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
 import { DiscardChoice } from "./DiscardChoice";
-import { TurnLogDrawer } from "./TurnLogDrawer";
+import { LOG_REVEAL_PADDING_PX, TurnLogDrawer } from "./TurnLogDrawer";
 import { useGameShortcuts } from "../useGameShortcuts";
 import { useAutoRoll } from "../useAutoRoll";
 import { PhraseText } from "./PhraseText";
+import { TurnResultCard, TurnResultPill } from "./TurnResultCard";
+import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
+import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -73,6 +76,26 @@ function goalGuidanceShortText(stationName: string): string {
 
 function showAllLineGroups(): void {
   setVisibleLineGroupIds(null);
+}
+
+function phoneMediaQuery(): MediaQueryList | null {
+  return typeof window !== "undefined" && typeof window.matchMedia === "function"
+    ? window.matchMedia(PHONE_MEDIA_QUERY)
+    : null;
+}
+
+function subscribeToPhoneLayout(onChange: () => void): () => void {
+  const query = phoneMediaQuery();
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+}
+
+function getPhoneLayoutSnapshot(): boolean {
+  return phoneMediaQuery()?.matches ?? false;
+}
+
+function usePhoneLayout(): boolean {
+  return useSyncExternalStore(subscribeToPhoneLayout, getPhoneLayoutSnapshot, () => false);
 }
 
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
@@ -137,6 +160,12 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     return ids;
   }, [network, turnDisplay.progress.stationId, ride.direction, ride.serviceId]);
   const panelRef = useRef<HTMLElement>(null);
+  const logRegionId = useId();
+  const logOpenerRef = useRef<HTMLElement | null>(null);
+  const [logRevealRequest, setLogRevealRequest] = useState(0);
+  const isPhone = usePhoneLayout();
+  const pillActive = isPhone && turnDisplay.turnResult !== null;
+  const pillPosition = useTurnResultPillLayout(panelRef, pillActive);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const toggleGroup = useCallback((groupId: string, checked: boolean) => {
     setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, [groupId], checked));
@@ -154,6 +183,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const itemDialogOpenerRef = useRef<HTMLElement | null>(null);
   const setOpenItemCard = useCallback((id: string | null) => {
+    if (id) logOpenerRef.current = null;
     setOpenCardId(id);
     setActiveSurface(id ? "card" : (current => current === "card" ? null : current));
   }, []);
@@ -161,7 +191,13 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     if (expanded) { setOpenCardId(null); setActiveSurface("log"); }
     else setActiveSurface((current) => current === "log" ? null : current);
   }, []);
+  const activateLogPill = useCallback((opener: HTMLButtonElement) => {
+    logOpenerRef.current = opener;
+    setLogExpanded(true);
+    setLogRevealRequest((request) => request + 1);
+  }, [setLogExpanded]);
   const setMenuExpanded = useCallback((expanded: boolean) => {
+    if (expanded) logOpenerRef.current = null;
     if (expanded) { setOpenCardId(null); setActiveSurface("menu"); }
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
@@ -269,14 +305,27 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   }, [presentedDecision, turnDisplay.canRoll]);
 
   useLayoutEffect(() => {
+    if (logRevealRequest === 0) return;
+    const panel = panelRef.current;
+    const region = document.getElementById(logRegionId);
+    if (!panel || !region || region.hidden) return;
+    const panelRect = panel.getBoundingClientRect();
+    const regionRect = region.getBoundingClientRect();
+    if (regionRect.top < panelRect.top || regionRect.top >= panelRect.bottom) panel.scrollTop += regionRect.top - panelRect.top - LOG_REVEAL_PADDING_PX;
+    region.focus({ preventScroll: true });
+  }, [logRevealRequest, logRegionId]);
+
+  useLayoutEffect(() => {
     if (!panelRef.current || !headingRef.current) return;
     panelRef.current.scrollTop = 0;
     if (!presentedDecision) headingRef.current.focus({ preventScroll: true });
   }, []);
 
   return (
+    <>
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
       <GameHud
+        turnResult={<TurnResultCard model={turnDisplay.turnResult} />}
         inventory={<>
           {itemView && <InventoryPanel
             view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem}
@@ -324,6 +373,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         <TurnLogDrawer
           expanded={activeSurface === "log"}
           onExpandedChange={setLogExpanded}
+          logRegionId={logRegionId}
+          logOpenerRef={logOpenerRef}
           arrival={itemView ? turnDisplay.arrivalText : null}
           roll={turnDisplay.rollText}
           lottery={<p className="game-panel__lottery"><span>抽選: </span><PhraseText text={turnDisplay.lotteryDisplayText} /></p>}
@@ -400,5 +451,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
       />}
     </main>
+    <TurnResultPill model={turnDisplay.turnResult} active={pillActive} position={pillPosition}
+      logRegionId={logRegionId} expanded={activeSurface === "log"} onActivate={activateLogPill} />
+    </>
   );
 });

@@ -631,6 +631,126 @@ button[aria-disabled="true"] {
   box-sizing: border-box;
 }
 
+.turn-result {
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 4px 0 0;
+  padding: 4px 6px;
+  border: 1px solid rgb(0 0 0 / 14%);
+  border-radius: 6px;
+  background: rgb(255 255 255 / 88%);
+}
+
+.turn-result__pill {
+  display: none;
+}
+
+/* Heading and 出目 → 駅 share line 1; on a narrow card the move wraps as a whole
+   and each part breaks only at its PhraseText hints, keeping station names intact. */
+.turn-result__lead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.turn-result__heading {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.turn-result__move {
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.turn-result__ride {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.turn-result__ride > .line-badge {
+  flex: none;
+}
+
+.turn-result__ride-text {
+  min-width: 0;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.turn-result__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
+.turn-result__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  max-width: 100%;
+  padding: 1px 5px;
+  border: 1px solid rgb(0 0 0 / 12%);
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.turn-result__chip-label {
+  min-width: 0;
+}
+
+.turn-result__reserve {
+  /* Named #65 progress-feedback slot. It reserves 0px for now: the populated
+     1280x800 HUD has no room for a fixed reserve next to the card, so #65
+     decides its own space later (user decision 2026-11-14). */
+  --turn-result-reserve-height: 0px;
+  box-sizing: border-box;
+  height: var(--turn-result-reserve-height);
+  min-height: var(--turn-result-reserve-height);
+}
+
+.turn-result__compact {
+  --turn-result-compact-line-height: 18px;
+  display: none;
+  min-width: 0;
+  margin: 2px 0;
+  font-size: 12px;
+  line-height: var(--turn-result-compact-line-height);
+  white-space: nowrap;
+}
+
+/* Flex items drop their edge spaces, so `pre` keeps the " → " and " +N区間" separators visible. */
+.turn-result__compact-face,
+.turn-result__compact-segments {
+  flex: none;
+  white-space: pre;
+}
+
+/* Shrinks (never grows) so +N区間 stays next to the station name. */
+.turn-result__compact-station {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .visually-hidden {
   position: absolute !important;
   width: 1px;
@@ -2109,6 +2229,11 @@ button[aria-disabled="true"] {
 /* Phones: full-width bottom strip (the attribution moves to the top-left,
    see RailwayMap), tighter type, 44 px map buttons. */
 @media (max-width: 600px) {
+  .turn-result,
+  .turn-result__reserve {
+    display: none;
+  }
+
   .maplibregl-ctrl-group button {
     width: 44px;
     height: 44px;
@@ -2210,6 +2335,11 @@ button[aria-disabled="true"] {
     align-items: flex-start;
   }
 
+  .game-panel__stats dt:has(+ dd > [data-stat="roll-compact"]),
+  .game-panel__stats dd:has(> [data-stat="roll-compact"]) {
+    display: none;
+  }
+
   .game-panel__stats .hud-stat__value,
   .game-panel__stats .target-progress--guidance {
     font-size: 15px;
@@ -2307,6 +2437,37 @@ button[aria-disabled="true"] {
   .game-panel .effect-chip { flex: 0 0 auto; }
   .game-panel__save { grid-area: save; margin: 0 0 4px; }
   .game-panel__disclosures { grid-area: disclosures; }
+
+  .turn-result__pill {
+    /* Matches the phone toast's `right: calc(84px + …)` column and .map-overview,
+       leaving its controls free with an additional 8px gutter. */
+    --turn-result-pill-overview-inset: 84px;
+    --turn-result-pill-gutter: 8px;
+    --turn-result-pill-min-height: 44px;
+    --turn-result-pill-right-inset: calc(var(--turn-result-pill-overview-inset) + var(--turn-result-pill-gutter) + env(safe-area-inset-right, 0px));
+    position: fixed;
+    z-index: var(--layer-panel);
+    left: var(--turn-result-pill-left, 0px);
+    bottom: var(--turn-result-pill-bottom, 0px);
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: calc(100vw - var(--turn-result-pill-left, 0px) - var(--turn-result-pill-right-inset));
+    min-height: var(--turn-result-pill-min-height);
+    padding: 6px 10px;
+    border: 1px solid rgb(0 0 0 / 14%);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 94%);
+    box-shadow: 0 1px 6px rgb(0 0 0 / 30%);
+    font: inherit;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: left;
+    /* The face/station/segments parts reuse the global .turn-result__compact-* rules:
+       `pre` separators, and only the station segment ellipsizes. */
+    white-space: nowrap;
+  }
 
   .game-panel__legend {
     margin-top: 4px;
@@ -2465,6 +2626,16 @@ button[aria-disabled="true"] {
 /* Short landscape screens and desktop zoom: keep the result and every action
    in view while the longer route and legend details remain scrollable. */
 @media (min-width: 601px) and (max-height: 500px) {
+  .turn-result,
+  .turn-result__reserve {
+    display: none;
+  }
+
+  .turn-result__compact {
+    display: flex;
+    grid-area: result;
+  }
+
   /* Keep the numeric value whole; the guidance gives way. The full sentence stays exposed to assistive tech. */
   .game-panel__stats dd:has(.target-progress--guidance) .hud-stat__value {
     flex-shrink: 0;
@@ -2490,6 +2661,7 @@ button[aria-disabled="true"] {
     grid-template-areas:
       "stats stats"
       "actions actions"
+      "result result"
       "inventory inventory"
       "staged staged"
       "chips chips"
@@ -2498,7 +2670,7 @@ button[aria-disabled="true"] {
       "lottery lottery"
       "legend legend"
       "shortcuts shortcuts";
-    grid-template-rows: repeat(10, max-content);
+    grid-template-rows: repeat(11, max-content);
     align-content: start;
     align-items: start;
     --hud-column-gap: 12px;

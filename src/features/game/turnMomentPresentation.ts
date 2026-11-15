@@ -4,7 +4,7 @@ import { isItemSave, platformPosition, targetSegmentIds } from "./engine";
 import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { segmentFlashFeatureIds, type TurnRevealStageKey, type RollAttempt } from "./animation/turnMoments";
-import type { GameSession, LastMove } from "./gameSession";
+import { lastMoveOf, type GameSession, type LastMove } from "./gameSession";
 import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel } from "./hudPresentation";
 import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, stationName, turnMomentAnnouncement } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
@@ -12,6 +12,7 @@ import type { ItemSessionView } from "./itemSession";
 import { targetSegmentsMilestoneToast, turnToasts, type ToastInput } from "./toastQueue";
 import { maskTurnMomentItemView } from "./turnMomentItems";
 import { adjustmentLandings, displayedHeading, firstTargetCompletionTurn, type AdjustmentLanding, type GoalGuidance } from "./mapGuidance";
+import { deriveTurnResult, type TurnResultModel } from "./turnResultCard";
 
 export type TurnPublicationPhase = "pre-move" | "moving" | TurnRevealStageKey | "published";
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
@@ -72,6 +73,8 @@ export interface TurnMomentDisplay {
   itemUseLocked: boolean;
   /** Map flash of the segments this arrival newly completed; non-null during `arrival` or `segment-flash`. */
   segmentFlash: SegmentFlashRequest | null;
+  /** Publication-gated 「前のターン」 card model; components read only this. */
+  turnResult: TurnResultModel | null;
 }
 
 const PRE_MOVE_STAGES = new Set<RollAttempt["stage"]>(["waiting-roll", "tumble", "awaiting-adjust", "waiting-record", "stamps"]);
@@ -159,6 +162,50 @@ function visibleCandidates(move: LastMove | null, presentation: PresentationReso
   return presentation.candidateRows(move.landing.serviceCandidates);
 }
 
+function visibleTurnResult(
+  input: TurnMomentDisplayInput,
+  lotteryPublished: boolean,
+  resultPublished: boolean,
+  targetIds: readonly string[],
+): TurnResultModel | null {
+  const { session, network, presentation, attempt } = input;
+  let move: LastMove | null;
+  let turn: number;
+  let itemsPublished = true;
+
+  if (attempt !== null || isItemSave(session.game)) {
+    const cardIsCurrent = lotteryPublished;
+    move = cardIsCurrent ? session.lastMove : previousLastMove(input);
+    turn = move?.itemRecord?.turn ?? (cardIsCurrent ? session.game.turn : attempt?.origin.turn ?? session.game.turn);
+    itemsPublished = cardIsCurrent ? resultPublished : true;
+  } else {
+    const history = session.game.movementHistory;
+    const classicUnpublished = session.phase === "animating" || !lotteryPublished;
+    if (classicUnpublished) {
+      const previousRecord = history.at(-2);
+      if (!previousRecord) return null;
+      move = lastMoveOf({ ...session.game, movementHistory: history.slice(0, -1) }, network);
+      turn = previousRecord.turn;
+    } else {
+      move = session.lastMove;
+      turn = history.at(-1)?.turn ?? session.game.turn;
+    }
+  }
+
+  return deriveTurnResult({
+    sessionId: session.sessionId,
+    turn,
+    move,
+    records: session.game.movementHistory,
+    pending: isItemSave(session.game) ? session.game.pending ?? null : null,
+    targetSegmentIds: targetIds,
+    initialServiceId: session.game.config.targetServiceId,
+    itemsPublished,
+    network,
+    presentation,
+  });
+}
+
 export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMomentDisplay {
   const current = input.session.lastMove;
   const phase = publicationPhase(input);
@@ -226,6 +273,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const active = !input.restoredOrOmitted && (preMoveActive || input.session.phase === "animating" || revealActive);
   // Ride results publish after lottery settle; item results have their own later pickup boundary when present.
   const resultPublished = isPublished;
+  const turnResult = visibleTurnResult(input, lotteryPublished, resultPublished, targetIds);
   const originView = attempt?.origin.itemView ?? liveView;
   const observedRecord = input.session.lastMove?.itemRecord;
   const record = observedRecord && (!attempt || observedRecord.turn === attempt.recordTurn) ? observedRecord : null;
@@ -318,6 +366,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     canSkip,
     itemUseLocked: active,
     segmentFlash,
+    turnResult,
   };
 }
 
