@@ -613,6 +613,10 @@ button[aria-disabled="true"] {
 /* Game control panel: bottom-left, compact so the map stays visible. */
 .game-panel {
   --hud-row-height: 24px;
+  --hud-progress-block-gap: 4px;
+  --game-panel-save-mark-size: 16px;
+  --game-panel-inset-top: 10px;
+  --game-panel-inset-right: 12px;
   position: fixed;
   z-index: var(--layer-panel);
   left: calc(12px + env(safe-area-inset-left, 0px));
@@ -773,12 +777,12 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  height: 24px;
-  min-width: 0;
+  position: absolute;
+  z-index: 1;
+  top: var(--game-panel-inset-top);
+  right: var(--game-panel-inset-right);
+  width: var(--game-panel-save-mark-size);
+  height: var(--game-panel-save-mark-size);
 }
 
 .game-panel__stats {
@@ -805,6 +809,14 @@ button[aria-disabled="true"] {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+}
+
+/* Desktop only: phone and short landscape already keep the save mark in its own padded cell. */
+@media (min-width: 601px) and (min-height: 501px) {
+  .game-panel__stats dd:has([data-stat="station"]) {
+    box-sizing: border-box;
+    padding-right: var(--game-panel-save-mark-size);
+  }
 }
 
 .hud-stat__value {
@@ -837,6 +849,7 @@ button[aria-disabled="true"] {
   box-sizing: border-box;
   width: 100%;
   height: var(--hud-progress-height);
+  margin: var(--hud-progress-block-gap) 0;
   min-width: 0;
   overflow: hidden;
 }
@@ -987,6 +1000,13 @@ button[aria-disabled="true"] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.game-panel__subtitle.visually-hidden {
+  display: block;
+  height: 1px;
+  margin: -1px;
+  line-height: 1px;
 }
 
 .game-panel__lottery {
@@ -1249,8 +1269,13 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__save--inline {
-  flex: 0 0 16px;
+  position: absolute;
+  top: 0;
+  right: 0;
+  flex: 0 0 var(--game-panel-save-mark-size);
   justify-content: center;
+  width: var(--game-panel-save-mark-size);
+  height: var(--game-panel-save-mark-size);
   margin: 0;
   font-size: 12px;
 }
@@ -2341,6 +2366,8 @@ button[aria-disabled="true"] {
     height: 45%;
     max-height: 45%;
     padding: 8px 10px;
+    --game-panel-inset-top: 8px;
+    --game-panel-inset-right: 10px;
     font-size: 13px;
   }
 
@@ -2359,8 +2386,8 @@ button[aria-disabled="true"] {
   .game-panel__header {
     position: absolute;
     z-index: 1;
-    top: 8px;
-    right: 8px;
+    top: var(--game-panel-inset-top);
+    right: var(--game-panel-inset-right);
     width: 24px;
     height: 0;
     justify-content: flex-end;
@@ -2370,10 +2397,6 @@ button[aria-disabled="true"] {
     position: absolute;
     top: 0;
     right: 0;
-  }
-
-  .game-panel__subtitle {
-    display: none;
   }
 
   .game-panel__stats {
@@ -2752,6 +2775,8 @@ button[aria-disabled="true"] {
     height: min(75vh, calc(100% - 16px));
     max-height: min(75vh, calc(100% - 16px));
     padding: 8px 10px;
+    --game-panel-inset-top: 8px;
+    --game-panel-inset-right: 10px;
   }
 
   .game-panel__title {
@@ -2769,8 +2794,8 @@ button[aria-disabled="true"] {
   .game-panel__header {
     position: absolute;
     z-index: 1;
-    top: 6px;
-    right: 8px;
+    top: var(--game-panel-inset-top);
+    right: var(--game-panel-inset-right);
     width: 24px;
     height: 0;
     justify-content: flex-end;
@@ -2780,10 +2805,6 @@ button[aria-disabled="true"] {
     position: absolute;
     top: 0;
     right: 0;
-  }
-
-  .game-panel__subtitle {
-    display: none;
   }
 
   .game-panel__stats {

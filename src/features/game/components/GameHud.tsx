@@ -77,12 +77,12 @@ export function GameHud({
   return (
     <>
       <div className="game-panel__header">
-        <h1 ref={headingRef} className="game-panel__title" tabIndex={-1}>{title}</h1>
+        <h1 ref={headingRef} className="game-panel__title visually-hidden" tabIndex={-1}>{title}</h1>
         {saveMark && <p className="game-panel__save game-panel__save--inline" title={`セーブ: ${saveStatusMessage}`}>
           <SaveIcon /><span className="visually-hidden">セーブ: {saveStatusMessage}</span>
         </p>}
       </div>
-      <p className="game-panel__subtitle">{subtitle}</p>
+      <p className="game-panel__subtitle visually-hidden">{subtitle}</p>
       <dl className="game-panel__stats">
         <dt>現在駅</dt>
         <dd><span className="hud-stat__value" data-stat="station" title={station}>{station}</span></dd>
