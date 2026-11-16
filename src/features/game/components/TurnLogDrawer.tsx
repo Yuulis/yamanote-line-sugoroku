@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { modalDialogOpen } from "./GameMenu";
 
 export interface TurnLogDrawerProps {
@@ -13,6 +13,7 @@ export interface TurnLogDrawerProps {
   routeSummary: React.ReactNode;
   candidates: React.ReactNode;
   effectTexts: readonly string[];
+  progress?: ReactNode;
 }
 
 const LOG_ICON_SIZE = 16;
@@ -46,6 +47,7 @@ export function TurnLogDrawer({
   routeSummary,
   candidates,
   effectTexts,
+  progress,
 }: TurnLogDrawerProps): React.JSX.Element {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -99,6 +101,7 @@ export function TurnLogDrawer({
         </svg>
       </button>
       <section id={logRegionId} className="game-panel__log" aria-label="ターンのログ" tabIndex={-1} hidden={!expanded}>
+        {progress}
         <div className="game-panel__turn-facts">
           <h2>このターン</h2>
           <dl>

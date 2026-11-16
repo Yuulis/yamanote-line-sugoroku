@@ -100,6 +100,13 @@ export function GameHud({
           : <TargetProgressBar completed={completed} required={required} milestoneFlash={milestoneFlash} />}</dd>
         <dt>出目</dt>
         <dd><span className="hud-stat__value" data-stat="roll-compact" title={compactRoll}>{compactRoll}</span></dd>
+        {proximity && <>
+          <dt className="visually-hidden">山手線まで</dt>
+          <dd data-stat="proximity">
+            <span><PhraseText text={`${TARGET_PROXIMITY_COPY.prefix}${proximity.hops}${TARGET_PROXIMITY_COPY.stationSuffix}`} /></span>
+            <span>{proximity.trend && <PhraseText text={TARGET_PROXIMITY_COPY[proximity.trend]} />}</span>
+          </dd>
+        </>}
       </dl>
       {collection && <div className="hud-progress">
         <div className="hud-progress__proximity">

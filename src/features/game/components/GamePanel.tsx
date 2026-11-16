@@ -37,6 +37,7 @@ import { PhraseText } from "./PhraseText";
 import { TurnResultCard, TurnResultPill } from "./TurnResultCard";
 import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
 import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
+import { TARGET_PROXIMITY_COPY } from "../targetProximity";
 
 const UPCOMING_STATION_COUNT = 5;
 
@@ -380,6 +381,16 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           logOpenerRef={logOpenerRef}
           arrival={itemView ? turnDisplay.arrivalText : null}
           roll={turnDisplay.rollText}
+          progress={<div className="hud-progress--log">
+            <div className="hud-progress__proximity">
+              <span>{turnDisplay.proximity && <PhraseText text={`${TARGET_PROXIMITY_COPY.prefix}${turnDisplay.proximity.hops}${TARGET_PROXIMITY_COPY.stationSuffix}`} />}</span>
+              <span>{turnDisplay.proximity?.trend && <PhraseText text={TARGET_PROXIMITY_COPY[turnDisplay.proximity.trend]} />}</span>
+            </div>
+            <div className="hud-progress__collection">
+              <span className="hud-progress--log__stations"><PhraseText text={turnDisplay.collection.stationsText} /></span>
+              <span className="hud-progress--log__lines"><PhraseText text={turnDisplay.collection.linesText} /></span>
+            </div>
+          </div>}
           lottery={<p className="game-panel__lottery"><span>抽選: </span><PhraseText text={turnDisplay.lotteryDisplayText} /></p>}
           notice={itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
             view={itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation} showEffects={false}
