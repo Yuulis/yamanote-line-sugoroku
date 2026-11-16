@@ -305,7 +305,8 @@ test("keyboard opening, Escape focus return, and light dismiss keep the slot too
   await expect(opener).toBeFocused();
   await expect(slot.locator(".item-slot__tooltip")).toHaveCount(0);
   await opener.click();
-  await gamePanel(page).getByRole("heading", { name: "山手線すごろく" }).click();
+  // A non-interactive panel area; the title heading is visually hidden since #65 step 7b.
+  await gamePanel(page).locator(".game-panel__stats dt").first().click();
   await expect(card).toBeHidden();
   await expect(opener).not.toBeFocused();
 });
