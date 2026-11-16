@@ -7,6 +7,11 @@ import type { MilestoneFlash } from "../../src/features/game/progressMilestones"
 import { mountReact } from "./helpers/reactDom";
 
 const FLASH: MilestoneFlash = { key: "session:turn:10", threshold: 10 };
+const PROXIMITY = { hops: 7, trend: "closer", text: "山手線まで あと7駅（近づく）" } as const;
+const COLLECTION = {
+  visitedStations: 4, totalStations: 1_586, riddenLines: 2, totalLines: 134,
+  stationsText: "訪れた駅 4/1,586", linesText: "乗った路線 2/134",
+} as const;
 
 function hudProps(overrides: Partial<GameHudProps> = {}): GameHudProps {
   return {
@@ -20,6 +25,35 @@ function hudProps(overrides: Partial<GameHudProps> = {}): GameHudProps {
 }
 
 describe("HUD progress components", () => {
+  it("renders proximity as two lines and both collection counters", () => {
+    const mount = mountReact(createElement(GameHud, hudProps({ proximity: PROXIMITY, collection: COLLECTION })));
+    try {
+      const row = mount.container.querySelector<HTMLElement>(".hud-progress");
+      const proximity = row?.querySelector(".hud-progress__proximity");
+      const proximityLines = proximity?.querySelectorAll("span");
+      expect(row).not.toBeNull();
+      expect(proximityLines?.[0]?.textContent).toBe("山手線まで あと7駅");
+      expect(proximityLines?.[1]?.textContent).toBe("（近づく）");
+      expect(row?.querySelector(".hud-progress__stations")?.textContent).toBe(COLLECTION.stationsText);
+      expect(row?.querySelector(".hud-progress__lines")?.textContent).toBe(COLLECTION.linesText);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("keeps the row and collection counters when proximity is absent", () => {
+    const mount = mountReact(createElement(GameHud, hudProps({ proximity: null, collection: COLLECTION })));
+    try {
+      const row = mount.container.querySelector<HTMLElement>(".hud-progress");
+      expect(row).not.toBeNull();
+      expect(row?.querySelector(".hud-progress__proximity")?.textContent).toBe("");
+      expect(row?.querySelector(".hud-progress__stations")?.textContent).toBe(COLLECTION.stationsText);
+      expect(row?.querySelector(".hud-progress__lines")?.textContent).toBe(COLLECTION.linesText);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
   it("keeps the progressbar mounted while keyed flash nodes follow the milestone key", () => {
     const mount = mountReact(createElement(TargetProgressBar, { completed: 10, required: 30, milestoneFlash: FLASH }));
     try {

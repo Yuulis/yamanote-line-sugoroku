@@ -824,6 +824,54 @@ button[aria-disabled="true"] {
   flex: 0 1 auto;
 }
 
+.hud-progress {
+  --hud-progress-height: 24px;
+  --hud-progress-line-height: 12px;
+  --hud-progress-count-width: 104px;
+  --hud-progress-column-gap: 4px;
+  --hud-progress-copy-size: 12px;
+  --hud-progress-count-size: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--hud-progress-count-width);
+  column-gap: var(--hud-progress-column-gap);
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--hud-progress-height);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.hud-progress__proximity,
+.hud-progress__collection {
+  display: grid;
+  grid-template-rows: repeat(2, var(--hud-progress-line-height));
+  min-width: 0;
+  overflow: hidden;
+  line-height: var(--hud-progress-line-height);
+  white-space: nowrap;
+}
+
+.hud-progress__proximity {
+  font-size: var(--hud-progress-copy-size);
+}
+
+.hud-progress__collection {
+  font-size: var(--hud-progress-count-size);
+}
+
+.hud-progress__collection > span {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.game-panel__stats:has(+ .hud-progress) { margin-bottom: 0; }
+
+@media (max-width: 600px), (min-width: 601px) and (max-height: 500px) {
+  .hud-progress {
+    display: none;
+  }
+}
+
 .game-panel__stats .target-progress {
   flex: 1 1 auto;
   min-width: 42px;

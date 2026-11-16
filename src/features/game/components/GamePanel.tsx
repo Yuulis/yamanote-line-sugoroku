@@ -327,6 +327,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       <GameHud
         turnResult={<TurnResultCard model={turnDisplay.turnResult} />}
         milestoneFlash={turnDisplay.milestoneFlash}
+        proximity={turnDisplay.proximity}
+        collection={turnDisplay.collection}
         inventory={<>
           {itemView && <InventoryPanel
             view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem}
