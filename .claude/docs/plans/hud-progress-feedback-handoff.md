@@ -39,7 +39,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | 8 | Clear-screen counters | done | `39f48ec` | full vitest 2200 pass, build ok; E2E desktop full-game+text-wrapping+layout+accessibility 41 pass/1 skip, phone @layout (text-wrapping, layout, full-game) 11 pass/1 skip; Sol-low APPROVE; lead made `collection` an optional prop (dropped a compat union type); share text unchanged. Screenshots `.claude/logs/screenshots/hud65-s8-clear-*.png` |
 | 9 | Phone A cell + short-landscape A+C | done | `df6fc2d` | full vitest 2200 pass, build ok; phone @layout (hud-progress, text-wrapping, hud-layout, layout, turn-result-card, ui-pop) 42 pass/4 skip; desktop (hud-progress, hud-layout, turn-result-card) 28 pass; phone cell 34px 2×17px at 320x568 (139px wide) and 412x839; dice rect unchanged ≤1px; short landscape stats 3×18px, log A+C row 24px; Sol-low APPROVE. Screenshots `.claude/logs/screenshots/hud65-s9-*.png`. CI on `974d8a7` failed `accessibility.spec.ts:603` landscape 667x375 (log-top progress row pushed the lottery line 23px past the panel edge) → row moved to the END of the log in `39dd93e` (deviation from D17 'top'); accessibility + hud-progress specs desktop+phone 43/43 |
 | 10 | Embedded disclosure mode | done | `431cb00` | full vitest 2204 pass, typecheck + build ok; whole accessibility/ui-pop/turn-result-card/game-settings specs desktop 72 pass/1 skip, phone @layout 38 pass/3 skip (implementer run); verify_delegation actionable 0; Sol-low APPROVE |
-| 11 | Phone hamburger wrapper (unmounted) | pending | — | — |
+| 11 | Phone hamburger wrapper (unmounted) | done | `73ca971` | full vitest 2206 pass, build ok; verify_delegation actionable 0; Sol-low APPROVE (Step 13 to verify first-open section, single Escape owner with embedded children, pill/breakpoint wiring) |
 | 12 | Layout-aware E2E helpers | pending | — | — |
 | 13 | Phone surface + pill integration | pending | — | — |
 | 14 | Final acceptance | pending | — | — |
@@ -52,6 +52,6 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. Step 11 (Phone hamburger wrapper, unmounted): build the prompt from the impl-prompts doc (Common body + Step 11 block, `<BASE_SHA>` =
+1. Step 12 (Layout-aware E2E helpers, legacy UI stays green): build the prompt from the impl-prompts doc (Common body + Step 12 block, `<BASE_SHA>` =
    branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
