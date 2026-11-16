@@ -1,7 +1,11 @@
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
-import type { Locator } from "@playwright/test";
+import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame, targetSegmentIds, type RailwayNetwork } from "../../src/features/game/engine";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import type { ItemGameState } from "../../src/types/network";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { diceButton, gamePanel, openTitle, readSave, rollOnce } from "./support/app";
+import { FIXTURE_GAME_SEED } from "./fixtures/seeds";
+import { diceButton, diceReady, gamePanel, openTitle, panelStat, readSave, rollOnce, writeSaveText } from "./support/app";
 import { openPopulatedResult, populatedResultState } from "./support/turnResult";
 
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 } as const;
@@ -33,6 +37,61 @@ const PHONE_PROXIMITY_HEIGHT_PX = 34;
 const PHONE_PROXIMITY_LINE_HEIGHT_PX = 17;
 const DICE_POSITION_TOLERANCE_PX = 1;
 const PHONE_MENU_TAB_STOPS = 12;
+const TEN_SEGMENT_MILESTONE = 10;
+const NEXT_PROGRESS_MILESTONE = 20;
+const MILESTONE_REPLAY_MAX_TURNS = 48;
+const MILESTONE_DIAGNOSTIC_LIMIT = 8;
+const FLASH_ANIMATION_NAME = "target-progress-flash";
+
+interface MilestoneReplay {
+  readonly before: ItemGameState;
+  readonly after: ItemGameState;
+  readonly completedBefore: number;
+  readonly completedAfter: number;
+}
+
+function targetCompletionCount(state: ItemGameState, required: ReadonlySet<string>): number {
+  return new Set(state.completedSegmentIds.filter((id) => required.has(id))).size;
+}
+
+function replayToTenSegmentMilestone(network: RailwayNetwork): MilestoneReplay {
+  const required = new Set(targetSegmentIds(ITEM_GAME_CONFIG, network));
+  let state = createItemGame(ITEM_GAME_CONFIG, FIXTURE_GAME_SEED, network);
+  const diagnostics: Array<Record<string, unknown>> = [];
+  for (let index = 0; index < MILESTONE_REPLAY_MAX_TURNS && state.status === "playing"; index += 1) {
+    const before = state;
+    const result = playItemTurn(before, {}, network);
+    const after = result.state.pending?.kind === "discard"
+      ? resolveItemDiscard(result.state, result.state.pending.item.id).state
+      : result.state;
+    const completedBefore = targetCompletionCount(before, required);
+    const completedAfter = targetCompletionCount(after, required);
+    const predicates = {
+      turn: before.turn + 1,
+      completedBefore,
+      completedAfter,
+      pending: result.state.pending?.kind ?? null,
+      rollAdjustmentInventory: before.inventory.some((item) => item.kind === "roll-adjust"),
+      status: after.status,
+    };
+    if (completedBefore < TEN_SEGMENT_MILESTONE && completedAfter >= TEN_SEGMENT_MILESTONE
+      && completedAfter < NEXT_PROGRESS_MILESTONE && result.state.pending === null
+      && !predicates.rollAdjustmentInventory && after.status === "playing") {
+      return { before, after, completedBefore, completedAfter };
+    }
+    diagnostics.push(predicates);
+    state = after;
+  }
+  const recentDiagnostics = diagnostics.slice(-MILESTONE_DIAGNOSTIC_LIMIT);
+  throw new Error(`Fixture replay found no eligible ${TEN_SEGMENT_MILESTONE}-segment crossing in ${MILESTONE_REPLAY_MAX_TURNS} turns: ${JSON.stringify({
+    turn: state.turn,
+    status: state.status,
+    requiredSegmentCount: required.size,
+    completedTargetSegments: targetCompletionCount(state, required),
+    recentDiagnostics,
+  })}`);
+}
+
 test.describe("desktop HUD progress feedback", () => {
   test.use({ dataset: "real" });
   test.describe.configure({ timeout: 90_000 });
@@ -183,6 +242,75 @@ test.describe("desktop HUD progress feedback", () => {
     await expect(settings).toBeHidden();
     await expect(desktopMenuTrigger).toBeFocused();
     await expect(desktopMenuTrigger).toBeVisible();
+  });
+});
+
+test.describe("milestone resume lifecycle", () => {
+  test.use({ dataset: "fixture", reducedMotion: "no-preference" });
+  test.describe.configure({ timeout: 90_000 });
+
+  test("milestone feedback publishes once and does not replay on resume", async ({ page, railwayBundle, baseURL }) => {
+    if (!baseURL) throw new Error("baseURL must be configured");
+    const replay = replayToTenSegmentMilestone(railwayBundle.network);
+    const milestoneToast = (target: Page): Locator => target.locator(".toast-host__toast")
+      .filter({ hasText: /区間突破|あと\d+区間！/ });
+    const announcement = (target: Page): Locator => gamePanel(target)
+      .locator('.visually-hidden[role="status"][aria-live="polite"]');
+    const flash = (target: Page): Locator => gamePanel(target).locator(".target-progress__flash");
+    const restore = async (target: Page): Promise<void> => {
+      await target.goto(baseURL);
+      await writeSaveText(target, serializeGame(replay.before));
+      await target.reload();
+      await target.getByRole("button", { name: /つづきから/ }).click();
+      await expect(gamePanel(target)).toBeVisible();
+      await expect(panelStat(target, "ターン数")).toHaveText(String(replay.before.turn));
+    };
+
+    console.info(`10-segment replay candidate: ${JSON.stringify({ turn: replay.before.turn + 1,
+      completedBefore: replay.completedBefore, completedAfter: replay.completedAfter })}`);
+    await restore(page);
+    await diceReady(page).click();
+    await expect(milestoneToast(page)).toHaveCount(1);
+    const milestoneSentence = (await milestoneToast(page).innerText()).trim();
+    await expect(announcement(page)).toContainText(milestoneSentence);
+    await expect(flash(page)).toBeVisible();
+    // The overlay rests at opacity 0 once its one-shot animation ends, so visibility alone could pass with no flash at all;
+    // the computed animation proves the glow was attached (finished CSS animations keep their computed name).
+    const flashAnimation = await flash(page).evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { name: style.animationName, durationSeconds: Number.parseFloat(style.animationDuration) };
+    });
+    expect(flashAnimation.name).toBe(FLASH_ANIMATION_NAME);
+    expect(flashAnimation.durationSeconds).toBeGreaterThan(0);
+    await expect(diceReady(page)).toBeVisible();
+    expect(await readSave(page)).toEqual(replay.after);
+
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await expect(milestoneToast(page)).toHaveCount(0);
+    await expect(announcement(page)).not.toContainText(milestoneSentence);
+    await expect(flash(page)).toHaveCount(0);
+
+    // #96 accepts phase-based announcement repeats; this checks the sentence, not live-region mutation count.
+    const reducedPage = await page.context().newPage();
+    await reducedPage.route(`${baseURL}data/*`, async (route) => {
+      const file = new URL(route.request().url()).pathname.split("/").at(-1);
+      if (!file) throw new Error("Fixture data request has no file name");
+      const body = railwayBundle.payloads[file];
+      if (body === undefined) throw new Error(`Unexpected fixture data request: ${file}`);
+      await route.fulfill({ status: 200, contentType: "application/json", body });
+    });
+    await reducedPage.emulateMedia({ reducedMotion: "reduce" });
+    await restore(reducedPage);
+    await diceReady(reducedPage).click();
+    await expect(milestoneToast(reducedPage)).toHaveCount(1);
+    const reducedMilestoneSentence = (await milestoneToast(reducedPage).innerText()).trim();
+    await expect(announcement(reducedPage)).toContainText(reducedMilestoneSentence);
+    await expect(flash(reducedPage)).toHaveCount(0);
+    await expect.poll(async () => (await readSave(reducedPage))?.turn ?? -1).toBe(replay.before.turn + 1);
+    expect(await readSave(reducedPage)).toEqual(replay.after);
+    await reducedPage.close();
   });
 });
 
