@@ -101,7 +101,6 @@ export function TurnLogDrawer({
         </svg>
       </button>
       <section id={logRegionId} className="game-panel__log" aria-label="ターンのログ" tabIndex={-1} hidden={!expanded}>
-        {progress}
         <div className="game-panel__turn-facts">
           <h2>このターン</h2>
           <dl>
@@ -118,6 +117,8 @@ export function TurnLogDrawer({
         </section>}
         {routeSummary}
         {candidates}
+        {/* Last, so opening the log still reveals the lottery line first (short landscape only shows it). */}
+        {progress}
       </section>
     </>
   );
