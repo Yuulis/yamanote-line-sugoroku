@@ -36,7 +36,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | 6 | Progress-bar flash | done | `c3b7e4b` | full vitest 2197 pass, build ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s6-review.json`). Lead fixes on top: GamePanel wires `turnDisplay.milestoneFlash` (step file list omitted it); flash rests at opacity 0 after its one-shot animation; reduced motion = display none |
 | 7 | Desktop A+C row | done | `d9f6afb` | full vitest 2199 pass, build ok; E2E desktop row + 2 desktop no-scroll gates pass, text-wrapping @layout phone 8/8; Sol-low REQUEST_CHANGES 1×P2 (aria-label on generic div) → lead removed it. Measured populated (worst-case) panel: 1280x800 fits; at 1024/1366x768 base already overflowed 7px, now 23px; 1280x720 base 55px, now 71px. Screenshot `.claude/logs/screenshots/hud65-s7-desktop-panel.png` |
 | 7b | Hide in-game title (user 2026-11-16) | done | `8e00a1d` | resumed from partial edits; full vitest 2199 pass, build ok; desktop E2E (hud-progress, accessibility, layout) 33/33, phone @layout 80 pass/5 skip, real-data start 2/2; populated panel scrollHeight/clientHeight: 1280x800 680/680, 1366x768 648/648, 1024x768 648/648, 1280x720 634/600 (34px, measure-only). Phone title was already hidden → phone budget 252 unchanged. Sol-low APPROVE (2×P3) → lead limited station padding to desktop. real-data.spec subtitle expectation updated visible/hidden → visually hidden everywhere. Screenshots `.claude/logs/screenshots/hud65-s7b-*.png`. CI on `73ec8cc` failed `ui-pop.spec.ts:293` light-dismiss (clicked the now-hidden heading under the save mark) → click target moved to the first stats `dt` in `85b4afa`; ui-pop.spec desktop+phone 23 pass/4 skip |
-| 8 | Clear-screen counters | pending | — | — |
+| 8 | Clear-screen counters | done | `39f48ec` | full vitest 2200 pass, build ok; E2E desktop full-game+text-wrapping+layout+accessibility 41 pass/1 skip, phone @layout (text-wrapping, layout, full-game) 11 pass/1 skip; Sol-low APPROVE; lead made `collection` an optional prop (dropped a compat union type); share text unchanged. Screenshots `.claude/logs/screenshots/hud65-s8-clear-*.png` |
 | 9 | Phone A cell + short-landscape A+C | pending | — | — |
 | 10 | Embedded disclosure mode | pending | — | — |
 | 11 | Phone hamburger wrapper (unmounted) | pending | — | — |
@@ -52,6 +52,6 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. Step 8 (Clear-screen counters): build the prompt from the impl-prompts doc (Common body + Step 8 block, `<BASE_SHA>` =
+1. Step 9 (Phone A cell + short-landscape A+C): build the prompt from the impl-prompts doc (Common body + Step 9 block, `<BASE_SHA>` =
    branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
