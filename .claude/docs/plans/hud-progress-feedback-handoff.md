@@ -34,7 +34,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | 4 | Crossings + toast builder | done | `6b899f7` | unit 70/70 (milestones + toast), full vitest 2184 pass, typecheck ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s4-review.json`); note: thresholds absolute, copy assumes 30 required (per D9/D11) |
 | 5 | Milestone publication (stateless; once-only dropped by user) | done | `88f928f` | full vitest 2195 pass, typecheck + build ok, existing tests byte-identical. Attempts: Luna ×3 failed (S16 re-announcement; Sol 3×P2 on consumed keys; simplified rule still dropped suffix at lottery) → user: simplify, then escalate → Fable landed stateless rule (`.claude/docs/reviews/hud65-step5-fable.md`). Deviations from plan: toast only at arrival or card-less published; no historical <30 toasts (resume via entryTurn). Final Sol-low review REQUEST_CHANGES 1×P2 (re-read after item select/unselect in card-less published) → user accepted, filed #96 together with arrival→Skip repeat |
 | 6 | Progress-bar flash | done | `c3b7e4b` | full vitest 2197 pass, build ok; verify_delegation actionable 0; Sol-low review APPROVE (`.claude/logs/codex/hud65-s6-review.json`). Lead fixes on top: GamePanel wires `turnDisplay.milestoneFlash` (step file list omitted it); flash rests at opacity 0 after its one-shot animation; reduced motion = display none |
-| 7 | Desktop A+C row | pending | — | — |
+| 7 | Desktop A+C row | done | `d9f6afb` | full vitest 2199 pass, build ok; E2E desktop row + 2 desktop no-scroll gates pass, text-wrapping @layout phone 8/8; Sol-low REQUEST_CHANGES 1×P2 (aria-label on generic div) → lead removed it. Measured populated (worst-case) panel: 1280x800 fits; at 1024/1366x768 base already overflowed 7px, now 23px; 1280x720 base 55px, now 71px. Screenshot `.claude/logs/screenshots/hud65-s7-desktop-panel.png` |
 | 8 | Clear-screen counters | pending | — | — |
 | 9 | Phone A cell + short-landscape A+C | pending | — | — |
 | 10 | Embedded disclosure mode | pending | — | — |
@@ -51,6 +51,6 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. Step 7 (Desktop A+C row): build the prompt from the impl-prompts doc (Common body + Step 7 block, `<BASE_SHA>` =
+1. Step 8 (Clear-screen counters): build the prompt from the impl-prompts doc (Common body + Step 8 block, `<BASE_SHA>` =
    branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
