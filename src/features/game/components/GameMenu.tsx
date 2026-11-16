@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, type RefObject } from "react";
 import { PRESENTATION_LEVELS, type PresentationLevel } from "../gameSettings";
 import { GameLegend, type LegendLine } from "./GameLegend";
 
@@ -7,6 +7,8 @@ const MENU_ICON_SIZE = 16;
 export interface GameMenuProps {
   /** Owned by `GamePanel`, which keeps the menu and the turn log mutually exclusive. */
   expanded: boolean;
+  embedded?: boolean;
+  parentTriggerRef?: RefObject<HTMLElement | null>;
   onExpandedChange: (expanded: boolean) => void;
   follow: boolean;
   reducedMotion: boolean;
@@ -33,6 +35,8 @@ export function modalDialogOpen(): boolean {
 /** Persistent game controls and the grouped line legend, hidden as one disclosure. */
 export function GameMenu({
   expanded,
+  embedded = false,
+  parentTriggerRef,
   onExpandedChange,
   follow,
   reducedMotion,
@@ -55,7 +59,7 @@ export function GameMenu({
   const presentationLabel = reducedMotion ? "省略" : PRESENTATION_LEVELS.find((level) => level.id === presentationLevel)!.label;
 
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || embedded) return;
     // Capture phase so the menu closes before the bubbling draft-clear handler.
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -67,22 +71,32 @@ export function GameMenu({
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [expanded, onExpandedChange]);
+  }, [expanded, embedded, onExpandedChange]);
 
   const close = (): void => {
     onExpandedChange(false);
     triggerRef.current?.focus({ preventScroll: true });
   };
 
+  const focusReturn = (): void => {
+    const target = embedded ? parentTriggerRef?.current : triggerRef.current;
+    target?.focus({ preventScroll: true });
+  };
+
   const startNewGame = (): void => {
-    triggerRef.current?.focus({ preventScroll: true });
+    focusReturn();
     onExpandedChange(false);
     onNewGame();
   };
 
+  const showTitle = (): void => {
+    if (embedded) focusReturn();
+    onShowTitle();
+  };
+
   return (
     <>
-      <button
+      {!embedded && <button
         ref={triggerRef}
         type="button"
         className="game-panel__menu-trigger"
@@ -97,7 +111,7 @@ export function GameMenu({
         <svg className="game-panel__menu-chevron" aria-hidden="true" focusable="false" width={MENU_ICON_SIZE} height={MENU_ICON_SIZE} viewBox="0 0 16 16">
           <path d={expanded ? "M3 10.5 8 5.5l5 5" : "M3 5.5 8 10.5l5-5"} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </button>
+      </button>}
       <section id={regionId} className="game-panel__menu" aria-label="メニュー" hidden={!expanded}>
         <div className="game-panel__options">
           <button type="button" aria-pressed={follow} onClick={onToggleFollow}>
@@ -123,7 +137,7 @@ export function GameMenu({
             演出: {presentationLabel}
           </button>
           <button type="button" onClick={startNewGame}>新規</button>
-          <button type="button" onClick={onShowTitle}>タイトル</button>
+          <button type="button" onClick={showTitle}>タイトル</button>
         </div>
         <GameLegend
           lines={lines}

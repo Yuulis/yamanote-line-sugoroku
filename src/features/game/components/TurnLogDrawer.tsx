@@ -3,6 +3,7 @@ import { modalDialogOpen } from "./GameMenu";
 
 export interface TurnLogDrawerProps {
   expanded: boolean;
+  embedded?: boolean;
   onExpandedChange: (expanded: boolean) => void;
   logRegionId: string;
   logOpenerRef: React.RefObject<HTMLElement | null>;
@@ -37,6 +38,7 @@ function revealInPanel(element: HTMLElement): void {
 /** Persistent turn transcript and text route view, hidden as one disclosure. */
 export function TurnLogDrawer({
   expanded,
+  embedded = false,
   onExpandedChange,
   logRegionId,
   logOpenerRef,
@@ -52,7 +54,7 @@ export function TurnLogDrawer({
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (!expanded) return;
+    if (!expanded || embedded) return;
     // Capture phase so the log closes before the bubbling draft-clear handler.
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
@@ -69,7 +71,7 @@ export function TurnLogDrawer({
     };
     window.addEventListener("keydown", onKeyDown, true);
     return () => window.removeEventListener("keydown", onKeyDown, true);
-  }, [expanded, onExpandedChange, logOpenerRef]);
+  }, [expanded, embedded, onExpandedChange, logOpenerRef]);
 
   const close = (): void => {
     logOpenerRef.current = null;
@@ -84,7 +86,7 @@ export function TurnLogDrawer({
 
   return (
     <>
-      <button
+      {!embedded && <button
         ref={triggerRef}
         type="button"
         className="game-panel__log-trigger"
@@ -99,7 +101,7 @@ export function TurnLogDrawer({
         <svg className="game-panel__log-chevron" aria-hidden="true" focusable="false" width={LOG_ICON_SIZE} height={LOG_ICON_SIZE} viewBox="0 0 16 16">
           <path d={expanded ? "M3 10.5 8 5.5l5 5" : "M3 5.5 8 10.5l5-5"} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </button>
+      </button>}
       <section id={logRegionId} className="game-panel__log" aria-label="ターンのログ" tabIndex={-1} hidden={!expanded}>
         <div className="game-panel__turn-facts">
           <h2>このターン</h2>
