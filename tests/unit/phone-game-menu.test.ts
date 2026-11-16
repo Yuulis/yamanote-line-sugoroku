@@ -2,8 +2,26 @@
 import { createElement, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { GameMenu, type GameMenuProps } from "../../src/features/game/components/GameMenu";
+import { PhoneGameMenu, type PhoneGameMenuProps } from "../../src/features/game/components/PhoneGameMenu";
 import { TurnLogDrawer, type TurnLogDrawerProps } from "../../src/features/game/components/TurnLogDrawer";
+import type { CollectionProgress } from "../../src/features/game/collectionProgress";
 import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
+
+const COLLECTION: CollectionProgress = {
+  visitedStations: 2, totalStations: 1586, riddenLines: 1, totalLines: 134,
+  stationsText: "訪れた駅 2/1,586", linesText: "乗った路線 1/134",
+};
+
+function phoneMenuProps(overrides: Partial<PhoneGameMenuProps> = {}): PhoneGameMenuProps {
+  return {
+    expanded: true, section: "log", collection: COLLECTION,
+    openerRef: createRef<HTMLElement | null>(), triggerRef: createRef<HTMLButtonElement | null>(),
+    onExpandedChange: vi.fn(), onSectionChange: vi.fn(),
+    log: createElement("section", { "aria-label": "ターンのログ" }, createElement("button", null, "ログ操作")),
+    settings: createElement("section", { "aria-label": "メニュー" }, createElement("button", null, "設定操作")),
+    ...overrides,
+  };
+}
 
 function menuProps(overrides: Partial<GameMenuProps> = {}): GameMenuProps {
   return {
@@ -71,5 +89,55 @@ describe("embedded phone disclosures", () => {
       dispatchReactEvent(action, new MouseEvent("click", { bubbles: true }));
       expect(document.activeElement).toBe(parentTriggerRef.current);
     } finally { mount.cleanup(); }
+  });
+
+  it("switches sections and keeps the unselected content hidden", () => {
+    const props = phoneMenuProps();
+    props.openerRef.current = document.createElement("button");
+    const mount = mountReact(createElement(PhoneGameMenu, props));
+    try {
+      const settingsButton = [...mount.container.querySelectorAll(".phone-menu__section-button")].find((button) => button.textContent === "設定");
+      if (!settingsButton) throw new Error("Missing settings section button");
+      dispatchReactEvent(settingsButton, new MouseEvent("click", { bubbles: true }));
+      expect(props.onSectionChange).toHaveBeenCalledWith("settings");
+      expect(props.openerRef.current).toBeNull();
+      mount.render(createElement(PhoneGameMenu, { ...props, section: "settings" }));
+      const sections = [...mount.container.querySelectorAll<HTMLElement>(".phone-menu__section")];
+      if (sections.length !== 2) throw new Error(`Expected two phone menu sections, got ${sections.length}`);
+      expect(sections[0]?.hidden).toBe(true);
+      expect(sections[0]?.querySelector("button")?.closest("[hidden]")).toBe(sections[0]);
+      expect(sections[1]?.hidden).toBe(false);
+    } finally { mount.cleanup(); }
+  });
+
+  it("owns Escape, yields to a native dialog, and returns focus to the visible opener or trigger", () => {
+    const openerRef = createRef<HTMLElement | null>();
+    const triggerRef = createRef<HTMLButtonElement | null>();
+    const onExpandedChange = vi.fn();
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    Object.defineProperty(opener, "getClientRects", { value: () => [new DOMRect()] });
+    openerRef.current = opener;
+    const mount = mountReact(createElement(PhoneGameMenu, phoneMenuProps({ openerRef, triggerRef, onExpandedChange })));
+    const dialog = document.createElement("dialog");
+    dialog.setAttribute("open", "");
+    document.body.append(dialog);
+    try {
+      const modalEscape = new KeyboardEvent("keydown", { key: "Escape", cancelable: true });
+      window.dispatchEvent(modalEscape);
+      expect(modalEscape.defaultPrevented).toBe(false);
+      expect(onExpandedChange).not.toHaveBeenCalled();
+
+      dialog.remove();
+      const escape = new KeyboardEvent("keydown", { key: "Escape", cancelable: true });
+      window.dispatchEvent(escape);
+      expect(escape.defaultPrevented).toBe(true);
+      expect(onExpandedChange).toHaveBeenCalledWith(false);
+      expect(document.activeElement).toBe(opener);
+
+      opener.remove();
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true }));
+      expect(document.activeElement).toBe(triggerRef.current);
+    } finally { mount.cleanup(); opener.remove(); dialog.remove(); }
   });
 });

@@ -1139,6 +1139,21 @@ button[aria-disabled="true"] {
   display: none;
 }
 
+.phone-menu { --phone-menu-trigger-height: 44px; --phone-menu-space: 8px; --phone-menu-tight-space: 4px; --phone-menu-compact-space: 2px; --phone-menu-summary-padding: 6px; --phone-menu-copy-size: 11px; --phone-menu-copy-leading: 1.4; min-width: 0; }
+.phone-menu__trigger { display: flex; align-items: center; gap: var(--phone-menu-space); width: 100%; min-height: var(--phone-menu-trigger-height);
+  padding: var(--phone-menu-tight-space) var(--phone-menu-space); text-align: left;
+}
+.phone-menu__content { display: grid; gap: var(--phone-menu-space); min-width: 0; margin-top: var(--phone-menu-tight-space);
+}
+.phone-menu__content[hidden], .phone-menu__section[hidden] { display: none; }
+.phone-menu__summary { display: grid; gap: var(--phone-menu-compact-space); padding: var(--phone-menu-summary-padding) var(--phone-menu-space);
+  border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-cream);
+  font-size: var(--phone-menu-copy-size); line-height: var(--phone-menu-copy-leading);
+}
+.phone-menu__sections {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--phone-menu-space);
+}
+
 .game-panel__log-trigger,
 .game-panel__menu-trigger {
   display: inline-flex;
