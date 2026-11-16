@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from "react";
 
-const QUERY = "(prefers-reduced-motion: reduce)";
+export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 function mediaQuery(): MediaQueryList | null {
-  return typeof window.matchMedia === "function" ? window.matchMedia(QUERY) : null;
+  return typeof window.matchMedia === "function" ? window.matchMedia(REDUCED_MOTION_QUERY) : null;
 }
 
 function subscribe(onChange: () => void): () => void {

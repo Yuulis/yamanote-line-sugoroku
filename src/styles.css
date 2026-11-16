@@ -1267,7 +1267,8 @@ button[aria-disabled="true"] {
 }
 
 .game-panel__actions .game-panel__auto-roll[aria-pressed="true"],
-.game-panel__options button[aria-pressed="true"] {
+.game-panel__options button[aria-pressed="true"],
+.phone-menu__section-button[aria-pressed="true"] {
   background: var(--color-brand-tint);
   border: 1px solid var(--color-brand);
   border-radius: var(--radius-sm);
@@ -2578,6 +2579,7 @@ button[aria-disabled="true"] {
   .game-panel .effect-chip { flex: 0 0 auto; }
   .game-panel__save { grid-area: save; margin: 0 0 4px; }
   .game-panel__disclosures { grid-area: disclosures; }
+  .game-panel__disclosures > .phone-menu { grid-column: 1 / -1; }
 
   .turn-result__pill {
     /* Matches the phone toast's `right: calc(84px + …)` column and .map-overview,

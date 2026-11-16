@@ -1,4 +1,5 @@
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import type { Locator } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { diceButton, gamePanel, openTitle, readSave, rollOnce } from "./support/app";
 import { openPopulatedResult, populatedResultState } from "./support/turnResult";
@@ -31,6 +32,7 @@ const PHONE_PROXIMITY_VIEWPORTS = [
 const PHONE_PROXIMITY_HEIGHT_PX = 34;
 const PHONE_PROXIMITY_LINE_HEIGHT_PX = 17;
 const DICE_POSITION_TOLERANCE_PX = 1;
+const PHONE_MENU_TAB_STOPS = 12;
 test.describe("desktop HUD progress feedback", () => {
   test.use({ dataset: "real" });
   test.describe.configure({ timeout: 90_000 });
@@ -129,6 +131,59 @@ test.describe("desktop HUD progress feedback", () => {
       expect(overlaps, `${viewport.width}x${viewport.height} save mark overlaps 現在駅`).toBe(false);
     }
   });
+
+  test("breakpoint changes preserve focus in the open log and settings", async ({ page }) => {
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await openTitle(page);
+    await page.getByRole("button", { name: "はじめから" }).click();
+    const confirmation = page.getByRole("alertdialog", { name: "新しく始めますか？" });
+    if (await confirmation.isVisible()) await confirmation.getByRole("button", { name: "新しく始める" }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    const panel = gamePanel(page);
+    const log = panel.locator(".game-panel__log");
+    const desktopLogTrigger = panel.locator(".game-panel__log-trigger");
+    const desktopMenuTrigger = panel.locator(".game-panel__menu-trigger");
+    const phoneTrigger = panel.locator(".phone-menu__trigger");
+    const settings = panel.locator(".game-panel__menu");
+    const firstSettingsControl = (): Locator => settings.locator(".game-panel__options button").first();
+
+    await desktopLogTrigger.click();
+    await log.focus();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(log).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(log).toBeHidden();
+    await expect(phoneTrigger).toBeFocused();
+    await expect(phoneTrigger).toBeVisible();
+
+    await phoneTrigger.click();
+    await log.focus();
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await expect(log).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(log).toBeHidden();
+    await expect(desktopLogTrigger).toBeFocused();
+    await expect(desktopLogTrigger).toBeVisible();
+
+    await desktopMenuTrigger.click();
+    await firstSettingsControl().focus();
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(firstSettingsControl()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(settings).toBeHidden();
+    await expect(phoneTrigger).toBeFocused();
+    await expect(phoneTrigger).toBeVisible();
+
+    await phoneTrigger.click();
+    await panel.locator(".phone-menu__sections").getByRole("button", { name: "設定", exact: true }).click();
+    await firstSettingsControl().focus();
+    await page.setViewportSize(DESKTOP_VIEWPORT);
+    await expect(firstSettingsControl()).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(settings).toBeHidden();
+    await expect(desktopMenuTrigger).toBeFocused();
+    await expect(desktopMenuTrigger).toBeVisible();
+  });
 });
 
 test.describe("phone and short-landscape HUD progress feedback", () => {
@@ -182,6 +237,41 @@ test.describe("phone and short-landscape HUD progress feedback", () => {
       expect(pageWidth.scroll, `horizontal overflow at ${viewport.width}x${viewport.height}`).toBeLessThanOrEqual(pageWidth.client);
       console.info(`Phone A layout ${viewport.width}x${viewport.height}: ${JSON.stringify({ cell: layout, dice: visibleDice, horizontal: pageWidth })}`);
     }
+  });
+
+  test("phone hamburger switches between log and settings", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openPopulatedResult(page, populatedResultState(railwayBundle.network));
+    const panel = gamePanel(page);
+    const hamburger = panel.locator(".phone-menu__trigger");
+    const log = panel.getByRole("region", { name: "ターンのログ", exact: true, includeHidden: true });
+    const settings = panel.getByRole("region", { name: "メニュー", exact: true, includeHidden: true });
+    const sectionButton = (name: string): Locator => panel.locator(".phone-menu__sections").getByRole("button", { name, exact: true });
+    await expect(hamburger).toHaveCount(1);
+    await expect(hamburger).toHaveText("メニュー");
+    await expect(panel.locator(".game-panel__log-trigger, .game-panel__menu-trigger")).toHaveCount(0);
+    await expect(hamburger).toHaveAttribute("aria-expanded", "false");
+    await hamburger.click();
+    await expect(hamburger).toHaveAttribute("aria-expanded", "true");
+    const summary = panel.locator(".phone-menu__summary");
+    await expect(summary).toBeVisible();
+    await expect(summary).toContainText("訪れた駅");
+    await expect(summary).toContainText("乗った路線");
+    await expect(sectionButton("ログ")).toHaveAttribute("aria-pressed", "true");
+    await expect(log).toBeVisible();
+    await expect(settings).toBeHidden();
+    await sectionButton("設定").click();
+    await expect(sectionButton("設定")).toHaveAttribute("aria-pressed", "true");
+    await expect(sectionButton("ログ")).toHaveAttribute("aria-pressed", "false");
+    await expect(settings).toBeVisible();
+    await expect(log).toBeHidden();
+    await hamburger.focus();
+    const inHiddenSection: boolean[] = [];
+    for (let index = 0; index < PHONE_MENU_TAB_STOPS; index += 1) {
+      await page.keyboard.press("Tab");
+      inHiddenSection.push(await page.evaluate(() => document.activeElement?.closest("[hidden]") !== null));
+    }
+    expect(inHiddenSection).not.toContain(true);
   });
 
   test("short landscape progress stays in the current log", { tag: "@layout" }, async ({ page, railwayBundle }) => {

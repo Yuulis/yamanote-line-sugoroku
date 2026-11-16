@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { createElement, createRef } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { translateSurfaceForLayout } from "../../src/features/game/components/GamePanel";
 import { GameMenu, type GameMenuProps } from "../../src/features/game/components/GameMenu";
 import { PhoneGameMenu, type PhoneGameMenuProps } from "../../src/features/game/components/PhoneGameMenu";
 import { TurnLogDrawer, type TurnLogDrawerProps } from "../../src/features/game/components/TurnLogDrawer";
@@ -139,5 +140,19 @@ describe("embedded phone disclosures", () => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true }));
       expect(document.activeElement).toBe(triggerRef.current);
     } finally { mount.cleanup(); opener.remove(); dialog.remove(); }
+  });
+});
+
+describe("breakpoint translation of the open disclosure", () => {
+  it.each([
+    ["log", true, "log", { surface: "phone-menu", section: "log" }],
+    ["menu", true, "log", { surface: "phone-menu", section: "settings" }],
+    ["phone-menu", false, "log", { surface: "log", section: "log" }],
+    ["phone-menu", false, "settings", { surface: "menu", section: "settings" }],
+    ["card", true, "log", { surface: "card", section: "log" }],
+    ["card", false, "settings", { surface: "card", section: "settings" }],
+    [null, true, "log", { surface: null, section: "log" }],
+  ] as const)("maps %s (phone=%s, section=%s) to the equivalent surface", (current, phone, section, expected) => {
+    expect(translateSurfaceForLayout(current, phone, section)).toEqual(expected);
   });
 });

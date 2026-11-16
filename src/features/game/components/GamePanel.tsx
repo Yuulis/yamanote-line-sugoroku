@@ -18,6 +18,7 @@ import {
   useVisibleLineGroupIds,
 } from "../../map/lineVisibilityStore";
 import { GameMenu, modalDialogOpen } from "./GameMenu";
+import { PhoneGameMenu, type PhoneMenuSection } from "./PhoneGameMenu";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import { ITEM_DESCRIPTIONS } from "../itemPresentation";
@@ -75,6 +76,57 @@ function goalGuidanceShortText(stationName: string): string {
   return `あとは${stationName}へ`;
 }
 
+type DisclosureSurface = "log" | "menu" | "card" | "phone-menu";
+type BreakpointFocusTarget =
+  | { kind: "log-region" }
+  | { kind: "settings-control" }
+  | { kind: "surface-trigger"; section: PhoneMenuSection };
+
+interface BreakpointLayoutContext {
+  isPhone: boolean;
+  activeSurface: DisclosureSurface | null;
+  phoneSection: PhoneMenuSection;
+}
+
+interface PendingBreakpointFocus {
+  target: BreakpointFocusTarget;
+  phone: boolean;
+  surface: DisclosureSurface | null;
+  section: PhoneMenuSection;
+}
+
+/** Maps the open disclosure to its equivalent on the other side of the phone breakpoint. */
+export function translateSurfaceForLayout(
+  current: DisclosureSurface | null,
+  phone: boolean,
+  section: PhoneMenuSection,
+): { surface: DisclosureSurface | null; section: PhoneMenuSection } {
+  if (phone) {
+    if (current === "log") return { surface: "phone-menu", section: "log" };
+    if (current === "menu") return { surface: "phone-menu", section: "settings" };
+    return { surface: current, section };
+  }
+  if (current !== "phone-menu") return { surface: current, section };
+  return { surface: section === "settings" ? "menu" : "log", section };
+}
+
+function captureBreakpointFocusTarget(activeElement: Element | null, context: BreakpointLayoutContext): BreakpointFocusTarget | null {
+  if (!(activeElement instanceof HTMLElement)) return null;
+  if (activeElement.closest(".game-panel__log")) return { kind: "log-region" };
+  if (activeElement.closest(".game-panel__menu")) return { kind: "settings-control" };
+
+  const phoneSectionButton = activeElement.closest<HTMLButtonElement>(".phone-menu__sections button");
+  if (phoneSectionButton) {
+    return { kind: "surface-trigger", section: phoneSectionButton.textContent?.trim() === "設定" ? "settings" : "log" };
+  }
+  if (activeElement.closest(".phone-menu__trigger")) {
+    return { kind: "surface-trigger", section: context.activeSurface === "phone-menu" ? context.phoneSection : "log" };
+  }
+  if (activeElement.closest(".game-panel__log-trigger")) return { kind: "surface-trigger", section: "log" };
+  if (activeElement.closest(".game-panel__menu-trigger")) return { kind: "surface-trigger", section: "settings" };
+  return null;
+}
+
 function showAllLineGroups(): void {
   setVisibleLineGroupIds(null);
 }
@@ -85,18 +137,31 @@ function phoneMediaQuery(): MediaQueryList | null {
     : null;
 }
 
-function subscribeToPhoneLayout(onChange: () => void): () => void {
+function subscribeToPhoneLayout(onChange: () => void, onBreakpointChange: (phone: boolean) => void): () => void {
   const query = phoneMediaQuery();
-  query?.addEventListener("change", onChange);
-  return () => query?.removeEventListener("change", onChange);
+  let matches = query?.matches ?? false;
+  const handleChange = (): void => {
+    const nextMatches = query?.matches ?? false;
+    if (nextMatches !== matches) {
+      matches = nextMatches;
+      onBreakpointChange(nextMatches);
+    }
+    onChange();
+  };
+  query?.addEventListener("change", handleChange);
+  return () => query?.removeEventListener("change", handleChange);
 }
 
 function getPhoneLayoutSnapshot(): boolean {
   return phoneMediaQuery()?.matches ?? false;
 }
 
-function usePhoneLayout(): boolean {
-  return useSyncExternalStore(subscribeToPhoneLayout, getPhoneLayoutSnapshot, () => false);
+function usePhoneLayout(onBreakpointChange: (phone: boolean) => void): boolean {
+  const onBreakpointChangeRef = useRef(onBreakpointChange);
+  onBreakpointChangeRef.current = onBreakpointChange;
+  const subscribe = useCallback((onChange: () => void) =>
+    subscribeToPhoneLayout(onChange, (phone) => onBreakpointChangeRef.current(phone)), []);
+  return useSyncExternalStore(subscribe, getPhoneLayoutSnapshot, () => false);
 }
 
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
@@ -164,9 +229,6 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const logRegionId = useId();
   const logOpenerRef = useRef<HTMLElement | null>(null);
   const [logRevealRequest, setLogRevealRequest] = useState(0);
-  const isPhone = usePhoneLayout();
-  const pillActive = isPhone && turnDisplay.turnResult !== null;
-  const pillPosition = useTurnResultPillLayout(panelRef, pillActive);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const toggleGroup = useCallback((groupId: string, checked: boolean) => {
     setVisibleLineGroupIds(updateLineGroupSelection(selectedGroupIds, allGroupIds, [groupId], checked));
@@ -180,7 +242,24 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     instanceId: string;
   } | null>(null);
   // One disclosure surface at a time; both disclosures start closed.
-  const [activeSurface, setActiveSurface] = useState<"log" | "menu" | "card" | null>(null);
+  const [activeSurface, setActiveSurface] = useState<DisclosureSurface | null>(null);
+  const [phoneSection, setPhoneSection] = useState<PhoneMenuSection>("log");
+  const phoneTriggerRef = useRef<HTMLButtonElement>(null);
+  const layoutContextRef = useRef<BreakpointLayoutContext>({ isPhone: false, activeSurface: null, phoneSection: "log" });
+  const pendingBreakpointFocusRef = useRef<PendingBreakpointFocus | null>(null);
+  const isPhone = usePhoneLayout((phone) => {
+    const context = layoutContextRef.current;
+    if (phone === context.isPhone) return;
+    const focusTarget = captureBreakpointFocusTarget(document.activeElement, context);
+    const next = translateSurfaceForLayout(context.activeSurface, phone, context.phoneSection);
+    pendingBreakpointFocusRef.current = focusTarget ? { target: focusTarget, phone, surface: next.surface, section: next.section } : null;
+    logOpenerRef.current = null;
+  });
+  layoutContextRef.current = { isPhone, activeSurface, phoneSection };
+  const pillActive = isPhone && turnDisplay.turnResult !== null;
+  const pillPosition = useTurnResultPillLayout(panelRef, pillActive);
+  const phoneLogOpen = activeSurface === "phone-menu" && phoneSection === "log";
+  const phoneSettingsOpen = activeSurface === "phone-menu" && phoneSection === "settings";
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const itemDialogOpenerRef = useRef<HTMLElement | null>(null);
   const setOpenItemCard = useCallback((id: string | null) => {
@@ -192,11 +271,63 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     if (expanded) { setOpenCardId(null); setActiveSurface("log"); }
     else setActiveSurface((current) => current === "log" ? null : current);
   }, []);
+  const setPhoneMenuExpanded = useCallback((expanded: boolean) => {
+    if (!expanded) {
+      setActiveSurface((current) => current === "phone-menu" ? null : current);
+      return;
+    }
+    logOpenerRef.current = null;
+    setOpenCardId(null);
+    setPhoneSection("log");
+    setActiveSurface("phone-menu");
+  }, []);
   const activateLogPill = useCallback((opener: HTMLButtonElement) => {
     logOpenerRef.current = opener;
-    setLogExpanded(true);
+    setOpenCardId(null);
+    setPhoneSection("log");
+    setActiveSurface("phone-menu");
     setLogRevealRequest((request) => request + 1);
-  }, [setLogExpanded]);
+  }, []);
+  const wasPhoneRef = useRef(isPhone);
+  useLayoutEffect(() => {
+    if (wasPhoneRef.current === isPhone) return;
+    wasPhoneRef.current = isPhone;
+    const next = translateSurfaceForLayout(activeSurface, isPhone, phoneSection);
+    logOpenerRef.current = null;
+    setActiveSurface(next.surface);
+    setPhoneSection(next.section);
+  }, [isPhone, activeSurface, phoneSection]);
+  useLayoutEffect(() => {
+    const pending = pendingBreakpointFocusRef.current;
+    if (!pending || pending.phone !== isPhone || pending.surface !== activeSurface || pending.section !== phoneSection) return;
+    pendingBreakpointFocusRef.current = null;
+
+    const focusTrigger = (): void => {
+      if (isPhone) {
+        phoneTriggerRef.current?.focus({ preventScroll: true });
+        return;
+      }
+      const section = pending.target.kind === "surface-trigger" ? pending.target.section : pending.section;
+      const triggerSelector = section === "settings" ? ".game-panel__menu-trigger" : ".game-panel__log-trigger";
+      panelRef.current?.querySelector<HTMLButtonElement>(triggerSelector)?.focus({ preventScroll: true });
+    };
+
+    if (pending.target.kind === "log-region") {
+      const logRegion = document.getElementById(logRegionId);
+      if (logRegion && !logRegion.hidden) logRegion.focus({ preventScroll: true });
+      return;
+    }
+    if (pending.target.kind === "settings-control") {
+      const settingsRegion = panelRef.current?.querySelector<HTMLElement>(".game-panel__menu");
+      const firstControl = settingsRegion?.querySelector<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (firstControl && firstControl.getClientRects().length > 0) firstControl.focus({ preventScroll: true });
+      else focusTrigger();
+      return;
+    }
+    focusTrigger();
+  }, [isPhone, activeSurface, phoneSection, logRegionId]);
   const setMenuExpanded = useCallback((expanded: boolean) => {
     if (expanded) logOpenerRef.current = null;
     if (expanded) { setOpenCardId(null); setActiveSurface("menu"); }
@@ -322,6 +453,78 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     if (!presentedDecision) headingRef.current.focus({ preventScroll: true });
   }, []);
 
+  const turnLog = (
+    <TurnLogDrawer
+      embedded={isPhone}
+      expanded={isPhone ? phoneLogOpen : activeSurface === "log"}
+      onExpandedChange={isPhone ? setPhoneMenuExpanded : setLogExpanded}
+      logRegionId={logRegionId}
+      logOpenerRef={logOpenerRef}
+      arrival={itemView ? turnDisplay.arrivalText : null}
+      roll={turnDisplay.rollText}
+      progress={<div className="hud-progress--log">
+        <div className="hud-progress__proximity">
+          <span>{turnDisplay.proximity && <PhraseText text={`${TARGET_PROXIMITY_COPY.prefix}${turnDisplay.proximity.hops}${TARGET_PROXIMITY_COPY.stationSuffix}`} />}</span>
+          <span>{turnDisplay.proximity?.trend && <PhraseText text={TARGET_PROXIMITY_COPY[turnDisplay.proximity.trend]} />}</span>
+        </div>
+        <div className="hud-progress__collection">
+          <span className="hud-progress--log__stations"><PhraseText text={turnDisplay.collection.stationsText} /></span>
+          <span className="hud-progress--log__lines"><PhraseText text={turnDisplay.collection.linesText} /></span>
+        </div>
+      </div>}
+      lottery={<p className="game-panel__lottery"><span>抽選: </span><PhraseText text={turnDisplay.lotteryDisplayText} /></p>}
+      notice={itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
+        view={itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation} showEffects={false}
+      /> : null}
+      effectTexts={effectModels.map((model) => model.text)}
+      routeSummary={<details className="game-panel__route-summary">
+        <summary>地図なしで確認</summary>
+        <section aria-label="山手線の未踏破区間">
+          <h2>山手線の未踏破区間（{remainingSections.length}）</h2>
+          {remainingSections.length > 0 ? (
+            <ol>{remainingSections.map((section) => <li key={section.id}><PhraseText text={`${section.from} → ${section.to}`} /></li>)}</ol>
+          ) : <p>未踏破区間はありません。</p>}
+        </section>
+        <section aria-label="乗車中の次の駅">
+          <h2>乗車中の次の駅</h2>
+          <p><PhraseText text={`${serviceName(network, ride.serviceId, presentation)}・${directionLabel(network, ride.serviceId, ride.direction)}`} /></p>
+          {upcomingStations.length > 0 ? (
+            <ol>{upcomingStations.map((stationId) => <li key={stationId}><PhraseText text={stationName(network, stationId, presentation)} /></li>)}</ol>
+          ) : <p>この路線に次の駅はありません。</p>}
+        </section>
+      </details>}
+      candidates={turnDisplay.candidateDrawSlotCount > LOTTERY_INLINE_LIMIT ? (
+        <details className="game-panel__candidates" key={game.turn}>
+          <summary>抽選候補をすべて表示（{turnDisplay.candidateDrawSlotCount}抽選枠）</summary>
+          <ul>{candidates.map((row) => <li key={row.groupId}><PhraseText text={row.label} /></li>)}</ul>
+        </details>
+      ) : null}
+    />
+  );
+  const gameMenu = (
+    <GameMenu
+      embedded={isPhone}
+      parentTriggerRef={phoneTriggerRef}
+      expanded={isPhone ? phoneSettingsOpen : activeSurface === "menu"}
+      onExpandedChange={isPhone ? setPhoneMenuExpanded : setMenuExpanded}
+      follow={follow}
+      reducedMotion={reducedMotion}
+      speedLabel={props.speedLabel}
+      presentationLevel={props.presentationLevel}
+      lines={legendGroups}
+      targetColor={targetColor}
+      selectedGroupIds={selectedGroupIds}
+      onToggleFollow={props.onToggleFollow}
+      onCycleSpeed={props.onCycleSpeed}
+      onCyclePresentation={props.onCyclePresentation}
+      onNewGame={props.onNewGame}
+      onShowTitle={props.onShowTitle}
+      onToggleGroup={toggleGroup}
+      onSetOperator={setOperator}
+      onShowAll={showAllLineGroups}
+    />
+  );
+
   return (
     <>
     <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
@@ -374,70 +577,9 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         directionTargetRef={props.turnMomentTargets?.direction}
       />
       <div className="game-panel__disclosures">
-        <TurnLogDrawer
-          expanded={activeSurface === "log"}
-          onExpandedChange={setLogExpanded}
-          logRegionId={logRegionId}
-          logOpenerRef={logOpenerRef}
-          arrival={itemView ? turnDisplay.arrivalText : null}
-          roll={turnDisplay.rollText}
-          progress={<div className="hud-progress--log">
-            <div className="hud-progress__proximity">
-              <span>{turnDisplay.proximity && <PhraseText text={`${TARGET_PROXIMITY_COPY.prefix}${turnDisplay.proximity.hops}${TARGET_PROXIMITY_COPY.stationSuffix}`} />}</span>
-              <span>{turnDisplay.proximity?.trend && <PhraseText text={TARGET_PROXIMITY_COPY[turnDisplay.proximity.trend]} />}</span>
-            </div>
-            <div className="hud-progress__collection">
-              <span className="hud-progress--log__stations"><PhraseText text={turnDisplay.collection.stationsText} /></span>
-              <span className="hud-progress--log__lines"><PhraseText text={turnDisplay.collection.linesText} /></span>
-            </div>
-          </div>}
-          lottery={<p className="game-panel__lottery"><span>抽選: </span><PhraseText text={turnDisplay.lotteryDisplayText} /></p>}
-          notice={itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
-            view={itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation} showEffects={false}
-          /> : null}
-          effectTexts={effectModels.map((model) => model.text)}
-          routeSummary={<details className="game-panel__route-summary">
-            <summary>地図なしで確認</summary>
-            <section aria-label="山手線の未踏破区間">
-              <h2>山手線の未踏破区間（{remainingSections.length}）</h2>
-              {remainingSections.length > 0 ? (
-                <ol>{remainingSections.map((section) => <li key={section.id}><PhraseText text={`${section.from} → ${section.to}`} /></li>)}</ol>
-              ) : <p>未踏破区間はありません。</p>}
-            </section>
-            <section aria-label="乗車中の次の駅">
-              <h2>乗車中の次の駅</h2>
-              <p><PhraseText text={`${serviceName(network, ride.serviceId, presentation)}・${directionLabel(network, ride.serviceId, ride.direction)}`} /></p>
-              {upcomingStations.length > 0 ? (
-                <ol>{upcomingStations.map((stationId) => <li key={stationId}><PhraseText text={stationName(network, stationId, presentation)} /></li>)}</ol>
-              ) : <p>この路線に次の駅はありません。</p>}
-            </section>
-          </details>}
-          candidates={turnDisplay.candidateDrawSlotCount > LOTTERY_INLINE_LIMIT ? (
-            <details className="game-panel__candidates" key={game.turn}>
-              <summary>抽選候補をすべて表示（{turnDisplay.candidateDrawSlotCount}抽選枠）</summary>
-              <ul>{candidates.map((row) => <li key={row.groupId}><PhraseText text={row.label} /></li>)}</ul>
-            </details>
-          ) : null}
-        />
-        <GameMenu
-          expanded={activeSurface === "menu"}
-          onExpandedChange={setMenuExpanded}
-          follow={follow}
-          reducedMotion={reducedMotion}
-          speedLabel={props.speedLabel}
-          presentationLevel={props.presentationLevel}
-          lines={legendGroups}
-          targetColor={targetColor}
-          selectedGroupIds={selectedGroupIds}
-          onToggleFollow={props.onToggleFollow}
-          onCycleSpeed={props.onCycleSpeed}
-          onCyclePresentation={props.onCyclePresentation}
-          onNewGame={props.onNewGame}
-          onShowTitle={props.onShowTitle}
-          onToggleGroup={toggleGroup}
-          onSetOperator={setOperator}
-          onShowAll={showAllLineGroups}
-        />
+        {isPhone ? <PhoneGameMenu expanded={activeSurface === "phone-menu"} section={phoneSection} collection={turnDisplay.collection}
+          openerRef={logOpenerRef} triggerRef={phoneTriggerRef} onExpandedChange={setPhoneMenuExpanded}
+          onSectionChange={setPhoneSection} log={turnLog} settings={gameMenu} /> : <>{turnLog}{gameMenu}</>}
       </div>
       {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{autoRoll.announcement}</p>}
       {itemView && itemDialog && (
@@ -466,7 +608,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       />}
     </main>
     <TurnResultPill model={turnDisplay.turnResult} active={pillActive} position={pillPosition}
-      logRegionId={logRegionId} expanded={activeSurface === "log"} onActivate={activateLogPill} />
+      logRegionId={logRegionId} expanded={phoneLogOpen} onActivate={activateLogPill} />
     </>
   );
 });

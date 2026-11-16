@@ -41,7 +41,7 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 | 10 | Embedded disclosure mode | done | `431cb00` | full vitest 2204 pass, typecheck + build ok; whole accessibility/ui-pop/turn-result-card/game-settings specs desktop 72 pass/1 skip, phone @layout 38 pass/3 skip (implementer run); verify_delegation actionable 0; Sol-low APPROVE |
 | 11 | Phone hamburger wrapper (unmounted) | done | `73ca971` | full vitest 2206 pass, build ok; verify_delegation actionable 0; Sol-low APPROVE (Step 13 to verify first-open section, single Escape owner with embedded children, pill/breakpoint wiring) |
 | 12 | Layout-aware E2E helpers | done | `d7605c1` | legacy UI: all phone @layout 82 pass/5 skip; specs using the helpers (10) + text-wrapping + game-settings desktop 155 pass/3 skip, phone @layout 51 pass/2 skip; typecheck ok; Sol-low REQUEST_CHANGES 1×P2 (close helpers passed silently with no UI) → lead made closePhoneMenu throw without a visible trigger |
-| 13 | Phone surface + pill integration | pending | — | — |
+| 13 | Phone surface + pill integration | done | (this commit) | Sonnet run killed by classifier outage → Codex Luna xhigh resumed (paused once by user) → Sol-low REQUEST_CHANGES 1×P2 (focus lost on breakpoint remount) + note (replace phone media-identity guard with per-query matchMedia stub in tests/unit/game-app-turn-moments.test.ts) + lead screenshot P3s (summary lines merged, selected section unstyled) → Luna fix → Sol-low APPROVE. Lead: typecheck ok, full vitest 2213 pass/1 skip, build ok, phone @layout 83 pass/5 skip, desktop 8 specs (accessibility, ui-pop, turn-result-card, text-wrapping, game-settings, layout, hud-layout, hud-progress-feedback) 90 pass/2 skip. Existing-test edits: turn-result-card ×3 titles + ui-pop tab order (hamburger replaces log/menu triggers ≤600px; Sol: intent preserved). GamePanel diff ~294 lines (user accepted one step). Screenshots `.claude/logs/screenshots/hud65-s13-phone-{closed,open}.png` |
 | 14 | Final acceptance | pending | — | — |
 
 ## Notes
@@ -52,6 +52,5 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. Step 13 (Phone surface + pill integration): build the prompt from the impl-prompts doc (Common body + Step 13 block, `<BASE_SHA>` =
-   branch HEAD), run Luna xhigh, Sol-low review, lead verification commands, commit, push, check CI, update this table.
+1. Step 14 (Final acceptance E2E, user-approved 2026-11-17): prompt `.claude/logs/codex/prompt-hud65-s14.md` (adjusted for the dropped once-only rule / #96: one straight-through turn, no Skip, no item toggling). Run Luna xhigh, Sol-low review, lead checks incl. the plan's regression list, commit, push, CI, update this table.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).

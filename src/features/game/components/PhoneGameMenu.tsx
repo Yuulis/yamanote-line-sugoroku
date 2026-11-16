@@ -52,8 +52,8 @@ export function PhoneGameMenu({ expanded, section, collection, openerRef, trigge
       </button>
       <div id={regionId} className="phone-menu__content" hidden={!expanded}>
         <div className="phone-menu__summary">
-          <PhraseText text={collection.stationsText} />
-          <PhraseText text={collection.linesText} />
+          <span><PhraseText text={collection.stationsText} /></span>
+          <span><PhraseText text={collection.linesText} /></span>
         </div>
         <div className="phone-menu__sections">
           <button type="button" className="phone-menu__section-button" aria-pressed={section === "log"} onClick={() => changeSection("log")}>ログ</button>
