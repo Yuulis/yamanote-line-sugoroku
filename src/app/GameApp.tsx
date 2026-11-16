@@ -437,6 +437,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           /> : undefined}
           network={network}
           presentation={presentation}
+          collection={turnDisplay.collection}
           display={edition.display}
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}

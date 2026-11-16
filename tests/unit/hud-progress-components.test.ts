@@ -3,6 +3,11 @@ import { act, createElement, createRef } from "react";
 import { describe, expect, it } from "vitest";
 import { GameHud, type GameHudProps } from "../../src/features/game/components/GameHud";
 import { TargetProgressBar } from "../../src/features/game/components/TargetProgressBar";
+import { ClearScreen } from "../../src/features/game/components/ClearScreen";
+import { EDITIONS } from "../../src/features/editions/registry";
+import type { GameState } from "../../src/types/network";
+import type { RailwayNetwork } from "../../src/features/game/engine";
+import type { PresentationResolver } from "../../src/features/game/presentationResolver";
 import type { MilestoneFlash } from "../../src/features/game/progressMilestones";
 import { mountReact } from "./helpers/reactDom";
 
@@ -12,6 +17,9 @@ const COLLECTION = {
   visitedStations: 4, totalStations: 1_586, riddenLines: 2, totalLines: 134,
   stationsText: "訪れた駅 4/1,586", linesText: "乗った路線 2/134",
 } as const;
+const CLEAR_GAME = { turn: 61, movementHistory: [], config: { startStationId: "tokyo" } } as unknown as GameState;
+const CLEAR_NETWORK = { stationsById: new Map() } as unknown as RailwayNetwork;
+const CLEAR_PRESENTATION = { stationName: (id: string) => id } as unknown as PresentationResolver;
 
 function hudProps(overrides: Partial<GameHudProps> = {}): GameHudProps {
   return {
@@ -91,6 +99,23 @@ describe("HUD progress components", () => {
       expect(mount.container.querySelector(".target-progress--guidance")).not.toBeNull();
       expect(mount.container.querySelector("[role=progressbar]")).toBeNull();
       expect(mount.container.querySelector(".target-progress__flash")).toBeNull();
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("renders both clear-screen collection totals", () => {
+    const mount = mountReact(createElement(ClearScreen, {
+      game: CLEAR_GAME, network: CLEAR_NETWORK, presentation: CLEAR_PRESENTATION,
+      display: EDITIONS[0]!.display, collection: COLLECTION, saveStatus: "saved",
+      onPlayAgain: () => undefined, onShowTitle: () => undefined,
+    }));
+    try {
+      const stats = mount.container.querySelector(".clear-screen__stats");
+      expect(Array.from(stats?.querySelectorAll("dt") ?? []).map((item) => item.textContent)).toContain("訪れた駅");
+      expect(Array.from(stats?.querySelectorAll("dt") ?? []).map((item) => item.textContent)).toContain("乗った路線");
+      expect(Array.from(stats?.querySelectorAll("dd") ?? []).map((item) => item.textContent)).toContain("4/1,586");
+      expect(Array.from(stats?.querySelectorAll("dd") ?? []).map((item) => item.textContent)).toContain("2/134");
     } finally {
       mount.cleanup();
     }
