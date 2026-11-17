@@ -3,6 +3,7 @@ import { listFailures, loadRailwayData, type RailwayData } from "../data/loaders
 import { type EditionId, type EditionRegistry, type Edition } from "../features/editions/types";
 import { TitleScreen } from "../features/game/components/TitleScreen";
 import { networkFromData } from "../features/game/networkFromData";
+import { buildRulesGuide } from "../features/game/rulesGuide";
 import { RailwayMap } from "../features/map/RailwayMap";
 import { DataErrorBanner } from "./DataErrorBanner";
 import { GameApp } from "./GameApp";
@@ -53,6 +54,8 @@ export function EditionApp({
       : null),
     [data, edition],
   );
+  // Without a loaded network there is no target count or display names; the model keeps its generic wording.
+  const rulesModel = useMemo(() => buildRulesGuide(edition.config), [edition.config]);
   const pickerProps = {
     editions,
     editionId: edition.id,
@@ -71,6 +74,7 @@ export function EditionApp({
       unavailableReason={null}
       notice={null}
       loading
+      rulesModel={rulesModel}
       {...pickerProps}
       onNewGame={noop}
       onResume={noop}
@@ -89,6 +93,7 @@ export function EditionApp({
         saveLookup={null}
         unavailableReason={reason}
         notice={null}
+        rulesModel={rulesModel}
         {...pickerProps}
         onNewGame={noop}
         onResume={noop}

@@ -27,7 +27,8 @@ import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceMo
 import { DiceTumble } from "../features/game/components/DiceTumble";
 import type { GameSession } from "../features/game/gameSession";
 import { createPresentationResolver } from "../features/game/presentationResolver";
-import { stationName } from "../features/game/presentation";
+import { directionLabel, serviceName, stationName } from "../features/game/presentation";
+import { buildRulesGuide } from "../features/game/rulesGuide";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
@@ -108,6 +109,12 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     () => new Set(targetSegmentIds(edition.config, network)),
     [edition.config, network],
   );
+  const rulesModel = useMemo(() => buildRulesGuide(edition.config, {
+    targetSegmentCount: requiredIds.size,
+    targetServiceName: serviceName(network, edition.config.targetServiceId, presentation),
+    startStationName: stationName(network, edition.config.startStationId, presentation),
+    targetDirectionLabel: directionLabel(network, edition.config.targetServiceId, edition.config.targetDirection),
+  }), [edition.config, network, presentation, requiredIds]);
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
   const speed = speedById(speedId);
@@ -378,6 +385,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           requiredIds={requiredIds}
           presentation={presentation}
           display={edition.display}
+          rulesModel={rulesModel}
           {...picker}
           saveLookup={titleSave}
           unavailableReason={null}

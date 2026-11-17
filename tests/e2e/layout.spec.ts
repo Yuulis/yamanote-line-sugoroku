@@ -146,7 +146,7 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   await expect(titleScreen(page).getByText("東京近郊版", { exact: true })).toBeAttached();
   await expect(titleScreen(page).getByRole("button", { name: "クレジット" })).toBeVisible();
   await expect(titleScreen(page).getByText(
-    "新橋から出発し、東京近郊の路線を乗り継ぎます。山手線は外回りに固定。全30区間を踏破して新橋に着くとクリアです。山手線では新橋で止まり、他路線ではちょうど止まる必要があります。終点・エリア端・系統の端で余った目は使いません。",
+    "新橋から出発し、山手線外回りの全30区間を1周するのが目標です。",
     { exact: true },
   )).toBeVisible();
   await titleScreen(page).getByRole("button", { name: "クレジット" }).click();

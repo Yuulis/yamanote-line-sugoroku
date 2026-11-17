@@ -1499,6 +1499,46 @@ button[aria-disabled="true"] {
   margin: 8px 0;
 }
 
+/* Rules sub-screen: its own host class, so the credits-screen section borders never leak into .rules-guide. */
+.title-screen__rules-screen {
+  /* Card chrome = screen padding 16px x 2 + card padding 20px x 2 (phone override: 8px x 2 + 14px x 2). */
+  --title-rules-card-chrome: 72px;
+  --title-rules-gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--title-rules-gap);
+  max-height: calc(100dvh - var(--title-rules-card-chrome) - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+
+.title-screen__rules-screen h1 {
+  margin: 0;
+  font-size: 24px;
+  text-align: center;
+}
+
+.title-screen__rules-body {
+  --rules-guide-scroll-margin: 0px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Shares .title-screen__credits-button (block, full width, 16px); only the spacing and the 44px target differ. */
+.title-screen__rules-button {
+  min-height: 44px;
+  margin-bottom: 8px;
+}
+
+.title-screen__rule {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@supports (word-break: auto-phrase) {
+  .title-screen__rule {
+    word-break: auto-phrase;
+  }
+}
+
 .title-screen__version {
   margin: 8px 0;
   color: #888888;
@@ -2651,6 +2691,11 @@ button[aria-disabled="true"] {
 
   .title-screen__card {
     padding: 14px 16px;
+  }
+
+  .title-screen__rules-screen {
+    --title-rules-card-chrome: 44px;
+    --title-rules-gap: 8px;
   }
 
   .title-screen__title {
