@@ -221,7 +221,7 @@ test.describe("current product scenarios", () => {
       .toContain("keikyu-main:shinagawa~keikyu-kita-shinagawa");
     const committed = (await readSave(page))!;
     await page.reload();
-    await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
+    await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・2ターン目から・.+$/ }).click();
     await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
     expect(await readSave(page)).toEqual(committed);
     await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, committed));

@@ -1405,6 +1405,24 @@ button[aria-disabled="true"] {
   margin: 16px 0;
 }
 
+.title-screen__resume {
+  --title-screen-resume-delete-target: 44px;
+  --title-screen-resume-delete-font-size: 14px;
+  display: grid;
+}
+
+.title-screen__resume-delete {
+  min-height: var(--title-screen-resume-delete-target);
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  text-decoration: underline;
+}
+
+.title-screen__actions .title-screen__resume-delete {
+  font-size: var(--title-screen-resume-delete-font-size);
+}
+
 .title-screen__actions button,
 .title-screen__credits-button {
   font-size: 16px;

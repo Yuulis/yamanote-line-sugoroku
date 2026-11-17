@@ -68,7 +68,7 @@ test.describe("lottery reveal after animation", () => {
     await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, committed));
     expect(await readSave(page)).toEqual(committed);
     await page.reload();
-    await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
+    await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・2ターン目から・.+$/ }).click();
     await expect(panelStat(page, "乗車中")).toHaveText("テスト南線");
     // Resumed results replay no moment.
     await expect(page.locator(".turn-moment-host")).toHaveCount(0);

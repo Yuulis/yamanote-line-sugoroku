@@ -245,7 +245,7 @@ test("a reload during the tumble resumes the saved turn with no moment replay", 
   const committed = await readSave(page);
 
   await page.reload();
-  await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
+  await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・2ターン目から・.+$/ }).click();
   await expect(gamePanel(page)).toBeVisible();
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
   await expect(page.locator(".turn-moment-host")).toHaveCount(0);

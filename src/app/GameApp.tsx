@@ -34,6 +34,7 @@ import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } fro
 import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
+import { overwriteProgressText } from "../features/game/resumePresentation";
 import { summarizeGame } from "../features/game/gameSummary";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
@@ -301,7 +302,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     if (current?.status === "playing" && hasGameProgress(current)) {
       const message = game
         ? "現在のゲームを終了して新しく始めますか？今の進行は上書きされます。"
-        : `保存中のゲーム（${current.turn}ターン目）は上書きされます。はじめから始めますか？`;
+        : `保存中のゲーム（${overwriteProgressText(current)}）は上書きされます。はじめから始めますか？`;
       setConfirm({ kind: "new-game", message });
       return;
     }
@@ -374,6 +375,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         <TitleScreen
           manifest={data.manifest.ok ? data.manifest.value : null}
           network={network}
+          requiredIds={requiredIds}
           presentation={presentation}
           display={edition.display}
           {...picker}

@@ -5,8 +5,9 @@ import { CC_BY_LICENSE_NAME, CC_BY_URL, safeExternalUrl } from "../../map/attrib
 import { MAP_CREDITS } from "../../map/mapConfig";
 import type { RailwayNetwork } from "../engine";
 import { type SaveLookup, saveProblemMessage } from "../store/persistence";
-import { stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
+import { buildResumePresentation } from "../resumePresentation";
+import { PhraseText } from "./PhraseText";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import type { EditionId, EditionRegistry } from "../../editions/types";
@@ -17,6 +18,7 @@ interface TitleScreenProps {
   manifest: Manifest | null;
   /** Null when the game cannot start (see `unavailableReason`). */
   network: RailwayNetwork | null;
+  requiredIds?: ReadonlySet<string>;
   presentation?: PresentationResolver;
   display?: EditionDisplay;
   editions?: EditionRegistry;
@@ -43,21 +45,19 @@ const PRIVACY_POLICY_URL = `${import.meta.env.BASE_URL}privacy.html`;
 const REPOSITORY_URL = "https://github.com/Yuulis/yamanote-line-sugoroku";
 const ISSUES_URL = `${REPOSITORY_URL}/issues`;
 const FONT_LICENSE_URL = "https://github.com/Yuulis/yamanote-line-sugoroku/blob/main/brand/OFL.txt";
-
-function resumeLabel(game: GameState, network: RailwayNetwork, presentation?: PresentationResolver): string {
-  if (game.status === "completed") return `クリア結果を見る（${game.turn}ターンでクリア）`;
-  return `つづきから（${game.turn}ターン目・${stationName(network, game.currentStationId, presentation)}）`;
-}
+const NO_REQUIRED_IDS: ReadonlySet<string> = new Set();
 
 function SaveSection({
   saveLookup,
   network,
+  requiredIds,
   presentation,
   onResume,
   onDeleteSave,
 }: Pick<TitleScreenProps, "saveLookup" | "onResume" | "onDeleteSave" | "presentation"> & {
   network: RailwayNetwork;
-}) {
+  requiredIds: ReadonlySet<string>;
+}): React.JSX.Element | null {
   if (!saveLookup || saveLookup.kind === "none") return null;
   if (saveLookup.kind === "unavailable") {
     return (
@@ -77,15 +77,16 @@ function SaveSection({
     );
   }
   const { game } = saveLookup;
+  const resume = buildResumePresentation(game, network, requiredIds, presentation);
   return (
-    <>
+    <div className="title-screen__resume">
       <button type="button" className="button-primary" onClick={() => onResume(game)}>
-        {resumeLabel(game, network, presentation)}
+        <PhraseText text={resume.label} />
       </button>
-      <button type="button" onClick={onDeleteSave}>
-        セーブを削除
+      <button type="button" className="title-screen__resume-delete" onClick={onDeleteSave}>
+        <PhraseText text="セーブを削除" />
       </button>
-    </>
+    </div>
   );
 }
 
@@ -232,6 +233,7 @@ export function TitleScreen(props: TitleScreenProps) {
             <SaveSection
               saveLookup={saveLookup}
               network={network}
+              requiredIds={props.requiredIds ?? NO_REQUIRED_IDS}
               presentation={presentation}
               onResume={props.onResume}
               onDeleteSave={props.onDeleteSave}
