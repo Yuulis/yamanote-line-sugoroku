@@ -458,6 +458,14 @@ Steps 5, 6A, 7A, 9, 11 and 12A are close to the cap. Before Luna starts each of 
 - Risks: never call `dialog.close()` synchronously in keydown; validate the opener before restoring focus.
 
 ### Step 6A — Menu + lottery entry points, `rulesOpen` suspension
+
+> Amendment (2026-11-17, from the Step 5 review). RulesDialog contracts for 6A/6B:
+> 1. Capture the opener from `event.currentTarget`, never `document.activeElement` (Safari does not focus buttons on click).
+> 2. `getFallbackFocus` walks menu trigger → dice → panel heading with the exported `isFocusRestorable`; on phones resolve the phone menu trigger (the desktop trigger is not rendered).
+> 3. RulesDialog restores focus in a microtask and yields if another `dialog[open]` exists, so render a deferred RollAdjustment/DiscardChoice in the same commit as the rules unmount (gated on `!rulesOpen`); check GamePanel's restore-roll-focus effect (~`GamePanel.tsx:423`) does not fight the opener restore.
+> 4. `rulesOpen` is React state at render time; autoRoll/useGameShortcuts keep detecting `dialog[open]` after the layout effect.
+> 5. Escape: the closing Escape sees `dialog.open === true`; capture-phase Escape handlers must not `preventDefault`. The E2E presses Escape once.
+> 6. (6B) `showModal()` hides an open item-card popover; test that the card's cleanup does not steal focus from the rules dialog.
 - Files:
   - `GameApp.tsx`: `RulesRequest` state, `openRules`, renders `RulesDialog`, `rulesOpen` passed to `GamePanel` and
     to ToastHost `obscured`;

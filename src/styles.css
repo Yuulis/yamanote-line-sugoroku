@@ -3440,6 +3440,81 @@ button[aria-disabled="true"] {
   }
 }
 
+/* Rules dialog: wider than .dialog; the header stays put and only the body scrolls, so section targeting needs no sticky offset. */
+.rules-dialog {
+  --rules-dialog-width: 640px;
+  --rules-dialog-margin: 32px;
+  --rules-dialog-padding: 16px;
+  --rules-dialog-target: 44px;
+  box-sizing: border-box;
+  width: min(var(--rules-dialog-width), calc(100% - var(--rules-dialog-margin)));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - var(--rules-dialog-margin));
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
+  color: var(--color-text);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.rules-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.rules-dialog::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.rules-dialog__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--rules-dialog-padding);
+  padding: var(--rules-dialog-padding);
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.rules-dialog__title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.rules-dialog__subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.rules-dialog__close {
+  flex: 0 0 auto;
+  min-width: var(--rules-dialog-target);
+  min-height: var(--rules-dialog-target);
+}
+
+.rules-dialog__body {
+  --rules-guide-scroll-margin: 0px;
+  min-height: 0;
+  padding: var(--rules-dialog-padding);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+}
+
+@supports (word-break: auto-phrase) {
+  .rules-dialog {
+    word-break: auto-phrase;
+  }
+}
+
+@media (max-width: 360px) {
+  .rules-dialog {
+    --rules-dialog-padding: 12px;
+  }
+}
+
 /* Phones show less: the section nav and the duplicated timing line go; no section, number, icon, name or effect. */
 @media (max-width: 600px) {
   .rules-guide {
