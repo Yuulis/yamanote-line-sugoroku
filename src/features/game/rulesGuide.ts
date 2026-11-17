@@ -4,7 +4,8 @@ import { PRESENTATION_LEVELS } from "./gameSettings";
 import { ITEM_DESCRIPTIONS, itemTiming } from "./itemPresentation";
 
 export type RulesSectionId = "goal" | "lottery" | "items" | "controls" | "save";
-export type OpenRules = (sectionId?: RulesSectionId) => void;
+/** Child-facing opener: the opener comes from the activating event (`event.currentTarget`), never `document.activeElement`. */
+export type OpenRules = (sectionId: RulesSectionId | undefined, opener: HTMLElement) => void;
 
 export interface RulesGuideItem {
   readonly kind: ItemKind;

@@ -23,6 +23,8 @@ import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import { ITEM_DESCRIPTIONS } from "../itemPresentation";
 import type { TurnMomentDisplay } from "../turnMomentPresentation";
+import type { OpenRules, RulesSectionId } from "../rulesGuide";
+import { isFocusRestorable } from "./RulesDialog";
 import { lineBadgeFor } from "../lineBadge";
 import { InventoryPanel } from "./InventoryPanel";
 import { GameHud } from "./GameHud";
@@ -41,6 +43,12 @@ import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
 import { TARGET_PROXIMITY_COPY } from "../targetProximity";
 
 const UPCOMING_STATION_COUNT = 5;
+const LOTTERY_RULES_LABEL = "抽選のルールを詳しく見る";
+
+/** The opener comes from the activating event (Safari does not focus a clicked button); the panel adds its fallback. */
+export type PanelOpenRules = (
+  sectionId: RulesSectionId | undefined, opener: HTMLElement, getFallbackFocus: () => HTMLElement | null,
+) => void;
 
 export interface GamePanelProps {
   session: GameSession;
@@ -56,6 +64,9 @@ export interface GamePanelProps {
   presentationLevel: PresentationLevel;
   reducedMotion: boolean;
   confirmationOpen?: boolean;
+  /** The in-game rules dialog is open: suspends auto-roll and shortcuts and defers the decision modals. */
+  rulesOpen?: boolean;
+  onOpenRules?: PanelOpenRules;
   onRoll: () => void;
   onSkip: () => void;
   onToggleFollow: () => void;
@@ -338,19 +349,21 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
   const itemDialogOpen = Boolean(itemView && itemDialog);
+  // Render-time state, so the suspension holds before the dialog's own layout effect opens it.
+  const rulesOpen = props.rulesOpen ?? false;
   const autoRoll = useAutoRoll({
     session,
     turnDisplay,
     surfaceOpen: activeSurface !== null,
     itemDialogOpen,
-    confirmationOpen: props.confirmationOpen ?? false,
+    confirmationOpen: (props.confirmationOpen ?? false) || rulesOpen,
     onRoll: props.onRoll,
   });
   useGameShortcuts({
     canRoll: turnDisplay.canRoll,
     canSkip: turnDisplay.canSkip,
     surfaceOpen: activeSurface !== null,
-    itemDialogOpen,
+    itemDialogOpen: itemDialogOpen || rulesOpen,
   }, { onRoll: autoRoll.requestRoll, onSkip: props.onSkip });
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
@@ -359,6 +372,17 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   }, [itemDialogOpen, props.onItemDialogOpenChange]);
   const rollButtonRef = useRef<HTMLButtonElement>(null);
   const restoreRollFocusRef = useRef(false);
+  // Rules fallback when the opener is gone: the menu trigger (the phone one on phones), the dice, the heading.
+  const getRulesFallbackFocus = useCallback((): HTMLElement | null => {
+    const menuTrigger = phoneTriggerRef.current ?? panelRef.current?.querySelector<HTMLElement>(".game-panel__menu-trigger");
+    return [menuTrigger, rollButtonRef.current, headingRef.current]
+      .find((candidate) => isFocusRestorable(candidate ?? null, { allowAriaDisabled: true })) ?? null;
+  }, []);
+  // The one child-facing opener (menu, lottery, and the item card in 6B); the panel binds its fallback.
+  const onOpenRules = props.onOpenRules;
+  const openRules = useCallback<OpenRules>((sectionId, opener) => {
+    onOpenRules?.(sectionId, opener, getRulesFallbackFocus);
+  }, [onOpenRules, getRulesFallbackFocus]);
   const draftItem = itemView?.draft.items[0];
   const presentedDecision = turnDisplay.decision;
   // Always read the latest presentation lock, so a callback captured earlier is a no-op once a lock starts.
@@ -476,7 +500,11 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           <span className="hud-progress--log__lines"><PhraseText text={turnDisplay.collection.linesText} /></span>
         </div>
       </div>}
-      lottery={<p className="game-panel__lottery"><span>抽選: </span><PhraseText text={turnDisplay.lotteryDisplayText} /></p>}
+      lottery={<div className="game-panel__lottery-row">
+        <p className="game-panel__lottery"><span>抽選: </span><PhraseText text={turnDisplay.lotteryDisplayText} /></p>
+        {onOpenRules && <button type="button" className="rules-opener" aria-label={LOTTERY_RULES_LABEL}
+          onClick={(event) => openRules("lottery", event.currentTarget)}>詳しく</button>}
+      </div>}
       notice={itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
         view={itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation} showEffects={false}
       /> : null}
@@ -526,6 +554,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       onToggleGroup={toggleGroup}
       onSetOperator={setOperator}
       onShowAll={showAllLineGroups}
+      onOpenRules={onOpenRules ? openRules : undefined}
     />
   );
 
@@ -597,7 +626,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onClose={() => { setItemDialog(null); restoreItemDialogFocus(); }}
         />
       )}
-      {turnDisplay.decision?.kind === "adjust" && <RollAdjustment
+      {/* Deferred under the rules (state retained); they mount in the same commit that unmounts the rules. */}
+      {!rulesOpen && turnDisplay.decision?.kind === "adjust" && <RollAdjustment
         announcement={turnDisplay.announcement}
         decision={turnDisplay.decision}
         landings={turnDisplay.adjustmentLandings}
@@ -605,7 +635,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onSkip={props.onSkip}
         canSkip={turnDisplay.canSkip}
       />}
-      {turnDisplay.decision?.kind === "discard" && <DiscardChoice
+      {!rulesOpen && turnDisplay.decision?.kind === "discard" && <DiscardChoice
         announcement={turnDisplay.announcement}
         decision={turnDisplay.decision}
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}

@@ -5,7 +5,8 @@ import { buildGeometryIndex } from "../features/game/animation/movePath";
 import { useMoveAnimation } from "../features/game/animation/useMoveAnimation";
 import { ClearScreen } from "../features/game/components/ClearScreen";
 import { ConfirmDialog } from "../features/game/components/ConfirmDialog";
-import { GamePanel } from "../features/game/components/GamePanel";
+import { GamePanel, type PanelOpenRules } from "../features/game/components/GamePanel";
+import { RulesDialog } from "../features/game/components/RulesDialog";
 import { TitleScreen } from "../features/game/components/TitleScreen";
 import { type RailwayNetwork, isItemSave, targetSegmentIds } from "../features/game/engine";
 import {
@@ -28,7 +29,7 @@ import { DiceTumble } from "../features/game/components/DiceTumble";
 import type { GameSession } from "../features/game/gameSession";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { directionLabel, serviceName, stationName } from "../features/game/presentation";
-import { buildRulesGuide } from "../features/game/rulesGuide";
+import { buildRulesGuide, type RulesSectionId } from "../features/game/rulesGuide";
 import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
@@ -56,6 +57,12 @@ interface GameAppProps {
 }
 
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
+
+interface RulesRequest {
+  readonly sectionId?: RulesSectionId;
+  readonly returnFocus: HTMLElement | null;
+  readonly getFallbackFocus: () => HTMLElement | null;
+}
 
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
@@ -100,6 +107,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [rulesRequest, setRulesRequest] = useState<RulesRequest | null>(null);
+  const openRules = useCallback<PanelOpenRules>((sectionId, returnFocus, getFallbackFocus) => {
+    setRulesRequest({ sectionId, returnFocus, getFallbackFocus });
+  }, []);
+  const closeRules = useCallback(() => setRulesRequest(null), []);
 
   const geometry = useMemo(
     () => buildGeometryIndex(data.geometry.ok ? data.geometry.value : undefined),
@@ -368,6 +380,12 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   }, [showTitleScreen]);
 
   const showClear = turnDisplay?.showClear ?? false;
+  const panelShown = Boolean(session && shown && turnDisplay && !showClear);
+  // The one source for every rules suspension; the rules live only beside a mounted panel.
+  const rulesOpen = panelShown && rulesRequest !== null;
+  useEffect(() => {
+    if (!panelShown) setRulesRequest(null);
+  }, [panelShown]);
   const reportedClear = useRef(-1);
   useEffect(() => {
     if (!showClear || !session || !presentationGame || reportedClear.current === session.sessionId) return;
@@ -413,6 +431,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           presentationLevel={presentationLevel}
           reducedMotion={reducedMotion}
           confirmationOpen={confirm !== null}
+          rulesOpen={rulesOpen}
+          onOpenRules={openRules}
           onRoll={guardedRoll}
           onEditItemDraft={guardedEditItemDraft}
           onAdjustItemRoll={guardedAdjustItemRoll}
@@ -435,7 +455,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         sessionId={toastSessionId}
         inputs={acceptedToastInputs}
         saveFailed={app.saveStatus === "failed"}
-        obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen}
+        obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen || rulesOpen}
         reducedMotion={reducedMotion}
       />
       {session && turnDisplay?.showClear && presentationGame && (
@@ -452,6 +472,15 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}
+        />
+      )}
+      {rulesOpen && rulesRequest && (
+        <RulesDialog
+          model={rulesModel}
+          sectionId={rulesRequest.sectionId}
+          returnFocus={rulesRequest.returnFocus}
+          getFallbackFocus={rulesRequest.getFallbackFocus}
+          onClose={closeRules}
         />
       )}
       {confirm?.kind === "new-game" && (
