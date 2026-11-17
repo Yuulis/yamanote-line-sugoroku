@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  ANIMATION_SPEEDS,
   CLASSIC_GAME_CONFIG,
   ITEM_GAME_CONFIG,
 } from "../../src/features/game/gameConfig";
+import { PRESENTATION_LEVELS } from "../../src/features/game/gameSettings";
+import { ITEM_DESCRIPTIONS, itemTiming } from "../../src/features/game/itemPresentation";
 import {
   buildRulesGuide,
   type RulesGuideModel,
@@ -143,5 +146,128 @@ describe("rules guide model", () => {
     const model = buildRulesGuide(CLASSIC_GAME_CONFIG);
 
     expect(text(model, "items")).toBe("このルールではアイテムはありません");
+    expect(model.items).toEqual([]);
+  });
+
+  it("renders only configured item kinds", () => {
+    const model = buildRulesGuide(
+      itemPolicyWith({ beneficialKinds: ["double", "rapid"], harmfulKinds: ["detour"] }),
+    );
+    const noHarm = buildRulesGuide(itemPolicyWith({ beneficialKinds: ["double"], harmfulChancePercent: 0 }));
+
+    expect(model.items.map((item) => item.kind)).toEqual(["double", "rapid", "detour"]);
+    expect(model.items[0]).toEqual({
+      kind: "double",
+      name: ITEM_DESCRIPTIONS.double.name,
+      effect: ITEM_DESCRIPTIONS.double.effect,
+      timing: itemTiming("double"),
+    });
+    expect(noHarm.items.map((item) => item.kind)).toEqual(["double"]);
+    expect(buildRulesGuide(ITEM_GAME_CONFIG).items).toHaveLength(
+      BASE_ITEM_POLICY.beneficialKinds.length + BASE_ITEM_POLICY.harmfulKinds.length,
+    );
+  });
+
+  it("uses automatic timing for harmful items", () => {
+    const model = buildRulesGuide(ITEM_GAME_CONFIG);
+    const byKind = new Map(model.items.map((item) => [item.kind, item]));
+
+    for (const kind of BASE_ITEM_POLICY.harmfulKinds) {
+      expect(byKind.get(kind)?.timing).toBe("拾うと自動で発動");
+    }
+    expect(byKind.get("roll-adjust")?.timing).toBe("出目を見てから使う");
+    expect(byKind.get("delay-certificate")?.timing).toBe("持っているだけで効く");
+    expect(byKind.get("route-ticket")?.timing).toBe("サイコロを振る前に使う");
+  });
+
+  it("includes target count only when supplied", () => {
+    const withCount = text(buildRulesGuide(ITEM_GAME_CONFIG, { targetSegmentCount: 12 }), "goal");
+    const without = text(buildRulesGuide(ITEM_GAME_CONFIG), "goal");
+
+    expect(withCount).toContain("全12区間");
+    expect(without).toContain("すべての区間");
+    expect(without).not.toMatch(/\d+区間/);
+  });
+
+  it("uses supplied names and the goal arrival policy in the goal section", () => {
+    const names = { targetServiceName: "テスト環状線", startStationName: "起点駅", targetDirectionLabel: "右回り" };
+    const goal = (config: GameConfig): string => text(buildRulesGuide(config, names), "goal");
+    const truncate = goal(ITEM_GAME_CONFIG);
+
+    expect(truncate).toContain("起点駅からスタートします");
+    expect(truncate).toContain("テスト環状線（右回り）の");
+    expect(truncate).toContain("踏破を終えていれば、テスト環状線では起点駅に着いた時点で止まってクリア");
+    expect(truncate).toContain("ほかの路線では、移動の最後にちょうど起点駅に止まる必要");
+    expect(truncate).toContain("終点や収録範囲の端に着いたときは、そこで止まります。残りの出目は使いません");
+    expect(goal(configWith({ goalArrivalPolicy: "exact-stop" }))).toContain("踏破を終えていれば、どの路線でも、移動の最後にちょうど起点駅に止まる");
+    expect(goal(configWith({ goalArrivalPolicy: "pass-through" }))).toContain("踏破を終えていれば、どの路線でも、起点駅に着いた時点で止まってクリア");
+    expect(text(buildRulesGuide(ITEM_GAME_CONFIG, names), "lottery")).toContain("テスト環状線では、いつも右回りに進みます");
+  });
+
+  it("never hard-codes proper names when none are supplied", () => {
+    const model = buildRulesGuide(ITEM_GAME_CONFIG);
+    const all = [...model.sections.flatMap((section) => section.paragraphs), ...model.shortcuts].join("\n");
+
+    for (const name of ["新橋", "山手線", "外回り"]) expect(all).not.toContain(name);
+    expect(text(model, "goal")).toContain("出発駅");
+  });
+
+  it("says the direction is redrawn at every arrival station whatever the weights", () => {
+    const weighted = text(buildRulesGuide(ITEM_GAME_CONFIG), "lottery");
+    const equal = text(buildRulesGuide(configWith({ directionLottery: { towardTargetWeight: 1 } })), "lottery");
+    const redraw = "乗換駅でなくても、移動を終えた駅で進む向きを抽選し直します";
+
+    expect(weighted).toContain(`目標路線以外の路線では、${redraw}`);
+    expect(equal).toContain(`目標路線以外の路線では、${redraw}`);
+    expect(equal).toContain("目標路線以外の路線では、進む向きはどちらも同じ確率です。");
+  });
+
+  it("omits duration sentences when harmful items cannot occur", () => {
+    const noHarm = text(buildRulesGuide(itemPolicyWith({ harmfulChancePercent: 0 })), "items");
+    const harmful = text(buildRulesGuide(ITEM_GAME_CONFIG), "items");
+
+    expect(noHarm).not.toContain("ターン後に効き");
+    expect(noHarm).not.toContain("の間続き");
+    expect(harmful).toContain("ターン後に効き");
+  });
+
+  it("says that the current line can be drawn again", () => {
+    expect(text(buildRulesGuide(ITEM_GAME_CONFIG), "lottery")).toContain("いま乗っている路線も候補に入ります");
+  });
+
+  it("uses settings labels from their existing tables", () => {
+    const controls = text(buildRulesGuide(ITEM_GAME_CONFIG), "controls");
+
+    expect(controls).toContain(ANIMATION_SPEEDS.map(({ label }) => label).join("→"));
+    expect(controls).toContain(PRESENTATION_LEVELS.map(({ label }) => label).join("→"));
+    expect(controls).toContain("「おまかせ」をONにすると");
+    expect(controls).toContain("ほかのタブに切り替えたときは止まります");
+    expect(controls).toContain("選び終えるまで待ちます");
+    expect(controls).toContain("動きを減らしているときは、アニメーションは省略され、「速度」と「演出」は切り替えられません");
+    expect(controls).toContain("「追尾」");
+  });
+
+  it("overrides delay and suspension durations from config", () => {
+    const changed = buildRulesGuide(itemPolicyWith({ delayTurns: 2, suspensionTurns: 7 }));
+    const effect = (model: RulesGuideModel, kind: string): string | undefined =>
+      model.items.find((item) => item.kind === kind)?.effect;
+
+    expect(effect(changed, "delay")).toBe("2ターン後の出目が1");
+    expect(effect(changed, "suspension")).toBe("その路線が7ターン乗れない");
+    expect(effect(buildRulesGuide(ITEM_GAME_CONFIG), "delay")).toBe(ITEM_DESCRIPTIONS.delay.effect);
+    expect(effect(buildRulesGuide(ITEM_GAME_CONFIG), "suspension")).toBe(ITEM_DESCRIPTIONS.suspension.effect);
+  });
+
+  it("describes saving and lists the shortcuts", () => {
+    const model = buildRulesGuide(ITEM_GAME_CONFIG);
+
+    expect(text(model, "save")).toContain("自動で保存されます");
+    expect(text(model, "save")).toContain("タイトル画面の「つづきから」で再開できます");
+    expect(model.shortcuts).toEqual([
+      "Space / Enter：サイコロを振る",
+      "S / Escape：移動の演出をスキップ",
+      "Escape：選んだアイテムの選択を解除",
+      "Escape：出目調整の画面で「そのまま」を選ぶ",
+    ]);
   });
 });

@@ -123,7 +123,13 @@ export type OpenRules = (sectionId?: RulesSectionId) => void;
 export interface RulesGuideItem { readonly kind: ItemKind; readonly name: string; readonly effect: string; readonly timing: string; }
 export interface RulesGuideSection { readonly id: RulesSectionId; readonly heading: string; readonly paragraphs: readonly string[]; }
 export interface RulesGuideModel { readonly sections: readonly RulesGuideSection[]; readonly items: readonly RulesGuideItem[]; readonly shortcuts: readonly string[]; }
-export interface RulesGuideOptions { readonly targetSegmentCount?: number; }
+export interface RulesGuideOptions {
+  readonly targetSegmentCount?: number;
+  // Added during 2A/2B (lead decision 2026-11-17): proper names are injected, never hard-coded.
+  readonly targetServiceName?: string;     // fallback 「目標路線」
+  readonly startStationName?: string;      // fallback 「出発駅」
+  readonly targetDirectionLabel?: string;  // no fallback; direction sentences omitted when absent
+}
 export function buildRulesGuide(config: GameConfig, options?: RulesGuideOptions): RulesGuideModel;
 ```
 Figures: target share from `serviceLottery.target` (`"share"` → numerator/denominator; `"weight"` → relative wording,
@@ -403,6 +409,8 @@ Steps 5, 6A, 7A, 9, 11 and 12A are close to the cap. Before Luna starts each of 
   effect.
 
 ### Step 4 — Title 「遊び方」 sub-screen + short title copy
+
+> Amendment (2026-11-17, after 2B review): every `buildRulesGuide` caller with a network passes `targetServiceName` (target service display name), `startStationName` (start station name) and `targetDirectionLabel` (`directionLabel(network, targetServiceId, targetDirection)`, `presentation.ts`) in addition to `targetSegmentCount`.
 - Files:
   - `TitleScreen.tsx`: view `"title" | "credits" | "rules"` and an optional `rulesModel` prop. **When `rulesModel`
     is absent, the 「遊び方」 button is not rendered.**
@@ -695,6 +703,8 @@ Steps 5, 6A, 7A, 9, 11 and 12A are close to the cap. Before Luna starts each of 
 - Pause review: title, game and clear screenshots; controls absent from the tab order on the title.
 
 ### Step 13 — EditionApp loading / failure title paths
+
+> Amendment (2026-11-17): these paths have no network, so the rules guide would fall back to 「目標路線」/「出発駅」. Prefer names available without the network (e.g. edition display metadata) if they exist; otherwise accept the generic labels and say so in the step report.
 - Files (Revision 2): production files `EditionApp.tsx`, `GameApp.tsx` and `TitleScreen.tsx`; new
   `tests/unit/edition-title-states.test.ts`; extend `title-map.spec.ts` and `rules-guide.spec.ts`.
   - `EditionApp`: single-edition loading renders `TitleScreen` (loading; play actions **absent**, as in the
