@@ -106,15 +106,14 @@ test("save explanations work by keyboard and tap", async ({ page }) => {
   await expect(explanation).toBeHidden();
   await expect(trigger).toBeFocused();
 
-  // A failed save turns the status text into the trigger.
+  // A failed save leaves plain status text: no button, no tab stop, no explanation to open.
   await failSaves(page);
   await page.getByRole("button", { name: "サイコロを振る" }).click();
-  await expect(trigger).toContainText("失敗");
-  await trigger.click();
-  await expect(explanation).toContainText(saveStatusPresentation("failed").explanation);
-  await capture(page, "failed-open-desktop");
-  await explanation.getByRole("button", { name: "閉じる" }).click();
-  await expect(explanation).toBeHidden();
+  const failedLine = gamePanel(page).locator(".game-panel__save");
+  await expect(failedLine).toContainText("失敗");
+  await expect(failedLine.locator("button, [tabindex], a[href]")).toHaveCount(0);
+  await expect(gamePanel(page).locator(".save-status__trigger, .save-status__popover")).toHaveCount(0);
+  await capture(page, "failed-line-desktop");
 });
 
 test("Space and Enter do not roll after clicking the explanation text", async ({ page }) => {

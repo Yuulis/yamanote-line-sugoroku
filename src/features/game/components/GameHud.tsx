@@ -146,12 +146,12 @@ export function GameHud({
       {turnResult}
       {inventory}
       <EffectChips models={effects} />
-      {!saveMark && <SaveStatusPopover
-        status={saveStatus}
-        wrapper={(trigger) => <p className={`game-panel__save${failed ? " game-panel__save--warning" : ""}`}>{trigger}</p>}
+      {!saveMark && <p
+        className={`game-panel__save${failed ? " game-panel__save--warning" : ""}`}
       >
-        {failed && <SaveIcon warning />}<span>セーブ: {saveStatusMessage}</span>
-      </SaveStatusPopover>}
+        {failed ? <><SaveIcon warning /><span>セーブ: {saveStatusMessage}</span></> :
+            <span>セーブ: {saveStatusMessage}</span>}
+      </p>}
     </>
   );
 }

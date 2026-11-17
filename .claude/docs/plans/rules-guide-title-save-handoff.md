@@ -53,7 +53,7 @@ Process:
 
 ## Next
 
-1A and 1B done; user reviewed 1B and asked to drop 「から」 from the resume label (follow-up commit 「1B-2」). 1B follow-up 33d746e CI green. 2A–6A done. 6A CI green (2539e24). 7B done; paused for user review (per-step pacing). Next Step 8A (InventoryPanel takes the same `openRules`; see the plan's 6A Amendment item 6). Callers must pass targetServiceName / startStationName / targetDirectionLabel (plan Step 4 amendment). The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
+1A and 1B done; user reviewed 1B and asked to drop 「から」 from the resume label (follow-up commit 「1B-2」). 1B follow-up 33d746e CI green. 2A–6A done. 6A CI green (2539e24). 7B done, plus a CI fix: 9a8c70e failed CI (ui-pop L447 undersized failed-line button at 320, L803 extra tab stop) because the failed status line became a button — local targeted runs had not included those ui-pop cases. User decision: failed/unavailable/unknown lines stay plain text; only the saved ✓ opens the explanation (DESIGN row 2026-11-17). Fix verified with full ui-pop/accessibility/save/hud desktop runs + phone @layout. Paused for user review. Next Step 8A (InventoryPanel takes the same `openRules`; see the plan's 6A Amendment item 6). Callers must pass targetServiceName / startStationName / targetDirectionLabel (plan Step 4 amendment). The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
 
 ## How to resume
 

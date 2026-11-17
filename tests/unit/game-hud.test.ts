@@ -345,22 +345,18 @@ describe("GameHud", () => {
       for (const mount of [saved, failed, unavailable, empty]) {
         expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
       }
-      const explanations: Array<[typeof saved, string]> = [
-        [saved, "自動保存済みです。"], [failed, "保存に失敗しました。"],
-        [unavailable, "この環境では保存できません。"], [empty, "未保存です。"],
-      ];
-      for (const [mount, text] of explanations) {
-        const save: Element = mount.container.querySelector(".game-panel__save")!;
-        const trigger: Element | null = save.querySelector("button.save-status__trigger");
-        const explanation: Element = mount.container.querySelector(".save-status__popover")!;
-        expect(trigger?.getAttribute("aria-expanded")).toBe("false");
-        expect(explanation.textContent).toContain(text);
-        expect(save.contains(explanation)).toBe(false);
-        expect(explanation.parentElement).toBe(save.parentElement);
+      const savedLine: Element = saved.container.querySelector(".game-panel__save")!;
+      const explanation: Element = saved.container.querySelector(".save-status__popover")!;
+      expect(savedLine.querySelector("button.save-status__trigger")?.getAttribute("aria-expanded")).toBe("false");
+      expect(savedLine.querySelector(".save-status__trigger .visually-hidden")?.textContent).toBe("セーブ: 自動保存済み");
+      expect(explanation.textContent).toContain("自動保存済みです。");
+      expect(savedLine.contains(explanation)).toBe(false);
+      expect(explanation.parentElement).toBe(savedLine.parentElement);
+      // Only the saved mark is interactive; the failed, unavailable and unconfirmed lines stay plain text.
+      for (const mount of [failed, unavailable, empty]) {
+        expect(mount.container.querySelector(".game-panel__save button")).toBeNull();
+        expect(mount.container.querySelector(".save-status__trigger, .save-status__popover")).toBeNull();
       }
-      expect(saved.container.querySelector(".game-panel__save .save-status__trigger .visually-hidden")?.textContent).toBe("セーブ: 自動保存済み");
-      expect(failed.container.querySelector(".game-panel__save .save-status__trigger")?.textContent).toContain("セーブ: 保存に失敗しました");
-      expect(empty.container.querySelector(".game-panel__save .save-status__trigger")?.textContent).toBe("セーブ: 未保存");
     } finally {
       for (const mount of [saved, failed, unavailable, empty]) mount.cleanup();
     }
