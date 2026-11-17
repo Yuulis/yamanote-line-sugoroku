@@ -52,5 +52,12 @@ counters, legend-ON interpretation, #62 residual fix via the once-only announcem
 
 ## Next
 
-1. All 14 steps done. Next: feature → develop PR (full CI matrix), then release only with explicit user approval.
+1. WebKit-only CI failure on PR #97 fixed (2026-11-17, see the follow-up commit "fix(hud): capture focus before the phone layout flips").
+   Root cause (codex-debugger, `.claude/logs/hud65-webkit-focus-diagnosis.md`, traces `.claude/logs/ci-artifacts/pr97-webkit/`):
+   `getPhoneLayoutSnapshot` read `matches` live while focus capture ran only from the MQL change event, which WebKit delivers later;
+   an unrelated render flipped the layout first and focus fell to body. The test also never waited for the layout flip.
+   Lead checks: typecheck ok, vitest 2213 pass/1 skip; Chromium delay repro: the failure no longer reproduces (inverted assertion A fails as
+   expected, B passes); `turn-result-card` pill test --repeat-each=3 on phone 3/3; phone @layout 83 pass/5 skip; desktop 8 specs 91 pass/2 skip.
+   Next: #97 full CI → merge #97, then #98 (chore/release-0.16.0, v0.16.0 picked by the user), then open develop → master and stop for
+   explicit approval.
 2. After merge: DESIGN.md decision rows for D1-D22 via `update_design.py` (three summary rows already recorded 2026-11-15).
