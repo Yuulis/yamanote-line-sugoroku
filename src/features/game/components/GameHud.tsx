@@ -9,6 +9,7 @@ import { setTargetRef, type TurnMomentTargetRef } from "./TurnMomentHost";
 import { EffectChips } from "./EffectChips";
 import { LineBadge } from "./LineBadge";
 import { PhraseText } from "./PhraseText";
+import { SaveStatusPopover } from "./SaveStatusPopover";
 import { TargetProgressBar } from "./TargetProgressBar";
 
 export interface GameHudProps {
@@ -78,9 +79,12 @@ export function GameHud({
     <>
       <div className="game-panel__header">
         <h1 ref={headingRef} className="game-panel__title visually-hidden" tabIndex={-1}>{title}</h1>
-        {saveMark && <p className="game-panel__save game-panel__save--inline" title={`セーブ: ${saveStatusMessage}`}>
+        {saveMark && <SaveStatusPopover
+          status={saveStatus}
+          wrapper={(trigger) => <p className="game-panel__save game-panel__save--inline" title={`セーブ: ${saveStatusMessage}`}>{trigger}</p>}
+        >
           <SaveIcon /><span className="visually-hidden">セーブ: {saveStatusMessage}</span>
-        </p>}
+        </SaveStatusPopover>}
       </div>
       <p className="game-panel__subtitle visually-hidden">{subtitle}</p>
       <dl className="game-panel__stats">
@@ -142,12 +146,12 @@ export function GameHud({
       {turnResult}
       {inventory}
       <EffectChips models={effects} />
-      {!saveMark && <p
-        className={`game-panel__save${failed ? " game-panel__save--warning" : ""}`}
+      {!saveMark && <SaveStatusPopover
+        status={saveStatus}
+        wrapper={(trigger) => <p className={`game-panel__save${failed ? " game-panel__save--warning" : ""}`}>{trigger}</p>}
       >
-        {failed ? <><SaveIcon warning /><span>セーブ: {saveStatusMessage}</span></> :
-            <span>セーブ: {saveStatusMessage}</span>}
-      </p>}
+        {failed && <SaveIcon warning />}<span>セーブ: {saveStatusMessage}</span>
+      </SaveStatusPopover>}
     </>
   );
 }

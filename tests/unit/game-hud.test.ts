@@ -345,6 +345,22 @@ describe("GameHud", () => {
       for (const mount of [saved, failed, unavailable, empty]) {
         expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
       }
+      const explanations: Array<[typeof saved, string]> = [
+        [saved, "自動保存済みです。"], [failed, "保存に失敗しました。"],
+        [unavailable, "この環境では保存できません。"], [empty, "未保存です。"],
+      ];
+      for (const [mount, text] of explanations) {
+        const save: Element = mount.container.querySelector(".game-panel__save")!;
+        const trigger: Element | null = save.querySelector("button.save-status__trigger");
+        const explanation: Element = mount.container.querySelector(".save-status__popover")!;
+        expect(trigger?.getAttribute("aria-expanded")).toBe("false");
+        expect(explanation.textContent).toContain(text);
+        expect(save.contains(explanation)).toBe(false);
+        expect(explanation.parentElement).toBe(save.parentElement);
+      }
+      expect(saved.container.querySelector(".game-panel__save .save-status__trigger .visually-hidden")?.textContent).toBe("セーブ: 自動保存済み");
+      expect(failed.container.querySelector(".game-panel__save .save-status__trigger")?.textContent).toContain("セーブ: 保存に失敗しました");
+      expect(empty.container.querySelector(".game-panel__save .save-status__trigger")?.textContent).toBe("セーブ: 未保存");
     } finally {
       for (const mount of [saved, failed, unavailable, empty]) mount.cleanup();
     }

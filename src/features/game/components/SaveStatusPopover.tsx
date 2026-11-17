@@ -47,7 +47,7 @@ export function SaveStatusPopover({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-  const nativeSupported: boolean = useRef(typeof HTMLElement.prototype.showPopover === "function").current;
+  const nativeSupported: boolean = useRef(typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.showPopover === "function").current;
   const nativeOpenRef = useRef<boolean>(false);
   const openRef = useRef<boolean>(open);
   const restoreFocusRef = useRef<boolean>(false);
@@ -155,13 +155,19 @@ export function SaveStatusPopover({
     setOpen(true);
   };
 
+  // The container itself can hold focus after a click on the text; keep Space / Enter from reaching the roll shortcut.
+  const onPopoverKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    if (event.target !== event.currentTarget) return;
+    if (event.key === " " || event.key === "Enter") event.preventDefault();
+  };
+
   const { tone, explanation } = saveStatusPresentation(status);
   const trigger: React.JSX.Element = <button
     ref={triggerRef}
     type="button"
     className="save-status__trigger"
     aria-expanded={open}
-    aria-controls={popoverId}
+    aria-controls={open ? popoverId : undefined}
     onPointerDown={onTriggerPointerDown}
     onKeyDown={() => { openedByPointerRef.current = false; }}
     onClick={onTriggerClick}
@@ -174,16 +180,17 @@ export function SaveStatusPopover({
     {wrapper ? wrapper(trigger) : trigger}
     <div
       ref={popoverRef}
-      id={popoverId}
+      id={open ? popoverId : undefined}
       role="dialog"
       aria-label={SAVE_STATUS_DIALOG_LABEL}
-      aria-describedby={textId}
+      aria-describedby={open ? textId : undefined}
       tabIndex={-1}
       className={`save-status__popover save-status__popover--${tone} ${nativeSupported ? "save-status__popover--native" : "save-status__popover--inline"}`}
       style={popoverStyle}
+      onKeyDown={onPopoverKeyDown}
       {...(nativeSupported ? { popover: "auto" as const } : { hidden: !open })}
     >
-      <p className="save-status__text" id={textId}><PhraseText text={explanation} /></p>
+      <p className="save-status__text" id={open ? textId : undefined}><PhraseText text={explanation} /></p>
       <button ref={closeRef} type="button" className="save-status__close" onClick={() => close(true)}>{SAVE_STATUS_CLOSE_LABEL}</button>
     </div>
   </>;

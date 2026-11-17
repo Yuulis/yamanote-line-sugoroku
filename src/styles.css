@@ -615,6 +615,10 @@ button[aria-disabled="true"] {
   --hud-row-height: 24px;
   --hud-progress-block-gap: 4px;
   --game-panel-save-mark-size: 16px;
+  --game-panel-save-hit-size: 44px;
+  --game-panel-save-popover-width: 280px;
+  --game-panel-save-popover-gap: 8px;
+  --game-panel-save-popover-margin: 16px;
   --game-panel-inset-top: 10px;
   --game-panel-inset-right: 12px;
   position: fixed;
@@ -815,7 +819,7 @@ button[aria-disabled="true"] {
 @media (min-width: 601px) and (min-height: 501px) {
   .game-panel__stats dd:has([data-stat="station"]) {
     box-sizing: border-box;
-    padding-right: var(--game-panel-save-mark-size);
+    padding-right: calc(var(--game-panel-save-hit-size) - var(--game-panel-inset-right));
   }
 }
 
@@ -3595,7 +3599,9 @@ button[aria-disabled="true"] {
 }
 
 .save-status__trigger {
+  position: relative;
   display: inline-flex;
+  min-height: 0;
   align-items: center;
   gap: 4px;
   margin: 0;
@@ -3606,6 +3612,22 @@ button[aria-disabled="true"] {
   font: inherit;
   text-align: inherit;
   cursor: pointer;
+}
+
+.game-panel__save--inline .save-status__trigger {
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+/* The 16px saved mark keeps its size; a 44px box pinned to the panel corner takes the taps and reaches only inward. */
+.game-panel__save--inline .save-status__trigger::after {
+  content: "";
+  position: absolute;
+  top: calc(-1 * var(--game-panel-inset-top));
+  right: calc(-1 * var(--game-panel-inset-right));
+  width: var(--game-panel-save-hit-size);
+  height: var(--game-panel-save-hit-size);
 }
 
 .save-status__popover {
@@ -3632,6 +3654,14 @@ button[aria-disabled="true"] {
 
 .save-status__popover--inline {
   margin-top: 8px;
+}
+
+.game-panel__header > .save-status__popover--inline {
+  position: absolute;
+  top: calc(100% + var(--game-panel-save-popover-gap));
+  right: 0;
+  margin: 0;
+  width: min(var(--game-panel-save-popover-width), calc(100vw - var(--game-panel-save-popover-margin)));
 }
 
 .save-status__popover--inline[hidden] {
