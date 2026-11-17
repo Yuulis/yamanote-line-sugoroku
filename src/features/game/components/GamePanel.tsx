@@ -120,7 +120,7 @@ function captureBreakpointFocusTarget(activeElement: Element | null, context: Br
     return { kind: "surface-trigger", section: phoneSectionButton.textContent?.trim() === "設定" ? "settings" : "log" };
   }
   if (activeElement.closest(".phone-menu__trigger")) {
-    return { kind: "surface-trigger", section: context.activeSurface === "phone-menu" ? context.phoneSection : "log" };
+    return { kind: "surface-trigger", section: context.phoneSection };
   }
   if (activeElement.closest(".game-panel__log-trigger")) return { kind: "surface-trigger", section: "log" };
   if (activeElement.closest(".game-panel__menu-trigger")) return { kind: "surface-trigger", section: "settings" };
@@ -137,31 +137,35 @@ function phoneMediaQuery(): MediaQueryList | null {
     : null;
 }
 
-function subscribeToPhoneLayout(onChange: () => void, onBreakpointChange: (phone: boolean) => void): () => void {
-  const query = phoneMediaQuery();
-  let matches = query?.matches ?? false;
-  const handleChange = (): void => {
-    const nextMatches = query?.matches ?? false;
-    if (nextMatches !== matches) {
-      matches = nextMatches;
-      onBreakpointChange(nextMatches);
-    }
-    onChange();
-  };
-  query?.addEventListener("change", handleChange);
-  return () => query?.removeEventListener("change", handleChange);
-}
-
 function getPhoneLayoutSnapshot(): boolean {
   return phoneMediaQuery()?.matches ?? false;
 }
 
+/**
+ * `matches` is live, but the MQL `change` event arrives only at the next rendering update (WebKit can lag
+ * a resize by many ms). The snapshot therefore advances only from the change handler, after
+ * `onBreakpointChange` has captured focus, so no unrelated render can flip the layout first.
+ */
 function usePhoneLayout(onBreakpointChange: (phone: boolean) => void): boolean {
   const onBreakpointChangeRef = useRef(onBreakpointChange);
   onBreakpointChangeRef.current = onBreakpointChange;
-  const subscribe = useCallback((onChange: () => void) =>
-    subscribeToPhoneLayout(onChange, (phone) => onBreakpointChangeRef.current(phone)), []);
-  return useSyncExternalStore(subscribe, getPhoneLayoutSnapshot, () => false);
+  const deliveredRef = useRef<boolean | null>(null);
+  if (deliveredRef.current === null) deliveredRef.current = getPhoneLayoutSnapshot();
+  const subscribe = useCallback((onChange: () => void) => {
+    const query = phoneMediaQuery();
+    const handleChange = (): void => {
+      const next = query?.matches ?? false;
+      if (next === deliveredRef.current) return;
+      onBreakpointChangeRef.current(next);
+      deliveredRef.current = next;
+      onChange();
+    };
+    query?.addEventListener("change", handleChange);
+    handleChange(); // a flip between the first render and this subscription has no event of its own
+    return () => query?.removeEventListener("change", handleChange);
+  }, []);
+  const getSnapshot = useCallback(() => deliveredRef.current ?? false, []);
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }
 
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */

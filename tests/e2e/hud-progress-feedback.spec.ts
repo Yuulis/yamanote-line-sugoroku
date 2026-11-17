@@ -209,6 +209,8 @@ test.describe("desktop HUD progress feedback", () => {
     await desktopLogTrigger.click();
     await log.focus();
     await page.setViewportSize({ width: 390, height: 844 });
+    // WebKit delivers the media-query change a frame after the resize: wait for the new layout before checking focus.
+    await expect(phoneTrigger).toBeVisible();
     await expect(log).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(log).toBeHidden();
@@ -218,6 +220,7 @@ test.describe("desktop HUD progress feedback", () => {
     await phoneTrigger.click();
     await log.focus();
     await page.setViewportSize(DESKTOP_VIEWPORT);
+    await expect(desktopLogTrigger).toBeVisible();
     await expect(log).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(log).toBeHidden();
@@ -227,6 +230,7 @@ test.describe("desktop HUD progress feedback", () => {
     await desktopMenuTrigger.click();
     await firstSettingsControl().focus();
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(phoneTrigger).toBeVisible();
     await expect(firstSettingsControl()).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(settings).toBeHidden();
@@ -237,6 +241,7 @@ test.describe("desktop HUD progress feedback", () => {
     await panel.locator(".phone-menu__sections").getByRole("button", { name: "設定", exact: true }).click();
     await firstSettingsControl().focus();
     await page.setViewportSize(DESKTOP_VIEWPORT);
+    await expect(desktopMenuTrigger).toBeVisible();
     await expect(firstSettingsControl()).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(settings).toBeHidden();
