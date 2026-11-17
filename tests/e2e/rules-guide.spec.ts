@@ -8,7 +8,7 @@ import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { expect, test } from "./fixtures";
 import {
-  diceButton, diceMoment, freezeClock, gamePanel, openGameLog, openGameMenu, openTitle, readSaveText,
+  diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, openGameMenu, openTitle, readSaveText,
   REQUIRED_SEGMENTS, titleScreen, useInventoryItem, writeSaveText,
 } from "./support/app";
 
@@ -173,6 +173,48 @@ test("lottery details open the lottery section", async ({ page, railwayBundle })
   await page.keyboard.press("Escape");
   await expect(rulesDialog(page)).toHaveCount(0);
   await expect(opener).toBeFocused();
+});
+
+test("item details open the items section", async ({ page, railwayBundle }) => {
+  const items = buildRulesGuide(DEFAULT_GAME_CONFIG).sections.find((section) => section.id === "items")!;
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await resumeScenario(page, "double", railwayBundle);
+  const trigger = inventoryItem(page, "倍速券").getByRole("button");
+  const card = gamePanel(page).getByRole("dialog", { name: "倍速券", exact: true });
+  const details = card.getByRole("button", { name: "アイテムのルールを詳しく見る", exact: true });
+  const heading = rulesDialog(page).getByRole("heading", { level: 2, name: items.heading });
+
+  for (const [name, viewport] of [["desktop", DESKTOP_VIEWPORT], ["phone", NARROW_VIEWPORT]] as const) {
+    await page.setViewportSize(viewport);
+    await trigger.click();
+    await expect(details).toHaveText("詳しく");
+    await expect(details).toBeInViewport();
+    await capture(page, `card-${name}`, "6b");
+    await details.click();
+    await expect(heading).toBeFocused();
+    await expect(heading).toBeInViewport();
+    await expect(card).toBeHidden();
+    if (name === "desktop") await capture(page, "items-section-desktop", "6b");
+    await page.keyboard.press("Escape");
+    await expect(rulesDialog(page)).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+    await expect(card).toBeHidden();
+    await expect(inventoryItem(page, "倍速券").getByRole("tooltip", { includeHidden: true })).toHaveCount(0);
+  }
+});
+
+test("rules shortcuts follow pointer capabilities", { tag: "@layout" }, async ({ page, railwayBundle, isMobile }) => {
+  await resumeScenario(page, "route", railwayBundle);
+  const finePointer = await page.evaluate(() => matchMedia("(hover: hover) and (pointer: fine)").matches);
+  expect(finePointer).toBe(!isMobile);
+  const display = finePointer ? "block" : "none";
+
+  await openGameMenu(page);
+  await expect(gamePanel(page).locator(".game-panel__shortcut-hint")).toHaveCSS("display", display);
+  await menuRulesButton(page).click();
+  const shortcuts = rulesDialog(page).locator(".rules-guide__shortcuts");
+  await expect(shortcuts).toHaveCSS("display", display);
+  await expect(shortcuts).toBeVisible({ visible: finePointer });
 });
 
 test.describe("with the dice tumble", () => {

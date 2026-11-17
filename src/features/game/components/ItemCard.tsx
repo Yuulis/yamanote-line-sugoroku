@@ -14,6 +14,7 @@ export const ITEM_CARD_SHEET_MAX_WIDTH: number = 600;
 export const ITEM_CARD_SHEET_MAX_HEIGHT: number = 500;
 const GAME_PANEL_SELECTOR: string = ".game-panel";
 const ROLL_BUTTON_SELECTOR: string = ".game-panel__roll";
+export const ITEM_RULES_LABEL: string = "アイテムのルールを詳しく見る";
 
 export interface ItemCardPopoverProps {
   open: boolean;
@@ -287,11 +288,13 @@ export interface ItemCardProps {
   replacesSelection?: boolean;
   action?: ItemCardAction;
   footer?: React.ReactNode;
+  /** Shows the 詳しく action (footer layout only); it passes its own button, which unmounts with the card, as a last-resort opener. */
+  onOpenRules?: (cardButton: HTMLElement) => void;
 }
 
 export function ItemCard({
   kind, headingId, selected = false, isNew = false, unavailableReason = null,
-  hint = null, replacesSelection = false, action, footer,
+  hint = null, replacesSelection = false, action, footer, onOpenRules,
 }: ItemCardProps): React.JSX.Element {
   const generatedId: string = useId();
   const actualHeadingId: string = headingId ?? `item-card-heading-${generatedId}`;
@@ -324,12 +327,18 @@ export function ItemCard({
     aria-describedby={unavailableText ? reasonId : undefined}
     onClick={() => action.onActivate()}
   >{action.label}</button>;
+  const rulesButton: React.ReactNode = onOpenRules && <button
+    type="button"
+    className="rules-opener"
+    aria-label={ITEM_RULES_LABEL}
+    onClick={(event) => onOpenRules(event.currentTarget)}
+  >詳しく</button>;
 
   return (
     <div className={`item-card item-card--${itemTone(kind)}${selected ? " item-card--selected" : ""}`}>
       {footer ? <>
         <div className="item-card__body">{body}</div>
-        <div className="item-card__footer">{actionButton}{footer}</div>
+        <div className="item-card__footer">{actionButton}{rulesButton}{footer}</div>
       </> : <>{body}{actionButton}</>}
     </div>
   );

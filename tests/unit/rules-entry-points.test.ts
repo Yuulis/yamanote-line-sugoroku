@@ -200,4 +200,101 @@ describe("in-game rules entry points", () => {
     expect(adjustment?.open).toBe(true);
     expect(adjustment?.contains(document.activeElement)).toBe(true);
   });
+
+  describe("item card details", () => {
+    const popoverNames = ["showPopover", "hidePopover"] as const;
+    let popoverDescriptors: (PropertyDescriptor | undefined)[] = [];
+
+    beforeEach(() => {
+      popoverDescriptors = popoverNames.map((name) => Object.getOwnPropertyDescriptor(HTMLElement.prototype, name));
+      for (const name of popoverNames) Reflect.deleteProperty(HTMLElement.prototype, name);
+    });
+
+    afterEach(() => {
+      popoverNames.forEach((name, index) => {
+        const descriptor = popoverDescriptors[index];
+        if (descriptor) Object.defineProperty(HTMLElement.prototype, name, descriptor);
+        else Reflect.deleteProperty(HTMLElement.prototype, name);
+      });
+    });
+
+    function toggleEvent(type: string): Event {
+      const event = new Event(type);
+      Object.defineProperty(event, "newState", { value: "closed" });
+      return event;
+    }
+
+    /** Native Popover API stand-in: showModal() hides open auto popovers synchronously, `toggle` follows as a task. */
+    function stubNativePopover(): void {
+      const shown = new Set<HTMLElement>();
+      const hide = (element: HTMLElement): void => {
+        if (!shown.delete(element)) return;
+        element.dispatchEvent(toggleEvent("beforetoggle"));
+        setTimeout(() => element.dispatchEvent(toggleEvent("toggle")), 0);
+      };
+      Object.defineProperty(HTMLElement.prototype, "showPopover", {
+        configurable: true, value(this: HTMLElement) { shown.add(this); },
+      });
+      Object.defineProperty(HTMLElement.prototype, "hidePopover", {
+        configurable: true, value(this: HTMLElement) { hide(this); },
+      });
+      vi.spyOn(HTMLDialogElement.prototype, "showModal").mockImplementation(function (this: HTMLDialogElement) {
+        [...shown].forEach(hide);
+        this.setAttribute("open", "");
+      });
+    }
+
+    function openItemDetails(): { trigger: HTMLButtonElement; card: HTMLElement } {
+      openApp(itemScenario("double", network));
+      const trigger = button("倍速券の詳細");
+      click("倍速券の詳細");
+      const card = mounted!.container.querySelector<HTMLElement>(".item-card-popover")!;
+      const details = button("アイテムのルールを詳しく見る");
+      expect(details.textContent).toBe("詳しく");
+      expect(details.parentElement?.classList.contains("item-card__footer")).toBe(true);
+      dispatchReactEvent(details, new MouseEvent("click", { bubbles: true }));
+      return { trigger, card };
+    }
+
+    function expectItemsSectionFocused(): void {
+      expect(rulesDialog()?.contains(document.activeElement)).toBe(true);
+      expect(document.activeElement?.tagName).toBe("H2");
+      expect(document.activeElement?.closest("section")?.id).toMatch(/-items$/);
+    }
+
+    it("item details captures the inventory trigger before card closure", async () => {
+      let focusedAtShowModal: Element | null = null;
+      vi.spyOn(HTMLDialogElement.prototype, "showModal").mockImplementation(function (this: HTMLDialogElement) {
+        focusedAtShowModal = document.activeElement;
+        this.setAttribute("open", "");
+      });
+      const { trigger, card } = openItemDetails();
+      // Focus already sits on the durable slot trigger when the modal opens, not inside the closing card.
+      expect(focusedAtShowModal).toBe(trigger);
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expect(card.hidden).toBe(true);
+      expectItemsSectionFocused();
+
+      await closeRules();
+      expect(rulesDialog()).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+    });
+
+    it.each(["native", "fallback"] as const)("card cleanup does not steal dialog focus (%s popover)", async (mode) => {
+      if (mode === "native") stubNativePopover();
+      const { trigger } = openItemDetails();
+      expectItemsSectionFocused();
+      // Flushes the deferred toggle event and the card's reclick-guard timer.
+      await act(async () => { await new Promise<void>((resolve) => setTimeout(resolve, 0)); });
+      expect(trigger.getAttribute("aria-expanded")).toBe("false");
+      expectItemsSectionFocused();
+    });
+
+    it("missing opener falls back to the panel", async () => {
+      const { trigger } = openItemDetails();
+      trigger.closest("li")!.remove();
+      await closeRules();
+      expect(document.activeElement).toBe(button("メニュー"));
+    });
+  });
 });

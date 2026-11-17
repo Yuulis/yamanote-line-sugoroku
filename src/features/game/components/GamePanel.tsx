@@ -571,6 +571,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
             view={itemView} openItemId={openCardId} onOpenItemChange={setOpenItemCard} onUse={activateInventoryItem}
             itemUseLocked={turnDisplay.itemUseLocked} decisionOpen={presentedDecision !== null}
             slotTargetRefs={props.turnMomentTargets?.slots} headerTargetRef={props.turnMomentTargets?.inventoryHeader}
+            onOpenRules={onOpenRules ? openRules : undefined}
           />}
           {draftItem && itemView && <div className="item-staged-summary">
             <span className="item-staged-summary__label">選択中：</span>

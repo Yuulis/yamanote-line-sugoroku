@@ -2250,6 +2250,11 @@ button[aria-disabled="true"] {
   margin: 0 0 0 auto;
 }
 
+/* Matches the 14px footer actions beside it (the shared .rules-opener is 12px). */
+.item-card__footer .rules-opener {
+  font-size: 14px;
+}
+
 /* Only while open: a closed popover must keep the UA `display: none`. */
 .item-card-popover--sheet:popover-open {
   display: flex;
