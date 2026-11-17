@@ -33,7 +33,7 @@ Process:
 | 1B resume label + overwrite confirm + delete link | done | (this commit) | Interrupted once by the user, then finished by Luna xhigh from the partial tree. ~190 LOC; typecheck/build pass; vitest 2219 passed / 1 skipped; desktop-chromium E2E 77 passed (title-save-ux + six edited specs); phone @layout 1 passed; verify_delegation 0 actionable. Sol low REQUEST_CHANGES (P2: wrap test counted rects, not lines) fixed by the lead (distinct line tops + no overflow) and re-run green. Screenshots `.claude/logs/screenshots/rgts-1b-*.png`. |
 | 2A rules model: interfaces + config figures | done | (this commit) | Sonnet implements; 234 non-blank LOC (over the ~200 cap only by tests, accepted). Opus review REQUEST_CHANGES (direction qualifier for non-target lines, ambiguous 「ほかの路線」, harmful 0% gate, copy polish, dead branch) fixed by Sonnet. Lead added optional `targetServiceName` (fallback 「目標路線」) so 2B passes 山手線 instead of hard-coding it. typecheck/build pass; vitest 2227 passed / 1 skipped; verify_delegation 0 actionable. |
 | 2B rules model: full sections, items, prose | done | (this commit) | Sonnet implements (+ `startStationName`, `targetDirectionLabel` options). Opus review REQUEST_CHANGES (direction re-draw at every landing unmentioned, goal ambiguity before 30/30, おまかせ label/stop conditions, copy polish, duration gate, reduced-motion note) fixed by Sonnet; lead made the re-draw sentence unconditional. typecheck/build pass; vitest 2238 passed / 1 skipped; no 2A assertion removed. Plan amended (Interface Design, Step 4, Step 13) for name injection. |
-| 3 shared RulesGuide body + phone reduction | pending | — | — |
+| 3 shared RulesGuide body + phone reduction | done | (this commit) | Sonnet implements; ~306 non-blank LOC (113 CSS) over the ~200 cap, accepted (component+CSS+tests belong together). Opus review REQUEST_CHANGES (no keep-all for PhraseText; phone hid beneficial timing that appears nowhere else; nav button overrode pressed state) fixed; exported `focusRulesSection(root, idPrefix, sectionId)` for Step 5 deep links; `--rules-guide-scroll-margin` for sticky host headers. typecheck/build pass; vitest 2244 passed / 1 skipped. Note for Step 4: `.title-screen__credits-screen section` would override `.rules-guide__section` borders if reused; the title host must provide a scroll container. |
 | 4 title 遊び方 sub-screen + short title copy | pending | — | — |
 | 5 RulesDialog lifecycle | pending | — | — |
 | 6A menu + lottery entry points, rulesOpen suspension | pending | — | — |
@@ -53,7 +53,7 @@ Process:
 
 ## Next
 
-1A and 1B done; user reviewed 1B and asked to drop 「から」 from the resume label (follow-up commit 「1B-2」). 1B follow-up 33d746e CI green. 2A, 2B done; next Step 3. Callers must pass targetServiceName / startStationName / targetDirectionLabel (plan Step 4 amendment). The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
+1A and 1B done; user reviewed 1B and asked to drop 「から」 from the resume label (follow-up commit 「1B-2」). 1B follow-up 33d746e CI green. 2A, 2B, 3 done; next Step 4. Callers must pass targetServiceName / startStationName / targetDirectionLabel (plan Step 4 amendment). The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
 
 ## How to resume
 

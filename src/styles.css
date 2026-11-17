@@ -3280,3 +3280,137 @@ button[aria-disabled="true"] {
 @media (prefers-reduced-motion: reduce) {
   .item-pickup-moment { animation: none; }
 }
+
+/* Shared rules body (title sub-screen and in-game dialog). The host owns the title and the scroll container. */
+.rules-guide {
+  --rules-guide-gap: 12px;
+  --rules-guide-target: 44px;
+  --rules-guide-icon-column: 36px;
+  --rules-guide-row-gap: 4px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rules-guide-gap);
+  color: var(--color-text);
+  font-size: 14px;
+  line-height: 1.7;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+/* Names and the shortcut list stay on keep-all + PhraseText hints (see the game-panel stats note). */
+@supports (word-break: auto-phrase) {
+  .rules-guide__section p,
+  .rules-guide__item-effect {
+    word-break: auto-phrase;
+  }
+}
+
+.rules-guide__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.rules-guide__nav-button {
+  min-height: var(--rules-guide-target);
+  padding: 0 14px;
+  border-radius: var(--radius-pill);
+  font: inherit;
+}
+
+.rules-guide__section {
+  scroll-margin-top: var(--rules-guide-scroll-margin, 0px);
+  padding-top: var(--rules-guide-gap);
+  border-top: 1px solid var(--color-border);
+}
+
+.rules-guide__section h2,
+.rules-guide__shortcuts h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+}
+
+.rules-guide__section h2:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.rules-guide__section p {
+  margin: 0 0 8px;
+}
+
+.rules-guide__items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rules-guide__item {
+  display: grid;
+  grid-template-columns: var(--rules-guide-icon-column) minmax(0, 1fr);
+  gap: var(--rules-guide-row-gap);
+  align-items: center;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  --item-icon-accent: var(--color-good);
+}
+
+.rules-guide__item--bad {
+  --item-icon-accent: var(--color-bad);
+}
+
+.rules-guide__item-icon {
+  grid-row: span 3;
+  align-self: start;
+}
+
+.rules-guide__item-name {
+  font-weight: 700;
+}
+
+.rules-guide__item-timing {
+  color: var(--color-text-muted);
+  font-size: 13px;
+}
+
+/* Keyboard shortcuts only make sense with a hover-capable fine pointer. */
+.rules-guide__shortcuts {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rules-guide__shortcuts {
+    display: block;
+    padding-top: var(--rules-guide-gap);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .rules-guide__shortcuts ul {
+    margin: 0;
+    padding-left: 20px;
+  }
+}
+
+/* Phones show less: the section nav and the duplicated timing line go; no section, number, icon, name or effect. */
+@media (max-width: 600px) {
+  .rules-guide {
+    --rules-guide-gap: 10px;
+    font-size: 13px;
+  }
+
+  .rules-guide__phone-reduced {
+    display: none;
+  }
+
+  .rules-guide__item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rules-guide__item-icon {
+    grid-row: auto;
+  }
+}
