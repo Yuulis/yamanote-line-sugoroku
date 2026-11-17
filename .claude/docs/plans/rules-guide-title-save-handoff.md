@@ -29,7 +29,7 @@ Process:
 
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
-| 1A resume presentation model | pending | — | — |
+| 1A resume presentation model | done | (this commit) | Luna xhigh; 2 new files 129 LOC; typecheck/build pass; vitest 2219 passed / 1 skipped; verify_delegation 0 actionable; Sol low APPROVE (`.claude/logs/codex/20261117T022128Z-rgts-1a-review.md`) |
 | 1B resume label + overwrite confirm + delete link | pending | — | — |
 | 2A rules model: interfaces + config figures | pending | — | — |
 | 2B rules model: full sections, items, prose | pending | — | — |
@@ -53,7 +53,7 @@ Process:
 
 ## Next
 
-Start Step 1A. The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
+Start Step 1B (1A done). The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
 
 ## How to resume
 
