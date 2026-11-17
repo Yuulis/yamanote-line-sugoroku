@@ -1,5 +1,5 @@
 import { expect, test } from "./fixtures";
-import { gamePanel, openTitle, rollOnce, startNewGame } from "./support/app";
+import { gamePanel, openGameMenu, openTitle, rollOnce, startNewGame } from "./support/app";
 import { seedGameSettings } from "./support/settings";
 
 test.use({ dataset: "fixture", reducedMotion: "no-preference" });
@@ -56,7 +56,11 @@ for (const width of [1280, 390]) {
     await startNewGame(page);
     const panel = gamePanel(page);
     const menu = panel.getByRole("button", { name: "メニュー", exact: true });
-    await menu.click();
+    const openSettings = async (): Promise<void> => {
+      if (width === 390) await openGameMenu(page);
+      else await menu.click();
+    };
+    await openSettings();
     const presentation = panel.getByRole("button", { name: /^演出:/ });
     await expect(presentation).toHaveText("演出: すべて");
     for (const label of ["重要なときだけ", "なし", "すべて", "重要なときだけ"]) {
@@ -80,14 +84,14 @@ for (const width of [1280, 390]) {
     await expect.poll(readPayload).toEqual(payload);
     await page.reload();
     await page.getByRole("button", { name: /^つづきから/ }).click();
-    await menu.click();
+    await openSettings();
     await expect(presentation).toHaveText("演出: 重要なときだけ");
     await menu.click();
     await rollOnce(page);
-    await menu.click();
+    await openSettings();
     await panel.getByRole("button", { name: "新規", exact: true }).click();
     await page.getByRole("button", { name: "新しく始める", exact: true }).click();
-    await menu.click();
+    await openSettings();
     await expect(presentation).toHaveText("演出: 重要なときだけ");
     await expect.poll(readPayload).toEqual(payload);
   });

@@ -574,15 +574,18 @@ test("pill repeatedly reveals log and restores focus", { tag: "@layout" }, async
   const { panel, expected } = await prepareR1(page, railwayBundle);
   const pill = page.locator(".turn-result__pill");
   const log = panel.locator(".game-panel__log");
-  const trigger = panel.getByRole("button", { name: "ログ", exact: true });
-  const menuTrigger = panel.getByRole("button", { name: "メニュー", exact: true });
+  const hamburger = panel.locator(".phone-menu__trigger");
+  const settings = panel.getByRole("region", { name: "メニュー", exact: true, includeHidden: true });
   const regionId = await log.getAttribute("id");
   if (!regionId) throw new Error("turn log region has no id");
+  const phoneRegionId = await panel.locator(".phone-menu__content").getAttribute("id");
+  if (!phoneRegionId) throw new Error("phone menu region has no id");
   await expect(pill).toBeVisible();
   await expect(pill).toHaveRole("button");
   await expect(pill).toHaveAccessibleName(`${expected.compact.accessibleName}。ターンのログを開く`);
   await expect(pill).toHaveAttribute("aria-label", `${expected.compact.accessibleName}。ターンのログを開く`);
-  await Promise.all([expect(pill).toHaveAttribute("aria-controls", regionId), expect(trigger).toHaveAttribute("aria-controls", regionId)]);
+  await Promise.all([expect(pill).toHaveAttribute("aria-controls", regionId), expect(hamburger).toHaveAttribute("aria-controls", phoneRegionId)]);
+  await expect(hamburger).toHaveAttribute("aria-expanded", "false");
   await expect(pill).toHaveAttribute("aria-expanded", "false");
   const pillBox = await pill.boundingBox();
   if (!pillBox) throw new Error("phone pill has no measurable box");
@@ -610,13 +613,16 @@ test("pill repeatedly reveals log and restores focus", { tag: "@layout" }, async
   await expect(pill).toHaveAttribute("aria-expanded", "true");
   await assertRevealed();
   await openGameMenu(page);
+  await expect(settings).toBeVisible();
   await pill.click();
-  await expect(menuTrigger).toHaveAttribute("aria-expanded", "false");
+  await expect(settings).toBeHidden();
+  await expect(hamburger).toHaveAttribute("aria-expanded", "true");
   await assertRevealed();
   await page.setViewportSize({ width: 1280, height: 800 });
   await expect(pill).toBeHidden();
   await page.keyboard.press("Escape");
   await expect(log).toBeHidden();
+  const trigger = panel.getByRole("button", { name: "ログ", exact: true });
   await expect(trigger).toBeFocused();
   const triggerBounds = await panelElementBounds(".game-panel__log-trigger");
   const [panelTop, panelBottom, triggerTop, triggerBottom] = triggerBounds;
@@ -630,7 +636,7 @@ test("pill-opened log does not leave a stale opener", { tag: "@layout" }, async 
   const { panel } = await prepareR1(page, railwayBundle);
   const pill = page.locator(".turn-result__pill");
   const log = panel.locator(".game-panel__log");
-  const trigger = panel.getByRole("button", { name: "ログ", exact: true });
+  const trigger = panel.locator(".phone-menu__trigger");
   await pill.click();
   await expect(log).toBeFocused();
   await page.keyboard.press("Escape");
@@ -1294,7 +1300,7 @@ test("native dialog Escape preserves log", { tag: "@layout" }, async ({ page, ra
   if (!savedBefore) throw new Error("R2 save was unavailable before opening the log");
   const turnBefore = savedBefore.turn;
   const pill = page.locator(".turn-result__pill");
-  const trigger = gamePanel(page).getByRole("button", { name: "ログ", exact: true });
+  const trigger = gamePanel(page).locator(".phone-menu__trigger");
   const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
   await pill.click();
   await expect(log).toBeVisible();
@@ -1328,7 +1334,7 @@ test("native dialog Escape preserves log", { tag: "@layout" }, async ({ page, ra
   // clears its opener, so closing the menu returns focus to the menu trigger and never to the pill.
   await openGameMenu(page);
   const menu = gamePanel(page).getByRole("region", { name: "メニュー", exact: true });
-  const menuTrigger = gamePanel(page).getByRole("button", { name: "メニュー", exact: true });
+  const menuTrigger = trigger;
   await expect(log).toBeHidden();
   await expect(pill).toHaveAttribute("aria-expanded", "false");
   await page.keyboard.press("Escape");

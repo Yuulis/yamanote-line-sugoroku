@@ -2,6 +2,9 @@ import { useCallback, type ReactNode, type RefObject } from "react";
 import type { SaveWriteResult } from "../store/persistence";
 import type { LineBadgeModel } from "../lineBadge";
 import type { EffectChipModel } from "../hudPresentation";
+import type { MilestoneFlash } from "../progressMilestones";
+import type { CollectionProgress } from "../collectionProgress";
+import { TARGET_PROXIMITY_COPY, type TargetProximity } from "../targetProximity";
 import { setTargetRef, type TurnMomentTargetRef } from "./TurnMomentHost";
 import { EffectChips } from "./EffectChips";
 import { LineBadge } from "./LineBadge";
@@ -22,6 +25,9 @@ export interface GameHudProps {
   turn: number;
   completed: number;
   required: number;
+  proximity?: TargetProximity | null;
+  collection?: CollectionProgress;
+  milestoneFlash?: MilestoneFlash | null;
   /** Reveal-gated goal guidance; replaces the progress bar cells in the same slot once public. */
   goalGuidanceText?: string | null;
   /** Shorter wording for the short-landscape HUD; visual only, the full text stays the accessible name. */
@@ -60,7 +66,7 @@ export function GameHud({
   turnResult,
   inventory,
   title, subtitle, headingRef,
-  station, ride, lineBadge, direction, turn, completed, required, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
+  station, ride, lineBadge, direction, turn, completed, required, proximity = null, collection, milestoneFlash = null, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
   canRoll, canSkip, autoRollEnabled, animating, draftSelected, rollButtonRef, onRoll, onSkip, onToggleAutoRoll, effects,
   rideTargetRef, directionTargetRef,
 }: GameHudProps): React.JSX.Element {
@@ -71,12 +77,12 @@ export function GameHud({
   return (
     <>
       <div className="game-panel__header">
-        <h1 ref={headingRef} className="game-panel__title" tabIndex={-1}>{title}</h1>
+        <h1 ref={headingRef} className="game-panel__title visually-hidden" tabIndex={-1}>{title}</h1>
         {saveMark && <p className="game-panel__save game-panel__save--inline" title={`セーブ: ${saveStatusMessage}`}>
           <SaveIcon /><span className="visually-hidden">セーブ: {saveStatusMessage}</span>
         </p>}
       </div>
-      <p className="game-panel__subtitle">{subtitle}</p>
+      <p className="game-panel__subtitle visually-hidden">{subtitle}</p>
       <dl className="game-panel__stats">
         <dt>現在駅</dt>
         <dd><span className="hud-stat__value" data-stat="station" title={station}>{station}</span></dd>
@@ -91,10 +97,27 @@ export function GameHud({
           ? <span className="target-progress target-progress--guidance" title={goalGuidanceText}><span className="goal-guidance__full"><PhraseText text={goalGuidanceText} /></span>
             {goalGuidanceShortText && <span className="goal-guidance__short" aria-hidden="true"><PhraseText text={goalGuidanceShortText} /></span>}
           </span>
-          : <TargetProgressBar completed={completed} required={required} />}</dd>
+          : <TargetProgressBar completed={completed} required={required} milestoneFlash={milestoneFlash} />}</dd>
         <dt>出目</dt>
         <dd><span className="hud-stat__value" data-stat="roll-compact" title={compactRoll}>{compactRoll}</span></dd>
+        {proximity && <>
+          <dt className="visually-hidden">山手線まで</dt>
+          <dd data-stat="proximity">
+            <span><PhraseText text={`${TARGET_PROXIMITY_COPY.prefix}${proximity.hops}${TARGET_PROXIMITY_COPY.stationSuffix}`} /></span>
+            <span>{proximity.trend && <PhraseText text={TARGET_PROXIMITY_COPY[proximity.trend]} />}</span>
+          </dd>
+        </>}
       </dl>
+      {collection && <div className="hud-progress">
+        <div className="hud-progress__proximity">
+          <span>{proximity && <PhraseText text={`${TARGET_PROXIMITY_COPY.prefix}${proximity.hops}${TARGET_PROXIMITY_COPY.stationSuffix}`} />}</span>
+          <span>{proximity?.trend && <PhraseText text={TARGET_PROXIMITY_COPY[proximity.trend]} />}</span>
+        </div>
+        <div className="hud-progress__collection">
+          <span className="hud-progress__stations"><PhraseText text={collection.stationsText} /></span>
+          <span className="hud-progress__lines"><PhraseText text={collection.linesText} /></span>
+        </div>
+      </div>}
       <div className="game-panel__actions">
         <button
           ref={rollButtonRef}

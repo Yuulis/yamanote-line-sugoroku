@@ -3,6 +3,7 @@ import { act, createElement, useLayoutEffect } from "react";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { SETTINGS_STORAGE_KEY } from "../../src/features/game/store/settings";
+import { REDUCED_MOTION_QUERY } from "../../src/features/game/usePrefersReducedMotion";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
@@ -306,7 +307,12 @@ describe("GameApp 30/30 milestone toast", () => {
 
 describe("GameApp publication lifecycle", () => {
   it.each([false, true])("keeps classic first movement silent and the previous summary during the next movement (reduced motion %s)", (reduced) => {
-    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: reduced, addEventListener: vi.fn(), removeEventListener: vi.fn() })));
+    vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+      media: query,
+      matches: query === REDUCED_MOTION_QUERY && reduced,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })));
     const origin = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, 31);
     inject(origin); render(propsFor());
     expect(status()).toBe("");
@@ -767,8 +773,9 @@ const STAMPS_MS = 240;
 function motionPreference(initial: boolean): (reduce: boolean) => void {
   let matches = initial;
   const listeners = new Set<() => void>();
-  vi.stubGlobal("matchMedia", vi.fn(() => ({
-    get matches(): boolean { return matches; },
+  vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
+    media: query,
+    get matches(): boolean { return query === REDUCED_MOTION_QUERY && matches; },
     addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
     removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
   })));

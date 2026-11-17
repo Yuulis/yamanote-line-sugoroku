@@ -10,7 +10,7 @@ import { longestRideState, longestDirectionState, longLineLotteryState } from ".
 import { createGame as createProductGame, playTurn as playProductTurn } from "./fixtures/productGame";
 import { itemScenario } from "./fixtures/itemScenarios";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HISTORY_SCENARIO_TURNS } from "./fixtures/seeds";
-import { diceButton, gamePanel, openTitle, panelStat, readSave, startNewGame, useInventoryItem, writeSaveText, rollOnce } from "./support/app";
+import { diceButton, gamePanel, openGameLog, openTitle, panelStat, readSave, startNewGame, useInventoryItem, writeSaveText, rollOnce } from "./support/app";
 import { expectSingleLine, measureTextLayout } from "./support/layout";
 
 const PHONE_HUD_TARGET_BUDGET_PX = 252;
@@ -701,7 +701,7 @@ test("panel wrapping", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await expectNoHorizontalOverflow(stagedSummary);
 
   await restoreGame(page, panelCandidateGame(railwayBundle));
-  await panel.getByRole("button", { name: "ログ", exact: true }).click();
+  await openGameLog(page);
   const lotteryText: Locator = panel.locator(".game-panel__lottery");
   await expect(lotteryText).toBeVisible();
   const lotteryLayout = await measureTextLayout(lotteryText);

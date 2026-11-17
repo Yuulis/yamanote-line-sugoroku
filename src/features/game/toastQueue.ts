@@ -4,6 +4,7 @@ import { serviceName } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
 import type { RailwayNetwork } from "./engine";
 import { ITEM_DESCRIPTIONS } from "./itemPresentation";
+import type { ProgressCrossing, ProgressThreshold } from "./progressMilestones";
 
 export const MAX_VISIBLE_TOASTS = 3;
 export const TOAST_READING_MS = 4000;
@@ -116,6 +117,29 @@ export function turnToasts(
 const TARGET_SEGMENTS_MILESTONE = 30;
 /** Negative, so the milestone sorts before every item event (indexes start at zero) of its turn. */
 const MILESTONE_EVENT_INDEX = -1;
+type ProgressMilestoneToastDetails = Readonly<{ eventIndex: number; text: string }>;
+const PROGRESS_MILESTONE_TOAST_DETAILS: Readonly<Record<Exclude<ProgressThreshold, 30>, ProgressMilestoneToastDetails>> = {
+  10: { eventIndex: -5, text: "10区間突破！" },
+  20: { eventIndex: -4, text: "20区間突破！あと10区間" },
+  25: { eventIndex: -3, text: "あと5区間！" },
+  29: { eventIndex: -2, text: "あと1区間！" },
+};
+
+export function progressMilestoneToast(sessionId: number, crossing: ProgressCrossing): ToastInput {
+  if (crossing.threshold === TARGET_SEGMENTS_MILESTONE) {
+    throw new RangeError("The 30-segment milestone uses targetSegmentsMilestoneToast");
+  }
+  const details = PROGRESS_MILESTONE_TOAST_DETAILS[crossing.threshold];
+  return {
+    key: `${sessionId}:milestone:target-segments:${crossing.threshold}`,
+    sessionId,
+    turn: crossing.turn,
+    eventIndex: details.eventIndex,
+    text: details.text,
+    tone: "good",
+    sticky: false,
+  };
+}
 
 /**
  * One-time notice that every target segment is complete. Keyed by session, it is queued at the first completion

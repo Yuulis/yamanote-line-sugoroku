@@ -8,6 +8,9 @@ import type { RailwayBundle } from "./fixtures/bundle";
 
 test.use({ dataset: "fixture" });
 
+// Matches PHONE_MEDIA_QUERY: at or below this width one hamburger replaces the log and menu triggers.
+const PHONE_MAX_WIDTH_PX = 600;
+
 interface PopulatedState {
   state: ItemGameState;
   itemName: string;
@@ -305,7 +308,8 @@ test("keyboard opening, Escape focus return, and light dismiss keep the slot too
   await expect(opener).toBeFocused();
   await expect(slot.locator(".item-slot__tooltip")).toHaveCount(0);
   await opener.click();
-  await gamePanel(page).getByRole("heading", { name: "山手線すごろく" }).click();
+  // A non-interactive panel area; the title heading is visually hidden since #65 step 7b.
+  await gamePanel(page).locator(".game-panel__stats dt").first().click();
   await expect(card).toBeHidden();
   await expect(opener).not.toBeFocused();
 });
@@ -810,7 +814,7 @@ test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
       const visited: Array<{ name: string; top: number; left: number }> = [];
       const effectsScrollable = await panel.locator(".effect-chips").evaluate((element) => element.scrollWidth > element.clientWidth);
       const expectedSlots = await panel.locator(".item-slot:not(.item-slot--empty) h3").allTextContents();
-      const expected = ["おまかせ: OFF", ...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), "ログ", "メニュー"];
+      const expected = ["おまかせ: OFF", ...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), ...(viewport.width <= PHONE_MAX_WIDTH_PX ? ["メニュー"] : ["ログ", "メニュー"])];
       for (let index = 0; index < expected.length; index += 1) {
         await page.keyboard.press("Tab");
         const active = await page.evaluate(() => {

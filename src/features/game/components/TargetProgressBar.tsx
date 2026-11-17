@@ -1,13 +1,15 @@
 import { progressSegments } from "../hudPresentation";
+import type { MilestoneFlash } from "../progressMilestones";
 
 export interface TargetProgressBarProps {
   completed: number;
   required: number;
   label?: string;
+  milestoneFlash?: MilestoneFlash | null;
 }
 
 /** ARIA values use the same clamped counts as the drawn segments, so the two never disagree. */
-export function TargetProgressBar({ completed, required, label = "山手線の踏破区間" }: TargetProgressBarProps): React.JSX.Element {
+export function TargetProgressBar({ completed, required, label = "山手線の踏破区間", milestoneFlash = null }: TargetProgressBarProps): React.JSX.Element {
   const segments = progressSegments(completed, required);
   const safeRequired: number = segments.length;
   const safeCompleted: number = segments.filter((segment) => segment.completed).length;
@@ -29,6 +31,7 @@ export function TargetProgressBar({ completed, required, label = "山手線の�
           />
         ))}
       </div>
+      {milestoneFlash && <span key={milestoneFlash.key} className="target-progress__flash" aria-hidden="true" />}
     </div>
   );
 }

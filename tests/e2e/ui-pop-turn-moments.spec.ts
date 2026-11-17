@@ -31,6 +31,7 @@ import {
 } from "./support/app";
 import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble, awaitStage, arrivalStagesForSpeed, advanceStageForSpeed, FRAME_MS, NORMAL_STEP_MS, stageDurationMs, stageMsForSpeed, type PresentedStage, type MomentSpeedId } from "./support/turnMoments";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import { TOAST_READING_MS } from "../../src/features/game/toastQueue";
 import { displayedHeading } from "../../src/features/game/mapGuidance";
 import { directionLabel } from "../../src/features/game/presentation";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
@@ -699,13 +700,15 @@ test.describe("S15 pickup and delayed discard", () => {
     if (pickup?.type !== "pickup-pending-discard") throw new Error("Expected the full-inventory pickup event");
     const pickupName = ITEM_DESCRIPTIONS[pickup.item.kind].name;
     const status = gamePanel(page).getByRole("status");
+    // This fixture turn also crosses a #65 progress milestone; that toast is excluded from the item-toast counts.
+    const itemToasts = page.locator(".toast-host__toast").filter({ hasNotText: /区間突破|あと\d+区間！/ });
 
     await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveAttribute("data-motion", "flight");
     await expect(gamePanel(page).locator(".item-slot")).toHaveCount(3);
     await expect(gamePanel(page).locator(".item-discard")).toHaveCount(0);
     await expect(status).toHaveCount(1);
     await expect(status).not.toContainText(pickupName);
-    await expect(page.locator(".toast-host__toast")).toHaveCount(0);
+    await expect(itemToasts).toHaveCount(0);
     expect(await readSave(page)).toEqual(committed);
 
     await advancePickup(page);
@@ -717,7 +720,7 @@ test.describe("S15 pickup and delayed discard", () => {
     await expect(gamePanel(page).getByRole("status")).toContainText(pickupName);
     await expect(gamePanel(page).getByRole("status")).toContainText("捨てるアイテムを1つ選んでください");
     await expect(gamePanel(page).locator(".item-slot")).toHaveCount(3);
-    const pickupToast = page.locator(".toast-host__toast");
+    const pickupToast = itemToasts;
     await expect(pickupToast).toHaveCount(1);
     await expect(pickupToast).toContainText(`${pickupName}を手に入れた！`);
     await page.clock.runFor(5_000);
@@ -727,9 +730,16 @@ test.describe("S15 pickup and delayed discard", () => {
     await expect(page.locator(".item-discard")).toHaveCount(0);
     await expect(page.locator('.turn-moment-host [data-stage="pickup"]')).toHaveCount(0);
     await expect.poll(async () => (await readSave(page))?.pending?.kind ?? null).toBe(null);
-    await expect.poll(async () => page.locator(".toast-host__toast").count()).toBe(2);
-    await expect(page.locator(".toast-host__toast").first()).toContainText(`${pickupName}を手に入れた！`);
-    await expect(page.locator(".toast-host__toast").last()).toContainText("を捨てた");
+    // Both ordinary slots hold the milestone and pickup toasts, so the discard toast waits for the older milestone to expire.
+    const milestoneToast = page.locator(".toast-host__toast").filter({ hasText: /区間突破|あと\d+区間！/ });
+    await expect(milestoneToast).toHaveCount(1);
+    await expect(itemToasts).toHaveCount(1);
+    await page.clock.runFor(TOAST_READING_MS);
+    await expect(milestoneToast).toHaveCount(0);
+    // The pickup toast's reading time ran out in the same window; the discard toast arrives and the pickup is not replayed.
+    await expect(itemToasts.filter({ hasText: "を捨てた" })).toHaveCount(1);
+    await expect(itemToasts.filter({ hasText: `${pickupName}を手に入れた！` })).toHaveCount(0);
+    await expect(itemToasts.last()).toContainText("を捨てた");
   });
 
   test("Skip during a full-inventory pickup keeps the mandatory discard choice", async ({ page, railwayBundle }) => {
