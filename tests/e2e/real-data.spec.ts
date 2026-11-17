@@ -228,11 +228,15 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   await page.evaluate(() => performance.mark("jrcr-s6-app-start"));
   await startNewGame(page);
   const panelSubtitle = gamePanel(page).getByText("東京近郊版", { exact: true });
-  if ((page.viewportSize()?.width ?? 0) <= 600) {
-    await expect(panelSubtitle).toBeHidden();
-  } else {
-    await expect(panelSubtitle).toBeVisible();
-  }
+  await expect(panelSubtitle).toHaveCount(1);
+  const subtitleGeometry = await panelSubtitle.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return { display: style.display, position: style.position, width: rect.width, height: rect.height, clip: style.clip };
+  });
+  expect(subtitleGeometry.display).not.toBe("none");
+  expect(subtitleGeometry).toMatchObject({ position: "absolute", width: 1, height: 1 });
+  expect(subtitleGeometry.clip).not.toBe("auto");
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
   await page.evaluate(() => performance.mark("jrcr-s6-map-style-ready"));
   if (testInfo.project.name === "desktop-chromium" || testInfo.project.name === "phone-chromium") {

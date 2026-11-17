@@ -84,3 +84,7 @@ the bottom of the 48px slot with or without the new row (`turn-result-card-s6-r1
 - #71 phone sheet: the pill follows the measured panel top, re-check its tests when #71 lands; #71 owns any further phone
   HUD trimming (empty inventory row, other stats) and any reuse of the freed 出目 cells.
 - 10-turn log history (「もっと見る」) deferred.
+
+## Released
+
+v0.15.0 released 2026-11-15: PR #90 → develop `de8d901`, release prep PR #91 → develop `a99ba4f`, PR #92 → master `da2dd62`; GitHub Release https://github.com/Yuulis/yamanote-line-sugoroku/releases/tag/v0.15.0. Production checks passed (bundle 0.15.0 + `da2dd62`, `turn-result__pill` present, no `__sugorokuE2E`, cache headers). Follow-ups recorded on #71.

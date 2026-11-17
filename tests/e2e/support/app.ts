@@ -107,35 +107,91 @@ export function panelStat(page: Page, label: string): Locator {
   return gamePanel(page).locator(`[data-stat="${stat}"]`);
 }
 
+type PhoneMenuSection = "log" | "settings";
+
+/** Find the visible legacy disclosure trigger that controls a labelled region. */
+async function visibleRegionTrigger(panel: Locator, region: Locator, name: string): Promise<Locator | null> {
+  const regionId = await region.getAttribute("id");
+  if (!regionId) throw new Error(`Missing id on region controlled by ${name}`);
+  const candidates = panel.getByRole("button", { name, exact: true });
+  const candidateCount = await candidates.count();
+  for (let index = 0; index < candidateCount; index += 1) {
+    const candidate = candidates.nth(index);
+    if (await candidate.isVisible() && await candidate.getAttribute("aria-controls") === regionId) return candidate;
+  }
+  return null;
+}
+
+/** Open the phone disclosure and select its log or settings section. */
+async function openPhoneMenuSection(panel: Locator, section: PhoneMenuSection): Promise<void> {
+  const trigger = panel.locator(".phone-menu__trigger");
+  if (await trigger.count() !== 1 || !await trigger.isVisible()) {
+    throw new Error(`No visible phone menu trigger for ${section}`);
+  }
+  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  const sectionLabel = section === "log" ? "ログ" : "設定";
+  const sectionButton = panel.locator(".phone-menu__sections").getByRole("button", { name: sectionLabel, exact: true });
+  if (await sectionButton.getAttribute("aria-pressed") !== "true") await sectionButton.click();
+}
+
+/** Close the phone disclosure when a requested region is embedded in it. */
+async function closePhoneMenu(panel: Locator): Promise<void> {
+  const trigger = panel.locator(".phone-menu__trigger");
+  if (await trigger.count() !== 1 || !await trigger.isVisible()) {
+    throw new Error("No visible legacy or phone menu trigger to close");
+  }
+  if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
+}
+
 /** Open the turn log if needed and wait for its labelled region to be visible. */
 export async function openGameLog(page: Page): Promise<void> {
-  const trigger = gamePanel(page).getByRole("button", { name: "ログ", exact: true });
-  const region = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
-  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  const panel = gamePanel(page);
+  const region = panel.getByRole("region", { name: "ターンのログ", exact: true, includeHidden: true });
+  const trigger = await visibleRegionTrigger(panel, region, "ログ");
+  if (trigger) {
+    if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  } else {
+    await openPhoneMenuSection(panel, "log");
+  }
   await expect(region).toBeVisible();
 }
 
 /** Close the turn log if needed and wait for its labelled region to be hidden. */
 export async function closeGameLog(page: Page): Promise<void> {
-  const trigger = gamePanel(page).getByRole("button", { name: "ログ", exact: true });
-  const region = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
-  if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
+  const panel = gamePanel(page);
+  const region = panel.getByRole("region", { name: "ターンのログ", exact: true, includeHidden: true });
+  const trigger = await visibleRegionTrigger(panel, region, "ログ");
+  if (trigger) {
+    if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
+  } else {
+    await closePhoneMenu(panel);
+  }
   await expect(region).toBeHidden();
 }
 
 /** Open the game menu if needed and wait for its labelled region to be visible. */
 export async function openGameMenu(page: Page): Promise<void> {
-  const trigger = gamePanel(page).getByRole("button", { name: "メニュー", exact: true });
-  const region = gamePanel(page).getByRole("region", { name: "メニュー", exact: true });
-  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  const panel = gamePanel(page);
+  const region = panel.getByRole("region", { name: "メニュー", exact: true, includeHidden: true });
+  const trigger = await visibleRegionTrigger(panel, region, "メニュー");
+  if (trigger) {
+    if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
+  } else {
+    await openPhoneMenuSection(panel, "settings");
+  }
   await expect(region).toBeVisible();
 }
 
 /** Close the game menu if needed and wait for its labelled region to be hidden. */
 export async function closeGameMenu(page: Page): Promise<void> {
-  const trigger = gamePanel(page).getByRole("button", { name: "メニュー", exact: true });
-  const region = gamePanel(page).getByRole("region", { name: "メニュー", exact: true });
-  if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
+  const panel = gamePanel(page);
+  const region = panel.getByRole("region", { name: "メニュー", exact: true, includeHidden: true });
+  const trigger = await visibleRegionTrigger(panel, region, "メニュー");
+  if (trigger) {
+    if (await trigger.getAttribute("aria-expanded") === "true") await trigger.click();
+  } else {
+    await closePhoneMenu(panel);
+  }
   await expect(region).toBeHidden();
 }
 

@@ -5,11 +5,14 @@ import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { segmentFlashFeatureIds, type TurnRevealStageKey, type RollAttempt } from "./animation/turnMoments";
 import { lastMoveOf, type GameSession, type LastMove } from "./gameSession";
+import { deriveCollectionProgress, type CollectionProgress, type CollectionVisit } from "./collectionProgress";
+import { deriveTargetProximity, type TargetProximity } from "./targetProximity";
 import { compactRollFor, compactRollText, effectChipModels, type EffectChipModel } from "./hudPresentation";
 import { arrivalLogText, arrivalSummary, displayedRide, itemTurnAnnouncement, landingText, lastRollText, stationName, turnMomentAnnouncement } from "./presentation";
 import type { PresentationResolver } from "./presentationResolver";
 import type { ItemSessionView } from "./itemSession";
-import { targetSegmentsMilestoneToast, turnToasts, type ToastInput } from "./toastQueue";
+import { progressMilestoneToast, targetSegmentsMilestoneToast, turnToasts, type ToastInput } from "./toastQueue";
+import { deriveProgressCrossings, type MilestoneFlash, type ProgressCrossing } from "./progressMilestones";
 import { maskTurnMomentItemView } from "./turnMomentItems";
 import { adjustmentLandings, displayedHeading, firstTargetCompletionTurn, type AdjustmentLanding, type GoalGuidance } from "./mapGuidance";
 import { deriveTurnResult, type TurnResultModel } from "./turnResultCard";
@@ -38,12 +41,15 @@ export interface TurnMomentDisplayInput {
   entryTurn?: number;
 }
 
-/** Shared gameplay values and permissions; visual moment models are added in later steps. */
+/** Shared gameplay values, publication permissions and HUD progress models. */
 export interface TurnMomentDisplay {
   phase: TurnPublicationPhase;
   turn: number;
   progress: DisplayedProgress;
   ride: Readonly<{ serviceId: string; direction: Direction }>;
+  proximity: TargetProximity | null;
+  collection: CollectionProgress;
+  milestoneFlash: MilestoneFlash | null;
   markerBearing: number | null;
   goalGuidance: GoalGuidance | null;
   /** Exact landing per legal choice; non-empty only while the adjustment decision is visible. */
@@ -78,6 +84,11 @@ export interface TurnMomentDisplay {
 }
 
 const PRE_MOVE_STAGES = new Set<RollAttempt["stage"]>(["waiting-roll", "tumble", "awaiting-adjust", "waiting-record", "stamps"]);
+/** Phases announced with the arrival copy: `turnMomentAnnouncement` words these stages identically. */
+const ARRIVAL_COPY_PHASES: ReadonlySet<TurnPublicationPhase> = new Set(["arrival", "segment-flash", "lottery-flip", "lottery-settle"]);
+/** 30/30 keeps its own guidance, toast and sentence (D10); the thresholds below it are the crossings handled here. */
+const GOAL_THRESHOLD = 30;
+type LowerCrossing = ProgressCrossing & Pick<MilestoneFlash, "threshold">;
 
 function publicationPhase(input: TurnMomentDisplayInput): TurnPublicationPhase {
   if (input.restoredOrOmitted) return "published";
@@ -138,6 +149,24 @@ function visibleRide(input: TurnMomentDisplayInput, phase: TurnPublicationPhase,
   const move = input.session.lastMove;
   if (move) return { serviceId: move.serviceId, direction: move.direction };
   return input.attempt?.origin.ride ?? displayedRide(input.session);
+}
+
+function visibleTraversalVisits(input: TurnMomentDisplayInput, phase: TurnPublicationPhase): readonly CollectionVisit[] {
+  const { session } = input;
+  const history = session.game.movementHistory;
+  const pending = isItemSave(session.game) && session.game.pending?.kind === "discard" ? session.game.pending.record : null;
+  const records = pending && !history.some((record) => record.turn === pending.turn) ? [...history, pending] : [...history];
+  const activeTurn = session.animation?.turn ?? input.attempt?.recordTurn;
+  return records.flatMap((record) => {
+    const current = record.turn === activeTurn;
+    if (current && phase === "pre-move") return [];
+    const traversedSegmentIds = current && phase === "moving"
+      ? record.traversedSegmentIds.slice(0, input.progress.stepsCompleted) : record.traversedSegmentIds;
+    if ("kind" in record && record.kind === "deadhead") {
+      return [{ traversedSegmentIds, ...(current && phase === "moving" ? {} : { relocationDestinationId: record.toStationId }) }];
+    }
+    return [{ traversedSegmentIds }];
+  });
 }
 
 function visibleDecision(
@@ -229,6 +258,10 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const completedIds = new Set(progress.completedSegmentIds);
   const completedCount = targetIds.filter((id) => completedIds.has(id)).length;
   const requiredCount = targetIds.length;
+  const proximity = deriveTargetProximity({ stationId: progress.stationId, ride,
+    targetServiceId: input.session.game.config.targetServiceId, targetComplete: completedCount >= requiredCount }, input.network);
+  const collection = deriveCollectionProgress(input.session.game.config.startStationId,
+    visibleTraversalVisits(input, phase), input.network, input.presentation);
   const goal = input.session.game.status === "completed";
   const historicalRecords = input.session.game.movementHistory.map(({ turn: recordTurn, traversedSegmentIds }) => ({
     turn: recordTurn,
@@ -297,7 +330,19 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   // The milestone is public with the guidance (arrival); it precedes this turn's item events.
   const milestoneToasts = goalGuidance && firstCompletionTurn !== null && movementComplete
     ? [targetSegmentsMilestoneToast(input.session.sessionId, firstCompletionTurn, goalGuidance.stationName)] : [];
-  const toastInputs = [...milestoneToasts, ...itemToasts];
+  // A threshold below 30 that this turn newly crossed (D9: only the highest, so a turn reaching 30 has none), public
+  // from its arrival. A turn the session was entered with is history: it never toasts, announces or flashes.
+  const currentCrossing = movementComplete && completionArrivalPublished && publicationTurn > (input.entryTurn ?? 0)
+    ? deriveProgressCrossings(completionRecords, targetIds).find((crossing): crossing is LowerCrossing =>
+      crossing.turn === publicationTurn && crossing.threshold !== GOAL_THRESHOLD) ?? null : null;
+  const crossingToast = currentCrossing ? progressMilestoneToast(input.session.sessionId, currentCrossing) : null;
+  // A turn whose arrival is never presented: classic, reduced motion or Skip.
+  const arrivalUnpresented = !liveView || input.restoredOrOmitted || attempt?.skipRequested === true;
+  // Offered with the arrival card, or with the results of a turn that shows no card (also 重要なときだけ and speeds
+  // without one): never during the card-less stages in between. The queue cursor rejects a second offer.
+  const crossingToasts = crossingToast && (phase === "arrival"
+    || (isPublished && (arrivalUnpresented || attempt?.policy.showArrival === false))) ? [crossingToast] : [];
+  const toastInputs = [...crossingToasts, ...milestoneToasts, ...itemToasts];
   const canRoll = !active && input.session.phase === "idle" && input.session.game.status === "playing";
   const announcementStage = getAnnouncementStage(input, phase, showClear, decision);
   const baseAnnouncement = !liveView && input.restoredHistory ? ""
@@ -316,15 +361,16 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
         ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation)
         : turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
           stage: announcementStage, canRoll, completedCount, requiredCount, network: input.network, presentation: input.presentation });
-  // Announced once: while the arrival is presented, or at the publication of a turn that never presented it
-  // (classic, reduced motion, Skip, or 演出 なし, which plans no arrival stage).
-  const milestoneAnnounced = goalGuidance !== null && firstCompletionTurn === publicationTurn
-    && firstCompletionTurn > (input.entryTurn ?? 0)
-    && (phase === "arrival" || phase === "segment-flash"
-      || (isPublished && (!liveView || input.restoredOrOmitted || attempt?.skipRequested === true
-        || attempt?.policy.showImportantMoments === false)));
-  const announcement = milestoneAnnounced && goalGuidance && baseAnnouncement
-    ? `${baseAnnouncement.replace(/。$/, "")}。${goalGuidance.text}` : baseAnnouncement;
+  // The milestone sentence is part of its turn's arrival copy: it stays through every stage worded with that copy
+  // (dropping it at the lottery would change the text and announce the arrival again), or joins the publication of
+  // a turn that never worded it (unpresented, or 演出 なし, which plans no arrival or lottery stage).
+  const milestoneSentence = crossingToast ? crossingToast.text
+    : goalGuidance !== null && firstCompletionTurn === publicationTurn && firstCompletionTurn > (input.entryTurn ?? 0)
+      ? goalGuidance.text : null;
+  const milestoneAnnounced = milestoneSentence !== null && (ARRIVAL_COPY_PHASES.has(phase)
+    || (isPublished && (arrivalUnpresented || attempt?.policy.showImportantMoments === false)));
+  const announcement = milestoneAnnounced && baseAnnouncement
+    ? `${baseAnnouncement.replace(/。$/, "")}。${milestoneSentence}` : baseAnnouncement;
   const hasPublishedSummary = phase === "published" && current !== null && !showClear && (liveView
     ? input.session.phase !== "animating" && input.session.phase !== "committing" && input.session.phase !== "resolving" &&
       !liveView.draft.items.length && decision?.kind !== "adjust"
@@ -334,6 +380,11 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     ? itemTurnAnnouncement(input.session, liveView, completedCount, requiredCount, input.network, input.presentation, false) : "";
   const canSkip = input.session.phase === "animating" || (active && (preMoveActive || revealActive));
   const segmentFlash = turnSegmentFlash(input, phase, record, targetIds);
+  // D13: decorative, so only a fresh crossing whose moments are presented flashes.
+  const milestoneFlash: MilestoneFlash | null = currentCrossing && attempt?.sessionId === input.session.sessionId
+    && !input.restoredOrOmitted && !attempt.motionOmitted && !attempt.skipRequested && attempt.policy.showImportantMoments
+    ? { key: `${input.session.sessionId}:${currentCrossing.turn}:${currentCrossing.threshold}`, threshold: currentCrossing.threshold }
+    : null;
 
   return {
     phase,
@@ -341,6 +392,9 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
       : current?.itemRecord?.turn ?? input.session.game.turn,
     progress,
     ride,
+    proximity,
+    collection,
+    milestoneFlash,
     markerBearing,
     goalGuidance,
     adjustmentLandings: landings,

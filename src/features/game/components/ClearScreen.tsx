@@ -8,6 +8,7 @@ import { browserResultShareActions, type ResultShareActions } from "../resultSha
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
 import { itemHistoryText, directionLabel, landingTransitionText, serviceName, stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
+import type { CollectionProgress } from "../collectionProgress";
 import { trackEvent } from "../../analytics/analytics";
 import { PhraseText } from "./PhraseText";
 
@@ -15,6 +16,8 @@ interface ClearScreenProps {
   game: GameState | ItemGameState;
   network: RailwayNetwork;
   presentation: PresentationResolver;
+  /** Published collection counters; omitted by callers that render the screen outside the game (e.g. share tests). */
+  collection?: CollectionProgress;
   display: EditionDisplay;
   shareActions?: ResultShareActions;
   itemNotice?: ReactNode;
@@ -27,7 +30,7 @@ interface ClearScreenProps {
 export const HISTORY_PAGE_SIZE = 20;
 
 /** Shown once the clearing move has finished animating (spec 6.1). */
-export function ClearScreen({ game, network, presentation, display, saveStatus, itemNotice, shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
+export function ClearScreen({ game, network, presentation, display, collection, saveStatus, itemNotice, shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
   const [page, setPage] = useState(0);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showShareText, setShowShareText] = useState(false);
@@ -84,6 +87,14 @@ export function ClearScreen({ game, network, presentation, display, saveStatus, 
         <dd>{moves}回</dd>
         <dt>乗換回数</dt>
         <dd>{transfers}回</dd>
+        {collection && (
+          <>
+            <dt><PhraseText text="訪れた駅" /></dt>
+            <dd>{collection.visitedStations.toLocaleString("ja-JP")}/{collection.totalStations.toLocaleString("ja-JP")}</dd>
+            <dt><PhraseText text="乗った路線" /></dt>
+            <dd>{collection.riddenLines.toLocaleString("ja-JP")}/{collection.totalLines.toLocaleString("ja-JP")}</dd>
+          </>
+        )}
       </dl>
       <h2 className="clear-screen__subtitle">移動履歴</h2>
       <ol ref={historyRef} className="clear-screen__history">
