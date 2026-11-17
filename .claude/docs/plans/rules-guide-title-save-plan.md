@@ -545,6 +545,8 @@ Steps 5, 6A, 7A, 9, 11 and 12A are close to the cap. Before Luna starts each of 
 - Pause review: the copy, plus a standalone render in the report.
 
 ### Step 7B — HUD integration + hit area + geometry
+
+> Amendment (2026-11-17, from the Step 7A review). Use the `wrapper` render prop: the saved mark is `wrapper={(t) => <p className="game-panel__save game-panel__save--inline" title={...}>{t}</p>}` with children `<SaveIcon/><span className="visually-hidden">セーブ: …</span>`, so the `<p>` keeps no role, its `title`, and textContent exactly `セーブ: 自動保存済み`; the explanation is a sibling outside it. Same wrapper for failed/unavailable/null lines. 44px hit box: `position: relative` on `.save-status__trigger` plus an absolutely positioned pseudo-element; check it does not overlap 現在駅 or neighbours. The inline-fallback popover sits in normal flow and pushes the HUD while open — do not measure the 252px budget with it open. The popover focuses its 閉じる button on open (so Enter/Space never reach the roll shortcut). 7B's E2E must prove in a real browser that (a) Enter/Space with the popover open does not roll, and (b) opening the RulesDialog (or another native modal) while the popover is open closes it via `focusout` without stealing focus.
 - Files:
   - `GameHud.tsx`: the saved mark's `<p class="game-panel__save …">` stays a paragraph with no role, the same
     `title` and the visually-hidden text. A trigger `<button>` goes inside it and the explanation is a sibling

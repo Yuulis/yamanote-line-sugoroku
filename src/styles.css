@@ -3593,3 +3593,67 @@ button[aria-disabled="true"] {
     grid-row: auto;
   }
 }
+
+.save-status__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  cursor: pointer;
+}
+
+.save-status__popover {
+  box-sizing: border-box;
+  width: min(280px, calc(100vw - 16px));
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+  font-size: 13px;
+}
+
+.save-status__popover--warning {
+  border-color: var(--color-warning);
+}
+
+.save-status__popover--native {
+  position: fixed;
+  margin: 0;
+  inset: auto;
+}
+
+.save-status__popover--inline {
+  margin-top: 8px;
+}
+
+.save-status__popover--inline[hidden] {
+  display: none;
+}
+
+.save-status__text {
+  margin: 0;
+  line-height: 1.5;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@supports (word-break: auto-phrase) {
+  .save-status__text {
+    word-break: auto-phrase;
+  }
+}
+
+.save-status__close {
+  display: block;
+  margin: 8px 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+}
