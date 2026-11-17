@@ -33,7 +33,7 @@ export function buildResumePresentation(
   const requiredCount = requiredIds.size;
   const label = nextTurn === null
     ? `クリア結果を見る（${game.turn}ターンでクリア）`
-    : `つづきから　踏破 ${completedCount}/${requiredCount}・${nextTurn}ターン目から・${stationText}`;
+    : `つづきから　踏破 ${completedCount}/${requiredCount}・${nextTurn}ターン目・${stationText}`;
 
   return { label, nextTurn, stationText, completedCount, requiredCount };
 }

@@ -15,8 +15,8 @@ Codex consults:
 Process:
 - Branch: `feature/rules-guide-title-save` (from develop a8fc2b7, v0.16.0); no upstream yet. Flow: feature → PR →
   develop → PR → master.
-- Pacing (user 2026-11-17): stop for user review only after steps with a visible change. The no-visual steps 1A, 2A, 2B, 3, 5, 7A, 8A, 8B, 9 and 10A continue to the next step after verification, commit, push and CI.
-- Roles: Codex Luna implements (`--model "${CODEX_MODEL_LUNA:-gpt-6-luna}" --config model_reasoning_effort=xhigh
+- Pacing: **continuous from Step 2A** until the user says otherwise (user 2026-11-17 after 1B: 「こちらから指示を出すまで作業は止めなくて良い」); still verify, review, commit, push and check CI per step. Earlier pacing (user 2026-11-17): stop for user review only after steps with a visible change. The no-visual steps 1A, 2A, 2B, 3, 5, 7A, 8A, 8B, 9 and 10A continue to the next step after verification, commit, push and CI.
+- Roles (2026-11-17, from Step 2A): **Claude subagents** — `general-purpose-sonnet` implements, `general-purpose-opus` reviews, the lead verifies (user: 「Claudeサブエージェントを使うこと」). Steps 1A–1B used: Codex Luna implements (`--model "${CODEX_MODEL_LUNA:-gpt-6-luna}" --config model_reasoning_effort=xhigh
   --timeout 2400`), Sol low reviews, and the lead verifies, commits, pushes and checks CI after every push.
 - Local E2E: targeted specs only, `--workers=2`, tag-aware grep `'TITLE(?: @layout)?$'`. The full 4-project matrix
   runs in CI (a working-branch push runs desktop-chromium only; the PR runs the full matrix; phone runs `@layout`
@@ -53,7 +53,7 @@ Process:
 
 ## Next
 
-1A and 1B done. Paused for user review of 1B (visible step); next Step 2A. The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
+1A and 1B done; user reviewed 1B and asked to drop 「から」 from the resume label (follow-up commit 「1B-2」). Next Step 2A. The DESIGN.md decision rows (dated 2026-11-17) and the STATE.md block are recorded. Approved extras: the in-game shortcut hint is hidden on touch devices, and single-edition loading shows the title with 遊び方.
 
 ## How to resume
 

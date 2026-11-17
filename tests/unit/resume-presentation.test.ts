@@ -25,7 +25,7 @@ describe("resume presentation", () => {
 
     expect(resumeTurn(game)).toBe(5);
     expect(buildResumePresentation(game, network, requiredIds)).toEqual({
-      label: "つづきから　踏破 0/30・5ターン目から・新橋",
+      label: "つづきから　踏破 0/30・5ターン目・新橋",
       nextTurn: 5,
       stationText: "新橋",
       completedCount: 0,
@@ -41,7 +41,7 @@ describe("resume presentation", () => {
     expect(pending.pending?.kind).toBe("roll");
     expect(resumeTurn(pending)).toBe(pending.pending?.turn);
     expect(buildResumePresentation(pending, network, requiredIds)).toMatchObject({
-      label: "つづきから　踏破 0/30・1ターン目から・新橋",
+      label: "つづきから　踏破 0/30・1ターン目・新橋",
       nextTurn: pending.pending?.turn,
     });
   });
@@ -60,7 +60,7 @@ describe("resume presentation", () => {
       nextTurn: pendingGame.pending.turn,
       stationText: expectedStation,
       completedCount,
-      label: `つづきから　踏破 ${completedCount}/${requiredIds.size}・${pendingGame.pending.turn}ターン目から・${expectedStation}`,
+      label: `つづきから　踏破 ${completedCount}/${requiredIds.size}・${pendingGame.pending.turn}ターン目・${expectedStation}`,
     });
   });
 
@@ -96,7 +96,7 @@ describe("resume presentation", () => {
     const requiredIds = new Set(targetSegmentIds(game.config, network));
     const presentation = buildResumePresentation(game, network, requiredIds);
 
-    expect(presentation.label).toContain("5ターン目から");
+    expect(presentation.label).toContain("・5ターン目・");
     expect(overwriteProgressText(game)).toBe("5ターン目から再開");
   });
 });

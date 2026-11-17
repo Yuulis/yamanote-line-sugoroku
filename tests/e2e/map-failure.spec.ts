@@ -57,7 +57,7 @@ test("[8.3-6] a failed map style keeps the game playable and retry recovers the 
   expect(await readSave(page)).toEqual(firstTurn);
 
   // Resume and keep playing without a map.
-  await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・2ターン目から・.+$/ }).click();
+  await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・2ターン目・.+$/ }).click();
   await expect(panelStat(page, "ターン数")).toHaveText("1");
   await rollOnce(page);
   const secondTurn = await readSave(page);

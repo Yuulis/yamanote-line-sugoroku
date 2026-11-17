@@ -1411,6 +1411,12 @@ button[aria-disabled="true"] {
   display: grid;
 }
 
+/* Break only at PhraseText hints (・, spaces) so 「3ターン目」 or a station name never splits. */
+.title-screen__resume button {
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
 .title-screen__resume-delete {
   min-height: var(--title-screen-resume-delete-target);
   border: 0;

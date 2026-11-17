@@ -32,7 +32,7 @@ function resumeLabel(game: ItemGameState, network: RailwayNetwork): string {
   const completed = new Set(position.completedSegmentIds.filter((id) => requiredIds.has(id))).size;
   const turn = game.pending?.turn ?? game.turn + 1;
   const station = network.stationsById.get(position.currentStationId)?.name ?? position.currentStationId;
-  return `つづきから　踏破 ${completed}/${requiredIds.size}・${turn}ターン目から・${station}`;
+  return `つづきから　踏破 ${completed}/${requiredIds.size}・${turn}ターン目・${station}`;
 }
 
 async function loadSave(page: Page, game: ItemGameState): Promise<void> {
