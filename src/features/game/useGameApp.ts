@@ -9,6 +9,7 @@ import {
   reduceAppState,
 } from "./gameSession";
 import { itemActionIdentity, itemSessionView, type ItemSessionView } from "./itemSession";
+import type { SaveAttempt } from "./saveNotice";
 import { generateSeed } from "./seed";
 import { trackEvent } from "../analytics/analytics";
 import {
@@ -26,6 +27,12 @@ export interface GameAppControls {
   saveLookup: SaveLookup<SavedGameState> | null;
   /** Result of saving the current committed state; null before the first save. */
   saveStatus: SaveWriteResult | null;
+  /**
+   * Latest distinct save write (it may belong to an earlier session); null
+   * before the first save. Optional so injected test controls stay valid;
+   * absent means null.
+   */
+  saveAttempt?: SaveAttempt | null;
   newGame: () => void;
   resume: (game: SavedGameState) => void;
   roll: () => void;
@@ -37,6 +44,40 @@ export interface GameAppControls {
   showTitle: () => void;
   /** Delete the stored save; false when storage refused. */
   removeSave: () => boolean;
+}
+
+const FIRST_SAVE_ATTEMPT_ID = 1;
+
+interface SaveTarget {
+  readonly game: SavedGameState;
+  readonly storage: StorageLike | null;
+  readonly key: string;
+  readonly sessionId: number;
+}
+
+interface SaveLedger {
+  readonly last: { readonly target: SaveTarget; readonly attempt: SaveAttempt } | null;
+  readonly entry: { readonly sessionId: number; readonly turn: number } | null;
+  readonly nextId: number;
+}
+
+const EMPTY_SAVE_LEDGER: SaveLedger = { last: null, entry: null, nextId: FIRST_SAVE_ATTEMPT_ID };
+
+function sameTarget(a: SaveTarget, b: SaveTarget): boolean {
+  return a.game === b.game && a.storage === b.storage && a.key === b.key && a.sessionId === b.sessionId;
+}
+
+/**
+ * Write the target once: repeating the same target reuses its attempt. A
+ * session's first write is its starting game, so it fixes the entry turn.
+ */
+function recordSave(ledger: SaveLedger, target: SaveTarget): { ledger: SaveLedger; attempt: SaveAttempt } {
+  if (ledger.last && sameTarget(ledger.last.target, target)) return { ledger, attempt: ledger.last.attempt };
+  const entry = ledger.entry?.sessionId === target.sessionId ? ledger.entry
+    : { sessionId: target.sessionId, turn: target.game.turn };
+  const attempt: SaveAttempt = { id: ledger.nextId, sessionId: target.sessionId, game: target.game,
+    result: writeSave(target.storage, target.game, target.key), entryTurn: entry.turn };
+  return { ledger: { last: { target, attempt }, entry, nextId: ledger.nextId + 1 }, attempt };
 }
 
 /**
@@ -56,7 +97,7 @@ export function useGameApp(
     [config, network],
   );
   const [state, dispatch] = useReducer(reducer, INITIAL_APP_STATE);
-  const [saveStatus, setSaveStatus] = useState<SaveWriteResult | null>(null);
+  const [saveAttempt, setSaveAttempt] = useState<SaveAttempt | null>(null);
   const [saveRevision, setSaveRevision] = useState(0);
 
   const session = state.screen === "game" ? state.session : null;
@@ -64,27 +105,30 @@ export function useGameApp(
   const phase = session?.phase;
   const decisionRevision = session?.item?.decisionRevision;
   const sessionId = session?.sessionId;
-  const saved = useRef<{ game: SavedGameState; storage: StorageLike | null; key: string; sessionId: number | undefined; result: SaveWriteResult } | null>(null);
+  const saveLedger = useRef(EMPTY_SAVE_LEDGER);
+  // The item effect re-runs for the same game when phase or decisionRevision
+  // changes; that re-run reuses the attempt instead of writing again. StrictMode,
+  // HMR and Activity re-runs would reuse it too, but they are defensive only:
+  // the hook mounts on the title screen, where there is no game to save.
+  const save = useCallback((target: SaveTarget): void => {
+    const recorded = recordSave(saveLedger.current, target);
+    saveLedger.current = recorded.ledger;
+    setSaveAttempt(recorded.attempt);
+  }, []);
   useEffect(() => {
-    if (committedGame && !("pending" in committedGame)) setSaveStatus(writeSave(storage, committedGame, saveKey));
-  }, [committedGame, saveKey, storage]);
-  useEffect(() => {
-    if (!committedGame || decisionRevision === undefined) return;
-    // StrictMode can repeat this effect; acknowledge the same identity and reuse
-    // its write result. Reducers never save, and repeated acknowledgements lose.
-    let result: SaveWriteResult;
-    if (saved.current?.game === committedGame &&
-        saved.current.storage === storage && saved.current.key === saveKey && saved.current.sessionId === sessionId) {
-      result = saved.current.result;
-    } else {
-      result = writeSave(storage, committedGame, saveKey);
-      saved.current = { game: committedGame, storage, key: saveKey, sessionId, result };
+    if (committedGame && sessionId !== undefined && !("pending" in committedGame)) {
+      save({ game: committedGame, storage, key: saveKey, sessionId });
     }
-    setSaveStatus(result);
-    if (sessionId !== undefined && (phase === "committing" || phase === "resolving")) {
+  }, [committedGame, saveKey, storage, sessionId, save]);
+  useEffect(() => {
+    if (!committedGame || decisionRevision === undefined || sessionId === undefined) return;
+    // Acknowledge on every run, reused write or not. Reducers never save, and
+    // repeated acknowledgements lose.
+    save({ game: committedGame, storage, key: saveKey, sessionId });
+    if (phase === "committing" || phase === "resolving") {
       dispatch({ type: "item-save-attempted", sessionId, turn: committedGame.turn, decisionRevision });
     }
-  }, [committedGame, phase, decisionRevision, sessionId, saveKey, storage]);
+  }, [committedGame, phase, decisionRevision, sessionId, saveKey, storage, save]);
 
   const onTitle = state.screen === "title";
   // saveRevision is a dependency only: it forces a re-read after deleting.
@@ -136,7 +180,8 @@ export function useGameApp(
   return {
     state,
     saveLookup,
-    saveStatus,
+    saveStatus: saveAttempt?.result ?? null,
+    saveAttempt,
     newGame,
     resume,
     roll,

@@ -585,6 +585,8 @@ Steps 5, 6A, 7A, 9, 11 and 12A are close to the cap. Before Luna starts each of 
 - Risks: a reused write must never suppress an item acknowledgement.
 
 ### Step 8B — Notice store, eligibility, announcement arbitration (no visual)
+
+> Amendment (2026-11-18, from the Step 8A review). Eligibility is evaluated on the **latest** attempt only: `attempt !== null && attempt.sessionId === currentSessionId && attempt.result === "saved" && attempt.game.status === "playing" && !(pending !== null) && attempt.game.turn > attempt.entryTurn && !alreadyDelivered`. A pending (roll/discard) write never qualifies — wait for the resolved write. Finished games never qualify. Compare against the current game session id (null on the title), never `lastSessionId`; ids restart per GameApp mount, never persist them. `entryTurn` = top-level `game.turn` of the session's first write. For 10A: if a later attempt in the same session is not `"saved"` before delivery, cancel the queued notice (or re-check the latest attempt at delivery). Step 10A also makes `GameAppControls.saveAttempt` required by adding `saveAttempt: null` to `inject()` in `game-app-turn-moments.test.ts` (setup-only edit); until then read `app.saveAttempt ?? null`.
 - Files: `saveNotice.ts` (`isFirstTurnNoticeEligible`, `FIRST_TURN_NOTICE_TEXT`, a pure `selectAnnouncement` with
   named types `NoticeAnnouncementState` / `NoticeAnnouncementInput`); new `src/features/game/store/notices.ts`; new
   `tests/unit/save-notice.test.ts`.
