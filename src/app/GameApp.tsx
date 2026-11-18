@@ -40,6 +40,7 @@ import { overwriteProgressText } from "../features/game/resumePresentation";
 import { summarizeGame } from "../features/game/gameSummary";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
+import { useFirstTurnNotice } from "../features/game/useFirstTurnNotice";
 
 interface GameAppProps {
   data: RailwayData;
@@ -106,6 +107,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeAnnouncementKey, setNoticeAnnouncementKey] = useState<string | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [rulesRequest, setRulesRequest] = useState<RulesRequest | null>(null);
   const openRules = useCallback<PanelOpenRules>((sectionId, returnFocus, getFallbackFocus) => {
@@ -376,6 +378,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
 
   const showTitle = useCallback(() => {
     setNotice(null);
+    setNoticeAnnouncementKey(null);
     showTitleScreen();
   }, [showTitleScreen]);
 
@@ -383,6 +386,23 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
   const rulesOpen = panelShown && rulesRequest !== null;
+  const firstTurnNotice = useFirstTurnNotice({
+    saveAttempt: app.saveAttempt,
+    currentSessionId: session?.sessionId ?? null,
+    storage,
+    publicationReady: turnDisplay?.phase === "published",
+    decisionOpen: turnDisplay?.decision !== null && turnDisplay?.decision !== undefined,
+    confirmOpen: confirm !== null,
+    rulesOpen,
+  });
+  const handleNoticeShown = useCallback((key: string): void => {
+    firstTurnNotice.onNoticeShown(key);
+    setNoticeAnnouncementKey(key);
+  }, [firstTurnNotice.onNoticeShown]);
+  const handleNoticeAnnounced = useCallback((key: string): void => {
+    firstTurnNotice.onNoticeAnnounced(key);
+    setNoticeAnnouncementKey((current) => current === key ? null : current);
+  }, [firstTurnNotice.onNoticeAnnounced]);
   useEffect(() => {
     if (!panelShown) setRulesRequest(null);
   }, [panelShown]);
@@ -432,6 +452,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           reducedMotion={reducedMotion}
           confirmationOpen={confirm !== null}
           rulesOpen={rulesOpen}
+          noticeAnnouncementKey={noticeAnnouncementKey}
+          onNoticeAnnounced={handleNoticeAnnounced}
           onOpenRules={openRules}
           onRoll={guardedRoll}
           onEditItemDraft={guardedEditItemDraft}
@@ -457,6 +479,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         saveFailed={app.saveStatus === "failed"}
         obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen || rulesOpen}
         reducedMotion={reducedMotion}
+        notice={firstTurnNotice.notice}
+        announceable={panelShown && turnDisplay?.decision == null && confirm === null && !rulesOpen && !itemDialogOpen}
+        onNoticeShown={handleNoticeShown}
       />
       {session && turnDisplay?.showClear && presentationGame && (
         <ClearScreen

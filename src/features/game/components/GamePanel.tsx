@@ -41,6 +41,7 @@ import { TurnResultCard, TurnResultPill } from "./TurnResultCard";
 import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
 import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
 import { TARGET_PROXIMITY_COPY } from "../targetProximity";
+import { selectAnnouncement, type NoticeAnnouncementState } from "../saveNotice";
 
 const UPCOMING_STATION_COUNT = 5;
 const LOTTERY_RULES_LABEL = "抽選のルールを詳しく見る";
@@ -67,6 +68,10 @@ export interface GamePanelProps {
   /** The in-game rules dialog is open: suspends auto-roll and shortcuts and defers the decision modals. */
   rulesOpen?: boolean;
   onOpenRules?: PanelOpenRules;
+  /** Key requested by ToastHost after the notice is actually displayed. */
+  noticeAnnouncementKey?: string | null;
+  /** Acknowledges a notice after the existing status region commits it. */
+  onNoticeAnnounced?: (key: string) => void;
   onRoll: () => void;
   onSkip: () => void;
   onToggleFollow: () => void;
@@ -359,6 +364,39 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     confirmationOpen: (props.confirmationOpen ?? false) || rulesOpen,
     onRoll: props.onRoll,
   });
+  const [noticeAnnouncementState, setNoticeAnnouncementState] = useState<NoticeAnnouncementState>({
+    pendingKey: null,
+    announcedKey: null,
+    coveredOrdinary: null,
+  });
+  const [previousOrdinary, setPreviousOrdinary] = useState<string | null>(null);
+  const committedNoticeKeyRef = useRef<string | null>(null);
+  const requestedNoticeKey = props.noticeAnnouncementKey ?? noticeAnnouncementState.pendingKey;
+  const announcementState = requestedNoticeKey !== null && requestedNoticeKey !== noticeAnnouncementState.pendingKey
+    ? { pendingKey: requestedNoticeKey, announcedKey: null, coveredOrdinary: null }
+    : { ...noticeAnnouncementState, pendingKey: requestedNoticeKey };
+  const decisionOwned = turnDisplay.decision !== null || rulesOpen || (props.confirmationOpen ?? false);
+  const announcement = selectAnnouncement({
+    state: announcementState,
+    ordinaryAnnouncement: autoRoll.announcement,
+    previousOrdinary,
+    decisionOwned,
+  });
+  useEffect(() => {
+    setPreviousOrdinary(autoRoll.announcement);
+    const key = announcementState.pendingKey;
+    if (announcement.announcesNotice && key !== null && committedNoticeKeyRef.current !== key) {
+      committedNoticeKeyRef.current = key;
+      setNoticeAnnouncementState({ pendingKey: key, announcedKey: key, coveredOrdinary: autoRoll.announcement });
+      props.onNoticeAnnounced?.(key);
+      return;
+    }
+    if (noticeAnnouncementState.announcedKey !== null
+      && (decisionOwned || autoRoll.announcement !== noticeAnnouncementState.coveredOrdinary)) {
+      setNoticeAnnouncementState({ pendingKey: null, announcedKey: null, coveredOrdinary: null });
+    }
+  }, [announcement.announcesNotice, announcementState.pendingKey, autoRoll.announcement,
+    decisionOwned, noticeAnnouncementState.announcedKey, noticeAnnouncementState.coveredOrdinary, props.onNoticeAnnounced]);
   useGameShortcuts({
     canRoll: turnDisplay.canRoll,
     canSkip: turnDisplay.canSkip,
@@ -615,7 +653,9 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           openerRef={logOpenerRef} triggerRef={phoneTriggerRef} onExpandedChange={setPhoneMenuExpanded}
           onSectionChange={setPhoneSection} log={turnLog} settings={gameMenu} /> : <>{turnLog}{gameMenu}</>}
       </div>
-      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{autoRoll.announcement}</p>}
+      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+        {announcement.text}
+      </p>}
       {itemView && itemDialog && (
         <ItemUseDialog
           kind={itemDialog.kind}

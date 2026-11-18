@@ -16,6 +16,7 @@ import { landingText, lastRollText } from "../../src/features/game/presentation"
 import { compactRollFor, compactRollText } from "../../src/features/game/hudPresentation";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
+import { seedFirstTurnNotice } from "./helpers/notices";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
@@ -24,7 +25,10 @@ import { turnToasts } from "../../src/features/game/toastQueue";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 
-beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
+beforeEach(() => {
+  localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  seedFirstTurnNotice(localStorage);
+});
 
 const renderCounts = vi.hoisted(() => ({ hud: 0, legend: 0 }));
 
