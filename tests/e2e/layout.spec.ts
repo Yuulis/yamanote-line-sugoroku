@@ -48,6 +48,9 @@ const SAFE_AREA_SELECTORS = [
 test("viewport-fit=cover is set and fixed overlays stay inside safe-area insets", { tag: "@layout" }, async ({ page, browserName }, testInfo) => {
   await openTitle(page);
   await startNewGame(page);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(page.locator(".map-overview")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zoom in", exact: true })).toBeVisible();
   const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute("content");
   expect(viewportMeta).toContain("viewport-fit=cover");
   for (const selector of SAFE_AREA_SELECTORS) {
@@ -123,6 +126,8 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
   const share = (panelBox.width * panelBox.height) / (mapBox.width * mapBox.height);
   expect(share).toBeLessThan(MAX_PANEL_SHARE_OF_MAP);
   // Zoom buttons stay reachable and are not under the panel.
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(page.locator(".map-overview")).toBeVisible();
   const zoomIn = page.getByRole("button", { name: "Zoom in" });
   await expect(zoomIn).toBeVisible();
   const zoomBox = await zoomIn.boundingBox();

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, createElement } from "react";
+import { act, createElement, StrictMode } from "react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,6 +22,8 @@ vi.mock("maplibre-gl", () => ({
     readonly listeners = new Map<string, Array<(event?: MapEvent) => void>>();
     readonly onceListeners = new Map<string, Array<(event?: MapEvent) => void>>();
     readonly container: HTMLElement;
+    readonly controls: unknown[] = [];
+    removed = false;
 
     constructor(options: { container: HTMLElement }) {
       if (mapState.failConstruction) throw new Error("WebGL unavailable");
@@ -51,9 +53,27 @@ vi.mock("maplibre-gl", () => ({
     }
 
     getContainer(): HTMLElement { return this.container; }
-    addControl(): this { return this; }
-    removeControl(): this { return this; }
-    remove(): void {}
+    addControl(control?: unknown): this {
+      if (control === undefined) return this;
+      this.controls.push(control);
+      const element = (control as { onAdd?: (map: unknown) => HTMLElement }).onAdd?.(this);
+      if (element) this.container.append(element);
+      return this;
+    }
+    removeControl(control: unknown): this {
+      const index = this.controls.indexOf(control);
+      if (index >= 0) this.controls.splice(index, 1);
+      (control as { onRemove?: (map: unknown) => void }).onRemove?.(this);
+      return this;
+    }
+    hasControl(control: unknown): boolean { return this.controls.includes(control); }
+    remove(): void {
+      this.removed = true;
+      for (const control of this.controls) {
+        (control as { onRemove?: (map: unknown) => void }).onRemove?.(this);
+      }
+      this.controls.splice(0);
+    }
     getSource(): null { return null; }
     getCenter(): { lng: number; lat: number } { return { lng: 0, lat: 0 }; }
     getZoom(): number { return 10; }
@@ -66,7 +86,27 @@ vi.mock("maplibre-gl", () => ({
     easeTo(options: unknown): void { this.calls.ease.push(options); }
   },
   AttributionControl: class {},
-  NavigationControl: class {},
+  NavigationControl: class {
+    readonly navigationControl = true;
+    private removed = false;
+    private element: HTMLElement | null = null;
+    onAdd(): HTMLElement {
+      this.element = document.createElement("div");
+      this.element.className = "maplibregl-ctrl-zoom";
+      for (const label of ["Zoom in", "Zoom out"]) {
+        const button = document.createElement("button");
+        button.setAttribute("aria-label", label);
+        this.element.append(button);
+      }
+      return this.element;
+    }
+    onRemove(): void {
+      if (this.removed) throw new TypeError("Cannot read properties of undefined (reading 'off')");
+      this.removed = true;
+      this.element?.remove();
+      this.element = null;
+    }
+  },
   Popup: class {},
 }));
 
@@ -95,8 +135,11 @@ vi.mock("../../src/features/analytics/analytics", () => ({ trackException: vi.fn
 
 interface MapDouble {
   readonly calls: { padding: unknown[]; fit: Array<{ bounds: unknown; options: { padding?: unknown } }>; jump: unknown[]; ease: unknown[] };
+  readonly controls: unknown[];
   readonly container: HTMLElement;
+  readonly removed: boolean;
   emit(event: string, payload?: MapEvent): void;
+  hasControl(control: unknown): boolean;
 }
 
 const data = await loadRailwayData("", async (url) => JSON.parse(
@@ -118,10 +161,29 @@ function mapFromState(index = 0): MapDouble {
   return map;
 }
 
+function navigationControlCount(map: MapDouble): number {
+  return map.controls.filter((control) => typeof control === "object" && control !== null && "navigationControl" in control).length;
+}
+
+function navigationControl(map: MapDouble): unknown {
+  return map.controls.find((control) => typeof control === "object" && control !== null && "navigationControl" in control);
+}
+
 function render(mode: "title" | "game" | "clear", overrides: Record<string, unknown> = {}): void {
   const node = createElement(RailwayMap, { data, mode, targetServiceId: TARGET_SERVICE_ID, ...overrides });
   if (mounted) act(() => mounted?.root.render(node));
   else mounted = mountReact(node);
+}
+
+function unmountMounted(): unknown {
+  const current = mounted;
+  mounted = null;
+  try {
+    current?.cleanup();
+    return undefined;
+  } catch (error) {
+    return error;
+  }
 }
 
 function ready(mode: "title" | "game" | "clear" = "game", overrides: Record<string, unknown> = {}): MapDouble {
@@ -158,6 +220,99 @@ afterEach(() => {
 });
 
 describe("title map camera", () => {
+  it("removes navigation exactly once when an in-game map unmounts", () => {
+    const map = ready("game");
+    const control = navigationControl(map);
+    expect(control).toBeDefined();
+
+    expect(unmountMounted()).toBeUndefined();
+
+    expect(map.removed).toBe(true);
+    expect(map.hasControl(control)).toBe(false);
+  });
+
+  it("removes navigation exactly once when rebuilding an in-game map", () => {
+    const firstMap = ready("game");
+    const control = navigationControl(firstMap);
+    expect(control).toBeDefined();
+
+    expect(() => render("game", { minZoom: 7 })).not.toThrow();
+
+    expect(firstMap.removed).toBe(true);
+    expect(firstMap.hasControl(control)).toBe(false);
+    expect(mapState.instances).toHaveLength(2);
+  });
+
+  it("removes navigation exactly once during StrictMode teardown", () => {
+    const node = createElement(RailwayMap, { data, mode: "game", targetServiceId: TARGET_SERVICE_ID });
+    mounted = mountReact(createElement(StrictMode, null, node));
+    const map = mapFromState(1);
+    act(() => map.emit("style.load"));
+    const control = navigationControl(map);
+    expect(control).toBeDefined();
+
+    expect(unmountMounted()).toBeUndefined();
+
+    expect(map.removed).toBe(true);
+    expect(map.hasControl(control)).toBe(false);
+  });
+
+  it.each([
+    ["zoom button", (map: MapDouble) => map.container.querySelector<HTMLButtonElement>(".maplibregl-ctrl-zoom button")],
+    ["overview button", () => document.querySelector<HTMLButtonElement>(".map-overview button")],
+  ] as const)("moves focus from the %s to retry after a fatal pre-load error", (_name, focusTarget) => {
+    const map = ready("game");
+    const target = focusTarget(map);
+    expect(target).not.toBeNull();
+    target?.focus();
+
+    act(() => map.emit("error", { sourceId: "basemap" }));
+
+    const retry = [...document.querySelectorAll<HTMLButtonElement>(".map-error[role='alert'] button")]
+      .find((button) => button.textContent === "再試行");
+    expect(retry).toBeDefined();
+    expect(document.activeElement).toBe(retry);
+    expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("does not move focus elsewhere when a fatal pre-load error removes map controls", () => {
+    const map = ready("game");
+    const otherButton = document.createElement("button");
+    otherButton.textContent = "別の操作";
+    document.body.append(otherButton);
+    otherButton.focus();
+
+    act(() => map.emit("error", { sourceId: "basemap" }));
+
+    expect(document.activeElement).toBe(otherButton);
+  });
+
+  it("navigation is hidden outside ready playable game mode", () => {
+    render("game");
+    const map = mapFromState();
+    expect(document.querySelector(".map-overview")).toBeNull();
+    expect(navigationControlCount(map)).toBe(0);
+
+    act(() => map.emit("style.load"));
+    expect(document.querySelector(".map-overview")).not.toBeNull();
+    expect(navigationControlCount(map)).toBe(1);
+
+    render("title");
+    expect(document.querySelector(".map-overview")).toBeNull();
+    expect(navigationControlCount(map)).toBe(0);
+
+    render("clear");
+    expect(document.querySelector(".map-overview")).toBeNull();
+    expect(navigationControlCount(map)).toBe(0);
+
+    render("game");
+    expect(document.querySelector(".map-overview")).not.toBeNull();
+    expect(navigationControlCount(map)).toBe(1);
+    act(() => map.emit("error"));
+    expect(document.querySelector(".map-overview")).toBeNull();
+    expect(navigationControlCount(map)).toBe(0);
+  });
+
   it("placeholder waits for load layers and a subsequent rendered frame", () => {
     const scheduledFrames = new Map<number, FrameRequestCallback>();
     let nextFrameId = 0;

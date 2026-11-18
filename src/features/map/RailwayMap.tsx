@@ -6,7 +6,7 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
@@ -530,6 +530,14 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
+function navigationControlsContainFocus(mapContainer: HTMLElement | null): boolean {
+  const focusedElement = document.activeElement;
+  if (!mapContainer || !(focusedElement instanceof HTMLElement)) return false;
+  const zoomGroup = mapContainer.querySelector(".maplibregl-ctrl-zoom");
+  const overview = mapContainer.parentElement?.querySelector(".map-overview");
+  return Boolean(zoomGroup?.contains(focusedElement) || overview?.contains(focusedElement));
+}
+
 const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
 
 export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
@@ -551,6 +559,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
+  const restoreFocusAfterMapFailureRef = useRef(false);
   // The browser cannot create a WebGL2 context: no map can ever be shown here.
   const [unsupported, setUnsupported] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -618,8 +627,6 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       watchAttribution(atTop);
     };
     for (const query of attributionQueries) query.addEventListener("change", onAttributionQueryChange);
-    map.addControl(new NavigationControl({ showCompass: false }));
-
     // Fatal until the basemap has rendered completely once ("load"): a failed
     // style, or tiles failing so that never happens. Later tile errors are tolerated.
     let basemapLoaded = false;
@@ -640,6 +647,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     };
     map.on("error", (event) => {
       if (!basemapLoaded && isBasemapError(event)) {
+        restoreFocusAfterMapFailureRef.current ||= navigationControlsContainFocus(containerRef.current);
         setStyleFailed(true);
         trackException("map_style_or_tile_failure", false);
       }
@@ -874,13 +882,36 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     setAttempt((count) => count + 1);
   };
 
+  const showNavigationControls = mode === "game" && loadedMap !== null && !styleFailed && !unsupported;
   const showTitlePlaceholder = mode === "title" && (paintedAttempt !== attempt || styleFailed || unsupported);
+  useEffect(() => {
+    if (!loadedMap || !showNavigationControls) return;
+    const navigationControl = new NavigationControl({ showCompass: false });
+    loadedMap.addControl(navigationControl);
+    return () => {
+      if (loadedMap.hasControl(navigationControl)) loadedMap.removeControl(navigationControl);
+    };
+  }, [loadedMap, showNavigationControls]);
+  useLayoutEffect(() => {
+    if (!styleFailed || !restoreFocusAfterMapFailureRef.current) return;
+    restoreFocusAfterMapFailureRef.current = false;
+    const retryButton = document.querySelector<HTMLButtonElement>(".map-error[role='alert'] button");
+    if (retryButton) {
+      retryButton.focus();
+      return;
+    }
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    if (panel) {
+      if (!panel.hasAttribute("tabindex")) panel.tabIndex = -1;
+      panel.focus();
+    }
+  }, [styleFailed]);
 
   return (
     <>
       <div inert={inert}>
         <div ref={containerRef} className="map-container" />
-        <div className="map-overview" aria-label="地図表示範囲">
+        {showNavigationControls && <div className="map-overview" aria-label="地図表示範囲">
           <button type="button" disabled={!loadedMap} onClick={() => {
             if (!loadedMap || !data.services.ok) return;
             userMovedRef.current = true;
@@ -893,7 +924,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
             onUserCameraMoveRef.current?.();
             fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
           }}>目標路線</button>
-        </div>
+        </div>}
       </div>
       {showTitlePlaceholder && <TitleMapPlaceholder />}
       {unsupported && (

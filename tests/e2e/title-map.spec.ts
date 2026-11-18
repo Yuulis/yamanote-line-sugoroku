@@ -2,11 +2,13 @@ import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
 import type { Page } from "@playwright/test";
 import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from "../../src/features/game/engine";
 import { expect, test } from "./fixtures";
 import { CAPITAL_GAME_SEED } from "./fixtures/capital-region/seeds";
+import { FIXTURE_GAME_SEED } from "./fixtures/seeds";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { MAP_HOST } from "./support/mapStub";
-import { gamePanel, readMap, startNewGame, titleScreen } from "./support/app";
+import { gamePanel, readMap, startNewGame, titleScreen, writeSaveText } from "./support/app";
 
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const RESIZED_DESKTOP_VIEWPORT = { width: 1024, height: 768 };
@@ -14,12 +16,18 @@ const PHONE_VIEWPORT = { width: 320, height: 568 };
 const TITLE_PADDING_DESKTOP_PX = 48;
 const TITLE_PADDING_PHONE_PX = 24;
 const SCREENSHOT_DIRECTORY = resolve(process.cwd(), ".claude/logs/screenshots");
+const COMPLETION_TURN_LIMIT = 100;
 
 test.use({ dataset: "capital-region", gameSeed: CAPITAL_GAME_SEED });
 
 async function screenshot(page: Page, name: string): Promise<void> {
   mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
   await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-11-${name}.png`) });
+}
+
+async function screenshot12b(page: Page, name: string): Promise<void> {
+  mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
+  await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-12b-${name}.png`) });
 }
 
 async function expectTargetLoopVisible(page: Page, bundle: RailwayBundle, padding: number): Promise<void> {
@@ -44,6 +52,51 @@ async function expectTargetLoopVisible(page: Page, bundle: RailwayBundle, paddin
       Math.abs(left - right) <= 4 && Math.abs(top - bottom) <= 4;
   }).toBe(true);
 }
+
+test("map navigation follows title game and clear modes", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  let completed = createItemGame(DEFAULT_GAME_CONFIG, FIXTURE_GAME_SEED, railwayBundle.network);
+  while (completed.status === "playing" && completed.turn < COMPLETION_TURN_LIMIT) {
+    const result = playItemTurn(completed, {}, railwayBundle.network);
+    completed = result.state.pending?.kind === "discard"
+      ? resolveItemDiscard(result.state, result.state.pending.item.id).state
+      : result.state;
+  }
+  if (completed.status !== "completed") throw new Error("Fixture trajectory did not complete");
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await page.goto("/");
+  await expect(titleScreen(page)).toBeVisible();
+  await expect(page.locator(".map-overview")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Zoom in", exact: true })).toHaveCount(0);
+  await expect(page.locator(".maplibregl-ctrl-attrib")).toBeVisible();
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(page.locator(".title-map-placeholder")).toBeHidden();
+  await screenshot12b(page, "title-desktop");
+
+  await page.setViewportSize(PHONE_VIEWPORT);
+  await expect(page.locator(".map-overview")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Zoom in", exact: true })).toHaveCount(0);
+  await screenshot12b(page, "title-320x568");
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await startNewGame(page);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(page.locator(".map-overview")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zoom in", exact: true })).toBeVisible();
+  await screenshot12b(page, "game-desktop");
+
+  await writeSaveText(page, serializeGame(completed));
+  await page.reload();
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  const clearButton = page.getByRole("button", { name: `クリア結果を見る（${completed.turn}ターンでクリア）`, exact: true });
+  await expect(clearButton).toBeVisible();
+  await clearButton.click();
+  await expect(page.getByRole("region", { name: "クリア！" })).toBeVisible();
+  await expect(page.locator(".map-overview")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Zoom in", exact: true })).toHaveCount(0);
+  await expect(page.locator(".maplibregl-ctrl-attrib")).toBeVisible();
+  await screenshot12b(page, "clear-desktop");
+});
 
 test("title refits target loop on return and resize", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await page.setViewportSize(DESKTOP_VIEWPORT);
