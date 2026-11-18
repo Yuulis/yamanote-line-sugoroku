@@ -33,6 +33,11 @@ interface TitleScreenProps {
   loading?: boolean;
   /** Shared rules body; the 遊び方 button is not rendered without it. */
   rulesModel?: RulesGuideModel;
+  /** Keep the loading host mounted while the title rules are open. */
+  onRulesViewChange?: (open: boolean) => void;
+  /** One-shot focus handoff after a loading rules visit. */
+  initialTitleFocus?: "rules-trigger";
+  onInitialTitleFocusApplied?: () => void;
   saveLookup: SaveLookup | null;
   /** Why the game cannot start (data failed to load); blocks starting. */
   unavailableReason: string | null;
@@ -196,36 +201,54 @@ function TitleRules({ model, onBack }: { model: RulesGuideModel; onBack: () => v
 }
 
 /** Start screen (spec 6.1): title, rules, start / resume, credits. */
-export function TitleScreen(props: TitleScreenProps) {
+export function TitleScreen(props: TitleScreenProps): React.JSX.Element {
   const { network, presentation, saveLookup, unavailableReason, notice } = props;
   const display = props.display ?? EDITIONS[0]!.display;
   const headingRef = useRef<HTMLHeadingElement>(null);
   const [view, setView] = useState<TitleView>("title");
   const creditsButtonRef = useRef<HTMLButtonElement>(null);
   const rulesButtonRef = useRef<HTMLButtonElement>(null);
+  const initialTitleFocusApplied = useRef(false);
   const previousView = useRef<TitleView>("title");
   useEffect(() => {
     if (view === "title") return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setView("title");
+      if (event.key !== "Escape") return;
+      if (view === "rules") props.onRulesViewChange?.(false);
+      setView("title");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [view]);
+  }, [view, props.onRulesViewChange]);
   useLayoutEffect(() => {
     const returned = view === "title" && previousView.current !== "title";
     if (returned) (previousView.current === "rules" ? rulesButtonRef : creditsButtonRef).current?.focus({ preventScroll: true });
     previousView.current = view;
   }, [view]);
   useLayoutEffect(() => {
+    if (props.initialTitleFocus === "rules-trigger" && !initialTitleFocusApplied.current) {
+      initialTitleFocusApplied.current = true;
+      rulesButtonRef.current?.focus({ preventScroll: true });
+      props.onInitialTitleFocusApplied?.();
+      return;
+    }
+    if (initialTitleFocusApplied.current) return;
     if (props.focusOnMount) headingRef.current?.focus({ preventScroll: true });
-  }, [props.focusOnMount]);
+  }, [props.focusOnMount, props.initialTitleFocus, props.onInitialTitleFocusApplied]);
+  const openRules = (): void => {
+    props.onRulesViewChange?.(true);
+    setView("rules");
+  };
+  const closeRules = (): void => {
+    props.onRulesViewChange?.(false);
+    setView("title");
+  };
   const activeView: TitleView = view === "rules" && !props.rulesModel ? "title" : view;
   return (
     <main className="title-screen" aria-labelledby={MAIN_LABEL_ID[activeView]}>
       <div className="title-screen__card">
         {activeView === "credits" ? <Credits manifest={props.manifest} onBack={() => setView("title")} />
-          : activeView === "rules" && props.rulesModel ? <TitleRules model={props.rulesModel} onBack={() => setView("title")} /> : <>
+          : activeView === "rules" && props.rulesModel ? <TitleRules model={props.rulesModel} onBack={closeRules} /> : <>
         <h1 ref={headingRef} id="game-title" className="title-screen__title" tabIndex={-1}>
           {display.logoUrl
             ? <img className="title-screen__logo" src={display.logoUrl} alt={display.title} width={1200} height={300} />
@@ -281,7 +304,7 @@ export function TitleScreen(props: TitleScreenProps) {
           </button>
         </div>}
         {props.rulesModel && (
-          <button ref={rulesButtonRef} type="button" className="title-screen__rules-button title-screen__credits-button" onClick={() => setView("rules")}>遊び方</button>
+          <button ref={rulesButtonRef} type="button" className="title-screen__rules-button title-screen__credits-button" onClick={openRules}>遊び方</button>
         )}
         <button ref={creditsButtonRef} type="button" className="title-screen__credits-button" onClick={() => setView("credits")}>クレジット</button>
         <p className="title-screen__version">v{__APP_VERSION__}</p>

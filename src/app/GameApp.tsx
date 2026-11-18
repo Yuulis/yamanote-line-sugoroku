@@ -53,6 +53,8 @@ interface GameAppProps {
     focusPicker: boolean;
     onPickerFocusRestored: () => void;
   };
+  /** One-shot title focus carried from rules opened during edition loading. */
+  initialTitleFocus?: "rules-trigger";
   /** Narrow input seam for mounted publication-boundary tests; production leaves it unset. */
   turnMomentBoundary?: Readonly<{ attempt: RollAttempt | null; revealStage: TurnRevealState; restoredOrOmitted: boolean }>;
 }
@@ -86,7 +88,9 @@ function speedById(id: AnimationSpeedId) {
 }
 
 /** Title, play and clear screens over one persistent map. */
-export function GameApp({ data, network, edition, picker, turnMomentBoundary }: GameAppProps) {
+export function GameApp({ data, network, edition, picker, turnMomentBoundary, initialTitleFocus }: GameAppProps): React.JSX.Element {
+  const [pendingInitialTitleFocus, setPendingInitialTitleFocus] = useState(initialTitleFocus);
+  const consumeInitialTitleFocus = useCallback((): void => setPendingInitialTitleFocus(undefined), []);
   const storage = useMemo(getBrowserStorage, []);
   const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
   const presentation = useMemo(
@@ -430,6 +434,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           unavailableReason={null}
           notice={notice}
           focusOnMount={app.state.lastSessionId > 0}
+          initialTitleFocus={pendingInitialTitleFocus}
+          onInitialTitleFocusApplied={consumeInitialTitleFocus}
           onNewGame={requestNewGame}
           onResume={resumeSaved}
           onDeleteSave={() => setConfirm({ kind: "delete-save" })}

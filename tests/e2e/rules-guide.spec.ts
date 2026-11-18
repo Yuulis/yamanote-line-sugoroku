@@ -32,6 +32,50 @@ async function resumeScenario(page: Page, name: ItemScenario, bundle: RailwayBun
   await expect(gamePanel(page)).toBeVisible();
 }
 
+test("loading title keeps rules available without a target count", { tag: "@layout" }, async ({ page, baseURL }, testInfo) => {
+  if (!baseURL) throw new Error("baseURL must be configured");
+  const stationsPath = new URL("data/stations.json", baseURL).pathname;
+  let releaseStations: () => void = () => undefined;
+  const stationsGate = new Promise<void>((resolve) => { releaseStations = resolve; });
+  await page.route("**/data/stations.json", async (route) => {
+    await stationsGate;
+    await route.fallback();
+  });
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await page.goto("/");
+  await expect(titleScreen(page)).toBeVisible();
+  await expect(titleScreen(page).getByRole("button", { name: RULES_BUTTON_NAME, exact: true })).toBeVisible();
+  await expect(titleScreen(page).getByRole("button", { name: "はじめから", exact: true })).toHaveCount(0);
+  await expect(titleScreen(page).getByRole("button", { name: /つづきから/ })).toHaveCount(0);
+  await expect(page.locator(".title-map-placeholder")).toHaveCount(1);
+  if (testInfo.project.name === "desktop-chromium") await capture(page, "loading-desktop", "13");
+
+  await page.setViewportSize(NARROW_VIEWPORT);
+  if (testInfo.project.name === "desktop-chromium") await capture(page, "loading-320x568", "13");
+  await titleScreen(page).getByRole("button", { name: RULES_BUTTON_NAME, exact: true }).click();
+  const rules = page.getByRole("main", { name: RULES_BUTTON_NAME });
+  const goal = rules.locator("#title-rules-goal");
+  await expect(rules.getByRole("heading", { level: 1, name: RULES_BUTTON_NAME })).toBeFocused();
+  await expect(goal).toContainText("目標路線");
+  await expect(goal).toContainText("出発駅");
+  await expect(goal).not.toContainText(/全\d+区間/);
+  await expect(page.locator(".title-map-placeholder")).toHaveCount(1);
+  if (testInfo.project.name === "desktop-chromium") await capture(page, "loading-rules-320x568", "13");
+
+  const stationsResponse = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === stationsPath);
+  releaseStations();
+  await stationsResponse;
+  await expect(rules).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(titleScreen(page)).toBeVisible();
+  await expect(titleScreen(page).getByRole("button", { name: RULES_BUTTON_NAME, exact: true })).toBeFocused();
+
+  await titleScreen(page).getByRole("button", { name: RULES_BUTTON_NAME, exact: true }).click();
+  await expect(page.getByRole("main", { name: RULES_BUTTON_NAME }).locator("#title-rules-goal")).toContainText(/全\d+区間/);
+});
+
 function rulesDialog(page: Page) {
   return page.getByRole("dialog", { name: RULES_BUTTON_NAME });
 }

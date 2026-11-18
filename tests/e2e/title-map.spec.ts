@@ -30,6 +30,11 @@ async function screenshot12b(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-12b-${name}.png`) });
 }
 
+async function screenshot13(page: Page, name: string): Promise<void> {
+  mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
+  await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-13-${name}.png`) });
+}
+
 async function expectTargetLoopVisible(page: Page, bundle: RailwayBundle, padding: number): Promise<void> {
   const target = bundle.network.servicesById.get(DEFAULT_GAME_CONFIG.targetServiceId);
   if (!target) throw new Error("The capital-region fixture needs the configured target service");
@@ -52,6 +57,23 @@ async function expectTargetLoopVisible(page: Page, bundle: RailwayBundle, paddin
       Math.abs(left - right) <= 4 && Math.abs(top - bottom) <= 4;
   }).toBe(true);
 }
+
+test("network failure keeps decorative title and disabled play", { tag: "@layout" }, async ({ page, mapStub }, testInfo) => {
+  mapStub.failStyle = true;
+  await page.route("**/data/stations.json", (route) => route.fulfill({ status: 500, body: "" }));
+  await page.setViewportSize(testInfo.project.name === "desktop-chromium" ? DESKTOP_VIEWPORT : PHONE_VIEWPORT);
+  await page.goto("/");
+
+  await expect(titleScreen(page)).toBeVisible();
+  await expect(titleScreen(page).getByRole("button", { name: "はじめから", exact: true })).toBeDisabled();
+  await expect(titleScreen(page).getByRole("button", { name: "遊び方", exact: true })).toBeVisible();
+  await expect(page.locator(".title-map-placeholder")).toHaveCount(1);
+  await expect(page.locator(".maplibregl-ctrl-attrib")).toBeVisible();
+  await expect(page.getByText("ゲームを開始できません", { exact: false })).toBeVisible();
+  await expect(page.getByText("データの読み込みに失敗しました", { exact: false })).toBeVisible();
+  await expect(page.getByRole("button", { name: "再試行", exact: true })).toBeVisible();
+  if (testInfo.project.name === "desktop-chromium") await screenshot13(page, "failure-desktop");
+});
 
 test("map navigation follows title game and clear modes", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   let completed = createItemGame(DEFAULT_GAME_CONFIG, FIXTURE_GAME_SEED, railwayBundle.network);

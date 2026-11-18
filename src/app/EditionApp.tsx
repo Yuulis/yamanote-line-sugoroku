@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { listFailures, loadRailwayData, type RailwayData } from "../data/loaders";
 import { type EditionId, type EditionRegistry, type Edition } from "../features/editions/types";
 import { TitleScreen } from "../features/game/components/TitleScreen";
 import { networkFromData } from "../features/game/networkFromData";
 import { buildRulesGuide } from "../features/game/rulesGuide";
 import { RailwayMap } from "../features/map/RailwayMap";
+import { TitleMapPlaceholder } from "../features/map/components/TitleMapPlaceholder";
 import { DataErrorBanner } from "./DataErrorBanner";
 import { GameApp } from "./GameApp";
 import { trackException } from "../features/analytics/analytics";
@@ -25,12 +26,16 @@ export function EditionApp({
   onEditionChange,
   focusPicker,
   onPickerFocusRestored,
-}: EditionAppProps) {
+}: EditionAppProps): React.JSX.Element {
   const [data, setData] = useState<RailwayData | null>(null);
+  const [loadingRulesOpen, setLoadingRulesOpen] = useState(false);
+  const [initialTitleFocus, setInitialTitleFocus] = useState<"rules-trigger" | undefined>();
   const reportedFailures = useRef<string>("");
   useEffect(() => {
     let cancelled = false;
     setData(null);
+    setLoadingRulesOpen(false);
+    setInitialTitleFocus(undefined);
     loadRailwayData(edition.dataBaseUrl).then((loaded) => {
       if (!cancelled) setData(loaded);
     });
@@ -56,6 +61,10 @@ export function EditionApp({
   );
   // Without a loaded network there is no target count or display names; the model keeps its generic wording.
   const rulesModel = useMemo(() => buildRulesGuide(edition.config), [edition.config]);
+  const onLoadingRulesViewChange = useCallback((open: boolean): void => {
+    if (!open && loadingRulesOpen && networkResult?.ok) setInitialTitleFocus("rules-trigger");
+    setLoadingRulesOpen(open);
+  }, [loadingRulesOpen, networkResult]);
   const pickerProps = {
     editions,
     editionId: edition.id,
@@ -64,9 +73,8 @@ export function EditionApp({
     onPickerFocusRestored,
   };
 
-  if (!data) {
-    if (editions.length === 1) return <div className="loading">読み込み中…</div>;
-    return <TitleScreen
+  if (!data || (editions.length === 1 && loadingRulesOpen)) {
+    const loadingTitle = <TitleScreen
       manifest={null}
       network={null}
       display={edition.display}
@@ -75,17 +83,22 @@ export function EditionApp({
       notice={null}
       loading
       rulesModel={rulesModel}
+      onRulesViewChange={editions.length === 1 ? onLoadingRulesViewChange : undefined}
       {...pickerProps}
       onNewGame={noop}
       onResume={noop}
       onDeleteSave={noop}
     />;
+    return editions.length === 1 ? <>
+      <TitleMapPlaceholder />
+      {loadingTitle}
+    </> : loadingTitle;
   }
 
   if (!networkResult?.ok) {
     const reason = networkResult?.reason ?? "必要なデータを読み込めませんでした";
     return <>
-      <RailwayMap data={data} targetServiceId={edition.config.targetServiceId} />
+      <RailwayMap data={data} mode="title" targetServiceId={edition.config.targetServiceId} />
       <TitleScreen
         manifest={data.manifest.ok ? data.manifest.value : null}
         network={null}
@@ -109,6 +122,7 @@ export function EditionApp({
       network={networkResult.network}
       edition={edition}
       picker={pickerProps}
+      initialTitleFocus={initialTitleFocus}
     />
     <DataErrorBanner failures={listFailures(data)} />
   </>;
