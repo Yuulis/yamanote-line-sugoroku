@@ -1045,6 +1045,9 @@ it("keeps exactly one game-panel status region in legacy mode", async () => {
   expect(mount.container.querySelectorAll(".game-panel [role=status]")).toHaveLength(1);
   expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
   expect(mount.container.querySelector(".game-panel__save")?.textContent).toContain("セーブ: 自動保存済み");
+  expect(mount.container.querySelector(".game-panel__save > button.save-status__trigger")).not.toBeNull();
+  expect(mount.container.querySelector(".game-panel__save .save-status__popover")).toBeNull();
+  expect(mount.container.querySelector(".game-panel .save-status__popover")?.textContent).toContain("自動保存済みです。");
 });
 
 it("feeds the HUD displayed values and the supplied required count, and hides chips while moving", async () => {

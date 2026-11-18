@@ -20,6 +20,13 @@ export interface ToastInput {
   tone: ToastTone;
   itemKind?: ItemKind;
   sticky: boolean;
+  /** Absent means "turn": ordered by the `(turn, eventIndex)` cursor. */
+  kind?: "turn" | "notice";
+}
+
+/** A one-off message outside turn order: it bypasses the cursor and is deduplicated by key per scope. */
+export interface NoticeToastInput extends ToastInput {
+  readonly kind: "notice";
 }
 
 interface ToastPresentation {
@@ -178,6 +185,8 @@ export interface ToastQueueState {
   readonly cursor: { readonly turn: number; readonly eventIndex: number } | null;
   readonly items: readonly ToastInput[];
   readonly saveFailed: boolean;
+  /** Keys of notices accepted in this scope; a scope reset clears them. */
+  readonly noticeKeys: readonly string[];
 }
 
 export const INITIAL_TOAST_QUEUE: ToastQueueState = {
@@ -185,14 +194,17 @@ export const INITIAL_TOAST_QUEUE: ToastQueueState = {
   cursor: null,
   items: [],
   saveFailed: false,
+  noticeKeys: [],
 };
 
 export function createToastQueue(scope: number | null): ToastQueueState {
-  return { scope, cursor: null, items: [], saveFailed: false };
+  return { scope, cursor: null, items: [], saveFailed: false, noticeKeys: [] };
 }
 
 export type ToastQueueAction =
   | { type: "enqueue"; scope: number | null; inputs: readonly ToastInput[] }
+  | { type: "enqueueNotice"; scope: number | null; notice: NoticeToastInput }
+  | { type: "withdrawNotice"; key: string }
   | { type: "expire"; key: string }
   | { type: "saveFailed" }
   | { type: "saveSucceeded" }
@@ -205,7 +217,7 @@ const ORDINARY_TOAST_SLOTS = MAX_VISIBLE_TOASTS - 1;
 
 /** The input's position when it is newer than the scope's seen cursor; null otherwise. */
 function newerPosition(cursor: ToastQueueState["cursor"], input: ToastInput): ToastCursor | null {
-  if (input.sticky || input.turn === null || input.eventIndex === null) return null;
+  if (input.kind === "notice" || input.sticky || input.turn === null || input.eventIndex === null) return null;
   const position = { turn: input.turn, eventIndex: input.eventIndex };
   if (!cursor) return position;
   const newer = position.turn > cursor.turn
@@ -213,10 +225,10 @@ function newerPosition(cursor: ToastQueueState["cursor"], input: ToastInput): To
   return newer ? position : null;
 }
 
-/** Keep visible toasts reading; drop waiting ones from turns before `turn` (never shown). */
+/** Keep visible toasts and waiting notices; drop waiting turn toasts from turns before `turn` (never shown). */
 function dropWaitingBefore(items: readonly ToastInput[], turn: number): readonly ToastInput[] {
   const waiting = items.slice(ORDINARY_TOAST_SLOTS);
-  const kept = waiting.filter((item) => item.turn !== null && item.turn >= turn);
+  const kept = waiting.filter((item) => item.kind === "notice" || (item.turn !== null && item.turn >= turn));
   return kept.length === waiting.length ? items : [...items.slice(0, ORDINARY_TOAST_SLOTS), ...kept];
 }
 
@@ -234,10 +246,32 @@ function enqueueToasts(state: ToastQueueState, scope: number | null, inputs: rea
   return cursor === state.cursor ? state : { ...state, items, cursor };
 }
 
+/** Appends a notice to the shared FIFO without reading or moving the turn cursor. */
+function enqueueNotice(state: ToastQueueState, scope: number | null, notice: NoticeToastInput): ToastQueueState {
+  if (scope !== state.scope || notice.sessionId !== state.scope || notice.sticky) return state;
+  if (state.noticeKeys.includes(notice.key)) return state;
+  return { ...state, items: [...state.items, notice], noticeKeys: [...state.noticeKeys, notice.key] };
+}
+
+function withdrawNotice(state: ToastQueueState, key: string): ToastQueueState {
+  if (!state.noticeKeys.includes(key)) return state;
+  const item = state.items.find((entry) => entry.key === key);
+  if (item && item.kind !== "notice") return state;
+  return {
+    ...state,
+    items: state.items.filter((entry) => entry.key !== key),
+    noticeKeys: state.noticeKeys.filter((entry) => entry !== key),
+  };
+}
+
 export function toastQueueReducer(state: ToastQueueState, action: ToastQueueAction): ToastQueueState {
   switch (action.type) {
     case "enqueue":
       return enqueueToasts(state, action.scope, action.inputs);
+    case "enqueueNotice":
+      return enqueueNotice(state, action.scope, action.notice);
+    case "withdrawNotice":
+      return withdrawNotice(state, action.key);
     case "expire": {
       if (action.key === saveFailureToast(state.scope).key || !state.items.some((item) => item.key === action.key)) return state;
       return { ...state, items: state.items.filter((item) => item.key !== action.key) };

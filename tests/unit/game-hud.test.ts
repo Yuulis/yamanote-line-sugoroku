@@ -16,6 +16,7 @@ import { landingText, lastRollText } from "../../src/features/game/presentation"
 import { compactRollFor, compactRollText } from "../../src/features/game/hudPresentation";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
+import { seedFirstTurnNotice } from "./helpers/notices";
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
@@ -24,7 +25,10 @@ import { turnToasts } from "../../src/features/game/toastQueue";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 
-beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
+beforeEach(() => {
+  localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  seedFirstTurnNotice(localStorage);
+});
 
 const renderCounts = vi.hoisted(() => ({ hud: 0, legend: 0 }));
 
@@ -344,6 +348,18 @@ describe("GameHud", () => {
       }
       for (const mount of [saved, failed, unavailable, empty]) {
         expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
+      }
+      const savedLine: Element = saved.container.querySelector(".game-panel__save")!;
+      const explanation: Element = saved.container.querySelector(".save-status__popover")!;
+      expect(savedLine.querySelector("button.save-status__trigger")?.getAttribute("aria-expanded")).toBe("false");
+      expect(savedLine.querySelector(".save-status__trigger .visually-hidden")?.textContent).toBe("セーブ: 自動保存済み");
+      expect(explanation.textContent).toContain("自動保存済みです。");
+      expect(savedLine.contains(explanation)).toBe(false);
+      expect(explanation.parentElement).toBe(savedLine.parentElement);
+      // Only the saved mark is interactive; the failed, unavailable and unconfirmed lines stay plain text.
+      for (const mount of [failed, unavailable, empty]) {
+        expect(mount.container.querySelector(".game-panel__save button")).toBeNull();
+        expect(mount.container.querySelector(".save-status__trigger, .save-status__popover")).toBeNull();
       }
     } finally {
       for (const mount of [saved, failed, unavailable, empty]) mount.cleanup();

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ItemKind } from "../../../types/network";
 import type { ItemSessionView } from "../itemSession";
+import type { OpenRules } from "../rulesGuide";
 import {
   ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, ITEM_SHORT_NAMES, itemHint, itemTiming, itemTone,
   itemUnavailableText,
@@ -26,6 +27,8 @@ export interface InventoryPanelProps {
   slotTargetRefs?: readonly (TurnMomentTargetRef | null | undefined)[];
   /** Optional animation target on the inventory header box. */
   headerTargetRef?: TurnMomentTargetRef;
+  /** Shows the card's 詳しく action, which opens the rules at the items section. */
+  onOpenRules?: OpenRules;
 }
 
 interface DescriptionPart {
@@ -44,10 +47,11 @@ interface InventoryItemPopoverProps {
   itemUseLocked: boolean;
   decisionOpen: boolean;
   onClose: () => void;
+  onOpenRules?: (cardButton: HTMLElement) => void;
 }
 
 function InventoryItemPopover({
-  generatedId, openItemId, view, anchor, lastKnownItem, onUse, itemUseLocked, decisionOpen, onClose,
+  generatedId, openItemId, view, anchor, lastKnownItem, onUse, itemUseLocked, decisionOpen, onClose, onOpenRules,
 }: InventoryItemPopoverProps): React.JSX.Element {
   const headingId: string = `item-card-heading-${generatedId}`;
   const instance = openItemId ? view.inventory.find((item) => item.id === openItemId) : undefined;
@@ -73,7 +77,8 @@ function InventoryItemPopover({
     onClose={onClose}
   >{(closeButton) => <ItemCard kind={kind} headingId={headingId} selected={usable?.selected ?? false}
     hint={itemHint(kind, view.hints)} unavailableReason={usable?.reason ?? null}
-    replacesSelection={usable?.usable === true && !usable.selected && view.draft.items.length > 0} action={action} footer={closeButton} />}
+    replacesSelection={usable?.usable === true && !usable.selected && view.draft.items.length > 0} action={action} footer={closeButton}
+    onOpenRules={onOpenRules} />}
   </ItemCardPopover>;
 }
 
@@ -89,7 +94,7 @@ function pointInside(element: Element | null, x: number, y: number): boolean {
 
 export function InventoryPanel({
   view, openItemId, onOpenItemChange, onUse, itemUseLocked = false, decisionOpen = view.decision !== null,
-  slotTargetRefs, headerTargetRef,
+  slotTargetRefs, headerTargetRef, onOpenRules,
 }: InventoryPanelProps): React.JSX.Element {
   const generatedId: string = useId();
   const headingId: string = `item-inventory-heading-${generatedId}`;
@@ -195,6 +200,24 @@ export function InventoryPanel({
     window.addEventListener("pointermove", handlePointerMove);
     return () => window.removeEventListener("pointermove", handlePointerMove);
   }, [shownItemId]);
+
+  const closeCard = (): void => {
+    if (openItemId) {
+      closedItemIdRef.current = openItemId;
+      window.setTimeout(() => { if (closedItemIdRef.current === openItemId) closedItemIdRef.current = null; }, 0);
+    }
+    onOpenItemChange(null);
+  };
+
+  // The card and its button unmount, so the durable slot trigger is the opener. Focus moves there before the
+  // card hides: neither the browser's popover focus return nor the card's own cleanup then has focus to move.
+  const openItemRules = (cardButton: HTMLElement): void => {
+    const trigger: HTMLButtonElement | undefined = openItemId ? openerRefs.current.get(openItemId) : undefined;
+    const opener: HTMLElement = trigger?.isConnected ? trigger : cardButton;
+    opener.focus({ preventScroll: true });
+    onOpenRules?.("items", opener);
+    closeCard();
+  };
 
   return (
     <section className="item-inventory" aria-labelledby={headingId}>
@@ -315,13 +338,8 @@ export function InventoryPanel({
         onUse={onUse}
         itemUseLocked={itemUseLocked}
         decisionOpen={decisionOpen}
-        onClose={() => {
-          if (openItemId) {
-            closedItemIdRef.current = openItemId;
-            window.setTimeout(() => { if (closedItemIdRef.current === openItemId) closedItemIdRef.current = null; }, 0);
-          }
-          onOpenItemChange(null);
-        }}
+        onClose={closeCard}
+        onOpenRules={onOpenRules ? openItemRules : undefined}
       />
     </section>
   );

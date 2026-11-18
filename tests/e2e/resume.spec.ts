@@ -61,7 +61,7 @@ test("[8.3-4] reload mid-game resumes the same game and the same next roll", asy
   await page.reload();
   await expect(titleScreen(page)).toBeVisible();
   const resume = page.getByRole("button", {
-    name: `つづきから（${ROLLS_BEFORE_RELOAD}ターン目・${station?.name}）`,
+    name: `つづきから　踏破 ${targetCompletedIds(beforeReload).length}/${REQUIRED_SEGMENTS}・${ROLLS_BEFORE_RELOAD + 1}ターン目・${station?.name ?? beforeReload.currentStationId}`,
   });
   await resume.click();
 
@@ -108,7 +108,7 @@ test.describe("with move animation", () => {
     await expect(diceButton(page)).toHaveText("移動中…");
 
     await page.reload();
-    await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
+    await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・2ターン目・.+$/ }).click();
     await expect(gamePanel(page)).toBeVisible();
     await expect(panelStat(page, "ターン数")).toHaveText("1");
     await expect(diceButton(page)).toHaveText("サイコロを振る");
@@ -226,7 +226,7 @@ test.describe("S14 lottery reload", () => {
       await advanceMovement(page, 6_100); await advanceArrival(page);
       if (stage === "lottery-settle") await advanceLotteryFlip(page);
       await expect(page.locator(".lottery-reveal")).toHaveAttribute("data-stage", stage);
-      await page.reload(); await page.getByRole("button", { name: /^つづきから（1ターン目・/ }).click();
+      await page.reload(); await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・2ターン目・.+$/ }).click();
       await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
       await expect(page.locator(".turn-moment-host")).toHaveCount(0);
       await expect.poll(async () => (await readMap(page))?.marker).toEqual(markerPosition(railwayBundle, saved));

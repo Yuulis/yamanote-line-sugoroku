@@ -5,7 +5,8 @@ import { buildGeometryIndex } from "../features/game/animation/movePath";
 import { useMoveAnimation } from "../features/game/animation/useMoveAnimation";
 import { ClearScreen } from "../features/game/components/ClearScreen";
 import { ConfirmDialog } from "../features/game/components/ConfirmDialog";
-import { GamePanel } from "../features/game/components/GamePanel";
+import { GamePanel, type PanelOpenRules } from "../features/game/components/GamePanel";
+import { RulesDialog } from "../features/game/components/RulesDialog";
 import { TitleScreen } from "../features/game/components/TitleScreen";
 import { type RailwayNetwork, isItemSave, targetSegmentIds } from "../features/game/engine";
 import {
@@ -27,16 +28,19 @@ import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceMo
 import { DiceTumble } from "../features/game/components/DiceTumble";
 import type { GameSession } from "../features/game/gameSession";
 import { createPresentationResolver } from "../features/game/presentationResolver";
-import { stationName } from "../features/game/presentation";
-import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
+import { directionLabel, serviceName, stationName } from "../features/game/presentation";
+import { buildRulesGuide, type RulesSectionId } from "../features/game/rulesGuide";
+import { type MapFollow, type RailwayMapMode, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
 import type { SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
+import { overwriteProgressText } from "../features/game/resumePresentation";
 import { summarizeGame } from "../features/game/gameSummary";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
+import { useFirstTurnNotice } from "../features/game/useFirstTurnNotice";
 
 interface GameAppProps {
   data: RailwayData;
@@ -49,11 +53,19 @@ interface GameAppProps {
     focusPicker: boolean;
     onPickerFocusRestored: () => void;
   };
+  /** One-shot title focus carried from rules opened during edition loading. */
+  initialTitleFocus?: "rules-trigger";
   /** Narrow input seam for mounted publication-boundary tests; production leaves it unset. */
   turnMomentBoundary?: Readonly<{ attempt: RollAttempt | null; revealStage: TurnRevealState; restoredOrOmitted: boolean }>;
 }
 
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
+
+interface RulesRequest {
+  readonly sectionId?: RulesSectionId;
+  readonly returnFocus: HTMLElement | null;
+  readonly getFallbackFocus: () => HTMLElement | null;
+}
 
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
@@ -76,7 +88,9 @@ function speedById(id: AnimationSpeedId) {
 }
 
 /** Title, play and clear screens over one persistent map. */
-export function GameApp({ data, network, edition, picker, turnMomentBoundary }: GameAppProps) {
+export function GameApp({ data, network, edition, picker, turnMomentBoundary, initialTitleFocus }: GameAppProps): React.JSX.Element {
+  const [pendingInitialTitleFocus, setPendingInitialTitleFocus] = useState(initialTitleFocus);
+  const consumeInitialTitleFocus = useCallback((): void => setPendingInitialTitleFocus(undefined), []);
   const storage = useMemo(getBrowserStorage, []);
   const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
   const presentation = useMemo(
@@ -97,7 +111,13 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [noticeAnnouncementKey, setNoticeAnnouncementKey] = useState<string | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
+  const [rulesRequest, setRulesRequest] = useState<RulesRequest | null>(null);
+  const openRules = useCallback<PanelOpenRules>((sectionId, returnFocus, getFallbackFocus) => {
+    setRulesRequest({ sectionId, returnFocus, getFallbackFocus });
+  }, []);
+  const closeRules = useCallback(() => setRulesRequest(null), []);
 
   const geometry = useMemo(
     () => buildGeometryIndex(data.geometry.ok ? data.geometry.value : undefined),
@@ -107,6 +127,12 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     () => new Set(targetSegmentIds(edition.config, network)),
     [edition.config, network],
   );
+  const rulesModel = useMemo(() => buildRulesGuide(edition.config, {
+    targetSegmentCount: requiredIds.size,
+    targetServiceName: serviceName(network, edition.config.targetServiceId, presentation),
+    startStationName: stationName(network, edition.config.startStationId, presentation),
+    targetDirectionLabel: directionLabel(network, edition.config.targetServiceId, edition.config.targetDirection),
+  }), [edition.config, network, presentation, requiredIds]);
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
   const speed = speedById(speedId);
@@ -301,7 +327,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
     if (current?.status === "playing" && hasGameProgress(current)) {
       const message = game
         ? "現在のゲームを終了して新しく始めますか？今の進行は上書きされます。"
-        : `保存中のゲーム（${current.turn}ターン目）は上書きされます。はじめから始めますか？`;
+        : `保存中のゲーム（${overwriteProgressText(current)}）は上書きされます。はじめから始めますか？`;
       setConfirm({ kind: "new-game", message });
       return;
     }
@@ -356,10 +382,35 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
 
   const showTitle = useCallback(() => {
     setNotice(null);
+    setNoticeAnnouncementKey(null);
     showTitleScreen();
   }, [showTitleScreen]);
 
   const showClear = turnDisplay?.showClear ?? false;
+  const mapMode: RailwayMapMode = app.state.screen === "title" ? "title" : showClear ? "clear" : "game";
+  const panelShown = Boolean(session && shown && turnDisplay && !showClear);
+  // The one source for every rules suspension; the rules live only beside a mounted panel.
+  const rulesOpen = panelShown && rulesRequest !== null;
+  const firstTurnNotice = useFirstTurnNotice({
+    saveAttempt: app.saveAttempt,
+    currentSessionId: session?.sessionId ?? null,
+    storage,
+    publicationReady: turnDisplay?.phase === "published",
+    decisionOpen: turnDisplay?.decision !== null && turnDisplay?.decision !== undefined,
+    confirmOpen: confirm !== null,
+    rulesOpen,
+  });
+  const handleNoticeShown = useCallback((key: string): void => {
+    firstTurnNotice.onNoticeShown(key);
+    setNoticeAnnouncementKey(key);
+  }, [firstTurnNotice.onNoticeShown]);
+  const handleNoticeAnnounced = useCallback((key: string): void => {
+    firstTurnNotice.onNoticeAnnounced(key);
+    setNoticeAnnouncementKey((current) => current === key ? null : current);
+  }, [firstTurnNotice.onNoticeAnnounced]);
+  useEffect(() => {
+    if (!panelShown) setRulesRequest(null);
+  }, [panelShown]);
   const reportedClear = useRef(-1);
   useEffect(() => {
     if (!showClear || !session || !presentationGame || reportedClear.current === session.sessionId) return;
@@ -374,13 +425,17 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         <TitleScreen
           manifest={data.manifest.ok ? data.manifest.value : null}
           network={network}
+          requiredIds={requiredIds}
           presentation={presentation}
           display={edition.display}
+          rulesModel={rulesModel}
           {...picker}
           saveLookup={titleSave}
           unavailableReason={null}
           notice={notice}
           focusOnMount={app.state.lastSessionId > 0}
+          initialTitleFocus={pendingInitialTitleFocus}
+          onInitialTitleFocusApplied={consumeInitialTitleFocus}
           onNewGame={requestNewGame}
           onResume={resumeSaved}
           onDeleteSave={() => setConfirm({ kind: "delete-save" })}
@@ -403,6 +458,10 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           presentationLevel={presentationLevel}
           reducedMotion={reducedMotion}
           confirmationOpen={confirm !== null}
+          rulesOpen={rulesOpen}
+          noticeAnnouncementKey={noticeAnnouncementKey}
+          onNoticeAnnounced={handleNoticeAnnounced}
+          onOpenRules={openRules}
           onRoll={guardedRoll}
           onEditItemDraft={guardedEditItemDraft}
           onAdjustItemRoll={guardedAdjustItemRoll}
@@ -425,8 +484,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
         sessionId={toastSessionId}
         inputs={acceptedToastInputs}
         saveFailed={app.saveStatus === "failed"}
-        obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen}
+        obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen || rulesOpen}
         reducedMotion={reducedMotion}
+        notice={firstTurnNotice.notice}
+        announceable={panelShown && turnDisplay?.decision == null && confirm === null && !rulesOpen && !itemDialogOpen}
+        onNoticeShown={handleNoticeShown}
       />
       {session && turnDisplay?.showClear && presentationGame && (
         <ClearScreen
@@ -442,6 +504,15 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}
+        />
+      )}
+      {rulesOpen && rulesRequest && (
+        <RulesDialog
+          model={rulesModel}
+          sectionId={rulesRequest.sectionId}
+          returnFocus={rulesRequest.returnFocus}
+          getFallbackFocus={rulesRequest.getFallbackFocus}
+          onClose={closeRules}
         />
       )}
       {confirm?.kind === "new-game" && (
@@ -464,6 +535,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
       )}
       <RailwayMap
         data={data}
+        mode={mapMode}
         targetServiceId={edition.config.targetServiceId}
         presentation={presentation}
         progress={progress}

@@ -360,7 +360,7 @@ test("the shipped Tokyo suburban product network starts, moves and restores with
   await expect(diceButton(page)).toBeInViewport();
   await page.screenshot({ path: testInfo.outputPath("populated-panel.png") });
   await page.reload();
-  await page.getByRole("button", { name: /^つづきから（3ターン目・/ }).click();
+  await page.getByRole("button", { name: /^つづきから 踏破 \d+\/\d+・4ターン目・.+$/ }).click();
   expect(await readSave(page)).toEqual(saved);
   // Resuming the saved game can finish before the asynchronously rebuilt map.
   await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
