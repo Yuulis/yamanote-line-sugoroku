@@ -9,40 +9,45 @@ import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { loadRailwayData } from "../../src/data/loaders";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
-const mapState = vi.hoisted(() => ({ instances: [] as unknown[] }));
+const mapState = vi.hoisted(() => ({ instances: [] as unknown[], failConstruction: false }));
+
+interface MapEvent {
+  readonly sourceId?: string;
+}
 
 vi.mock("maplibre-gl", () => ({
   setWorkerUrl: vi.fn(),
   Map: class MapDouble {
     readonly calls = { padding: [] as unknown[], fit: [] as unknown[], jump: [] as unknown[], ease: [] as unknown[] };
-    readonly listeners = new Map<string, Array<() => void>>();
-    readonly onceListeners = new Map<string, Array<() => void>>();
+    readonly listeners = new Map<string, Array<(event?: MapEvent) => void>>();
+    readonly onceListeners = new Map<string, Array<(event?: MapEvent) => void>>();
     readonly container: HTMLElement;
 
     constructor(options: { container: HTMLElement }) {
+      if (mapState.failConstruction) throw new Error("WebGL unavailable");
       this.container = options.container;
       mapState.instances.push(this);
     }
 
-    on(event: string, listener: () => void): this {
+    on(event: string, listener: (event?: MapEvent) => void): this {
       const listeners = this.listeners.get(event) ?? [];
       listeners.push(listener);
       this.listeners.set(event, listeners);
       return this;
     }
 
-    once(event: string, listener: () => void): this {
+    once(event: string, listener: (event?: MapEvent) => void): this {
       const listeners = this.onceListeners.get(event) ?? [];
       listeners.push(listener);
       this.onceListeners.set(event, listeners);
       return this;
     }
 
-    emit(event: string): void {
-      for (const listener of this.listeners.get(event) ?? []) listener();
+    emit(event: string, payload: MapEvent = {}): void {
+      for (const listener of this.listeners.get(event) ?? []) listener(payload);
       const once = this.onceListeners.get(event) ?? [];
       this.onceListeners.delete(event);
-      for (const listener of once) listener();
+      for (const listener of once) listener(payload);
     }
 
     getContainer(): HTMLElement { return this.container; }
@@ -52,6 +57,7 @@ vi.mock("maplibre-gl", () => ({
     getSource(): null { return null; }
     getCenter(): { lng: number; lat: number } { return { lng: 0, lat: 0 }; }
     getZoom(): number { return 10; }
+    triggerRepaint(): void {}
     project(): { x: number; y: number } { return { x: 100, y: 100 }; }
     unproject(): { lng: number; lat: number } { return { lng: 0, lat: 0 }; }
     setPadding(padding: unknown): void { this.calls.padding.push(padding); }
@@ -90,7 +96,7 @@ vi.mock("../../src/features/analytics/analytics", () => ({ trackException: vi.fn
 interface MapDouble {
   readonly calls: { padding: unknown[]; fit: Array<{ bounds: unknown; options: { padding?: unknown } }>; jump: unknown[]; ease: unknown[] };
   readonly container: HTMLElement;
-  emit(event: string): void;
+  emit(event: string, payload?: MapEvent): void;
 }
 
 const data = await loadRailwayData("", async (url) => JSON.parse(
@@ -134,6 +140,7 @@ function fitOptions(map: MapDouble, index = map.calls.fit.length - 1): { padding
 
 beforeEach(() => {
   mapState.instances = [];
+  mapState.failConstruction = false;
   viewport = { width: 1280, height: 800 };
   vi.stubGlobal("ResizeObserver", class { observe(): void {} disconnect(): void {} });
   Object.defineProperty(window, "ResizeObserver", { configurable: true, value: globalThis.ResizeObserver });
@@ -151,6 +158,152 @@ afterEach(() => {
 });
 
 describe("title map camera", () => {
+  it("placeholder waits for load layers and a subsequent rendered frame", () => {
+    const scheduledFrames = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 0;
+    Object.defineProperty(window, "requestAnimationFrame", {
+      configurable: true,
+      value: (callback: FrameRequestCallback): number => {
+        nextFrameId += 1;
+        scheduledFrames.set(nextFrameId, callback);
+        return nextFrameId;
+      },
+    });
+    Object.defineProperty(window, "cancelAnimationFrame", {
+      configurable: true,
+      value: (frameId: number): void => { scheduledFrames.delete(frameId); },
+    });
+
+    render("title");
+    const map = mapFromState();
+    const placeholder = (): HTMLElement | null => document.querySelector(".title-map-placeholder");
+    expect(placeholder()).not.toBeNull();
+    expect(placeholder()?.getAttribute("aria-hidden")).toBe("true");
+    expect(placeholder()?.querySelector("svg")?.getAttribute("focusable")).toBe("false");
+
+    act(() => map.emit("style.load"));
+    expect(placeholder()).not.toBeNull();
+    act(() => map.emit("render"));
+    expect(scheduledFrames.size).toBe(0);
+    act(() => map.emit("load"));
+    expect(placeholder()).not.toBeNull();
+    act(() => map.emit("render"));
+    expect(placeholder()).not.toBeNull();
+    expect(scheduledFrames.size).toBe(1);
+
+    act(() => {
+      for (const [frameId, callback] of scheduledFrames) {
+        scheduledFrames.delete(frameId);
+        callback(0);
+      }
+    });
+    expect(placeholder()).toBeNull();
+  });
+
+  it("retry resets readiness and cancels stale callbacks", () => {
+    const scheduledFrames = new Map<number, FrameRequestCallback>();
+    const allFrames: FrameRequestCallback[] = [];
+    const cancelledFrames: number[] = [];
+    let nextFrameId = 0;
+    Object.defineProperty(window, "requestAnimationFrame", {
+      configurable: true,
+      value: (callback: FrameRequestCallback): number => {
+        nextFrameId += 1;
+        scheduledFrames.set(nextFrameId, callback);
+        allFrames.push(callback);
+        return nextFrameId;
+      },
+    });
+    Object.defineProperty(window, "cancelAnimationFrame", {
+      configurable: true,
+      value: (frameId: number): void => {
+        cancelledFrames.push(frameId);
+        scheduledFrames.delete(frameId);
+      },
+    });
+
+    render("title");
+    const firstMap = mapFromState();
+    act(() => {
+      firstMap.emit("style.load");
+      firstMap.emit("load");
+      firstMap.emit("render");
+    });
+    const staleFrame = allFrames[0];
+    expect(staleFrame).toBeDefined();
+    render("title", { minZoom: 7 });
+    expect(cancelledFrames).toContain(1);
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+    act(() => staleFrame?.(0));
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+
+    const failureMap = mapFromState(1);
+    act(() => failureMap.emit("error", { sourceId: "basemap" }));
+    const retryButton = [...document.querySelectorAll("button")].find((button) => button.textContent === "再試行");
+    expect(retryButton).toBeDefined();
+    act(() => retryButton?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+
+    const retryMap = mapFromState(2);
+    act(() => {
+      retryMap.emit("style.load");
+      retryMap.emit("load");
+      retryMap.emit("render");
+    });
+    const retryFrameId = [...scheduledFrames.keys()][0];
+    const retryFrame = scheduledFrames.get(retryFrameId ?? -1);
+    expect(retryFrame).toBeDefined();
+    act(() => {
+      if (retryFrameId !== undefined) scheduledFrames.delete(retryFrameId);
+      retryFrame?.(0);
+    });
+    expect(document.querySelector(".title-map-placeholder")).toBeNull();
+  });
+
+  it("webgl unsupported shows the placeholder only in title mode", () => {
+    mapState.failConstruction = true;
+    render("title");
+
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+    expect(document.querySelector(".map-error[role='status']")).not.toBeNull();
+
+    render("game");
+    expect(document.querySelector(".title-map-placeholder")).toBeNull();
+
+    render("clear");
+    expect(document.querySelector(".title-map-placeholder")).toBeNull();
+
+    render("title");
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+  });
+
+  it("style failure shows the placeholder only in title mode", () => {
+    render("title");
+    const map = mapFromState();
+    act(() => map.emit("error", { sourceId: "basemap" }));
+
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+
+    render("game");
+    expect(document.querySelector(".title-map-placeholder")).toBeNull();
+
+    render("clear");
+    expect(document.querySelector(".title-map-placeholder")).toBeNull();
+
+    render("title");
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+  });
+
+  it("fatal failure retains title placeholder and retry controls", () => {
+    render("title");
+    const map = mapFromState();
+    act(() => map.emit("error", { sourceId: "basemap" }));
+
+    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
+    expect([...document.querySelectorAll("button")].some((button) => button.textContent === "再試行")).toBe(true);
+  });
+
   it("title padding is symmetric and clamped", () => {
     expect(titleFitPadding({ width: 320, height: 568 }, true)).toEqual({
       top: TITLE_FIT_PADDING_PHONE_PX, right: TITLE_FIT_PADDING_PHONE_PX,

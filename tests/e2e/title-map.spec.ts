@@ -5,6 +5,7 @@ import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { expect, test } from "./fixtures";
 import { CAPITAL_GAME_SEED } from "./fixtures/capital-region/seeds";
 import type { RailwayBundle } from "./fixtures/bundle";
+import { MAP_HOST } from "./support/mapStub";
 import { gamePanel, readMap, startNewGame, titleScreen } from "./support/app";
 
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
@@ -68,4 +69,52 @@ test("title refits target loop on return and resize", { tag: "@layout" }, async 
   await page.setViewportSize(PHONE_VIEWPORT);
   await expectTargetLoopVisible(page, railwayBundle, TITLE_PADDING_PHONE_PX);
   await screenshot(page, "title-320x568");
+});
+
+test("title placeholder survives delayed paint and failure", { tag: "@layout" }, async ({ page }) => {
+  mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
+  let releaseFirstStyle: () => void = () => undefined;
+  const firstStyleGate = new Promise<void>((resolve) => { releaseFirstStyle = resolve; });
+  let styleRequests = 0;
+  await page.route(`${MAP_HOST}/styles/**`, async (route) => {
+    styleRequests += 1;
+    if (styleRequests === 1) await firstStyleGate;
+    if (styleRequests === 2) {
+      await route.abort("connectionrefused");
+      return;
+    }
+    await route.fallback();
+  });
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await page.goto("/");
+  const placeholder = page.locator(".title-map-placeholder");
+  await expect(titleScreen(page)).toBeVisible();
+  await expect(placeholder).toBeVisible();
+  await expect(placeholder).toHaveAttribute("aria-hidden", "true");
+  await expect(placeholder.locator("svg")).toHaveAttribute("focusable", "false");
+  await expect(placeholder.locator("button, a, [tabindex]")).toHaveCount(0);
+  expect(await placeholder.evaluate((element) => getComputedStyle(element).pointerEvents)).toBe("none");
+  await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, "rgts-12a-placeholder-desktop.png") });
+
+  await page.setViewportSize(PHONE_VIEWPORT);
+  await expect(placeholder).toBeVisible();
+  await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, "rgts-12a-placeholder-320x568.png") });
+
+  releaseFirstStyle();
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(placeholder).toBeHidden();
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await page.reload();
+  const errorBanner = page.getByRole("alert").filter({ hasText: "地図の読み込みに失敗しました。" });
+  await expect(errorBanner).toBeVisible();
+  await expect(placeholder).toBeVisible();
+  await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, "rgts-12a-failure-desktop.png") });
+
+  await errorBanner.getByRole("button", { name: "再試行" }).click();
+  await expect(errorBanner).toBeHidden();
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(placeholder).toBeHidden();
+  expect(styleRequests).toBe(3);
 });

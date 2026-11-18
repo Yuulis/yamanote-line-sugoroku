@@ -70,6 +70,7 @@ import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
 import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
+import { TitleMapPlaceholder } from "./components/TitleMapPlaceholder";
 
 export interface MapFollow {
   enabled: boolean;
@@ -555,6 +556,9 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   const [attempt, setAttempt] = useState(0);
   // The map instance once its layers exist, so progress can be applied to it.
   const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
+  const [paintedAttempt, setPaintedAttempt] = useState<number | null>(null);
+  const attemptRef = useRef(attempt);
+  attemptRef.current = attempt;
   const headingMarkerRef = useRef<HeadingMarkerController | null>(null);
   // Bumped when a replaced style forced the layers to be re-added, so the
   // progress and visibility effects below apply their state to them again.
@@ -577,10 +581,12 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       : undefined;
     const map = createMap(container, minZoom);
     if (!map) {
+      setPaintedAttempt(null);
       setUnsupported(true);
       trackException("webgl2_unavailable", false);
       return;
     }
+    setPaintedAttempt(null);
     setUnsupported(false);
     // On phones and short landscape the control panel covers the bottom edge,
     // so the attribution goes to the top where it stays readable (spec 6.2) and
@@ -617,6 +623,21 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     // Fatal until the basemap has rendered completely once ("load"): a failed
     // style, or tiles failing so that never happens. Later tile errors are tolerated.
     let basemapLoaded = false;
+    let layersReady = false;
+    let sawLoad = false;
+    let sawRenderAfterLoad = false;
+    let paintFrame: number | null = null;
+    let active = true;
+    const effectAttempt = attempt;
+    const schedulePaintedState = (): void => {
+      if (!active || attemptRef.current !== effectAttempt || !layersReady || !sawLoad || !sawRenderAfterLoad || paintFrame !== null) return;
+      paintFrame = window.requestAnimationFrame(() => {
+        paintFrame = null;
+        if (active && attemptRef.current === effectAttempt && layersReady && sawLoad && sawRenderAfterLoad) {
+          setPaintedAttempt(effectAttempt);
+        }
+      });
+    };
     map.on("error", (event) => {
       if (!basemapLoaded && isBasemapError(event)) {
         setStyleFailed(true);
@@ -625,6 +646,14 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     });
     map.once("load", () => {
       basemapLoaded = true;
+      sawLoad = true;
+      map.triggerRepaint();
+      schedulePaintedState();
+    });
+    map.on("render", () => {
+      if (!sawLoad) return;
+      sawRenderAfterLoad = true;
+      schedulePaintedState();
     });
     // The railway layers need only the parsed style, not the basemap tiles, so
     // they are added on "style.load" while the basemap is still loading.
@@ -646,6 +675,8 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
         return;
       }
       initialised = true;
+      layersReady = true;
+      schedulePaintedState();
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
@@ -659,6 +690,8 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     });
 
     return () => {
+      active = false;
+      if (paintFrame !== null) window.cancelAnimationFrame(paintFrame);
       for (const query of attributionQueries) query.removeEventListener("change", onAttributionQueryChange);
       watchAttribution(false);
       exposeMapForE2E(null);
@@ -837,8 +870,11 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
 
   const retry = () => {
     setStyleFailed(false);
+    setPaintedAttempt(null);
     setAttempt((count) => count + 1);
   };
+
+  const showTitlePlaceholder = mode === "title" && (paintedAttempt !== attempt || styleFailed || unsupported);
 
   return (
     <>
@@ -859,6 +895,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
           }}>目標路線</button>
         </div>
       </div>
+      {showTitlePlaceholder && <TitleMapPlaceholder />}
       {unsupported && (
         <div className="map-error" role="status">
           <p>

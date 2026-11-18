@@ -518,6 +518,45 @@ button[aria-disabled="true"] {
   inset: 0;
 }
 
+.title-map-placeholder {
+  --title-map-placeholder-diameter: min(90vw, 90vh, 720px);
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.title-map-placeholder__loop {
+  display: block;
+  width: var(--title-map-placeholder-diameter);
+  max-width: none;
+  height: auto;
+  overflow: visible;
+  opacity: 0.72;
+}
+
+.title-map-placeholder__track {
+  fill: none;
+  stroke: #c9e5ca;
+  stroke-width: 8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.title-map-placeholder__stations {
+  fill: #e5f1df;
+  stroke: #718f72;
+  stroke-width: 3;
+}
+
+@media (max-width: 600px) {
+  .title-map-placeholder {
+    --title-map-placeholder-diameter: min(200vw, 110vh, 620px);
+  }
+}
+
 /* Roll-adjustment speech bubbles (RailwayMap DOM markers; never interactive). */
 .map-adjustment-callout {
   display: flex;
