@@ -125,6 +125,17 @@ body {
   font-weight: 700;
 }
 
+.toast-host__toast--notice {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+@supports (word-break: auto-phrase) {
+  .toast-host__toast--notice {
+    word-break: auto-phrase;
+  }
+}
+
 .toast-host__icon {
   display: inline-flex;
   flex: 0 0 auto;

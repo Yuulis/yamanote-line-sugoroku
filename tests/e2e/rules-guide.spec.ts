@@ -8,9 +8,10 @@ import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { expect, test } from "./fixtures";
 import {
-  diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, openGameMenu, openTitle, readSaveText,
+  diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, openGameMenu, openTitle, readSave, readSaveText,
   REQUIRED_SEGMENTS, titleScreen, useInventoryItem, writeSaveText,
 } from "./support/app";
+import { advanceTumble } from "./support/turnMoments";
 
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const NARROW_VIEWPORT = { width: 320, height: 568 };
@@ -22,6 +23,11 @@ test.use({ dataset: "fixture" });
 async function capture(page: Page, name: string, step = "4"): Promise<void> {
   mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
   await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-${step}-${name}.png`) });
+}
+
+async function captureStep14(page: Page, name: string, viewport: "desktop" | "320x568"): Promise<void> {
+  mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
+  await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-14-${name}-${viewport}.png`), scale: "css" });
 }
 
 async function resumeScenario(page: Page, name: ItemScenario, bundle: RailwayBundle): Promise<void> {
@@ -74,6 +80,67 @@ test("loading title keeps rules available without a target count", { tag: "@layo
 
   await titleScreen(page).getByRole("button", { name: RULES_BUTTON_NAME, exact: true }).click();
   await expect(page.getByRole("main", { name: RULES_BUTTON_NAME }).locator("#title-rules-goal")).toContainText(/全\d+区間/);
+});
+
+test("rules and title remain readable at compact viewports", { tag: "@layout" }, async ({ page, railwayBundle, baseURL }) => {
+  test.setTimeout(60_000);
+  if (!baseURL) throw new Error("baseURL must be configured");
+  const stationsPath = new URL("data/stations.json", baseURL).pathname;
+  let releaseStations: () => void = () => undefined;
+  const stationsGate = new Promise<void>((resolve) => { releaseStations = resolve; });
+  await page.route("**/data/stations.json", async (route) => {
+    await stationsGate;
+    await route.fallback();
+  });
+
+  await page.setViewportSize(DESKTOP_VIEWPORT);
+  await page.goto("/");
+  await expect(titleScreen(page)).toBeVisible();
+  await expect(page.locator(".title-map-placeholder")).toHaveCount(1);
+  await captureStep14(page, "loading-title", "desktop");
+  await page.setViewportSize(NARROW_VIEWPORT);
+  await expect(titleScreen(page)).toBeVisible();
+  await captureStep14(page, "loading-title", "320x568");
+
+  const stationsResponse = page.waitForResponse((response) => new URL(response.url()).pathname === stationsPath);
+  releaseStations();
+  await stationsResponse;
+  await expect(titleScreen(page).getByRole("button", { name: "はじめから", exact: true })).toBeVisible();
+
+  const viewports = [
+    { name: "desktop", size: DESKTOP_VIEWPORT },
+    { name: "320x568", size: NARROW_VIEWPORT },
+  ] as const;
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport.size);
+    const title = titleScreen(page);
+    await expect(title.getByRole("button", { name: "遊び方", exact: true })).toBeVisible();
+    await expect(title.getByRole("button", { name: "はじめから", exact: true })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await captureStep14(page, "title-no-save", viewport.name);
+
+    await title.getByRole("button", { name: "遊び方", exact: true }).click();
+    const rules = page.getByRole("main", { name: RULES_BUTTON_NAME });
+    await expect(rules.locator("#title-rules-goal")).toContainText(`全${REQUIRED_SEGMENTS}区間`);
+    await expect(rules.getByRole("heading", { level: 2, name: "アイテム" })).toBeAttached();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await captureStep14(page, "rules-guide-top", viewport.name);
+    await rules.locator("#title-rules-items").evaluate((section) => section.scrollIntoView({ block: "start" }));
+    await expect(rules.getByRole("heading", { level: 2, name: "アイテム" })).toBeInViewport();
+    await captureStep14(page, "rules-guide-items", viewport.name);
+    await page.keyboard.press("Escape");
+    await expect(title).toBeVisible();
+  }
+
+  await writeSaveText(page, serializeGame(itemScenario("route", railwayBundle.network)));
+  await page.reload();
+  await expect(titleScreen(page)).toBeVisible();
+  for (const viewport of viewports) {
+    await page.setViewportSize(viewport.size);
+    await expect(titleScreen(page).getByRole("button", { name: /つづきから/ })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await captureStep14(page, "title-with-save", viewport.name);
+  }
 });
 
 function rulesDialog(page: Page) {
@@ -154,6 +221,73 @@ test("rules retain essential content on phone", { tag: "@layout" }, async ({ pag
   await expect(rules.getByRole("heading", { level: 2, name: "アイテム" })).toBeInViewport();
   await capture(page, "rules-items-320x568");
   await expect(back).toBeInViewport();
+});
+
+test.describe("combined decision preservation", () => {
+  test.use({ reducedMotion: "no-preference" });
+
+  test("rules preserve pending roll and discard decisions", async ({ page, railwayBundle }) => {
+    await page.clock.install();
+    await resumeScenario(page, "adjust", railwayBundle);
+    await freezeClock(page);
+    await diceButton(page).click();
+    await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+    await openGameMenu(page);
+    await menuRulesButton(page).click();
+
+    const rules = rulesDialog(page);
+    await expect(rules).toBeVisible();
+
+    await advanceTumble(page);
+    const pendingRoll = await readSave(page);
+    expect(pendingRoll?.pending?.kind).toBe("roll");
+    const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await expect(adjustment).toHaveCount(0);
+    await expect(rules).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(rules).toHaveCount(0);
+    await expect(adjustment).toBeVisible();
+    expect((await readSave(page))?.pending).toEqual(pendingRoll?.pending);
+    await adjustment.getByRole("button", { name: "そのまま続ける" }).click();
+
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(itemScenario("discard", railwayBundle.network)));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await expect(gamePanel(page)).toBeVisible();
+    await freezeClock(page);
+    await diceButton(page).click();
+    await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+    await openGameMenu(page);
+    await menuRulesButton(page).click();
+    await expect(rules).toBeVisible();
+    await advanceTumble(page);
+
+    const possibleRoll = await readSave(page);
+    if (possibleRoll?.pending?.kind === "roll") {
+      await page.keyboard.press("Escape");
+      await expect(rules).toHaveCount(0);
+      const pendingAdjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+      await expect(pendingAdjustment).toBeVisible();
+      await pendingAdjustment.getByRole("button", { name: "そのまま続ける" }).click();
+      await menuRulesButton(page).click();
+      await expect(rules).toBeVisible();
+    }
+
+    await page.clock.runFor(30_000);
+    await expect.poll(async () => (await readSave(page))?.pending?.kind).toBe("discard");
+    const pendingDiscard = await readSave(page);
+    const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
+    await expect(rules).toBeVisible();
+    await expect(discard).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(rules).toHaveCount(0);
+    await expect(discard).toBeVisible();
+    expect((await readSave(page))?.pending).toEqual(pendingDiscard?.pending);
+    await discard.getByRole("button", { name: "このアイテムを捨てる" }).first().click();
+    await expect.poll(async () => (await readSave(page))?.pending).toBeNull();
+  });
 });
 
 test("title keeps the start button above the fold with a save on phone", { tag: "@layout" }, async ({ page, railwayBundle }) => {

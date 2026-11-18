@@ -28,6 +28,11 @@ async function capture(page: Page, name: string): Promise<void> {
   await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-7b-${name}.png`) });
 }
 
+async function captureStep14(page: Page, name: string, viewport: "desktop" | "320x568"): Promise<void> {
+  mkdirSync(SCREENSHOT_DIRECTORY, { recursive: true });
+  await page.screenshot({ path: resolve(SCREENSHOT_DIRECTORY, `rgts-14-${name}-${viewport}.png`), scale: "css" });
+}
+
 async function failSaves(page: Page): Promise<void> {
   await page.evaluate(() => {
     const storage = Storage.prototype as Storage & { originalSetItem?: Storage["setItem"] };
@@ -197,6 +202,52 @@ test("a real click on 遊び方 closes the explanation and rules close back to t
   await rules.getByRole("button", { name: "閉じる" }).click();
   await expect(rules).toHaveCount(0);
   await expect(opener).toBeFocused();
+});
+
+test("save popover and rules restore their own openers", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openTitle(page);
+  await startNewGame(page);
+  await rollOnce(page);
+  await openGameMenu(page);
+
+  const trigger = saveTrigger(page);
+  const explanation = saveExplanation(page);
+  const opener = gamePanel(page).getByRole("button", { name: "遊び方", exact: true });
+  await trigger.click();
+  await expect(explanation).toBeVisible();
+  await expect(explanation.getByRole("button", { name: "閉じる" })).toBeFocused();
+  await captureStep14(page, "save-explanation", "desktop");
+  await opener.click();
+  const rules = page.getByRole("dialog", { name: "遊び方" });
+  await expect(rules.getByRole("heading", { level: 1, name: "遊び方" })).toBeFocused();
+  await expect(explanation).toBeHidden();
+  await captureStep14(page, "in-game-rules-dialog", "desktop");
+
+  await page.keyboard.press("Escape");
+  await expect(rules).toHaveCount(0);
+  await expect(opener).toBeFocused();
+
+  await trigger.click();
+  await expect(explanation).toBeVisible();
+  await expect(explanation.getByRole("button", { name: "閉じる" })).toBeFocused();
+  await page.setViewportSize(PHONE_VIEWPORT);
+  await expect(explanation).toBeVisible();
+  await captureStep14(page, "save-explanation", "320x568");
+  await explanation.getByRole("button", { name: "閉じる" }).click();
+  await expect(explanation).toBeHidden();
+  await expect(trigger).toBeFocused();
+
+  await openGameMenu(page);
+  const phoneOpener = gamePanel(page).getByRole("button", { name: "遊び方", exact: true });
+  await phoneOpener.click();
+  await expect(rules.getByRole("heading", { level: 1, name: "遊び方" })).toBeFocused();
+  await page.setViewportSize(PHONE_VIEWPORT);
+  await captureStep14(page, "in-game-rules-dialog", "320x568");
+  await page.keyboard.press("Escape");
+  await expect(rules).toHaveCount(0);
+  await expect(phoneOpener).toBeFocused();
+  expect((await readSave(page))?.turn).toBe(1);
 });
 
 test("save hit target preserves the phone HUD budget", { tag: "@layout" }, async ({ page }) => {
