@@ -619,6 +619,8 @@ Steps 5, 6A, 7A, 9, 11 and 12A are close to the cap. Before Luna starts each of 
 - Acceptance: `npx vitest run tests/unit/toast-notice.test.ts tests/unit/toast.test.ts` + common.
 
 ### Step 10A — Notice hook + fixture seeding (no visual)
+
+> Amendment (2026-11-18, from the Step 8B review; lead decision). (1) The persisted flag is written only after the notice was **shown** (`onNoticeShown`) **and announced** (the status region committed a `selectAnnouncement` result with `announcesNotice: true`) — matching the brief; the in-memory "delivered" guard is set on display regardless of whether the storage write succeeds. (2) `selectAnnouncement` is edge-aware: callers pass `previousOrdinary` (last committed ordinary text) and keep `coveredOrdinary` + `announcedKey` state recorded when they commit `announcesNotice: true`; `decisionOwned = decision present || rulesOpen || confirm dialog open`. (3) Before delivery, re-check the latest attempt; cancel if a later same-session attempt is not `"saved"`. (4) For 10B: once the ordinary text changes after the notice was announced, retire the notice in the caller's state (e.g. clear `pendingKey`/`coveredOrdinary`) so a later return to the same ordinary text cannot re-show — and so re-announce — the notice in the atomic region.
 - Files: new `src/features/game/useFirstTurnNotice.ts`; new `tests/unit/helpers/notices.ts`
   (`seedFirstTurnNotice(storage)`); `tests/e2e/fixtures.ts` (option `firstTurnNoticeSeen: boolean`, default true,
   one `addInitScript` that seeds the flag; `false` installs nothing and never erases it); existing GameApp unit
