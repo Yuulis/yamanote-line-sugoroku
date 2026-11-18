@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   createReadingClock,
   createToastQueue,
@@ -7,6 +7,7 @@ import {
   resumeReadingClock,
   toastQueueReducer,
   visibleToasts,
+  type NoticeToastInput,
   type ToastInput,
   type ToastReadingClock,
 } from "../toastQueue";
@@ -18,6 +19,12 @@ export interface ToastHostProps {
   saveFailed: boolean;
   obscured: boolean;
   reducedMotion: boolean;
+  /** Queued once per scope and key; a changed object with the same key is ignored. */
+  notice?: NoticeToastInput | null;
+  /** Whether the game's status region can announce the notice now. Defaults to true. */
+  announceable?: boolean;
+  /** Fired once per notice, on its first display while unobscured, document-visible and announceable. */
+  onNoticeShown?: (key: string) => void;
 }
 
 interface ToastTimer {
@@ -25,10 +32,31 @@ interface ToastTimer {
   timer: ReturnType<typeof setTimeout> | null;
 }
 
-export function ToastHost({ sessionId, inputs, saveFailed, obscured, reducedMotion }: ToastHostProps): React.JSX.Element {
+function isDocumentVisible(): boolean {
+  return typeof document === "undefined" || document.visibilityState !== "hidden";
+}
+
+function useDocumentVisible(): boolean {
+  const [visible, setVisible] = useState(isDocumentVisible);
+  useEffect(() => {
+    const update = (): void => setVisible(isDocumentVisible());
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => document.removeEventListener("visibilitychange", update);
+  }, []);
+  return visible;
+}
+
+export function ToastHost({
+  sessionId, inputs, saveFailed, obscured, reducedMotion, notice = null, announceable = true, onNoticeShown,
+}: ToastHostProps): React.JSX.Element {
   const [queue, dispatch] = useReducer(toastQueueReducer, sessionId, createToastQueue);
   const clocks = useRef<Map<string, ToastTimer>>(new Map());
   const currentSession = useRef(sessionId);
+  const acknowledgedNotices = useRef<Set<string>>(new Set());
+  const noticeShown = useRef(onNoticeShown);
+  const documentVisible = useDocumentVisible();
+  const noticeReady = documentVisible && !obscured && announceable;
 
   useEffect(() => {
     if (currentSession.current === sessionId) return;
@@ -37,12 +65,21 @@ export function ToastHost({ sessionId, inputs, saveFailed, obscured, reducedMoti
       if (entry.timer !== null) clearTimeout(entry.timer);
     }
     clocks.current.clear();
+    acknowledgedNotices.current.clear();
     dispatch({ type: "resetScope", sessionId });
   }, [sessionId]);
 
   useEffect(() => {
     dispatch({ type: "enqueue", scope: sessionId, inputs });
   }, [inputs, sessionId]);
+
+  useEffect(() => {
+    if (notice) dispatch({ type: "enqueueNotice", scope: sessionId, notice });
+  }, [notice, sessionId]);
+
+  useEffect(() => {
+    noticeShown.current = onNoticeShown;
+  }, [onNoticeShown]);
 
   // Raised on a false → true transition only: a session change clears the sticky failure even while the
   // parent still reports the previous session's failed save.
@@ -72,11 +109,17 @@ export function ToastHost({ sessionId, inputs, saveFailed, obscured, reducedMoti
         entry = { clock: createReadingClock(), timer: null };
         clocks.current.set(toast.key, entry);
       }
-      if (obscured) {
+      const isNotice = toast.kind === "notice";
+      if (isNotice ? !noticeReady : obscured) {
         if (entry.timer !== null) clearTimeout(entry.timer);
         entry.timer = null;
-        entry.clock = pauseReadingClock(entry.clock, now);
+        // A hidden document means the notice may have gone unread: it gets its full reading time back.
+        entry.clock = isNotice && !documentVisible ? createReadingClock() : pauseReadingClock(entry.clock, now);
         continue;
+      }
+      if (isNotice && !acknowledgedNotices.current.has(toast.key)) {
+        acknowledgedNotices.current.add(toast.key);
+        noticeShown.current?.(toast.key);
       }
       entry.clock = resumeReadingClock(entry.clock, now);
       if (entry.timer !== null) clearTimeout(entry.timer);
@@ -92,7 +135,7 @@ export function ToastHost({ sessionId, inputs, saveFailed, obscured, reducedMoti
       }, remaining);
       entry.timer = handle;
     }
-  }, [visibleKey, obscured, sessionId]);
+  }, [visibleKey, obscured, noticeReady, documentVisible, sessionId]);
 
   useEffect(() => () => {
     for (const entry of clocks.current.values()) {
