@@ -205,6 +205,48 @@ describe("ToastHost notice", () => {
     expect(shown).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
   });
 
+  it("withdraws an unshown notice when the prop clears", () => {
+    render(props({ announceable: false }));
+    expect(hostText()).toContain(FIRST_TURN_NOTICE_TEXT);
+    render(props({ notice: null, announceable: false }));
+    expect(hostText()).not.toContain(FIRST_TURN_NOTICE_TEXT);
+    expect(shown).not.toHaveBeenCalled();
+  });
+
+  it("does not acknowledge a notice withdrawn while becoming announceable", () => {
+    const withdrawn = notice({ key: "7:notice:withdrawn", text: "Withdrawn notice" });
+    render(props({ notice: withdrawn, announceable: false }));
+    render(props({ notice: null, announceable: true }));
+    expect(shown).not.toHaveBeenCalled();
+    expect(hostText()).not.toContain(withdrawn.text);
+  });
+
+  it("does not acknowledge a replaced notice", () => {
+    const replaced = notice({ key: "7:notice:replaced", text: "Replaced notice" });
+    const current = notice({ key: "7:notice:current", text: "Current notice" });
+    render(props({ notice: replaced, announceable: false }));
+    render(props({ notice: current, announceable: true }));
+    expect(shown).toHaveBeenCalledExactlyOnceWith(current.key);
+    expect(shown).not.toHaveBeenCalledWith(replaced.key);
+    expect(hostText()).not.toContain(replaced.text);
+    expect(hostText()).toContain(current.text);
+  });
+
+  it("keeps an acknowledged notice when the prop clears", () => {
+    render(props());
+    expect(shown).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
+    render(props({ notice: null }));
+    expect(hostText()).toContain(FIRST_TURN_NOTICE_TEXT);
+  });
+
+  it("a withdrawn notice can be enqueued again in the same scope", () => {
+    const original = enqueueNotice(createToastQueue(7), notice());
+    const withdrawn = dispatch(original, { type: "withdrawNotice", key: NOTICE_KEY });
+    expect(withdrawn.items).toEqual([]);
+    expect(withdrawn.noticeKeys).toEqual([]);
+    expect(enqueueNotice(withdrawn, notice()).items).toEqual([notice()]);
+  });
+
   it("acknowledges through the latest callback", () => {
     const first = vi.fn<(key: string) => void>();
     const latest = vi.fn<(key: string) => void>();

@@ -54,6 +54,8 @@ export function ToastHost({
   const clocks = useRef<Map<string, ToastTimer>>(new Map());
   const currentSession = useRef(sessionId);
   const acknowledgedNotices = useRef<Set<string>>(new Set());
+  const previousNotice = useRef<{ readonly key: string; readonly sessionId: number | null } | null>(null);
+  const currentNotice = useRef(notice);
   const noticeShown = useRef(onNoticeShown);
   const documentVisible = useDocumentVisible();
   const noticeReady = documentVisible && !obscured && announceable;
@@ -74,12 +76,22 @@ export function ToastHost({
   }, [inputs, sessionId]);
 
   useEffect(() => {
+    const previous = previousNotice.current;
+    if (previous && previous.sessionId === sessionId && previous.key !== notice?.key
+      && !acknowledgedNotices.current.has(previous.key)) {
+      dispatch({ type: "withdrawNotice", key: previous.key });
+    }
+    previousNotice.current = notice ? { key: notice.key, sessionId } : null;
     if (notice) dispatch({ type: "enqueueNotice", scope: sessionId, notice });
   }, [notice, sessionId]);
 
   useEffect(() => {
     noticeShown.current = onNoticeShown;
   }, [onNoticeShown]);
+
+  useEffect(() => {
+    currentNotice.current = notice;
+  }, [notice, sessionId]);
 
   // Raised on a false → true transition only: a session change clears the sticky failure even while the
   // parent still reports the previous session's failed save.
@@ -117,7 +129,11 @@ export function ToastHost({
         entry.clock = isNotice && !documentVisible ? createReadingClock() : pauseReadingClock(entry.clock, now);
         continue;
       }
-      if (isNotice && !acknowledgedNotices.current.has(toast.key)) {
+      if (isNotice && !acknowledgedNotices.current.has(toast.key)
+        && currentNotice.current?.key === toast.key
+        && currentNotice.current.sessionId === sessionId
+        && toast.sessionId === sessionId
+        && currentSession.current === sessionId) {
         acknowledgedNotices.current.add(toast.key);
         noticeShown.current?.(toast.key);
       }

@@ -18,8 +18,12 @@ import { dispatchReactEvent, flushReact, mountReact, type MountedReact } from ".
 import { itemScenario, ITEM_SCENARIOS } from "../e2e/fixtures/itemScenarios";
 import { playTurn } from "../e2e/fixtures/productGame";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
+import { seedFirstTurnNotice } from "./helpers/notices";
 
-beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
+beforeEach(() => {
+  localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  seedFirstTurnNotice(localStorage);
+});
 
 const { railwayMapProps } = vi.hoisted(() => ({ railwayMapProps: vi.fn() }));
 vi.mock("../../src/features/map/RailwayMap", () => ({ RailwayMap: (props: { panelKey?: number; follow?: { onUserCameraMove: () => void } }) => {

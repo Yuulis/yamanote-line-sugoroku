@@ -30,8 +30,12 @@ import type { useGameApp } from "../../src/features/game/useGameApp";
 import { ITEM_GAME_CONFIG, type AnimationSpeedId } from "../../src/features/game/gameConfig";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { FIXTURE_GAME_SEED, LEGACY_FIXTURE_GAME_SEED } from "../e2e/fixtures/seeds";
+import { seedFirstTurnNotice } from "./helpers/notices";
 
-beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
+beforeEach(() => {
+  localStorage.removeItem(SETTINGS_STORAGE_KEY);
+  seedFirstTurnNotice(localStorage);
+});
 
 const { railwayMapProps, injection, commits, lotteryCommits, momentCommits, trackEvent } = vi.hoisted(() => ({
   railwayMapProps: vi.fn(), injection: { app: null as ReturnType<typeof useGameApp> | null,
@@ -169,7 +173,7 @@ function propsFor(boundary?: HarnessProps["turnMomentBoundary"]): HarnessProps {
 }
 function inject(session: GameSession, failed = false): void {
   injection.app = { state: { screen: "game", session }, itemView: itemSessionView(session, network),
-    saveStatus: failed ? "failed" : "saved", saveLookup: null,
+    saveStatus: failed ? "failed" : "saved", saveLookup: null, saveAttempt: null,
     roll: vi.fn(), editItemDraft: vi.fn(), adjustItemRoll: vi.fn(), discardItem: vi.fn(),
     finishAnimation: vi.fn(), newGame: vi.fn(), resume: vi.fn(), removeSave: vi.fn(), showTitle: vi.fn(),
   } as ReturnType<typeof useGameApp>;

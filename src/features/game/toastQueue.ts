@@ -204,6 +204,7 @@ export function createToastQueue(scope: number | null): ToastQueueState {
 export type ToastQueueAction =
   | { type: "enqueue"; scope: number | null; inputs: readonly ToastInput[] }
   | { type: "enqueueNotice"; scope: number | null; notice: NoticeToastInput }
+  | { type: "withdrawNotice"; key: string }
   | { type: "expire"; key: string }
   | { type: "saveFailed" }
   | { type: "saveSucceeded" }
@@ -252,12 +253,25 @@ function enqueueNotice(state: ToastQueueState, scope: number | null, notice: Not
   return { ...state, items: [...state.items, notice], noticeKeys: [...state.noticeKeys, notice.key] };
 }
 
+function withdrawNotice(state: ToastQueueState, key: string): ToastQueueState {
+  if (!state.noticeKeys.includes(key)) return state;
+  const item = state.items.find((entry) => entry.key === key);
+  if (item && item.kind !== "notice") return state;
+  return {
+    ...state,
+    items: state.items.filter((entry) => entry.key !== key),
+    noticeKeys: state.noticeKeys.filter((entry) => entry !== key),
+  };
+}
+
 export function toastQueueReducer(state: ToastQueueState, action: ToastQueueAction): ToastQueueState {
   switch (action.type) {
     case "enqueue":
       return enqueueToasts(state, action.scope, action.inputs);
     case "enqueueNotice":
       return enqueueNotice(state, action.scope, action.notice);
+    case "withdrawNotice":
+      return withdrawNotice(state, action.key);
     case "expire": {
       if (action.key === saveFailureToast(state.scope).key || !state.items.some((item) => item.key === action.key)) return state;
       return { ...state, items: state.items.filter((item) => item.key !== action.key) };

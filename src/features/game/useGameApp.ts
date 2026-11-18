@@ -27,12 +27,8 @@ export interface GameAppControls {
   saveLookup: SaveLookup<SavedGameState> | null;
   /** Result of saving the current committed state; null before the first save. */
   saveStatus: SaveWriteResult | null;
-  /**
-   * Latest distinct save write (it may belong to an earlier session); null
-   * before the first save. Optional so injected test controls stay valid;
-   * absent means null.
-   */
-  saveAttempt?: SaveAttempt | null;
+  /** Latest distinct save write (it may belong to an earlier session); null before the first save. */
+  saveAttempt: SaveAttempt | null;
   newGame: () => void;
   resume: (game: SavedGameState) => void;
   roll: () => void;
