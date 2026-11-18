@@ -26,6 +26,7 @@ import {
   initialOverviewServices,
   isUserCameraEvent,
   needsRecentre,
+  titleFitPadding,
   USER_CAMERA_EVENTS,
 } from "./camera";
 import type { CameraPoint, CameraRect } from "./camera";
@@ -80,6 +81,8 @@ export interface MapFollow {
 
 interface RailwayMapProps {
   data: RailwayData;
+  /** Selects which screen owns the map camera. */
+  mode?: RailwayMapMode;
   /** Resolver from the already-validated gameplay network, when available. */
   presentation?: PresentationResolver;
   /** Game progress to draw; omitted when no game is running. */
@@ -104,6 +107,8 @@ interface RailwayMapProps {
   targetServiceId?: string;
   minZoom?: number;
 }
+
+export type RailwayMapMode = "title" | "game" | "clear";
 
 /** Elements whose size can change the camera layout. */
 export function cameraLayoutTargets(
@@ -253,6 +258,7 @@ const PREVIEW_OBSTRUCTION_SELECTORS = [
   TURN_RESULT_PILL_SELECTOR,
 ] as const;
 const ORIGIN_MARKER_RADIUS_PX = CURRENT_POSITION_RADIUS + CURRENT_POSITION_STROKE_WIDTH;
+const IMMEDIATE_CAMERA_DURATION_MS = 0;
 
 function attributionPosition(atTop: boolean): "top-left" | "bottom-right" {
   return atTop ? "top-left" : "bottom-right";
@@ -434,8 +440,20 @@ function fitNetworkOverview(map: MapLibreMap, services: readonly ServicePattern[
   // Clear follow padding before solving the fit: MapLibre combines retained
   // padding with fit padding, which can exceed the viewport on item panels.
   map.setPadding(ZERO_MAP_PADDING);
-  map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
+  map.fitBounds(bounds, { padding, duration: IMMEDIATE_CAMERA_DURATION_MS, maxZoom: MAP_ZOOM });
   map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+}
+
+/** Fit only the configured target service around the title with symmetric viewport padding. */
+function fitTitleService(map: MapLibreMap, service: ServicePattern | undefined): void {
+  if (!service) return;
+  const bounds = positionsBounds(Object.values(service.platformCoordinates));
+  if (!bounds) return;
+  const viewport = map.getContainer().getBoundingClientRect();
+  const padding = titleFitPadding({ width: viewport.width, height: viewport.height }, isPhoneWidth());
+  map.setPadding(ZERO_MAP_PADDING);
+  map.fitBounds(bounds, { padding, duration: IMMEDIATE_CAMERA_DURATION_MS, maxZoom: MAP_ZOOM });
+  map.setPadding(ZERO_MAP_PADDING);
 }
 
 /** Reserve the visible panel height, which can be smaller than its CSS cap. */
@@ -513,7 +531,7 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
 
 const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
 
-export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -628,7 +646,6 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
         return;
       }
       initialised = true;
-      fitNetworkOverview(map, initialServices);
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
@@ -663,6 +680,7 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
   const previewOriginRef = useRef<Position | null>(position);
   previewOriginRef.current = position;
   const previewFitRef = useRef<{ map: MapLibreMap; signature: string } | null>(null);
+  const overviewModeRef = useRef<{ map: MapLibreMap; mode: RailwayMapMode } | null>(null);
   useEffect(() => {
     if (!loadedMap) return;
     const headingMarker = createHeadingMarker(loadedMap);
@@ -699,10 +717,26 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
 
   useEffect(() => {
-    if (loadedMap && overviewKey !== undefined && data.services.ok) {
-      fitNetworkOverview(loadedMap, initialServices);
+    if (mode !== "title" || !loadedMap || !data.services.ok) return;
+    const targetService = services.find((service) => service.id === targetServiceId);
+    fitTitleService(loadedMap, targetService);
+  }, [loadedMap, layersRevision, mode, targetServiceId, services, cameraLayoutRevision, data.services]);
+
+  useEffect(() => {
+    if (!loadedMap) return;
+    const previousOverviewMode = overviewModeRef.current;
+    const enteringGame = previousOverviewMode?.map !== loadedMap || previousOverviewMode.mode !== "game";
+    if (mode !== "game") {
+      overviewModeRef.current = { map: loadedMap, mode };
+      return;
     }
-  }, [loadedMap, overviewKey, initialServices]);
+    if (!data.services.ok) return;
+    overviewModeRef.current = { map: loadedMap, mode };
+    // Fit once when entering game, then only for an explicit overview request.
+    // GameApp clears overviewKey after turn zero; that is not a new request.
+    if (!enteringGame && overviewKey === undefined) return;
+    fitNetworkOverview(loadedMap, initialServices);
+  }, [loadedMap, mode, overviewKey, initialServices, data.services]);
 
   const highlightedServiceId = progress?.highlightedServiceId;
   useEffect(() => {
@@ -717,16 +751,22 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;
+  const trackCameraLayout = mode === "title" || (mode === "game" && (followEnabled || previewOpen));
   const handledCameraLayoutRevisionRef = useRef(cameraLayoutRevision);
   // The camera layout last applied by a follow move; null forces the next
   // observed layout to be applied even if the marker is already centred.
   const appliedCameraLayoutRef = useRef<string | null>(null);
   useCameraLayoutObserver(
-    followEnabled || previewOpen ? loadedMap : null,
+    trackCameraLayout ? loadedMap : null,
     panelKey,
     () => { appliedCameraLayoutRef.current = null; },
     () => {
       if (!loadedMap) return;
+      if (mode === "title") {
+        setCameraLayoutRevision((revision) => revision + 1);
+        return;
+      }
+      if (mode !== "game") return;
       if (previewOpen) {
         setCameraLayoutRevision((revision) => revision + 1);
         return;
@@ -736,11 +776,15 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
       if (cameraLayoutKey(loadedMap) === appliedCameraLayoutRef.current) return;
       setCameraLayoutRevision((revision) => revision + 1);
     },
-    previewOpen,
-    candidatesKey,
+    mode === "game" && previewOpen,
+    mode === "game" ? candidatesKey : "",
   );
   useEffect(() => {
-    if (!loadedMap) return;
+    if (!loadedMap || mode === "clear") return;
+    if (mode === "title") {
+      previewFitRef.current = null;
+      return;
+    }
     if (!previewOpen) {
       const previousFit = previewFitRef.current;
       previewFitRef.current = null;
@@ -760,21 +804,23 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
       previousSignature,
     );
     if (signature !== null) previewFitRef.current = { map: loadedMap, signature };
-  }, [loadedMap, previewOpen, panelKey, candidatesKey, previewOriginKey, cameraLayoutRevision]);
+  }, [loadedMap, mode, previewOpen, panelKey, candidatesKey, previewOriginKey, cameraLayoutRevision]);
   // Declared before the camera effect: re-enabling following clears the
   // gesture flag before the camera recentres.
   useEffect(() => {
+    if (mode !== "game") return;
     if (followEnabled) userMovedRef.current = false;
-  }, [followEnabled]);
+  }, [mode, followEnabled]);
   useEffect(() => {
-    if (!loadedMap || !followEnabled || previewOpen || userMovedRef.current || !position) return;
+    if (mode !== "game" || !loadedMap || !followEnabled || previewOpen || userMovedRef.current || !position) return;
     if (recentre(loadedMap, position, immediate)) {
       appliedCameraLayoutRef.current = cameraLayoutKey(loadedMap);
     }
-  }, [loadedMap, followEnabled, previewOpen, position, immediate]);
+  }, [loadedMap, mode, followEnabled, previewOpen, position, immediate]);
   // Layout changes only: re-checked here because a revision queued before a
   // follow move applied the same layout is stale by the time it renders.
   useEffect(() => {
+    if (mode !== "game") return;
     if (handledCameraLayoutRevisionRef.current === cameraLayoutRevision) return;
     if (!loadedMap) return;
     if (previewOpen) {
@@ -787,7 +833,7 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
     if (layoutKey === appliedCameraLayoutRef.current) return;
     recentre(loadedMap, position, immediate, true);
     appliedCameraLayoutRef.current = layoutKey;
-  }, [loadedMap, followEnabled, previewOpen, position, immediate, cameraLayoutRevision]);
+  }, [loadedMap, mode, followEnabled, previewOpen, position, immediate, cameraLayoutRevision]);
 
   const retry = () => {
     setStyleFailed(false);

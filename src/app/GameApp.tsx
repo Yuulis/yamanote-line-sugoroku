@@ -30,7 +30,7 @@ import type { GameSession } from "../features/game/gameSession";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { directionLabel, serviceName, stationName } from "../features/game/presentation";
 import { buildRulesGuide, type RulesSectionId } from "../features/game/rulesGuide";
-import { type MapFollow, RailwayMap } from "../features/map/RailwayMap";
+import { type MapFollow, type RailwayMapMode, RailwayMap } from "../features/map/RailwayMap";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
@@ -383,6 +383,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
   }, [showTitleScreen]);
 
   const showClear = turnDisplay?.showClear ?? false;
+  const mapMode: RailwayMapMode = app.state.screen === "title" ? "title" : showClear ? "clear" : "game";
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
   const rulesOpen = panelShown && rulesRequest !== null;
@@ -528,6 +529,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary }: 
       )}
       <RailwayMap
         data={data}
+        mode={mapMode}
         targetServiceId={edition.config.targetServiceId}
         presentation={presentation}
         progress={progress}
