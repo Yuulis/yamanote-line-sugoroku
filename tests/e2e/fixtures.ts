@@ -7,6 +7,8 @@ interface E2EOptions {
   /** Each spec selects its data explicitly; real-data smoke opts out of interception. */
   dataset: DatasetKind;
   gameSeed: string;
+  /** Defaults to a seen first-turn notice so unrelated scenarios stay independent. */
+  firstTurnNoticeSeen: boolean;
 }
 
 interface E2EFixtures {
@@ -30,9 +32,15 @@ function installGameSeed(bytes: number[]): void {
   crypto.getRandomValues = deterministic as Crypto["getRandomValues"];
 }
 
+/** Self-contained: Playwright serializes this function into each document. */
+function seedFirstTurnNotice(): void {
+  localStorage.setItem("yamanote-line-sugoroku:notice:auto-resume:v1", "1");
+}
+
 export const test = base.extend<E2EFixtures & E2EOptions>({
   dataset: ["real", { option: true }],
   gameSeed: [FIXTURE_GAME_SEED, { option: true }],
+  firstTurnNoticeSeen: [true, { option: true }],
   railwayBundle: [
     async ({ page, baseURL, dataset }, use) => {
       if (!baseURL) throw new Error("baseURL must be configured");
@@ -50,12 +58,13 @@ export const test = base.extend<E2EFixtures & E2EOptions>({
     { auto: true },
   ],
   mapStub: [
-    async ({ context, baseURL, gameSeed }, use) => {
+    async ({ context, baseURL, gameSeed, firstTurnNoticeSeen }, use) => {
       if (!baseURL) throw new Error("baseURL must be configured");
       if (!/^[0-9a-f]{32}$/.test(gameSeed)) throw new Error("gameSeed must be 128-bit hex");
       const bytes = gameSeed.match(/../g)!.map((byte) => Number.parseInt(byte, 16));
       const stub = await installMapStub(context, baseURL);
       await context.addInitScript(installGameSeed, bytes);
+      if (firstTurnNoticeSeen) await context.addInitScript(seedFirstTurnNotice);
       await use(stub);
       expect(stub.counts.blocked, "unexpected external requests").toEqual([]);
     },

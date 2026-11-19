@@ -237,3 +237,23 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Roll text has no modifier marks (出目N = effective face); effects shown only as chips; 回送 → 駅 (user 2026-11-12).
 - Turn 0 hidden; pill visible during moments; 10-turn log history out of scope (user 2026-11-12).
 - Pause after every step; Codex Luna xhigh implements, Sol low reviews, lead verifies (user 2026-11-12).
+
+---
+
+## Current Feature: Issues #60 + #68: rules guide and title/save UX
+<!-- orchestra:block-id: issues-60-68-rules-guide-and-title-save-ux -->
+
+### Context
+
+- Goal: short title copy + shared 遊び方 rules guide (title sub-screen and in-game dialog with deep links); resume label with progress and Kターン目から; delete-save link; one-time auto-save notice; tappable save mark popover; title map shows the Yamanote loop with controls hidden. Presentation only.
+- Branch: feature/rules-guide-title-save (from develop a8fc2b7, v0.16.0)
+- Plan: .claude/docs/plans/rules-guide-title-save-plan.md (21 steps, Codex validated PASS round 3); prompts: rules-guide-title-save-prompts.md; handoff: rules-guide-title-save-handoff.md
+- Research: .claude/docs/research/feature-rules-guide-and-title-save-ux-{brief,codebase}.md
+- Dependencies: none new
+- Complexity: COMPLEX (21 steps, ~3,200 LOC incl. tests)
+
+### Decisions
+
+- All of #60 and #68 in one PR; product choices per DESIGN.md 2026-11-17 rows (user 2026-11-17).
+- Pause only after steps with a visible change; no-visual steps 1A, 2A, 2B, 3, 5, 7A, 8A, 8B, 9, 10A continue after verification (user 2026-11-17).
+- Codex Luna xhigh implements, Sol low reviews, lead verifies, commits, pushes and checks CI per step (user 2026-11-17).

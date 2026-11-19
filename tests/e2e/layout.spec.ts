@@ -48,6 +48,9 @@ const SAFE_AREA_SELECTORS = [
 test("viewport-fit=cover is set and fixed overlays stay inside safe-area insets", { tag: "@layout" }, async ({ page, browserName }, testInfo) => {
   await openTitle(page);
   await startNewGame(page);
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(page.locator(".map-overview")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Zoom in", exact: true })).toBeVisible();
   const viewportMeta = await page.locator('meta[name="viewport"]').getAttribute("content");
   expect(viewportMeta).toContain("viewport-fit=cover");
   for (const selector of SAFE_AREA_SELECTORS) {
@@ -123,6 +126,8 @@ test("[8.3-1] title, then map and controls are visible without hiding the map", 
   const share = (panelBox.width * panelBox.height) / (mapBox.width * mapBox.height);
   expect(share).toBeLessThan(MAX_PANEL_SHARE_OF_MAP);
   // Zoom buttons stay reachable and are not under the panel.
+  await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
+  await expect(page.locator(".map-overview")).toBeVisible();
   const zoomIn = page.getByRole("button", { name: "Zoom in" });
   await expect(zoomIn).toBeVisible();
   const zoomBox = await zoomIn.boundingBox();
@@ -146,7 +151,7 @@ test("[8.3-8] data and map attribution are reachable on the title and play scree
   await expect(titleScreen(page).getByText("東京近郊版", { exact: true })).toBeAttached();
   await expect(titleScreen(page).getByRole("button", { name: "クレジット" })).toBeVisible();
   await expect(titleScreen(page).getByText(
-    "新橋から出発し、東京近郊の路線を乗り継ぎます。山手線は外回りに固定。全30区間を踏破して新橋に着くとクリアです。山手線では新橋で止まり、他路線ではちょうど止まる必要があります。終点・エリア端・系統の端で余った目は使いません。",
+    "新橋から出発し、山手線外回りの全30区間を1周するのが目標です。",
     { exact: true },
   )).toBeVisible();
   await titleScreen(page).getByRole("button", { name: "クレジット" }).click();

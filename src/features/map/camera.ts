@@ -32,6 +32,19 @@ interface CameraViewport {
   height: number;
 }
 
+export const TITLE_FIT_PADDING_PHONE_PX = 24;
+export const TITLE_FIT_PADDING_PX = 48;
+const MIN_TITLE_FIT_VIEWPORT_SIDE_PX = 64;
+
+/** Symmetric title framing that leaves a usable viewport even at extreme sizes. */
+export function titleFitPadding(viewport: CameraViewport, phone: boolean): CameraPadding {
+  const requested = phone ? TITLE_FIT_PADDING_PHONE_PX : TITLE_FIT_PADDING_PX;
+  const smallestSide = Math.max(0, Math.min(viewport.width, viewport.height));
+  const maximum = Math.max(0, (smallestSide - MIN_TITLE_FIT_VIEWPORT_SIDE_PX) / 2);
+  const padding = Math.min(requested, maximum);
+  return { top: padding, right: padding, bottom: padding, left: padding };
+}
+
 /** Stable fit identity: identical geometry still needs fitting after a new session or landing set. */
 export function adjustmentPreviewFitSignature(
   sessionKey: number | undefined,

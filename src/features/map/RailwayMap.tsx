@@ -6,7 +6,7 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
@@ -26,6 +26,7 @@ import {
   initialOverviewServices,
   isUserCameraEvent,
   needsRecentre,
+  titleFitPadding,
   USER_CAMERA_EVENTS,
 } from "./camera";
 import type { CameraPoint, CameraRect } from "./camera";
@@ -69,6 +70,7 @@ import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
 import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
+import { TitleMapPlaceholder } from "./components/TitleMapPlaceholder";
 
 export interface MapFollow {
   enabled: boolean;
@@ -80,6 +82,8 @@ export interface MapFollow {
 
 interface RailwayMapProps {
   data: RailwayData;
+  /** Selects which screen owns the map camera. */
+  mode?: RailwayMapMode;
   /** Resolver from the already-validated gameplay network, when available. */
   presentation?: PresentationResolver;
   /** Game progress to draw; omitted when no game is running. */
@@ -104,6 +108,8 @@ interface RailwayMapProps {
   targetServiceId?: string;
   minZoom?: number;
 }
+
+export type RailwayMapMode = "title" | "game" | "clear";
 
 /** Elements whose size can change the camera layout. */
 export function cameraLayoutTargets(
@@ -253,6 +259,7 @@ const PREVIEW_OBSTRUCTION_SELECTORS = [
   TURN_RESULT_PILL_SELECTOR,
 ] as const;
 const ORIGIN_MARKER_RADIUS_PX = CURRENT_POSITION_RADIUS + CURRENT_POSITION_STROKE_WIDTH;
+const IMMEDIATE_CAMERA_DURATION_MS = 0;
 
 function attributionPosition(atTop: boolean): "top-left" | "bottom-right" {
   return atTop ? "top-left" : "bottom-right";
@@ -434,8 +441,20 @@ function fitNetworkOverview(map: MapLibreMap, services: readonly ServicePattern[
   // Clear follow padding before solving the fit: MapLibre combines retained
   // padding with fit padding, which can exceed the viewport on item panels.
   map.setPadding(ZERO_MAP_PADDING);
-  map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
+  map.fitBounds(bounds, { padding, duration: IMMEDIATE_CAMERA_DURATION_MS, maxZoom: MAP_ZOOM });
   map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+}
+
+/** Fit only the configured target service around the title with symmetric viewport padding. */
+function fitTitleService(map: MapLibreMap, service: ServicePattern | undefined): void {
+  if (!service) return;
+  const bounds = positionsBounds(Object.values(service.platformCoordinates));
+  if (!bounds) return;
+  const viewport = map.getContainer().getBoundingClientRect();
+  const padding = titleFitPadding({ width: viewport.width, height: viewport.height }, isPhoneWidth());
+  map.setPadding(ZERO_MAP_PADDING);
+  map.fitBounds(bounds, { padding, duration: IMMEDIATE_CAMERA_DURATION_MS, maxZoom: MAP_ZOOM });
+  map.setPadding(ZERO_MAP_PADDING);
 }
 
 /** Reserve the visible panel height, which can be smaller than its CSS cap. */
@@ -511,9 +530,17 @@ function createMap(container: HTMLElement, minZoom: number): MapLibreMap | null 
   }
 }
 
+function navigationControlsContainFocus(mapContainer: HTMLElement | null): boolean {
+  const focusedElement = document.activeElement;
+  if (!mapContainer || !(focusedElement instanceof HTMLElement)) return false;
+  const zoomGroup = mapContainer.querySelector(".maplibregl-ctrl-zoom");
+  const overview = mapContainer.parentElement?.querySelector(".map-overview");
+  return Boolean(zoomGroup?.contains(focusedElement) || overview?.contains(focusedElement));
+}
+
 const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
 
-export function RailwayMap({ data, presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -532,11 +559,15 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
   );
   const containerRef = useRef<HTMLDivElement>(null);
   const [styleFailed, setStyleFailed] = useState(false);
+  const restoreFocusAfterMapFailureRef = useRef(false);
   // The browser cannot create a WebGL2 context: no map can ever be shown here.
   const [unsupported, setUnsupported] = useState(false);
   const [attempt, setAttempt] = useState(0);
   // The map instance once its layers exist, so progress can be applied to it.
   const [loadedMap, setLoadedMap] = useState<MapLibreMap | null>(null);
+  const [paintedAttempt, setPaintedAttempt] = useState<number | null>(null);
+  const attemptRef = useRef(attempt);
+  attemptRef.current = attempt;
   const headingMarkerRef = useRef<HeadingMarkerController | null>(null);
   // Bumped when a replaced style forced the layers to be re-added, so the
   // progress and visibility effects below apply their state to them again.
@@ -559,10 +590,12 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
       : undefined;
     const map = createMap(container, minZoom);
     if (!map) {
+      setPaintedAttempt(null);
       setUnsupported(true);
       trackException("webgl2_unavailable", false);
       return;
     }
+    setPaintedAttempt(null);
     setUnsupported(false);
     // On phones and short landscape the control panel covers the bottom edge,
     // so the attribution goes to the top where it stays readable (spec 6.2) and
@@ -594,19 +627,41 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
       watchAttribution(atTop);
     };
     for (const query of attributionQueries) query.addEventListener("change", onAttributionQueryChange);
-    map.addControl(new NavigationControl({ showCompass: false }));
-
     // Fatal until the basemap has rendered completely once ("load"): a failed
     // style, or tiles failing so that never happens. Later tile errors are tolerated.
     let basemapLoaded = false;
+    let layersReady = false;
+    let sawLoad = false;
+    let sawRenderAfterLoad = false;
+    let paintFrame: number | null = null;
+    let active = true;
+    const effectAttempt = attempt;
+    const schedulePaintedState = (): void => {
+      if (!active || attemptRef.current !== effectAttempt || !layersReady || !sawLoad || !sawRenderAfterLoad || paintFrame !== null) return;
+      paintFrame = window.requestAnimationFrame(() => {
+        paintFrame = null;
+        if (active && attemptRef.current === effectAttempt && layersReady && sawLoad && sawRenderAfterLoad) {
+          setPaintedAttempt(effectAttempt);
+        }
+      });
+    };
     map.on("error", (event) => {
       if (!basemapLoaded && isBasemapError(event)) {
+        restoreFocusAfterMapFailureRef.current ||= navigationControlsContainFocus(containerRef.current);
         setStyleFailed(true);
         trackException("map_style_or_tile_failure", false);
       }
     });
     map.once("load", () => {
       basemapLoaded = true;
+      sawLoad = true;
+      map.triggerRepaint();
+      schedulePaintedState();
+    });
+    map.on("render", () => {
+      if (!sawLoad) return;
+      sawRenderAfterLoad = true;
+      schedulePaintedState();
     });
     // The railway layers need only the parsed style, not the basemap tiles, so
     // they are added on "style.load" while the basemap is still loading.
@@ -628,7 +683,8 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
         return;
       }
       initialised = true;
-      fitNetworkOverview(map, initialServices);
+      layersReady = true;
+      schedulePaintedState();
       attachStationPopup(map);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
@@ -642,6 +698,8 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
     });
 
     return () => {
+      active = false;
+      if (paintFrame !== null) window.cancelAnimationFrame(paintFrame);
       for (const query of attributionQueries) query.removeEventListener("change", onAttributionQueryChange);
       watchAttribution(false);
       exposeMapForE2E(null);
@@ -663,6 +721,7 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
   const previewOriginRef = useRef<Position | null>(position);
   previewOriginRef.current = position;
   const previewFitRef = useRef<{ map: MapLibreMap; signature: string } | null>(null);
+  const overviewModeRef = useRef<{ map: MapLibreMap; mode: RailwayMapMode } | null>(null);
   useEffect(() => {
     if (!loadedMap) return;
     const headingMarker = createHeadingMarker(loadedMap);
@@ -699,10 +758,26 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
 
   useEffect(() => {
-    if (loadedMap && overviewKey !== undefined && data.services.ok) {
-      fitNetworkOverview(loadedMap, initialServices);
+    if (mode !== "title" || !loadedMap || !data.services.ok) return;
+    const targetService = services.find((service) => service.id === targetServiceId);
+    fitTitleService(loadedMap, targetService);
+  }, [loadedMap, layersRevision, mode, targetServiceId, services, cameraLayoutRevision, data.services]);
+
+  useEffect(() => {
+    if (!loadedMap) return;
+    const previousOverviewMode = overviewModeRef.current;
+    const enteringGame = previousOverviewMode?.map !== loadedMap || previousOverviewMode.mode !== "game";
+    if (mode !== "game") {
+      overviewModeRef.current = { map: loadedMap, mode };
+      return;
     }
-  }, [loadedMap, overviewKey, initialServices]);
+    if (!data.services.ok) return;
+    overviewModeRef.current = { map: loadedMap, mode };
+    // Fit once when entering game, then only for an explicit overview request.
+    // GameApp clears overviewKey after turn zero; that is not a new request.
+    if (!enteringGame && overviewKey === undefined) return;
+    fitNetworkOverview(loadedMap, initialServices);
+  }, [loadedMap, mode, overviewKey, initialServices, data.services]);
 
   const highlightedServiceId = progress?.highlightedServiceId;
   useEffect(() => {
@@ -717,16 +792,22 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
 
   const followEnabled = follow?.enabled ?? false;
   const immediate = follow?.immediate ?? false;
+  const trackCameraLayout = mode === "title" || (mode === "game" && (followEnabled || previewOpen));
   const handledCameraLayoutRevisionRef = useRef(cameraLayoutRevision);
   // The camera layout last applied by a follow move; null forces the next
   // observed layout to be applied even if the marker is already centred.
   const appliedCameraLayoutRef = useRef<string | null>(null);
   useCameraLayoutObserver(
-    followEnabled || previewOpen ? loadedMap : null,
+    trackCameraLayout ? loadedMap : null,
     panelKey,
     () => { appliedCameraLayoutRef.current = null; },
     () => {
       if (!loadedMap) return;
+      if (mode === "title") {
+        setCameraLayoutRevision((revision) => revision + 1);
+        return;
+      }
+      if (mode !== "game") return;
       if (previewOpen) {
         setCameraLayoutRevision((revision) => revision + 1);
         return;
@@ -736,11 +817,15 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
       if (cameraLayoutKey(loadedMap) === appliedCameraLayoutRef.current) return;
       setCameraLayoutRevision((revision) => revision + 1);
     },
-    previewOpen,
-    candidatesKey,
+    mode === "game" && previewOpen,
+    mode === "game" ? candidatesKey : "",
   );
   useEffect(() => {
-    if (!loadedMap) return;
+    if (!loadedMap || mode === "clear") return;
+    if (mode === "title") {
+      previewFitRef.current = null;
+      return;
+    }
     if (!previewOpen) {
       const previousFit = previewFitRef.current;
       previewFitRef.current = null;
@@ -760,21 +845,23 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
       previousSignature,
     );
     if (signature !== null) previewFitRef.current = { map: loadedMap, signature };
-  }, [loadedMap, previewOpen, panelKey, candidatesKey, previewOriginKey, cameraLayoutRevision]);
+  }, [loadedMap, mode, previewOpen, panelKey, candidatesKey, previewOriginKey, cameraLayoutRevision]);
   // Declared before the camera effect: re-enabling following clears the
   // gesture flag before the camera recentres.
   useEffect(() => {
+    if (mode !== "game") return;
     if (followEnabled) userMovedRef.current = false;
-  }, [followEnabled]);
+  }, [mode, followEnabled]);
   useEffect(() => {
-    if (!loadedMap || !followEnabled || previewOpen || userMovedRef.current || !position) return;
+    if (mode !== "game" || !loadedMap || !followEnabled || previewOpen || userMovedRef.current || !position) return;
     if (recentre(loadedMap, position, immediate)) {
       appliedCameraLayoutRef.current = cameraLayoutKey(loadedMap);
     }
-  }, [loadedMap, followEnabled, previewOpen, position, immediate]);
+  }, [loadedMap, mode, followEnabled, previewOpen, position, immediate]);
   // Layout changes only: re-checked here because a revision queued before a
   // follow move applied the same layout is stale by the time it renders.
   useEffect(() => {
+    if (mode !== "game") return;
     if (handledCameraLayoutRevisionRef.current === cameraLayoutRevision) return;
     if (!loadedMap) return;
     if (previewOpen) {
@@ -787,18 +874,44 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
     if (layoutKey === appliedCameraLayoutRef.current) return;
     recentre(loadedMap, position, immediate, true);
     appliedCameraLayoutRef.current = layoutKey;
-  }, [loadedMap, followEnabled, previewOpen, position, immediate, cameraLayoutRevision]);
+  }, [loadedMap, mode, followEnabled, previewOpen, position, immediate, cameraLayoutRevision]);
 
   const retry = () => {
     setStyleFailed(false);
+    setPaintedAttempt(null);
     setAttempt((count) => count + 1);
   };
+
+  const showNavigationControls = mode === "game" && loadedMap !== null && !styleFailed && !unsupported;
+  const showTitlePlaceholder = mode === "title" && (paintedAttempt !== attempt || styleFailed || unsupported);
+  useEffect(() => {
+    if (!loadedMap || !showNavigationControls) return;
+    const navigationControl = new NavigationControl({ showCompass: false });
+    loadedMap.addControl(navigationControl);
+    return () => {
+      if (loadedMap.hasControl(navigationControl)) loadedMap.removeControl(navigationControl);
+    };
+  }, [loadedMap, showNavigationControls]);
+  useLayoutEffect(() => {
+    if (!styleFailed || !restoreFocusAfterMapFailureRef.current) return;
+    restoreFocusAfterMapFailureRef.current = false;
+    const retryButton = document.querySelector<HTMLButtonElement>(".map-error[role='alert'] button");
+    if (retryButton) {
+      retryButton.focus();
+      return;
+    }
+    const panel = document.querySelector<HTMLElement>(".game-panel");
+    if (panel) {
+      if (!panel.hasAttribute("tabindex")) panel.tabIndex = -1;
+      panel.focus();
+    }
+  }, [styleFailed]);
 
   return (
     <>
       <div inert={inert}>
         <div ref={containerRef} className="map-container" />
-        <div className="map-overview" aria-label="地図表示範囲">
+        {showNavigationControls && <div className="map-overview" aria-label="地図表示範囲">
           <button type="button" disabled={!loadedMap} onClick={() => {
             if (!loadedMap || !data.services.ok) return;
             userMovedRef.current = true;
@@ -811,8 +924,9 @@ export function RailwayMap({ data, presentation, progress, markerBearing: displa
             onUserCameraMoveRef.current?.();
             fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
           }}>目標路線</button>
-        </div>
+        </div>}
       </div>
+      {showTitlePlaceholder && <TitleMapPlaceholder />}
       {unsupported && (
         <div className="map-error" role="status">
           <p>

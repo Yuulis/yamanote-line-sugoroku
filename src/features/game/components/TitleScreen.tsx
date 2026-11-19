@@ -1,22 +1,28 @@
 import type { Manifest } from "../../../types/data";
 import type { GameState } from "../../../types/network";
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CC_BY_LICENSE_NAME, CC_BY_URL, safeExternalUrl } from "../../map/attribution";
 import { MAP_CREDITS } from "../../map/mapConfig";
 import type { RailwayNetwork } from "../engine";
 import { type SaveLookup, saveProblemMessage } from "../store/persistence";
-import { stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
+import { buildResumePresentation } from "../resumePresentation";
+import type { RulesGuideModel } from "../rulesGuide";
+import { PhraseText } from "./PhraseText";
+import { RulesGuide } from "./RulesGuide";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import type { EditionId, EditionRegistry } from "../../editions/types";
 import { EditionPicker } from "./EditionPicker";
 import { isAnalyticsOptedOut, setAnalyticsOptOut } from "../../analytics/analytics";
 
+type TitleView = "title" | "credits" | "rules";
+
 interface TitleScreenProps {
   manifest: Manifest | null;
   /** Null when the game cannot start (see `unavailableReason`). */
   network: RailwayNetwork | null;
+  requiredIds?: ReadonlySet<string>;
   presentation?: PresentationResolver;
   display?: EditionDisplay;
   editions?: EditionRegistry;
@@ -25,6 +31,13 @@ interface TitleScreenProps {
   focusPicker?: boolean;
   onPickerFocusRestored?: () => void;
   loading?: boolean;
+  /** Shared rules body; the 遊び方 button is not rendered without it. */
+  rulesModel?: RulesGuideModel;
+  /** Keep the loading host mounted while the title rules are open. */
+  onRulesViewChange?: (open: boolean) => void;
+  /** One-shot focus handoff after a loading rules visit. */
+  initialTitleFocus?: "rules-trigger";
+  onInitialTitleFocusApplied?: () => void;
   saveLookup: SaveLookup | null;
   /** Why the game cannot start (data failed to load); blocks starting. */
   unavailableReason: string | null;
@@ -43,21 +56,26 @@ const PRIVACY_POLICY_URL = `${import.meta.env.BASE_URL}privacy.html`;
 const REPOSITORY_URL = "https://github.com/Yuulis/yamanote-line-sugoroku";
 const ISSUES_URL = `${REPOSITORY_URL}/issues`;
 const FONT_LICENSE_URL = "https://github.com/Yuulis/yamanote-line-sugoroku/blob/main/brand/OFL.txt";
-
-function resumeLabel(game: GameState, network: RailwayNetwork, presentation?: PresentationResolver): string {
-  if (game.status === "completed") return `クリア結果を見る（${game.turn}ターンでクリア）`;
-  return `つづきから（${game.turn}ターン目・${stationName(network, game.currentStationId, presentation)}）`;
-}
+const NO_REQUIRED_IDS: ReadonlySet<string> = new Set();
+const RULES_ID_PREFIX = "title-rules";
+const RULES_TITLE_ID = "rules-title";
+const MAIN_LABEL_ID: Readonly<Record<TitleView, string>> = {
+  title: "game-title",
+  credits: "credits-title",
+  rules: RULES_TITLE_ID,
+};
 
 function SaveSection({
   saveLookup,
   network,
+  requiredIds,
   presentation,
   onResume,
   onDeleteSave,
 }: Pick<TitleScreenProps, "saveLookup" | "onResume" | "onDeleteSave" | "presentation"> & {
   network: RailwayNetwork;
-}) {
+  requiredIds: ReadonlySet<string>;
+}): React.JSX.Element | null {
   if (!saveLookup || saveLookup.kind === "none") return null;
   if (saveLookup.kind === "unavailable") {
     return (
@@ -77,15 +95,16 @@ function SaveSection({
     );
   }
   const { game } = saveLookup;
+  const resume = buildResumePresentation(game, network, requiredIds, presentation);
   return (
-    <>
+    <div className="title-screen__resume">
       <button type="button" className="button-primary" onClick={() => onResume(game)}>
-        {resumeLabel(game, network, presentation)}
+        <PhraseText text={resume.label} />
       </button>
-      <button type="button" onClick={onDeleteSave}>
-        セーブを削除
+      <button type="button" className="title-screen__resume-delete" onClick={onDeleteSave}>
+        <PhraseText text="セーブを削除" />
       </button>
-    </>
+    </div>
   );
 }
 
@@ -166,33 +185,70 @@ function Credits({ manifest, onBack }: { manifest: Manifest | null; onBack: () =
   );
 }
 
+/** Rules sub-screen: the host owns the h1 and the scroll container; the body is shared with the in-game dialog. */
+function TitleRules({ model, onBack }: { model: RulesGuideModel; onBack: () => void }): React.JSX.Element {
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  useLayoutEffect(() => { headingRef.current?.focus({ preventScroll: true }); }, []);
+  return (
+    <section className="title-screen__rules-screen" aria-labelledby={RULES_TITLE_ID}>
+      <h1 ref={headingRef} id={RULES_TITLE_ID} tabIndex={-1}>遊び方</h1>
+      <div className="title-screen__rules-body" tabIndex={0}>
+        <RulesGuide model={model} idPrefix={RULES_ID_PREFIX} />
+      </div>
+      <button type="button" onClick={onBack}>タイトルへ戻る</button>
+    </section>
+  );
+}
+
 /** Start screen (spec 6.1): title, rules, start / resume, credits. */
-export function TitleScreen(props: TitleScreenProps) {
+export function TitleScreen(props: TitleScreenProps): React.JSX.Element {
   const { network, presentation, saveLookup, unavailableReason, notice } = props;
   const display = props.display ?? EDITIONS[0]!.display;
   const headingRef = useRef<HTMLHeadingElement>(null);
-  const [showCredits, setShowCredits] = useState(false);
+  const [view, setView] = useState<TitleView>("title");
   const creditsButtonRef = useRef<HTMLButtonElement>(null);
-  const creditsWasOpen = useRef(false);
+  const rulesButtonRef = useRef<HTMLButtonElement>(null);
+  const initialTitleFocusApplied = useRef(false);
+  const previousView = useRef<TitleView>("title");
   useEffect(() => {
-    if (!showCredits) return;
+    if (view === "title") return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setShowCredits(false);
+      if (event.key !== "Escape") return;
+      if (view === "rules") props.onRulesViewChange?.(false);
+      setView("title");
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showCredits]);
+  }, [view, props.onRulesViewChange]);
   useLayoutEffect(() => {
-    if (creditsWasOpen.current && !showCredits) creditsButtonRef.current?.focus({ preventScroll: true });
-    creditsWasOpen.current = showCredits;
-  }, [showCredits]);
+    const returned = view === "title" && previousView.current !== "title";
+    if (returned) (previousView.current === "rules" ? rulesButtonRef : creditsButtonRef).current?.focus({ preventScroll: true });
+    previousView.current = view;
+  }, [view]);
   useLayoutEffect(() => {
+    if (props.initialTitleFocus === "rules-trigger" && !initialTitleFocusApplied.current) {
+      initialTitleFocusApplied.current = true;
+      rulesButtonRef.current?.focus({ preventScroll: true });
+      props.onInitialTitleFocusApplied?.();
+      return;
+    }
+    if (initialTitleFocusApplied.current) return;
     if (props.focusOnMount) headingRef.current?.focus({ preventScroll: true });
-  }, [props.focusOnMount]);
+  }, [props.focusOnMount, props.initialTitleFocus, props.onInitialTitleFocusApplied]);
+  const openRules = (): void => {
+    props.onRulesViewChange?.(true);
+    setView("rules");
+  };
+  const closeRules = (): void => {
+    props.onRulesViewChange?.(false);
+    setView("title");
+  };
+  const activeView: TitleView = view === "rules" && !props.rulesModel ? "title" : view;
   return (
-    <main className="title-screen" aria-labelledby={showCredits ? "credits-title" : "game-title"}>
+    <main className="title-screen" aria-labelledby={MAIN_LABEL_ID[activeView]}>
       <div className="title-screen__card">
-        {showCredits ? <Credits manifest={props.manifest} onBack={() => setShowCredits(false)} /> : <>
+        {activeView === "credits" ? <Credits manifest={props.manifest} onBack={() => setView("title")} />
+          : activeView === "rules" && props.rulesModel ? <TitleRules model={props.rulesModel} onBack={closeRules} /> : <>
         <h1 ref={headingRef} id="game-title" className="title-screen__title" tabIndex={-1}>
           {display.logoUrl
             ? <img className="title-screen__logo" src={display.logoUrl} alt={display.title} width={1200} height={300} />
@@ -211,10 +267,10 @@ export function TitleScreen(props: TitleScreenProps) {
         )}
         {props.loading && <p className="title-screen__loading" role="status">読み込み中…</p>}
         {!props.loading && display.ruleParagraphs.map((paragraph, paragraphIndex) => (
-          <p key={paragraphIndex}>
+          <p key={paragraphIndex} className="title-screen__rule">
             {paragraph.map((part, partIndex) => typeof part === "string"
-              ? <Fragment key={partIndex}>{part}</Fragment>
-              : <strong key={partIndex}>{part.strong}</strong>)}
+              ? <PhraseText key={partIndex} text={part} />
+              : <strong key={partIndex}><PhraseText text={part.strong} /></strong>)}
           </p>
         ))}
         {unavailableReason && (
@@ -232,6 +288,7 @@ export function TitleScreen(props: TitleScreenProps) {
             <SaveSection
               saveLookup={saveLookup}
               network={network}
+              requiredIds={props.requiredIds ?? NO_REQUIRED_IDS}
               presentation={presentation}
               onResume={props.onResume}
               onDeleteSave={props.onDeleteSave}
@@ -246,7 +303,10 @@ export function TitleScreen(props: TitleScreenProps) {
             はじめから
           </button>
         </div>}
-        <button ref={creditsButtonRef} type="button" className="title-screen__credits-button" onClick={() => setShowCredits(true)}>クレジット</button>
+        {props.rulesModel && (
+          <button ref={rulesButtonRef} type="button" className="title-screen__rules-button title-screen__credits-button" onClick={openRules}>遊び方</button>
+        )}
+        <button ref={creditsButtonRef} type="button" className="title-screen__credits-button" onClick={() => setView("credits")}>クレジット</button>
         <p className="title-screen__version">v{__APP_VERSION__}</p>
         </>}
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type RefObject } from "react";
 import { PRESENTATION_LEVELS, type PresentationLevel } from "../gameSettings";
+import type { OpenRules } from "../rulesGuide";
 import { GameLegend, type LegendLine } from "./GameLegend";
 
 const MENU_ICON_SIZE = 16;
@@ -25,6 +26,8 @@ export interface GameMenuProps {
   onToggleGroup: (groupId: string, checked: boolean) => void;
   onSetOperator: (operatorId: string, checked: boolean) => void;
   onShowAll: () => void;
+  /** Opens the in-game rules; the button renders only when supplied. */
+  onOpenRules?: OpenRules;
 }
 
 /** True while a native `<dialog>` is open: it owns Escape before any disclosure or draft handler. */
@@ -53,6 +56,7 @@ export function GameMenu({
   onToggleGroup,
   onSetOperator,
   onShowAll,
+  onOpenRules,
 }: GameMenuProps): React.JSX.Element {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const regionId = useId();
@@ -139,6 +143,8 @@ export function GameMenu({
           <button type="button" onClick={startNewGame}>新規</button>
           <button type="button" onClick={showTitle}>タイトル</button>
         </div>
+        {onOpenRules && <button type="button" className="rules-opener rules-opener--menu"
+          onClick={(event) => onOpenRules(undefined, event.currentTarget)}>遊び方</button>}
         <GameLegend
           lines={lines}
           targetColor={targetColor}
