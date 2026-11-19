@@ -134,7 +134,7 @@ jobs:
             *) scope=quick ;;
           esac
           if [ "$scope" = full ]; then
-            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium","shard_index":1,"shard_total":2},{"project":"desktop-chromium","browser":"chromium","shard_index":2,"shard_total":2},{"project":"phone-chromium","browser":"chromium"},{"project":"desktop-firefox","browser":"firefox"},{"project":"desktop-webkit","browser":"webkit","shard_index":1,"shard_total":3},{"project":"desktop-webkit","browser":"webkit","shard_index":2,"shard_total":3},{"project":"desktop-webkit","browser":"webkit","shard_index":3,"shard_total":3}]}'
+            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium","shard_index":1,"shard_total":2},{"project":"desktop-chromium","browser":"chromium","shard_index":2,"shard_total":2},{"project":"phone-chromium","browser":"chromium"},{"project":"desktop-firefox","browser":"firefox"}]}'
           else
             matrix='{"include":[{"project":"desktop-chromium","browser":"chromium","shard_index":1,"shard_total":2},{"project":"desktop-chromium","browser":"chromium","shard_index":2,"shard_total":2}]}'
           fi
@@ -196,23 +196,23 @@ jobs:
           echo "Docs-only change against $BASE_REF ($baseline); E2E legs are skipped:"
           echo "$changed"
 
-  # One leg per Playwright project (decision A, 2026-10-20): same tests,
-  # 2 workers, retries, xvfb. Which legs run comes from `changes` (decision D):
-  # all four for full scope, desktop-chromium only for quick scope.
+  # Host-runner legs retain their existing setup: Chromium, phone Chromium,
+  # and Firefox use the matrix below. Full scope adds the separate WebKit
+  # container job; quick scope still runs desktop Chromium only.
   # desktop-chromium is split into two shards in both scopes (2026-11-12):
   # one leg took 9-11 min; two shards were estimated at ~3.2 / 5.8 min of tests.
-  # desktop-webkit is split into three Playwright shards (issue #83 follow-up,
-  # 2026-11-12): its tests run ~1.7x slower than Chromium, one leg averaged
-  # 13-14 min and hit the 20 min timeout twice (2026-11-10). --shard splits by
-  # test count, not time; two shards were estimated at ~5.6 and ~9.5 min of
-  # tests, three at ~3.9 / 4.7 / 6.5. Each shard keeps the same 2 workers.
+  # desktop-webkit remains split into three Playwright shards (issue #83
+  # follow-up, 2026-11-12): --shard splits by test count, not time; two shards
+  # were estimated at ~5.6 / ~9.5 min of tests, three at ~3.9 / 4.7 / 6.5.
+  # Each shard keeps the same 2 workers and uses the official Playwright image
+  # below, which includes its browser and OS dependencies.
   # Runs in parallel with `frontend`: it builds its own e2e bundle.
   e2e-matrix:
     name: E2E leg (${{ matrix.project }}${{ matrix.shard_index && format(' {0}/{1}', matrix.shard_index, matrix.shard_total) || '' }})
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
-    # Pinned: ubuntu-latest moved to ubuntu-26.04 (2026-10-30) and Playwright's
-    # WebKit build there fails to load libicudata.so.74.
+    # Keep the current runner unchanged for the Chromium, phone, and Firefox
+    # legs. WebKit uses its own Noble-based Playwright container below.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -236,9 +236,9 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ env.ImageOS }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
-      # OS dependencies are not cached, so they are always installed; a cache
-      # hit only skips the browser download. Playwright always adds its
-      # "tools" group (xvfb, CJK fonts) whichever browser is named.
+      # Host-runner legs install their OS dependencies on each run; browser
+      # cache hits only skip downloads. The WebKit container has its browser,
+      # OS dependencies, xvfb, and CJK fonts preinstalled.
       - name: Install browser and OS dependencies
         env:
           BROWSER: ${{ matrix.browser }}
@@ -285,6 +285,67 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # WebKit runs in the official image matching @playwright/test. Splitting it
+  # into its own job keeps the other legs on their unchanged host setup and
+  # avoids relying on an empty matrix container expression to select a host.
+  e2e-webkit:
+    name: E2E leg (desktop-webkit ${{ matrix.shard_index }}/3)
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true' && needs.changes.outputs.scope == 'full'
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard_index: [1, 2, 3]
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check Playwright image version
+        run: |
+          image_version=1.63.0
+          package_version="$(node -p "require('@playwright/test/package.json').version")"
+          if [[ "$package_version" != "$image_version" ]]; then
+            echo "::error::Playwright image v${image_version}-noble does not match @playwright/test ${package_version}. Bump the image tag in the same PR as the Playwright package."
+            exit 1
+          fi
+      # The image already contains the matching browser at /ms-playwright and
+      # its OS dependencies. Browser downloads are disabled above; do not run
+      # `playwright install` in this job.
+      - name: Run E2E tests
+        env:
+          PROJECT: desktop-webkit
+          SHARD_INDEX: ${{ matrix.shard_index }}
+          SHARD_TOTAL: 3
+        run: |
+          args=(--project="$PROJECT" --shard="$SHARD_INDEX/$SHARD_TOTAL")
+          xvfb-run --auto-servernum npm run test:e2e -- "${args[@]}"
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-artifacts-desktop-webkit-${{ matrix.shard_index }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   # Full scope keeps the required status-check context "E2E (Playwright)";
   # quick scope reports "E2E quick (desktop-chromium)" (decision D). The name
   # uses only the github context, so it is fixed even if `changes` fails, and
@@ -295,7 +356,7 @@ jobs:
   # fails it.
   e2e:
     name: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master'))) && 'E2E (Playwright)' || 'E2E quick (desktop-chromium)' }}
-    needs: [changes, e2e-matrix]
+    needs: [changes, e2e-matrix, e2e-webkit]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -304,19 +365,26 @@ jobs:
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
           RUN_E2E: ${{ needs.changes.outputs.e2e }}
+          SCOPE: ${{ needs.changes.outputs.scope }}
           MATRIX_RESULT: ${{ needs.e2e-matrix.result }}
+          WEBKIT_RESULT: ${{ needs.e2e-webkit.result }}
         run: |
-          echo "changes=$CHANGES_RESULT e2e=$RUN_E2E legs=$MATRIX_RESULT"
+          echo "changes=$CHANGES_RESULT e2e=$RUN_E2E scope=$SCOPE matrix=$MATRIX_RESULT webkit=$WEBKIT_RESULT"
           if [ "$CHANGES_RESULT" != success ]; then
             echo "::error::Docs-only detection did not succeed ($CHANGES_RESULT)"
             exit 1
           fi
-          if [ "$RUN_E2E" = true ] && [ "$MATRIX_RESULT" = success ]; then
-            exit 0
+          if [ "$RUN_E2E" = true ]; then
+            if [ "$MATRIX_RESULT" = success ] && [ "$SCOPE" = full ] && [ "$WEBKIT_RESULT" = success ]; then
+              exit 0
+            fi
+            if [ "$MATRIX_RESULT" = success ] && [ "$SCOPE" = quick ] && [ "$WEBKIT_RESULT" = skipped ]; then
+              exit 0
+            fi
           fi
-          if [ "$RUN_E2E" = false ] && [ "$MATRIX_RESULT" = skipped ]; then
+          if [ "$RUN_E2E" = false ] && [ "$MATRIX_RESULT" = skipped ] && [ "$WEBKIT_RESULT" = skipped ]; then
             echo "::notice::Docs-only change: E2E legs were skipped"
             exit 0
           fi
-          echo "::error::E2E legs ended '$MATRIX_RESULT' (e2e=$RUN_E2E)"
+          echo "::error::E2E legs ended matrix='$MATRIX_RESULT', webkit='$WEBKIT_RESULT' (e2e=$RUN_E2E, scope=$SCOPE)"
           exit 1
