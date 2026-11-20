@@ -351,7 +351,7 @@ describe("turn moment item publication", () => {
     expect(turnMomentAnnouncement({ ...common, stage: "tumble" })).toBe("サイコロを振っています。移動の準備中です。");
     expect(turnMomentAnnouncement({ ...common, stage: "waiting-record" })).toBe("");
     expect(turnMomentAnnouncement({ ...common, stage: "stamps" })).toBe("移動の準備中です。");
-    expect(turnMomentAnnouncement({ ...common, stage: "movement" })).toBe("出目は1マス 遅延です。移動中です。スキップできます。");
+    expect(turnMomentAnnouncement({ ...common, stage: "movement" })).toBe("出目は1マス 遅延です。移動中です。演出をスキップできます。");
     expect(turnMomentAnnouncement({ ...common, stage: "arrival" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
     expect(turnMomentAnnouncement({ ...common, stage: "lottery-flip" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
     expect(turnMomentAnnouncement({ ...common, stage: "lottery-settle" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");

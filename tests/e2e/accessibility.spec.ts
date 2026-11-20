@@ -90,7 +90,7 @@ test.describe("game keyboard shortcuts", () => {
     await openGameMenu(page);
     const panel = gamePanel(page);
     const hint = panel.locator(".game-panel__shortcut-hint");
-    await expect(hint).toHaveText("Space / Enter: サイコロ　S / Escape: スキップ");
+    await expect(hint).toHaveText("Space / Enter：サイコロを振る　S / Escape：演出をスキップ");
     expect(await hint.evaluate((element) => (element as HTMLElement).tabIndex)).toBe(-1);
     await panel.getByRole("heading", { name: "山手線すごろく" }).focus();
     const initial = await readSaveText(page);

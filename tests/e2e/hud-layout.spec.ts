@@ -162,7 +162,7 @@ test("fits both action labels on one line from phone to compact landscape", { ta
       };
     }));
     const labels = await measureLabels();
-    expect(labels.map(({ text }) => text)).toEqual(["サイコロを振る", "スキップ"]);
+    expect(labels.map(({ text }) => text)).toEqual(["サイコロを振る", "演出をスキップ"]);
     expect(labels.every(({ widthFits, lines }) => widthFits && lines === 1), `${viewport.width}x${viewport.height}: ${JSON.stringify(labels)}`).toBe(true);
     expect(await actions.evaluate((element) => getComputedStyle(element).height)).toBe("56px");
     if (viewport.width <= 600) {
@@ -171,4 +171,5 @@ test("fits both action labels on one line from phone to compact landscape", { ta
       expect(Math.abs(columns[0]! - columns[1]!)).toBeLessThanOrEqual(1);
     }
   }
+  await expect(actions.getByRole("button", { name: "演出をスキップ", exact: true })).toBeDisabled();
 });

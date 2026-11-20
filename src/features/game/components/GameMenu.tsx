@@ -153,7 +153,7 @@ export function GameMenu({
           onSetOperator={onSetOperator}
           onShowAll={onShowAll}
         />
-        <p className="game-panel__shortcut-hint">Space / Enter: サイコロ　S / Escape: スキップ</p>
+        <p className="game-panel__shortcut-hint">Space / Enter：サイコロを振る　S / Escape：演出をスキップ</p>
       </section>
     </>
   );

@@ -12,7 +12,7 @@ Process:
 - Branch: `feature/first-play-guide` (from develop 3b048f4, v0.17.1). Flow: feature → PR → develop → PR → master. The release PR lists `Closes #67` and `Closes #113`.
 - Pacing: **stop after every step** for user review (user 2026-11-20); verify, review, commit, push, check CI per step.
 - Roles: Codex Luna xhigh implements (`--model "${CODEX_MODEL_LUNA:-gpt-6-luna}" --config model_reasoning_effort=xhigh --timeout 2400`), Sol low reviews (Sol = `gpt-6.2-sol` from 2026-11-20, user; pass `--model gpt-6.2-sol` in a session started before commit f58155d), the lead verifies, commits, pushes and checks CI.
-- Local E2E: targeted specs only, `--workers=2`. The full 4-project matrix runs in CI (branch push = desktop-chromium; PR = full matrix; phone = `@layout`).
+- Lead verification (user 2026-11-20, from Step 2): the implementer runs the step's acceptance commands; the lead re-runs only typecheck + full vitest + build, `verify_delegation.py`, and phone `@layout` for the affected specs. Desktop E2E is left to the implementer's run plus branch-push CI (desktop-chromium). Local E2E: targeted specs only, `--workers=2`. The full 4-project matrix runs in CI (branch push = desktop-chromium; PR = full matrix; phone = `@layout`).
 - Hard constraints: presentation only (no engine / RNG / save format / `src/types/network.ts` / public / data / deps). `lint` is not configured. Phone HUD 252px at 320x568.
 - User decisions 2026-11-20: DESIGN.md rows dated 2026-11-20; off-target hint is one sentence and only shown where it applies (plan Revision 3).
 
@@ -21,7 +21,8 @@ Process:
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
 | 1 remove おまかせ (#113) | done | (this commit) | Luna xhigh; first run killed by the host for low memory, resumed from the partial tree (backup ref `refs/backup/fpg-s1-partial`). −2,597/+203 over 31 files; autoRoll.ts/useAutoRoll.ts and 7 auto-roll suites removed with a full case-porting table (`.claude/logs/codex/20261120T072225Z-fpg-s1-resume.md`); manual roll guard keyed by session:turn:decisionRevision; legacy autoRoll settings field loads and is not written back. Sol (gpt-6.2-sol) low REQUEST_CHANGES: Space default cancelled on a rejected double roll; Escape-close of the item-use dialog lost; vacuous dice-position compare — fixed (red-first unit test, parameterised E2E), re-review APPROVE. Lead: typecheck/build pass; vitest 2263 passed / 1 skipped; desktop E2E turn-result-card+first-turn-notice+accessibility 59, ui-pop+accessibility 45 + 1 skip; phone @layout hud-layout+layout 5. Screenshots `fpg-s1-*.png`. |
+| 2 skip labels + roll-adjustment dialog | done | (this commit) | Luna xhigh (fast). Both skips read 「演出をスキップ」 (HUD native disabled kept; dialog skip kept, separated from 「そのまま続ける」 by a border); Escape sentence split from the caution and shown only under (pointer: fine); menu, rules guide, live announcements (「演出をスキップできます」) and docs/manual/tokyo-suburban/rules.md follow. 25 files; flagged 'weakened' assertions are 1:1 label replacements (checked). Sol (gpt-6.2-sol) low APPROVE, no findings. Lead: typecheck/build pass; vitest 2264 passed / 1 skipped; desktop E2E ui-pop-turn-moments+rules-guide+accessibility 87; phone @layout hud-layout+text-wrapping 10 + 1 skip. Screenshots `fpg-s2-{hud,adjust}-{desktop,phone}.png`. |
 
 ## Next
 
-Step 1 done; waiting for the user's review before Step 2 (skip labels + RollAdjustment).
+Steps 1-2 done; waiting for the user's review before Step 3 (first-play pure model, copy, storage).

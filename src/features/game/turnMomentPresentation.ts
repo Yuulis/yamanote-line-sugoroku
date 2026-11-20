@@ -440,7 +440,7 @@ function turnSegmentFlash(
   return { key: revealKey, featureIds, durationMs: attempt.policy.timing.flashMs };
 }
 
-const MOVING_ANNOUNCEMENT = "移動中です。スキップできます。";
+const MOVING_ANNOUNCEMENT = "移動中です。演出をスキップできます。";
 
 /** Movement copy of a presented turn: raw face plus published modifier wording, then the movement wording. */
 function movementAnnouncement(move: LastMove): string {

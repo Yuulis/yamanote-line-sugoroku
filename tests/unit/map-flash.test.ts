@@ -592,7 +592,7 @@ function banner(): string | null {
 
 function panelSkip(): HTMLButtonElement {
   return [...mounted!.container.querySelectorAll<HTMLButtonElement>(".game-panel button")]
-    .find((button) => button.textContent === "スキップ" && !button.closest("dialog"))!;
+    .find((button) => button.textContent === "演出をスキップ" && !button.closest("dialog"))!;
 }
 
 function flash(): SegmentFlashRequest | null {

@@ -136,7 +136,7 @@ describe("in-game rules entry points", () => {
     expect(document.activeElement).toBe(title);
 
     // Ends the tumble and the movement together, as the running presentation would on its own.
-    click("スキップ");
+    click("演出をスキップ");
     expect(dice().getAttribute("aria-disabled")).toBe("false");
     expect(document.activeElement).toBe(title);
     await closeRules();
@@ -149,7 +149,7 @@ describe("in-game rules entry points", () => {
     openRulesFromMenu();
     const title = rulesDialog()!.querySelector("h1");
     // The tumble ends under the rules: the adjustment is presented but its modal waits.
-    click("スキップ");
+    click("演出をスキップ");
     expect(mounted!.container.querySelector(".item-adjustment")).toBeNull();
     expect(document.activeElement).toBe(title);
 

@@ -2328,8 +2328,38 @@ button[aria-disabled="true"] {
 }
 
 .item-adjustment .dialog__actions button {
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 44px;
   width: 100%;
+}
+
+.item-adjustment .dialog__actions {
+  align-items: stretch;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+.item-adjustment__primary-actions,
+.item-adjustment__secondary-actions {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.item-adjustment__secondary-actions {
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid var(--color-border);
+}
+
+.item-adjustment__escape-hint {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .item-adjustment__escape-hint {
+    display: block;
+  }
 }
 
 /* Roll adjustment: a compact sheet anchored bottom-right so the map stays visible. Scoped to this dialog; the
@@ -2482,10 +2512,6 @@ button[aria-disabled="true"] {
   .item-adjustment__separator {
     font-size: 0;
     line-height: 0;
-  }
-
-  .item-adjustment .dialog__actions {
-    flex-wrap: nowrap;
   }
 
   .item-adjustment .dialog__actions button {

@@ -434,7 +434,7 @@ describe("S12 arrival and goal publication", () => {
     const moving = derive({ ...goal, phase: "animating" }, "waiting");
     expect(moving.phase).toBe("moving");
     // 77駅 is the rapid hop budget the HUD compact roll already shows during movement (the record moved 13 stations).
-    expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。スキップできます。");
+    expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。演出をスキップできます。");
     expect(moving.announcement).not.toMatch(/駅移動|使わず|到着|ゴール/);
     expect(moving.summaryTurn).toBeNull();
   });

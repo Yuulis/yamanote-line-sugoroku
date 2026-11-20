@@ -381,13 +381,13 @@ describe("GameApp publication lifecycle", () => {
     inject(moving); render(propsFor());
     expect(status()).toBe("");
     expect(mounted!.container.querySelector(".game-panel__roll")?.getAttribute("aria-disabled")).toBe("true");
-    expect([...mounted!.container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "スキップ")?.disabled).toBe(false);
+    expect([...mounted!.container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "演出をスキップ")?.disabled).toBe(false);
     const arrived = { ...moving, phase: "idle" as const, animation: null };
     inject(arrived); render(propsFor());
     const summary = "1ターン目：出目4、品川に到着。品川：山手線・テスト南線から抽選 → テスト南線 ／ 乗車方向は大森方面のみ。踏破 4/30";
     expect(status()).toBe(summary);
     expect(mounted!.container.querySelector<HTMLButtonElement>(".game-panel__roll")?.getAttribute("aria-disabled")).toBe("false");
-    expect([...mounted!.container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "スキップ")?.disabled).toBe(true);
+    expect([...mounted!.container.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "演出をスキップ")?.disabled).toBe(true);
     const next = reduceGameSession(arrived, { type: "roll", sessionId: 31, rngSeed: arrived.game.rngSeed, turn: 1 }, origin.game.config, network);
     inject(next); render(propsFor());
     expect(status()).toBe(summary);
@@ -881,12 +881,12 @@ function adjustmentDialog(): HTMLElement | null {
 }
 
 function dialogSkip(): HTMLButtonElement {
-  return [...adjustmentDialog()!.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "スキップ")!;
+  return [...adjustmentDialog()!.querySelectorAll<HTMLButtonElement>("button")].find((button) => button.textContent === "演出をスキップ")!;
 }
 
 function panelSkip(): HTMLButtonElement {
   return [...mounted!.container.querySelectorAll<HTMLButtonElement>(".game-panel button")]
-    .find((button) => button.textContent === "スキップ" && !button.closest("dialog"))!;
+    .find((button) => button.textContent === "演出をスキップ" && !button.closest("dialog"))!;
 }
 
 function press(element: Element): void {
@@ -1418,7 +1418,7 @@ describe("S12 arrival banner in GameApp", () => {
       toStationId: "fixture-omori", resolvedRide: { serviceId: "fixture-south", direction: 1 },
       landing: { serviceId: "fixture-south", direction: -1 }, itemEvents: [{ type: "pickup-retained", item: { kind: "rapid" } }] });
     // Movement copy: the raw face only (no stamps on this turn), never the hops, unused pips or the landing.
-    expect(status()).toBe("出目は4です。移動中です。スキップできます。");
+    expect(status()).toBe("出目は4です。移動中です。演出をスキップできます。");
     expect(banner()).toBeNull();
     finishMovement();
 

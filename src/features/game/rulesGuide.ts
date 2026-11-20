@@ -64,7 +64,7 @@ const TURN_COUNT_PATTERN = /\d+(?=ターン)/;
 
 const SHORTCUTS: readonly string[] = [
   "Space / Enter：サイコロを振る",
-  "S / Escape：移動の演出をスキップ",
+  "S / Escape：演出をスキップ",
   "Escape：選んだアイテムの選択を解除",
   "Escape：出目調整の画面で「そのまま」を選ぶ",
 ];
@@ -143,7 +143,7 @@ function controlsParagraphs(): readonly string[] {
   const levels = PRESENTATION_LEVELS.map(({ label }) => label).join(LABEL_SEPARATOR);
   return [
     `メニューの「速度」を押すと、移動の速さが切り替わります（${speeds}）。`,
-    `「演出」を押すと、演出の量が切り替わります（${levels}）。「スキップ」で、移動の演出を飛ばせます。`,
+    `「演出」を押すと、演出の量が切り替わります（${levels}）。「演出をスキップ」で、移動の演出を飛ばせます。`,
     "「追尾」をONにすると、地図が現在地を追いかけます。地図を手で動かすと、追尾はOFFになります。",
     "端末の設定で動きを減らしているときは、アニメーションは省略され、「速度」と「演出」は切り替えられません。",
   ];

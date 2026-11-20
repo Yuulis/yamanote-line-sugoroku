@@ -130,7 +130,7 @@ export function GameHud({
         >
           {animating ? "移動中…" : draftSelected ? "この内容でサイコロを振る" : "サイコロを振る"}
         </button>
-        <button type="button" className="game-panel__skip" onClick={onSkip} disabled={!canSkip}>スキップ</button>
+        <button type="button" className="game-panel__skip" onClick={onSkip} disabled={!canSkip}><PhraseText text="演出をスキップ" /></button>
       </div>
       {turnResult}
       {inventory}

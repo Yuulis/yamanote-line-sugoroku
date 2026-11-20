@@ -36,3 +36,17 @@ The HUD action row becomes dice + skip (skip label is NOT renamed in this step; 
 Acceptance commands: exactly those listed under Step 1 in the plan (typecheck, vitest, build, the listed E2E with
 --project=desktop-chromium --workers=2 and the phone @layout grep).
 ```
+
+## Step 2 — skip labels and the roll-adjustment dialog
+
+```
+Implement plan "Step 2 — スキップ表記と出目調整画面を整える" exactly (Step 1, the おまかせ removal, is committed: 2d36dc3).
+Both skip buttons (HUD and RollAdjustment) read 「演出をスキップ」; the HUD skip keeps its native disabled state when idle;
+the dialog keeps its skip, visually separated from 「そのまま続ける」. Split the Escape sentence from
+「出目を見た後はターンを取り消せません。」 and show it only under (pointer: fine). Menu/rules copy follows the new name
+(see the plan's Verified copy rows skip-label, skip-help, shortcut-help, adjustment-escape, adjustment-caution).
+Update exact-text lookups in existing tests to the new label instead of loosening them. Phone 2-column action row,
+56px height and HUD 252px at 320x568 stay; the longer label must fit (the plan allows PhraseText wrapping; no smaller font).
+Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
+Acceptance: exactly the commands under Step 2 in the plan (with the worker limits above).
+```

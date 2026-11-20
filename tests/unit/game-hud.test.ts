@@ -231,7 +231,7 @@ describe("GameHud", () => {
     try {
       const actions = mount.container.querySelector<HTMLElement>(".game-panel__actions")!;
       expect([...actions.querySelectorAll("button")].map((button) => button.textContent?.trim()))
-        .toEqual(["移動中…", "スキップ"]);
+        .toEqual(["移動中…", "演出をスキップ"]);
       expect(actions.querySelector(".game-panel__auto-roll")).toBeNull();
     } finally {
       mount.cleanup();
@@ -245,7 +245,7 @@ describe("GameHud", () => {
     const mount = mountReact(createElement(Harness, { value: initial }));
     try {
       const dice = mount.container.querySelector<HTMLButtonElement>(".game-panel__roll")!;
-      const skip = [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "スキップ")!;
+      const skip = [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "演出をスキップ")!;
       expect(skip.disabled).toBe(false);
       expect(dice.disabled).toBe(false);
       expect(dice.getAttribute("aria-disabled")).toBe("true");
@@ -291,7 +291,7 @@ describe("GameHud", () => {
     try {
       const clear = (): HTMLButtonElement => [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "選択を解除")!;
       const dice = mount.container.querySelector<HTMLButtonElement>(".game-panel__roll")!;
-      const skip = (): HTMLButtonElement => [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "スキップ")!;
+      const skip = (): HTMLButtonElement => [...mount.container.querySelectorAll("button")].find((button) => button.textContent === "演出をスキップ")!;
       expect([dice.getAttribute("aria-disabled"), clear().disabled, skip().disabled]).toEqual(["false", false, true]);
       act(() => mount.root.render(createElement(PanelHarness, { panel: { ...value,
         turnDisplay: { ...idle, canRoll: false, canSkip: true, itemUseLocked: true } } })));
@@ -361,7 +361,7 @@ describe("GameMenu", () => {
       const stopsBefore = region.querySelectorAll('button, a[href], input, select, textarea, summary, [tabindex]');
       dispatchReactEvent(mount.container.querySelector(".game-panel__menu-trigger")!, new MouseEvent("click", { bubbles: true }));
       const hint = region.querySelector<HTMLElement>(".game-panel__shortcut-hint")!;
-      expect(hint.textContent).toBe("Space / Enter: サイコロ　S / Escape: スキップ");
+      expect(hint.textContent).toBe("Space / Enter：サイコロを振る　S / Escape：演出をスキップ");
       expect(hint.tagName).toBe("P");
       expect(hint.tabIndex).toBe(-1);
       expect(hint.hasAttribute("tabindex")).toBe(false);
@@ -696,7 +696,7 @@ it("expires an ordinary toast in production GameApp without rendering HUD or leg
     expect(mount.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
     const resumedHudCount = renderCounts.hud;
     click("サイコロを振る");
-    click("スキップ");
+    click("演出をスキップ");
     const toast = mount.container.querySelector(".toast-host__toast");
     expect(toast?.textContent).toBe(expectedToast);
     const settledCounts = { ...renderCounts };

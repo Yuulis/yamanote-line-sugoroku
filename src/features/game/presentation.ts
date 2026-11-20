@@ -190,10 +190,10 @@ export function itemTurnAnnouncement(
   }
   const record = lastMove?.itemRecord;
   if (phase === "animating") {
-    if (!record || !lastMove) return "移動中です。スキップできます。";
+    if (!record || !lastMove) return "移動中です。演出をスキップできます。";
     const activations = record.itemEvents.filter((event) => event.type === "consumed" || event.type === "effect-activated");
     return [record.kind === "deadhead" ? "回送列車で移動します" : `出目は${lastRollText(lastMove, network, presentation)}です`,
-      ...itemEventTexts(activations, record.turn, network, presentation), "移動中です。スキップできます。"].join("。");
+      ...itemEventTexts(activations, record.turn, network, presentation), "移動中です。演出をスキップできます。"].join("。");
   }
   const draft = view.draft.items[0];
   if (draft) return `${ITEM_DESCRIPTIONS[draft.kind].name}を選択中。この内容で${draft.kind === "deadhead" ? "回送列車で移動できます" : "サイコロを振れます"}。`;
@@ -234,8 +234,8 @@ export function turnMomentAnnouncement(input: TurnMomentAnnouncementInput): stri
   if (stage === "stamps") return "移動の準備中です。";
   if (stage === "movement") {
     const roll = compactRollText(compactRollFor(session.lastMove));
-    if (roll === "—" || roll === "回送（サイコロなし）") return "回送列車で移動します。移動中です。スキップできます。";
-    return `出目は${roll}です。移動中です。スキップできます。`;
+    if (roll === "—" || roll === "回送（サイコロなし）") return "回送列車で移動します。移動中です。演出をスキップできます。";
+    return `出目は${roll}です。移動中です。演出をスキップできます。`;
   }
   if (stage === "arrival" || stage === "lottery-flip" || stage === "lottery-settle") {
     const move = session.lastMove;

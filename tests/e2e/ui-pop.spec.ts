@@ -394,7 +394,7 @@ test.describe("S25 failed-save toast expiry", () => {
     const failureToast = page.locator(".toast-host__toast", { hasText: "保存に失敗しました" });
     const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
     const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
-    const skip = gamePanel(page).getByRole("button", { name: "スキップ", exact: true });
+    const skip = gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true });
 
     await expect.poll(async () => await adjustment.isVisible() || await discard.isVisible()
       || await ordinaryToast.isVisible() || await skip.isEnabled()).toBe(true);

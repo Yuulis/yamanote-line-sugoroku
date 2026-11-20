@@ -241,7 +241,7 @@ describe("rules guide model", () => {
     expect(controls).toContain(ANIMATION_SPEEDS.map(({ label }) => label).join("→"));
     expect(controls).toContain(PRESENTATION_LEVELS.map(({ label }) => label).join("→"));
     expect(controls).not.toContain("おまかせ");
-    expect(controls).toContain("「スキップ」で、移動の演出を飛ばせます");
+    expect(controls).toContain("「演出をスキップ」で、移動の演出を飛ばせます。");
     expect(controls).toContain("動きを減らしているときは、アニメーションは省略され、「速度」と「演出」は切り替えられません");
     expect(controls).toContain("「追尾」");
   });
@@ -264,7 +264,7 @@ describe("rules guide model", () => {
     expect(text(model, "save")).toContain("タイトル画面の「つづきから」で再開できます");
     expect(model.shortcuts).toEqual([
       "Space / Enter：サイコロを振る",
-      "S / Escape：移動の演出をスキップ",
+      "S / Escape：演出をスキップ",
       "Escape：選んだアイテムの選択を解除",
       "Escape：出目調整の画面で「そのまま」を選ぶ",
     ]);
