@@ -228,3 +228,22 @@ Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`; never run 
 Acceptance: exactly the commands under Step 12 in the plan (with the worker limits above). When a step adds or touches
 HUD/panel controls, also run tests/e2e/ui-pop.spec.ts and tests/e2e/accessibility.spec.ts in full on desktop-chromium.
 ```
+
+## Step 13 — acceptance record and final checks
+
+```
+Implement plan "Step 13 — 決定記録と最終受入を完了する" (Steps 1-12 are committed; the latest is ca738df), EXCEPT the
+DESIGN.md update, which the lead does separately — do not edit .claude/docs/DESIGN.md.
+1. Fill the plan's retained-contract table with the ACTUAL test file + test name (+ the key assertion) for every row:
+   DESIGN row 244, 262, 272, #60, #68, #113, first-play eligibility/cancel. Write it as a new section
+   "## Step 13 acceptance record" at the end of .claude/docs/plans/first-play-guide-handoff.md (keep everything else).
+   If a row has no real covering assertion, add the minimal regression assertion in the owning spec (say which), never
+   loosen anything.
+2. Run `rg -n 'useAutoRoll|autoRoll|おまかせ' src tests docs/manual` and classify every hit (product code must have none;
+   allowed: absence assertions, the legacy-setting compatibility test, release notes/history docs). Record the result.
+3. Sync user-facing docs only where they describe changed behaviour: docs/manual (Japanese) — the skip label is already
+   done in Step 2; mention the first-play coach/hints and the removal of おまかせ only if the manual describes the play
+   controls at that level. No product behaviour changes in this step.
+4. Run the acceptance commands under Step 13 in the plan (Playwright `--workers=1` because of memory) plus
+   npm run typecheck, npx vitest run --maxWorkers=2, npm run build. Record results with counts in the acceptance record.
+```

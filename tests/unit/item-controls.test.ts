@@ -691,10 +691,12 @@ describe("item controls", () => {
     const mount = mountReact(createElement(RollAdjustment, { decision, onContinue }));
     mounted.push(mount);
     const dialog = mount.container.querySelector("dialog")!;
+    expect(dialog.open).toBe(true);
     const cancel = new Event("cancel", { cancelable: true });
     dispatchReactEvent(dialog, cancel);
     expect(cancel.defaultPrevented).toBe(true);
     expect(onContinue).toHaveBeenCalledWith(null);
+    expect(onContinue).toHaveBeenCalledTimes(1);
   });
 
   it("keeps the adjustment skip separate from continuing and splits its help from the caution", () => {
@@ -1059,13 +1061,15 @@ it("keeps exactly one game-panel status region in legacy mode", async () => {
   const network = buildRailwayNetwork(multiServiceInput());
   const game = createGame(multiConfig(), "legacy-status", network);
   const session = resumeSession(game, network);
+  const turnDisplay = displayFor(session, network);
   const mount = mountReact(createElement(GamePanel, {
-    network, lines: [], session, turnDisplay: displayFor(session, network),
+    network, lines: [], session, turnDisplay,
     requiredCount: 4, saveStatus: "saved", follow: true, speedLabel: "標準", presentationLevel: "all" as const, onCyclePresentation: vi.fn(), reducedMotion: false,
     onRoll: vi.fn(), onSkip: vi.fn(), onToggleFollow: vi.fn(), onCycleSpeed: vi.fn(), onNewGame: vi.fn(), onShowTitle: vi.fn(),
   }));
   mounted.push(mount);
   expect(mount.container.querySelectorAll(".game-panel [role=status]")).toHaveLength(1);
+  expect(mount.container.querySelector(".game-panel [role=status]")?.textContent).toBe(turnDisplay.announcement);
   expect(mount.container.querySelector(".game-panel__save")?.hasAttribute("role")).toBe(false);
   expect(mount.container.querySelector(".game-panel__save")?.textContent).toContain("セーブ: 自動保存済み");
   expect(mount.container.querySelector(".game-panel__save > button.save-status__trigger")).not.toBeNull();
