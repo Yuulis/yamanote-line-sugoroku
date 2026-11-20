@@ -116,7 +116,7 @@ describe("rules guide model", () => {
     const noHarmKinds = buildRulesGuide(itemPolicyWith({ harmfulKinds: [] }));
 
     expect(text(model, "items")).toContain("12.5%");
-    expect(text(model, "items")).toContain("拾ったアイテムのうち40%は不利なアイテムで、持ち物には入らず自動で発動します");
+    expect(text(model, "items")).toContain("拾ったアイテムのうち40%は不利なアイテムです。不利なアイテムは持ち物には入らず、それぞれ決まったタイミングで自動で効きます。");
     expect(text(noHarm, "items")).not.toContain("拾ったアイテムのうち");
     expect(text(noHarmKinds, "items")).not.toContain("拾ったアイテムのうち");
   });

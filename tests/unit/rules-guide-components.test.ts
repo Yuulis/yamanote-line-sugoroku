@@ -105,7 +105,7 @@ describe("RulesGuide", () => {
     for (const timing of harmfulTimings) {
       expect(timing?.textContent).toContain(AUTO_TRIGGER_WORDING);
     }
-    expect(itemsText).toContain(AUTO_TRIGGER_WORDING);
+    expect(itemsText).toContain("不利なアイテムは持ち物には入らず、それぞれ決まったタイミングで自動で効きます。");
     for (const row of beneficial) {
       expect(row.querySelector(".rules-guide__item-timing")?.matches(PHONE_REDUCED_SELECTOR)).toBe(false);
     }

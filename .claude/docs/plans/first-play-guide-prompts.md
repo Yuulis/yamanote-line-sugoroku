@@ -50,3 +50,20 @@ Update exact-text lookups in existing tests to the new label instead of loosenin
 Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
 Acceptance: exactly the commands under Step 2 in the plan (with the worker limits above).
 ```
+
+## Step 3 — first-play pure model, copy and storage
+
+```
+Implement plan "Step 3 — 初回判定・文言・storage の純粋モデル" exactly (Steps 1-2 are committed: 2d36dc3, 60fc239).
+Apply "Revision 3 changes": the off-target hint is ONE sentence
+「{target}以外の路線では、{target}に近づく向きが抽選で出やすくなっています。」 and is a candidate only when the published
+landing is off the target line, two directions are possible, their distances to the target differ, and the resolved
+config has towardTargetWeight > awayFromTargetWeight; otherwise no candidate (the id stays unseen). No other off-target
+variants. All other copy exactly as in the plan's "Verified copy" table; Japanese copy goes through PhraseText where
+rendered. Storage keys exactly yamanote-line-sugoroku:guide:{started,coach,hints-disabled,hint:<id>}:v1 with value "1",
+every access in try/catch (no key contains "save"). Eligibility table must cover unknown/invalid save state and
+storage-read failure as the plan specifies. Pure functions only plus the storage adapter and the rules-guide copy this
+step lists; nothing is wired into the running UI yet except the rules copy changes the plan names.
+Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
+Acceptance: exactly the commands under Step 3 in the plan (with the worker limits above).
+```

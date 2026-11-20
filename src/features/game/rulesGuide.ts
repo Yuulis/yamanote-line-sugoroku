@@ -195,7 +195,7 @@ function itemParagraphs(policy: ItemPolicy | undefined): readonly string[] {
   return [
     `移動を終えるたびに、${pickupPercent}%の確率でアイテムを拾えます。`,
     ...(hasHarmfulItems(policy)
-      ? [`拾ったアイテムのうち${policy.harmfulChancePercent}%は不利なアイテムで、持ち物には入らず自動で発動します。`]
+      ? [`拾ったアイテムのうち${policy.harmfulChancePercent}%は不利なアイテムです。不利なアイテムは持ち物には入らず、それぞれ決まったタイミングで自動で効きます。`]
       : []),
     `有利なアイテムは${policy.inventoryCapacity}個まで持てます。使えるのは1ターンに${policy.maxActiveItemsPerTurn}個までです。`,
     "持ち物がいっぱいのときに拾うと、持っているものと新しいものから、捨てるものを1つ選びます。",
