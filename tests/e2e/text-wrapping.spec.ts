@@ -615,7 +615,11 @@ test("dialog wrapping", { tag: "@layout" }, async ({ page, railwayBundle }) => {
 
     const adjustmentDialog = page.getByRole("dialog", { name: "出目を調整しますか？", exact: true });
     await expect(adjustmentDialog).toBeVisible();
-    await expect(adjustmentDialog.locator(".item-adjustment__escape-hint")).toBeHidden();
+    // The Escape sentence is for keyboard-and-mouse users: shown only under (pointer: fine).
+    const finePointer = await page.evaluate(() => window.matchMedia("(pointer: fine)").matches);
+    const escapeHint = adjustmentDialog.locator(".item-adjustment__escape-hint");
+    if (finePointer) await expect(escapeHint).toBeVisible();
+    else await expect(escapeHint).toBeHidden();
     await expect(adjustmentDialog.locator(".item-adjustment__caution")).toHaveText("出目を見た後はターンを取り消せません。");
     await expect(adjustmentDialog.getByRole("button", { name: "演出をスキップ", exact: true })).toBeVisible();
     await expectButtonsSingleLine(adjustmentDialog.locator(".dialog__actions button"));
