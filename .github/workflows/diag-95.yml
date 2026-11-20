@@ -30,7 +30,7 @@ jobs:
         run: echo "version=$(node -p "require('@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
         id: browsers
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e4337d2d1c52a9 # v6.1.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ env.ImageOS }}-${{ steps.playwright.outputs.version }}-chromium
@@ -41,7 +41,7 @@ jobs:
       - name: Run issue #95 diagnostics
         env:
           DIAG_95: "1"
-        run: xvfb-run --auto-servernum npx playwright test tests/e2e/diag-95.spec.ts --project=desktop-chromium --repeat-each=30 --retries=0 --workers=1
+        run: xvfb-run --auto-servernum npx playwright test tests/e2e/diag-95.spec.ts tests/e2e/turn-result-card.spec.ts --project=desktop-chromium --grep "320x480|diag" --repeat-each=30 --retries=0 --workers=2
       - name: Upload Playwright report and traces
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -86,7 +86,7 @@ jobs:
       - name: Run issue #95 diagnostics
         env:
           DIAG_95: "1"
-        run: xvfb-run --auto-servernum npx playwright test tests/e2e/diag-95.spec.ts --project=desktop-webkit --repeat-each=30 --retries=0 --workers=1
+        run: xvfb-run --auto-servernum npx playwright test tests/e2e/diag-95.spec.ts tests/e2e/turn-result-card.spec.ts --project=desktop-webkit --grep "320x480|diag" --repeat-each=30 --retries=0 --workers=2
       - name: Upload Playwright report and traces
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
