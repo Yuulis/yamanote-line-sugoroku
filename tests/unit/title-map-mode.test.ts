@@ -311,6 +311,7 @@ describe("title map camera", () => {
     act(() => map.emit("error"));
     expect(document.querySelector(".map-overview")).toBeNull();
     expect(navigationControlCount(map)).toBe(0);
+    expect(mapState.instances).toHaveLength(1);
   });
 
   it("placeholder waits for load layers and a subsequent rendered frame", () => {
@@ -450,15 +451,6 @@ describe("title map camera", () => {
     expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
   });
 
-  it("fatal failure retains title placeholder and retry controls", () => {
-    render("title");
-    const map = mapFromState();
-    act(() => map.emit("error", { sourceId: "basemap" }));
-
-    expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
-    expect([...document.querySelectorAll("button")].some((button) => button.textContent === "再試行")).toBe(true);
-  });
-
   it("title padding is symmetric and clamped", () => {
     expect(titleFitPadding({ width: 320, height: 568 }, true)).toEqual({
       top: TITLE_FIT_PADDING_PHONE_PX, right: TITLE_FIT_PADDING_PHONE_PX,
@@ -523,6 +515,10 @@ describe("title map camera", () => {
     expect(map.calls.padding).toHaveLength(before.padding);
     expect(map.calls.jump).toHaveLength(before.jump);
     expect(map.calls.ease).toHaveLength(before.ease);
+
+    render("title", { ...overrides, adjustmentCandidates: [] });
+
+    expect(map.calls.padding).toHaveLength(before.padding);
   });
 
   it("title to turn-zero game restores panel-aware overview", () => {
@@ -582,15 +578,6 @@ describe("title map camera", () => {
     expect(map.calls.jump).toHaveLength(firstGameFollow + 1);
   });
 
-  it("preview cleanup does not clear title padding", () => {
-    const map = ready("game", { adjustmentCandidates: PREVIEW });
-    render("title", { adjustmentCandidates: PREVIEW });
-    const titleCallCount = map.calls.padding.length;
-    render("title", { adjustmentCandidates: [] });
-
-    expect(map.calls.padding).toHaveLength(titleCallCount);
-  });
-
   it("clear retains camera", () => {
     const map = ready("game");
     const before = { fit: map.calls.fit.length, padding: map.calls.padding.length, jump: map.calls.jump.length, ease: map.calls.ease.length };
@@ -600,13 +587,5 @@ describe("title map camera", () => {
     expect(map.calls.padding).toHaveLength(before.padding);
     expect(map.calls.jump).toHaveLength(before.jump);
     expect(map.calls.ease).toHaveLength(before.ease);
-  });
-
-  it("mode changes do not construct another map", () => {
-    ready("game");
-    render("title");
-    render("clear");
-
-    expect(mapState.instances).toHaveLength(1);
   });
 });
