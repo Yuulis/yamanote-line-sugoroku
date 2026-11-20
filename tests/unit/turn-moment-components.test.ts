@@ -316,6 +316,11 @@ describe("css contract", () => {
     expect(css).toContain("@keyframes item-pickup-flight");
     expect(css).toContain("@keyframes item-pickup-fade");
   });
+
+  it("starts lottery settling only after a row has measured its motion", () => {
+    expect(css).toMatch(/\.lottery-reveal\[data-stage="lottery-settle"\] \.lottery-reveal__row\[data-motion\] \{\s*animation: lottery-settle var\(--lottery-ms\) ease-in both;/);
+    expect(css).not.toContain('.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row {');
+  });
 });
 
 describe("ItemPickupMoment", () => {
@@ -1347,5 +1352,30 @@ describe("S14 LotteryReveal", () => {
       .toEqual([["flight", "-80px"], ["flight", "-80px"]]);
     expect(target.getAttribute("style")).toBeNull();
     expect(source).toHaveBeenCalledTimes(2);
+  });
+
+  it("measures the unanimated source before enabling settle motion", () => {
+    const network = buildRailwayNetwork(multiServiceInput());
+    const id = [...network.servicesById.keys()][0]!;
+    const target = document.createElement("span"); document.body.append(target);
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue(new DOMRect(20, 300, 80, 40));
+    const motionDuringMeasure: Array<string | null> = [];
+    vi.spyOn(HTMLDivElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLDivElement): DOMRect {
+      if (this.classList.contains("lottery-reveal__row")) {
+        motionDuringMeasure.push(this.getAttribute("data-motion"));
+        return new DOMRect(100, 100, 80, 50);
+      }
+      return new DOMRect(0, 0, 0, 0);
+    });
+    const props: LotteryRevealProps = { network, presentation: createPresentationResolver(network), stage: "lottery-settle", durationMs: 400,
+      landing: { type: "landing-resolved", stationId: "a", serviceId: id, direction: 1, serviceCandidates: [id], directionCandidates: [1, -1],
+        serviceDrawRequired: false, directionDrawRequired: true, changedService: false }, rideTarget: { current: target }, directionTarget: { current: target }, boardScale: 0.5 };
+
+    const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
+    const rows = [...mount.container.querySelectorAll<HTMLElement>(".lottery-reveal__row")];
+
+    expect(motionDuringMeasure).toEqual([null, null]);
+    expect(rows.map((row) => row.dataset["motion"])).toEqual(["flight", "flight"]);
+    expect(rows.map((row) => row.style.getPropertyValue("--lottery-y"))).toEqual(["390px", "390px"]);
   });
 });

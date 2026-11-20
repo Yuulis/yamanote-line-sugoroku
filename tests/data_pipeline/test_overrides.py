@@ -323,36 +323,54 @@ def test_expand_line_ranges_with_open_chain_maps_n_minus_one_pairs() -> None:
     assert expand_line_ranges(ids, ranges, circular=False) == ("X", "Y", "Y")
 
 
-def test_expand_line_ranges_with_backward_range_on_open_chain_raises() -> None:
-    ids = ("a", "b", "c")
-
-    with pytest.raises(OverrideError, match="backward"):
-        expand_line_ranges(ids, (LineRange("c", "a", "X"),), circular=False)
-
-
-def test_expand_line_ranges_with_gap_raises() -> None:
-    ids = ("a", "b", "c", "d")
-
-    with pytest.raises(OverrideError, match="without an N02 line"):
-        expand_line_ranges(ids, (LineRange("a", "c", "X"),))
-
-
-def test_expand_line_ranges_with_gap_on_open_chain_raises() -> None:
-    with pytest.raises(OverrideError, match=r"without an N02 line mapping: \[1\]"):
-        expand_line_ranges(("a", "b", "c"), (LineRange("a", "b", "X"),), False)
-
-
-def test_expand_line_ranges_with_overlap_raises() -> None:
-    ids = ("a", "b", "c")
-    ranges = (LineRange("a", "c", "X"), LineRange("b", "a", "Y"))
-
-    with pytest.raises(OverrideError, match="mapped twice"):
-        expand_line_ranges(ids, ranges)
-
-
-def test_expand_line_ranges_with_unknown_station_raises() -> None:
-    with pytest.raises(OverrideError, match="unknown station"):
-        expand_line_ranges(("a", "b"), (LineRange("a", "zzz", "X"),))
+@pytest.mark.parametrize(
+    ("ids", "ranges", "circular", "message"),
+    [
+        pytest.param(
+            ("a", "b", "c"),
+            (LineRange("c", "a", "X"),),
+            False,
+            "backward",
+            id="backward-range-on-open-chain",
+        ),
+        pytest.param(
+            ("a", "b", "c", "d"),
+            (LineRange("a", "c", "X"),),
+            True,
+            "without an N02 line",
+            id="gap-on-closed-chain",
+        ),
+        pytest.param(
+            ("a", "b", "c"),
+            (LineRange("a", "b", "X"),),
+            False,
+            r"without an N02 line mapping: \[1\]",
+            id="gap-on-open-chain",
+        ),
+        pytest.param(
+            ("a", "b", "c"),
+            (LineRange("a", "c", "X"), LineRange("b", "a", "Y")),
+            True,
+            "mapped twice",
+            id="overlap",
+        ),
+        pytest.param(
+            ("a", "b"),
+            (LineRange("a", "zzz", "X"),),
+            True,
+            "unknown station",
+            id="unknown-station",
+        ),
+    ],
+)
+def test_expand_line_ranges_with_invalid_ranges_raises(
+    ids: tuple[str, ...],
+    ranges: tuple[LineRange, ...],
+    circular: bool,
+    message: str,
+) -> None:
+    with pytest.raises(OverrideError, match=message):
+        expand_line_ranges(ids, ranges, circular)
 
 
 def test_expand_ranges_with_via_on_single_pair_keeps_hints() -> None:

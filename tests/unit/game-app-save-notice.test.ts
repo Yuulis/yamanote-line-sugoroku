@@ -123,6 +123,7 @@ describe("first-turn notice hook", () => {
     render(options({ saveAttempt: itemAttempt(2, 4), storage: store }));
     expect(current.notice).toBeNull();
   });
+
   it("never notices turn zero or a resumed baseline", () => {
     const store = storage();
     render(options({ saveAttempt: attempt(0, 0), storage: store }));
@@ -131,7 +132,6 @@ describe("first-turn notice hook", () => {
     render(options({ saveAttempt: attempt(8, 8, 2, SESSION_ID + 1), currentSessionId: SESSION_ID + 1, storage: store }));
     expect(current.notice).toBeNull();
   });
-
   it("waits for publication and dialog closure", () => {
     const store = storage();
     const saveAttempt = attempt(1);
@@ -172,16 +172,15 @@ describe("first-turn notice hook", () => {
     expect(store.getItem(FIRST_TURN_NOTICE_KEY)).toBeNull();
     current.onNoticeAnnounced(key);
     expect(store.getItem(FIRST_TURN_NOTICE_KEY)).toBe("1");
-  });
 
-  it("does not write the browser flag when shown without announcement", () => {
-    const store = storage();
-    render(options({ storage: store }));
-    const key = current.notice?.key;
-    if (!key) throw new Error("Expected a pending notice");
-
-    act(() => current.onNoticeShown(key));
-    expect(store.getItem(FIRST_TURN_NOTICE_KEY)).toBeNull();
+    mounted?.cleanup();
+    mounted = null;
+    const shownWithoutAnnouncement = storage();
+    render(options({ storage: shownWithoutAnnouncement }));
+    const pendingKey = current.notice?.key;
+    if (!pendingKey) throw new Error("Expected a pending notice without announcement");
+    act(() => current.onNoticeShown(pendingKey));
+    expect(shownWithoutAnnouncement.getItem(FIRST_TURN_NOTICE_KEY)).toBeNull();
   });
 
   it("keeps mounted dedupe when flag writing fails", () => {
