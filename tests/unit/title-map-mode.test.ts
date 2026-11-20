@@ -578,6 +578,15 @@ describe("title map camera", () => {
     expect(map.calls.jump).toHaveLength(firstGameFollow + 1);
   });
 
+  it("preview cleanup does not clear title padding", () => {
+    const map = ready("game", { adjustmentCandidates: PREVIEW });
+    render("title", { adjustmentCandidates: PREVIEW });
+    const titleCallCount = map.calls.padding.length;
+    render("title", { adjustmentCandidates: [] });
+
+    expect(map.calls.padding).toHaveLength(titleCallCount);
+  });
+
   it("clear retains camera", () => {
     const map = ready("game");
     const before = { fit: map.calls.fit.length, padding: map.calls.padding.length, jump: map.calls.jump.length, ease: map.calls.ease.length };

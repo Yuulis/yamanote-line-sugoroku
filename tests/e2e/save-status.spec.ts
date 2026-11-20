@@ -174,6 +174,25 @@ test("save popover and rules restore their own openers across resize", async ({ 
   });
 });
 
+test("a real click on 遊び方 closes the explanation and rules close back to the opener", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openTitle(page);
+  await startNewGame(page);
+  await rollOnce(page);
+  await openGameMenu(page);
+  await saveTrigger(page).click();
+  await expect(saveExplanation(page)).toBeVisible();
+
+  const opener = gamePanel(page).getByRole("button", { name: "遊び方", exact: true });
+  await opener.click();
+  const rules = page.getByRole("dialog", { name: "遊び方" });
+  await expect(rules.getByRole("heading", { level: 1, name: "遊び方" })).toBeFocused();
+  await expect(saveExplanation(page)).toBeHidden();
+  await rules.getByRole("button", { name: "閉じる" }).click();
+  await expect(rules).toHaveCount(0);
+  await expect(opener).toBeFocused();
+});
+
 test("Space and Enter do not roll after clicking the explanation text", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openTitle(page);

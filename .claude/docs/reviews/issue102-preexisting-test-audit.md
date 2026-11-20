@@ -148,3 +148,20 @@ Savings below are aggregate Playwright test-seconds from the PR #106 logs, not e
 4. **Optional S16 test-count reduction:** only after the user chooses the coverage level, reduce the Skip and speed E2E matrices while keeping their unit transition/speed coverage. Submit this by test area and review the resulting case list before merging.
 5. **Optional CI scope change:** separate PR, independent of test deletions. Keep full Chromium/Firefox/WebKit validation during the change, explicitly tag `@webkit` regressions if WebKit scope changes, and compare PR #106 aggregate timings. Do not combine browser scope and case pruning in one diff; otherwise the source of any missing coverage is hard to review.
 
+
+## Applied pre-existing changes
+
+Candidates verified against the current tree before applying (rule: if in doubt, keep).
+
+| Cand. | Result | Evidence |
+|---|---|---|
+| A. very-fast reload E2E (`game-settings.spec.ts`) | **Applied (deleted)** | Unit: `game-settings.test.ts` "round-trips supported v1 speed $id" (every speed incl. very-fast, payload shape + read-back), `use-game-settings.test.ts` "cycles all four speeds and presentation with exactly one write per change". E2E: "persists menu speed and follow through reload without the seed overwriting UI changes" (real reload wiring) and the `@layout` "presentation cycles and survives reload…" test, which still asserts the "速度: とても速い" label and the stored `very-fast` payload. |
+| B. synthetic hidden-visibility E2E (`auto-roll-lifecycle.spec.ts`) | **Kept** | `use-auto-roll.test.ts` covers the `visibilitychange` handler only through the hook in isolation. The E2E is the only test that drives the listener through the real `GamePanel` -> `GameHud` toggle (`aria-pressed` goes false, the gap is cancelled, the save stays at turn 0). That wiring is not covered elsewhere, so it is not deleted. |
+| C. `begin`/`skip` identity test (`turn-moment-hooks.test.ts`) | **Kept** | `GameApp.tsx` builds `guardedRoll`/`skip` with `useCallback` on `[roll, beginTurnMoment]`/`[finishAnimation, skipTurnMoment]`, and a `useEffect` depends on `beginTurnMoment`; the comment there says the memoised panel's callbacks keep their identity. The test guards that contract, and no other test checks it. |
+| D. map-panel observer merge | **Applied (merged)** | "keeps one binding while the panel key and map stay the same" merged into "rebinds to the replacement panel…", now "keeps one binding across re-renders and rebinds to the replacement panel when the panel key changes". All assertions of both tests are kept (the original `onLayoutChange` is not called and `latest` is called once in the stable phase; bind count 2, two observers, first disconnected, replacement observed, one layout call after the rebind). |
+| E. invalid line-range tests (`test_overrides.py`) | **Applied (parametrised)** | `test_expand_line_ranges_with_invalid_ranges_raises` with five `pytest.param` ids: `backward-range-on-open-chain`, `gap-on-closed-chain`, `gap-on-open-chain`, `overlap`, `unknown-station`. Inputs, `circular` flag and exact `match=` text are unchanged. |
+
+Not applied: audit rank 12 (merge of the two ready-gap scenarios in `auto-roll-lifecycle.spec.ts`) was outside the requested candidates.
+
+
+**Update after the final review:** candidate A was reverted (kept). The remaining reload E2E checks the speed label only before reload, so the very-fast label after reload was not covered elsewhere. Net applied changes: D (merge) and E (parametrise) only.

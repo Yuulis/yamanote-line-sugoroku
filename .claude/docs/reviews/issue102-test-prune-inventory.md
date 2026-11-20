@@ -6,16 +6,16 @@ The `git log --grep=fix a8fc2b7..f3aaf8c` audit found `b9c0b5b fix(save): keep s
 
 ## Counts
 
-E2E cases: **31 → 23**. Unit cases: **148 → 143**. Test LOC across these files: **4462 → 4273** (**189 fewer lines**).
+E2E cases: **31 → 27**. Unit cases: **148 → 144**. Test LOC across these files: **4462 → 4376** (**86 fewer lines**).
 
 | File | Test cases before | Test cases after | LOC before | LOC after |
 |---|---:|---:|---:|---:|
 | `tests/e2e/rules-guide.spec.ts` | 11 | 7 | 428 | 373 |
 | `tests/e2e/first-turn-notice.spec.ts` | 6 | 6 | 303 | 303 |
-| `tests/e2e/save-status.spec.ts` | 7 | 5 | 293 | 264 |
-| `tests/e2e/title-map.spec.ts` | 4 | 2 | 195 | 120 |
+| `tests/e2e/save-status.spec.ts` | 7 | 6 | 293 | 283 |
+| `tests/e2e/title-map.spec.ts` | 4 | 4 | 195 | 195 |
 | `tests/e2e/title-save-ux.spec.ts` | 3 | 3 | 133 | 136 |
-| `tests/unit/title-map-mode.test.ts` | 23 | 20 | 612 | 591 |
+| `tests/unit/title-map-mode.test.ts` | 23 | 21 | 612 | 600 |
 | `tests/unit/game-app-save-notice.test.ts` | 15 | 14 | 341 | 340 |
 | `tests/unit/rules-entry-points.test.ts` | 10 | 10 | 300 | 300 |
 | `tests/unit/rules-dialog.test.ts` | 20 | 20 | 270 | 270 |
@@ -27,7 +27,7 @@ E2E cases: **31 → 23**. Unit cases: **148 → 143**. Test LOC across these fil
 | `tests/unit/save-status-popover.test.ts` | 8 | 8 | 173 | 173 |
 | `tests/unit/edition-title-states.test.ts` | 4 | 4 | 154 | 154 |
 | `tests/unit/resume-presentation.test.ts` | 6 | 5 | 102 | 94 |
-| **Total** | **179** | **166** | **4462** | **4273** |
+| **Total** | **179** | **171** | **4462** | **4376** |
 
 Verdicts: **KEEP** retains a unique check; **CONSOLIDATED-INTO** moves the assertion into the named test; **DELETE** removes a duplicate covered by the named test(s); **RESTORED** reinstates the whole test after review found a coverage gap.
 
@@ -35,7 +35,7 @@ Verdicts: **KEEP** retains a unique check; **CONSOLIDATED-INTO** moves the asser
 
 | File | Test name / case | Verdict | Covered by | Reason |
 |---|---|---|---|---|
-| `tests/e2e/rules-guide.spec.ts` | loading title keeps rules available without a target count | **DELETE** | edition-title-states.test.ts: single-edition loading and unknown target count; rules-guide-components.test.ts: title without network | Loading, rules availability, and count-free copy are already asserted at component level; the remaining phone layout check stays in E2E. |
+| `tests/e2e/rules-guide.spec.ts` | loading title keeps rules available without a target count | **RESTORED** | — | Review 3 found the unit tests do not open rules in a browser while stations are still loading (phone @layout); restored verbatim. |
 | `tests/e2e/rules-guide.spec.ts` | rules and title remain readable at compact viewports | **RESTORED** | `tests/e2e/rules-guide.spec.ts`: `rules and title remain readable at compact viewports` — checks horizontal overflow for loading, saved, and unsaved title/rules states at desktop and 320×568. | Restored after review found no equivalent whole-document overflow checks in the proposed replacements. |
 | `tests/e2e/rules-guide.spec.ts` | title rules navigation restores focus | **CONSOLIDATED-INTO** | `tests/e2e/rules-guide.spec.ts`: `title, lottery and item rule entry points reach visible sections` — title TOC moves focus to the Items heading, scrolls it into the viewport, and restores focus to the opener. | Combined with two untagged entry-point flows in one readable test; the browser viewport result is retained. |
 | `tests/e2e/rules-guide.spec.ts` | rules retain essential content on phone | **KEEP** | `tests/e2e/rules-guide.spec.ts`: `rules retain essential content on phone` — checks section copy, item rows, scrollability, and the in-viewport return control at phone width. | Keeps the browser layout coverage; the pointer-capability check from its tagged sibling is consolidated here. |
@@ -56,11 +56,11 @@ Verdicts: **KEEP** retains a unique check; **CONSOLIDATED-INTO** moves the asser
 | `tests/e2e/save-status.spec.ts` | Space and Enter do not roll after clicking the explanation text | **KEEP** | save-status-popover.test.ts: focuses the close button on open (the dialog-target keyboard path remains browser-only) | Guards the review-found regression where Enter or Space on an open popover could trigger a dice roll. |
 | `tests/e2e/save-status.spec.ts` | the inline fallback stays inside the HUD | **KEEP** | save-status-popover.test.ts: supports inline fallback; clamps the placement inside the viewport | Guards the review-found inline fallback overflow across desktop and phone HUDs. |
 | `tests/e2e/save-status.spec.ts` | opening the rules dialog closes the save explanation without stealing focus | **CONSOLIDATED-INTO** | `tests/e2e/save-status.spec.ts`: `save popover and rules restore their own openers across resize` — a script click closes the native popover while focus remains on the Rules heading. | Combined with the real-click and opener-restoration paths; all three source tests were untagged. |
-| `tests/e2e/save-status.spec.ts` | a real click on 遊び方 closes the explanation and rules close back to the opener | **CONSOLIDATED-INTO** | `tests/e2e/save-status.spec.ts`: `save popover and rules restore their own openers across resize` — a real click closes the popover, and Escape returns focus to the Rules opener. | The separate real-pointer integration path remains in the combined browser flow. |
+| `tests/e2e/save-status.spec.ts` | a real click on 遊び方 closes the explanation and rules close back to the opener | **RESTORED** | `tests/e2e/save-status.spec.ts`: `a real click on 遊び方 closes the explanation and rules close back to the opener` — restored whole from the pre-pruning version. | review 2 found coverage gap. |
 | `tests/e2e/save-status.spec.ts` | save popover and rules restore their own openers | **CONSOLIDATED-INTO** | `tests/e2e/save-status.spec.ts`: `save popover and rules restore their own openers across resize` — closing the popover after resize restores its trigger; closing Rules after phone resize restores its opener and saved turn 1 remains. | Consolidated three untagged modal/popover flows while retaining native popover, focus, resize, and persistence assertions. |
 | `tests/e2e/save-status.spec.ts` | save hit target preserves the phone HUD budget | **KEEP** | — (retained phone layout check) | Keeps the phone-only browser check for the effective hit target, neighboring controls, and HUD height budget. |
-| `tests/e2e/title-map.spec.ts` | network failure keeps decorative title and disabled play | **DELETE** | edition-title-states.test.ts: network failure preserves rules, attribution, and error presentation; title-map-mode.test.ts: style failure shows the placeholder only in title mode | Failure copy and the title-only map placeholder are covered by unit outcomes; this browser case duplicated both branches. |
-| `tests/e2e/title-map.spec.ts` | map navigation follows title game and clear modes | **DELETE** | title-map-mode.test.ts: navigation is hidden outside ready playable game mode; layout.spec.ts: title, then map and controls are visible | The visible map-control mode invariant is already checked by unit coverage and the existing layout E2E. |
+| `tests/e2e/title-map.spec.ts` | network failure keeps decorative title and disabled play | **RESTORED** | `tests/e2e/title-map.spec.ts`: `network failure keeps decorative title and disabled play` — restored whole from the pre-pruning version. | review 2 found coverage gap. |
+| `tests/e2e/title-map.spec.ts` | map navigation follows title game and clear modes | **RESTORED** | `tests/e2e/title-map.spec.ts`: `map navigation follows title game and clear modes` — restored whole from the pre-pruning version. | review 2 found coverage gap. |
 | `tests/e2e/title-map.spec.ts` | title refits target loop on return and resize | **KEEP** | title-map-mode.test.ts: title fits the explicit target service; entry into title and resize refit the existing map; overview-key and preview-cache regressions | Retains the browser-rendered target-loop fit and phone padding check; unit tests cover the associated camera refit regressions. |
 | `tests/e2e/title-map.spec.ts` | title placeholder survives delayed paint and failure | **KEEP** | title-map-mode.test.ts: placeholder waits for load layers and a subsequent rendered frame; retry resets readiness and cancels stale callbacks | Retains the browser-visible decorative placeholder, non-interactive treatment, failure state, and retry flow. |
 | `tests/e2e/title-save-ux.spec.ts` | resume shows progress and next turn | **KEEP** | resume-presentation.test.ts: plays the turn after the last completed turn; counts unique completed target segments only | Retains the representative browser resume and overwrite-confirmation flow; the phone start-button check merged into this same route-save case. |
@@ -86,7 +86,7 @@ Verdicts: **KEEP** retains a unique check; **CONSOLIDATED-INTO** moves the asser
 | `tests/unit/title-map-mode.test.ts` | does not refit the overview when the turn-zero overview key becomes undefined | **KEEP** | — (overviewKey regression guard) | Preserves the review-found camera state when a turn-zero overview key is withdrawn. |
 | `tests/unit/title-map-mode.test.ts` | reapplies preview bounds after a title round trip with the same preview inputs | **KEEP** | title-map.spec.ts: title refits target loop on return and resize | Preserves preview bounds after title mode invalidates and restores cached inputs. |
 | `tests/unit/title-map-mode.test.ts` | follows a positioned marker only in game and follows again on re-entry | **KEEP** | — (no equivalent assertion; retained check) | Retains the named unit behavior or invariant as a focused assertion. |
-| `tests/unit/title-map-mode.test.ts` | preview cleanup does not clear title padding | **CONSOLIDATED-INTO** | `tests/unit/title-map-mode.test.ts`: `game camera effects cannot override title fitting` — after preview candidates are cleared in title mode, no padding reset call occurs. | Folded the focused preview-cleanup assertion into the existing title-fitting outcome test. |
+| `tests/unit/title-map-mode.test.ts` | preview cleanup does not clear title padding | **RESTORED** | `tests/unit/title-map-mode.test.ts`: `preview cleanup does not clear title padding` — restored whole from the pre-pruning version. | review 2 found coverage gap. |
 | `tests/unit/title-map-mode.test.ts` | clear retains camera | **KEEP** | — (no equivalent assertion; retained check) | Retains the named unit behavior or invariant as a focused assertion. |
 | `tests/unit/title-map-mode.test.ts` | mode changes do not construct another map | **CONSOLIDATED-INTO** | `tests/unit/title-map-mode.test.ts`: `navigation is hidden outside ready playable game mode` — after game→title→clear→game transitions and an error, the same single map instance remains. | Added one focused instance-count assertion across the transitions, including clear mode. |
 | `tests/unit/game-app-save-notice.test.ts` | notices the next successful completed classic or item turn | **KEEP** | — (no equivalent assertion; retained check) | Retains the named unit behavior or invariant as a focused assertion. |
@@ -231,11 +231,13 @@ Verdicts: **KEEP** retains a unique check; **CONSOLIDATED-INTO** moves the asser
 | Hidden-tab delay | **RESTORED** `hidden tab delays the notice until visible`; status and storage remain clear until visibility returns. |
 | Auto-roll announcement order | **RESTORED** `auto-roll releases the notice slot after its ordinary summary`; observed status ordering and turn distance are checked. |
 | Rules-modal notice deferral | **RESTORED** tagged `notice waits through rules and announces after ordinary progress`; it checks no early notice/flag and announcement after ordinary status. |
-| Script click from native save popover to Rules | **CONSOLIDATED-INTO** `save popover and rules restore their own openers across resize`; heading focus is preserved as the popover closes. |
-| Real click from save popover to Rules | **CONSOLIDATED-INTO** the same save-popover test; the popover closes and Escape returns focus to the Rules opener. |
+| Script click from native save popover to Rules | **CONSOLIDATED-INTO** `save popover and rules restore their own openers across resize`; heading focus is preserved as the popover closes. This is the only one of the three source tests still consolidated. |
+| Real click from save popover to Rules | **RESTORED** `a real click on 遊び方 closes the explanation and rules close back to the opener` as its own test (review 2 found coverage gap); the popover closes and the 閉じる button returns focus to the Rules opener. The combined test keeps its own real-click-then-Escape step. |
 | Popover/Rules opener restoration across phone resize | **CONSOLIDATED-INTO** the same save-popover test; both openers regain focus and saved turn 1 remains. |
 | NavigationControl cleanup during map rebuild | **RESTORED** `removes navigation exactly once when rebuilding an in-game map`; minZoom rebuild does not throw and removes the old control. |
-| Preview cleanup and title padding | Added a focused assertion to `game camera effects cannot override title fitting`; removing preview candidates causes no padding reset. |
+| Preview cleanup and title padding | **RESTORED** `preview cleanup does not clear title padding` as its own unit test (review 2 found coverage gap); removing preview candidates in title mode causes no padding reset. The focused assertion added to `game camera effects cannot override title fitting` is kept as well. |
+| Title network failure in the browser | **RESTORED** `network failure keeps decorative title and disabled play` (`@layout`, review 2 found coverage gap); failed stations fetch keeps the decorative title, disabled play, and the visible retry button. |
+| Map navigation across title, game, and clear modes | **RESTORED** `map navigation follows title game and clear modes` (`@layout`, review 2 found coverage gap); a completed save reaches the clear screen with map controls hidden and attribution shown. |
 | Map instance count across modes including clear | Added a focused assertion to `navigation is hidden outside ready playable game mode`; one instance remains after game/title/clear transitions. |
 | Failed, unavailable, and stale attempts at hook boundary | **RESTORED** `rejects failed, unavailable and stale attempts`; each input leaves `current.notice` null. |
 | Turn-zero and resumed-baseline hook result | **RESTORED** `never notices turn zero or a resumed baseline`; both inputs leave `current.notice` null. |
@@ -245,16 +247,22 @@ Verdicts: **KEEP** retains a unique check; **CONSOLIDATED-INTO** moves the asser
 
 - Baseline `npx vitest run` ran on an untouched detached worktree at `HEAD`: 105 files passed; 2,361 tests passed and 1 existing test was skipped. The first temporary-worktree attempt used a symlinked `node_modules` and Vite rejected the external MapLibre worker path; rerunning with hard-linked dependencies passed.
 - Final `npm run typecheck`: passed.
-- Final `npx vitest run`: 105 files passed; 2,356 tests passed and 1 existing test was skipped (**five fewer unit cases** than baseline, matching the five unit-test consolidations/deletions recorded above).
-- Targeted desktop Chromium command: 23 passed (`--workers=1`).
-- Targeted phone Chromium command: 9 passed (`--workers=1`; phone project selected `@layout` tests only).
+- Final `npx vitest run`: 105 files passed; 2,356 tests passed and 1 existing test was skipped (five fewer than baseline) measured before the review-2 restorations. After restoring `preview cleanup does not clear title padding` the inventoried unit files are four cases below baseline (148 → 144). A later full run on the current tree reports 2,356 passed and 1 skipped, which also includes other agents' concurrent edits to files outside this inventory, so it is not attributed to this change.
+- Targeted desktop Chromium command: 23 passed (`--workers=1`) before the review-2 restorations.
+- Targeted phone Chromium command: 9 passed (`--workers=1`; phone project selected `@layout` tests only) before the review-2 restorations.
+- After the review-2 restorations: `save-status.spec.ts` and `title-map.spec.ts` on desktop-chromium and phone-chromium, `--workers=1`: 15 passed (an earlier run had one unrelated failure in `save hit target preserves the phone HUD budget` on desktop; it passed alone and on rerun), and `tests/unit/title-map-mode.test.ts`: 21 passed.
 - `git diff --check`: passed. `git diff -- src`: empty.
-- `python3 .claude/skills/_shared/verify_delegation.py --base HEAD --forbid-outside tests --forbid-outside .claude/docs/reviews --label issue102-prune`: collection succeeded, `out_of_scope_files=[]`, `missing_expected_files=[]`, and `expectations_violated=0`; exit 2 / `needs-review` is expected because the heuristic reports test consolidation and the duplicate deletion below. The six `weakened_tests` hits are all mapped to exact rows in this inventory:
+- `python3 .claude/skills/_shared/verify_delegation.py --base HEAD --forbid-outside tests --forbid-outside .claude/docs/reviews --label issue102-prune`: collection succeeded, `out_of_scope_files=[]`, `missing_expected_files=[]`, and `expectations_violated=0`; exit 2 / `needs-review` is expected because the heuristic reports test consolidation and the duplicate deletion below. The counts below describe the first pruning pass; the four tests listed under RESTORED in the inventory were reinstated afterwards, so the hits for them no longer apply. The six `weakened_tests` hits are all mapped to exact rows in this inventory:
   - `tests/e2e/rules-guide.spec.ts` (54 removed assertions): the loading title case is covered by the edition-title and rules-guide component tests; title TOC, lottery, and item browser paths are consolidated into `title, lottery and item rule entry points reach visible sections`; pointer checks are consolidated into the tagged phone rules test; the saved-title start-button test was restored separately to preserve its tag.
-  - `tests/e2e/save-status.spec.ts` (24): script-click dismissal, real-click dismissal, and opener restoration are consolidated into `save popover and rules restore their own openers across resize`.
-  - `tests/e2e/title-map.spec.ts` (22): the network-failure and map-mode cases are covered by the named edition-title/map-mode unit tests and the existing layout E2E, as listed in those DELETE rows.
+  - `tests/e2e/save-status.spec.ts` (24): script-click dismissal and opener restoration are consolidated into `save popover and rules restore their own openers across resize`; the real-click test was **RESTORED** as its own test.
+  - `tests/e2e/title-map.spec.ts` (22): the network-failure and map-mode cases were **RESTORED** whole, so this file no longer has removed assertions.
   - `tests/unit/game-app-save-notice.test.ts` (1): the shown-without-announcement assertion is consolidated into `writes the browser flag only after shown and announced`, which checks both mounted outcomes.
   - `tests/unit/resume-presentation.test.ts` (2): overwrite wording is consolidated into `plays the turn after the last completed turn` for the same turn-4 case.
-  - `tests/unit/title-map-mode.test.ts` (4): `fatal failure retains title placeholder and retry controls` is covered by `style failure shows the placeholder only in title mode` plus the browser retry flow in `title placeholder survives delayed paint and failure`.
+  - `tests/unit/title-map-mode.test.ts` (4 in the first pass; `preview cleanup does not clear title padding` was since **RESTORED**): `fatal failure retains title placeholder and retry controls` is covered by `style failure shows the placeholder only in title mode` plus the browser retry flow in `title placeholder survives delayed paint and failure`.
 - The verifier also reported one `placeholder-text` hit on the inventory line naming the retained title-placeholder regression test. It is a false positive from the test title and description; no stub or placeholder implementation was added.
 - The verifier listed `.claude/docs/reviews/issue102-preexisting-test-audit.md` because it was already untracked in the workspace. It is the separate audit the task said to ignore; it was not edited. No skipped/only tests or weakened kept assertions were introduced.
+
+
+## Review 3 follow-up
+
+The final review found one more gap in this inventory: `loading title keeps rules available without a target count` (opening rules while stations are still loading, phone `@layout`). It was restored verbatim from develop. Per-file LOC totals above predate this restore (+44 lines in `rules-guide.spec.ts`).
