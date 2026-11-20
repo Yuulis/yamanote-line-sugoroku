@@ -8,7 +8,7 @@ import { EDITIONS, saveKeyForEdition } from "../../src/features/editions/registr
 import type { EditionRegistry } from "../../src/features/editions/types";
 import * as turnMomentsModule from "../../src/features/game/animation/useTurnMoments";
 import { createItemGame, serializeGame } from "../../src/features/game/engine";
-import { FIRST_PLAY_HINT_IDS } from "../../src/features/game/firstPlayGuide";
+import { FIRST_PLAY_HINT_IDS, type GuideCandidate } from "../../src/features/game/firstPlayGuide";
 import { isFirstPlayCoachReplayAllowed } from "../../src/app/GameApp";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import * as turnMomentPresentation from "../../src/features/game/turnMomentPresentation";
@@ -20,11 +20,17 @@ import {
 } from "../../src/features/game/store/guide";
 import { FIRST_TURN_NOTICE_KEY } from "../../src/features/game/store/notices";
 import type { StorageLike } from "../../src/features/game/store/persistence";
+import * as motionPreference from "../../src/features/game/usePrefersReducedMotion";
 import { seedFirstPlayGuide } from "./helpers/notices";
 import { dispatchReactEvent, mountReact, type MountedReact } from "./helpers/reactDom";
 
 const { guideSnapshots } = vi.hoisted(() => ({
-  guideSnapshots: [] as Array<{ sessionId: number | null }>,
+  guideSnapshots: [] as Array<{
+    sessionId: number | null;
+    candidateKeys: readonly string[];
+    obscured: boolean;
+    showClear: boolean;
+  }>,
 }));
 
 vi.mock("../../src/features/game/useFirstPlayGuide", async (importOriginal) => {
@@ -32,7 +38,12 @@ vi.mock("../../src/features/game/useFirstPlayGuide", async (importOriginal) => {
   return {
     ...actual,
     useFirstPlayGuide: (options: Parameters<typeof actual.useFirstPlayGuide>[0]) => {
-      guideSnapshots.push({ sessionId: options.sessionId });
+      guideSnapshots.push({
+        sessionId: options.sessionId,
+        candidateKeys: options.candidates.map((candidate) => candidate.key),
+        obscured: options.obscured,
+        showClear: options.showClear,
+      });
       return actual.useFirstPlayGuide(options);
     },
   };
@@ -49,6 +60,7 @@ const edition = EDITIONS[0];
 let mounted: MountedReact | null = null;
 const showModalDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
 const closeDescriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "close");
+const scrollIntoViewDescriptor = Object.getOwnPropertyDescriptor(Element.prototype, "scrollIntoView");
 
 function appNode(editions: EditionRegistry = EDITIONS): React.JSX.Element {
   return createElement(GameApp, {
@@ -84,6 +96,12 @@ function click(label: string): void {
 function lastGuideSnapshot(): { sessionId: number | null } {
   const snapshot = guideSnapshots.at(-1);
   if (!snapshot) throw new Error("Expected useFirstPlayGuide to run");
+  return { sessionId: snapshot.sessionId };
+}
+
+function lastGuideOptions() {
+  const snapshot = guideSnapshots.at(-1);
+  if (!snapshot) throw new Error("Expected useFirstPlayGuide to run");
   return snapshot;
 }
 
@@ -108,6 +126,7 @@ beforeEach(() => {
     configurable: true,
     value(this: HTMLDialogElement): void { this.removeAttribute("open"); },
   });
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
 });
 
 afterEach(() => {
@@ -118,10 +137,134 @@ afterEach(() => {
   else Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
   if (closeDescriptor) Object.defineProperty(HTMLDialogElement.prototype, "close", closeDescriptor);
   else Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+  if (scrollIntoViewDescriptor) Object.defineProperty(Element.prototype, "scrollIntoView", scrollIntoViewDescriptor);
+  else Reflect.deleteProperty(Element.prototype, "scrollIntoView");
   localStorage.clear();
 });
 
 describe("GameApp first-play eligibility", () => {
+  it("blocks a hint on the first render that publishes its pickup toast", () => {
+    const candidate: GuideCandidate = {
+      key: "1:1:item",
+      sessionId: 1,
+      turn: 1,
+      copy: {
+        copyId: "item",
+        hintId: "item",
+        sectionId: "items",
+        text: "アイテムを手に入れました。使うタイミングは、持ち物の説明で確認できます。",
+      },
+    };
+    const toastText = "出目調整券を手に入れた！";
+    const derive = turnMomentPresentation.deriveTurnMomentDisplay;
+    vi.spyOn(motionPreference, "usePrefersReducedMotion").mockReturnValue(true);
+    vi.spyOn(turnMomentPresentation, "deriveTurnMomentDisplay").mockImplementation((input) => {
+      const display = derive(input);
+      if (display?.phase !== "published" || display.turn !== 1) return display;
+      return {
+        ...display,
+        guideCandidates: [candidate],
+        toastInputs: [{
+          key: "1:1:0", sessionId: 1, turn: 1, eventIndex: 0, text: toastText, tone: "good", sticky: false,
+        }],
+      };
+    });
+    mountApp();
+    click("はじめから");
+    click("とばす");
+    click("サイコロを振る");
+
+    const published = guideSnapshots.filter(({ candidateKeys }) => candidateKeys.includes(candidate.key));
+    expect(published.length).toBeGreaterThan(0);
+    expect(published.filter(({ obscured }) => !obscured)).toEqual([]);
+    expect(mounted!.container.querySelector(".toast-host")?.textContent).toContain(toastText);
+    expect(mounted!.container.querySelector(".first-play-hint")).toBeNull();
+    expect(mounted!.container.querySelector('[role="status"]')?.textContent).not.toContain(candidate.copy.text);
+    expect(localStorage.getItem(guideHintStorageKey("item"))).toBeNull();
+  });
+
+  it("routes an eligible published candidate through the card and restores its 詳しく focus after rules", async () => {
+    const candidate: GuideCandidate = {
+      key: "1:1:lottery",
+      sessionId: 1,
+      turn: 1,
+      copy: {
+        copyId: "lottery-service",
+        hintId: "lottery",
+        sectionId: "lottery",
+        text: "乗換駅で移動を終えると、候補の中から次に乗る路線を抽選します。",
+      },
+    };
+    const derive = turnMomentPresentation.deriveTurnMomentDisplay;
+    vi.spyOn(turnMomentPresentation, "deriveTurnMomentDisplay").mockImplementation((input) => {
+      const display = derive(input);
+      return display ? { ...display, guideCandidates: [candidate] } : display;
+    });
+    mountApp();
+
+    click("はじめから");
+
+    expect(lastGuideOptions()).toMatchObject({
+      sessionId: 1,
+      candidateKeys: [candidate.key],
+      obscured: true,
+      showClear: false,
+    });
+    expect(mounted!.container.querySelector(".first-play-hint")).toBeNull();
+    expect(localStorage.getItem(guideHintStorageKey("lottery"))).toBeNull();
+
+    click("とばす");
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+
+    const card = mounted!.container.querySelector<HTMLElement>(".first-play-hint");
+    expect(card?.textContent).toContain(candidate.copy.text);
+    expect(card?.closest(".game-panel")).toBeNull();
+    expect(card?.closest(".toast-host")).toBeNull();
+    expect(lastGuideOptions().obscured).toBe(false);
+    expect(localStorage.getItem(guideHintStorageKey("lottery"))).toBe("1");
+    const writesBeforeRules = vi.spyOn(Storage.prototype, "setItem");
+    const details = card?.querySelector<HTMLButtonElement>("[data-guide-action=details]");
+    if (!details) throw new Error("Expected the 詳しく action on the hint card");
+    dispatchReactEvent(details, new MouseEvent("click", { bubbles: true }));
+
+    const rules = mounted!.container.querySelector<HTMLDialogElement>(".rules-dialog");
+    expect(rules?.open).toBe(true);
+    expect(rules?.querySelector('.rules-guide__section[id$="-lottery"]')).not.toBeNull();
+    expect(mounted!.container.querySelector(".first-play-hint")).toBeNull();
+    dispatchReactEvent(rules!.querySelector<HTMLButtonElement>(".rules-dialog__close")!, new MouseEvent("click", { bubbles: true }));
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    const restoredCard = mounted!.container.querySelector<HTMLElement>(".first-play-hint");
+    expect(restoredCard?.getAttribute("data-guide-candidate-key")).toBe(candidate.key);
+    expect(document.activeElement).toBe(restoredCard?.querySelector("[data-guide-action=details]"));
+    expect(localStorage.getItem(guideHintStorageKey("lottery"))).toBe("1");
+    expect(writesBeforeRules.mock.calls.filter(([key]) => key === guideHintStorageKey("lottery"))).toHaveLength(0);
+    expect(mounted!.container.querySelector('[role="status"]')?.textContent).not.toBe(candidate.copy.text);
+  });
+
+  it("does not display forwarded candidates to an existing player", () => {
+    const candidate: GuideCandidate = {
+      key: "1:1:lottery",
+      sessionId: 1,
+      turn: 1,
+      copy: { copyId: "lottery-service", hintId: "lottery", sectionId: "lottery", text: "抽選の説明" },
+    };
+    const derive = turnMomentPresentation.deriveTurnMomentDisplay;
+    vi.spyOn(turnMomentPresentation, "deriveTurnMomentDisplay").mockImplementation((input) => {
+      const display = derive(input);
+      return display ? { ...display, guideCandidates: [candidate] } : display;
+    });
+    localStorage.setItem(GUIDE_STARTED_KEY, "1");
+    mountApp();
+
+    click("はじめから");
+
+    expect(lastGuideOptions().candidateKeys).toContain(candidate.key);
+    expect(lastGuideOptions().sessionId).toBeNull();
+    expect(mounted!.container.querySelector(".first-play-hint")).toBeNull();
+    expect(localStorage.getItem(guideHintStorageKey("lottery"))).toBeNull();
+  });
+
   it("allows coach replay only for a ready, unobscured playing turn", () => {
     const ready = {
       sessionId: 7,

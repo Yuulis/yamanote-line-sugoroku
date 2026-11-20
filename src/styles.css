@@ -155,9 +155,12 @@ body {
   position: fixed;
   z-index: var(--layer-toast);
   top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
-  right: max(12px, calc(env(safe-area-inset-right, 0px) + 12px));
+  left: 50%;
   box-sizing: border-box;
   width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  transform: translateX(-50%);
   padding: 12px;
   border: 1px solid var(--color-border);
   border-left: 4px solid var(--color-good);
@@ -224,6 +227,27 @@ body {
   .toast-host__toast {
     font-size: 13px;
   }
+
+  .first-play-hint {
+    top: calc(256px + env(safe-area-inset-top, 0px));
+    right: calc(84px + env(safe-area-inset-right, 0px));
+    left: calc(12px + env(safe-area-inset-left, 0px) + min(440px, calc(100vw - 192px)) + 8px);
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 264px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    transform: none;
+    padding: 10px;
+  }
+
+  .first-play-hint__copy {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .first-play-hint__actions {
+    gap: 6px;
+    margin-top: 6px;
+  }
 }
 
 /* Phones: the attribution sits top-left. RailwayMap publishes its bottom edge
@@ -239,6 +263,27 @@ body {
     width: auto;
     max-width: 420px;
     transform: none;
+  }
+
+  .first-play-hint {
+    top: max(calc(env(safe-area-inset-top, 0px) + 12px), calc(var(--map-attribution-bottom, 0px) + 8px));
+    right: calc(84px + env(safe-area-inset-right, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    width: auto;
+    max-width: 420px;
+    max-height: calc(100vh - var(--map-attribution-bottom, 0px) - 24px);
+    transform: none;
+    padding: 10px;
+  }
+
+  .first-play-hint__copy {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .first-play-hint__actions {
+    gap: 6px;
+    margin-top: 6px;
   }
 }
 

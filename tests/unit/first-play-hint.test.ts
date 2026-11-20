@@ -3,6 +3,7 @@ import { StrictMode, act, createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FirstPlayHint } from "../../src/features/game/components/FirstPlayHint";
 import type { GuideAcknowledgement, GuideCandidate, GuideHintId } from "../../src/features/game/firstPlayGuide";
+import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../../src/features/game/turnResultPillLayout";
 import { useFirstPlayGuide, type UseFirstPlayGuideOptions, type UseFirstPlayGuideResult } from "../../src/features/game/useFirstPlayGuide";
 import type { StorageLike } from "../../src/features/game/store/persistence";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
@@ -80,6 +81,39 @@ describe("FirstPlayHint card", () => {
     expect(mounted.container.querySelector(".first-play-hint")?.closest("[aria-hidden=true]")).toBeNull();
     expect(document.activeElement).toBe(outsideFocusTarget);
     expect(onShown).toHaveBeenCalledExactlyOnceWith(acknowledgement(item));
+  });
+
+  it("moves the allowed hint region away from a repositioned pill and stops measuring on unmount", () => {
+    const pill = document.createElement("button");
+    pill.className = TURN_RESULT_PILL_SELECTOR.slice(1);
+    let pillRect = new DOMRect(12, 320, 200, 44);
+    vi.spyOn(pill, "getClientRects").mockImplementation(() => [pillRect] as unknown as DOMRectList);
+    const measurePill = vi.spyOn(pill, "getBoundingClientRect").mockImplementation(() => pillRect);
+    vi.stubGlobal("innerWidth", 320);
+    vi.stubGlobal("innerHeight", 568);
+    document.body.append(pill);
+    try {
+      mounted = mountReact(createElement(FirstPlayHint, hintProps()));
+      const card = mounted.container.querySelector<HTMLElement>(".first-play-hint")!;
+      const initialTop = Number.parseFloat(card.style.top);
+      expect(initialTop + Number.parseFloat(card.style.maxHeight)).toBeLessThanOrEqual(pillRect.top);
+
+      // Move the pill into the old region without changing its size or mutating the DOM.
+      pillRect = new DOMRect(pillRect.left, initialTop, pillRect.width, pillRect.height);
+      act(() => window.dispatchEvent(new Event(TURN_RESULT_PILL_LAYOUT_EVENT)));
+      const movedTop = Number.parseFloat(card.style.top);
+
+      mounted.cleanup();
+      mounted = null;
+      measurePill.mockClear();
+      act(() => window.dispatchEvent(new Event(TURN_RESULT_PILL_LAYOUT_EVENT)));
+
+      expect(movedTop).toBeGreaterThanOrEqual(pillRect.bottom);
+      expect(measurePill).not.toHaveBeenCalled();
+    } finally {
+      pill.remove();
+      vi.unstubAllGlobals();
+    }
   });
 
   it("prevents S and Escape from reaching game shortcuts while keeping native button keys available", () => {

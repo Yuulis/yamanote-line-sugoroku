@@ -15,7 +15,8 @@ import { loadBundle } from "../e2e/fixtures/bundle";
 import { itemScenario } from "../e2e/fixtures/itemScenarios";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
-import { ToastHost, type ToastHostProps } from "../../src/features/game/components/ToastHost";
+import { ToastHost } from "../../src/features/game/components/ToastHost";
+import { useToastQueue, type UseToastQueueOptions } from "../../src/features/game/useToastQueue";
 
 const { network } = await loadBundle("fixture");
 
@@ -410,11 +411,14 @@ describe("ToastHost", () => {
   const originalGlobals = new Map<string, PropertyDescriptor | undefined>();
   const globalNames: string[] = ["window", "document", "HTMLElement", "Element", "Node", "navigator", "MutationObserver"];
 
-  function Harness(props: ToastHostProps): React.JSX.Element {
-    return createElement(ToastHost, props);
+  type ToastHarnessProps = UseToastQueueOptions & { reducedMotion: boolean };
+
+  function Harness({ reducedMotion, ...options }: ToastHarnessProps): React.JSX.Element {
+    const toasts = useToastQueue(options);
+    return createElement(ToastHost, { toasts, reducedMotion });
   }
 
-  function props(overrides: Partial<ToastHostProps> = {}): ToastHostProps {
+  function props(overrides: Partial<ToastHarnessProps> = {}): ToastHarnessProps {
     return {
       sessionId: 7,
       inputs: [],
@@ -425,7 +429,7 @@ describe("ToastHost", () => {
     };
   }
 
-  function render(next: ToastHostProps): void {
+  function render(next: ToastHarnessProps): void {
     if (!mounted) {
       mounted = mountReact(createElement(Harness, next));
       return;

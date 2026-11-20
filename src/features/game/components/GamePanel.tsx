@@ -32,6 +32,7 @@ import type { TurnMomentTargets } from "./TurnMomentHost";
 import { ItemUseDialog } from "./ItemUseDialog";
 import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
+import { FirstPlayHint } from "./FirstPlayHint";
 import { DiscardChoice } from "./DiscardChoice";
 import { LOG_REVEAL_PADDING_PX, TurnLogDrawer } from "./TurnLogDrawer";
 import { useGameShortcuts } from "../useGameShortcuts";
@@ -48,7 +49,7 @@ import {
   type NoticeAnnouncementState,
   type SelectedNoticeAnnouncement,
 } from "../saveNotice";
-import type { CoachStep, GuideAcknowledgement, GuideAnnouncement } from "../firstPlayGuide";
+import type { CoachStep, GuideAcknowledgement, GuideAnnouncement, GuideCandidate } from "../firstPlayGuide";
 
 const UPCOMING_STATION_COUNT = 5;
 const LOTTERY_RULES_LABEL = "抽選のルールを詳しく見る";
@@ -80,8 +81,15 @@ export interface GamePanelProps {
   onOpenRules?: PanelOpenRules;
   /** The #68 notice after ToastHost actually displays it; key and selected copy stay paired. */
   firstTurnNoticeAnnouncement?: NoticeAnnouncementCopy | null;
-  /** A future hint status item, paired with its display-generation acknowledgement. */
+  /** A hint status item, paired with its display-generation acknowledgement. */
   hintAnnouncement?: GuideAnnouncement | null;
+  /** The currently visible guide card; kept outside the HUD and ToastHost. */
+  hintCard?: { readonly candidate: GuideCandidate; readonly acknowledgement: GuideAcknowledgement } | null;
+  /** The retained candidate, including when its card is obscured. */
+  hintCandidateKey?: string | null;
+  onHintShown?: (acknowledgement: GuideAcknowledgement) => void;
+  onHintClose?: () => void;
+  onHintDisable?: () => void;
   /** Called after the existing status region commits the #68 notice. */
   onNoticeAnnounced?: (announcement: SelectedNoticeAnnouncement) => void;
   /** Called after the existing status region commits the current hint. */
@@ -413,6 +421,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   });
   const [previousOrdinary, setPreviousOrdinary] = useState<string | null>(null);
   const committedAnnouncementIdsRef = useRef<Set<string>>(new Set());
+  const [detailsFocusKey, setDetailsFocusKey] = useState<string | null>(null);
+  const restoreNextHintFocusRef = useRef(false);
   const firstTurnNotice = props.firstTurnNoticeAnnouncement ?? null;
   const hintAnnouncement = props.hintAnnouncement ?? null;
   const decisionOwned = isNoticeAnnouncementOwned({
@@ -483,6 +493,35 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const openRules = useCallback<OpenRules>((sectionId, opener) => {
     onOpenRules?.(sectionId, opener, getRulesFallbackFocus);
   }, [onOpenRules, getRulesFallbackFocus]);
+  const openHintRules = useCallback((sectionId: RulesSectionId, opener: HTMLElement, candidateKey: string): void => {
+    setDetailsFocusKey(candidateKey);
+    onOpenRules?.(sectionId, opener, () => null);
+  }, [onOpenRules]);
+  const restoreHintActionFocus = useCallback((): void => {
+    restoreNextHintFocusRef.current = true;
+  }, []);
+  const completeHintDetailsFocus = useCallback((candidateKey: string): void => {
+    setDetailsFocusKey((current) => current === candidateKey ? null : current);
+  }, []);
+  const restoreHintDetails = !decisionOwned && detailsFocusKey !== null
+    && props.hintCard?.candidate.key === detailsFocusKey;
+  useLayoutEffect(() => {
+    if (decisionOwned) return;
+    if (detailsFocusKey !== null && props.hintCandidateKey !== detailsFocusKey) {
+      setDetailsFocusKey(null);
+      getRulesFallbackFocus()?.focus({ preventScroll: true });
+    }
+
+    if (!restoreNextHintFocusRef.current) return;
+    const currentHint = props.hintCard ?? null;
+    const root = panelRef.current?.parentElement?.querySelector<HTMLElement>(".first-play-hint");
+    const closeButton = currentHint !== null && root?.getAttribute("data-guide-candidate-key") === currentHint.candidate.key
+      ? root.querySelector<HTMLElement>("[data-guide-action=close]") : null;
+    const fallback = rollButtonRef.current ?? headingRef.current;
+    const focusTarget = isFocusRestorable(closeButton) ? closeButton : fallback;
+    restoreNextHintFocusRef.current = false;
+    if (isFocusRestorable(focusTarget, { allowAriaDisabled: true })) focusTarget.focus({ preventScroll: true });
+  }, [props.hintCard?.candidate.key, props.hintCandidateKey, decisionOwned, detailsFocusKey, getRulesFallbackFocus]);
   const draftItem = itemView?.draft.items[0];
   const presentedDecision = turnDisplay.decision;
   // Always read the latest presentation lock, so a callback captured earlier is a no-op once a lock starts.
@@ -744,6 +783,19 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
       />}
     </main>
+    {props.hintCard && (
+      <FirstPlayHint
+        key={props.hintCard.candidate.key}
+        candidate={props.hintCard.candidate}
+        acknowledgement={props.hintCard.acknowledgement}
+        onShown={props.onHintShown}
+        onClose={props.onHintClose ?? (() => undefined)}
+        onDisable={props.onHintDisable ?? (() => undefined)}
+        onDetails={(sectionId, opener) => openHintRules(sectionId, opener, props.hintCard!.candidate.key)}
+        onRestoreFocus={restoreHintActionFocus}
+        onDetailsFocusRestored={restoreHintDetails ? completeHintDetailsFocus : undefined}
+      />
+    )}
     <TurnResultPill model={turnDisplay.turnResult} active={pillActive} position={pillPosition}
       logRegionId={logRegionId} expanded={phoneLogOpen} onActivate={activateLogPill} />
     </>

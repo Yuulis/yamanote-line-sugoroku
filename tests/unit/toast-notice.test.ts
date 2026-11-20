@@ -6,7 +6,8 @@ import {
   type NoticeToastInput, type ToastInput, type ToastQueueAction, type ToastQueueState,
 } from "../../src/features/game/toastQueue";
 import { FIRST_TURN_NOTICE_TEXT } from "../../src/features/game/saveNotice";
-import { ToastHost, type ToastHostProps } from "../../src/features/game/components/ToastHost";
+import { ToastHost } from "../../src/features/game/components/ToastHost";
+import { useToastQueue, type UseToastQueueOptions } from "../../src/features/game/useToastQueue";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
 const NOTICE_KEY = "7:notice:auto-resume";
@@ -102,19 +103,26 @@ describe("ToastHost notice", () => {
   let visibilityDescriptor: PropertyDescriptor | undefined;
   const shown = vi.fn<(key: string) => void>();
 
-  function props(overrides: Partial<ToastHostProps> = {}): ToastHostProps {
+  type ToastHarnessProps = UseToastQueueOptions & { reducedMotion: boolean };
+
+  function Harness({ reducedMotion, ...options }: ToastHarnessProps): React.JSX.Element {
+    const toasts = useToastQueue(options);
+    return createElement(ToastHost, { toasts, reducedMotion });
+  }
+
+  function props(overrides: Partial<ToastHarnessProps> = {}): ToastHarnessProps {
     return {
       sessionId: 7, inputs: [], saveFailed: false, obscured: false, reducedMotion: false,
       notice: notice(), announceable: true, onNoticeShown: shown, ...overrides,
     };
   }
 
-  function render(next: ToastHostProps): void {
+  function render(next: ToastHarnessProps): void {
     if (!mounted) {
-      mounted = mountReact(createElement(ToastHost, next));
+      mounted = mountReact(createElement(Harness, next));
       return;
     }
-    act(() => mounted?.root.render(createElement(ToastHost, next)));
+    act(() => mounted?.root.render(createElement(Harness, next)));
   }
 
   function hostText(): string {

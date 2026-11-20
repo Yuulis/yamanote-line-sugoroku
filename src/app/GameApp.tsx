@@ -56,6 +56,7 @@ import { summarizeGame } from "../features/game/gameSummary";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
 import { useFirstTurnNotice } from "../features/game/useFirstTurnNotice";
+import { useToastQueue } from "../features/game/useToastQueue";
 import type { NoticeAnnouncementCopy, SelectedNoticeAnnouncement } from "../features/game/saveNotice";
 
 interface GameAppProps {
@@ -115,8 +116,7 @@ const PRE_RECORD_PHASES: ReadonlySet<GameSession["phase"]> = new Set(["committin
 
 /** Toast keys of the record a session was entered with; they are never shown (no replay on resume). */
 interface ToastBaseline {
-  /** `undefined` before the first session observation, so the first effect always captures one. */
-  sessionId: number | null | undefined;
+  sessionId: number | null;
   keys: ReadonlySet<string>;
 }
 
@@ -133,7 +133,7 @@ interface FirstPlayCoachRuntimeState {
   readonly completed: boolean;
 }
 
-const NO_TOAST_BASELINE: ToastBaseline = { sessionId: undefined, keys: new Set() };
+const NO_TOAST_BASELINE: ToastBaseline = { sessionId: null, keys: new Set() };
 
 function nextSessionId(state: AppState): number {
   return state.screen === "title" ? state.lastSessionId + 1 : state.session.sessionId + 1;
@@ -269,13 +269,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
       isFocusRestorable(candidate, { allowAriaDisabled: true }));
     target?.focus({ preventScroll: true });
   }, []);
-  useFirstPlayGuide({
-    sessionId: activeFirstPlayGuideSession?.sessionId ?? null,
-    candidates: NO_GUIDE_CANDIDATES,
-    storage,
-    obscured: firstPlayCoachOpen,
-    showClear: game?.status === "completed",
-  });
   const speed = speedById(speedId);
   const itemView = app.itemView;
   // Item mode only: the attempt snapshot of what is on screen when the roll is accepted.
@@ -334,10 +327,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const reveal = moments.reveal;
   const liveAttempt = moments.attempt;
   const presentedAttempt = turnMomentBoundary ? turnMomentBoundary.attempt : liveAttempt;
-  const toastSessionId = session?.sessionId ?? null;
-  const toastBaseline = useRef<ToastBaseline>(NO_TOAST_BASELINE);
-  const processedToastInputs = useRef<readonly ToastInput[] | null>(null);
-  const [acceptedToastInputs, setAcceptedToastInputs] = useState<readonly ToastInput[]>([]);
   const presentationGame = useMemo(() => session ? sessionProgress(session) : null, [session]);
   const titleSave: SaveLookup | null = app.saveLookup?.kind === "valid"
     ? { kind: "valid", game: isItemSave(app.saveLookup.game)
@@ -395,23 +384,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   // Presented permissions, read at call time so a direct or stale invocation cannot bypass them.
   const turnDisplayRef = useRef<TurnMomentDisplay | null>(null);
   turnDisplayRef.current = turnDisplay;
-  const toastInputs = turnDisplay?.toastInputs ?? NO_TOAST_INPUTS;
-  useEffect(() => {
-    if (toastBaseline.current.sessionId !== toastSessionId) {
-      toastBaseline.current = {
-        sessionId: toastSessionId,
-        keys: new Set(toastInputs.map((input) => input.key)),
-      };
-      processedToastInputs.current = toastInputs;
-      setAcceptedToastInputs([]);
-      setItemDialogOpen(false);
-      return;
-    }
-    if (toastInputs !== processedToastInputs.current) {
-      processedToastInputs.current = toastInputs;
-      setAcceptedToastInputs(toastInputs.filter((input) => !toastBaseline.current.keys.has(input.key)));
-    }
-  }, [toastSessionId, toastInputs]);
   const progress = useMemo<MapProgress>(
     () =>
       turnDisplay
@@ -596,6 +568,39 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
       setFirstTurnNoticeAnnouncement({ key: displayed.key, text: displayed.text });
     }
   }, [firstTurnNotice.notice, firstTurnNotice.onNoticeShown]);
+  const toastInputs = turnDisplay?.toastInputs ?? NO_TOAST_INPUTS;
+  const [toastBaseline, setToastBaseline] = useState<ToastBaseline>(NO_TOAST_BASELINE);
+  if (toastBaseline.sessionId !== sessionId) {
+    setToastBaseline({ sessionId, keys: new Set(toastInputs.map((input) => input.key)) });
+  }
+  const acceptedToastInputs = useMemo(
+    () => toastBaseline.sessionId === sessionId
+      ? toastInputs.filter((input) => !toastBaseline.keys.has(input.key)) : NO_TOAST_INPUTS,
+    [sessionId, toastBaseline, toastInputs],
+  );
+  useEffect(() => {
+    setItemDialogOpen(false);
+  }, [sessionId]);
+  const toastObscured = firstPlayCoachOpen || rulesOpen || confirm !== null || itemDialogOpen || turnDisplay?.decision != null;
+  const visibleToasts = useToastQueue({
+    sessionId,
+    inputs: acceptedToastInputs,
+    saveFailed: app.saveStatus === "failed",
+    obscured: toastObscured,
+    notice: firstTurnNotice.notice,
+    announceable: panelShown && !toastObscured,
+    onNoticeShown: handleNoticeShown,
+  });
+  const firstPlayGuide = useFirstPlayGuide({
+    sessionId: activeFirstPlayGuideSession?.sessionId ?? null,
+    candidates: turnDisplay?.guideCandidates ?? NO_GUIDE_CANDIDATES,
+    storage,
+    // A sticky failure holds the slot until a successful save or a session change clears it.
+    obscured: toastObscured || visibleToasts.length > 0
+      || (turnDisplay !== null && turnDisplay.phase !== "published")
+      || diceModel !== null || arrivalModel !== null || lottery !== null || pickup !== null,
+    showClear,
+  });
   const handleNoticeAnnounced = useCallback((announcement: SelectedNoticeAnnouncement): void => {
     if (announcement.source !== "first-turn") return;
     const current = firstTurnNoticeAnnouncement;
@@ -658,6 +663,13 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           coachOpen={firstPlayCoachOpen}
           coachTargets={coachTargets}
           firstTurnNoticeAnnouncement={firstTurnNoticeAnnouncement}
+          hintCandidateKey={firstPlayGuide.currentCandidate?.key ?? null}
+          hintCard={firstPlayGuide.card}
+          hintAnnouncement={firstPlayGuide.announcement}
+          onHintShown={firstPlayGuide.onCardShown}
+          onHintStatusAcknowledged={firstPlayGuide.onStatusAcknowledged}
+          onHintClose={firstPlayGuide.closeCurrent}
+          onHintDisable={firstPlayGuide.disableHints}
           onNoticeAnnounced={handleNoticeAnnounced}
           onOpenRules={openRules}
           onRoll={guardedRoll}
@@ -687,16 +699,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           onShown={onFirstPlayCoachShown}
         />
       )}
-      <ToastHost
-        sessionId={toastSessionId}
-        inputs={acceptedToastInputs}
-        saveFailed={app.saveStatus === "failed"}
-        obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen || rulesOpen || firstPlayCoachOpen}
-        reducedMotion={reducedMotion}
-        notice={firstTurnNotice.notice}
-        announceable={panelShown && turnDisplay?.decision == null && confirm === null && !rulesOpen && !itemDialogOpen && !firstPlayCoachOpen}
-        onNoticeShown={handleNoticeShown}
-      />
+      <ToastHost toasts={visibleToasts} reducedMotion={reducedMotion} />
       {session && turnDisplay?.showClear && presentationGame && (
         <ClearScreen
           game={session.game}

@@ -187,3 +187,27 @@ activate the card buttons), selectAnnouncement table (#68 -> hint handover, stal
 Memory is limited: Vitest `--maxWorkers=2`.
 Acceptance: exactly the commands under Step 10 in the plan (with the worker limit above).
 ```
+
+## Step 11 — wire hints: display, 詳しく, seen
+
+```
+Implement plan "Step 11 — ヒントの表示・詳細・既読を接続する" exactly (Steps 1-10 are committed; the latest is cf728c8).
+Connect Step 9 candidates -> Step 4 hook/queue -> Step 10 FirstPlayHint + announcement for eligible sessions only. One card
+at a time in the fixed order; the card stays until 閉じる / もう表示しない; seen is persisted only after visible display
+AND status announcement of the same generation; 「もう表示しない」 clears current + queued and persists disabled (memory
+survives a failed write); 詳しく opens openRules(sectionId, opener) without closing the card, and on rules close the card
+is restored and focus returns to the 詳しく button. The card is withdrawn (state kept, no ack) while a modal decision
+(adjust, discard, item-use, confirmation), rules, the coach, a playing turn moment that overlaps it, or a hidden tab is
+active, and restored afterwards with a new generation (no re-announce/re-persist of an acknowledged hint). showClear
+discards the queue and pending announcements without marking anything seen. Placement: outside the HUD, not covering the
+#66 phone pill, map controls or TurnMomentHost; phone HUD 252px at 320x568 unchanged.
+E2E (new spec or extend first-play-coach.spec.ts; `firstPlayGuideSeen: false` with the coach closed first): first
+lottery / item / harmful / terminus hints appear after the pickup boundary in order; 閉じる advances; もう表示しない stops
+all hints across reload; 詳しく opens the right rules section and returns; Space and Enter on each focused card button
+activate it exactly once (Step 10 review); a roll-adjust dialog over a visible card withdraws and restores it; goal ->
+ClearScreen with a queued hint does not mark it seen; resume shows no hints; existing players see none. @layout for phone
+(320x568, 390x844, 667x375): card inside the viewport, no overlap with the #66 pill / HUD / map controls.
+Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
+Acceptance: exactly the commands under Step 11 in the plan (with the worker limits above), including the new/extended
+spec on desktop-chromium and its @layout cases on phone-chromium.
+```
