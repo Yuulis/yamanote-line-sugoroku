@@ -55,7 +55,7 @@ replaced by this table:
 
 | Work | Claude-started route | Codex-started route |
 |------|----------------------|---------------------|
-| Design, planning, review, debugging, research, complex or risky implementation | Codex, `general-purpose-opus`, `codex-debugger` | You (`gpt-6.1-sol`) |
+| Design, planning, review, debugging, research, complex or risky implementation | Codex, `general-purpose-opus`, `codex-debugger` | You (`gpt-6.2-sol`) |
 | Routine implementation | `general-purpose-sonnet` | You; hand Luna only a mechanical, checkable part |
 | High-volume mechanical work with mechanically checkable answers: classification, fixed-field extraction, short transforms and summaries | Luna through Codex | Luna through `codex_consult.py` (below) |
 | Independent review of a large change | Codex review | Optional fresh-context Sol: `codex_consult.py --sandbox read-only --label review` |
@@ -114,7 +114,7 @@ Source of truth: `.codex/config.toml`
 
 | Key                      | Value          |
 |--------------------------|----------------|
-| `model`                  | `gpt-6.1-sol`  |
+| `model`                  | `gpt-6.2-sol`  |
 | `model_reasoning_effort` | `high`         |
 | `approval_policy`        | `never`        |
 | `sandbox_mode`           | `danger-full-access` |
