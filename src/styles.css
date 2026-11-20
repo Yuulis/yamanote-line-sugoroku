@@ -3390,7 +3390,7 @@ button[aria-disabled="true"] {
 .lottery-reveal__row--flipping .lottery-reveal__result {
   animation: lottery-result var(--lottery-ms) steps(1, end) both;
 }
-.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row {
+.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row[data-motion] {
   animation: lottery-settle var(--lottery-ms) ease-in both;
 }
 .lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__heading {

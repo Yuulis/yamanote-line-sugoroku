@@ -33,23 +33,37 @@ interface LotteryRowProps {
   boardScale: number;
 }
 
+interface MeasuredSettleMotion {
+  readonly target: RefObject<HTMLElement | null>;
+  readonly boardScale: number;
+  readonly motion: SettleMotion;
+}
+
 /** Layout measurement affects decoration only; the sequence owns the deadline, including fallback fades. */
 function LotteryRow({ drawn, stage, frames, target, boardScale }: LotteryRowProps): React.JSX.Element {
   const source = useRef<HTMLDivElement>(null);
-  const [motion, setMotion] = useState<SettleMotion>({ kind: "fade", opacityFrom: 1, opacityTo: 0 });
+  const [measuredSettle, setMeasuredSettle] = useState<MeasuredSettleMotion | null>(null);
+  const motion: SettleMotion | null = stage === "lottery-settle" && measuredSettle?.target === target
+    && measuredSettle.boardScale === boardScale ? measuredSettle.motion : null;
   useLayoutEffect(() => {
-    if (stage !== "lottery-settle") return;
-    setMotion(chooseSettleMotion(source.current?.getBoundingClientRect(), target.current?.getBoundingClientRect(),
-      { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }));
+    if (stage !== "lottery-settle") {
+      setMeasuredSettle(null);
+      return;
+    }
+    // The settle keyframes are gated by data-motion below. Measure the unanimated source first, then let the
+    // state update start the animation; otherwise WebKit can sample a compositor-advanced row under CPU load.
+    const nextMotion: SettleMotion = chooseSettleMotion(source.current?.getBoundingClientRect(), target.current?.getBoundingClientRect(),
+      { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight });
+    setMeasuredSettle({ target, boardScale, motion: nextMotion });
   }, [stage, target, boardScale]);
   // The measured source already includes the card scale, so scaleX/scaleY land on the target unchanged.
-  const style = motion.kind === "flight" ? {
+  const style = motion?.kind === "flight" ? {
     "--lottery-x": `${motion.translateX / boardScale}px`, "--lottery-y": `${motion.translateY / boardScale}px`,
     "--lottery-sx": motion.scaleX, "--lottery-sy": motion.scaleY,
   } : {};
   const flipping = drawn && stage === "lottery-flip";
   return <div ref={source} className={`lottery-reveal__row${flipping ? " lottery-reveal__row--flipping" : ""}`}
-    data-drawn={drawn} data-motion={stage === "lottery-settle" ? motion.kind : undefined} style={style as CSSProperties}>
+    data-drawn={drawn} data-motion={motion?.kind} style={style as CSSProperties}>
     <span className="lottery-reveal__result">{frames.at(-1)}</span>
     {flipping && frames.slice(0, -1).map((frame, index) => <span key={index} className="lottery-reveal__frame"
       style={{ "--frame-index": index, "--frame-count": frames.length - 1 } as CSSProperties}>{frame}</span>)}
