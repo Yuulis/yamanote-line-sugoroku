@@ -40,8 +40,15 @@ import { TurnResultCard, TurnResultPill } from "./TurnResultCard";
 import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
 import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
 import { TARGET_PROXIMITY_COPY } from "../targetProximity";
-import { selectAnnouncement, type NoticeAnnouncementState } from "../saveNotice";
-import type { CoachStep } from "../firstPlayGuide";
+import {
+  isNoticeAnnouncementOwned,
+  noticeAnnouncementIdentity,
+  selectAnnouncement,
+  type NoticeAnnouncementCopy,
+  type NoticeAnnouncementState,
+  type SelectedNoticeAnnouncement,
+} from "../saveNotice";
+import type { CoachStep, GuideAcknowledgement, GuideAnnouncement } from "../firstPlayGuide";
 
 const UPCOMING_STATION_COUNT = 5;
 const LOTTERY_RULES_LABEL = "抽選のルールを詳しく見る";
@@ -71,10 +78,14 @@ export interface GamePanelProps {
   coachOpen?: boolean;
   readonly coachTargets?: Partial<Record<CoachStep, RefObject<HTMLElement | null>>>;
   onOpenRules?: PanelOpenRules;
-  /** Key requested by ToastHost after the notice is actually displayed. */
-  noticeAnnouncementKey?: string | null;
-  /** Acknowledges a notice after the existing status region commits it. */
-  onNoticeAnnounced?: (key: string) => void;
+  /** The #68 notice after ToastHost actually displays it; key and selected copy stay paired. */
+  firstTurnNoticeAnnouncement?: NoticeAnnouncementCopy | null;
+  /** A future hint status item, paired with its display-generation acknowledgement. */
+  hintAnnouncement?: GuideAnnouncement | null;
+  /** Called after the existing status region commits the #68 notice. */
+  onNoticeAnnounced?: (announcement: SelectedNoticeAnnouncement) => void;
+  /** Called after the existing status region commits the current hint. */
+  onHintStatusAcknowledged?: (acknowledgement: GuideAcknowledgement) => void;
   onRoll: () => void;
   onSkip: () => void;
   onToggleFollow: () => void;
@@ -156,6 +167,21 @@ function phoneMediaQuery(): MediaQueryList | null {
     : null;
 }
 
+function isDocumentVisible(): boolean {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
+function useDocumentVisibility(): boolean {
+  const [visible, setVisible] = useState(isDocumentVisible);
+  useEffect(() => {
+    const updateVisibility = (): void => setVisible(isDocumentVisible());
+    document.addEventListener("visibilitychange", updateVisibility);
+    updateVisibility();
+    return () => document.removeEventListener("visibilitychange", updateVisibility);
+  }, []);
+  return visible;
+}
+
 function getPhoneLayoutSnapshot(): boolean {
   return phoneMediaQuery()?.matches ?? false;
 }
@@ -190,6 +216,7 @@ function usePhoneLayout(onBreakpointChange: (phone: boolean) => void): boolean {
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
 export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const { session, network, saveStatus, follow, reducedMotion, lines, turnDisplay } = props;
+  const documentVisible = useDocumentVisibility();
   const rollRequestKey = `${session.sessionId}:${session.game.turn}:${session.item?.decisionRevision ?? 0}`;
   const latestRollRequestRef = useRef({
     key: rollRequestKey,
@@ -380,38 +407,58 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const itemDialogOpen = Boolean(itemView && itemDialog);
   const rulesOpen = props.rulesOpen ?? false;
   const [noticeAnnouncementState, setNoticeAnnouncementState] = useState<NoticeAnnouncementState>({
-    pendingKey: null,
-    announcedKey: null,
+    current: null,
     coveredOrdinary: null,
+    deliveredIds: [],
   });
   const [previousOrdinary, setPreviousOrdinary] = useState<string | null>(null);
-  const committedNoticeKeyRef = useRef<string | null>(null);
-  const requestedNoticeKey = props.noticeAnnouncementKey ?? noticeAnnouncementState.pendingKey;
-  const announcementState = requestedNoticeKey !== null && requestedNoticeKey !== noticeAnnouncementState.pendingKey
-    ? { pendingKey: requestedNoticeKey, announcedKey: null, coveredOrdinary: null }
-    : { ...noticeAnnouncementState, pendingKey: requestedNoticeKey };
-  const decisionOwned = turnDisplay.decision !== null || rulesOpen || (props.confirmationOpen ?? false);
+  const committedAnnouncementIdsRef = useRef<Set<string>>(new Set());
+  const firstTurnNotice = props.firstTurnNoticeAnnouncement ?? null;
+  const hintAnnouncement = props.hintAnnouncement ?? null;
+  const decisionOwned = isNoticeAnnouncementOwned({
+    engineDecisionOpen: turnDisplay.decision !== null,
+    rulesOpen,
+    confirmationOpen: props.confirmationOpen ?? false,
+    itemDialogOpen,
+    coachOpen: props.coachOpen ?? false,
+  });
   const announcement = selectAnnouncement({
-    state: announcementState,
+    state: noticeAnnouncementState,
     ordinaryAnnouncement: turnDisplay.announcement,
     previousOrdinary,
+    firstTurnNotice,
+    hintAnnouncement: documentVisible ? hintAnnouncement : null,
     decisionOwned,
   });
+  const selectedAnnouncement = announcement.announcement;
+  const selectedAnnouncementId = selectedAnnouncement === null ? null : noticeAnnouncementIdentity(selectedAnnouncement);
   useEffect(() => {
     setPreviousOrdinary(turnDisplay.announcement);
-    const key = announcementState.pendingKey;
-    if (announcement.announcesNotice && key !== null && committedNoticeKeyRef.current !== key) {
-      committedNoticeKeyRef.current = key;
-      setNoticeAnnouncementState({ pendingKey: key, announcedKey: key, coveredOrdinary: turnDisplay.announcement });
-      props.onNoticeAnnounced?.(key);
+    if (announcement.announcesNotice && selectedAnnouncement !== null && selectedAnnouncementId !== null
+      && !committedAnnouncementIdsRef.current.has(selectedAnnouncementId)
+      && (selectedAnnouncement.source !== "hint" || isDocumentVisible())) {
+      committedAnnouncementIdsRef.current.add(selectedAnnouncementId);
+      setNoticeAnnouncementState((current) => ({
+        current: selectedAnnouncement,
+        coveredOrdinary: turnDisplay.announcement,
+        deliveredIds: current.deliveredIds.includes(selectedAnnouncementId)
+          ? current.deliveredIds : [...current.deliveredIds, selectedAnnouncementId],
+      }));
+      if (selectedAnnouncement.source === "first-turn") props.onNoticeAnnounced?.(selectedAnnouncement);
+      else props.onHintStatusAcknowledged?.(selectedAnnouncement.acknowledgement);
       return;
     }
-    if (noticeAnnouncementState.announcedKey !== null
-      && (decisionOwned || turnDisplay.announcement !== noticeAnnouncementState.coveredOrdinary)) {
-      setNoticeAnnouncementState({ pendingKey: null, announcedKey: null, coveredOrdinary: null });
+    const sameCurrent = noticeAnnouncementState.current !== null
+      && selectedAnnouncementId === noticeAnnouncementIdentity(noticeAnnouncementState.current);
+    if (noticeAnnouncementState.current !== null
+      && (decisionOwned || turnDisplay.announcement !== noticeAnnouncementState.coveredOrdinary || !sameCurrent)) {
+      setNoticeAnnouncementState((current) => current.current === noticeAnnouncementState.current
+        ? { ...current, current: null, coveredOrdinary: null }
+        : current);
     }
-  }, [announcement.announcesNotice, announcementState.pendingKey, turnDisplay.announcement,
-    decisionOwned, noticeAnnouncementState.announcedKey, noticeAnnouncementState.coveredOrdinary, props.onNoticeAnnounced]);
+  }, [announcement.announcesNotice, selectedAnnouncement, selectedAnnouncementId, turnDisplay.announcement,
+    decisionOwned, noticeAnnouncementState.current, noticeAnnouncementState.coveredOrdinary,
+    props.onNoticeAnnounced, props.onHintStatusAcknowledged]);
   useGameShortcuts({
     canRoll: turnDisplay.canRoll,
     canSkip: turnDisplay.canSkip,

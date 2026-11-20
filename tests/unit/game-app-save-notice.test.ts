@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { StrictMode, act, createElement } from "react";
+import { StrictMode, act, createElement, useLayoutEffect, type ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GamePanel, type GamePanelProps } from "../../src/features/game/components/GamePanel";
 import {
@@ -9,7 +9,12 @@ import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { startSession } from "../../src/features/game/gameSession";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { deriveTurnMomentDisplay } from "../../src/features/game/turnMomentPresentation";
-import { FIRST_TURN_NOTICE_TEXT, type SaveAttempt } from "../../src/features/game/saveNotice";
+import {
+  FIRST_TURN_NOTICE_TEXT,
+  type SaveAttempt,
+  type SelectedNoticeAnnouncement,
+} from "../../src/features/game/saveNotice";
+import type { GuideAcknowledgement, GuideAnnouncement } from "../../src/features/game/firstPlayGuide";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 import { seedFirstTurnNotice } from "./helpers/notices";
@@ -59,6 +64,25 @@ function options(overrides: Partial<UseFirstTurnNoticeOptions> = {}): UseFirstTu
 
 let mounted: MountedReact | null = null;
 let current: UseFirstTurnNoticeResult;
+let restoreVisibilityState: (() => void) | null = null;
+
+function mockVisibilityState(initial: DocumentVisibilityState): {
+  setWithoutNotification: (state: DocumentVisibilityState) => void;
+  dispatchChange: () => void;
+  restore: () => void;
+} {
+  let state = initial;
+  const original = Object.getOwnPropertyDescriptor(document, "visibilityState");
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => state });
+  return {
+    setWithoutNotification: (next) => { state = next; },
+    dispatchChange: () => act(() => { document.dispatchEvent(new Event("visibilitychange")); }),
+    restore: () => {
+      if (original) Object.defineProperty(document, "visibilityState", original);
+      else Reflect.deleteProperty(document, "visibilityState");
+    },
+  };
+}
 
 function Harness(props: UseFirstTurnNoticeOptions): null {
   current = useFirstTurnNotice(props);
@@ -76,6 +100,8 @@ function render(props: UseFirstTurnNoticeOptions): void {
 afterEach(() => {
   mounted?.cleanup();
   mounted = null;
+  restoreVisibilityState?.();
+  restoreVisibilityState = null;
 });
 
 describe("first-turn notice hook", () => {
@@ -227,8 +253,10 @@ describe("first-turn notice hook", () => {
 });
 
 interface NoticePanelProps extends GamePanelProps {
-  readonly noticeAnnouncementKey: string | null;
-  readonly onNoticeAnnounced: (key: string) => void;
+  readonly firstTurnNoticeAnnouncement: { readonly key: string; readonly text: string } | null;
+  readonly onNoticeAnnounced: NonNullable<GamePanelProps["onNoticeAnnounced"]>;
+  readonly hintAnnouncement: GuideAnnouncement | null;
+  readonly onHintStatusAcknowledged: NonNullable<GamePanelProps["onHintStatusAcknowledged"]>;
 }
 
 const NoticePanel = GamePanel as React.ComponentType<NoticePanelProps>;
@@ -268,8 +296,10 @@ function noticePanelValue(overrides: Partial<NoticePanelProps> = {}): NoticePane
     onCyclePresentation: () => undefined,
     onNewGame: () => undefined,
     onShowTitle: () => undefined,
-    noticeAnnouncementKey: NOTICE_KEY,
+    firstTurnNoticeAnnouncement: { key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT },
+    hintAnnouncement: null,
     onNoticeAnnounced: () => undefined,
+    onHintStatusAcknowledged: () => undefined,
     ...overrides,
   };
 }
@@ -283,11 +313,15 @@ describe("first-turn notice announcement region", () => {
       const status = mount.container.querySelector(".game-panel [role=status]");
       expect(mount.container.querySelectorAll(".game-panel [role=status]")).toHaveLength(1);
       expect(status?.textContent).toBe(FIRST_TURN_NOTICE_TEXT);
-      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
+      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith({
+        key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn",
+      });
 
-      const acknowledged = { ...value, noticeAnnouncementKey: null };
+      const acknowledged = { ...value, firstTurnNoticeAnnouncement: null };
       act(() => mount.root.render(createElement(StrictMode, null, createElement(NoticePanel, acknowledged))));
-      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
+      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith({
+        key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn",
+      });
     } finally {
       mount.cleanup();
     }
@@ -303,9 +337,11 @@ describe("first-turn notice announcement region", () => {
     try {
       const statusText = () => mount.container.querySelector(".game-panel [role=status]")?.textContent;
       expect(statusText()).toBe(FIRST_TURN_NOTICE_TEXT);
-      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
+      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith({
+        key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn",
+      });
 
-      const acknowledged = { ...value, noticeAnnouncementKey: null };
+      const acknowledged = { ...value, firstTurnNoticeAnnouncement: null };
       act(() => mount.root.render(createElement(NoticePanel, acknowledged)));
       const opened = { ...acknowledged, [modalProp]: true };
       act(() => mount.root.render(createElement(NoticePanel, opened)));
@@ -318,7 +354,9 @@ describe("first-turn notice announcement region", () => {
         "1ターン目：駅に到着",
         "1ターン目：駅に到着",
       ]);
-      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
+      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith({
+        key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn",
+      });
     } finally {
       mount.cleanup();
     }
@@ -334,15 +372,131 @@ describe("first-turn notice announcement region", () => {
 
       const opened = { ...value, rulesOpen: false };
       act(() => mount.root.render(createElement(NoticePanel, opened)));
-      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
-      const acknowledged = { ...opened, noticeAnnouncementKey: null };
+      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith({
+        key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn",
+      });
+      const acknowledged = { ...opened, firstTurnNoticeAnnouncement: null };
 
       const changed = { ...acknowledged, turnDisplay: { ...opened.turnDisplay, announcement: "2ターン目：別の駅に到着" } };
       act(() => mount.root.render(createElement(NoticePanel, changed)));
       const returned = { ...acknowledged, turnDisplay: { ...opened.turnDisplay, announcement: "1ターン目：駅に到着" } };
       act(() => mount.root.render(createElement(NoticePanel, returned)));
       expect(mount.container.querySelector(".game-panel [role=status]")?.textContent).toBe("1ターン目：駅に到着");
-      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
+      expect(onNoticeAnnounced).toHaveBeenCalledExactlyOnceWith({
+        key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn",
+      });
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("hands the existing status region from #68 to the current hint once", () => {
+    const acknowledgement = { sessionId: SESSION_ID, candidateKey: `${SESSION_ID}:1:lottery`, displayGeneration: 2 };
+    const hintAnnouncement: GuideAnnouncement = {
+      key: `guide-hint:${SESSION_ID}:${SESSION_ID}:1:lottery:2`,
+      text: "抽選のヒント本文です。",
+      acknowledgement,
+    };
+    const deliveries: Array<{
+      readonly source: "first-turn" | "hint";
+      readonly statusText: string | null;
+      readonly target: SelectedNoticeAnnouncement | GuideAcknowledgement;
+    }> = [];
+    const statusText = (): string | null => document.querySelector(".game-panel [role=status]")?.textContent ?? null;
+    const value = noticePanelValue({ firstTurnNoticeAnnouncement: { key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT },
+      hintAnnouncement,
+      onNoticeAnnounced: (target) => deliveries.push({ source: "first-turn", statusText: statusText(), target }),
+      onHintStatusAcknowledged: (target) => deliveries.push({ source: "hint", statusText: statusText(), target }),
+    });
+    const mount = mountReact(createElement(StrictMode, null, createElement(NoticePanel, value)));
+    try {
+      expect(mount.container.querySelectorAll(".game-panel [role=status]")).toHaveLength(1);
+      expect(mount.container.querySelector(".game-panel [role=status]")?.textContent).toBe(hintAnnouncement.text);
+      expect(deliveries).toEqual([
+        {
+          source: "first-turn",
+          statusText: FIRST_TURN_NOTICE_TEXT,
+          target: { key: NOTICE_KEY, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn" },
+        },
+        { source: "hint", statusText: hintAnnouncement.text, target: acknowledgement },
+      ]);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("keeps ordinary status and does not deliver a hint while the document is hidden", () => {
+    const visibility = mockVisibilityState("hidden");
+    restoreVisibilityState = visibility.restore;
+    const acknowledgement = { sessionId: SESSION_ID, candidateKey: `${SESSION_ID}:1:lottery`, displayGeneration: 1 };
+    const hintAnnouncement: GuideAnnouncement = {
+      key: `guide-hint:${SESSION_ID}:${SESSION_ID}:1:lottery:1`,
+      text: "抽選のヒント本文です。",
+      acknowledgement,
+    };
+    const onHintStatusAcknowledged = vi.fn();
+    const value = noticePanelValue({ firstTurnNoticeAnnouncement: null, hintAnnouncement, onHintStatusAcknowledged });
+    const mount = mountReact(createElement(NoticePanel, value));
+    try {
+      const status = mount.container.querySelector(".game-panel [role=status]");
+      expect(status?.textContent).toBe("1ターン目：駅に到着");
+      expect(onHintStatusAcknowledged).not.toHaveBeenCalled();
+
+      visibility.setWithoutNotification("visible");
+      visibility.dispatchChange();
+
+      expect(status?.textContent).toBe(hintAnnouncement.text);
+      expect(onHintStatusAcknowledged).toHaveBeenCalledExactlyOnceWith(acknowledgement);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("rechecks visibility immediately before acknowledging a selected hint", () => {
+    const visibility = mockVisibilityState("visible");
+    restoreVisibilityState = visibility.restore;
+    const acknowledgement = { sessionId: SESSION_ID, candidateKey: `${SESSION_ID}:1:lottery`, displayGeneration: 1 };
+    const hintAnnouncement: GuideAnnouncement = {
+      key: `guide-hint:${SESSION_ID}:${SESSION_ID}:1:lottery:1`,
+      text: "抽選のヒント本文です。",
+      acknowledgement,
+    };
+    const onHintStatusAcknowledged = vi.fn();
+    function HideBeforePassiveEffects({ children }: { readonly children: ReactNode }): React.ReactNode {
+      useLayoutEffect(() => { visibility.setWithoutNotification("hidden"); }, []);
+      return children;
+    }
+    const mount = mountReact(createElement(HideBeforePassiveEffects, null,
+      createElement(NoticePanel, noticePanelValue({ firstTurnNoticeAnnouncement: null, hintAnnouncement,
+        onHintStatusAcknowledged }))));
+    try {
+      expect(onHintStatusAcknowledged).not.toHaveBeenCalled();
+
+      visibility.dispatchChange();
+      expect(mount.container.querySelector(".game-panel [role=status]")?.textContent).toBe("1ターン目：駅に到着");
+      visibility.setWithoutNotification("visible");
+      visibility.dispatchChange();
+
+      expect(mount.container.querySelector(".game-panel [role=status]")?.textContent).toBe(hintAnnouncement.text);
+      expect(onHintStatusAcknowledged).toHaveBeenCalledExactlyOnceWith(acknowledgement);
+    } finally {
+      mount.cleanup();
+    }
+  });
+
+  it("does not select or acknowledge a hint while the coach owns the panel", () => {
+    const onHintStatusAcknowledged = vi.fn();
+    const acknowledgement = { sessionId: SESSION_ID, candidateKey: `${SESSION_ID}:1:lottery`, displayGeneration: 1 };
+    const hintAnnouncement: GuideAnnouncement = {
+      key: `guide-hint:${SESSION_ID}:${SESSION_ID}:1:lottery:1`,
+      text: "抽選のヒント本文です。",
+      acknowledgement,
+    };
+    const value = noticePanelValue({ coachOpen: true, hintAnnouncement, onHintStatusAcknowledged });
+    const mount = mountReact(createElement(NoticePanel, value));
+    try {
+      expect(mount.container.querySelector(".game-panel [role=status]")?.textContent).toBe("1ターン目：駅に到着");
+      expect(onHintStatusAcknowledged).not.toHaveBeenCalled();
     } finally {
       mount.cleanup();
     }

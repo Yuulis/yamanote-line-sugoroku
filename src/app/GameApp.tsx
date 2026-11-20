@@ -56,6 +56,7 @@ import { summarizeGame } from "../features/game/gameSummary";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
 import { useFirstTurnNotice } from "../features/game/useFirstTurnNotice";
+import type { NoticeAnnouncementCopy, SelectedNoticeAnnouncement } from "../features/game/saveNotice";
 
 interface GameAppProps {
   data: RailwayData;
@@ -194,7 +195,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [noticeAnnouncementKey, setNoticeAnnouncementKey] = useState<string | null>(null);
+  const [firstTurnNoticeAnnouncement, setFirstTurnNoticeAnnouncement] = useState<NoticeAnnouncementCopy | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [rulesRequest, setRulesRequest] = useState<RulesRequest | null>(null);
   const openRules = useCallback<PanelOpenRules>((sectionId, returnFocus, getFallbackFocus) => {
@@ -546,7 +547,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
 
   const showTitle = useCallback(() => {
     setNotice(null);
-    setNoticeAnnouncementKey(null);
+    setFirstTurnNoticeAnnouncement(null);
     setFirstPlayCoachReplaySessionId(null);
     showTitleScreen();
   }, [showTitleScreen]);
@@ -589,13 +590,20 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     coachOpen: firstPlayCoachOpen,
   });
   const handleNoticeShown = useCallback((key: string): void => {
+    const displayed = firstTurnNotice.notice;
     firstTurnNotice.onNoticeShown(key);
-    setNoticeAnnouncementKey(key);
-  }, [firstTurnNotice.onNoticeShown]);
-  const handleNoticeAnnounced = useCallback((key: string): void => {
-    firstTurnNotice.onNoticeAnnounced(key);
-    setNoticeAnnouncementKey((current) => current === key ? null : current);
-  }, [firstTurnNotice.onNoticeAnnounced]);
+    if (displayed?.key === key) {
+      setFirstTurnNoticeAnnouncement({ key: displayed.key, text: displayed.text });
+    }
+  }, [firstTurnNotice.notice, firstTurnNotice.onNoticeShown]);
+  const handleNoticeAnnounced = useCallback((announcement: SelectedNoticeAnnouncement): void => {
+    if (announcement.source !== "first-turn") return;
+    const current = firstTurnNoticeAnnouncement;
+    if (current === null || current.key !== announcement.key || current.text !== announcement.text) return;
+    firstTurnNotice.onNoticeAnnounced(announcement.key);
+    setFirstTurnNoticeAnnouncement((latest) => latest?.key === announcement.key && latest.text === announcement.text
+      ? null : latest);
+  }, [firstTurnNotice.onNoticeAnnounced, firstTurnNoticeAnnouncement]);
   useEffect(() => {
     if (!panelShown) setRulesRequest(null);
   }, [panelShown]);
@@ -649,7 +657,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           rulesOpen={rulesOpen}
           coachOpen={firstPlayCoachOpen}
           coachTargets={coachTargets}
-          noticeAnnouncementKey={noticeAnnouncementKey}
+          firstTurnNoticeAnnouncement={firstTurnNoticeAnnouncement}
           onNoticeAnnounced={handleNoticeAnnounced}
           onOpenRules={openRules}
           onRoll={guardedRoll}

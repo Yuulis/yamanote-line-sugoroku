@@ -556,6 +556,7 @@ rules 終了時に必須 decision があればそちらを優先し、カード�
 - 可視表示後・status 確認前の hidden／modal／session 変更／閉じるで stale ack を拒否。
 - 全無効化、reload、storage 失敗。
 - #68 と競合しても通常本文を上書きせず、安定後に hint が提示される。
+- E2E: Space and Enter on each focused hint-card button activate it exactly once (Step 10 review).
 
 **Acceptance commands:** G に加えて：
 

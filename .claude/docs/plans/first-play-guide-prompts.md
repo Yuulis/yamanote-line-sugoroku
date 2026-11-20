@@ -170,3 +170,20 @@ lottery is visible; fixed same-turn order; resume; skip / なし / reduced motio
 Memory is limited: Vitest `--maxWorkers=2`.
 Acceptance: exactly the commands under Step 9 in the plan (with the worker limit above).
 ```
+
+## Step 10 — hint card and announcement arbitration
+
+```
+Implement plan "Step 10 — ヒントカードと汎用読み上げ調停" exactly (Steps 1-9 are committed; the latest is the Step 9 commit).
+Build FirstPlayHint as a persistent non-modal card component (a sibling of ToastHost, never inside the aria-hidden host,
+never steals focus; buttons 閉じる / もう表示しない / 詳しく; Japanese copy via PhraseText) and generalise
+selectAnnouncement in saveNotice.ts so a notice carries its key together with the text chosen at selection time, with
+the existing #68 behaviour unchanged (ordinary turn summary first, then #68, then the current hint; re-insert/double
+read prevention as today). decisionOwned must include the local itemDialogOpen and the coach. Acknowledgement follows the
+Step 4 contract (session + key + display generation; stale acks rejected). Not wired into the running game in this step
+unless the plan's Step 10 says so (visible per the plan).
+Tests: component (buttons, no focus steal, keyboard S/Escape inside the card do not trigger game skip, Space/Enter
+activate the card buttons), selectAnnouncement table (#68 -> hint handover, stale ack, item dialog ownership, StrictMode).
+Memory is limited: Vitest `--maxWorkers=2`.
+Acceptance: exactly the commands under Step 10 in the plan (with the worker limit above).
+```
