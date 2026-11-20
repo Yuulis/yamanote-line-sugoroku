@@ -9,9 +9,15 @@ import type { EditionRegistry } from "../../src/features/editions/types";
 import * as turnMomentsModule from "../../src/features/game/animation/useTurnMoments";
 import { createItemGame, serializeGame } from "../../src/features/game/engine";
 import { FIRST_PLAY_HINT_IDS } from "../../src/features/game/firstPlayGuide";
+import { isFirstPlayCoachReplayAllowed } from "../../src/app/GameApp";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import * as turnMomentPresentation from "../../src/features/game/turnMomentPresentation";
-import { GUIDE_COACH_KEY, GUIDE_STARTED_KEY, guideHintStorageKey } from "../../src/features/game/store/guide";
+import {
+  GUIDE_COACH_KEY,
+  GUIDE_HINTS_DISABLED_KEY,
+  GUIDE_STARTED_KEY,
+  guideHintStorageKey,
+} from "../../src/features/game/store/guide";
 import { FIRST_TURN_NOTICE_KEY } from "../../src/features/game/store/notices";
 import type { StorageLike } from "../../src/features/game/store/persistence";
 import { seedFirstPlayGuide } from "./helpers/notices";
@@ -116,6 +122,131 @@ afterEach(() => {
 });
 
 describe("GameApp first-play eligibility", () => {
+  it("allows coach replay only for a ready, unobscured playing turn", () => {
+    const ready = {
+      sessionId: 7,
+      panelShown: true,
+      gameStatus: "playing" as const,
+      turnCanRoll: true,
+      pendingDecision: false,
+      itemUseDialogOpen: false,
+      confirmationOpen: false,
+      showClear: false,
+    };
+
+    expect(isFirstPlayCoachReplayAllowed(ready)).toBe(true);
+    for (const blocked of [
+      { sessionId: null },
+      { panelShown: false },
+      { gameStatus: "completed" as const },
+      { turnCanRoll: false },
+      { pendingDecision: true },
+      { itemUseDialogOpen: true },
+      { confirmationOpen: true },
+      { showClear: true },
+    ]) {
+      expect(isFirstPlayCoachReplayAllowed({ ...ready, ...blocked })).toBe(false);
+    }
+  });
+
+  it("hands rules focus to a replayed coach for an ineligible player without changing guide state", async () => {
+    const guideKeys = [GUIDE_STARTED_KEY, GUIDE_COACH_KEY, GUIDE_HINTS_DISABLED_KEY,
+      ...FIRST_PLAY_HINT_IDS.map(guideHintStorageKey)];
+    localStorage.setItem(GUIDE_STARTED_KEY, "1");
+    localStorage.setItem(GUIDE_HINTS_DISABLED_KEY, "1");
+    const before = new Map(guideKeys.map((key) => [key, localStorage.getItem(key)]));
+    mountApp();
+
+    click("はじめから");
+    expect(mounted!.container.querySelector(".first-play-coach")).toBeNull();
+    click("メニュー");
+    click("遊び方");
+
+    const rules = mounted!.container.querySelector<HTMLDialogElement>(".rules-dialog");
+    const replay = [...rules!.querySelectorAll<HTMLButtonElement>("button")]
+      .find((candidate) => candidate.textContent === "最初のガイドをもう一度見る");
+    expect(rules?.open).toBe(true);
+    expect(replay?.disabled).toBe(false);
+    dispatchReactEvent(replay!, new MouseEvent("click", { bubbles: true }));
+
+    const coach = mounted!.container.querySelector<HTMLDialogElement>(".first-play-coach");
+    expect(mounted!.container.querySelector(".rules-dialog")).toBeNull();
+    expect(coach?.open).toBe(true);
+    expect(document.activeElement).toBe(coach?.querySelector(".first-play-coach__bubble"));
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(document.activeElement).toBe(coach?.querySelector(".first-play-coach__bubble"));
+
+    click("とばす");
+    await new Promise<void>((resolve) => queueMicrotask(resolve));
+    expect(mounted!.container.querySelector(".first-play-coach")).toBeNull();
+    expect(document.activeElement).toBe(mounted!.container.querySelector(".game-panel__roll"));
+    expect(new Map(guideKeys.map((key) => [key, localStorage.getItem(key)]))).toEqual(before);
+  });
+
+  it("does not mark an eligible coach seen when it is first shown from replay after a hidden close", () => {
+    const visibilityDescriptor = Object.getOwnPropertyDescriptor(document, "visibilityState");
+    const setVisibility = (visibilityState: DocumentVisibilityState): void => {
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: visibilityState });
+    };
+
+    try {
+      mountApp();
+      setVisibility("hidden");
+      click("はじめから");
+
+      const initialCoach = mounted!.container.querySelector<HTMLDialogElement>(".first-play-coach");
+      expect(initialCoach?.open).toBe(true);
+      expect(localStorage.getItem(GUIDE_COACH_KEY)).toBeNull();
+      click("とばす");
+      expect(mounted!.container.querySelector(".first-play-coach")).toBeNull();
+      expect(localStorage.getItem(GUIDE_COACH_KEY)).toBeNull();
+
+      setVisibility("visible");
+      click("メニュー");
+      click("遊び方");
+      const rules = mounted!.container.querySelector<HTMLDialogElement>(".rules-dialog");
+      const replay = [...rules!.querySelectorAll<HTMLButtonElement>("button")]
+        .find((candidate) => candidate.textContent === "最初のガイドをもう一度見る");
+      expect(replay?.disabled).toBe(false);
+      dispatchReactEvent(replay!, new MouseEvent("click", { bubbles: true }));
+
+      expect(mounted!.container.querySelector<HTMLDialogElement>(".first-play-coach")?.open).toBe(true);
+      expect(localStorage.getItem(GUIDE_COACH_KEY)).toBeNull();
+    } finally {
+      if (visibilityDescriptor) Object.defineProperty(document, "visibilityState", visibilityDescriptor);
+      else Reflect.deleteProperty(document, "visibilityState");
+    }
+  });
+
+  it("rejects replay in the handler when an item-use dialog opens after render", () => {
+    localStorage.setItem(GUIDE_STARTED_KEY, "1");
+    mountApp();
+    click("はじめから");
+    click("メニュー");
+    click("遊び方");
+
+    const rules = mounted!.container.querySelector<HTMLDialogElement>(".rules-dialog");
+    const replay = [...rules!.querySelectorAll<HTMLButtonElement>("button")]
+      .find((candidate) => candidate.textContent === "最初のガイドをもう一度見る");
+    expect(replay?.disabled).toBe(false);
+
+    const itemUseDialog = document.createElement("dialog");
+    itemUseDialog.className = "item-dialog";
+    itemUseDialog.setAttribute("open", "");
+    document.body.append(itemUseDialog);
+    const querySelector = vi.spyOn(document, "querySelector");
+    try {
+      dispatchReactEvent(replay!, new MouseEvent("click", { bubbles: true }));
+
+      expect(querySelector).toHaveBeenCalledWith("dialog.item-dialog[open]:not(.item-adjustment):not(.item-discard)");
+      expect(rules?.open).toBe(true);
+      expect(mounted!.container.querySelector(".first-play-coach")).toBeNull();
+    } finally {
+      itemUseDialog.remove();
+      querySelector.mockRestore();
+    }
+  });
+
   it("blocks dice and Space/Enter before showModal opens on the first eligible render", () => {
     let coachWasClosedDuringAttempts = false;
     let turnDuringAttempts: string | null = null;

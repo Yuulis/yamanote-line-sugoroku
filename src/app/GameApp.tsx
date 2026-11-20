@@ -82,6 +82,28 @@ interface RulesRequest {
   readonly getFallbackFocus: () => HTMLElement | null;
 }
 
+export interface FirstPlayCoachReplayAvailability {
+  readonly sessionId: number | null;
+  readonly panelShown: boolean;
+  readonly gameStatus: GameState["status"] | null;
+  readonly turnCanRoll: boolean;
+  readonly pendingDecision: boolean;
+  readonly itemUseDialogOpen: boolean;
+  readonly confirmationOpen: boolean;
+  readonly showClear: boolean;
+}
+
+export function isFirstPlayCoachReplayAllowed(state: FirstPlayCoachReplayAvailability): boolean {
+  return state.sessionId !== null
+    && state.panelShown
+    && state.gameStatus === "playing"
+    && state.turnCanRoll
+    && !state.pendingDecision
+    && !state.itemUseDialogOpen
+    && !state.confirmationOpen
+    && !state.showClear;
+}
+
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
 const NO_MOVE_EVENTS: TurnMomentObservation["movementEvents"] = [];
@@ -103,8 +125,9 @@ interface FirstPlayGuideSession {
 }
 
 interface FirstPlayCoachRuntimeState {
-  readonly sessionId: number | null;
+  readonly autoGuideSessionId: number | null;
   readonly currentSessionId: number | null;
+  readonly replaySessionId: number | null;
   readonly open: boolean;
   readonly completed: boolean;
 }
@@ -135,11 +158,13 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const guideStartedInMemory = useRef(false);
   const [firstPlayGuideSession, setFirstPlayGuideSession] = useState<FirstPlayGuideSession | null>(null);
   const [firstPlayCoachClosedSessionId, setFirstPlayCoachClosedSessionId] = useState<number | null>(null);
+  const [firstPlayCoachReplaySessionId, setFirstPlayCoachReplaySessionId] = useState<number | null>(null);
   const firstPlayCoachClosedSessionInMemory = useRef<number | null>(null);
   const firstPlayCoachSeenSessionInMemory = useRef<number | null>(null);
   const firstPlayCoachRuntime = useRef<FirstPlayCoachRuntimeState>({
-    sessionId: null,
+    autoGuideSessionId: null,
     currentSessionId: null,
+    replaySessionId: null,
     open: false,
     completed: false,
   });
@@ -197,13 +222,16 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     && firstPlayGuideSession.sessionId === session?.sessionId
     && game !== null && game.turn >= firstPlayGuideSession.entryTurn
     ? firstPlayGuideSession : null;
-  const firstPlayCoachOpen = activeFirstPlayGuideSession !== null
+  const automaticFirstPlayCoachOpen = activeFirstPlayGuideSession !== null
     && game?.status === "playing"
     && firstPlayCoachClosedSessionId !== activeFirstPlayGuideSession.sessionId
     && firstPlayCoachClosedSessionInMemory.current !== activeFirstPlayGuideSession.sessionId;
+  const firstPlayCoachOpen = game?.status === "playing"
+    && (automaticFirstPlayCoachOpen || firstPlayCoachReplaySessionId === session?.sessionId);
   firstPlayCoachRuntime.current = {
-    sessionId: activeFirstPlayGuideSession?.sessionId ?? null,
+    autoGuideSessionId: activeFirstPlayGuideSession?.sessionId ?? null,
     currentSessionId: session?.sessionId ?? null,
+    replaySessionId: firstPlayCoachReplaySessionId,
     open: firstPlayCoachOpen,
     completed: game?.status === "completed",
   };
@@ -214,22 +242,26 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   }), [config, network, presentation]);
   const onFirstPlayCoachShown = useCallback((): void => {
     const current = firstPlayCoachRuntime.current;
-    if (!current.open || current.sessionId === null || current.currentSessionId !== current.sessionId
+    const isReplay = current.replaySessionId !== null && current.replaySessionId === current.currentSessionId;
+    if (!current.open || isReplay) return;
+    if (current.autoGuideSessionId === null || current.currentSessionId !== current.autoGuideSessionId
       || current.completed || typeof document === "undefined" || document.visibilityState !== "visible"
-      || firstPlayCoachSeenSessionInMemory.current === current.sessionId) return;
-    firstPlayCoachSeenSessionInMemory.current = current.sessionId;
+      || firstPlayCoachSeenSessionInMemory.current === current.autoGuideSessionId) return;
+    firstPlayCoachSeenSessionInMemory.current = current.autoGuideSessionId;
     writeGuideCoachSeen(storage);
   }, [storage]);
   const closeFirstPlayCoach = useCallback((_reason: FirstPlayCoachCloseReason): void => {
     const current = firstPlayCoachRuntime.current;
-    if (!current.open || current.sessionId === null || current.currentSessionId !== current.sessionId) return;
-    firstPlayCoachClosedSessionInMemory.current = current.sessionId;
-    setFirstPlayCoachClosedSessionId(current.sessionId);
+    const sessionId = current.currentSessionId;
+    if (!current.open || sessionId === null || current.completed) return;
+    firstPlayCoachClosedSessionInMemory.current = sessionId;
+    if (current.autoGuideSessionId === sessionId) setFirstPlayCoachClosedSessionId(sessionId);
+    if (current.replaySessionId === sessionId) setFirstPlayCoachReplaySessionId(null);
   }, []);
   const restoreFirstPlayCoachFocus = useCallback((): void => {
     const current = firstPlayCoachRuntime.current;
-    if (current.sessionId === null || current.currentSessionId !== current.sessionId || current.completed
-      || firstPlayCoachClosedSessionInMemory.current !== current.sessionId) return;
+    const sessionId = current.currentSessionId;
+    if (sessionId === null || current.completed || firstPlayCoachClosedSessionInMemory.current !== sessionId) return;
     const dice = document.querySelector<HTMLElement>(".game-panel__roll");
     const heading = document.querySelector<HTMLElement>(".game-panel__title");
     const target = [dice, heading].find((candidate) =>
@@ -312,6 +344,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     : app.saveLookup;
   const resumeSaved = useCallback((saved: GameState) => {
     setFirstPlayGuideSession(null);
+    setFirstPlayCoachReplaySessionId(null);
     app.resume(app.saveLookup?.kind === "valid" ? app.saveLookup.game : saved);
   }, [app.resume, app.saveLookup]);
   // The attempt's movement runs at the speed captured with its roll and only once its pre-move moment released it.
@@ -427,6 +460,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const startNewGame = useCallback(() => {
     setConfirm(null);
     setNotice(null);
+    setFirstPlayCoachReplaySessionId(null);
     const saveLookups = picker.editions.map((knownEdition) =>
       readSave(storage, network, config, knownEdition.saveKey).kind,
     );
@@ -513,6 +547,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const showTitle = useCallback(() => {
     setNotice(null);
     setNoticeAnnouncementKey(null);
+    setFirstPlayCoachReplaySessionId(null);
     showTitleScreen();
   }, [showTitleScreen]);
 
@@ -521,6 +556,28 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
   const rulesOpen = panelShown && rulesRequest !== null;
+  const replayAvailability: FirstPlayCoachReplayAvailability = {
+    sessionId: session?.sessionId ?? null,
+    panelShown,
+    gameStatus: game?.status ?? null,
+    turnCanRoll: turnDisplay?.canRoll === true,
+    pendingDecision: itemView?.decision != null || turnDisplay?.decision != null,
+    itemUseDialogOpen: itemDialogOpen,
+    confirmationOpen: confirm !== null,
+    showClear,
+  };
+  const replayAvailabilityRef = useRef(replayAvailability);
+  replayAvailabilityRef.current = replayAvailability;
+  const canReplayCoach = isFirstPlayCoachReplayAllowed(replayAvailability);
+  const replayFirstPlayCoach = useCallback((): void => {
+    const latest = replayAvailabilityRef.current;
+    const itemUseDialogIsOpen = typeof document !== "undefined"
+      && document.querySelector("dialog.item-dialog[open]:not(.item-adjustment):not(.item-discard)") !== null;
+    if (itemUseDialogIsOpen) return;
+    if (!isFirstPlayCoachReplayAllowed(latest)) return;
+    setFirstPlayCoachReplaySessionId(latest.sessionId);
+    setRulesRequest(null);
+  }, []);
   const firstTurnNotice = useFirstTurnNotice({
     saveAttempt: app.saveAttempt,
     currentSessionId: session?.sessionId ?? null,
@@ -655,6 +712,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           returnFocus={rulesRequest.returnFocus}
           getFallbackFocus={rulesRequest.getFallbackFocus}
           onClose={closeRules}
+          onReplayCoach={replayFirstPlayCoach}
+          canReplayCoach={canReplayCoach}
         />
       )}
       {confirm?.kind === "new-game" && (

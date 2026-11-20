@@ -135,3 +135,21 @@ Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the l
 Acceptance: exactly the commands under Step 7 in the plan (with the worker limits above), including the new spec on
 desktop-chromium and its @layout cases on phone-chromium.
 ```
+
+## Step 8 — replay the coach from 遊び方
+
+```
+Implement plan "Step 8 — 遊び方からコーチを再表示する" exactly (Steps 1-7 are committed; the latest is 905ef6c).
+Add 「最初のガイドをもう一度見る」 to the in-game 遊び方 (RulesGuide / RulesDialog) that closes the rules dialog and opens
+the coach in the same commit, for any player (eligible or not), without camera movement. The rules dialog's deferred
+focus restore must not steal focus from the coach. Re-show is refused (button disabled or no-op, checked both at render
+and inside the handler) while a pending decision (roll adjustment, discard), item-use dialog, confirmation, or a
+playing turn moment exists; a mandatory decision that appears behind the rules dialog wins over the replay. Closing a
+replayed coach restores focus to the dice (or the plan's fallback). Replay does not touch first-play eligibility, hints
+or the coach-seen flag semantics beyond what the plan says. The title-screen 遊び方 sub-screen: follow the plan (show or
+omit the button there exactly as specified).
+Tests: unit (RulesGuide button, handler guards, rules->coach handoff and focus) and E2E in first-play-coach.spec.ts
+(replay from the menu's 遊び方, guards, focus); @layout for phone if the button changes layout.
+Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
+Acceptance: exactly the commands under Step 8 in the plan (with the worker limits above).
+```

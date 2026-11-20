@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { RulesGuide, focusRulesSection } from "../../src/features/game/components/RulesGuide";
+import { RulesGuide, focusRulesSection, type RulesGuideProps } from "../../src/features/game/components/RulesGuide";
 import { TitleScreen } from "../../src/features/game/components/TitleScreen";
 import { EDITIONS } from "../../src/features/editions/registry";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
@@ -18,8 +18,8 @@ const model = buildRulesGuide(ITEM_GAME_CONFIG);
 let mounted: MountedReact | null = null;
 let scrollStubbed = false;
 
-function mountGuide(): HTMLElement {
-  mounted = mountReact(createElement(RulesGuide, { model, idPrefix: ID_PREFIX }));
+function mountGuide(overrides: Partial<RulesGuideProps> = {}): HTMLElement {
+  mounted = mountReact(createElement(RulesGuide, { model, idPrefix: ID_PREFIX, ...overrides }));
   return mounted.container;
 }
 
@@ -87,6 +87,27 @@ describe("RulesGuide", () => {
       expect(model.shortcuts.some((line) => section.textContent?.includes(line))).toBe(false);
     }
     expect(container.querySelectorAll(".rules-guide__nav button")).toHaveLength(SECTION_IDS.length);
+  });
+
+  it("offers the coach replay only when the host supplies the game action", () => {
+    const onReplayCoach = vi.fn();
+    const container = mountGuide({ onReplayCoach, canReplayCoach: true });
+    const replay = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "最初のガイドをもう一度見る");
+
+    expect(replay).toBeDefined();
+    expect(replay?.disabled).toBe(false);
+    dispatchReactEvent(replay!, new MouseEvent("click", { bubbles: true }));
+    expect(onReplayCoach).toHaveBeenCalledTimes(1);
+  });
+
+  it("disables coach replay when the host says a game surface owns the turn", () => {
+    const container = mountGuide({ onReplayCoach: vi.fn(), canReplayCoach: false });
+    const replay = [...container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "最初のガイドをもう一度見る");
+
+    expect(replay).toBeDefined();
+    expect(replay?.disabled).toBe(true);
   });
 
   it("marks only duplicate detail for phone reduction", () => {
@@ -170,6 +191,7 @@ describe("TitleScreen rules sub-screen", () => {
     const sections = [...container.querySelectorAll("section.rules-guide__section")];
     expect(sections.map((section) => section.id)).toEqual(SECTION_IDS.map((id) => `${TITLE_RULES_ID_PREFIX}-${id}`));
     expect(container.querySelector(".title-screen__rules-body .rules-guide")).not.toBeNull();
+    expect(buttonNamed(container, "最初のガイドをもう一度見る")).toBeUndefined();
 
     clickButton(container, BACK_BUTTON_NAME);
 

@@ -3482,6 +3482,13 @@ button[aria-disabled="true"] {
   font: inherit;
 }
 
+.rules-guide__replay {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0 14px;
+  white-space: normal;
+}
+
 .rules-guide__section {
   scroll-margin-top: var(--rules-guide-scroll-margin, 0px);
   padding-top: var(--rules-guide-gap);
