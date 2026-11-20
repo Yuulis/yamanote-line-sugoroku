@@ -82,3 +82,20 @@ text chosen at selection time are kept together; StrictMode double effects and r
 Memory is limited: Vitest `--maxWorkers=2`.
 Acceptance: exactly the commands under Step 4 in the plan (with the worker limit above).
 ```
+
+## Step 5 — pre-start eligibility and test isolation seeds
+
+```
+Implement plan "Step 5 — セッション開始前の判定とテスト隔離" exactly (Steps 1-4 are committed; the latest is 3328396).
+Use the Step 3 model (firstPlayGuide.ts, store/guide.ts) and the Step 4 hook (useFirstPlayGuide.ts). Eligibility is
+decided in startNewGame BEFORE the new game's first auto-save and bound to the new sessionId; resume is never eligible;
+`guide:started:v1` is written only after eligibility is fixed, and a failed write is remembered in memory for the rest of
+this GameApp mount so a second new game in the same mount is not first-time again; StrictMode must not recompute it.
+Nothing is rendered yet (the coach/hints come in later steps) — visible: no.
+Test isolation: add an independent E2E fixture option `firstPlayGuideSeen` (default true) that seeds guide started +
+coach + all hint keys via addInitScript, WITHOUT touching the #68 `firstTurnNoticeSeen` seed; add a separate unit helper
+(e.g. seedFirstPlayGuide in tests/unit/helpers/) without side effects on the #68 helper. Existing suites must keep
+passing unchanged in behaviour; #68 suites must still exercise unread -> shown -> announced -> persisted.
+Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
+Acceptance: exactly the commands under Step 5 in the plan (with the worker limits above).
+```

@@ -26,7 +26,13 @@ import type { RollAttempt, TurnMomentObservation, TurnOrigin } from "../features
 import { attemptOwnsAnimation, useTurnMoments } from "../features/game/animation/useTurnMoments";
 import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
 import { DiceTumble } from "../features/game/components/DiceTumble";
-import type { GameSession } from "../features/game/gameSession";
+import type { AppState, GameSession } from "../features/game/gameSession";
+import {
+  isFirstPlayEligible,
+  type GuideCandidate,
+} from "../features/game/firstPlayGuide";
+import { readFirstTurnNoticeForGuide, readGuideStarted, writeGuideStarted } from "../features/game/store/guide";
+import { useFirstPlayGuide } from "../features/game/useFirstPlayGuide";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { directionLabel, serviceName, stationName } from "../features/game/presentation";
 import { buildRulesGuide, type RulesSectionId } from "../features/game/rulesGuide";
@@ -34,7 +40,7 @@ import { type MapFollow, type RailwayMapMode, RailwayMap } from "../features/map
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
-import type { SaveLookup } from "../features/game/store/persistence";
+import { readSave, type SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
 import { overwriteProgressText } from "../features/game/resumePresentation";
 import { summarizeGame } from "../features/game/gameSummary";
@@ -71,6 +77,7 @@ const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: nul
 const NO_LINES: readonly LineMetadata[] = [];
 const NO_MOVE_EVENTS: TurnMomentObservation["movementEvents"] = [];
 const NO_TOAST_INPUTS: readonly ToastInput[] = [];
+const NO_GUIDE_CANDIDATES: readonly GuideCandidate[] = [];
 /** Phases in which `lastMove` still describes the previous turn: the current record is not yet save-attempted. */
 const PRE_RECORD_PHASES: ReadonlySet<GameSession["phase"]> = new Set(["committing", "awaiting-adjust", "resolving"]);
 
@@ -81,7 +88,16 @@ interface ToastBaseline {
   keys: ReadonlySet<string>;
 }
 
+interface FirstPlayGuideSession {
+  readonly sessionId: number;
+  readonly entryTurn: number;
+}
+
 const NO_TOAST_BASELINE: ToastBaseline = { sessionId: undefined, keys: new Set() };
+
+function nextSessionId(state: AppState): number {
+  return state.screen === "title" ? state.lastSessionId + 1 : state.session.sessionId + 1;
+}
 
 function speedById(id: AnimationSpeedId) {
   return ANIMATION_SPEEDS.find((speed) => speed.id === id) ?? ANIMATION_SPEEDS[1];
@@ -99,6 +115,15 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   );
   const config = edition.config;
   const app = useGameApp(network, storage, config, edition.saveKey);
+  const existingSaveObserved = useRef(false);
+  const guideStartedInMemory = useRef(false);
+  const [firstPlayGuideSession, setFirstPlayGuideSession] = useState<FirstPlayGuideSession | null>(null);
+  if (app.saveAttempt?.result === "saved") {
+    existingSaveObserved.current = true;
+  }
+  if (app.saveLookup && (app.saveLookup.kind === "valid" || app.saveLookup.kind === "invalid")) {
+    existingSaveObserved.current = true;
+  }
   const reducedMotion = usePrefersReducedMotion();
   const rideTarget = useRef<HTMLElement>(null);
   const directionTarget = useRef<HTMLElement>(null);
@@ -135,6 +160,17 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   }), [edition.config, network, presentation, requiredIds]);
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
+  const activeFirstPlayGuideSession = firstPlayGuideSession !== null
+    && firstPlayGuideSession.sessionId === session?.sessionId
+    && game !== null && game.turn >= firstPlayGuideSession.entryTurn
+    ? firstPlayGuideSession : null;
+  useFirstPlayGuide({
+    sessionId: activeFirstPlayGuideSession?.sessionId ?? null,
+    candidates: NO_GUIDE_CANDIDATES,
+    storage,
+    obscured: false,
+    showClear: game?.status === "completed",
+  });
   const speed = speedById(speedId);
   const itemView = app.itemView;
   // Item mode only: the attempt snapshot of what is on screen when the roll is accepted.
@@ -203,6 +239,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
       ? { ...app.saveLookup.game, movementHistory: [] } : app.saveLookup.game }
     : app.saveLookup;
   const resumeSaved = useCallback((saved: GameState) => {
+    setFirstPlayGuideSession(null);
     app.resume(app.saveLookup?.kind === "valid" ? app.saveLookup.game : saved);
   }, [app.resume, app.saveLookup]);
   // The attempt's movement runs at the speed captured with its roll and only once its pre-move moment released it.
@@ -318,8 +355,29 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const startNewGame = useCallback(() => {
     setConfirm(null);
     setNotice(null);
+    const saveLookups = picker.editions.map((knownEdition) =>
+      readSave(storage, network, config, knownEdition.saveKey).kind,
+    );
+    if (saveLookups.some((kind) => kind === "valid" || kind === "invalid")) {
+      existingSaveObserved.current = true;
+    }
+    const eligible = isFirstPlayEligible({
+      resumed: false,
+      existingSaveObserved: existingSaveObserved.current,
+      saveLookups,
+      firstTurnNotice: readFirstTurnNoticeForGuide(storage),
+      guideStarted: readGuideStarted(storage),
+      startedInMemory: guideStartedInMemory.current,
+    });
+    const nextId = nextSessionId(app.state);
+    const binding: FirstPlayGuideSession | null = eligible ? { sessionId: nextId, entryTurn: 0 } : null;
+    if (eligible) {
+      guideStartedInMemory.current = true;
+      writeGuideStarted(storage);
+    }
     newGame();
-  }, [newGame]);
+    setFirstPlayGuideSession(binding);
+  }, [app.state, config, newGame, network, picker.editions, storage]);
 
   const requestNewGame = useCallback(() => {
     const saved = saveLookup?.kind === "valid" ? saveLookup.game : null;
