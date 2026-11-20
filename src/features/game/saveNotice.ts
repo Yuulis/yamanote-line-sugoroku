@@ -50,7 +50,7 @@ export interface NoticeAnnouncementState {
 
 export interface NoticeAnnouncementInput {
   readonly state: NoticeAnnouncementState;
-  /** The announcement the status region would speak without the notice (turn, auto-roll). */
+  /** The turn announcement the status region would speak without the notice. */
   readonly ordinaryAnnouncement: string;
   /** The ordinary text of the last committed render, owned by the caller; null before the first render. */
   readonly previousOrdinary: string | null;

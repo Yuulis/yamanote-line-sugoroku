@@ -240,9 +240,8 @@ describe("rules guide model", () => {
 
     expect(controls).toContain(ANIMATION_SPEEDS.map(({ label }) => label).join("→"));
     expect(controls).toContain(PRESENTATION_LEVELS.map(({ label }) => label).join("→"));
-    expect(controls).toContain("「おまかせ」をONにすると");
-    expect(controls).toContain("ほかのタブに切り替えたときは止まります");
-    expect(controls).toContain("選び終えるまで待ちます");
+    expect(controls).not.toContain("おまかせ");
+    expect(controls).toContain("「スキップ」で、移動の演出を飛ばせます");
     expect(controls).toContain("動きを減らしているときは、アニメーションは省略され、「速度」と「演出」は切り替えられません");
     expect(controls).toContain("「追尾」");
   });

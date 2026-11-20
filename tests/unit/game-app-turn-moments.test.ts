@@ -171,10 +171,10 @@ function propsFor(boundary?: HarnessProps["turnMomentBoundary"]): HarnessProps {
     picker: { editions: EDITIONS, editionId: edition.id, onEditionChange: vi.fn(), focusPicker: false, onPickerFocusRestored: vi.fn() },
     turnMomentBoundary: boundary };
 }
-function inject(session: GameSession, failed = false): void {
+function inject(session: GameSession, failed = false, roll: () => void = vi.fn()): void {
   injection.app = { state: { screen: "game", session }, itemView: itemSessionView(session, network),
     saveStatus: failed ? "failed" : "saved", saveLookup: null, saveAttempt: null,
-    roll: vi.fn(), editItemDraft: vi.fn(), adjustItemRoll: vi.fn(), discardItem: vi.fn(),
+    roll, editItemDraft: vi.fn(), adjustItemRoll: vi.fn(), discardItem: vi.fn(),
     finishAnimation: vi.fn(), newGame: vi.fn(), resume: vi.fn(), removeSave: vi.fn(), showTitle: vi.fn(),
   } as ReturnType<typeof useGameApp>;
 }
@@ -190,6 +190,11 @@ function click(label: string): void {
 function status(): string {
   expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(1);
   return mounted!.container.querySelector('[role="status"]')!.textContent!;
+}
+function pressKey(key: string, target: EventTarget = document.body): KeyboardEvent {
+  const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+  act(() => { target.dispatchEvent(event); });
+  return event;
 }
 function attemptFor(origin: GameSession): RollAttempt {
   return { key: "31:roll:1:0", sessionId: 31, recordTurn: origin.game.turn + 1, source: "click",
@@ -217,6 +222,58 @@ function sessionWithCompletedTargetHistory(sessionId: number, completeAll: boole
     currentStationId: finalRecord.toStationId, currentServiceId: LEGACY_CAPITAL_REGION_CONFIG.targetServiceId,
     direction: LEGACY_CAPITAL_REGION_CONFIG.targetDirection, completedSegmentIds: [...doneIds], movementHistory } };
 }
+
+describe("manual roll readiness", () => {
+  const restoredBoundary = { attempt: null, revealStage: "done" as const, restoredOrOmitted: true };
+
+  it("accepts only one click or keyboard request per ready state, then accepts a new decision revision on the same turn", () => {
+    const session = resumeSession(itemScenario("double", network), network, 70);
+    const roll = vi.fn();
+    inject(session, false, roll);
+    render(propsFor(restoredBoundary));
+
+    click("サイコロを振る");
+    pressKey("Enter");
+    expect(roll).toHaveBeenCalledOnce();
+
+    const revised = { ...session, item: { ...session.item!, decisionRevision: session.item!.decisionRevision + 1 } };
+    expect(revised.game.turn).toBe(session.game.turn);
+    inject(revised, false, roll);
+    render(propsFor(restoredBoundary));
+    pressKey("Enter");
+    expect(roll).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not consume Space when a click already used the same ready state", () => {
+    const session = resumeSession(itemScenario("double", network), network, 72);
+    const roll = vi.fn();
+    inject(session, false, roll);
+    render(propsFor(restoredBoundary));
+
+    click("サイコロを振る");
+    const nonInteractive = mounted!.container.querySelector(".game-panel__stats dt");
+    if (!nonInteractive) throw new Error("Missing non-interactive HUD stat label");
+    const event = pressKey(" ", nonInteractive);
+
+    expect(roll).toHaveBeenCalledOnce();
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("does not consume Space while not ready, then accepts it when the same turn becomes ready", () => {
+    const session = resumeSession(itemScenario("double", network), network, 71);
+    const roll = vi.fn();
+    inject({ ...session, phase: "animating" }, false, roll);
+    render(propsFor(restoredBoundary));
+
+    expect(pressKey(" ").defaultPrevented).toBe(false);
+    expect(roll).not.toHaveBeenCalled();
+
+    inject(session, false, roll);
+    render(propsFor(restoredBoundary));
+    expect(pressKey(" ").defaultPrevented).toBe(true);
+    expect(roll).toHaveBeenCalledOnce();
+  });
+});
 
 describe("GameApp goal guidance", () => {
   const goalStationId = (): unknown => railwayMapProps.mock.calls.at(-1)?.[0].goalStationId;

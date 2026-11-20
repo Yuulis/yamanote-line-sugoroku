@@ -68,7 +68,6 @@ function props(overrides: Partial<GameHudProps> = {}): GameHudProps {
     station: "東京", ride: "山手線", lineBadge: { groupId: "jr-yamanote", code: "JY", color: "#80c241", name: "山手線", textColor: "#000000" },
     direction: "外回り", turn: 5, completed: 3, required: 30, compactRoll: "3マス", saveStatus: null,
     saveStatusMessage: "未保存", canRoll: true, canSkip: false, animating: false, draftSelected: false,
-    autoRollEnabled: false, onToggleAutoRoll: vi.fn(),
     rollButtonRef: createRef<HTMLButtonElement>(), onRoll: vi.fn(), onSkip: vi.fn(), effects: [], ...overrides,
   };
 }
@@ -226,27 +225,14 @@ describe("GameHud", () => {
     }
   });
 
-  it("shows an always-enabled auto-roll toggle with a fixed name, state text, and pressed state", () => {
-    const onToggleAutoRoll = vi.fn();
-    const value = props({ autoRollEnabled: false, onToggleAutoRoll, canRoll: false, animating: true });
+  it("renders only dice and skip in the action row", () => {
+    const value = props({ canRoll: false, animating: true });
     const mount = mountReact(createElement(Harness, { value }));
     try {
-      const toggle = mount.container.querySelector<HTMLButtonElement>(
-        'button[aria-label="おまかせで進む"]',
-      );
-      expect(toggle).not.toBeNull();
-      expect(toggle?.textContent?.trim()).toBe("おまかせ: OFF");
-      expect(toggle?.getAttribute("aria-pressed")).toBe("false");
-      expect(toggle?.disabled).toBe(false);
-      dispatchReactEvent(toggle!, new MouseEvent("click", { bubbles: true }));
-      expect(onToggleAutoRoll).toHaveBeenCalledOnce();
-
-      act(() => mount.root.render(createElement(Harness, {
-        value: { ...value, autoRollEnabled: true, canRoll: true, animating: false },
-      })));
-      expect(toggle?.textContent?.trim()).toBe("おまかせ: ON");
-      expect(toggle?.getAttribute("aria-pressed")).toBe("true");
-      expect(toggle?.getAttribute("aria-label")).toBe("おまかせで進む");
+      const actions = mount.container.querySelector<HTMLElement>(".game-panel__actions")!;
+      expect([...actions.querySelectorAll("button")].map((button) => button.textContent?.trim()))
+        .toEqual(["移動中…", "スキップ"]);
+      expect(actions.querySelector(".game-panel__auto-roll")).toBeNull();
     } finally {
       mount.cleanup();
     }

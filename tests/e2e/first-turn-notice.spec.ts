@@ -19,11 +19,11 @@ import {
   openGameMenu,
   openTitle,
   panelStat,
+  readSave,
   startNewGame,
   titleScreen,
   writeSaveText,
 } from "./support/app";
-import { autoRollToggle } from "./support/autoRoll";
 import { advanceTumble } from "./support/turnMoments";
 
 const FIRST_TURN_NOTICE_KEY = "yamanote-line-sugoroku:notice:auto-resume:v1";
@@ -230,12 +230,12 @@ test("hidden tab delays the notice until visible", async ({ page }) => {
   await expectAnnounced(page);
 });
 
-test("auto-roll releases the notice slot after its ordinary summary", async ({ page }) => {
+test("a manual turn releases the notice slot after its ordinary summary", async ({ page }) => {
   await openTitle(page);
   await startNewGame(page);
   await observeStatusAnnouncements(page);
-  await autoRollToggle(page).click();
-  await expect(gamePanel(page).locator('[role="status"]')).toHaveText("おまかせで進みます。");
+  await diceButton(page).click();
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(1);
   await expectAnnounced(page);
   const announcements = await readStatusAnnouncements(page);
   const ordinaryIndex = announcements.findIndex(({ text }) => text !== FIRST_TURN_NOTICE_TEXT && /\d+ターン目/.test(text));

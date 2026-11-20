@@ -160,7 +160,7 @@ describe("turn-result publication integration", () => {
     expect(shown.compact.segmentsText).toBe(`+${expectedNew}区間`);
   });
 
-  it("uses the existing none, Skip, reduced-motion, resume and auto-roll boundaries", () => {
+  it("uses the existing none, Skip, reduced-motion, resume and manual-roll boundaries", () => {
     const nonePolicy = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "none" });
     expect(buildTurnRevealStages({ record: currentMove.itemRecord!, restored: false, newlyCompletedTargetSegmentIds: [],
       hasRenderableNewTargetSegments: false, omitted: false }, nonePolicy)).toEqual([]);

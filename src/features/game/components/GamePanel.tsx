@@ -35,7 +35,6 @@ import { ItemEventNotice } from "./ItemEventNotice";
 import { DiscardChoice } from "./DiscardChoice";
 import { LOG_REVEAL_PADDING_PX, TurnLogDrawer } from "./TurnLogDrawer";
 import { useGameShortcuts } from "../useGameShortcuts";
-import { useAutoRoll } from "../useAutoRoll";
 import { PhraseText } from "./PhraseText";
 import { TurnResultCard, TurnResultPill } from "./TurnResultCard";
 import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
@@ -65,7 +64,7 @@ export interface GamePanelProps {
   presentationLevel: PresentationLevel;
   reducedMotion: boolean;
   confirmationOpen?: boolean;
-  /** The in-game rules dialog is open: suspends auto-roll and shortcuts and defers the decision modals. */
+  /** The in-game rules dialog is open: suspends shortcuts and defers the decision modals. */
   rulesOpen?: boolean;
   onOpenRules?: PanelOpenRules;
   /** Key requested by ToastHost after the notice is actually displayed. */
@@ -187,6 +186,25 @@ function usePhoneLayout(onBreakpointChange: (phone: boolean) => void): boolean {
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
 export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const { session, network, saveStatus, follow, reducedMotion, lines, turnDisplay } = props;
+  const rollRequestKey = `${session.sessionId}:${session.game.turn}:${session.item?.decisionRevision ?? 0}`;
+  const latestRollRequestRef = useRef({
+    key: rollRequestKey,
+    canRoll: turnDisplay.canRoll,
+    onRoll: props.onRoll,
+  });
+  latestRollRequestRef.current = {
+    key: rollRequestKey,
+    canRoll: turnDisplay.canRoll,
+    onRoll: props.onRoll,
+  };
+  const consumedReadyKeyRef = useRef<string | null>(null);
+  const requestRoll = useCallback(() => {
+    const latest = latestRollRequestRef.current;
+    if (!latest.canRoll || consumedReadyKeyRef.current === latest.key) return false;
+    consumedReadyKeyRef.current = latest.key;
+    latest.onRoll();
+    return true;
+  }, []);
   const presentation = useMemo(
     () => props.presentation ?? createPresentationResolver(network),
     [props.presentation, network],
@@ -354,16 +372,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
   const itemDialogOpen = Boolean(itemView && itemDialog);
-  // Render-time state, so the suspension holds before the dialog's own layout effect opens it.
   const rulesOpen = props.rulesOpen ?? false;
-  const autoRoll = useAutoRoll({
-    session,
-    turnDisplay,
-    surfaceOpen: activeSurface !== null,
-    itemDialogOpen,
-    confirmationOpen: (props.confirmationOpen ?? false) || rulesOpen,
-    onRoll: props.onRoll,
-  });
   const [noticeAnnouncementState, setNoticeAnnouncementState] = useState<NoticeAnnouncementState>({
     pendingKey: null,
     announcedKey: null,
@@ -378,31 +387,31 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const decisionOwned = turnDisplay.decision !== null || rulesOpen || (props.confirmationOpen ?? false);
   const announcement = selectAnnouncement({
     state: announcementState,
-    ordinaryAnnouncement: autoRoll.announcement,
+    ordinaryAnnouncement: turnDisplay.announcement,
     previousOrdinary,
     decisionOwned,
   });
   useEffect(() => {
-    setPreviousOrdinary(autoRoll.announcement);
+    setPreviousOrdinary(turnDisplay.announcement);
     const key = announcementState.pendingKey;
     if (announcement.announcesNotice && key !== null && committedNoticeKeyRef.current !== key) {
       committedNoticeKeyRef.current = key;
-      setNoticeAnnouncementState({ pendingKey: key, announcedKey: key, coveredOrdinary: autoRoll.announcement });
+      setNoticeAnnouncementState({ pendingKey: key, announcedKey: key, coveredOrdinary: turnDisplay.announcement });
       props.onNoticeAnnounced?.(key);
       return;
     }
     if (noticeAnnouncementState.announcedKey !== null
-      && (decisionOwned || autoRoll.announcement !== noticeAnnouncementState.coveredOrdinary)) {
+      && (decisionOwned || turnDisplay.announcement !== noticeAnnouncementState.coveredOrdinary)) {
       setNoticeAnnouncementState({ pendingKey: null, announcedKey: null, coveredOrdinary: null });
     }
-  }, [announcement.announcesNotice, announcementState.pendingKey, autoRoll.announcement,
+  }, [announcement.announcesNotice, announcementState.pendingKey, turnDisplay.announcement,
     decisionOwned, noticeAnnouncementState.announcedKey, noticeAnnouncementState.coveredOrdinary, props.onNoticeAnnounced]);
   useGameShortcuts({
     canRoll: turnDisplay.canRoll,
     canSkip: turnDisplay.canSkip,
     surfaceOpen: activeSurface !== null,
     itemDialogOpen: itemDialogOpen || rulesOpen,
-  }, { onRoll: autoRoll.requestRoll, onSkip: props.onSkip });
+  }, { onRoll: requestRoll, onSkip: props.onSkip });
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
     props.onItemDialogOpenChange(itemDialogOpen);
@@ -636,13 +645,11 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         saveStatus={saveStatus}
         saveStatusMessage={saveStatusMessage(saveStatus)}
         canRoll={canRoll}
-        autoRollEnabled={autoRoll.enabled}
         animating={animating}
         draftSelected={Boolean(draftItem)}
         rollButtonRef={rollButtonRef}
-        onRoll={autoRoll.requestRoll}
+        onRoll={requestRoll}
         onSkip={props.onSkip}
-        onToggleAutoRoll={autoRoll.toggle}
         effects={effectModels}
         canSkip={turnDisplay.canSkip}
         rideTargetRef={props.turnMomentTargets?.ride}

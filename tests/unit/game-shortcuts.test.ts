@@ -25,7 +25,7 @@ function keyEvent(key: string, node: EventTarget = document.body, init: Keyboard
 }
 
 function Harness({ context, onRoll, onSkip }: {
-  context: GameShortcutContext; onRoll: () => void; onSkip: () => void;
+  context: GameShortcutContext; onRoll: () => boolean; onSkip: () => void;
 }): null {
   useGameShortcuts(context, { onRoll, onSkip });
   return null;
@@ -50,7 +50,7 @@ describe("gameShortcutAction", () => {
 
   it.each([
     '<button><span data-target>Dice</span></button>', '<a href="/"><span data-target>Link</span></a>',
-    '<button aria-pressed="false"><span data-target>おまかせ: OFF</span></button>',
+    '<button><span data-target>Action</span></button>',
     '<input>', '<select><option>One</option></select>', '<textarea></textarea>',
     '<summary><span data-target>Details</span></summary>',
     '<div contenteditable="true"><span data-target>Edit</span></div>',
@@ -128,7 +128,7 @@ describe("gameShortcutAction", () => {
 });
 
 describe.each([false, true])("useGameShortcuts (StrictMode: %s)", (strict) => {
-  function render(context: GameShortcutContext, onRoll: () => void, onSkip: () => void): void {
+  function render(context: GameShortcutContext, onRoll: () => boolean, onSkip: () => void): void {
     const node = createElement(Harness, { context, onRoll, onSkip });
     const wrapped = strict ? createElement(StrictMode, null, node) : node;
     if (mounted) act(() => mounted!.root.render(wrapped));
@@ -136,9 +136,9 @@ describe.each([false, true])("useGameShortcuts (StrictMode: %s)", (strict) => {
   }
 
   it("uses the latest handlers and permissions and removes its listener on unmount", () => {
-    const onRoll = vi.fn();
+    const onRoll = vi.fn(() => true);
     const onSkip = vi.fn();
-    const latestRoll = vi.fn();
+    const latestRoll = vi.fn(() => true);
     const latestSkip = vi.fn();
     render(IDLE, onRoll, onSkip);
     const heading = element();
@@ -165,8 +165,31 @@ describe.each([false, true])("useGameShortcuts (StrictMode: %s)", (strict) => {
     expect(latestSkip).toHaveBeenCalledTimes(2);
   });
 
+  it("does not consume a roll key while not ready, then accepts the same key when ready", () => {
+    const onRoll = vi.fn(() => true);
+    render(PRESENTING, onRoll, vi.fn());
+    const notReady = keyEvent(" ");
+    expect(notReady.defaultPrevented).toBe(false);
+    expect(onRoll).not.toHaveBeenCalled();
+
+    render(IDLE, onRoll, vi.fn());
+    const ready = keyEvent(" ");
+    expect(ready.defaultPrevented).toBe(true);
+    expect(onRoll).toHaveBeenCalledOnce();
+  });
+
+  it("does not cancel the browser default when the roll request is rejected", () => {
+    const onRoll = vi.fn(() => false);
+    render(IDLE, onRoll, vi.fn());
+
+    for (const key of [" ", "Enter"]) {
+      expect(keyEvent(key).defaultPrevented).toBe(false);
+    }
+    expect(onRoll).toHaveBeenCalledTimes(2);
+  });
+
   it("does not double-activate a button and leaves native activation available", () => {
-    const onRoll = vi.fn();
+    const onRoll = vi.fn(() => true);
     render(IDLE, onRoll, vi.fn());
     const button = element("<button><span data-target>Dice</span></button>").closest("button")!;
     button.addEventListener("click", onRoll);
@@ -192,7 +215,7 @@ describe.each([false, true])("useGameShortcuts (StrictMode: %s)", (strict) => {
   });
 
   it("yields to newly open surfaces, dialogs and ignored events without preventing them", () => {
-    const onRoll = vi.fn();
+    const onRoll = vi.fn(() => true);
     const onSkip = vi.fn();
     for (const context of [{ ...IDLE, surfaceOpen: true }, { ...PRESENTING, itemDialogOpen: true }]) {
       render(context, onRoll, onSkip);

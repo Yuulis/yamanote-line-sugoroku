@@ -9,7 +9,7 @@ export interface GameShortcutContext {
 }
 
 interface GameShortcutHandlers {
-  readonly onRoll: () => void;
+  readonly onRoll: () => boolean;
   readonly onSkip: () => void;
 }
 
@@ -75,9 +75,11 @@ export function useGameShortcuts(context: GameShortcutContext, handlers: GameSho
     const onKeyDown = (event: KeyboardEvent): void => {
       const action = gameShortcutAction(event, latest.current.context);
       if (!action) return;
-      if (event.key === " ") event.preventDefault();
-      if (action === "roll") latest.current.handlers.onRoll();
-      else latest.current.handlers.onSkip();
+      if (action === "roll") {
+        if (latest.current.handlers.onRoll()) event.preventDefault();
+        return;
+      }
+      latest.current.handlers.onSkip();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);

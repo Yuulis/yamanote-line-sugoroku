@@ -1198,14 +1198,6 @@ button[aria-disabled="true"] {
   white-space: nowrap;
 }
 
-.game-panel__actions .game-panel__auto-roll {
-  flex: 1.7;
-  min-width: 0;
-  padding-inline: 2px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .game-panel__options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1364,7 +1356,6 @@ button[aria-disabled="true"] {
   grid-column: 1 / -1;
 }
 
-.game-panel__actions .game-panel__auto-roll[aria-pressed="true"],
 .game-panel__options button[aria-pressed="true"],
 .phone-menu__section-button[aria-pressed="true"] {
   background: var(--color-brand-tint);
@@ -2698,7 +2689,7 @@ button[aria-disabled="true"] {
   .game-panel__actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr) minmax(0, 1.35fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     height: 56px;
     min-height: 56px;
     max-height: 56px;
@@ -2724,11 +2715,6 @@ button[aria-disabled="true"] {
 
   .game-panel__actions .game-panel__roll--draft {
     white-space: normal;
-    font-size: 12px;
-  }
-
-  .game-panel__actions .game-panel__auto-roll {
-    padding-inline: 2px;
     font-size: 12px;
   }
 
@@ -3064,7 +3050,7 @@ button[aria-disabled="true"] {
   .game-panel__actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr) minmax(0, 1.35fr);
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr);
     align-self: start;
     height: 56px;
     min-height: 56px;
@@ -3095,12 +3081,6 @@ button[aria-disabled="true"] {
   }
 
   .game-panel__actions .game-panel__skip {
-    white-space: nowrap;
-    padding-inline: 2px;
-    font-size: 12px;
-  }
-
-  .game-panel__actions .game-panel__auto-roll {
     white-space: nowrap;
     padding-inline: 2px;
     font-size: 12px;
