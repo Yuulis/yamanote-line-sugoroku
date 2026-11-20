@@ -153,3 +153,20 @@ Tests: unit (RulesGuide button, handler guards, rules->coach handoff and focus) 
 Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
 Acceptance: exactly the commands under Step 8 in the plan (with the worker limits above).
 ```
+
+## Step 9 — published hint candidates
+
+```
+Implement plan "Step 9 — 公開済みヒント候補を生成する" exactly (Steps 1-8 are committed; the latest is f6958fb).
+Add `guideCandidates` to TurnMomentDisplay from deriveTurnMomentDisplay only (no UI reads raw lastMove/itemRecord):
+every candidate publishes at resultPublished (end of pickup; DESIGN row 244 — NOT lotteryPublished), keyed
+`${sessionId}:${turn}:${id}`, turn > entryTurn so resumed turns never produce candidates, while presentation level
+なし / reduced motion / skip still produce them once published. Use the Step 3 builders for the lottery variants (by the
+actual draw kind, after detour/suspension filtering), the Revision 3 off-target condition (one sentence; no candidate
+when it does not apply), item / pending-discard, harmful / certificate-cancelled, terminus (stopReason endpoint,
+endpointKind terminus, unusedPips > 0; never area or service boundaries). Nothing renders yet (visible: no).
+Tests in turn-moment presentation / first-play-guide unit suites: pickup in progress -> no candidates even though the
+lottery is visible; fixed same-turn order; resume; skip / なし / reduced motion; each event and each excluded case.
+Memory is limited: Vitest `--maxWorkers=2`.
+Acceptance: exactly the commands under Step 9 in the plan (with the worker limit above).
+```

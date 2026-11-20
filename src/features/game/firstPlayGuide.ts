@@ -116,6 +116,21 @@ export interface GuideCandidate {
   readonly copy: GuideHintCopy;
 }
 
+/** Pair a published hint copy with its stable session/turn identity. */
+export function createGuideCandidate(
+  sessionId: number,
+  turn: number,
+  copy: GuideCopy | null,
+): GuideCandidate | null {
+  if (copy === null || copy.hintId === null) return null;
+  return {
+    key: `${sessionId}:${turn}:${copy.hintId}`,
+    sessionId,
+    turn,
+    copy: copy as GuideHintCopy,
+  };
+}
+
 export interface GuideAcknowledgement {
   readonly sessionId: number;
   readonly candidateKey: string;
