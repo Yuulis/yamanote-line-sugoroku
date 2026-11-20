@@ -66,7 +66,7 @@ npm run build
 | `item-pending-discard` | 持ち物がいっぱいのときは、持っているものと新しいものから、捨てるものを1つ選びます。 | `items` | `rulesGuide.ts:202` |
 | `harmful-item` | 不利なアイテムは持ち物には入らず、それぞれ決まったタイミングで自動で効きます。 | `items` | `rulesGuide.ts:161–163,199`、`engine/items.ts:73–103` |
 | `harmful-item-cancelled` | 遅延証明書が、不利なアイテムを打ち消しました。 | `items` | `engine/items.ts:62–69`、`toastQueue.ts:76–77` |
-| `terminus` | 終点ではそこで止まり、残りの出目は使いません。 | `goal` | `rulesGuide.ts:137`、`engine/movement.ts:78–90` |
+| `terminus` | 終点に着くと、出目が余っていてもそこで止まります。 | `goal` | `rulesGuide.ts:137`、`engine/movement.ts:78–90` |
 | `skip-label` | 演出をスキップ | `controls` | `rulesGuide.ts:146`、`components/RollAdjustment.tsx:91` |
 | `skip-help` | 「演出をスキップ」で、移動の演出を飛ばせます。 | `controls` | `rulesGuide.ts:146` |
 | `shortcut-help` | Space / Enter：サイコロを振る　S / Escape：演出をスキップ | `controls` | `rulesGuide.ts:66–69` |

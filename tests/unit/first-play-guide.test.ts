@@ -306,7 +306,7 @@ describe("first-play guide pure model", () => {
       copyId: "terminus",
       hintId: "terminus",
       sectionId: "goal",
-      text: "終点ではそこで止まり、残りの出目は使いません。",
+      text: "終点に着くと、出目が余っていてもそこで止まります。",
     });
     expect(buildGuideCopy({ ...base, endpointKind: "area-boundary" })).toBeNull();
     expect(buildGuideCopy({ ...base, endpointKind: "service-boundary" })).toBeNull();

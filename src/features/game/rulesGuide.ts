@@ -134,7 +134,7 @@ function goalParagraphs(config: GameConfig, names: GoalNames, targetSegmentCount
     `${start}からスタートします。サイコロの出目の数だけ、駅を進みます。`,
     `${directed}の${segments}を踏破したあと、${start}に着くとクリアです。`,
     goalPolicyText(config.goalArrivalPolicy, names),
-    "終点や収録範囲の端に着いたときは、そこで止まります。残りの出目は使いません。",
+    "終点や収録範囲の端に着いたときは、出目が余っていてもそこで止まります。",
   ];
 }
 

@@ -198,7 +198,7 @@ describe("rules guide model", () => {
     expect(truncate).toContain("テスト環状線（右回り）の");
     expect(truncate).toContain("踏破を終えていれば、テスト環状線では起点駅に着いた時点で止まってクリア");
     expect(truncate).toContain("ほかの路線では、移動の最後にちょうど起点駅に止まる必要");
-    expect(truncate).toContain("終点や収録範囲の端に着いたときは、そこで止まります。残りの出目は使いません");
+    expect(truncate).toContain("終点や収録範囲の端に着いたときは、出目が余っていてもそこで止まります");
     expect(goal(configWith({ goalArrivalPolicy: "exact-stop" }))).toContain("踏破を終えていれば、どの路線でも、移動の最後にちょうど起点駅に止まる");
     expect(goal(configWith({ goalArrivalPolicy: "pass-through" }))).toContain("踏破を終えていれば、どの路線でも、起点駅に着いた時点で止まってクリア");
     expect(text(buildRulesGuide(ITEM_GAME_CONFIG, names), "lottery")).toContain("テスト環状線では、いつも右回りに進みます");

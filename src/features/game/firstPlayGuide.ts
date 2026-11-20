@@ -207,7 +207,7 @@ export function buildGuideCopy(request: GuideCopyRequest): GuideCopy | null {
         : copy("harmful-item", "harmful-item", "items", "不利なアイテムは持ち物には入らず、それぞれ決まったタイミングで自動で効きます。");
     case "terminus":
       if (!request.resultPublished || request.stopReason !== "endpoint" || request.endpointKind !== "terminus" || request.unusedPips <= 0) return null;
-      return copy("terminus", "terminus", "goal", "終点ではそこで止まり、残りの出目は使いません。");
+      return copy("terminus", "terminus", "goal", "終点に着くと、出目が余っていてもそこで止まります。");
     case "control":
       return copy(request.copyId, null, "controls", CONTROL_COPY[request.copyId]);
   }
