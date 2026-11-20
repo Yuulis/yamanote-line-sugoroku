@@ -76,6 +76,203 @@ export interface GuideCopy {
   readonly text: string;
 }
 
+export type GuideHintCopy = GuideCopy & { readonly hintId: GuideHintId };
+
+/** A published, immutable hint candidate. Its copy stays paired with its candidate key. */
+export interface GuideCandidate {
+  readonly key: string;
+  readonly sessionId: number;
+  readonly turn: number;
+  readonly copy: GuideHintCopy;
+}
+
+export interface GuideAcknowledgement {
+  readonly sessionId: number;
+  readonly candidateKey: string;
+  readonly displayGeneration: number;
+}
+
+export interface GuideAnnouncement {
+  readonly key: string;
+  readonly text: string;
+  readonly acknowledgement: GuideAcknowledgement;
+}
+
+export interface GuideDisplay {
+  readonly acknowledgement: GuideAcknowledgement;
+  readonly visibleAcknowledged: boolean;
+  readonly statusAcknowledged: boolean;
+  /** The selected key and its copy are captured together for this display generation. */
+  readonly announcement: GuideAnnouncement | null;
+}
+
+export interface GuideQueueState {
+  readonly sessionId: number | null;
+  readonly current: GuideCandidate | null;
+  readonly queued: readonly GuideCandidate[];
+  readonly seenIds: readonly GuideHintId[];
+  readonly closedIds: readonly GuideHintId[];
+  readonly hintsDisabled: boolean;
+  readonly ended: boolean;
+  readonly displayGeneration: number;
+  readonly display: GuideDisplay | null;
+}
+
+export type GuideQueueAction =
+  | {
+    readonly type: "resetSession";
+    readonly sessionId: number | null;
+    readonly seenIds: readonly GuideHintId[];
+    readonly hintsDisabled: boolean;
+  }
+  | { readonly type: "enqueue"; readonly sessionId: number | null; readonly candidates: readonly GuideCandidate[] }
+  | { readonly type: "beginDisplay" }
+  | { readonly type: "withdrawDisplay" }
+  | { readonly type: "acknowledgeVisible"; readonly acknowledgement: GuideAcknowledgement }
+  | { readonly type: "acknowledgeStatus"; readonly acknowledgement: GuideAcknowledgement }
+  | { readonly type: "closeCurrent" }
+  | { readonly type: "disableHints" }
+  | { readonly type: "discard" };
+
+const HINT_PRIORITY = new Map(FIRST_PLAY_HINT_IDS.map((hintId, index) => [hintId, index]));
+
+export function createGuideQueueState(
+  sessionId: number | null,
+  seenIds: readonly GuideHintId[] = [],
+  hintsDisabled = false,
+): GuideQueueState {
+  return {
+    sessionId,
+    current: null,
+    queued: [],
+    seenIds: [...new Set(seenIds)],
+    closedIds: [],
+    hintsDisabled,
+    ended: false,
+    displayGeneration: 0,
+    display: null,
+  };
+}
+
+export function guideCandidateHintId(candidate: GuideCandidate): GuideHintId {
+  return candidate.copy.hintId;
+}
+
+function orderCandidates(candidates: readonly GuideCandidate[]): GuideCandidate[] {
+  return [...candidates].sort((left, right) => left.turn - right.turn
+    || (HINT_PRIORITY.get(guideCandidateHintId(left)) ?? Number.MAX_SAFE_INTEGER)
+      - (HINT_PRIORITY.get(guideCandidateHintId(right)) ?? Number.MAX_SAFE_INTEGER)
+    || left.key.localeCompare(right.key));
+}
+
+function nextCurrent(state: GuideQueueState, queued: readonly GuideCandidate[]): GuideQueueState {
+  const [current = null, ...remaining] = queued;
+  return { ...state, current, queued: remaining, display: null };
+}
+
+function enqueueGuideCandidates(state: GuideQueueState, sessionId: number | null, candidates: readonly GuideCandidate[]): GuideQueueState {
+  if (sessionId === null || sessionId !== state.sessionId || state.hintsDisabled || state.ended) return state;
+  const existing = [state.current, ...state.queued].filter((candidate): candidate is GuideCandidate => candidate !== null);
+  const usedIds = new Set<GuideHintId>([...state.seenIds, ...state.closedIds, ...existing.map(guideCandidateHintId)]);
+  const usedKeys = new Set(existing.map((candidate) => candidate.key));
+  const additions = orderCandidates(candidates).filter((candidate) => {
+    if (candidate.sessionId !== sessionId || usedKeys.has(candidate.key) || usedIds.has(guideCandidateHintId(candidate))) return false;
+    usedKeys.add(candidate.key);
+    usedIds.add(guideCandidateHintId(candidate));
+    return true;
+  });
+  if (additions.length === 0) return state;
+  const queue = orderCandidates([...state.queued, ...additions]);
+  if (state.current !== null) return { ...state, queued: queue };
+  return nextCurrent(state, queue);
+}
+
+function beginGuideDisplay(state: GuideQueueState): GuideQueueState {
+  if (state.current === null || state.hintsDisabled || state.ended || state.display !== null || state.sessionId === null) return state;
+  const displayGeneration = state.displayGeneration + 1;
+  const acknowledgement: GuideAcknowledgement = {
+    sessionId: state.sessionId,
+    candidateKey: state.current.key,
+    displayGeneration,
+  };
+  const alreadySeen = state.seenIds.includes(guideCandidateHintId(state.current));
+  const announcement: GuideAnnouncement | null = alreadySeen ? null : {
+    key: `guide-hint:${state.sessionId}:${state.current.key}:${displayGeneration}`,
+    text: state.current.copy.text,
+    acknowledgement,
+  };
+  return {
+    ...state,
+    displayGeneration,
+    display: { acknowledgement, visibleAcknowledged: false, statusAcknowledged: false, announcement },
+  };
+}
+
+export function isGuideDisplayCurrent(state: GuideQueueState, acknowledgement: GuideAcknowledgement): boolean {
+  const display = state.display;
+  return state.sessionId === acknowledgement.sessionId
+    && state.current?.key === acknowledgement.candidateKey
+    && display?.acknowledgement.sessionId === acknowledgement.sessionId
+    && display.acknowledgement.candidateKey === acknowledgement.candidateKey
+    && display.acknowledgement.displayGeneration === acknowledgement.displayGeneration;
+}
+
+function acknowledgeGuide(state: GuideQueueState, acknowledgement: GuideAcknowledgement, kind: "visible" | "status"): GuideQueueState {
+  if (!isGuideDisplayCurrent(state, acknowledgement) || state.current === null || state.hintsDisabled || state.ended) return state;
+  const display = state.display;
+  if (display === null) return state;
+  const nextDisplay: GuideDisplay = kind === "visible"
+    ? { ...display, visibleAcknowledged: true }
+    : { ...display, statusAcknowledged: true };
+  if (nextDisplay.visibleAcknowledged === display.visibleAcknowledged
+    && nextDisplay.statusAcknowledged === display.statusAcknowledged) return state;
+  if (nextDisplay.visibleAcknowledged && nextDisplay.statusAcknowledged) {
+    const hintId = guideCandidateHintId(state.current);
+    return {
+      ...state,
+      seenIds: state.seenIds.includes(hintId) ? state.seenIds : [...state.seenIds, hintId],
+      display: nextDisplay,
+    };
+  }
+  return { ...state, display: nextDisplay };
+}
+
+/** Pure queue transitions for hints; IDs are deduplicated across active, waiting, seen and closed state. */
+export function guideQueueReducer(state: GuideQueueState, action: GuideQueueAction): GuideQueueState {
+  switch (action.type) {
+    case "resetSession":
+      return action.sessionId === state.sessionId
+        ? state
+        : createGuideQueueState(action.sessionId, action.seenIds, action.hintsDisabled);
+    case "enqueue":
+      return enqueueGuideCandidates(state, action.sessionId, action.candidates);
+    case "beginDisplay":
+      return beginGuideDisplay(state);
+    case "withdrawDisplay":
+      return state.display === null ? state : { ...state, display: null };
+    case "acknowledgeVisible":
+      return acknowledgeGuide(state, action.acknowledgement, "visible");
+    case "acknowledgeStatus":
+      return acknowledgeGuide(state, action.acknowledgement, "status");
+    case "closeCurrent": {
+      if (state.current === null) return state;
+      const hintId = guideCandidateHintId(state.current);
+      return nextCurrent({
+        ...state,
+        closedIds: state.closedIds.includes(hintId) ? state.closedIds : [...state.closedIds, hintId],
+      }, state.queued);
+    }
+    case "disableHints":
+      return state.hintsDisabled && state.current === null && state.queued.length === 0 && state.display === null
+        ? state
+        : { ...state, current: null, queued: [], display: null, hintsDisabled: true };
+    case "discard":
+      return state.ended && state.current === null && state.queued.length === 0 && state.display === null
+        ? state
+        : { ...state, current: null, queued: [], display: null, ended: true };
+  }
+}
+
 export interface PublishedOffTargetLanding {
   readonly serviceId: string;
   /** Distances from the next stop in each movable direction to the target route. */

@@ -67,3 +67,18 @@ step lists; nothing is wired into the running UI yet except the rules copy chang
 Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
 Acceptance: exactly the commands under Step 3 in the plan (with the worker limits above).
 ```
+
+## Step 4 — queue reducer and session state hook
+
+```
+Implement plan "Step 4 — キュー reducer とセッション状態 hook" exactly (Steps 1-3 are committed; the latest is 62b7c2f).
+Build on src/features/game/firstPlayGuide.ts and src/features/game/store/guide.ts from Step 3. Nothing is wired into the
+running UI in this step (visible: no). Requirements from the plan's Revision 2 that must be covered by tests:
+fixed same-turn order lottery -> off-target -> item -> harmful-item -> terminus; dedupe against current, queued, seen and
+closed-this-session ids; candidates survive later turns; 「もう表示しない」 clears current and queued and disables all
+hints in memory even when the storage write fails; acknowledgement bound to session + candidate key + display
+generation, and late callbacks after withdraw / discard / disable / session change are rejected; the notice key and the
+text chosen at selection time are kept together; StrictMode double effects and repeated renders do not duplicate.
+Memory is limited: Vitest `--maxWorkers=2`.
+Acceptance: exactly the commands under Step 4 in the plan (with the worker limit above).
+```
