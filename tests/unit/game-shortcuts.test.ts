@@ -230,4 +230,14 @@ describe.each([false, true])("useGameShortcuts (StrictMode: %s)", (strict) => {
     expect(onRoll).not.toHaveBeenCalled();
     expect(onSkip).not.toHaveBeenCalled();
   });
+
+  it("does not invoke the skip handler while the coach is open even when skipping is otherwise available", () => {
+    const onSkip = vi.fn();
+    render({ ...PRESENTING, surfaceOpen: true }, vi.fn(() => true), onSkip);
+
+    for (const key of ["s", "Escape"]) {
+      expect(keyEvent(key).defaultPrevented).toBe(false);
+    }
+    expect(onSkip).not.toHaveBeenCalled();
+  });
 });

@@ -116,3 +116,22 @@ target) and the component (navigation, Escape, focus, fallback).
 Memory is limited: Vitest `--maxWorkers=2`.
 Acceptance: exactly the commands under Step 6 in the plan (with the worker limit above).
 ```
+
+## Step 7 — wire the coach and block input
+
+```
+Implement plan "Step 7 — 初回コーチを接続し、入力をブロックする" exactly (Steps 1-6 are committed; the latest is a1613fc).
+Wire FirstPlayCoach (Step 6) into the game for an eligible session (Step 5 eligibility): it opens on the first render of
+that session, registers as an open surface at render time so dice click, Space/Enter, S/Escape, map-tap skip and the
+#68 notice/ToastHost are suppressed until it closes; the coach-seen flag is written only after the coach was actually
+shown; とばす / はじめる close it and restore focus to the dice (or the plan's fallback order). Targets: dice button,
+the 踏破区間 progress bar, the map area (text fallback when the map/WebGL is unavailable). Resume never shows it.
+E2E (new spec, `firstPlayGuideSeen: false` and `firstTurnNoticeSeen: false` explicitly): 3 steps with 前へ/次へ/とばす/
+はじめる, input blocked while open (click + each shortcut), Tab / Shift+Tab never leave the open coach (Step 6 review),
+focus restored on close, not shown on resume or for a browser with an existing save, coach not shown again after
+reload, the #68 notice appears only after the coach closes. Tag phone geometry checks @layout (320x568 and 667x375:
+bubble and buttons inside the viewport, HUD 252px unchanged).
+Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
+Acceptance: exactly the commands under Step 7 in the plan (with the worker limits above), including the new spec on
+desktop-chromium and its @layout cases on phone-chromium.
+```

@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata, PreRollItemCommand } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
 import type { PresentationLevel } from "../gameSettings";
@@ -41,6 +41,7 @@ import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
 import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
 import { TARGET_PROXIMITY_COPY } from "../targetProximity";
 import { selectAnnouncement, type NoticeAnnouncementState } from "../saveNotice";
+import type { CoachStep } from "../firstPlayGuide";
 
 const UPCOMING_STATION_COUNT = 5;
 const LOTTERY_RULES_LABEL = "抽選のルールを詳しく見る";
@@ -66,6 +67,9 @@ export interface GamePanelProps {
   confirmationOpen?: boolean;
   /** The in-game rules dialog is open: suspends shortcuts and defers the decision modals. */
   rulesOpen?: boolean;
+  /** The first-play coach is a render-time open surface and blocks shortcuts before showModal effects run. */
+  coachOpen?: boolean;
+  readonly coachTargets?: Partial<Record<CoachStep, RefObject<HTMLElement | null>>>;
   onOpenRules?: PanelOpenRules;
   /** Key requested by ToastHost after the notice is actually displayed. */
   noticeAnnouncementKey?: string | null;
@@ -190,17 +194,19 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const latestRollRequestRef = useRef({
     key: rollRequestKey,
     canRoll: turnDisplay.canRoll,
+    coachOpen: props.coachOpen ?? false,
     onRoll: props.onRoll,
   });
   latestRollRequestRef.current = {
     key: rollRequestKey,
     canRoll: turnDisplay.canRoll,
+    coachOpen: props.coachOpen ?? false,
     onRoll: props.onRoll,
   };
   const consumedReadyKeyRef = useRef<string | null>(null);
   const requestRoll = useCallback(() => {
     const latest = latestRollRequestRef.current;
-    if (!latest.canRoll || consumedReadyKeyRef.current === latest.key) return false;
+    if (latest.coachOpen || !latest.canRoll || consumedReadyKeyRef.current === latest.key) return false;
     consumedReadyKeyRef.current = latest.key;
     latest.onRoll();
     return true;
@@ -409,7 +415,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   useGameShortcuts({
     canRoll: turnDisplay.canRoll,
     canSkip: turnDisplay.canSkip,
-    surfaceOpen: activeSurface !== null,
+    surfaceOpen: activeSurface !== null || (props.coachOpen ?? false),
     itemDialogOpen: itemDialogOpen || rulesOpen,
   }, { onRoll: requestRoll, onSkip: props.onSkip });
   useEffect(() => {
@@ -654,6 +660,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         canSkip={turnDisplay.canSkip}
         rideTargetRef={props.turnMomentTargets?.ride}
         directionTargetRef={props.turnMomentTargets?.direction}
+        coachDiceTargetRef={props.coachTargets?.dice}
+        coachProgressTargetRef={props.coachTargets?.progress}
       />
       <div className="game-panel__disclosures">
         {isPhone ? <PhoneGameMenu expanded={activeSurface === "phone-menu"} section={phoneSection} collection={turnDisplay.collection}

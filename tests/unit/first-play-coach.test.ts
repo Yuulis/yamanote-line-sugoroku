@@ -20,6 +20,7 @@ const steps: CoachStepSequence = buildCoachSteps({
 });
 const mounts: MountedReact[] = [];
 const extraNodes: HTMLElement[] = [];
+const visibilityStateDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, "visibilityState");
 
 beforeAll(() => {
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
@@ -35,6 +36,11 @@ beforeAll(() => {
 afterEach(() => {
   mounts.splice(0).forEach((mount) => mount.cleanup());
   extraNodes.splice(0).forEach((node) => node.remove());
+  if (visibilityStateDescriptor) {
+    Object.defineProperty(Document.prototype, "visibilityState", visibilityStateDescriptor);
+  } else {
+    Reflect.deleteProperty(Document.prototype, "visibilityState");
+  }
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -185,6 +191,45 @@ describe("FirstPlayCoach", () => {
     expect(dialog.textContent).toContain(steps[0].copy.text);
     expect(onClose).not.toHaveBeenCalled();
     expect(onSkip).not.toHaveBeenCalled();
+  });
+
+  it("contains Tab and Shift+Tab within the coach controls", () => {
+    const dialog = dialogOf(mountCoach());
+    const buttons = [...dialog.querySelectorAll<HTMLButtonElement>("button")];
+    const next = buttons[1]!;
+    const skip = buttons[2]!;
+
+    skip.focus();
+    const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
+    dispatchReactEvent(dialog, tab);
+
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(next);
+
+    const shiftTab = new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true });
+    dispatchReactEvent(dialog, shiftTab);
+
+    expect(shiftTab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(skip);
+  });
+
+  it("acknowledges the coach only while its native dialog is open and the document is visible", () => {
+    Object.defineProperty(Document.prototype, "visibilityState", { configurable: true, value: "hidden" });
+    const onShown = vi.fn();
+    const mount = mountCoach({ onShown });
+    const dialog = dialogOf(mount);
+
+    expect(dialog.open).toBe(true);
+    expect(onShown).not.toHaveBeenCalled();
+
+    Object.defineProperty(Document.prototype, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(onShown).toHaveBeenCalledTimes(1);
+
+    mount.cleanup();
+    mounts.splice(mounts.indexOf(mount), 1);
+    document.dispatchEvent(new Event("visibilitychange"));
+    expect(onShown).toHaveBeenCalledTimes(1);
   });
 
   it("focuses the bubble on open and lets the caller restore focus after close", async () => {

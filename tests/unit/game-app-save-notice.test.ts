@@ -149,6 +149,16 @@ describe("first-turn notice hook", () => {
     expect(current.notice?.text).toBe("自動で保存しています。いつでも閉じて、続きから遊べます");
   });
 
+  it("holds the first-turn notice until the first-play coach closes", () => {
+    const store = storage();
+    const saveAttempt = attempt(1);
+    render(options({ saveAttempt, storage: store, coachOpen: true }));
+    expect(current.notice).toBeNull();
+
+    render(options({ saveAttempt, storage: store, coachOpen: false }));
+    expect(current.notice?.text).toBe(FIRST_TURN_NOTICE_TEXT);
+  });
+
   it("cancels a waiting notice after a later same-session save failure", () => {
     const store = storage();
     render(options({ storage: store }));

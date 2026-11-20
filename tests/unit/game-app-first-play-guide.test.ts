@@ -6,9 +6,11 @@ import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS, saveKeyForEdition } from "../../src/features/editions/registry";
 import type { EditionRegistry } from "../../src/features/editions/types";
+import * as turnMomentsModule from "../../src/features/game/animation/useTurnMoments";
 import { createItemGame, serializeGame } from "../../src/features/game/engine";
 import { FIRST_PLAY_HINT_IDS } from "../../src/features/game/firstPlayGuide";
 import { networkFromData } from "../../src/features/game/networkFromData";
+import * as turnMomentPresentation from "../../src/features/game/turnMomentPresentation";
 import { GUIDE_COACH_KEY, GUIDE_STARTED_KEY, guideHintStorageKey } from "../../src/features/game/store/guide";
 import { FIRST_TURN_NOTICE_KEY } from "../../src/features/game/store/notices";
 import type { StorageLike } from "../../src/features/game/store/persistence";
@@ -114,9 +116,64 @@ afterEach(() => {
 });
 
 describe("GameApp first-play eligibility", () => {
+  it("blocks dice and Space/Enter before showModal opens on the first eligible render", () => {
+    let coachWasClosedDuringAttempts = false;
+    let turnDuringAttempts: string | null = null;
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true,
+      value(this: HTMLDialogElement): void {
+        if (this.classList.contains("first-play-coach")) {
+          coachWasClosedDuringAttempts = !this.open;
+          const dice = mounted!.container.querySelector<HTMLButtonElement>(".game-panel__roll");
+          if (!dice) throw new Error("Expected the dice button before the coach opens");
+          dispatchReactEvent(dice, new MouseEvent("click", { bubbles: true }));
+          for (const key of [" ", "Enter"]) {
+            dispatchReactEvent(mounted!.container, new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+          }
+          turnDuringAttempts = mounted!.container.querySelector('[data-stat="turn"]')?.textContent ?? null;
+        }
+        this.setAttribute("open", "");
+      },
+    });
+    mountApp();
+
+    click("はじめから");
+
+    expect(coachWasClosedDuringAttempts).toBe(true);
+    expect(turnDuringAttempts).toBe("0");
+    expect(mounted!.container.querySelector('[data-stat="turn"]')?.textContent).toBe("0");
+    expect(mounted!.container.querySelector(".first-play-coach[open]")).not.toBeNull();
+  });
+
+  it("routes an enabled skip button through the guarded handler while the coach is open", () => {
+    const skipTurnMoment = vi.fn();
+    const actualUseTurnMoments = turnMomentsModule.useTurnMoments;
+    vi.spyOn(turnMomentsModule, "useTurnMoments").mockImplementation((options) => ({
+      ...actualUseTurnMoments(options),
+      skip: skipTurnMoment,
+    }));
+    const actualDeriveTurnMomentDisplay = turnMomentPresentation.deriveTurnMomentDisplay;
+    vi.spyOn(turnMomentPresentation, "deriveTurnMomentDisplay").mockImplementation((input) => {
+      const display = actualDeriveTurnMomentDisplay(input);
+      return display ? { ...display, canSkip: true } : display;
+    });
+    mountApp();
+
+    click("はじめから");
+
+    const skip = mounted!.container.querySelector<HTMLButtonElement>(".game-panel__skip");
+    expect(skip?.disabled).toBe(false);
+    dispatchReactEvent(skip!, new MouseEvent("click", { bubbles: true }));
+
+    expect(skipTurnMoment).not.toHaveBeenCalled();
+    expect(mounted!.container.querySelector('[data-stat="turn"]')?.textContent).toBe("0");
+    expect(mounted!.container.querySelector(".first-play-coach[open]")).not.toBeNull();
+  });
+
   it("fixes eligibility before the turn-zero save and binds it to that new session", () => {
     const writeOrder: string[] = [];
     let startedReads = 0;
+    let coachWasWrittenAfterDialogOpened = false;
     const setItem = Storage.prototype.setItem;
     const getItem = Storage.prototype.getItem;
     vi.spyOn(Storage.prototype, "getItem").mockImplementation(function (this: Storage, key) {
@@ -125,6 +182,9 @@ describe("GameApp first-play eligibility", () => {
     });
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(function (this: Storage, key, value) {
       writeOrder.push(key);
+      if (key === GUIDE_COACH_KEY) {
+        coachWasWrittenAfterDialogOpened = Boolean(document.querySelector("dialog.first-play-coach[open]"));
+      }
       setItem.call(this, key, value);
     });
     mountApp(true);
@@ -138,9 +198,12 @@ describe("GameApp first-play eligibility", () => {
     expect(lastGuideSnapshot()).toEqual({ sessionId: 1 });
     expect(localStorage.getItem(edition.saveKey)).not.toBeNull();
     expect(JSON.parse(localStorage.getItem(edition.saveKey)!).turn).toBe(0);
-    expect(mounted!.container.querySelector(".first-play-coach, .first-play-hint")).toBeNull();
+    expect(mounted!.container.querySelector(".first-play-coach[open]")).not.toBeNull();
+    expect(localStorage.getItem(GUIDE_COACH_KEY)).toBe("1");
+    expect(coachWasWrittenAfterDialogOpened).toBe(true);
 
     localStorage.setItem(FIRST_TURN_NOTICE_KEY, "1");
+    click("とばす");
     click("メニュー");
     expect(lastGuideSnapshot()).toEqual({ sessionId: 1 });
     expect(startedReads).toBe(2);

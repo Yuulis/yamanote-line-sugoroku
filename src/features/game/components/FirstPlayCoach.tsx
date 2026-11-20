@@ -18,6 +18,8 @@ export interface FirstPlayCoachProps {
   readonly onClose: (reason: FirstPlayCoachCloseReason) => void;
   /** The caller decides which still-visible control should receive focus after this dialog unmounts. */
   readonly onRestoreFocus: () => void;
+  /** Called only after showModal succeeds while this dialog is still open in a visible document. */
+  readonly onShown?: () => void;
 }
 
 const INITIAL_PLACEMENT: CoachBubblePlacement = { left: 16, top: 16, side: "center" };
@@ -35,7 +37,7 @@ function sameRect(left: CoachRect | null, right: CoachRect | null): boolean {
 }
 
 /** A modal coach mark. Its spotlight is decorative; only the bubble receives pointer events. */
-export function FirstPlayCoach({ steps, targets, onClose, onRestoreFocus }: FirstPlayCoachProps): React.JSX.Element {
+export function FirstPlayCoach({ steps, targets, onClose, onRestoreFocus, onShown }: FirstPlayCoachProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const [stepIndex, setStepIndex] = useState(0);
@@ -46,15 +48,21 @@ export function FirstPlayCoach({ steps, targets, onClose, onRestoreFocus }: Firs
   const copyId = useId();
   const current = steps[stepIndex] ?? steps[0];
   const targetRef = targets[current.step] ?? null;
-  const latest = useRef({ onClose, onRestoreFocus });
-  latest.current = { onClose, onRestoreFocus };
+  const latest = useRef({ onClose, onRestoreFocus, onShown });
+  latest.current = { onClose, onRestoreFocus, onShown };
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || dialog.open) return;
     dialog.showModal();
     bubbleRef.current?.focus({ preventScroll: true });
+    const reportShown = (): void => {
+      if (dialog.open && document.visibilityState === "visible") latest.current.onShown?.();
+    };
+    document.addEventListener("visibilitychange", reportShown);
+    reportShown();
     return () => {
+      document.removeEventListener("visibilitychange", reportShown);
       if (dialog.open) dialog.close();
       // A Rules dialog or a StrictMode effect replay keeps ownership of focus.
       queueMicrotask(() => {
@@ -124,11 +132,45 @@ export function FirstPlayCoach({ steps, targets, onClose, onRestoreFocus }: Firs
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDialogElement>): void => {
-    if (event.key === "Escape") event.stopPropagation();
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const dialog = event.currentTarget;
+    const focusable = [...dialog.querySelectorAll<HTMLElement>(
+      'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+    )].filter((element) => !element.hidden && getComputedStyle(element).visibility !== "hidden");
+    if (focusable.length === 0) {
+      event.preventDefault();
+      bubbleRef.current?.focus({ preventScroll: true });
+      return;
+    }
+    const first = focusable[0]!;
+    const last = focusable[focusable.length - 1]!;
+    const active = document.activeElement;
+    const activeIsOutside = !(active instanceof Node) || !dialog.contains(active);
+    if (event.shiftKey && (active === first || active === bubbleRef.current || activeIsOutside)) {
+      event.preventDefault();
+      last.focus({ preventScroll: true });
+    } else if (!event.shiftKey && (active === last || active === bubbleRef.current || activeIsOutside)) {
+      event.preventDefault();
+      first.focus({ preventScroll: true });
+    }
   };
 
-  const nextStep = (): void => setStepIndex((currentIndex) => Math.min(steps.length - 1, currentIndex + 1));
-  const previousStep = (): void => setStepIndex((currentIndex) => Math.max(0, currentIndex - 1));
+  const changeStep = (nextIndex: number): void => {
+    if (nextIndex === stepIndex) return;
+    const previousButton = dialogRef.current?.querySelector<HTMLButtonElement>(
+      ".first-play-coach__actions button:first-child",
+    );
+    if (nextIndex === 0 && document.activeElement === previousButton) {
+      bubbleRef.current?.focus({ preventScroll: true });
+    }
+    setStepIndex(nextIndex);
+  };
+  const nextStep = (): void => changeStep(Math.min(steps.length - 1, stepIndex + 1));
+  const previousStep = (): void => changeStep(Math.max(0, stepIndex - 1));
   const close = (reason: FirstPlayCoachCloseReason): void => latest.current.onClose(reason);
   const bubbleStyle: CSSProperties = { left: placement.left, top: placement.top };
   const spotlightStyle: CSSProperties | undefined = targetRect ? {

@@ -6,6 +6,7 @@ import { App } from "../../src/app/App";
 import { getVisibleLineGroupIds, setVisibleLineGroupIds } from "../../src/features/map/lineVisibilityStore";
 import { FIXTURE_EDITIONS, fixtureFileResponses } from "./fixtures/editions";
 import { dispatchReactEvent, flushReact, mountReact } from "./helpers/reactDom";
+import { seedFirstPlayGuide } from "./helpers/notices";
 
 beforeEach(() => { localStorage.removeItem(SETTINGS_STORAGE_KEY); });
 
@@ -16,6 +17,7 @@ vi.mock("../../src/features/map/RailwayMap", () => ({
 describe("edition app switching", () => {
   beforeEach(() => {
     localStorage.clear();
+    seedFirstPlayGuide(localStorage);
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       const version = url.startsWith("/fixture-b/") ? "fixture-data-b" : "fixture-data-a";
