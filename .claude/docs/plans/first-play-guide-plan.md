@@ -380,6 +380,7 @@ coach 既読は可視状態で native dialog の初回表示を確認してか�
 - とばしても hints-disabled は立たない。
 - 初回表示確認前に coach 既読を書かない。
 - 完了時の focus 復帰。opener が利用不能なら dice、見出しの順に解決。
+- E2E: Tab / Shift+Tab never move focus out of the open coach (Step 6 review).
 - 地図失敗時も完了可能。
 - `@layout`：320×568、390px幅、667×375 の対象枠・本文・全操作。
 

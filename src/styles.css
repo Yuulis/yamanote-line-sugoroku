@@ -3559,6 +3559,92 @@ button[aria-disabled="true"] {
   }
 }
 
+/* The coach dialog owns modality while leaving the game visible behind a decorative spotlight. */
+.first-play-coach {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  pointer-events: none;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.first-play-coach[open] {
+  display: block;
+}
+
+.first-play-coach::backdrop {
+  background: transparent;
+}
+
+.first-play-coach__spotlight {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid #ffffff;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 100vmax rgb(21 28 32 / 48%);
+  pointer-events: none;
+}
+
+.first-play-coach__bubble {
+  position: absolute;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  pointer-events: auto;
+}
+
+.first-play-coach__bubble:focus {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.first-play-coach__step {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.first-play-coach__copy {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.first-play-coach__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.first-play-coach__actions button {
+  min-width: 64px;
+  min-height: 44px;
+}
+
+.first-play-coach__skip {
+  margin-inline-start: auto;
+}
+
 /* Rules dialog: wider than .dialog; the header stays put and only the body scrolls, so section targeting needs no sticky offset. */
 .rules-dialog {
   --rules-dialog-width: 640px;

@@ -99,3 +99,20 @@ passing unchanged in behaviour; #68 suites must still exercise unread -> shown -
 Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the listed specs.
 Acceptance: exactly the commands under Step 5 in the plan (with the worker limits above).
 ```
+
+## Step 6 — coach dialog and placement model
+
+```
+Implement plan "Step 6 — コーチの dialog と配置モデル" exactly (Steps 1-5 are committed; the latest is c98296c).
+Build the coach as a standalone component (native modal <dialog>, transparent full-screen, a non-interactive highlight
+frame and an interactive bubble) plus a pure placement function that clamps the bubble into the viewport from a target
+rect and handles a missing / zero-size target by centring. Steps: dice -> progress -> map (copy from the Step 3 model:
+buildCoachSteps / the coach-* copy), buttons 前へ / 次へ / とばす and はじめる on the last step; 前へ hidden or disabled
+on step 1 per the plan; Escape (dialog cancel) is preventDefault-ed and never closes, advances or skips the game;
+focus enters the bubble on open and is restored by the caller-provided callback on close; text fallback for step 3
+when the map target is unavailable (WebGL failure). Japanese copy through PhraseText. Not wired into GameApp/GamePanel
+yet (visible: no). Unit-test the placement function (all four sides, clamping at 320x568 and short landscape, missing
+target) and the component (navigation, Escape, focus, fallback).
+Memory is limited: Vitest `--maxWorkers=2`.
+Acceptance: exactly the commands under Step 6 in the plan (with the worker limit above).
+```

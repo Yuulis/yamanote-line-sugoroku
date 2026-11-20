@@ -14,6 +14,36 @@ export type GuideHintId = (typeof FIRST_PLAY_HINT_IDS)[number];
 export const COACH_STEPS = ["dice", "progress", "map"] as const;
 export type CoachStep = (typeof COACH_STEPS)[number];
 
+export interface CoachStepCopy {
+  readonly step: CoachStep;
+  readonly copy: GuideCopy;
+}
+
+export type CoachStepSequence = readonly [CoachStepCopy, CoachStepCopy, CoachStepCopy];
+
+export interface CoachRect {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface CoachSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+export type CoachPlacementSide = "top" | "right" | "bottom" | "left" | "center";
+
+export interface CoachBubblePlacement {
+  readonly left: number;
+  readonly top: number;
+  readonly side: CoachPlacementSide;
+}
+
+export const COACH_VIEWPORT_MARGIN_PX = 16;
+export const COACH_TARGET_GAP_PX = 16;
+
 export interface GuideStorageRead {
   readonly readable: boolean;
   readonly value: string | null;
@@ -408,4 +438,94 @@ export function buildGuideCopy(request: GuideCopyRequest): GuideCopy | null {
     case "control":
       return copy(request.copyId, null, "controls", CONTROL_COPY[request.copyId]);
   }
+}
+
+/** Build the fixed dice → progress → map sequence from the verified, edition-aware coach copy. */
+export function buildCoachSteps(
+  request: Omit<Extract<GuideCopyRequest, { kind: "coach" }>, "kind" | "step">,
+): CoachStepSequence {
+  return [
+    { step: "dice", copy: coachCopy({ ...request, kind: "coach", step: "dice" }) },
+    { step: "progress", copy: coachCopy({ ...request, kind: "coach", step: "progress" }) },
+    { step: "map", copy: coachCopy({ ...request, kind: "coach", step: "map" }) },
+  ];
+}
+
+function isUsableCoachRect(rect: CoachRect | null | undefined): rect is CoachRect {
+  return rect !== null && rect !== undefined
+    && Number.isFinite(rect.left) && Number.isFinite(rect.top)
+    && Number.isFinite(rect.width) && Number.isFinite(rect.height)
+    && rect.width > 0 && rect.height > 0;
+}
+
+function safeSize(size: CoachSize): CoachSize {
+  return {
+    width: Number.isFinite(size.width) ? Math.max(0, size.width) : 0,
+    height: Number.isFinite(size.height) ? Math.max(0, size.height) : 0,
+  };
+}
+
+function clampBubblePosition(value: number, bubbleLength: number, viewportLength: number, margin: number): number {
+  const max = viewportLength - bubbleLength - margin;
+  if (max >= margin) return Math.min(max, Math.max(margin, value));
+  if (viewportLength >= bubbleLength) return (viewportLength - bubbleLength) / 2;
+  return 0;
+}
+
+function centeredCoachPlacement(bubble: CoachSize, viewport: CoachSize, margin: number): CoachBubblePlacement {
+  return {
+    left: clampBubblePosition((viewport.width - bubble.width) / 2, bubble.width, viewport.width, margin),
+    top: clampBubblePosition((viewport.height - bubble.height) / 2, bubble.height, viewport.height, margin),
+    side: "center",
+  };
+}
+
+/** Position a measured coach bubble beside its target, keeping it inside the visible viewport. */
+export function placeCoachBubble(
+  targetRect: CoachRect | null | undefined,
+  bubbleSize: CoachSize,
+  viewportSize: CoachSize,
+): CoachBubblePlacement {
+  const bubble = safeSize(bubbleSize);
+  const viewport = safeSize(viewportSize);
+  if (!isUsableCoachRect(targetRect)) {
+    return centeredCoachPlacement(bubble, viewport, COACH_VIEWPORT_MARGIN_PX);
+  }
+
+  const margin = COACH_VIEWPORT_MARGIN_PX;
+  const gap = COACH_TARGET_GAP_PX;
+  const target = targetRect;
+  const candidates: readonly {
+    readonly side: Exclude<CoachPlacementSide, "center">;
+    readonly space: number;
+    readonly required: number;
+    readonly left: number;
+    readonly top: number;
+  }[] = [
+    {
+      side: "top", space: target.top - margin, required: bubble.height + gap,
+      left: target.left + target.width / 2 - bubble.width / 2, top: target.top - gap - bubble.height,
+    },
+    {
+      side: "right", space: viewport.width - margin - (target.left + target.width), required: bubble.width + gap,
+      left: target.left + target.width + gap, top: target.top + target.height / 2 - bubble.height / 2,
+    },
+    {
+      side: "bottom", space: viewport.height - margin - (target.top + target.height), required: bubble.height + gap,
+      left: target.left + target.width / 2 - bubble.width / 2, top: target.top + target.height + gap,
+    },
+    {
+      side: "left", space: target.left - margin, required: bubble.width + gap,
+      left: target.left - gap - bubble.width, top: target.top + target.height / 2 - bubble.height / 2,
+    },
+  ];
+  const fitting = candidates.filter((candidate) => candidate.space >= candidate.required);
+  const available = fitting.length > 0 ? fitting : candidates;
+  const selected = available.reduce((best, candidate) => candidate.space > best.space ? candidate : best);
+
+  return {
+    left: clampBubblePosition(selected.left, bubble.width, viewport.width, margin),
+    top: clampBubblePosition(selected.top, bubble.height, viewport.height, margin),
+    side: selected.side,
+  };
 }
