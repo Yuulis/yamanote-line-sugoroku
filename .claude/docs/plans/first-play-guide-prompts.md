@@ -211,3 +211,20 @@ Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`, only the l
 Acceptance: exactly the commands under Step 11 in the plan (with the worker limits above), including the new/extended
 spec on desktop-chromium and its @layout cases on phone-chromium.
 ```
+
+## Step 12 — compact viewports and presentation-path integration
+
+```
+Implement plan "Step 12 — コンパクト画面と演出経路の統合検証" exactly (Steps 1-11 are committed; the latest is c697fd8).
+This is mainly an integration-test step: add the cross-feature E2E cases the plan lists (and the Revision 2 additions:
+a visible hint followed by the next turn's roll-adjust dialog; goal -> ClearScreen with a visible and a queued hint;
+a pending decision appearing behind the rules dialog opened from 詳しく; coach replay vs a visible hint) on
+desktop-chromium, and the compact-viewport @layout cases on phone-chromium (320x568, 390x844, 667x375, 601x501): coach
+bubble and hint card inside the viewport, no overlap with the HUD / #66 pill / map controls / TurnMomentHost, HUD <= 252px
+at 320x568, the action row 2 equal columns with 「演出をスキップ」 fitting, the Escape hint hidden on coarse pointers.
+Cover presentation level すべて / 重要なときだけ / なし, reduced motion and skip for the coach and the hints.
+Fix product code only for real bugs these tests expose (red-first, say so). Do not loosen existing assertions.
+Memory is limited: Vitest `--maxWorkers=2`, Playwright `--workers=1`; never run the whole E2E suite.
+Acceptance: exactly the commands under Step 12 in the plan (with the worker limits above). When a step adds or touches
+HUD/panel controls, also run tests/e2e/ui-pop.spec.ts and tests/e2e/accessibility.spec.ts in full on desktop-chromium.
+```

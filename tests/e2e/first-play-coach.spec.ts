@@ -334,6 +334,7 @@ for (const viewport of [
   { name: "320x568 portrait", width: 320, height: 568 },
   { name: "390x844 portrait", width: 390, height: 844 },
   { name: "667x375 landscape", width: 667, height: 375 },
+  { name: "601x501 compact landscape", width: 601, height: 501 },
 ]) {
   test(`coach and HUD stay inside the ${viewport.name} viewport @layout`, { tag: "@layout" }, async ({ page }) => {
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
@@ -399,9 +400,37 @@ for (const viewport of [
     await coach.getByRole("button", { name: "次へ", exact: true }).click();
     await expect(coach.locator(".first-play-coach__step")).toHaveText("ステップ 3 / 3");
     await expectStepGeometry(".map-container");
-    await expect.poll(() => hudBudget(page)).toBeLessThanOrEqual(PHONE_HUD_BUDGET_PX);
+    if (viewport.width !== 601) await expect.poll(() => hudBudget(page)).toBeLessThanOrEqual(PHONE_HUD_BUDGET_PX);
+
+    if (viewport.width === 320) {
+      await page.setViewportSize({ width: 601, height: 501 });
+      await expectStepGeometry(".map-container");
+      await coach.getByRole("button", { name: "はじめる", exact: true }).click();
+      await expect(coach).toHaveCount(0);
+      await expect(diceButton(page)).toBeFocused();
+    }
   });
 }
+
+test("the adjustment Escape hint is hidden for coarse pointers @layout", async ({ page, railwayBundle }, testInfo) => {
+  test.skip(!testInfo.project.use.hasTouch, "requires the coarse-pointer phone project");
+  await resumeItemScenario(page, "adjust", railwayBundle);
+  await diceButton(page).click();
+  const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect(adjustment).toBeVisible();
+  await expect(adjustment.locator(".item-adjustment__escape-hint")).toBeHidden();
+  await expect(adjustment.locator(".item-adjustment__caution")).toBeVisible();
+});
+
+test("the adjustment Escape hint is visible for fine pointers @layout", async ({ page, railwayBundle }, testInfo) => {
+  test.skip(Boolean(testInfo.project.use.hasTouch), "requires the fine-pointer desktop project");
+  await resumeItemScenario(page, "adjust", railwayBundle);
+  await diceButton(page).click();
+  const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect(adjustment).toBeVisible();
+  await expect(adjustment.locator(".item-adjustment__escape-hint")).toBeVisible();
+  await expect(adjustment.locator(".item-adjustment__caution")).toBeVisible();
+});
 
 test("the map step remains completable when WebGL is unavailable", async ({ page }) => {
   await page.addInitScript(() => {

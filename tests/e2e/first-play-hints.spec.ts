@@ -8,9 +8,12 @@ import {
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { ITEM_SCENARIOS } from "./fixtures/itemScenarios";
+import { endpointKindAt } from "../../src/features/game/gameSummary";
 import {
   diceReady,
   diceButton,
+  diceMoment,
+  freezeClock,
   gamePanel,
   inventoryItem,
   openGameMenu,
@@ -25,6 +28,8 @@ import {
   useInventoryItem,
   writeSaveText,
 } from "./support/app";
+import { seedGameSettings } from "./support/settings";
+import { advanceTumble } from "./support/turnMoments";
 
 const EXPECTED_COPY: Readonly<Record<string, RegExp>> = {
   lottery: /乗換駅で移動を終えると|移動を終えた駅で|次に乗る路線と進む向き/,
@@ -74,6 +79,7 @@ interface StatusChange {
 }
 
 type StatusObserverWindow = Window & { __hintStatusChanges?: StatusChange[] };
+type SaveTurnObserverWindow = Window & { __hintSavedTurnAdvances?: number[] };
 
 async function watchStatusChanges(page: Page): Promise<void> {
   await page.locator('.game-panel [role="status"]').evaluate((status) => {
@@ -110,8 +116,62 @@ async function isInsideHintScrollport(button: Locator): Promise<boolean> {
 }
 
 async function expectHintNotAnnounced(page: Page, copy: string): Promise<void> {
-  const statusText = await page.locator('.game-panel [role="status"]').textContent().catch(() => "");
-  expect(statusText ?? "").not.toContain(copy);
+  const status = page.locator('.game-panel [role="status"]');
+  await expect(status).toHaveCount(1);
+  await expect(status).not.toContainText(copy);
+}
+
+async function watchSavedTurnAdvances(page: Page, initialTurn: number): Promise<void> {
+  await page.evaluate(({ saveKey, initialTurn }) => {
+    const observedWindow = window as SaveTurnObserverWindow;
+    const previousSetItem = Storage.prototype.setItem;
+    observedWindow.__hintSavedTurnAdvances = [];
+    Storage.prototype.setItem = function (key: string, value: string): void {
+      if (key === saveKey) {
+        const savedGame = JSON.parse(value) as { turn?: unknown };
+        if (typeof savedGame.turn === "number" && savedGame.turn > initialTurn) {
+          const advances = observedWindow.__hintSavedTurnAdvances!;
+          if (advances.at(-1) !== savedGame.turn) advances.push(savedGame.turn);
+        }
+      }
+      previousSetItem.call(this, key, value);
+    };
+  }, { saveKey: SAVE_STORAGE_KEY, initialTurn });
+}
+
+async function savedTurnAdvances(page: Page): Promise<number[]> {
+  return page.evaluate(() => (window as SaveTurnObserverWindow).__hintSavedTurnAdvances ?? []);
+}
+
+async function expectTerminusHintOnSameSeed(page: Page): Promise<void> {
+  await startEligibleGame(page);
+  await firstHint(page);
+
+  for (let turn = 0; turn < 100; turn += 1) {
+    const card = hintCard(page);
+    if (await card.count()) {
+      await expect(card).toBeVisible();
+      const key = await card.getAttribute("data-guide-candidate-key");
+      if (!key) throw new Error("The visible control-run hint needs a candidate key");
+      if (key.endsWith(":terminus")) {
+        await expect(card).toContainText(EXPECTED_COPY.terminus!);
+        return;
+      }
+
+      await card.getByRole("button", { name: "閉じる", exact: true }).click();
+      await expect.poll(async () => {
+        if (await card.count() === 0) return true;
+        return (await card.getAttribute("data-guide-candidate-key")) !== key;
+      }).toBe(true);
+      continue;
+    }
+
+    if (await page.getByRole("heading", { name: "クリア！" }).count()) break;
+    await expect(page.locator(".toast-host__toast:not(.toast-host__toast--sticky)")).toHaveCount(0, { timeout: 20_000 });
+    await rollOnce(page);
+  }
+
+  throw new Error("The terminus hint did not become visible in the same-seed control run");
 }
 
 interface HintSnapshot {
@@ -225,6 +285,29 @@ async function firstHint(page: Page, maxTurns = 60): Promise<{ key: string; id: 
   throw new Error("No first-play hint appeared before the search limit or game clear");
 }
 
+async function rollUntilFirstHint(page: Page, maxTurns = 20): Promise<{ moments: number; skips: number }> {
+  let moments = 0;
+  let skips = 0;
+  for (let turn = 0; turn < maxTurns; turn += 1) {
+    if (await hintCard(page).count()) return { moments, skips };
+    await expect(page.locator(".toast-host__toast:not(.toast-host__toast--sticky)")).toHaveCount(0, { timeout: 20_000 });
+    if (await hintCard(page).count()) return { moments, skips };
+    const before = (await readSave(page))?.turn ?? 0;
+    await diceReady(page).click();
+    const moment = page.locator(".turn-moment-host__card");
+    await expect.poll(async () => await moment.isVisible() || await diceReady(page).isVisible()).toBe(true);
+    if (await moment.isVisible()) {
+      moments += 1;
+      await expect(hintCard(page)).toHaveCount(0);
+      await gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true }).click();
+      skips += 1;
+    }
+    await expect.poll(async () => (await readSave(page))?.turn).toBe(before + 1);
+    await expect(diceReady(page).or(page.getByRole("heading", { name: "クリア！" }))).toBeVisible();
+  }
+  throw new Error("No first-play hint appeared before the presentation-path search limit");
+}
+
 async function installClickCounter(button: Locator): Promise<void> {
   await button.evaluate((element) => {
     const counterWindow = window as Window & { __hintActionClicks?: number };
@@ -298,6 +381,43 @@ test("closing advances one card, and disabling hints persists across reload and 
   await expect(hintCard(page)).toHaveCount(0);
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), guideHintStorageKey(secondId as typeof HINT_ORDER[number])))
     .toBe("1");
+});
+
+for (const level of [
+  { id: "all", label: "すべて" },
+  { id: "important", label: "重要なときだけ" },
+  { id: "none", label: "なし" },
+] as const) {
+  test(`first-play hints publish with the ${level.label} presentation level`, async ({ page }) => {
+    await seedGameSettings(page, { speedId: "normal", follow: true, presentationLevel: level.id });
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await startEligibleGame(page);
+
+    await openGameMenu(page);
+    const presentation = gamePanel(page).getByRole("button", { name: /^演出:/ });
+    await expect(presentation).toHaveText(`演出: ${level.label}`);
+    await gamePanel(page).getByRole("button", { name: "メニュー", exact: true }).click();
+
+    const path = await rollUntilFirstHint(page);
+    await expect(hintCard(page)).toBeVisible();
+    await expect(hintCard(page)).toContainText(EXPECTED_COPY.lottery!);
+    if (level.id === "all") {
+      expect(path.moments).toBeGreaterThan(0);
+      expect(path.skips).toBeGreaterThan(0);
+    }
+    if (level.id === "none") expect(path.moments).toBe(0);
+  });
+}
+
+test("OS reduced motion still publishes hints and allows the coach skip", async ({ page }) => {
+  await seedGameSettings(page, { speedId: "normal", follow: true, presentationLevel: "all" });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await startEligibleGame(page);
+  await expect(hintCard(page)).toHaveCount(0);
+  const path = await rollUntilFirstHint(page);
+  await expect(hintCard(page)).toContainText(EXPECTED_COPY.lottery!);
+  expect(path.moments).toBe(0);
+  expect(path.skips).toBe(0);
 });
 
 test("resuming a save from an eligible guide session does not restore its hints", async ({ page }) => {
@@ -507,13 +627,22 @@ test("a sticky save failure holds the first hint until a successful save", async
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), lotteryKey)).toBe("1");
 });
 
-test("ClearScreen discards queued hints without marking them seen", async ({ page }) => {
-  test.setTimeout(90_000);
+test("ClearScreen discards queued hints without marking them seen", async ({ page, railwayBundle }) => {
+  test.setTimeout(180_000);
+  await expectTerminusHintOnSameSeed(page);
+  // Clearing storage and reloading reapplies the fixture seed before the real queued-hint run.
+  await page.evaluate(() => localStorage.clear());
+  await openTitle(page);
   await startEligibleGame(page);
   const first = await firstHint(page);
   expect(first.id).toBe("lottery");
   const card = hintCard(page);
   const currentKey = first.key;
+  const visibleHintTurn = (await readSave(page))?.turn;
+  expect(visibleHintTurn).toBeGreaterThan(0);
+  await expect(page.getByRole("heading", { name: "クリア！" })).toHaveCount(0);
+  await expect(card).toBeVisible();
+  await expect(card).toContainText(EXPECTED_COPY.lottery!);
 
   for (let turn = (await readSave(page))?.turn ?? 0; turn < 8; turn += 1) {
     await rollOnce(page);
@@ -524,6 +653,8 @@ test("ClearScreen discards queued hints without marking them seen", async ({ pag
 
   for (let turn = (await readSave(page))?.turn ?? 0; turn < 100; turn += 1) {
     if (await page.getByRole("heading", { name: "クリア！" }).count()) break;
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute("data-guide-candidate-key", currentKey);
     await rollOnce(page);
   }
 
@@ -532,10 +663,50 @@ test("ClearScreen discards queued hints without marking them seen", async ({ pag
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), guideHintStorageKey("lottery"))).toBe("1");
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), guideHintStorageKey("terminus"))).toBeNull();
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), guideHintStorageKey("harmful-item"))).toBeNull();
+  const clearedGame = await readSave(page);
+  const queuedTerminusEvidence = clearedGame?.movementHistory.find((record) =>
+    record.kind === "item-ride" && record.stopReason === "endpoint" && record.unusedPips > 0
+      && endpointKindAt(railwayBundle.network, record.resolvedRide.serviceId, record.toStationId) === "terminus");
+  expect(queuedTerminusEvidence, "an eligible terminus event was queued behind the visible lottery hint before ClearScreen")
+    .toBeDefined();
 });
 
 test.describe("adjustment decision overlays a visible hint", () => {
   test.use({ gameSeed: "00000000000000000000000000000002" });
+
+  test("hint details keeps rules above the next turn's pending adjustment", async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.clock.install();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await startEligibleGame(page);
+    await firstHint(page);
+
+    for (let turn = (await readSave(page))?.turn ?? 0; turn < 8; turn += 1) await rollOnce(page);
+    expect((await readSave(page))?.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
+
+    await freezeClock(page);
+    const card = hintCard(page);
+    await expect(card).toBeVisible();
+    await card.getByRole("button", { name: "詳しく", exact: true }).click();
+    const rules = page.getByRole("dialog", { name: "遊び方" });
+    await expect(rules).toBeVisible();
+    await expect(card).toHaveCount(0);
+
+    // The rules modal owns input. Dispatch the already-authorized same-session roll directly to exercise
+    // the integration race in which a saved decision arrives while Details still owns the screen.
+    await diceButton(page).evaluate((button) => (button as HTMLButtonElement).click());
+    await expect(diceMoment(page)).toHaveAttribute("data-stage", "tumble");
+
+    await advanceTumble(page);
+    await expect.poll(async () => (await readSave(page))?.pending?.kind).toBe("roll");
+    await expect(rules).toBeVisible();
+    await expect(page.getByRole("dialog", { name: "出目を調整しますか？" })).toHaveCount(0);
+
+    await rules.getByRole("button", { name: "閉じる", exact: true }).click();
+    const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await expect(adjustment).toBeVisible();
+    await expect(adjustment.getByRole("heading", { name: "出目を調整しますか？" })).toBeFocused();
+  });
 
   test("Escape continues once and restores the current hint without another announcement or seen write", async ({ page }) => {
     test.setTimeout(90_000);
@@ -559,14 +730,15 @@ test.describe("adjustment decision overlays a visible hint", () => {
     await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), guideHintStorageKey(first.id as typeof HINT_ORDER[number])))
       .toBe("1");
 
+    await watchSavedTurnAdvances(page, turnBefore);
     await page.keyboard.press("Escape");
-    await expect.poll(async () => (await readSave(page))?.turn).toBe(turnBefore + 1);
+    await expect.poll(() => savedTurnAdvances(page)).toEqual([turnBefore + 1]);
     await expect(diceReady(page).or(page.getByRole("heading", { name: "クリア！" }))).toBeVisible();
     await expect(adjustment).toHaveCount(0);
+    expect(await savedTurnAdvances(page)).toEqual([turnBefore + 1]);
     await expectHintRestored(page, snapshot);
     await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), guideHintStorageKey(first.id as typeof HINT_ORDER[number])))
       .toBe("1");
-    await page.waitForTimeout(150);
     expect((await readSave(page))?.turn).toBe(turnBefore + 1);
   });
 });
@@ -683,6 +855,26 @@ for (const viewport of [
       await expect(attribution).toHaveClass(/maplibregl-compact-show/);
     }
     await firstHint(page);
+    // #66 uses the pill on phone, a compact line in short landscape, and the full result otherwise.
+    const resultSelector = viewport.width <= 600
+      ? ".turn-result__pill"
+      : viewport.height <= 500 ? ".turn-result__compact" : ".turn-result";
+    const expectedObstacles = [
+      ".game-panel",
+      resultSelector,
+      ".map-overview",
+      ".maplibregl-ctrl-top-right .maplibregl-ctrl-group",
+      ".maplibregl-ctrl-attrib",
+    ];
+    for (const selector of expectedObstacles) {
+      await expect.poll(async () => page.locator(selector).evaluateAll((elements) => elements.filter((element) => {
+        const box = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return element.getClientRects().length > 0 && box.width > 0 && box.height > 0
+          && style.visibility !== "hidden" && style.display !== "none";
+      }).length), `${selector} must be visible with a positive-area rectangle at ${viewport.width}x${viewport.height}`)
+        .toBeGreaterThan(0);
+    }
     const layout = await page.evaluate(() => {
       const rect = (selector: string): { left: number; top: number; right: number; bottom: number } | null => {
         const element = document.querySelector<HTMLElement>(selector);
@@ -690,6 +882,11 @@ for (const viewport of [
         const box = element.getBoundingClientRect();
         return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
       };
+      const rects = (selector: string): { left: number; top: number; right: number; bottom: number }[] =>
+        [...document.querySelectorAll<HTMLElement>(selector)].map((element) => {
+          const box = element.getBoundingClientRect();
+          return { left: box.left, top: box.top, right: box.right, bottom: box.bottom };
+        });
       const overlap = (first: NonNullable<ReturnType<typeof rect>>, second: NonNullable<ReturnType<typeof rect>>): boolean =>
         first.left < second.right && first.right > second.left && first.top < second.bottom && first.bottom > second.top;
       const card = rect(".first-play-hint");
@@ -709,13 +906,10 @@ for (const viewport of [
         width: window.innerWidth,
         height: window.innerHeight,
         card,
-        occupied: [".game-panel", ".turn-result__pill", ".map-overview", ".maplibregl-ctrl-top-right .maplibregl-ctrl-group", ".maplibregl-ctrl-attrib"]
-          .map((selector) => ({ selector, rect: rect(selector) })),
-        overlapsOccupied: [".game-panel", ".turn-result__pill", ".map-overview", ".maplibregl-ctrl-top-right .maplibregl-ctrl-group", ".maplibregl-ctrl-attrib", ".turn-moment-host"]
-          .filter((selector) => {
-            const box = rect(selector);
-            return box !== null && overlap(card, box);
-          }),
+        occupied: [".game-panel", ".turn-result__pill", ".map-overview", ".maplibregl-ctrl"]
+          .map((selector) => ({ selector, rects: rects(selector) })),
+        overlapsOccupied: [".game-panel", ".turn-result__pill", ".map-overview", ".maplibregl-ctrl", ".turn-moment-host__card"]
+          .flatMap((selector) => rects(selector).filter((box) => overlap(card, box)).map(() => selector)),
         actionsReachable,
       };
     });
@@ -731,5 +925,30 @@ for (const viewport of [
       const hudHeight = await measuredHudContentHeight(page);
       expect(hudHeight).toBeLessThanOrEqual(252);
     }
+
+    const visibleKey = await hintCard(page).getAttribute("data-guide-candidate-key");
+    expect(visibleKey).not.toBeNull();
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await diceReady(page).click();
+    const momentCard = page.locator(".turn-moment-host__card");
+    await expect(momentCard).toBeVisible();
+    await expect(hintCard(page)).toHaveCount(0);
+    await gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true }).click();
+    await expect(diceReady(page).or(page.getByRole("heading", { name: "クリア！" }))).toBeVisible();
+    await expect(hintCard(page)).toHaveAttribute("data-guide-candidate-key", visibleKey!);
+    const restoredCard = await hintCard(page).boundingBox();
+    if (!restoredCard) throw new Error("Expected the hint to restore after the turn-moment host left");
+    const overlapsAfterRestore = await page.evaluate((card) => {
+      const selectors = [".game-panel", ".turn-result__pill", ".map-overview", ".maplibregl-ctrl"];
+      return selectors.flatMap((selector) => [...document.querySelectorAll<HTMLElement>(selector)]
+        .filter((element) => element.getClientRects().length > 0)
+        .filter((element) => {
+          const obstacle = element.getBoundingClientRect();
+          return card.x < obstacle.right && card.x + card.width > obstacle.left
+            && card.y < obstacle.bottom && card.y + card.height > obstacle.top;
+        })
+        .map(() => selector));
+    }, restoredCard);
+    expect(overlapsAfterRestore, `${viewport.width}x${viewport.height}: restored hint overlaps a HUD or map control`).toEqual([]);
   });
 }
