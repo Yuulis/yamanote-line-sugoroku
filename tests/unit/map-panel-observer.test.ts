@@ -104,12 +104,22 @@ describe("useCameraLayoutObserver", () => {
     act(() => root.render(createElement(Harness, props)));
   }
 
-  it("rebinds to the replacement panel when the panel key changes", () => {
+  it("keeps one binding across re-renders and rebinds to the replacement panel when the panel key changes", () => {
     const onBind = vi.fn();
     const onLayoutChange = vi.fn();
     const firstPanel = addPanel();
     render({ map, panelKey: 1, onBind, onLayoutChange });
     expect(FakeResizeObserver.instances.at(-1)?.observed).toEqual([container, firstPanel]);
+
+    // New callback identities on a re-render must not rebind (they are read through a ref).
+    const latest = vi.fn();
+    render({ map, panelKey: 1, onBind: vi.fn(), onLayoutChange: latest });
+
+    expect(onBind).toHaveBeenCalledTimes(1);
+    expect(FakeResizeObserver.instances).toHaveLength(1);
+    resizeEverywhere(firstPanel);
+    expect(onLayoutChange).not.toHaveBeenCalled();
+    expect(latest).toHaveBeenCalledTimes(1);
 
     // A new session mounts a new panel element in place of the old one.
     firstPanel.remove();
@@ -122,22 +132,6 @@ describe("useCameraLayoutObserver", () => {
     expect(FakeResizeObserver.instances[1]!.observed).toEqual([container, replacement]);
     resizeEverywhere(replacement);
     expect(onLayoutChange).toHaveBeenCalledTimes(1);
-  });
-
-  it("keeps one binding while the panel key and map stay the same", () => {
-    const onBind = vi.fn();
-    const onLayoutChange = vi.fn();
-    const panel = addPanel();
-    render({ map, panelKey: 3, onBind, onLayoutChange });
-    // New callback identities on a re-render must not rebind (they are read through a ref).
-    const latest = vi.fn();
-    render({ map, panelKey: 3, onBind: vi.fn(), onLayoutChange: latest });
-
-    expect(onBind).toHaveBeenCalledTimes(1);
-    expect(FakeResizeObserver.instances).toHaveLength(1);
-    resizeEverywhere(panel);
-    expect(onLayoutChange).not.toHaveBeenCalled();
-    expect(latest).toHaveBeenCalledTimes(1);
   });
 
   it("observes nothing without a map and binds once a map is supplied", () => {

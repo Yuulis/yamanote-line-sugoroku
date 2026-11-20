@@ -31,6 +31,7 @@ describe("resume presentation", () => {
       completedCount: 0,
       requiredCount: 30,
     });
+    expect(overwriteProgressText(game)).toBe("5ターン目から再開");
   });
 
   it("uses pending roll turn", () => {
@@ -89,14 +90,5 @@ describe("resume presentation", () => {
     expect(resumeTurn(game)).toBeNull();
     expect(buildResumePresentation(game, network, requiredIds).label).toBe("クリア結果を見る（96ターンでクリア）");
     expect(overwriteProgressText(game)).toBe("96ターンでクリア");
-  });
-
-  it("shares next-turn wording with overwrite confirmation", () => {
-    const game = { ...createGame(LEGACY_CAPITAL_REGION_CONFIG, "resume-overwrite", network), turn: 4 };
-    const requiredIds = new Set(targetSegmentIds(game.config, network));
-    const presentation = buildResumePresentation(game, network, requiredIds);
-
-    expect(presentation.label).toContain("・5ターン目・");
-    expect(overwriteProgressText(game)).toBe("5ターン目から再開");
   });
 });
