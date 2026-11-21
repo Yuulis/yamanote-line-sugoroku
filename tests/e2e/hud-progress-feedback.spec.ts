@@ -297,7 +297,7 @@ test.describe("milestone resume lifecycle", () => {
     await expect(announcement(page)).not.toContainText(milestoneSentence);
     await expect(flash(page)).toHaveCount(0);
 
-    // #96 accepts phase-based announcement repeats; this checks the sentence, not live-region mutation count.
+    // The reduced-motion path publishes the sentence in the status region without a progress flash.
     const reducedPage = await page.context().newPage();
     await reducedPage.route(`${baseURL}data/*`, async (route) => {
       const file = new URL(route.request().url()).pathname.split("/").at(-1);

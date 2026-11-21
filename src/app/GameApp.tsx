@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { RailwayData } from "../data/loaders";
 import { displayedProgress, sessionProgress } from "../features/game/animation/displayedProgress";
@@ -23,7 +23,8 @@ import { useGameSettings } from "../features/game/useGameSettings";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
 import { deriveTurnMomentDisplay } from "../features/game/turnMomentPresentation";
-import type { TurnMomentDisplay, TurnRevealState } from "../features/game/turnMomentPresentation";
+import type { MilestoneAnnouncementCommit, OrdinaryAnnouncement, TurnMomentDisplay, TurnRevealState } from "../features/game/turnMomentPresentation";
+import type { MilestoneAnnouncementLedger } from "../features/game/milestoneAnnouncement";
 import type { RollAttempt, TurnMomentObservation, TurnOrigin } from "../features/game/animation/turnMoments";
 import { attemptOwnsAnimation, useTurnMoments } from "../features/game/animation/useTurnMoments";
 import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
@@ -73,7 +74,12 @@ interface GameAppProps {
   /** One-shot title focus carried from rules opened during edition loading. */
   initialTitleFocus?: "rules-trigger";
   /** Narrow input seam for mounted publication-boundary tests; production leaves it unset. */
-  turnMomentBoundary?: Readonly<{ attempt: RollAttempt | null; revealStage: TurnRevealState; restoredOrOmitted: boolean }>;
+  turnMomentBoundary?: Readonly<{
+    attempt: RollAttempt | null;
+    revealStage: TurnRevealState;
+    restoredOrOmitted: boolean;
+    noticeAnnouncement?: NoticeAnnouncementCopy | null;
+  }>;
 }
 
 type PendingConfirm = { kind: "new-game"; message: string } | { kind: "delete-save" } | null;
@@ -354,10 +360,10 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     () => (presentationGame ? displayedProgress(presentationGame, network, view) : null),
     [presentationGame, network, view],
   );
-  const classicAnnouncement = useRef({ sessionId: session?.sessionId, text: "" });
-  if (classicAnnouncement.current.sessionId !== session?.sessionId) {
-    classicAnnouncement.current = { sessionId: session?.sessionId, text: "" };
-  }
+  const classicAnnouncement = useRef<{
+    sessionId: number;
+    ordinary: OrdinaryAnnouncement;
+  } | null>(null);
   const restoredHistory = (game?.turn ?? 0) <= (resumeBaseline.current?.turn ?? 0);
   // The record the session was entered with stays published, until an attempt for a newer turn takes over.
   const baselineTurn = resumeBaseline.current?.turn ?? 0;
@@ -374,13 +380,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     restoredOrOmitted: turnMomentBoundary?.restoredOrOmitted ?? (moments.restoredOrOmitted || restoredRecordShown),
     itemView,
     restoredHistory,
-    previousClassicAnnouncement: classicAnnouncement.current.text,
+    previousClassicAnnouncement: classicAnnouncement.current?.sessionId === session.sessionId
+      ? classicAnnouncement.current.ordinary : undefined,
     revealKey: reveal.key,
     entryTurn,
   }) : null, [session, shown, network, presentation, turnMomentBoundary, presentedAttempt, presentedRevealStage, moments.restoredOrOmitted, restoredRecordShown, itemView, restoredHistory, reveal.key, entryTurn]);
-  if (!itemView && turnDisplay && session?.phase === "idle" && !restoredHistory) {
-    classicAnnouncement.current.text = turnDisplay.announcement;
-  }
   // Presented permissions, read at call time so a direct or stale invocation cannot bypass them.
   const turnDisplayRef = useRef<TurnMomentDisplay | null>(null);
   turnDisplayRef.current = turnDisplay;
@@ -489,6 +493,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   // A game resumed at its pending adjustment never tumbles: the restored attempt keeps the saved die as published.
   const restoredRollSession = useRef<number | null>(null);
   const sessionId = session?.sessionId ?? null;
+  const milestoneAnnouncementPublication = useRef<MilestoneAnnouncementLedger>({
+    sessionId,
+    consumed: new Set(),
+    held: null,
+  });
   const enteredAwaitingAdjust = session?.phase === "awaiting-adjust";
   useEffect(() => {
     if (sessionId === null || restoredRollSession.current === sessionId) return;
@@ -529,6 +538,37 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
   const rulesOpen = panelShown && rulesRequest !== null;
+  const handleMilestoneAnnouncementCommit = useCallback((commit: MilestoneAnnouncementCommit): void => {
+    const current = milestoneAnnouncementPublication.current;
+    if (current.sessionId !== commit.sessionId) {
+      current.sessionId = commit.sessionId;
+      current.consumed.clear();
+      current.held = null;
+    }
+    const { ordinary, surface } = commit;
+    if (surface === null || !ordinary?.milestoneCandidate) {
+      current.held = null;
+    } else {
+      const key = ordinary.milestoneCandidate.key;
+      current.consumed.add(key);
+      current.held = { key, baseText: ordinary.baseText, surface };
+    }
+    if (surface === "panel" && ordinary && !itemView && session?.phase === "idle" && !restoredHistory) {
+      classicAnnouncement.current = { sessionId: commit.sessionId, ordinary };
+    }
+  }, [itemView, restoredHistory, session?.phase]);
+  useLayoutEffect(() => {
+    const current = milestoneAnnouncementPublication.current;
+    if (classicAnnouncement.current?.sessionId !== sessionId) classicAnnouncement.current = null;
+    if (current.sessionId !== sessionId) {
+      current.sessionId = sessionId;
+      current.consumed.clear();
+      current.held = null;
+    } else if (!panelShown) {
+      current.held = null;
+    }
+  }, [panelShown, sessionId]);
+  const publicationState = milestoneAnnouncementPublication.current;
   const replayAvailability: FirstPlayCoachReplayAvailability = {
     sessionId: session?.sessionId ?? null,
     panelShown,
@@ -561,6 +601,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     rulesOpen,
     coachOpen: firstPlayCoachOpen,
   });
+  const firstTurnNoticeForPanel = turnMomentBoundary && "noticeAnnouncement" in turnMomentBoundary
+    ? turnMomentBoundary.noticeAnnouncement ?? null : firstTurnNoticeAnnouncement;
   const handleNoticeShown = useCallback((key: string): void => {
     const displayed = firstTurnNotice.notice;
     firstTurnNotice.onNoticeShown(key);
@@ -647,6 +689,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           key={session.sessionId}
           session={session}
           turnDisplay={turnDisplay}
+          milestoneLedger={publicationState}
           turnMomentTargets={turnMomentTargets}
           network={network}
           presentation={presentation}
@@ -662,7 +705,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           rulesOpen={rulesOpen}
           coachOpen={firstPlayCoachOpen}
           coachTargets={coachTargets}
-          firstTurnNoticeAnnouncement={firstTurnNoticeAnnouncement}
+          firstTurnNoticeAnnouncement={firstTurnNoticeForPanel}
           hintCandidateKey={firstPlayGuide.currentCandidate?.key ?? null}
           hintCard={firstPlayGuide.card}
           hintAnnouncement={firstPlayGuide.announcement}
@@ -671,6 +714,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           onHintClose={firstPlayGuide.closeCurrent}
           onHintDisable={firstPlayGuide.disableHints}
           onNoticeAnnounced={handleNoticeAnnounced}
+          onMilestoneAnnouncementCommit={handleMilestoneAnnouncementCommit}
           onOpenRules={openRules}
           onRoll={guardedRoll}
           onEditItemDraft={guardedEditItemDraft}

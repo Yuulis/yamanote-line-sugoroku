@@ -27,6 +27,25 @@ export type TurnPublicationPhase = "pre-move" | "moving" | TurnRevealStageKey | 
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
 export type TurnRevealState = TurnRevealStageKey | "waiting" | "done";
 
+export interface MilestoneAnnouncementCandidate {
+  readonly key: string;
+  readonly text: string;
+}
+
+export type MilestoneAnnouncementSurface = "panel" | "adjustment" | "discard";
+
+export interface OrdinaryAnnouncement {
+  readonly baseText: string;
+  readonly milestoneCandidate: MilestoneAnnouncementCandidate | null;
+}
+
+export interface MilestoneAnnouncementCommit {
+  readonly sessionId: number;
+  readonly surface: MilestoneAnnouncementSurface | null;
+  readonly text: string | null;
+  readonly ordinary: OrdinaryAnnouncement | null;
+}
+
 export interface TurnMomentDisplayInput {
   session: GameSession;
   network: RailwayNetwork;
@@ -39,8 +58,8 @@ export interface TurnMomentDisplayInput {
   itemView?: ItemSessionView | null;
   /** Session-entry history is distinct from a fresh result with motion omitted. */
   restoredHistory?: boolean;
-  /** P1 retains the last completed classic summary while the next move runs. */
-  previousClassicAnnouncement?: string;
+  /** The last committed classic summary, with any suffix kept subject to the panel's hold. */
+  previousClassicAnnouncement?: OrdinaryAnnouncement;
   /** Key of the reveal being presented; it keys the arrival's segment flash. */
   revealKey?: string | null;
   /** Latest turn the session was entered with; a completion at or before it is never announced as new. */
@@ -75,7 +94,9 @@ export interface TurnMomentDisplay {
   /** Publication permits fallback/completion copy even when there are no item events. */
   itemNoticePublished: boolean;
   itemNoticeMove: LastMove | null;
+  /** Base copy before any milestone sentence is composed by GamePanel. */
   announcement: string;
+  milestoneCandidate: MilestoneAnnouncementCandidate | null;
   /** Turn number only when announcement currently contains this published turn's result summary. */
   summaryTurn: number | null;
   clearAnnouncement: string;
@@ -427,8 +448,9 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   const toastInputs = [...crossingToasts, ...milestoneToasts, ...itemToasts];
   const canRoll = !active && input.session.phase === "idle" && input.session.game.status === "playing";
   const announcementStage = getAnnouncementStage(input, phase, showClear, decision);
+  const carryClassicSummary = !liveView && !attempt && input.session.phase !== "idle";
   const baseAnnouncement = !liveView && input.restoredHistory ? ""
-    : !liveView && !attempt && input.session.phase !== "idle" ? input.previousClassicAnnouncement ?? ""
+    : carryClassicSummary ? input.previousClassicAnnouncement?.baseText ?? ""
     : !liveView && phase === "published" && current
       ? arrivalSummary(current.itemRecord?.turn ?? input.session.game.turn, current, completedCount, requiredCount, input.network, input.presentation)
       // A presented movement announces only what is public: the raw face and the stamped modifiers, never the
@@ -451,8 +473,11 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
       ? goalGuidance.text : null;
   const milestoneAnnounced = milestoneSentence !== null && (ARRIVAL_COPY_PHASES.has(phase)
     || (isPublished && (arrivalUnpresented || attempt?.policy.showImportantMoments === false)));
-  const announcement = milestoneAnnounced && baseAnnouncement
-    ? `${baseAnnouncement.replace(/。$/, "")}。${milestoneSentence}` : baseAnnouncement;
+  const milestoneCandidate: MilestoneAnnouncementCandidate | null = !baseAnnouncement ? null
+    : carryClassicSummary ? input.previousClassicAnnouncement?.milestoneCandidate ?? null
+    : milestoneAnnounced && milestoneSentence
+      ? { key: `${input.session.sessionId}:${publicationTurn}:${currentCrossing?.threshold ?? GOAL_THRESHOLD}`, text: milestoneSentence }
+      : null;
   const hasPublishedSummary = phase === "published" && current !== null && !showClear && (liveView
     ? input.session.phase !== "animating" && input.session.phase !== "committing" && input.session.phase !== "resolving" &&
       !liveView.draft.items.length && decision?.kind !== "adjust"
@@ -494,7 +519,8 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     showItemNotice,
     itemNoticePublished: resultPublished,
     itemNoticeMove: resultPublished ? input.session.lastMove : null,
-    announcement,
+    announcement: baseAnnouncement,
+    milestoneCandidate,
     summaryTurn,
     clearAnnouncement,
     toastInputs,

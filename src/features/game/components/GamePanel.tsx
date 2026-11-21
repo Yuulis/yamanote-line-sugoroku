@@ -22,7 +22,12 @@ import { PhoneGameMenu, type PhoneMenuSection } from "./PhoneGameMenu";
 import { EDITIONS } from "../../editions/registry";
 import type { EditionDisplay } from "../../editions/types";
 import { ITEM_DESCRIPTIONS } from "../itemPresentation";
-import type { TurnMomentDisplay } from "../turnMomentPresentation";
+import type {
+  MilestoneAnnouncementCommit,
+  MilestoneAnnouncementSurface,
+  TurnMomentDisplay,
+} from "../turnMomentPresentation";
+import { composeMilestoneAnnouncement, type MilestoneAnnouncementLedger } from "../milestoneAnnouncement";
 import type { OpenRules, RulesSectionId } from "../rulesGuide";
 import { isFocusRestorable } from "./RulesDialog";
 import { lineBadgeFor } from "../lineBadge";
@@ -62,6 +67,8 @@ export type PanelOpenRules = (
 export interface GamePanelProps {
   session: GameSession;
   turnDisplay: TurnMomentDisplay;
+  /** Mutable ref-backed ledger read at render time, including child-only renders after a commit report. */
+  milestoneLedger?: MilestoneAnnouncementLedger;
   network: RailwayNetwork;
   presentation?: PresentationResolver;
   display?: EditionDisplay;
@@ -92,6 +99,8 @@ export interface GamePanelProps {
   onHintDisable?: () => void;
   /** Called after the existing status region commits the #68 notice. */
   onNoticeAnnounced?: (announcement: SelectedNoticeAnnouncement) => void;
+  /** Called after a live region commits its text, so milestone candidates are consumed only after publication. */
+  onMilestoneAnnouncementCommit?: (commit: MilestoneAnnouncementCommit) => void;
   /** Called after the existing status region commits the current hint. */
   onHintStatusAcknowledged?: (acknowledgement: GuideAcknowledgement) => void;
   onRoll: () => void;
@@ -425,6 +434,22 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const restoreNextHintFocusRef = useRef(false);
   const firstTurnNotice = props.firstTurnNoticeAnnouncement ?? null;
   const hintAnnouncement = props.hintAnnouncement ?? null;
+  const adjustmentDecision = !rulesOpen && turnDisplay.decision?.kind === "adjust" ? turnDisplay.decision : null;
+  const discardDecision = !rulesOpen && turnDisplay.decision?.kind === "discard" ? turnDisplay.decision : null;
+  const announcementSurface: MilestoneAnnouncementSurface | null = adjustmentDecision ? "adjustment"
+    : discardDecision ? "discard"
+    : turnDisplay.decision === null ? "panel" : null;
+  const baseAnnouncement = turnDisplay.announcement;
+  const milestoneCandidate = turnDisplay.milestoneCandidate;
+  const milestoneComposition = composeMilestoneAnnouncement({
+    baseText: baseAnnouncement,
+    candidate: milestoneCandidate,
+    surface: announcementSurface,
+    canPublish: documentVisible && !rulesOpen && !props.confirmationOpen && !props.coachOpen && !itemDialogOpen,
+    consumed: milestoneCandidate !== null
+      && props.milestoneLedger?.consumed.has(milestoneCandidate.key) === true,
+    held: props.milestoneLedger?.held ?? null,
+  });
   const decisionOwned = isNoticeAnnouncementOwned({
     engineDecisionOpen: turnDisplay.decision !== null,
     rulesOpen,
@@ -432,9 +457,10 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     itemDialogOpen,
     coachOpen: props.coachOpen ?? false,
   });
+  // A notice can end the milestone hold without changing the ordinary copy it covers.
   const announcement = selectAnnouncement({
     state: noticeAnnouncementState,
-    ordinaryAnnouncement: turnDisplay.announcement,
+    ordinaryAnnouncement: baseAnnouncement,
     previousOrdinary,
     firstTurnNotice,
     hintAnnouncement: documentVisible ? hintAnnouncement : null,
@@ -442,15 +468,27 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   });
   const selectedAnnouncement = announcement.announcement;
   const selectedAnnouncementId = selectedAnnouncement === null ? null : noticeAnnouncementIdentity(selectedAnnouncement);
+  const statusText = selectedAnnouncement === null ? milestoneComposition.text : announcement.text;
+  const ordinaryCommitted = announcementSurface !== null && selectedAnnouncement === null;
+  const committedCandidate = ordinaryCommitted && milestoneComposition.candidateKey !== null ? milestoneCandidate : null;
+  useLayoutEffect(() => {
+    props.onMilestoneAnnouncementCommit?.({
+      sessionId: session.sessionId,
+      surface: announcementSurface,
+      text: announcementSurface === null ? null : statusText,
+      ordinary: ordinaryCommitted ? { baseText: baseAnnouncement, milestoneCandidate: committedCandidate } : null,
+    });
+  }, [announcementSurface, baseAnnouncement, committedCandidate, ordinaryCommitted, props.onMilestoneAnnouncementCommit,
+    session.sessionId, statusText]);
   useEffect(() => {
-    setPreviousOrdinary(turnDisplay.announcement);
+    setPreviousOrdinary(baseAnnouncement);
     if (announcement.announcesNotice && selectedAnnouncement !== null && selectedAnnouncementId !== null
       && !committedAnnouncementIdsRef.current.has(selectedAnnouncementId)
       && (selectedAnnouncement.source !== "hint" || isDocumentVisible())) {
       committedAnnouncementIdsRef.current.add(selectedAnnouncementId);
       setNoticeAnnouncementState((current) => ({
         current: selectedAnnouncement,
-        coveredOrdinary: turnDisplay.announcement,
+        coveredOrdinary: baseAnnouncement,
         deliveredIds: current.deliveredIds.includes(selectedAnnouncementId)
           ? current.deliveredIds : [...current.deliveredIds, selectedAnnouncementId],
       }));
@@ -461,12 +499,12 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     const sameCurrent = noticeAnnouncementState.current !== null
       && selectedAnnouncementId === noticeAnnouncementIdentity(noticeAnnouncementState.current);
     if (noticeAnnouncementState.current !== null
-      && (decisionOwned || turnDisplay.announcement !== noticeAnnouncementState.coveredOrdinary || !sameCurrent)) {
+      && (decisionOwned || baseAnnouncement !== noticeAnnouncementState.coveredOrdinary || !sameCurrent)) {
       setNoticeAnnouncementState((current) => current.current === noticeAnnouncementState.current
         ? { ...current, current: null, coveredOrdinary: null }
         : current);
     }
-  }, [announcement.announcesNotice, selectedAnnouncement, selectedAnnouncementId, turnDisplay.announcement,
+  }, [announcement.announcesNotice, selectedAnnouncement, selectedAnnouncementId, baseAnnouncement,
     decisionOwned, noticeAnnouncementState.current, noticeAnnouncementState.coveredOrdinary,
     props.onNoticeAnnounced, props.onHintStatusAcknowledged]);
   useGameShortcuts({
@@ -754,8 +792,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           openerRef={logOpenerRef} triggerRef={phoneTriggerRef} onExpandedChange={setPhoneMenuExpanded}
           onSectionChange={setPhoneSection} log={turnLog} settings={gameMenu} /> : <>{turnLog}{gameMenu}</>}
       </div>
-      {!turnDisplay.decision && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
-        {announcement.text}
+      {announcementSurface === "panel" && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">
+        {statusText}
       </p>}
       {itemView && itemDialog && (
         <ItemUseDialog
@@ -769,17 +807,17 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         />
       )}
       {/* Deferred under the rules (state retained); they mount in the same commit that unmounts the rules. */}
-      {!rulesOpen && turnDisplay.decision?.kind === "adjust" && <RollAdjustment
-        announcement={turnDisplay.announcement}
-        decision={turnDisplay.decision}
+      {adjustmentDecision && <RollAdjustment
+        announcement={statusText}
+        decision={adjustmentDecision}
         landings={turnDisplay.adjustmentLandings}
         onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
         onSkip={props.onSkip}
         canSkip={turnDisplay.canSkip}
       />}
-      {!rulesOpen && turnDisplay.decision?.kind === "discard" && <DiscardChoice
-        announcement={turnDisplay.announcement}
-        decision={turnDisplay.decision}
+      {discardDecision && <DiscardChoice
+        announcement={statusText}
+        decision={discardDecision}
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
       />}
     </main>
