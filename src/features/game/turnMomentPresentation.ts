@@ -1,6 +1,6 @@
 import type { Direction } from "../../types/network";
 import type { RailwayNetwork } from "./engine";
-import { isItemSave, platformPosition, targetSegmentIds } from "./engine";
+import { isItemSave, nextStationId, platformPosition, targetHopDistances, targetSegmentIds } from "./engine";
 import type { SegmentFlashRequest } from "../map/railwayLayers";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { segmentFlashFeatureIds, type TurnRevealStageKey, type RollAttempt } from "./animation/turnMoments";
@@ -16,6 +16,12 @@ import { deriveProgressCrossings, type MilestoneFlash, type ProgressCrossing } f
 import { maskTurnMomentItemView } from "./turnMomentItems";
 import { adjustmentLandings, displayedHeading, firstTargetCompletionTurn, type AdjustmentLanding, type GoalGuidance } from "./mapGuidance";
 import { deriveTurnResult, type TurnResultModel } from "./turnResultCard";
+import {
+  buildGuideCopy,
+  createGuideCandidate,
+  type GuideCandidate,
+  type GuideCopyRequest,
+} from "./firstPlayGuide";
 
 export type TurnPublicationPhase = "pre-move" | "moving" | TurnRevealStageKey | "published";
 export type PresentationCandidateRow = ReturnType<PresentationResolver["candidateRows"]>[number];
@@ -81,6 +87,8 @@ export interface TurnMomentDisplay {
   segmentFlash: SegmentFlashRequest | null;
   /** Publication-gated 「前のターン」 card model; components read only this. */
   turnResult: TurnResultModel | null;
+  /** Immutable guide hints from the published result; components do not inspect engine records. */
+  guideCandidates: readonly GuideCandidate[];
 }
 
 const PRE_MOVE_STAGES = new Set<RollAttempt["stage"]>(["waiting-roll", "tumble", "awaiting-adjust", "waiting-record", "stamps"]);
@@ -235,6 +243,79 @@ function visibleTurnResult(
   });
 }
 
+type PublishedHintRequest = Exclude<GuideCopyRequest, { kind: "coach" | "control" }>;
+
+function publishedHintCandidate(
+  input: TurnMomentDisplayInput,
+  turn: number,
+  request: PublishedHintRequest,
+): GuideCandidate | null {
+  return createGuideCandidate(
+    input.session.sessionId,
+    turn,
+    buildGuideCopy(request),
+  );
+}
+
+function offTargetDistances(
+  serviceId: string,
+  stationId: string,
+  directions: readonly Direction[],
+  targetServiceId: string,
+  network: RailwayNetwork,
+): readonly number[] {
+  const distances = targetHopDistances(network, targetServiceId);
+  return directions.map((direction) => {
+    const nextStation = nextStationId(network, serviceId, stationId, direction);
+    return nextStation === undefined ? Number.POSITIVE_INFINITY : distances.get(nextStation) ?? Number.POSITIVE_INFINITY;
+  });
+}
+
+/** Build the fixed-order candidates only from the current turn after its result is published. */
+function publishedGuideCandidates(
+  input: TurnMomentDisplayInput,
+  current: LastMove | null,
+  resultPublished: boolean,
+): readonly GuideCandidate[] {
+  if (!resultPublished || !current) return [];
+  const turn = current.itemRecord?.turn ?? input.session.game.turn;
+  if (turn <= (input.entryTurn ?? 0)) return [];
+
+  const { config } = input.session.game;
+  const result: GuideCandidate[] = [];
+  const add = (request: PublishedHintRequest): void => {
+    const candidate = publishedHintCandidate(input, turn, request);
+    if (candidate) result.push(candidate);
+  };
+
+  const landing = current.landing;
+  if (landing) {
+    add({ kind: "lottery", resultPublished, serviceDrawRequired: landing.serviceDrawRequired,
+      directionDrawRequired: landing.directionDrawRequired });
+    if (landing.directionCandidates.length === 2) {
+      add({ kind: "off-target", resultPublished, config, targetName: input.presentation.serviceName(config.targetServiceId),
+        landing: { serviceId: landing.serviceId,
+          directionDistancesToTarget: offTargetDistances(landing.serviceId, landing.stationId,
+            landing.directionCandidates, config.targetServiceId, input.network) } });
+    }
+  }
+
+  const itemEvents = current.itemRecord?.itemEvents ?? [];
+  const pendingDiscard = itemEvents.some((event) => event.type === "pickup-pending-discard");
+  const hasPickup = pendingDiscard || itemEvents.some((event) => event.type === "pickup-retained");
+  if (hasPickup) add({ kind: "item", resultPublished, pendingDiscard });
+
+  const cancelled = itemEvents.some((event) => event.type === "cancelled-by-certificate");
+  const harmfulScheduled = itemEvents.some((event) => event.type === "harmful-scheduled");
+  if (cancelled || harmfulScheduled) add({ kind: "harmful-item", resultPublished, cancelled });
+
+  if (current.stopReason !== "relocation") {
+    add({ kind: "terminus", resultPublished, stopReason: current.stopReason,
+      endpointKind: current.endpointKind, unusedPips: current.unusedPips });
+  }
+  return result;
+}
+
 export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMomentDisplay {
   const current = input.session.lastMove;
   const phase = publicationPhase(input);
@@ -307,6 +388,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
   // Ride results publish after lottery settle; item results have their own later pickup boundary when present.
   const resultPublished = isPublished;
   const turnResult = visibleTurnResult(input, lotteryPublished, resultPublished, targetIds);
+  const guideCandidates = publishedGuideCandidates(input, current, resultPublished);
   const originView = attempt?.origin.itemView ?? liveView;
   const observedRecord = input.session.lastMove?.itemRecord;
   const record = observedRecord && (!attempt || observedRecord.turn === attempt.recordTurn) ? observedRecord : null;
@@ -421,6 +503,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     itemUseLocked: active,
     segmentFlash,
     turnResult,
+    guideCandidates,
   };
 }
 
@@ -440,7 +523,7 @@ function turnSegmentFlash(
   return { key: revealKey, featureIds, durationMs: attempt.policy.timing.flashMs };
 }
 
-const MOVING_ANNOUNCEMENT = "移動中です。スキップできます。";
+const MOVING_ANNOUNCEMENT = "移動中です。演出をスキップできます。";
 
 /** Movement copy of a presented turn: raw face plus published modifier wording, then the movement wording. */
 function movementAnnouncement(move: LastMove): string {

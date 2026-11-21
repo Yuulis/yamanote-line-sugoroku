@@ -95,6 +95,23 @@ describe("RulesDialog", () => {
     expect(scrollIntoView.mock.contexts[0]).toBe(section);
   });
 
+  it("forwards the in-game coach replay action and render-time guard", () => {
+    const onReplayCoach = vi.fn();
+    const mount = mountDialog({ onReplayCoach, canReplayCoach: true });
+    const replay = [...dialogOf(mount).querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "最初のガイドをもう一度見る");
+
+    expect(replay).toBeDefined();
+    expect(replay?.disabled).toBe(false);
+    dispatchReactEvent(replay!, new MouseEvent("click", { bubbles: true }));
+    expect(onReplayCoach).toHaveBeenCalledTimes(1);
+
+    const disabledMount = mountDialog({ onReplayCoach, canReplayCoach: false });
+    const disabledReplay = [...dialogOf(disabledMount).querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "最初のガイドをもう一度見る");
+    expect(disabledReplay?.disabled).toBe(true);
+  });
+
   it("cancel requests React closure without closing early", () => {
     const onClose = vi.fn();
     const close = vi.spyOn(HTMLDialogElement.prototype, "close");

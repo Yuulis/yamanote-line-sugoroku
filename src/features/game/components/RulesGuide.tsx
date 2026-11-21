@@ -7,6 +7,8 @@ import { PhraseText } from "./PhraseText";
 export interface RulesGuideProps {
   model: RulesGuideModel;
   idPrefix: string;
+  onReplayCoach?: () => void;
+  canReplayCoach?: boolean;
 }
 
 const ITEM_ICON_SIZE = 28;
@@ -39,7 +41,7 @@ export function focusRulesSection(root: ParentNode, idPrefix: string, sectionId:
  * Shared rules body for the title screen and the in-game dialog. The host owns the page title (h1);
  * section headings are h2 and focusable so a host or the section nav can move focus to them.
  */
-export function RulesGuide({ model, idPrefix }: RulesGuideProps): React.JSX.Element {
+export function RulesGuide({ model, idPrefix, onReplayCoach, canReplayCoach = false }: RulesGuideProps): React.JSX.Element {
   const rootRef = useRef<HTMLDivElement>(null);
   const shortcutsHeadingId = `${idPrefix}-shortcuts-heading`;
 
@@ -87,6 +89,16 @@ export function RulesGuide({ model, idPrefix }: RulesGuideProps): React.JSX.Elem
             {model.shortcuts.map((shortcut) => <li key={shortcut}><PhraseText text={shortcut} /></li>)}
           </ul>
         </aside>
+      ) : null}
+      {onReplayCoach ? (
+        <button
+          type="button"
+          className="rules-guide__replay"
+          disabled={!canReplayCoach}
+          onClick={onReplayCoach}
+        >
+          最初のガイドをもう一度見る
+        </button>
       ) : null}
     </div>
   );

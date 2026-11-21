@@ -161,10 +161,15 @@ test("Skip inside the adjustment keeps the chosen die and Continue, then nothing
   await clickDice(page);
   await advanceTumble(page);
   await expect(adjustmentDialog(page)).toBeVisible();
+  await expect(adjustmentDialog(page).locator(".item-adjustment__escape-hint")).toBeVisible();
   const adjustment = await chooseAdjustment(page, base);
   const proceed = adjustmentDialog(page).getByRole("button", { name: /で続ける$/ });
   const label = await proceed.innerText();
-  const skip = adjustmentDialog(page).getByRole("button", { name: "スキップ", exact: true });
+  const skip = adjustmentDialog(page).getByRole("button", { name: "演出をスキップ", exact: true });
+  await expect(adjustmentDialog(page).locator(".item-adjustment__primary-actions")).toContainText(label);
+  await expect(adjustmentDialog(page).locator(".item-adjustment__secondary-actions")).toContainText("演出をスキップ");
+  expect(await adjustmentDialog(page).locator(".item-adjustment__secondary-actions").evaluate((element) => getComputedStyle(element).borderInlineStartStyle)).toBe("solid");
+  await expect(adjustmentDialog(page).locator(".item-adjustment__caution")).toHaveText("出目を見た後はターンを取り消せません。");
   await expect(skip).toHaveAttribute("aria-disabled", "false");
   await skip.click();
 
@@ -378,7 +383,7 @@ test("the arrival and pickup stages hold turn results, then publish them togethe
   expect(record.itemEvents.some((event) => event.type === "pickup-retained")).toBe(true);
   const status = gamePanel(page).getByRole("status");
   // Movement: the live region says the raw face only, never the hops, unused pips or the landing.
-  await expect(status).toHaveText(`出目は${record.rawRoll}です。移動中です。スキップできます。`);
+  await expect(status).toHaveText(`出目は${record.rawRoll}です。移動中です。演出をスキップできます。`);
   await advanceMovement(page, PAST_ANY_MOVEMENT_MS);
 
   // Arrival: the station is public; the ride, direction, highlight and platform are still the ridden ones.
@@ -395,7 +400,7 @@ test("the arrival and pickup stages hold turn results, then publish them togethe
   await expect(page.locator(".toast-host__toast")).toHaveCount(0);
   await expect(diceButton(page)).toHaveText("サイコロを振る");
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
-  await expect(gamePanel(page).getByRole("button", { name: "スキップ", exact: true })).toBeEnabled();
+  await expect(gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true })).toBeEnabled();
   await expect(status).toHaveText(new RegExp(`^${record.turn}ターン目：${arrived}に到着。踏破 \\d+/30$`));
   expect(await readSave(page)).toEqual(expected.state);
 
@@ -584,7 +589,7 @@ for (const end of ["スキップ", "タイトル"] as const) {
     const { flashIds } = await playDelayTurnToArrival(page, railwayBundle);
     expect([...(await readMap(page))!.flashFilterIds].sort()).toEqual(flashIds);
     if (end === "スキップ") {
-      await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+      await gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true }).click();
       await expect(arrivalBanner(page)).toHaveCount(0);
     } else {
       await openGameMenu(page);
@@ -946,7 +951,7 @@ for (const speed of SPEED_CASES) {
 for (const stage of ["tumble", "stamps", "movement", "arrival", "lottery-flip", "lottery-settle", "pickup"] as const) {
   test(`S16 one Skip during ${stage} reaches the same overflow result`, async ({ page, railwayBundle }) => {
     const expected = await combinedTo(page, railwayBundle, stage);
-    await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+    await gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true }).click();
     await expect(page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" })).toBeVisible();
     await expect(page.locator(".turn-moment-host")).toHaveCount(0);
     expect(await readSave(page)).toEqual(expected);

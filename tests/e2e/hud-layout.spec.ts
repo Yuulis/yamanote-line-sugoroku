@@ -138,13 +138,12 @@ test("keeps the dice button at one HUD position across variable content and save
   testInfo.annotations.push({ type: "dice-positions", description: JSON.stringify(positions) });
 });
 
-test("fits all three action labels on one line from phone to compact landscape", { tag: "@layout" }, async ({ page }) => {
+test("fits both action labels on one line from phone to compact landscape", { tag: "@layout" }, async ({ page }) => {
   await openTitle(page);
   await startNewGame(page);
   const actions = gamePanel(page).locator(".game-panel__actions");
-  const toggle = gamePanel(page).getByRole("button", { name: "おまかせで進む" });
-  const dice = diceButton(page);
   const viewports = [
+    { width: 320, height: 568 },
     { width: 320, height: 720 },
     { width: 390, height: 844 },
     { width: 640, height: 400 },
@@ -153,8 +152,6 @@ test("fits all three action labels on one line from phone to compact landscape",
 
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);
-    await expect(toggle).toHaveText("おまかせ: OFF");
-    const before = await dice.boundingBox();
     const measureLabels = async () => actions.locator("button").evaluateAll((buttons) => buttons.map((button) => {
       const range = document.createRange();
       range.selectNodeContents(button);
@@ -164,19 +161,15 @@ test("fits all three action labels on one line from phone to compact landscape",
         lines: new Set([...range.getClientRects()].map((rect) => Math.round(rect.top))).size,
       };
     }));
-    const off = await measureLabels();
-    expect(off.map(({ text }) => text)).toEqual(["サイコロを振る", "スキップ", "おまかせ: OFF"]);
-    expect(off.every(({ widthFits, lines }) => widthFits && lines === 1), `${viewport.width}x${viewport.height}: ${JSON.stringify(off)}`).toBe(true);
-
-    await toggle.click();
-    await expect(toggle).toHaveText("おまかせ: ON");
-    const on = await measureLabels();
-    expect(on.map(({ text }) => text)).toEqual(["サイコロを振る", "スキップ", "おまかせ: ON"]);
-    expect(on.every(({ widthFits, lines }) => widthFits && lines === 1), `${viewport.width}x${viewport.height}: ${JSON.stringify(on)}`).toBe(true);
-    const after = await dice.boundingBox();
-    if (!before || !after) throw new Error("The dice button has no layout box");
-    expect(Math.abs(after.x - before.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs(after.y - before.y)).toBeLessThanOrEqual(1);
-    await toggle.click();
+    const labels = await measureLabels();
+    expect(labels.map(({ text }) => text)).toEqual(["サイコロを振る", "演出をスキップ"]);
+    expect(labels.every(({ widthFits, lines }) => widthFits && lines === 1), `${viewport.width}x${viewport.height}: ${JSON.stringify(labels)}`).toBe(true);
+    expect(await actions.evaluate((element) => getComputedStyle(element).height)).toBe("56px");
+    if (viewport.width <= 600) {
+      const columns = await actions.evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").map(Number.parseFloat));
+      expect(columns).toHaveLength(2);
+      expect(Math.abs(columns[0]! - columns[1]!)).toBeLessThanOrEqual(1);
+    }
   }
+  await expect(actions.getByRole("button", { name: "演出をスキップ", exact: true })).toBeDisabled();
 });

@@ -4,7 +4,7 @@
 # Default model configuration. Effort stays "high"; xhigh/max/ultra and the
 # gpt-6-astra model are used only when the user explicitly asks for them
 # (see .claude/rules/model-routing.md).
-model = "gpt-6.1-sol"
+model = "gpt-6.2-sol"
 model_reasoning_effort = "high"
 model_reasoning_summary = "detailed"
 

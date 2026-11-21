@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
 import type { RailwayData } from "../data/loaders";
 import { displayedProgress, sessionProgress } from "../features/game/animation/displayedProgress";
 import { buildGeometryIndex } from "../features/game/animation/movePath";
@@ -6,7 +7,8 @@ import { useMoveAnimation } from "../features/game/animation/useMoveAnimation";
 import { ClearScreen } from "../features/game/components/ClearScreen";
 import { ConfirmDialog } from "../features/game/components/ConfirmDialog";
 import { GamePanel, type PanelOpenRules } from "../features/game/components/GamePanel";
-import { RulesDialog } from "../features/game/components/RulesDialog";
+import { isFocusRestorable, RulesDialog } from "../features/game/components/RulesDialog";
+import { FirstPlayCoach, type FirstPlayCoachCloseReason } from "../features/game/components/FirstPlayCoach";
 import { TitleScreen } from "../features/game/components/TitleScreen";
 import { type RailwayNetwork, isItemSave, targetSegmentIds } from "../features/game/engine";
 import {
@@ -26,7 +28,20 @@ import type { RollAttempt, TurnMomentObservation, TurnOrigin } from "../features
 import { attemptOwnsAnimation, useTurnMoments } from "../features/game/animation/useTurnMoments";
 import { ArrivalBanner, TurnMomentHost, turnMomentArrivalModel, turnMomentDiceModel } from "../features/game/components/TurnMomentHost";
 import { DiceTumble } from "../features/game/components/DiceTumble";
-import type { GameSession } from "../features/game/gameSession";
+import type { AppState, GameSession } from "../features/game/gameSession";
+import {
+  buildCoachSteps,
+  isFirstPlayEligible,
+  type CoachStep,
+  type GuideCandidate,
+} from "../features/game/firstPlayGuide";
+import {
+  readFirstTurnNoticeForGuide,
+  readGuideStarted,
+  writeGuideCoachSeen,
+  writeGuideStarted,
+} from "../features/game/store/guide";
+import { useFirstPlayGuide } from "../features/game/useFirstPlayGuide";
 import { createPresentationResolver } from "../features/game/presentationResolver";
 import { directionLabel, serviceName, stationName } from "../features/game/presentation";
 import { buildRulesGuide, type RulesSectionId } from "../features/game/rulesGuide";
@@ -34,13 +49,15 @@ import { type MapFollow, type RailwayMapMode, RailwayMap } from "../features/map
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
-import type { SaveLookup } from "../features/game/store/persistence";
+import { readSave, type SaveLookup } from "../features/game/store/persistence";
 import { hasGameProgress } from "../features/game/gameSession";
 import { overwriteProgressText } from "../features/game/resumePresentation";
 import { summarizeGame } from "../features/game/gameSummary";
 import { ToastHost } from "../features/game/components/ToastHost";
 import type { ToastInput } from "../features/game/toastQueue";
 import { useFirstTurnNotice } from "../features/game/useFirstTurnNotice";
+import { useToastQueue } from "../features/game/useToastQueue";
+import type { NoticeAnnouncementCopy, SelectedNoticeAnnouncement } from "../features/game/saveNotice";
 
 interface GameAppProps {
   data: RailwayData;
@@ -67,21 +84,60 @@ interface RulesRequest {
   readonly getFallbackFocus: () => HTMLElement | null;
 }
 
+export interface FirstPlayCoachReplayAvailability {
+  readonly sessionId: number | null;
+  readonly panelShown: boolean;
+  readonly gameStatus: GameState["status"] | null;
+  readonly turnCanRoll: boolean;
+  readonly pendingDecision: boolean;
+  readonly itemUseDialogOpen: boolean;
+  readonly confirmationOpen: boolean;
+  readonly showClear: boolean;
+}
+
+export function isFirstPlayCoachReplayAllowed(state: FirstPlayCoachReplayAvailability): boolean {
+  return state.sessionId !== null
+    && state.panelShown
+    && state.gameStatus === "playing"
+    && state.turnCanRoll
+    && !state.pendingDecision
+    && !state.itemUseDialogOpen
+    && !state.confirmationOpen
+    && !state.showClear;
+}
+
 const NO_PROGRESS: MapProgress = { completedFeatureIds: [], currentPosition: null };
 const NO_LINES: readonly LineMetadata[] = [];
 const NO_MOVE_EVENTS: TurnMomentObservation["movementEvents"] = [];
 const NO_TOAST_INPUTS: readonly ToastInput[] = [];
+const NO_GUIDE_CANDIDATES: readonly GuideCandidate[] = [];
 /** Phases in which `lastMove` still describes the previous turn: the current record is not yet save-attempted. */
 const PRE_RECORD_PHASES: ReadonlySet<GameSession["phase"]> = new Set(["committing", "awaiting-adjust", "resolving"]);
 
 /** Toast keys of the record a session was entered with; they are never shown (no replay on resume). */
 interface ToastBaseline {
-  /** `undefined` before the first session observation, so the first effect always captures one. */
-  sessionId: number | null | undefined;
+  sessionId: number | null;
   keys: ReadonlySet<string>;
 }
 
-const NO_TOAST_BASELINE: ToastBaseline = { sessionId: undefined, keys: new Set() };
+interface FirstPlayGuideSession {
+  readonly sessionId: number;
+  readonly entryTurn: number;
+}
+
+interface FirstPlayCoachRuntimeState {
+  readonly autoGuideSessionId: number | null;
+  readonly currentSessionId: number | null;
+  readonly replaySessionId: number | null;
+  readonly open: boolean;
+  readonly completed: boolean;
+}
+
+const NO_TOAST_BASELINE: ToastBaseline = { sessionId: null, keys: new Set() };
+
+function nextSessionId(state: AppState): number {
+  return state.screen === "title" ? state.lastSessionId + 1 : state.session.sessionId + 1;
+}
 
 function speedById(id: AnimationSpeedId) {
   return ANIMATION_SPEEDS.find((speed) => speed.id === id) ?? ANIMATION_SPEEDS[1];
@@ -99,6 +155,26 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   );
   const config = edition.config;
   const app = useGameApp(network, storage, config, edition.saveKey);
+  const existingSaveObserved = useRef(false);
+  const guideStartedInMemory = useRef(false);
+  const [firstPlayGuideSession, setFirstPlayGuideSession] = useState<FirstPlayGuideSession | null>(null);
+  const [firstPlayCoachClosedSessionId, setFirstPlayCoachClosedSessionId] = useState<number | null>(null);
+  const [firstPlayCoachReplaySessionId, setFirstPlayCoachReplaySessionId] = useState<number | null>(null);
+  const firstPlayCoachClosedSessionInMemory = useRef<number | null>(null);
+  const firstPlayCoachSeenSessionInMemory = useRef<number | null>(null);
+  const firstPlayCoachRuntime = useRef<FirstPlayCoachRuntimeState>({
+    autoGuideSessionId: null,
+    currentSessionId: null,
+    replaySessionId: null,
+    open: false,
+    completed: false,
+  });
+  if (app.saveAttempt?.result === "saved") {
+    existingSaveObserved.current = true;
+  }
+  if (app.saveLookup && (app.saveLookup.kind === "valid" || app.saveLookup.kind === "invalid")) {
+    existingSaveObserved.current = true;
+  }
   const reducedMotion = usePrefersReducedMotion();
   const rideTarget = useRef<HTMLElement>(null);
   const directionTarget = useRef<HTMLElement>(null);
@@ -106,12 +182,20 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const inventorySlot1Target = useRef<HTMLElement>(null);
   const inventorySlot2Target = useRef<HTMLElement>(null);
   const inventoryHeaderTarget = useRef<HTMLElement>(null);
+  const coachDiceTarget = useRef<HTMLElement>(null);
+  const coachProgressTarget = useRef<HTMLElement>(null);
+  const coachMapTarget = useRef<HTMLElement>(null);
+  const coachTargets = useMemo<Partial<Record<CoachStep, RefObject<HTMLElement | null>>>>(() => ({
+    dice: coachDiceTarget,
+    progress: coachProgressTarget,
+    map: coachMapTarget,
+  }), []);
   const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget,
     slots: [inventorySlot0Target, inventorySlot1Target, inventorySlot2Target], inventoryHeader: inventoryHeaderTarget }), []);
   const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [noticeAnnouncementKey, setNoticeAnnouncementKey] = useState<string | null>(null);
+  const [firstTurnNoticeAnnouncement, setFirstTurnNoticeAnnouncement] = useState<NoticeAnnouncementCopy | null>(null);
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [rulesRequest, setRulesRequest] = useState<RulesRequest | null>(null);
   const openRules = useCallback<PanelOpenRules>((sectionId, returnFocus, getFallbackFocus) => {
@@ -135,6 +219,56 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   }), [edition.config, network, presentation, requiredIds]);
   const session = app.state.screen === "game" ? app.state.session : null;
   const game = session?.game ?? null;
+  const activeFirstPlayGuideSession = firstPlayGuideSession !== null
+    && firstPlayGuideSession.sessionId === session?.sessionId
+    && game !== null && game.turn >= firstPlayGuideSession.entryTurn
+    ? firstPlayGuideSession : null;
+  const automaticFirstPlayCoachOpen = activeFirstPlayGuideSession !== null
+    && game?.status === "playing"
+    && firstPlayCoachClosedSessionId !== activeFirstPlayGuideSession.sessionId
+    && firstPlayCoachClosedSessionInMemory.current !== activeFirstPlayGuideSession.sessionId;
+  const firstPlayCoachOpen = game?.status === "playing"
+    && (automaticFirstPlayCoachOpen || firstPlayCoachReplaySessionId === session?.sessionId);
+  firstPlayCoachRuntime.current = {
+    autoGuideSessionId: activeFirstPlayGuideSession?.sessionId ?? null,
+    currentSessionId: session?.sessionId ?? null,
+    replaySessionId: firstPlayCoachReplaySessionId,
+    open: firstPlayCoachOpen,
+    completed: game?.status === "completed",
+  };
+  const coachSteps = useMemo(() => buildCoachSteps({
+    config,
+    targetName: serviceName(network, config.targetServiceId, presentation),
+    startName: stationName(network, config.startStationId, presentation),
+  }), [config, network, presentation]);
+  const onFirstPlayCoachShown = useCallback((): void => {
+    const current = firstPlayCoachRuntime.current;
+    const isReplay = current.replaySessionId !== null && current.replaySessionId === current.currentSessionId;
+    if (!current.open || isReplay) return;
+    if (current.autoGuideSessionId === null || current.currentSessionId !== current.autoGuideSessionId
+      || current.completed || typeof document === "undefined" || document.visibilityState !== "visible"
+      || firstPlayCoachSeenSessionInMemory.current === current.autoGuideSessionId) return;
+    firstPlayCoachSeenSessionInMemory.current = current.autoGuideSessionId;
+    writeGuideCoachSeen(storage);
+  }, [storage]);
+  const closeFirstPlayCoach = useCallback((_reason: FirstPlayCoachCloseReason): void => {
+    const current = firstPlayCoachRuntime.current;
+    const sessionId = current.currentSessionId;
+    if (!current.open || sessionId === null || current.completed) return;
+    firstPlayCoachClosedSessionInMemory.current = sessionId;
+    if (current.autoGuideSessionId === sessionId) setFirstPlayCoachClosedSessionId(sessionId);
+    if (current.replaySessionId === sessionId) setFirstPlayCoachReplaySessionId(null);
+  }, []);
+  const restoreFirstPlayCoachFocus = useCallback((): void => {
+    const current = firstPlayCoachRuntime.current;
+    const sessionId = current.currentSessionId;
+    if (sessionId === null || current.completed || firstPlayCoachClosedSessionInMemory.current !== sessionId) return;
+    const dice = document.querySelector<HTMLElement>(".game-panel__roll");
+    const heading = document.querySelector<HTMLElement>(".game-panel__title");
+    const target = [dice, heading].find((candidate) =>
+      isFocusRestorable(candidate, { allowAriaDisabled: true }));
+    target?.focus({ preventScroll: true });
+  }, []);
   const speed = speedById(speedId);
   const itemView = app.itemView;
   // Item mode only: the attempt snapshot of what is on screen when the roll is accepted.
@@ -193,16 +327,14 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const reveal = moments.reveal;
   const liveAttempt = moments.attempt;
   const presentedAttempt = turnMomentBoundary ? turnMomentBoundary.attempt : liveAttempt;
-  const toastSessionId = session?.sessionId ?? null;
-  const toastBaseline = useRef<ToastBaseline>(NO_TOAST_BASELINE);
-  const processedToastInputs = useRef<readonly ToastInput[] | null>(null);
-  const [acceptedToastInputs, setAcceptedToastInputs] = useState<readonly ToastInput[]>([]);
   const presentationGame = useMemo(() => session ? sessionProgress(session) : null, [session]);
   const titleSave: SaveLookup | null = app.saveLookup?.kind === "valid"
     ? { kind: "valid", game: isItemSave(app.saveLookup.game)
       ? { ...app.saveLookup.game, movementHistory: [] } : app.saveLookup.game }
     : app.saveLookup;
   const resumeSaved = useCallback((saved: GameState) => {
+    setFirstPlayGuideSession(null);
+    setFirstPlayCoachReplaySessionId(null);
     app.resume(app.saveLookup?.kind === "valid" ? app.saveLookup.game : saved);
   }, [app.resume, app.saveLookup]);
   // The attempt's movement runs at the speed captured with its roll and only once its pre-move moment released it.
@@ -252,23 +384,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   // Presented permissions, read at call time so a direct or stale invocation cannot bypass them.
   const turnDisplayRef = useRef<TurnMomentDisplay | null>(null);
   turnDisplayRef.current = turnDisplay;
-  const toastInputs = turnDisplay?.toastInputs ?? NO_TOAST_INPUTS;
-  useEffect(() => {
-    if (toastBaseline.current.sessionId !== toastSessionId) {
-      toastBaseline.current = {
-        sessionId: toastSessionId,
-        keys: new Set(toastInputs.map((input) => input.key)),
-      };
-      processedToastInputs.current = toastInputs;
-      setAcceptedToastInputs([]);
-      setItemDialogOpen(false);
-      return;
-    }
-    if (toastInputs !== processedToastInputs.current) {
-      processedToastInputs.current = toastInputs;
-      setAcceptedToastInputs(toastInputs.filter((input) => !toastBaseline.current.keys.has(input.key)));
-    }
-  }, [toastSessionId, toastInputs]);
   const progress = useMemo<MapProgress>(
     () =>
       turnDisplay
@@ -301,10 +416,10 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const { begin: beginTurnMoment, skip: skipTurnMoment } = moments;
   // One accepted handler begins the presentation attempt (capturing timing and movement speed) and commits the roll.
   const guardedRoll = useCallback(() => {
-    if (!turnDisplayRef.current?.canRoll) return;
+    if (firstPlayCoachOpen || !turnDisplayRef.current?.canRoll) return;
     beginTurnMoment("click");
     roll();
-  }, [roll, beginTurnMoment]);
+  }, [roll, beginTurnMoment, firstPlayCoachOpen]);
   const guardedEditItemDraft = useCallback((command: ItemTurnCommand) => {
     const presented = turnDisplayRef.current;
     if (presented && !presented.itemUseLocked) editItemDraft(command);
@@ -318,8 +433,30 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const startNewGame = useCallback(() => {
     setConfirm(null);
     setNotice(null);
+    setFirstPlayCoachReplaySessionId(null);
+    const saveLookups = picker.editions.map((knownEdition) =>
+      readSave(storage, network, config, knownEdition.saveKey).kind,
+    );
+    if (saveLookups.some((kind) => kind === "valid" || kind === "invalid")) {
+      existingSaveObserved.current = true;
+    }
+    const eligible = isFirstPlayEligible({
+      resumed: false,
+      existingSaveObserved: existingSaveObserved.current,
+      saveLookups,
+      firstTurnNotice: readFirstTurnNoticeForGuide(storage),
+      guideStarted: readGuideStarted(storage),
+      startedInMemory: guideStartedInMemory.current,
+    });
+    const nextId = nextSessionId(app.state);
+    const binding: FirstPlayGuideSession | null = eligible ? { sessionId: nextId, entryTurn: 0 } : null;
+    if (eligible) {
+      guideStartedInMemory.current = true;
+      writeGuideStarted(storage);
+    }
     newGame();
-  }, [newGame]);
+    setFirstPlayGuideSession(binding);
+  }, [app.state, config, newGame, network, picker.editions, storage]);
 
   const requestNewGame = useCallback(() => {
     const saved = saveLookup?.kind === "valid" ? saveLookup.game : null;
@@ -343,11 +480,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   currentAnimationRef.current = animation;
   // The one shared Skip (panel, card tap, adjustment dialog): ends tumble, stamps, movement and reveal together.
   const skip = useCallback(() => {
-    if (!turnDisplayRef.current?.canSkip) return;
+    if (firstPlayCoachOpen || !turnDisplayRef.current?.canSkip) return;
     skipTurnMoment();
     const current = currentAnimationRef.current;
     if (current) finishAnimation(current);
-  }, [finishAnimation, skipTurnMoment]);
+  }, [finishAnimation, skipTurnMoment, firstPlayCoachOpen]);
 
   // A game resumed at its pending adjustment never tumbles: the restored attempt keeps the saved die as published.
   const restoredRollSession = useRef<number | null>(null);
@@ -382,7 +519,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
 
   const showTitle = useCallback(() => {
     setNotice(null);
-    setNoticeAnnouncementKey(null);
+    setFirstTurnNoticeAnnouncement(null);
+    setFirstPlayCoachReplaySessionId(null);
     showTitleScreen();
   }, [showTitleScreen]);
 
@@ -391,6 +529,28 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
   const rulesOpen = panelShown && rulesRequest !== null;
+  const replayAvailability: FirstPlayCoachReplayAvailability = {
+    sessionId: session?.sessionId ?? null,
+    panelShown,
+    gameStatus: game?.status ?? null,
+    turnCanRoll: turnDisplay?.canRoll === true,
+    pendingDecision: itemView?.decision != null || turnDisplay?.decision != null,
+    itemUseDialogOpen: itemDialogOpen,
+    confirmationOpen: confirm !== null,
+    showClear,
+  };
+  const replayAvailabilityRef = useRef(replayAvailability);
+  replayAvailabilityRef.current = replayAvailability;
+  const canReplayCoach = isFirstPlayCoachReplayAllowed(replayAvailability);
+  const replayFirstPlayCoach = useCallback((): void => {
+    const latest = replayAvailabilityRef.current;
+    const itemUseDialogIsOpen = typeof document !== "undefined"
+      && document.querySelector("dialog.item-dialog[open]:not(.item-adjustment):not(.item-discard)") !== null;
+    if (itemUseDialogIsOpen) return;
+    if (!isFirstPlayCoachReplayAllowed(latest)) return;
+    setFirstPlayCoachReplaySessionId(latest.sessionId);
+    setRulesRequest(null);
+  }, []);
   const firstTurnNotice = useFirstTurnNotice({
     saveAttempt: app.saveAttempt,
     currentSessionId: session?.sessionId ?? null,
@@ -399,15 +559,56 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     decisionOpen: turnDisplay?.decision !== null && turnDisplay?.decision !== undefined,
     confirmOpen: confirm !== null,
     rulesOpen,
+    coachOpen: firstPlayCoachOpen,
   });
   const handleNoticeShown = useCallback((key: string): void => {
+    const displayed = firstTurnNotice.notice;
     firstTurnNotice.onNoticeShown(key);
-    setNoticeAnnouncementKey(key);
-  }, [firstTurnNotice.onNoticeShown]);
-  const handleNoticeAnnounced = useCallback((key: string): void => {
-    firstTurnNotice.onNoticeAnnounced(key);
-    setNoticeAnnouncementKey((current) => current === key ? null : current);
-  }, [firstTurnNotice.onNoticeAnnounced]);
+    if (displayed?.key === key) {
+      setFirstTurnNoticeAnnouncement({ key: displayed.key, text: displayed.text });
+    }
+  }, [firstTurnNotice.notice, firstTurnNotice.onNoticeShown]);
+  const toastInputs = turnDisplay?.toastInputs ?? NO_TOAST_INPUTS;
+  const [toastBaseline, setToastBaseline] = useState<ToastBaseline>(NO_TOAST_BASELINE);
+  if (toastBaseline.sessionId !== sessionId) {
+    setToastBaseline({ sessionId, keys: new Set(toastInputs.map((input) => input.key)) });
+  }
+  const acceptedToastInputs = useMemo(
+    () => toastBaseline.sessionId === sessionId
+      ? toastInputs.filter((input) => !toastBaseline.keys.has(input.key)) : NO_TOAST_INPUTS,
+    [sessionId, toastBaseline, toastInputs],
+  );
+  useEffect(() => {
+    setItemDialogOpen(false);
+  }, [sessionId]);
+  const toastObscured = firstPlayCoachOpen || rulesOpen || confirm !== null || itemDialogOpen || turnDisplay?.decision != null;
+  const visibleToasts = useToastQueue({
+    sessionId,
+    inputs: acceptedToastInputs,
+    saveFailed: app.saveStatus === "failed",
+    obscured: toastObscured,
+    notice: firstTurnNotice.notice,
+    announceable: panelShown && !toastObscured,
+    onNoticeShown: handleNoticeShown,
+  });
+  const firstPlayGuide = useFirstPlayGuide({
+    sessionId: activeFirstPlayGuideSession?.sessionId ?? null,
+    candidates: turnDisplay?.guideCandidates ?? NO_GUIDE_CANDIDATES,
+    storage,
+    // A sticky failure holds the slot until a successful save or a session change clears it.
+    obscured: toastObscured || visibleToasts.length > 0
+      || (turnDisplay !== null && turnDisplay.phase !== "published")
+      || diceModel !== null || arrivalModel !== null || lottery !== null || pickup !== null,
+    showClear,
+  });
+  const handleNoticeAnnounced = useCallback((announcement: SelectedNoticeAnnouncement): void => {
+    if (announcement.source !== "first-turn") return;
+    const current = firstTurnNoticeAnnouncement;
+    if (current === null || current.key !== announcement.key || current.text !== announcement.text) return;
+    firstTurnNotice.onNoticeAnnounced(announcement.key);
+    setFirstTurnNoticeAnnouncement((latest) => latest?.key === announcement.key && latest.text === announcement.text
+      ? null : latest);
+  }, [firstTurnNotice.onNoticeAnnounced, firstTurnNoticeAnnouncement]);
   useEffect(() => {
     if (!panelShown) setRulesRequest(null);
   }, [panelShown]);
@@ -459,7 +660,16 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           reducedMotion={reducedMotion}
           confirmationOpen={confirm !== null}
           rulesOpen={rulesOpen}
-          noticeAnnouncementKey={noticeAnnouncementKey}
+          coachOpen={firstPlayCoachOpen}
+          coachTargets={coachTargets}
+          firstTurnNoticeAnnouncement={firstTurnNoticeAnnouncement}
+          hintCandidateKey={firstPlayGuide.currentCandidate?.key ?? null}
+          hintCard={firstPlayGuide.card}
+          hintAnnouncement={firstPlayGuide.announcement}
+          onHintShown={firstPlayGuide.onCardShown}
+          onHintStatusAcknowledged={firstPlayGuide.onStatusAcknowledged}
+          onHintClose={firstPlayGuide.closeCurrent}
+          onHintDisable={firstPlayGuide.disableHints}
           onNoticeAnnounced={handleNoticeAnnounced}
           onOpenRules={openRules}
           onRoll={guardedRoll}
@@ -480,16 +690,16 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           {diceModel ? <DiceTumble model={diceModel} /> : arrivalModel && <ArrivalBanner model={arrivalModel} />}
         </TurnMomentHost>
       )}
-      <ToastHost
-        sessionId={toastSessionId}
-        inputs={acceptedToastInputs}
-        saveFailed={app.saveStatus === "failed"}
-        obscured={confirm !== null || turnDisplay?.decision != null || itemDialogOpen || rulesOpen}
-        reducedMotion={reducedMotion}
-        notice={firstTurnNotice.notice}
-        announceable={panelShown && turnDisplay?.decision == null && confirm === null && !rulesOpen && !itemDialogOpen}
-        onNoticeShown={handleNoticeShown}
-      />
+      {firstPlayCoachOpen && (
+        <FirstPlayCoach
+          steps={coachSteps}
+          targets={coachTargets}
+          onClose={closeFirstPlayCoach}
+          onRestoreFocus={restoreFirstPlayCoachFocus}
+          onShown={onFirstPlayCoachShown}
+        />
+      )}
+      <ToastHost toasts={visibleToasts} reducedMotion={reducedMotion} />
       {session && turnDisplay?.showClear && presentationGame && (
         <ClearScreen
           game={session.game}
@@ -513,6 +723,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           returnFocus={rulesRequest.returnFocus}
           getFallbackFocus={rulesRequest.getFallbackFocus}
           onClose={closeRules}
+          onReplayCoach={replayFirstPlayCoach}
+          canReplayCoach={canReplayCoach}
         />
       )}
       {confirm?.kind === "new-game" && (
@@ -547,6 +759,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         follow={mapFollow}
         panelKey={session && shown && !showClear ? session.sessionId : undefined}
         overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
+        coachTargetRef={coachMapTarget}
         inert={app.state.screen === "title" || showClear}
       />
     </>

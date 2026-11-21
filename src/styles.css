@@ -151,6 +151,45 @@ body {
   animation: toast-host-enter var(--motion-fast) ease-out both;
 }
 
+.first-play-hint {
+  position: fixed;
+  z-index: var(--layer-toast);
+  top: max(12px, calc(env(safe-area-inset-top, 0px) + 12px));
+  left: 50%;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  transform: translateX(-50%);
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-good);
+  border-radius: var(--radius-md);
+  background: var(--color-cream);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+}
+
+.first-play-hint__copy {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.first-play-hint__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.first-play-hint__actions button {
+  min-height: 44px;
+  padding: 6px 10px;
+}
+
 @keyframes toast-host-enter {
   from {
     opacity: 0;
@@ -188,6 +227,27 @@ body {
   .toast-host__toast {
     font-size: 13px;
   }
+
+  .first-play-hint {
+    top: calc(256px + env(safe-area-inset-top, 0px));
+    right: calc(84px + env(safe-area-inset-right, 0px));
+    left: calc(12px + env(safe-area-inset-left, 0px) + min(440px, calc(100vw - 192px)) + 8px);
+    width: auto;
+    max-width: none;
+    max-height: calc(100vh - 264px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+    transform: none;
+    padding: 10px;
+  }
+
+  .first-play-hint__copy {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .first-play-hint__actions {
+    gap: 6px;
+    margin-top: 6px;
+  }
 }
 
 /* Phones: the attribution sits top-left. RailwayMap publishes its bottom edge
@@ -203,6 +263,27 @@ body {
     width: auto;
     max-width: 420px;
     transform: none;
+  }
+
+  .first-play-hint {
+    top: max(calc(env(safe-area-inset-top, 0px) + 12px), calc(var(--map-attribution-bottom, 0px) + 8px));
+    right: calc(84px + env(safe-area-inset-right, 0px));
+    left: calc(10px + env(safe-area-inset-left, 0px));
+    width: auto;
+    max-width: 420px;
+    max-height: calc(100vh - var(--map-attribution-bottom, 0px) - 24px);
+    transform: none;
+    padding: 10px;
+  }
+
+  .first-play-hint__copy {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .first-play-hint__actions {
+    gap: 6px;
+    margin-top: 6px;
   }
 }
 
@@ -1198,14 +1279,6 @@ button[aria-disabled="true"] {
   white-space: nowrap;
 }
 
-.game-panel__actions .game-panel__auto-roll {
-  flex: 1.7;
-  min-width: 0;
-  padding-inline: 2px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
 .game-panel__options {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1364,7 +1437,6 @@ button[aria-disabled="true"] {
   grid-column: 1 / -1;
 }
 
-.game-panel__actions .game-panel__auto-roll[aria-pressed="true"],
 .game-panel__options button[aria-pressed="true"],
 .phone-menu__section-button[aria-pressed="true"] {
   background: var(--color-brand-tint);
@@ -2337,8 +2409,38 @@ button[aria-disabled="true"] {
 }
 
 .item-adjustment .dialog__actions button {
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 44px;
   width: 100%;
+}
+
+.item-adjustment .dialog__actions {
+  align-items: stretch;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+
+.item-adjustment__primary-actions,
+.item-adjustment__secondary-actions {
+  display: flex;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.item-adjustment__secondary-actions {
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid var(--color-border);
+}
+
+.item-adjustment__escape-hint {
+  display: none;
+}
+
+@media (pointer: fine) {
+  .item-adjustment__escape-hint {
+    display: block;
+  }
 }
 
 /* Roll adjustment: a compact sheet anchored bottom-right so the map stays visible. Scoped to this dialog; the
@@ -2491,10 +2593,6 @@ button[aria-disabled="true"] {
   .item-adjustment__separator {
     font-size: 0;
     line-height: 0;
-  }
-
-  .item-adjustment .dialog__actions {
-    flex-wrap: nowrap;
   }
 
   .item-adjustment .dialog__actions button {
@@ -2698,7 +2796,7 @@ button[aria-disabled="true"] {
   .game-panel__actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr) minmax(0, 1.35fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     height: 56px;
     min-height: 56px;
     max-height: 56px;
@@ -2724,11 +2822,6 @@ button[aria-disabled="true"] {
 
   .game-panel__actions .game-panel__roll--draft {
     white-space: normal;
-    font-size: 12px;
-  }
-
-  .game-panel__actions .game-panel__auto-roll {
-    padding-inline: 2px;
     font-size: 12px;
   }
 
@@ -3064,7 +3157,7 @@ button[aria-disabled="true"] {
   .game-panel__actions {
     grid-area: actions;
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr) minmax(0, 1.35fr);
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.85fr);
     align-self: start;
     height: 56px;
     min-height: 56px;
@@ -3095,12 +3188,6 @@ button[aria-disabled="true"] {
   }
 
   .game-panel__actions .game-panel__skip {
-    white-space: nowrap;
-    padding-inline: 2px;
-    font-size: 12px;
-  }
-
-  .game-panel__actions .game-panel__auto-roll {
     white-space: nowrap;
     padding-inline: 2px;
     font-size: 12px;
@@ -3476,6 +3563,13 @@ button[aria-disabled="true"] {
   font: inherit;
 }
 
+.rules-guide__replay {
+  align-self: flex-start;
+  max-width: 100%;
+  padding: 0 14px;
+  white-space: normal;
+}
+
 .rules-guide__section {
   scroll-margin-top: var(--rules-guide-scroll-margin, 0px);
   padding-top: var(--rules-guide-gap);
@@ -3551,6 +3645,92 @@ button[aria-disabled="true"] {
     margin: 0;
     padding-left: 20px;
   }
+}
+
+/* The coach dialog owns modality while leaving the game visible behind a decorative spotlight. */
+.first-play-coach {
+  position: fixed;
+  inset: 0;
+  box-sizing: border-box;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: var(--color-ink);
+  pointer-events: none;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.first-play-coach[open] {
+  display: block;
+}
+
+.first-play-coach::backdrop {
+  background: transparent;
+}
+
+.first-play-coach__spotlight {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3px solid #ffffff;
+  border-radius: var(--radius-md);
+  box-shadow: 0 0 0 100vmax rgb(21 28 32 / 48%);
+  pointer-events: none;
+}
+
+.first-play-coach__bubble {
+  position: absolute;
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 16px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  pointer-events: auto;
+}
+
+.first-play-coach__bubble:focus {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.first-play-coach__step {
+  margin: 0 0 8px;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.first-play-coach__copy {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.first-play-coach__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.first-play-coach__actions button {
+  min-width: 64px;
+  min-height: 44px;
+}
+
+.first-play-coach__skip {
+  margin-inline-start: auto;
 }
 
 /* Rules dialog: wider than .dialog; the header stays put and only the body scrolls, so section targeting needs no sticky offset. */

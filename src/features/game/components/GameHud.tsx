@@ -38,17 +38,18 @@ export interface GameHudProps {
   saveStatusMessage: string;
   canRoll: boolean;
   canSkip: boolean;
-  autoRollEnabled: boolean;
   animating: boolean;
   draftSelected: boolean;
   rollButtonRef: RefObject<HTMLButtonElement | null>;
   onRoll: () => void;
   onSkip: () => void;
-  onToggleAutoRoll: () => void;
   effects: readonly EffectChipModel[];
   /** Optional animation targets; measured only, they add no elements and change no markup. */
   rideTargetRef?: TurnMomentTargetRef;
   directionTargetRef?: TurnMomentTargetRef;
+  /** Coach targets are measured only and never receive pointer or focus ownership. */
+  coachDiceTargetRef?: TurnMomentTargetRef;
+  coachProgressTargetRef?: TurnMomentTargetRef;
 }
 
 function SaveIcon({ warning = false }: { warning?: boolean }): React.JSX.Element {
@@ -68,11 +69,16 @@ export function GameHud({
   inventory,
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, proximity = null, collection, milestoneFlash = null, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
-  canRoll, canSkip, autoRollEnabled, animating, draftSelected, rollButtonRef, onRoll, onSkip, onToggleAutoRoll, effects,
-  rideTargetRef, directionTargetRef,
+  canRoll, canSkip, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
+  rideTargetRef, directionTargetRef, coachDiceTargetRef, coachProgressTargetRef,
 }: GameHudProps): React.JSX.Element {
   const rideRef = useCallback((element: HTMLSpanElement | null): void => setTargetRef(rideTargetRef, element), [rideTargetRef]);
   const directionRef = useCallback((element: HTMLSpanElement | null): void => setTargetRef(directionTargetRef, element), [directionTargetRef]);
+  const diceRef = useCallback((element: HTMLButtonElement | null): void => {
+    rollButtonRef.current = element;
+    setTargetRef(coachDiceTargetRef, element);
+  }, [rollButtonRef, coachDiceTargetRef]);
+  const progressRef = useCallback((element: HTMLElement | null): void => setTargetRef(coachProgressTargetRef, element), [coachProgressTargetRef]);
   const failed: boolean = saveStatus === "failed" || saveStatus === "unavailable";
   const saveMark: boolean = saveStatus === "saved";
   return (
@@ -98,10 +104,10 @@ export function GameHud({
         <dd><span className="hud-stat__value" data-stat="turn" title={String(turn)}>{turn}</span></dd>
         <dt>踏破区間</dt>
         <dd><span className="hud-stat__value" data-stat="progress" title={`${completed}/${required}`}>{completed}/{required}</span>{goalGuidanceText
-          ? <span className="target-progress target-progress--guidance" title={goalGuidanceText}><span className="goal-guidance__full"><PhraseText text={goalGuidanceText} /></span>
+          ? <span ref={progressRef} className="target-progress target-progress--guidance" title={goalGuidanceText}><span className="goal-guidance__full"><PhraseText text={goalGuidanceText} /></span>
             {goalGuidanceShortText && <span className="goal-guidance__short" aria-hidden="true"><PhraseText text={goalGuidanceShortText} /></span>}
           </span>
-          : <TargetProgressBar completed={completed} required={required} milestoneFlash={milestoneFlash} />}</dd>
+          : <TargetProgressBar completed={completed} required={required} milestoneFlash={milestoneFlash} targetRef={progressRef} />}</dd>
         <dt>出目</dt>
         <dd><span className="hud-stat__value" data-stat="roll-compact" title={compactRoll}>{compactRoll}</span></dd>
         {proximity && <>
@@ -124,7 +130,7 @@ export function GameHud({
       </div>}
       <div className="game-panel__actions">
         <button
-          ref={rollButtonRef}
+          ref={diceRef}
           type="button"
           className={`game-panel__roll button-cta${draftSelected ? " game-panel__roll--draft" : ""}`}
           onClick={() => { if (canRoll) onRoll(); }}
@@ -132,16 +138,7 @@ export function GameHud({
         >
           {animating ? "移動中…" : draftSelected ? "この内容でサイコロを振る" : "サイコロを振る"}
         </button>
-        <button type="button" className="game-panel__skip" onClick={onSkip} disabled={!canSkip}>スキップ</button>
-        <button
-          type="button"
-          className="game-panel__auto-roll"
-          aria-label="おまかせで進む"
-          aria-pressed={autoRollEnabled}
-          onClick={onToggleAutoRoll}
-        >
-          おまかせ: {autoRollEnabled ? "ON" : "OFF"}
-        </button>
+        <button type="button" className="game-panel__skip" onClick={onSkip} disabled={!canSkip}><PhraseText text="演出をスキップ" /></button>
       </div>
       {turnResult}
       {inventory}

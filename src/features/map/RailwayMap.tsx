@@ -6,7 +6,8 @@ import {
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { RefObject } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { ServicePattern } from "../../types/network";
@@ -101,6 +102,8 @@ interface RailwayMapProps {
   follow?: MapFollow;
   /** Session identity for rebinding layout observation when the panel is replaced. */
   panelKey?: number;
+  /** Coach target: the map viewport, or its readable fallback when WebGL/style loading fails. */
+  coachTargetRef?: RefObject<HTMLElement | null>;
   /** New/resumed turn-0 session: fit the entire network even on a reused map. */
   overviewKey?: number;
   /** Remove map controls from keyboard and assistive technology while another screen is active. */
@@ -540,7 +543,7 @@ function navigationControlsContainFocus(mapContainer: HTMLElement | null): boole
 
 const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
 
-export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, coachTargetRef, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -573,6 +576,13 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   // progress and visibility effects below apply their state to them again.
   const [layersRevision, setLayersRevision] = useState(0);
   const [cameraLayoutRevision, setCameraLayoutRevision] = useState(0);
+  const setCoachTarget = useCallback((element: HTMLElement | null): void => {
+    if (coachTargetRef) coachTargetRef.current = element;
+  }, [coachTargetRef]);
+  const setMapContainer = useCallback((element: HTMLDivElement | null): void => {
+    containerRef.current = element;
+    if (!unsupported && !styleFailed) setCoachTarget(element);
+  }, [setCoachTarget, styleFailed, unsupported]);
   // Set synchronously by a user camera gesture, before React re-renders with
   // following off, so no queued follow update can cancel the gesture.
   const userMovedRef = useRef(false);
@@ -910,7 +920,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   return (
     <>
       <div inert={inert}>
-        <div ref={containerRef} className="map-container" />
+        <div ref={setMapContainer} className="map-container" />
         {showNavigationControls && <div className="map-overview" aria-label="地図表示範囲">
           <button type="button" disabled={!loadedMap} onClick={() => {
             if (!loadedMap || !data.services.ok) return;
@@ -928,7 +938,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       </div>
       {showTitlePlaceholder && <TitleMapPlaceholder />}
       {unsupported && (
-        <div className="map-error" role="status">
+        <div ref={setCoachTarget} className="map-error" role="status">
           <p>
             この端末・ブラウザでは地図を表示できません（WebGL2 が必要です）。
             地図なしでゲームを続けられます。
@@ -936,7 +946,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
         </div>
       )}
       {styleFailed && !unsupported && (
-        <div className="map-error" role="alert">
+        <div ref={setCoachTarget} className="map-error" role="alert">
           <p>地図の読み込みに失敗しました。</p>
           <button type="button" onClick={retry}>
             再試行

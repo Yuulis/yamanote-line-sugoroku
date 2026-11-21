@@ -1,5 +1,6 @@
 import { isItemSave, type SavedGameState } from "./engine";
 import type { SaveWriteResult } from "./store/persistence";
+import type { GuideAcknowledgement, GuideAnnouncement } from "./firstPlayGuide";
 
 /**
  * One distinct save write of a session's committed game. Repeated effects for
@@ -37,56 +38,125 @@ export function isFirstTurnNoticeEligible(
 }
 
 /**
- * `pendingKey` is the delivered notice awaiting speech (null when none); `announcedKey` is the last notice already
- * spoken. `coveredOrdinary` is the ordinary text that was in the region when the notice took it (null before).
- * The caller records `announcedKey = pendingKey` and `coveredOrdinary = ordinaryAnnouncement` when it commits a
- * result with `announcesNotice: true`.
+ * `current` keeps the last selected key and copy together while it covers one unchanged ordinary status.
+ * `deliveredIds` prevents a previously spoken notice from being reinserted after another notice takes over.
  */
 export interface NoticeAnnouncementState {
-  readonly pendingKey: string | null;
-  readonly announcedKey: string | null;
+  /** The last selected notice is retained with its original copy until ordinary text changes. */
+  readonly current: SelectedNoticeAnnouncement | null;
   readonly coveredOrdinary: string | null;
+  /** Keeps already spoken notices from being reinserted after a higher-priority notice takes over. */
+  readonly deliveredIds: readonly string[];
 }
+
+export interface NoticeOwnershipInput {
+  readonly engineDecisionOpen: boolean;
+  readonly rulesOpen: boolean;
+  readonly confirmationOpen: boolean;
+  readonly itemDialogOpen: boolean;
+  readonly coachOpen: boolean;
+}
+
+export function isNoticeAnnouncementOwned(input: NoticeOwnershipInput): boolean {
+  return input.engineDecisionOpen || input.rulesOpen || input.confirmationOpen
+    || input.itemDialogOpen || input.coachOpen;
+}
+
+export interface NoticeAnnouncementCopy {
+  readonly key: string;
+  readonly text: string;
+}
+
+export type SelectedNoticeAnnouncement =
+  | (NoticeAnnouncementCopy & { readonly source: "first-turn" })
+  | (NoticeAnnouncementCopy & {
+    readonly source: "hint";
+    readonly acknowledgement: GuideAcknowledgement;
+  });
 
 export interface NoticeAnnouncementInput {
   readonly state: NoticeAnnouncementState;
-  /** The announcement the status region would speak without the notice (turn, auto-roll). */
+  /** The turn announcement the status region would speak without the notice. */
   readonly ordinaryAnnouncement: string;
   /** The ordinary text of the last committed render, owned by the caller; null before the first render. */
   readonly previousOrdinary: string | null;
-  /**
-   * A decision owns the panel. The caller passes `(decision present) || rulesOpen || (confirm dialog open)`, so the
-   * notice is never spoken behind a native modal.
-   */
+  readonly firstTurnNotice: NoticeAnnouncementCopy | null;
+  readonly hintAnnouncement: GuideAnnouncement | null;
+  /** A decision, modal, coach, or local item dialog owns the panel. */
   readonly decisionOwned: boolean;
 }
 
 export interface NoticeAnnouncementSelection {
   readonly text: string;
+  /** A notice carries the exact copy selected with its key; ordinary text has no notice identity. */
+  readonly announcement: SelectedNoticeAnnouncement | null;
   /** True when `text` is a fresh notice announcement, so the owner should acknowledge it. */
   readonly announcesNotice: boolean;
 }
 
+export function noticeAnnouncementIdentity(announcement: SelectedNoticeAnnouncement): string {
+  if (announcement.source === "first-turn") return `first-turn:${announcement.key}`;
+  const acknowledgement = announcement.acknowledgement;
+  return `hint:${acknowledgement.sessionId}:${acknowledgement.candidateKey}:${acknowledgement.displayGeneration}`;
+}
+
+function firstTurnSelection(announcement: NoticeAnnouncementCopy): SelectedNoticeAnnouncement {
+  return { ...announcement, source: "first-turn" };
+}
+
+function hintSelection(announcement: GuideAnnouncement): SelectedNoticeAnnouncement {
+  return {
+    key: announcement.key,
+    text: announcement.text,
+    source: "hint",
+    acknowledgement: announcement.acknowledgement,
+  };
+}
+
+function selection(
+  text: string,
+  announcement: SelectedNoticeAnnouncement | null = null,
+  announcesNotice = false,
+): NoticeAnnouncementSelection {
+  return { text, announcement, announcesNotice };
+}
+
 /**
- * Edge-aware arbitration for the single status region. The ordinary text can stand (an idle turn summary persists
- * until the next roll), so only a change counts as a fresh ordinary announcement:
- * 1. A decision owns the panel: ordinary text, the notice waits.
- * 2. The notice was already announced and the ordinary text is unchanged since: keep showing the notice text
- *    without announcing it again.
- * 3. The notice waits and the ordinary text is standing (unchanged, including empty): announce the notice.
- * 4. Otherwise a fresh ordinary text wins and the notice waits.
+ * Edge-aware arbitration for the single status region. Fresh turn text wins first; once it stands, an undelivered
+ * #68 notice wins before the current hint. A selected notice keeps the exact key and copy that were chosen together.
+ * Already spoken #68 text stays until ordinary text changes; a hint stays only while its same display generation is
+ * current. Modal, item-dialog, decision, and coach ownership leave the ordinary status in place without an ack.
  */
 export function selectAnnouncement(input: NoticeAnnouncementInput): NoticeAnnouncementSelection {
-  const { state, ordinaryAnnouncement, previousOrdinary, decisionOwned } = input;
-  const ordinary = { text: ordinaryAnnouncement, announcesNotice: false };
-  if (decisionOwned) return ordinary;
-  const announced = state.announcedKey !== null && state.announcedKey === state.pendingKey;
-  if (announced && ordinaryAnnouncement === state.coveredOrdinary) {
-    return { text: FIRST_TURN_NOTICE_TEXT, announcesNotice: false };
+  const {
+    state,
+    ordinaryAnnouncement,
+    previousOrdinary,
+    firstTurnNotice,
+    hintAnnouncement,
+    decisionOwned,
+  } = input;
+  const ordinary = selection(ordinaryAnnouncement);
+  if (decisionOwned || ordinaryAnnouncement !== previousOrdinary) return ordinary;
+
+  const firstTurn = firstTurnNotice === null ? null : firstTurnSelection(firstTurnNotice);
+  const hint = hintAnnouncement === null ? null : hintSelection(hintAnnouncement);
+  const delivered = new Set(state.deliveredIds);
+  const firstTurnId = firstTurn === null ? null : noticeAnnouncementIdentity(firstTurn);
+  const hintId = hint === null ? null : noticeAnnouncementIdentity(hint);
+
+  if (firstTurn !== null && firstTurnId !== null && !delivered.has(firstTurnId)) {
+    return selection(firstTurn.text, firstTurn, true);
   }
-  const waiting = state.pendingKey !== null && state.pendingKey !== state.announcedKey;
-  if (waiting && ordinaryAnnouncement === previousOrdinary) {
-    return { text: FIRST_TURN_NOTICE_TEXT, announcesNotice: true };
+  if (hint !== null && hintId !== null && !delivered.has(hintId)) {
+    return selection(hint.text, hint, true);
+  }
+
+  const current = state.current;
+  if (current === null || state.coveredOrdinary !== ordinaryAnnouncement) return ordinary;
+  if (current.source === "first-turn") return selection(current.text, current);
+  if (hint !== null && noticeAnnouncementIdentity(current) === noticeAnnouncementIdentity(hint)) {
+    return selection(current.text, current);
   }
   return ordinary;
 }

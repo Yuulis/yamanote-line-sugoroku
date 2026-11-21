@@ -9,6 +9,8 @@ import {
   serializeGame,
 } from "../../src/features/game/engine";
 import type { ItemGameState, RailwayNetwork } from "../../src/features/game/engine";
+import { FIRST_PLAY_HINT_IDS } from "../../src/features/game/firstPlayGuide";
+import { GUIDE_COACH_KEY, GUIDE_STARTED_KEY, guideHintStorageKey } from "../../src/features/game/store/guide";
 import { FIXTURE_GAME_SEED } from "./fixtures/seeds";
 import { expect, test } from "./fixtures";
 import {
@@ -19,15 +21,20 @@ import {
   openGameMenu,
   openTitle,
   panelStat,
+  readSave,
   startNewGame,
   titleScreen,
   writeSaveText,
 } from "./support/app";
-import { autoRollToggle } from "./support/autoRoll";
 import { advanceTumble } from "./support/turnMoments";
 
 const FIRST_TURN_NOTICE_KEY = "yamanote-line-sugoroku:notice:auto-resume:v1";
 const FIRST_TURN_NOTICE_TEXT = "自動で保存しています。いつでも閉じて、続きから遊べます";
+const FIRST_PLAY_GUIDE_KEYS = [
+  GUIDE_STARTED_KEY,
+  GUIDE_COACH_KEY,
+  ...FIRST_PLAY_HINT_IDS.map(guideHintStorageKey),
+];
 const NOTICE_SCREENSHOT_DIRECTORY = resolve(process.cwd(), ".claude/logs/screenshots");
 const DESKTOP_VIEWPORT = { width: 1280, height: 800 };
 const PHONE_VIEWPORT = { width: 320, height: 568 };
@@ -180,6 +187,9 @@ async function captureNotice(page: Page, filename: string): Promise<void> {
 test("first completed save notices once across reload", async ({ page }) => {
   await page.setViewportSize(DESKTOP_VIEWPORT);
   await openTitle(page);
+  expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), FIRST_PLAY_GUIDE_KEYS))
+    .toEqual(FIRST_PLAY_GUIDE_KEYS.map(() => "1"));
+  expect(await page.evaluate((key) => localStorage.getItem(key), FIRST_TURN_NOTICE_KEY)).toBeNull();
   await startNewGame(page);
   await completeOneTurn(page);
   await expectAnnounced(page);
@@ -195,6 +205,20 @@ test("first completed save notices once across reload", async ({ page }) => {
   await expect(page.locator(".toast-host__text", { hasText: FIRST_TURN_NOTICE_TEXT })).toHaveCount(0);
   await expect(gamePanel(page).locator('[role="status"]')).not.toHaveText(FIRST_TURN_NOTICE_TEXT);
   await expect.poll(() => page.evaluate((key) => localStorage.getItem(key), FIRST_TURN_NOTICE_KEY)).toBe("1");
+});
+
+test.describe("first-play guide fixture opt-out", () => {
+  test.use({ firstPlayGuideSeen: false });
+
+  test("does not clear guide values already in storage", async ({ page }) => {
+    await openTitle(page);
+    expect(await page.evaluate((keys) => keys.map((key) => localStorage.getItem(key)), FIRST_PLAY_GUIDE_KEYS))
+      .toEqual(FIRST_PLAY_GUIDE_KEYS.map(() => null));
+    await page.evaluate((key) => localStorage.setItem(key, "custom"), GUIDE_STARTED_KEY);
+    await page.reload();
+    await expect(titleScreen(page)).toBeVisible();
+    expect(await page.evaluate((key) => localStorage.getItem(key), GUIDE_STARTED_KEY)).toBe("custom");
+  });
 });
 
 test("restored baseline waits for newly completed progress", async ({ page, railwayBundle }) => {
@@ -230,12 +254,12 @@ test("hidden tab delays the notice until visible", async ({ page }) => {
   await expectAnnounced(page);
 });
 
-test("auto-roll releases the notice slot after its ordinary summary", async ({ page }) => {
+test("a manual turn releases the notice slot after its ordinary summary", async ({ page }) => {
   await openTitle(page);
   await startNewGame(page);
   await observeStatusAnnouncements(page);
-  await autoRollToggle(page).click();
-  await expect(gamePanel(page).locator('[role="status"]')).toHaveText("おまかせで進みます。");
+  await diceButton(page).click();
+  await expect.poll(async () => (await readSave(page))?.turn).toBe(1);
   await expectAnnounced(page);
   const announcements = await readStatusAnnouncements(page);
   const ordinaryIndex = announcements.findIndex(({ text }) => text !== FIRST_TURN_NOTICE_TEXT && /\d+ターン目/.test(text));

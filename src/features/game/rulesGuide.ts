@@ -64,7 +64,7 @@ const TURN_COUNT_PATTERN = /\d+(?=ターン)/;
 
 const SHORTCUTS: readonly string[] = [
   "Space / Enter：サイコロを振る",
-  "S / Escape：移動の演出をスキップ",
+  "S / Escape：演出をスキップ",
   "Escape：選んだアイテムの選択を解除",
   "Escape：出目調整の画面で「そのまま」を選ぶ",
 ];
@@ -134,7 +134,7 @@ function goalParagraphs(config: GameConfig, names: GoalNames, targetSegmentCount
     `${start}からスタートします。サイコロの出目の数だけ、駅を進みます。`,
     `${directed}の${segments}を踏破したあと、${start}に着くとクリアです。`,
     goalPolicyText(config.goalArrivalPolicy, names),
-    "終点や収録範囲の端に着いたときは、そこで止まります。残りの出目は使いません。",
+    "終点や収録範囲の端に着いたときは、出目が余っていてもそこで止まります。",
   ];
 }
 
@@ -143,8 +143,7 @@ function controlsParagraphs(): readonly string[] {
   const levels = PRESENTATION_LEVELS.map(({ label }) => label).join(LABEL_SEPARATOR);
   return [
     `メニューの「速度」を押すと、移動の速さが切り替わります（${speeds}）。`,
-    `「演出」を押すと、演出の量が切り替わります（${levels}）。「スキップ」で、移動の演出を飛ばせます。`,
-    "「おまかせ」をONにすると、サイコロを自動で振って進みます。アイテムを拾ったときや、ほかのタブに切り替えたときは止まります。出目調整や捨てるアイテムを選ぶ場面では、選び終えるまで待ちます。",
+    `「演出」を押すと、演出の量が切り替わります（${levels}）。「演出をスキップ」で、移動の演出を飛ばせます。`,
     "「追尾」をONにすると、地図が現在地を追いかけます。地図を手で動かすと、追尾はOFFになります。",
     "端末の設定で動きを減らしているときは、アニメーションは省略され、「速度」と「演出」は切り替えられません。",
   ];
@@ -196,7 +195,7 @@ function itemParagraphs(policy: ItemPolicy | undefined): readonly string[] {
   return [
     `移動を終えるたびに、${pickupPercent}%の確率でアイテムを拾えます。`,
     ...(hasHarmfulItems(policy)
-      ? [`拾ったアイテムのうち${policy.harmfulChancePercent}%は不利なアイテムで、持ち物には入らず自動で発動します。`]
+      ? [`拾ったアイテムのうち${policy.harmfulChancePercent}%は不利なアイテムです。不利なアイテムは持ち物には入らず、それぞれ決まったタイミングで自動で効きます。`]
       : []),
     `有利なアイテムは${policy.inventoryCapacity}個まで持てます。使えるのは1ターンに${policy.maxActiveItemsPerTurn}個までです。`,
     "持ち物がいっぱいのときに拾うと、持っているものと新しいものから、捨てるものを1つ選びます。",

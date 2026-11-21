@@ -58,7 +58,7 @@ Model IDs live here only; change them here.
 
 | Variable | Value | Notes |
 |----------|-------|-------|
-| `CODEX_MODEL` | `gpt-6.1-sol` | Tier 2 default. Must equal `.codex/config.toml` `model` and `codex_consult.py` `DEFAULT_MODEL` (`scripts/check.sh` enforces this). |
+| `CODEX_MODEL` | `gpt-6.2-sol` | Tier 2 default. Must equal `.codex/config.toml` `model` and `codex_consult.py` `DEFAULT_MODEL` (`scripts/check.sh` enforces this). |
 | `CODEX_MODEL_LUNA` | `gpt-6-luna` | Bulk lane. |
 | `CODEX_MODEL_ASTRA` | `gpt-6-astra` | Explicit-only escalation. |
 | `ANTIGRAVITY_MODEL` | `gemini-3.1-pro-high` | Cross-model second opinion (`antigravity-system` skill). The slug carries the thinking level; `agy` rejects a bare `gemini-3.1-pro` without `--effort`. |

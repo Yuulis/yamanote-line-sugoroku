@@ -268,7 +268,7 @@ test.describe("current product scenarios", () => {
       const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_FORWARD)!.geometryFeatureIds;
       await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds)
         .toEqual(expect.arrayContaining([...composedFeatures]));
-      await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+      await gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true }).click();
       const forwardLandingService = forwardRecord.landing!.serviceId;
       await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, forwardLandingService));
       const forwardLandingFeatures = serviceFeatureIds(railwayBundle, forwardLandingService);
@@ -306,7 +306,7 @@ test.describe("current product scenarios", () => {
       const composedFeatures = railwayBundle.network.segmentsById.get(PRODUCT_COMPOSED_REVERSE)!.geometryFeatureIds;
       await expect.poll(async () => (await readMap(page))?.highlightedRenderedIds)
         .toEqual(expect.arrayContaining([...composedFeatures]));
-      await gamePanel(page).getByRole("button", { name: "スキップ", exact: true }).click();
+      await gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true }).click();
       const landingServiceId = record.landing!.serviceId;
       await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, landingServiceId));
       await expect.poll(async () => (await readMap(page))?.highlightedFeatureIds)

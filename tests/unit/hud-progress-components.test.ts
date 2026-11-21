@@ -26,9 +26,9 @@ function hudProps(overrides: Partial<GameHudProps> = {}): GameHudProps {
     title: "山手線すごろく", subtitle: "東京近郊版", headingRef: createRef<HTMLHeadingElement>(),
     station: "東京", ride: "山手線", lineBadge: { groupId: "jr-yamanote", code: "JY", color: "#80c241", name: "山手線", textColor: "#000000" },
     direction: "外回り", turn: 5, completed: 10, required: 30, compactRoll: "3マス", saveStatus: null,
-    saveStatusMessage: "未保存", canRoll: true, canSkip: false, autoRollEnabled: false, animating: false,
+    saveStatusMessage: "未保存", canRoll: true, canSkip: false, animating: false,
     draftSelected: false, rollButtonRef: createRef<HTMLButtonElement>(), onRoll: () => undefined,
-    onSkip: () => undefined, onToggleAutoRoll: () => undefined, effects: [], ...overrides,
+    onSkip: () => undefined, effects: [], ...overrides,
   };
 }
 

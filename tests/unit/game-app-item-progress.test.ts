@@ -143,7 +143,7 @@ function reachPresentedAdjustment(): HTMLButtonElement | null {
   const saved = JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
   if (saved.pending?.kind !== "roll") return null;
   expect(mounted!.container.querySelector(".item-adjustment")).toBeNull();
-  click("スキップ");
+  click("演出をスキップ");
   const proceed = mounted!.container.querySelector<HTMLButtonElement>(".item-adjustment .dialog__actions button");
   expect(proceed?.textContent).toBe("そのまま続ける");
   return proceed;
@@ -222,7 +222,7 @@ function rollUntilToast(): string {
     const expected = saved.turn > before.turn && record.turn === saved.turn
       ? turnToasts(1, itemLastMove(record, network), network)[0]?.text
       : undefined;
-    click("スキップ");
+    click("演出をスキップ");
     if (expected) {
       const visible = mounted!.container.querySelector(".toast-host__toast")?.textContent;
       if (visible !== expected) throw new Error(`Expected toast ${expected}, got ${visible}; dialogs=${[...mounted!.container.querySelectorAll("dialog")].map((dialog) => dialog.textContent).join(" | ")}; turn=${saved.turn}`);
@@ -239,7 +239,7 @@ function rollTurn(): void {
   if (adjustment) dispatchReactEvent(adjustment, new MouseEvent("click", { bubbles: true }));
   const discard = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
   if (discard) dispatchReactEvent(discard, new MouseEvent("click", { bubbles: true }));
-  click("スキップ");
+  click("演出をスキップ");
 }
 
 function toastTexts(): (string | null)[] {
@@ -296,7 +296,7 @@ describe("item progress in GameApp", () => {
       if (!record) throw new Error("Expected the movement save boundary to contain its record");
       expect(mounted!.container.querySelectorAll(".toast-host__toast")).toHaveLength(0);
       expectedToast = turnToasts(1, itemLastMove(record, network), network)[0]?.text ?? "";
-      click("スキップ");
+      click("演出をスキップ");
       if (expectedToast) {
         expect(mounted!.container.querySelector(".toast-host__toast")?.textContent).toBe(expectedToast);
       }
@@ -329,7 +329,7 @@ describe("item progress in GameApp", () => {
     if (!choice) throw new Error("Expected the resumed discard choices");
     dispatchReactEvent(choice, new MouseEvent("click", { bubbles: true }));
     await flushReact();
-    click("スキップ");
+    click("演出をスキップ");
     await flushReact();
     const saved = JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState;
     const record = saved.movementHistory.at(-1);
@@ -460,7 +460,7 @@ describe("item progress in GameApp", () => {
     advanceTime(10000);
     expect([...mounted!.container.querySelectorAll(".toast-host__toast")].map((toast) => toast.textContent)).toContain(toastText);
     click("そのまま続ける");
-    click("スキップ");
+    click("演出をスキップ");
     advanceTime(2499);
     expect([...mounted!.container.querySelectorAll(".toast-host__toast")].map((toast) => toast.textContent)).toContain(toastText);
     advanceTime(1);
@@ -477,7 +477,7 @@ describe("item progress in GameApp", () => {
       if (mounted!.container.querySelector(".item-discard")) break;
       const adjustment = reachPresentedAdjustment();
       if (adjustment) dispatchReactEvent(adjustment, new MouseEvent("click", { bubbles: true }));
-      click("スキップ");
+      click("演出をスキップ");
     }
     expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
     advanceTime(10000);
@@ -485,7 +485,7 @@ describe("item progress in GameApp", () => {
     const choice = mounted!.container.querySelector<HTMLButtonElement>(".item-discard .item-card__action");
     if (!choice) throw new Error("Expected engine-built discard choices");
     dispatchReactEvent(choice, new MouseEvent("click", { bubbles: true }));
-    click("スキップ");
+    click("演出をスキップ");
     advanceTime(2499);
     expect([...mounted!.container.querySelectorAll(".toast-host__toast")].map((toast) => toast.textContent)).toContain(toastText);
     advanceTime(1);
@@ -531,7 +531,7 @@ describe("item progress in GameApp", () => {
     advanceTumble(NORMAL_TUMBLE_MS);
     expect(stat("現在駅")).toBe("新橋");
     expect(window.requestAnimationFrame).toHaveBeenCalled();
-    click("スキップ");
+    click("演出をスキップ");
     expect(stat("現在駅")).toBe("浜松町");
     expect(stat("踏破区間")).toBe("1/30");
   });
@@ -675,7 +675,7 @@ describe("S10b accepted-save boundary", () => {
       expect(mounted!.container.querySelector(".toast-host")?.textContent).toContain("保存に失敗しました");
     }
 
-    click("スキップ");
+    click("演出をスキップ");
 
     expect(writes).toHaveLength(2);
     expect(readScreen()).toEqual({ station: "浜松町", progress: "1/30", dice: "サイコロを振る", diceDisabled: "false", frames: 1 });

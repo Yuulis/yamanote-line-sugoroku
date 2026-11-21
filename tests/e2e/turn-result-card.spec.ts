@@ -21,6 +21,7 @@ import {
   readMap,
   readSave,
   rollOnce,
+  useInventoryItem,
   startNewGame,
   writeSaveText,
   combinedMomentGame,
@@ -34,8 +35,7 @@ import { advanceArrival, advanceLotteryFlip, advanceLotterySettle, advanceMoveme
 import { seedGameSettings } from "./support/settings";
 import { pressSkip } from "./support/turnMoments";
 import { acceptOfflineTurn, findTargetTurn, openPopulatedResult, populatedResultState, replayFixtureClear,
-  replayLongestProductResult, replayUninterruptedAutoRoll, restoreResultState } from "./support/turnResult";
-import { AUTO_ROLL_GAP_MS } from "../../src/features/game/autoRoll";
+  replayLongestProductResult, replayTwoManualRolls, restoreResultState } from "./support/turnResult";
 
 const MAX_SHORT_LANDSCAPE_ROW_HEIGHT_PX = 22;
 const ELLIPSIS_PROBE_WIDTH_PX = 160;
@@ -1548,19 +1548,13 @@ test.describe("product R4", () => {
   });
 });
 
-const AUTO_ROLL_CLOCK_STEP_MS = 100;
-const AUTO_ROLL_MAX_CLOCK_STEPS = 200;
-
-test("auto roll publishes result and pauses for log", { tag: "@layout" }, async ({ page, railwayBundle }) => {
-  const replay = replayUninterruptedAutoRoll(railwayBundle.network);
+test("manual rolls publish result cards in order and the pill opens the log", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  const replay = replayTwoManualRolls(railwayBundle.network);
   const pillName = (game: ItemGameState): string => `${expectedSavedResult(game, railwayBundle).compact.accessibleName}。ターンのログを開く`;
   const names = [pillName(replay.before), pillName(replay.first), pillName(replay.second)];
   expect(new Set(names).size, "each predicted publication must change the pill name").toBe(3);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.clock.install();
   await restoreResultState(page, replay.before);
-  await freezeClock(page);
   const pill = page.locator(".turn-result__pill");
   await expect(pill).toHaveAccessibleName(names[0]!);
   await page.evaluate(() => {
@@ -1573,28 +1567,31 @@ test("auto roll publishes result and pauses for log", { tag: "@layout" }, async 
       if (name !== "" && name !== names.at(-1)) names.push(name);
     }).observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["aria-label"] });
   });
-  const toggle = gamePanel(page).getByRole("button", { name: "おまかせで進む" });
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
-
-  // Step the frozen clock until the second publication is ready; the next auto-roll delay then has ≥ 1100ms left.
-  const readyAfterSecond = async (): Promise<boolean> => (await readSave(page))?.turn === replay.second.turn
-    && await pill.getAttribute("aria-label") === names[2] && await diceButton(page).getAttribute("aria-disabled") === "false";
-  let steps = 0;
-  while (!(await readyAfterSecond())) {
-    if (steps >= AUTO_ROLL_MAX_CLOCK_STEPS) throw new Error(`Auto-roll did not publish two turns: ${JSON.stringify(await readSave(page))}`);
-    await page.clock.runFor(AUTO_ROLL_CLOCK_STEP_MS);
-    steps += 1;
-  }
+  await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
+  await rollOnce(page);
+  await expect(pill).toHaveAccessibleName(names[1]!);
+  await rollOnce(page);
+  await expect(pill).toHaveAccessibleName(names[2]!);
   const observed = await page.evaluate(() => (window as Window & { __pillNames?: string[] }).__pillNames ?? []);
-  expect(observed, "restored pill name, then one per auto-roll publication, in order").toEqual(names);
+  expect(observed, "restored pill name, then one per manual publication, in order").toEqual(names);
 
   await pill.click();
   const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
   await Promise.all([expect(log).toBeVisible(), expect(log).toBeFocused(), expect(pill).toHaveAttribute("aria-expanded", "true")]);
-  await page.clock.runFor(AUTO_ROLL_GAP_MS + AUTO_ROLL_CLOCK_STEP_MS);
   expect((await readSave(page))?.turn).toBe(replay.second.turn);
   await expect(pill).toHaveAccessibleName(names[2]!);
   await expect(log).toBeVisible();
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
+});
+
+test("a manual roll applies the staged item draft", async ({ page, railwayBundle }) => {
+  const base = itemScenario("double", railwayBundle.network);
+  const double = base.inventory.find((item) => item.kind === "double");
+  if (!double) throw new Error("The fixture has no double ticket to stage");
+  await restoreResultState(page, base);
+  await useInventoryItem(page, "倍速券");
+  await expect(gamePanel(page).locator(".item-staged-summary")).toContainText("倍速券");
+
+  await rollOnce(page);
+  const record = (await readSave(page))?.movementHistory.at(-1);
+  expect(record?.command.items).toContainEqual(expect.objectContaining({ kind: "double", instanceId: double.id }));
 });
