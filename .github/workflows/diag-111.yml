@@ -1,0 +1,61 @@
+name: Temporary issue #111 WebKit diagnostics
+
+on:
+  push:
+    branches: ["fix/issue-111-webkit-rules-turn"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  E2E_HOST: 127.0.0.1
+  E2E_WEBKIT: "1"
+  PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+
+jobs:
+  diag-111-webkit:
+    name: Issue #111 diagnostics (desktop-webkit)
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      options: --ipc=host
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check Playwright image version
+        run: |
+          image_version=1.63.0
+          package_version="$(node -p "require('@playwright/test/package.json').version")"
+          if [[ "$package_version" != "$image_version" ]]; then
+            echo "::error::Playwright image v${image_version}-noble does not match @playwright/test ${package_version}. Bump the image tag in the same PR as the Playwright package."
+            exit 1
+          fi
+      - name: Run issue #111 diagnostic variants
+        env:
+          DIAG_111: "1"
+        run: xvfb-run --auto-servernum npx playwright test tests/e2e/diag-111.spec.ts --project=desktop-webkit --repeat-each=30 --retries=0 --workers=2 --output=test-results/diag-111
+      - name: Run issue #111 baseline test
+        if: always()
+        run: xvfb-run --auto-servernum npx playwright test tests/e2e/first-turn-notice.spec.ts --grep "notice waits through rules" --project=desktop-webkit --repeat-each=30 --retries=0 --workers=2 --output=test-results/issue-111-baseline
+      - name: Upload Playwright reports and diagnostic records
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: diag-111-desktop-webkit
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
