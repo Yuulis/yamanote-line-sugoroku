@@ -257,3 +257,28 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - All of #60 and #68 in one PR; product choices per DESIGN.md 2026-11-17 rows (user 2026-11-17).
 - Pause only after steps with a visible change; no-visual steps 1A, 2A, 2B, 3, 5, 7A, 8A, 8B, 9, 10A continue after verification (user 2026-11-17).
 - Codex Luna xhigh implements, Sol low reviews, lead verifies, commits, pushes and checks CI per step (user 2026-11-17).
+
+---
+
+## Current Feature: Issues #67 + #113: first-play guide, skip labels, remove おまかせ
+<!-- orchestra:block-id: issues-67-113-first-play-guide-skip-labels-remove -->
+
+### Context
+
+- Goal: 3-step first-play coach mark and five one-time hint cards (閉じる / もう表示しない / 詳しく) for first-time players; both skip buttons renamed 「演出をスキップ」; RollAdjustment Escape hint only on (pointer: fine); おまかせ removed entirely (#113). Presentation only.
+- Branch: feature/first-play-guide (from develop 3b048f4, v0.17.1)
+- Plan: .claude/docs/plans/first-play-guide-plan.md (13 steps, Revision 2, Codex validated PASS)
+- Research: .claude/docs/research/feature-first-play-guide-{brief,codebase}.md
+- Dependencies: none new
+- Complexity: COMPLEX (13 steps)
+
+### Architecture
+
+- Eligibility fixed in startNewGame before the first auto-save; guide:{started,coach,hints-disabled,hint:<id>}:v1 keys.
+- Coach = native modal dialog blocking dice/shortcuts; hint card = non-modal section beside ToastHost, announced via generalised selectAnnouncement.
+- Hint candidates from deriveTurnMomentDisplay at resultPublished; fixed-order queue; withdrawn under modals, discarded on showClear.
+
+### Decisions
+
+- Product choices per DESIGN.md 2026-11-20 rows (user 2026-11-20).
+- おまかせ removed in step 1 of the same PR, all touchpoints (user 2026-11-20, issue #113).

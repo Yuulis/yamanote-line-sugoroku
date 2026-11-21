@@ -12,7 +12,7 @@ export interface RollAdjustmentProps {
   landings?: readonly AdjustmentLanding[];
   onContinue: (adjustment: ItemRollAdjustment | null) => void;
   /**
-   * The shared presentation Skip. The native modal makes the panel's スキップ inert, so the dialog offers the same
+   * The shared presentation skip. The native modal makes the panel's 「演出をスキップ」 inert, so the dialog offers the same
    * action. It ends the presentation only: the chosen radio stays and Continue is still required.
    */
   onSkip?: () => void;
@@ -83,12 +83,17 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
             </label>;
           })}
         </fieldset>
-        <p className="item-dialog__hint"><PhraseText text="Escapeキーでも「そのまま」で続けます。出目を見た後はターンを取り消せません。" /></p>
-        <div className="dialog__actions">
-          <button type="button" className="button-primary" onClick={() => continueTurn(choice)}>
-            {choice === 0 ? "そのまま続ける" : `出目${adjustedPips(decision.rawRoll, choice)}で続ける`}
-          </button>
-          {onSkip && <button type="button" aria-disabled={!canSkip} onClick={() => { if (canSkip) onSkip(); }}>スキップ</button>}
+        <p className="item-dialog__hint item-adjustment__escape-hint"><PhraseText text="Escapeキーでも「そのまま」で続けます。" /></p>
+        <p className="item-dialog__hint item-adjustment__caution"><PhraseText text="出目を見た後はターンを取り消せません。" /></p>
+        <div className="dialog__actions item-adjustment__actions">
+          <div className="item-adjustment__primary-actions">
+            <button type="button" className="button-primary" onClick={() => continueTurn(choice)}>
+              {choice === 0 ? "そのまま続ける" : `出目${adjustedPips(decision.rawRoll, choice)}で続ける`}
+            </button>
+          </div>
+          {onSkip && <div className="item-adjustment__secondary-actions">
+            <button type="button" aria-disabled={!canSkip} onClick={() => { if (canSkip) onSkip(); }}><PhraseText text="演出をスキップ" /></button>
+          </div>}
         </div>
       </div>
     </dialog>

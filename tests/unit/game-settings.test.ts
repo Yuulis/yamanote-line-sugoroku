@@ -148,7 +148,7 @@ describe("parseSettings / readSettings", () => {
     expect(storage.data.get(SETTINGS_STORAGE_KEY)).toBe(json);
   });
 
-  it("ignores unknown fields in a supported payload", () => {
+  it("loads a legacy autoRoll-like field as unknown and writes clean settings", () => {
     const storage = memoryStorage({
       [SETTINGS_STORAGE_KEY]: JSON.stringify({
         version: 1,
@@ -158,7 +158,10 @@ describe("parseSettings / readSettings", () => {
       }),
     });
 
-    expect(readSettings(storage)).toEqual({ status: "loaded", settings: CUSTOM_SETTINGS });
+    const result = readSettings(storage);
+    expect(result).toEqual({ status: "loaded", settings: CUSTOM_SETTINGS });
+    expect(writeSettings(storage, result.settings)).toBe("saved");
+    expect(JSON.parse(storage.data.get(SETTINGS_STORAGE_KEY)!)).not.toHaveProperty("autoRoll");
   });
 
   it("reports missing with defaults when the settings key is absent", () => {

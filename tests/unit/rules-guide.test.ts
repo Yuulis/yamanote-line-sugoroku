@@ -116,7 +116,7 @@ describe("rules guide model", () => {
     const noHarmKinds = buildRulesGuide(itemPolicyWith({ harmfulKinds: [] }));
 
     expect(text(model, "items")).toContain("12.5%");
-    expect(text(model, "items")).toContain("拾ったアイテムのうち40%は不利なアイテムで、持ち物には入らず自動で発動します");
+    expect(text(model, "items")).toContain("拾ったアイテムのうち40%は不利なアイテムです。不利なアイテムは持ち物には入らず、それぞれ決まったタイミングで自動で効きます。");
     expect(text(noHarm, "items")).not.toContain("拾ったアイテムのうち");
     expect(text(noHarmKinds, "items")).not.toContain("拾ったアイテムのうち");
   });
@@ -198,7 +198,7 @@ describe("rules guide model", () => {
     expect(truncate).toContain("テスト環状線（右回り）の");
     expect(truncate).toContain("踏破を終えていれば、テスト環状線では起点駅に着いた時点で止まってクリア");
     expect(truncate).toContain("ほかの路線では、移動の最後にちょうど起点駅に止まる必要");
-    expect(truncate).toContain("終点や収録範囲の端に着いたときは、そこで止まります。残りの出目は使いません");
+    expect(truncate).toContain("終点や収録範囲の端に着いたときは、出目が余っていてもそこで止まります");
     expect(goal(configWith({ goalArrivalPolicy: "exact-stop" }))).toContain("踏破を終えていれば、どの路線でも、移動の最後にちょうど起点駅に止まる");
     expect(goal(configWith({ goalArrivalPolicy: "pass-through" }))).toContain("踏破を終えていれば、どの路線でも、起点駅に着いた時点で止まってクリア");
     expect(text(buildRulesGuide(ITEM_GAME_CONFIG, names), "lottery")).toContain("テスト環状線では、いつも右回りに進みます");
@@ -240,9 +240,8 @@ describe("rules guide model", () => {
 
     expect(controls).toContain(ANIMATION_SPEEDS.map(({ label }) => label).join("→"));
     expect(controls).toContain(PRESENTATION_LEVELS.map(({ label }) => label).join("→"));
-    expect(controls).toContain("「おまかせ」をONにすると");
-    expect(controls).toContain("ほかのタブに切り替えたときは止まります");
-    expect(controls).toContain("選び終えるまで待ちます");
+    expect(controls).not.toContain("おまかせ");
+    expect(controls).toContain("「演出をスキップ」で、移動の演出を飛ばせます。");
     expect(controls).toContain("動きを減らしているときは、アニメーションは省略され、「速度」と「演出」は切り替えられません");
     expect(controls).toContain("「追尾」");
   });
@@ -265,7 +264,7 @@ describe("rules guide model", () => {
     expect(text(model, "save")).toContain("タイトル画面の「つづきから」で再開できます");
     expect(model.shortcuts).toEqual([
       "Space / Enter：サイコロを振る",
-      "S / Escape：移動の演出をスキップ",
+      "S / Escape：演出をスキップ",
       "Escape：選んだアイテムの選択を解除",
       "Escape：出目調整の画面で「そのまま」を選ぶ",
     ]);

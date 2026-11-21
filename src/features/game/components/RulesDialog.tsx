@@ -9,6 +9,8 @@ export interface RulesDialogProps {
   returnFocus: HTMLElement | null;
   getFallbackFocus: () => HTMLElement | null;
   onClose: () => void;
+  onReplayCoach?: () => void;
+  canReplayCoach?: boolean;
 }
 
 const DIALOG_TITLE = "遊び方";
@@ -42,7 +44,7 @@ export function isFocusRestorable(
  * behind stays mounted, so no game action is dispatched on open or close.
  */
 export function RulesDialog({
-  model, sectionId, returnFocus, getFallbackFocus, onClose,
+  model, sectionId, returnFocus, getFallbackFocus, onClose, onReplayCoach, canReplayCoach,
 }: RulesDialogProps): React.JSX.Element {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -110,7 +112,7 @@ export function RulesDialog({
         <button type="button" className="rules-dialog__close" onClick={onClose}>{CLOSE_LABEL}</button>
       </header>
       <div className="rules-dialog__body" tabIndex={0}>
-        <RulesGuide model={model} idPrefix={idPrefix} />
+        <RulesGuide model={model} idPrefix={idPrefix} onReplayCoach={onReplayCoach} canReplayCoach={canReplayCoach} />
       </div>
     </dialog>
   );

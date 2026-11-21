@@ -4,7 +4,6 @@ import { deriveTurnResult, replayTurnResultHistory } from "../../../src/features
 import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame, targetSegmentIds, type RailwayNetwork }
   from "../../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
-import { autoRollPickupOutcome } from "../../../src/features/game/autoRoll";
 import type { ItemGameState, ItemTurnRecord } from "../../../src/types/network";
 import { FIXTURE_GAME_SEED, PRODUCT_HISTORY_GAME_SEED, PRODUCT_HISTORY_SCENARIO_TURNS } from "../fixtures/seeds";
 import { expect, type Page } from "@playwright/test";
@@ -110,14 +109,14 @@ export function replayLongestProductResult(network: RailwayNetwork, presentation
   return longest.state;
 }
 
-export interface AutoRollReplay {
+export interface ManualRollReplay {
   readonly before: ItemGameState;
   readonly first: ItemGameState;
   readonly second: ItemGameState;
 }
 
-/** R7: a restorable fixture state whose next two accepted turns never stop, wait or clear under auto-roll. */
-export function replayUninterruptedAutoRoll(network: RailwayNetwork): AutoRollReplay {
+/** R7: a restorable fixture state whose next two manual rolls need no item decision. */
+export function replayTwoManualRolls(network: RailwayNetwork): ManualRollReplay {
   const attempts: Array<Record<string, unknown>> = [];
   let before: ItemGameState = createItemGame(ITEM_GAME_CONFIG, FIXTURE_GAME_SEED, network);
   for (let index = 0; index < STEP12_MAX_REPLAY_TURNS && before.status === "playing"; index += 1) {
@@ -131,18 +130,16 @@ export function replayUninterruptedAutoRoll(network: RailwayNetwork): AutoRollRe
       restoredPending: before.pending?.kind ?? null,
       noAdjustment: ![before, firstResult.state].some((game) => game.inventory.some((item) => item.kind === "roll-adjust")),
       secondPlayed: secondResult !== null,
-      pickupOutcomes: [autoRollPickupOutcome(firstResult.record), autoRollPickupOutcome(secondResult?.record)],
       pending: [firstResult.state.pending?.kind ?? null, secondResult?.state.pending?.kind ?? null],
       status: [firstResult.state.status, secondResult?.state.status ?? null],
     };
     const valid: boolean = predicates.restoredRecord && predicates.restoredPending === null && predicates.noAdjustment
-      && predicates.pickupOutcomes.every((outcome) => outcome === "none")
       && predicates.pending.every((kind) => kind === null) && predicates.status.every((status) => status === "playing");
     if (valid && secondResult) return { before, first: firstResult.state, second: secondResult.state };
     attempts.push(predicates);
     before = acceptOfflineTurn(before, network);
   }
-  throw new Error(`R7: no uninterrupted two-turn auto-roll state within ${STEP12_MAX_REPLAY_TURNS} turns: ${JSON.stringify(attempts)}`);
+  throw new Error(`R7: no two-turn manual-roll state within ${STEP12_MAX_REPLAY_TURNS} turns: ${JSON.stringify(attempts)}`);
 }
 
 const R4_MAX_SEEDS = 256;

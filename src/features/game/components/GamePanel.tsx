@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import type { ItemKind, ItemRollAdjustment, ItemTurnCommand, LineMetadata, PreRollItemCommand } from "../../../types/network";
 import { nextStationId, targetSegmentIds, type RailwayNetwork } from "../engine";
 import type { PresentationLevel } from "../gameSettings";
@@ -32,16 +32,24 @@ import type { TurnMomentTargets } from "./TurnMomentHost";
 import { ItemUseDialog } from "./ItemUseDialog";
 import { RollAdjustment } from "./RollAdjustment";
 import { ItemEventNotice } from "./ItemEventNotice";
+import { FirstPlayHint } from "./FirstPlayHint";
 import { DiscardChoice } from "./DiscardChoice";
 import { LOG_REVEAL_PADDING_PX, TurnLogDrawer } from "./TurnLogDrawer";
 import { useGameShortcuts } from "../useGameShortcuts";
-import { useAutoRoll } from "../useAutoRoll";
 import { PhraseText } from "./PhraseText";
 import { TurnResultCard, TurnResultPill } from "./TurnResultCard";
 import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
 import { useTurnResultPillLayout } from "../useTurnResultPillLayout";
 import { TARGET_PROXIMITY_COPY } from "../targetProximity";
-import { selectAnnouncement, type NoticeAnnouncementState } from "../saveNotice";
+import {
+  isNoticeAnnouncementOwned,
+  noticeAnnouncementIdentity,
+  selectAnnouncement,
+  type NoticeAnnouncementCopy,
+  type NoticeAnnouncementState,
+  type SelectedNoticeAnnouncement,
+} from "../saveNotice";
+import type { CoachStep, GuideAcknowledgement, GuideAnnouncement, GuideCandidate } from "../firstPlayGuide";
 
 const UPCOMING_STATION_COUNT = 5;
 const LOTTERY_RULES_LABEL = "抽選のルールを詳しく見る";
@@ -65,13 +73,27 @@ export interface GamePanelProps {
   presentationLevel: PresentationLevel;
   reducedMotion: boolean;
   confirmationOpen?: boolean;
-  /** The in-game rules dialog is open: suspends auto-roll and shortcuts and defers the decision modals. */
+  /** The in-game rules dialog is open: suspends shortcuts and defers the decision modals. */
   rulesOpen?: boolean;
+  /** The first-play coach is a render-time open surface and blocks shortcuts before showModal effects run. */
+  coachOpen?: boolean;
+  readonly coachTargets?: Partial<Record<CoachStep, RefObject<HTMLElement | null>>>;
   onOpenRules?: PanelOpenRules;
-  /** Key requested by ToastHost after the notice is actually displayed. */
-  noticeAnnouncementKey?: string | null;
-  /** Acknowledges a notice after the existing status region commits it. */
-  onNoticeAnnounced?: (key: string) => void;
+  /** The #68 notice after ToastHost actually displays it; key and selected copy stay paired. */
+  firstTurnNoticeAnnouncement?: NoticeAnnouncementCopy | null;
+  /** A hint status item, paired with its display-generation acknowledgement. */
+  hintAnnouncement?: GuideAnnouncement | null;
+  /** The currently visible guide card; kept outside the HUD and ToastHost. */
+  hintCard?: { readonly candidate: GuideCandidate; readonly acknowledgement: GuideAcknowledgement } | null;
+  /** The retained candidate, including when its card is obscured. */
+  hintCandidateKey?: string | null;
+  onHintShown?: (acknowledgement: GuideAcknowledgement) => void;
+  onHintClose?: () => void;
+  onHintDisable?: () => void;
+  /** Called after the existing status region commits the #68 notice. */
+  onNoticeAnnounced?: (announcement: SelectedNoticeAnnouncement) => void;
+  /** Called after the existing status region commits the current hint. */
+  onHintStatusAcknowledged?: (acknowledgement: GuideAcknowledgement) => void;
   onRoll: () => void;
   onSkip: () => void;
   onToggleFollow: () => void;
@@ -153,6 +175,21 @@ function phoneMediaQuery(): MediaQueryList | null {
     : null;
 }
 
+function isDocumentVisible(): boolean {
+  return typeof document === "undefined" || document.visibilityState === "visible";
+}
+
+function useDocumentVisibility(): boolean {
+  const [visible, setVisible] = useState(isDocumentVisible);
+  useEffect(() => {
+    const updateVisibility = (): void => setVisible(isDocumentVisible());
+    document.addEventListener("visibilitychange", updateVisibility);
+    updateVisibility();
+    return () => document.removeEventListener("visibilitychange", updateVisibility);
+  }, []);
+  return visible;
+}
+
 function getPhoneLayoutSnapshot(): boolean {
   return phoneMediaQuery()?.matches ?? false;
 }
@@ -187,6 +224,28 @@ function usePhoneLayout(onBreakpointChange: (phone: boolean) => void): boolean {
 /** Memoised: re-renders when a hop finishes or a control changes, not on animation frames. */
 export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const { session, network, saveStatus, follow, reducedMotion, lines, turnDisplay } = props;
+  const documentVisible = useDocumentVisibility();
+  const rollRequestKey = `${session.sessionId}:${session.game.turn}:${session.item?.decisionRevision ?? 0}`;
+  const latestRollRequestRef = useRef({
+    key: rollRequestKey,
+    canRoll: turnDisplay.canRoll,
+    coachOpen: props.coachOpen ?? false,
+    onRoll: props.onRoll,
+  });
+  latestRollRequestRef.current = {
+    key: rollRequestKey,
+    canRoll: turnDisplay.canRoll,
+    coachOpen: props.coachOpen ?? false,
+    onRoll: props.onRoll,
+  };
+  const consumedReadyKeyRef = useRef<string | null>(null);
+  const requestRoll = useCallback(() => {
+    const latest = latestRollRequestRef.current;
+    if (latest.coachOpen || !latest.canRoll || consumedReadyKeyRef.current === latest.key) return false;
+    consumedReadyKeyRef.current = latest.key;
+    latest.onRoll();
+    return true;
+  }, []);
   const presentation = useMemo(
     () => props.presentation ?? createPresentationResolver(network),
     [props.presentation, network],
@@ -354,55 +413,68 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
     else setActiveSurface((current) => current === "menu" ? null : current);
   }, []);
   const itemDialogOpen = Boolean(itemView && itemDialog);
-  // Render-time state, so the suspension holds before the dialog's own layout effect opens it.
   const rulesOpen = props.rulesOpen ?? false;
-  const autoRoll = useAutoRoll({
-    session,
-    turnDisplay,
-    surfaceOpen: activeSurface !== null,
-    itemDialogOpen,
-    confirmationOpen: (props.confirmationOpen ?? false) || rulesOpen,
-    onRoll: props.onRoll,
-  });
   const [noticeAnnouncementState, setNoticeAnnouncementState] = useState<NoticeAnnouncementState>({
-    pendingKey: null,
-    announcedKey: null,
+    current: null,
     coveredOrdinary: null,
+    deliveredIds: [],
   });
   const [previousOrdinary, setPreviousOrdinary] = useState<string | null>(null);
-  const committedNoticeKeyRef = useRef<string | null>(null);
-  const requestedNoticeKey = props.noticeAnnouncementKey ?? noticeAnnouncementState.pendingKey;
-  const announcementState = requestedNoticeKey !== null && requestedNoticeKey !== noticeAnnouncementState.pendingKey
-    ? { pendingKey: requestedNoticeKey, announcedKey: null, coveredOrdinary: null }
-    : { ...noticeAnnouncementState, pendingKey: requestedNoticeKey };
-  const decisionOwned = turnDisplay.decision !== null || rulesOpen || (props.confirmationOpen ?? false);
+  const committedAnnouncementIdsRef = useRef<Set<string>>(new Set());
+  const [detailsFocusKey, setDetailsFocusKey] = useState<string | null>(null);
+  const restoreNextHintFocusRef = useRef(false);
+  const firstTurnNotice = props.firstTurnNoticeAnnouncement ?? null;
+  const hintAnnouncement = props.hintAnnouncement ?? null;
+  const decisionOwned = isNoticeAnnouncementOwned({
+    engineDecisionOpen: turnDisplay.decision !== null,
+    rulesOpen,
+    confirmationOpen: props.confirmationOpen ?? false,
+    itemDialogOpen,
+    coachOpen: props.coachOpen ?? false,
+  });
   const announcement = selectAnnouncement({
-    state: announcementState,
-    ordinaryAnnouncement: autoRoll.announcement,
+    state: noticeAnnouncementState,
+    ordinaryAnnouncement: turnDisplay.announcement,
     previousOrdinary,
+    firstTurnNotice,
+    hintAnnouncement: documentVisible ? hintAnnouncement : null,
     decisionOwned,
   });
+  const selectedAnnouncement = announcement.announcement;
+  const selectedAnnouncementId = selectedAnnouncement === null ? null : noticeAnnouncementIdentity(selectedAnnouncement);
   useEffect(() => {
-    setPreviousOrdinary(autoRoll.announcement);
-    const key = announcementState.pendingKey;
-    if (announcement.announcesNotice && key !== null && committedNoticeKeyRef.current !== key) {
-      committedNoticeKeyRef.current = key;
-      setNoticeAnnouncementState({ pendingKey: key, announcedKey: key, coveredOrdinary: autoRoll.announcement });
-      props.onNoticeAnnounced?.(key);
+    setPreviousOrdinary(turnDisplay.announcement);
+    if (announcement.announcesNotice && selectedAnnouncement !== null && selectedAnnouncementId !== null
+      && !committedAnnouncementIdsRef.current.has(selectedAnnouncementId)
+      && (selectedAnnouncement.source !== "hint" || isDocumentVisible())) {
+      committedAnnouncementIdsRef.current.add(selectedAnnouncementId);
+      setNoticeAnnouncementState((current) => ({
+        current: selectedAnnouncement,
+        coveredOrdinary: turnDisplay.announcement,
+        deliveredIds: current.deliveredIds.includes(selectedAnnouncementId)
+          ? current.deliveredIds : [...current.deliveredIds, selectedAnnouncementId],
+      }));
+      if (selectedAnnouncement.source === "first-turn") props.onNoticeAnnounced?.(selectedAnnouncement);
+      else props.onHintStatusAcknowledged?.(selectedAnnouncement.acknowledgement);
       return;
     }
-    if (noticeAnnouncementState.announcedKey !== null
-      && (decisionOwned || autoRoll.announcement !== noticeAnnouncementState.coveredOrdinary)) {
-      setNoticeAnnouncementState({ pendingKey: null, announcedKey: null, coveredOrdinary: null });
+    const sameCurrent = noticeAnnouncementState.current !== null
+      && selectedAnnouncementId === noticeAnnouncementIdentity(noticeAnnouncementState.current);
+    if (noticeAnnouncementState.current !== null
+      && (decisionOwned || turnDisplay.announcement !== noticeAnnouncementState.coveredOrdinary || !sameCurrent)) {
+      setNoticeAnnouncementState((current) => current.current === noticeAnnouncementState.current
+        ? { ...current, current: null, coveredOrdinary: null }
+        : current);
     }
-  }, [announcement.announcesNotice, announcementState.pendingKey, autoRoll.announcement,
-    decisionOwned, noticeAnnouncementState.announcedKey, noticeAnnouncementState.coveredOrdinary, props.onNoticeAnnounced]);
+  }, [announcement.announcesNotice, selectedAnnouncement, selectedAnnouncementId, turnDisplay.announcement,
+    decisionOwned, noticeAnnouncementState.current, noticeAnnouncementState.coveredOrdinary,
+    props.onNoticeAnnounced, props.onHintStatusAcknowledged]);
   useGameShortcuts({
     canRoll: turnDisplay.canRoll,
     canSkip: turnDisplay.canSkip,
-    surfaceOpen: activeSurface !== null,
+    surfaceOpen: activeSurface !== null || (props.coachOpen ?? false),
     itemDialogOpen: itemDialogOpen || rulesOpen,
-  }, { onRoll: autoRoll.requestRoll, onSkip: props.onSkip });
+  }, { onRoll: requestRoll, onSkip: props.onSkip });
   useEffect(() => {
     if (!props.onItemDialogOpenChange) return;
     props.onItemDialogOpenChange(itemDialogOpen);
@@ -421,6 +493,35 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
   const openRules = useCallback<OpenRules>((sectionId, opener) => {
     onOpenRules?.(sectionId, opener, getRulesFallbackFocus);
   }, [onOpenRules, getRulesFallbackFocus]);
+  const openHintRules = useCallback((sectionId: RulesSectionId, opener: HTMLElement, candidateKey: string): void => {
+    setDetailsFocusKey(candidateKey);
+    onOpenRules?.(sectionId, opener, () => null);
+  }, [onOpenRules]);
+  const restoreHintActionFocus = useCallback((): void => {
+    restoreNextHintFocusRef.current = true;
+  }, []);
+  const completeHintDetailsFocus = useCallback((candidateKey: string): void => {
+    setDetailsFocusKey((current) => current === candidateKey ? null : current);
+  }, []);
+  const restoreHintDetails = !decisionOwned && detailsFocusKey !== null
+    && props.hintCard?.candidate.key === detailsFocusKey;
+  useLayoutEffect(() => {
+    if (decisionOwned) return;
+    if (detailsFocusKey !== null && props.hintCandidateKey !== detailsFocusKey) {
+      setDetailsFocusKey(null);
+      getRulesFallbackFocus()?.focus({ preventScroll: true });
+    }
+
+    if (!restoreNextHintFocusRef.current) return;
+    const currentHint = props.hintCard ?? null;
+    const root = panelRef.current?.parentElement?.querySelector<HTMLElement>(".first-play-hint");
+    const closeButton = currentHint !== null && root?.getAttribute("data-guide-candidate-key") === currentHint.candidate.key
+      ? root.querySelector<HTMLElement>("[data-guide-action=close]") : null;
+    const fallback = rollButtonRef.current ?? headingRef.current;
+    const focusTarget = isFocusRestorable(closeButton) ? closeButton : fallback;
+    restoreNextHintFocusRef.current = false;
+    if (isFocusRestorable(focusTarget, { allowAriaDisabled: true })) focusTarget.focus({ preventScroll: true });
+  }, [props.hintCard?.candidate.key, props.hintCandidateKey, decisionOwned, detailsFocusKey, getRulesFallbackFocus]);
   const draftItem = itemView?.draft.items[0];
   const presentedDecision = turnDisplay.decision;
   // Always read the latest presentation lock, so a callback captured earlier is a no-op once a lock starts.
@@ -636,17 +737,17 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         saveStatus={saveStatus}
         saveStatusMessage={saveStatusMessage(saveStatus)}
         canRoll={canRoll}
-        autoRollEnabled={autoRoll.enabled}
         animating={animating}
         draftSelected={Boolean(draftItem)}
         rollButtonRef={rollButtonRef}
-        onRoll={autoRoll.requestRoll}
+        onRoll={requestRoll}
         onSkip={props.onSkip}
-        onToggleAutoRoll={autoRoll.toggle}
         effects={effectModels}
         canSkip={turnDisplay.canSkip}
         rideTargetRef={props.turnMomentTargets?.ride}
         directionTargetRef={props.turnMomentTargets?.direction}
+        coachDiceTargetRef={props.coachTargets?.dice}
+        coachProgressTargetRef={props.coachTargets?.progress}
       />
       <div className="game-panel__disclosures">
         {isPhone ? <PhoneGameMenu expanded={activeSurface === "phone-menu"} section={phoneSection} collection={turnDisplay.collection}
@@ -682,6 +783,19 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
       />}
     </main>
+    {props.hintCard && (
+      <FirstPlayHint
+        key={props.hintCard.candidate.key}
+        candidate={props.hintCard.candidate}
+        acknowledgement={props.hintCard.acknowledgement}
+        onShown={props.onHintShown}
+        onClose={props.onHintClose ?? (() => undefined)}
+        onDisable={props.onHintDisable ?? (() => undefined)}
+        onDetails={(sectionId, opener) => openHintRules(sectionId, opener, props.hintCard!.candidate.key)}
+        onRestoreFocus={restoreHintActionFocus}
+        onDetailsFocusRestored={restoreHintDetails ? completeHintDetailsFocus : undefined}
+      />
+    )}
     <TurnResultPill model={turnDisplay.turnResult} active={pillActive} position={pillPosition}
       logRegionId={logRegionId} expanded={phoneLogOpen} onActivate={activateLogPill} />
     </>

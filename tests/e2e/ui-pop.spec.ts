@@ -314,20 +314,23 @@ test("keyboard opening, Escape focus return, and light dismiss keep the slot too
   await expect(opener).not.toBeFocused();
 });
 
-test("route ticket card opens the use dialog and cancellation restores its opener", async ({ page, railwayBundle }) => {
-  await scenario(page, "route", railwayBundle);
-  const slot = inventoryItem(page, "路線指定券");
-  const opener = slot.getByRole("button");
-  await opener.click();
-  const card = gamePanel(page).getByRole("dialog", { name: "路線指定券", exact: true });
-  await card.getByRole("button", { name: "使う" }).click();
-  await expect(card).toBeHidden();
-  const useDialog = gamePanel(page).getByRole("dialog", { name: "乗る路線を選ぶ" });
-  await expect(useDialog).toBeVisible();
-  await useDialog.getByRole("button", { name: "キャンセル" }).click();
-  await expect(useDialog).toBeHidden();
-  await expect(opener).toBeFocused();
-});
+for (const closeMethod of ["cancel button", "Escape"] as const) {
+  test(`route ticket use dialog closes with ${closeMethod} and restores its opener`, async ({ page, railwayBundle }) => {
+    await scenario(page, "route", railwayBundle);
+    const slot = inventoryItem(page, "路線指定券");
+    const opener = slot.getByRole("button");
+    await opener.click();
+    const card = gamePanel(page).getByRole("dialog", { name: "路線指定券", exact: true });
+    await card.getByRole("button", { name: "使う" }).click();
+    await expect(card).toBeHidden();
+    const useDialog = gamePanel(page).getByRole("dialog", { name: "乗る路線を選ぶ" });
+    await expect(useDialog).toBeVisible();
+    if (closeMethod === "cancel button") await useDialog.getByRole("button", { name: "キャンセル" }).click();
+    else await page.keyboard.press("Escape");
+    await expect(useDialog).toBeHidden();
+    await expect(opener).toBeFocused();
+  });
+}
 
 test("direction ticket card opens its use dialog and cancellation restores its opener", async ({ page, railwayBundle }) => {
   await scenario(page, "direction", railwayBundle);
@@ -391,7 +394,7 @@ test.describe("S25 failed-save toast expiry", () => {
     const failureToast = page.locator(".toast-host__toast", { hasText: "保存に失敗しました" });
     const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
     const discard = page.getByRole("dialog", { name: "捨てるアイテムを選ぶ" });
-    const skip = gamePanel(page).getByRole("button", { name: "スキップ", exact: true });
+    const skip = gamePanel(page).getByRole("button", { name: "演出をスキップ", exact: true });
 
     await expect.poll(async () => await adjustment.isVisible() || await discard.isVisible()
       || await ordinaryToast.isVisible() || await skip.isEnabled()).toBe(true);
@@ -814,7 +817,7 @@ test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
       const visited: Array<{ name: string; top: number; left: number }> = [];
       const effectsScrollable = await panel.locator(".effect-chips").evaluate((element) => element.scrollWidth > element.clientWidth);
       const expectedSlots = await panel.locator(".item-slot:not(.item-slot--empty) h3").allTextContents();
-      const expected = ["おまかせ: OFF", ...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), ...(viewport.width <= PHONE_MAX_WIDTH_PX ? ["メニュー"] : ["ログ", "メニュー"])];
+      const expected = [...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), ...(viewport.width <= PHONE_MAX_WIDTH_PX ? ["メニュー"] : ["ログ", "メニュー"])];
       for (let index = 0; index < expected.length; index += 1) {
         await page.keyboard.press("Tab");
         const active = await page.evaluate(() => {

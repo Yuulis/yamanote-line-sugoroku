@@ -5,6 +5,7 @@ import {
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import {
   FIRST_TURN_NOTICE_TEXT, isFirstTurnNoticeEligible, selectAnnouncement,
+  isNoticeAnnouncementOwned, noticeAnnouncementIdentity,
   type NoticeAnnouncementInput, type NoticeAnnouncementState, type SaveAttempt,
 } from "../../src/features/game/saveNotice";
 import type { StorageLike } from "../../src/features/game/store/persistence";
@@ -147,49 +148,163 @@ describe("first-turn notice storage", () => {
 describe("notice announcement arbitration", () => {
   const SUMMARY = "3ターン目。駅Aに着きました。";
   const NEXT_SUMMARY = "4ターン目。駅Bに着きました。";
-  const idle: NoticeAnnouncementState = { pendingKey: null, announcedKey: null, coveredOrdinary: null };
-  const requested: NoticeAnnouncementState = { ...idle, pendingKey: "notice-1" };
-  const announced = (covered: string): NoticeAnnouncementState => (
-    { pendingKey: "notice-1", announcedKey: "notice-1", coveredOrdinary: covered });
-  const notice = { text: FIRST_TURN_NOTICE_TEXT, announcesNotice: true };
-  const held = { text: FIRST_TURN_NOTICE_TEXT, announcesNotice: false };
+  const firstTurnNotice = { key: "notice-1", text: FIRST_TURN_NOTICE_TEXT };
+  const hintAcknowledgement = { sessionId: SESSION, candidateKey: "hint-1", displayGeneration: 1 };
+  const hintAnnouncement = {
+    key: "guide-hint:1:hint-1:1", text: "抽選のヒントです。", acknowledgement: hintAcknowledgement,
+  };
+  const idle: NoticeAnnouncementState = { current: null, coveredOrdinary: null, deliveredIds: [] };
   function select(overrides: Partial<NoticeAnnouncementInput> = {}): ReturnType<typeof selectAnnouncement> {
     return selectAnnouncement({
-      state: requested, ordinaryAnnouncement: "", previousOrdinary: "", decisionOwned: false, ...overrides,
+      state: idle, ordinaryAnnouncement: "", previousOrdinary: "", firstTurnNotice, hintAnnouncement,
+      decisionOwned: false, ...overrides,
     });
   }
 
   it("standing turn summary does not block the notice", () => {
-    expect(select({ ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY })).toEqual(notice);
-    expect(select()).toEqual(notice);
-    expect(select({ state: idle, ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY }))
-      .toEqual({ text: SUMMARY, announcesNotice: false });
+    const selected = select({ ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY });
+    expect(selected.text).toBe(FIRST_TURN_NOTICE_TEXT);
+    expect(selected.announcement).toMatchObject({ key: "notice-1", text: FIRST_TURN_NOTICE_TEXT, source: "first-turn" });
+    expect(selected.announcesNotice).toBe(true);
+    expect(select({ ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY, hintAnnouncement: null }).announcement)
+      .toMatchObject({ key: "notice-1", text: FIRST_TURN_NOTICE_TEXT });
+    expect(select({ state: idle, ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY,
+      firstTurnNotice: null, hintAnnouncement: null }))
+      .toMatchObject({ text: SUMMARY, announcement: null, announcesNotice: false });
+  });
+
+  it("selects #68 when no ordinary text follows and no hint is present", () => {
+    expect(select({ firstTurnNotice, hintAnnouncement: null, ordinaryAnnouncement: "", previousOrdinary: "" }))
+      .toMatchObject({
+        text: FIRST_TURN_NOTICE_TEXT,
+        announcement: { key: firstTurnNotice.key, text: FIRST_TURN_NOTICE_TEXT, source: "first-turn" },
+        announcesNotice: true,
+      });
   });
 
   it("fresh ordinary text defers the notice", () => {
     expect(select({ ordinaryAnnouncement: SUMMARY, previousOrdinary: "" }))
-      .toEqual({ text: SUMMARY, announcesNotice: false });
+      .toMatchObject({ text: SUMMARY, announcement: null, announcesNotice: false });
     expect(select({ ordinaryAnnouncement: "", previousOrdinary: SUMMARY }))
-      .toEqual({ text: "", announcesNotice: false });
+      .toMatchObject({ text: "", announcement: null, announcesNotice: false });
     expect(select({ ordinaryAnnouncement: SUMMARY, previousOrdinary: null }))
-      .toEqual({ text: SUMMARY, announcesNotice: false });
+      .toMatchObject({ text: SUMMARY, announcement: null, announcesNotice: false });
   });
 
-  it("acknowledged notice holds until the ordinary text changes", () => {
-    const state = announced(SUMMARY);
+  it("hands off from #68 to the current hint without mixing either key or copy", () => {
+    const firstTurn = select({ ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY });
+    if (!firstTurn.announcement) throw new Error("Expected the #68 announcement");
+    const stateAfterFirstTurn: NoticeAnnouncementState = {
+      current: firstTurn.announcement,
+      coveredOrdinary: SUMMARY,
+      deliveredIds: [noticeAnnouncementIdentity(firstTurn.announcement)],
+    };
 
-    expect(select({ state, ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY })).toEqual(held);
-    expect(select({ state, ordinaryAnnouncement: NEXT_SUMMARY, previousOrdinary: SUMMARY }))
-      .toEqual({ text: NEXT_SUMMARY, announcesNotice: false });
-    expect(select({ state, ordinaryAnnouncement: NEXT_SUMMARY, previousOrdinary: NEXT_SUMMARY }))
-      .toEqual({ text: NEXT_SUMMARY, announcesNotice: false });
+    const handover = select({ state: stateAfterFirstTurn, ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY });
+    expect(handover).toMatchObject({
+      text: hintAnnouncement.text,
+      announcement: {
+        key: hintAnnouncement.key,
+        text: hintAnnouncement.text,
+        source: "hint",
+        acknowledgement: hintAcknowledgement,
+      },
+      announcesNotice: true,
+    });
+
+    const stateAfterHint: NoticeAnnouncementState = {
+      current: handover.announcement,
+      coveredOrdinary: SUMMARY,
+      deliveredIds: [noticeAnnouncementIdentity(firstTurn.announcement),
+        ...(handover.announcement ? [noticeAnnouncementIdentity(handover.announcement)] : [])],
+    };
+    expect(select({ state: stateAfterHint, ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY }))
+      .toMatchObject({ text: hintAnnouncement.text, announcement: { key: hintAnnouncement.key }, announcesNotice: false });
+    expect(select({ state: stateAfterHint, ordinaryAnnouncement: NEXT_SUMMARY, previousOrdinary: SUMMARY }))
+      .toMatchObject({ text: NEXT_SUMMARY, announcement: null, announcesNotice: false });
   });
 
-  it("decision ownership defers notice announcement", () => {
-    expect(select({ decisionOwned: true })).toEqual({ text: "", announcesNotice: false });
-    expect(select({ decisionOwned: true, ordinaryAnnouncement: "選択中です。", previousOrdinary: "選択中です。" }))
-      .toEqual({ text: "選択中です。", announcesNotice: false });
-    expect(select({ state: announced(""), decisionOwned: true })).toEqual({ text: "", announcesNotice: false });
-    expect(select({ decisionOwned: false })).toEqual(notice);
+  it("holds acknowledged #68 only until ordinary text changes without a hint", () => {
+    const firstTurn = select({ firstTurnNotice, hintAnnouncement: null,
+      ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY });
+    if (!firstTurn.announcement) throw new Error("Expected the #68 announcement");
+    const state: NoticeAnnouncementState = {
+      current: firstTurn.announcement,
+      coveredOrdinary: SUMMARY,
+      deliveredIds: [noticeAnnouncementIdentity(firstTurn.announcement)],
+    };
+
+    expect(select({ state, firstTurnNotice, hintAnnouncement: null,
+      ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY }))
+      .toMatchObject({ text: FIRST_TURN_NOTICE_TEXT, announcement: { key: firstTurnNotice.key }, announcesNotice: false });
+    expect(select({ state, firstTurnNotice, hintAnnouncement: null,
+      ordinaryAnnouncement: NEXT_SUMMARY, previousOrdinary: SUMMARY }))
+      .toMatchObject({ text: NEXT_SUMMARY, announcement: null, announcesNotice: false });
+    expect(select({ state, firstTurnNotice, hintAnnouncement: null,
+      ordinaryAnnouncement: NEXT_SUMMARY, previousOrdinary: NEXT_SUMMARY }))
+      .toMatchObject({ text: NEXT_SUMMARY, announcement: null, announcesNotice: false });
+  });
+
+  it("replaces a stale display generation with the current hint acknowledgement", () => {
+    const delivered = hintAnnouncement;
+    const nextGeneration = {
+      key: "guide-hint:1:hint-1:2",
+      text: "抽選のヒントを再表示します。",
+      acknowledgement: { ...hintAcknowledgement, displayGeneration: 2 },
+    };
+    const state: NoticeAnnouncementState = {
+      current: { ...delivered, source: "hint" },
+      coveredOrdinary: SUMMARY,
+      deliveredIds: [noticeAnnouncementIdentity({ ...delivered, source: "hint" })],
+    };
+    const current = select({ state, firstTurnNotice: null, hintAnnouncement: nextGeneration,
+      ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY });
+    const selected = current.announcement;
+    expect(selected).toMatchObject({ key: nextGeneration.key, source: "hint", acknowledgement: nextGeneration.acknowledgement });
+    if (!selected || selected.source !== "hint") throw new Error("Expected a selected hint announcement");
+    expect(selected.acknowledgement.displayGeneration).not.toBe(delivered.acknowledgement.displayGeneration);
+    expect(current.announcesNotice).toBe(true);
+  });
+
+  it.each([
+    ["engine decision", { engineDecisionOpen: true }],
+    ["rules", { rulesOpen: true }],
+    ["confirmation", { confirmationOpen: true }],
+    ["local item dialog", { itemDialogOpen: true }],
+    ["coach", { coachOpen: true }],
+  ] as const)("defers notice announcement while the %s owns the panel", (_label, owned) => {
+    const decisionOwned = isNoticeAnnouncementOwned({
+      engineDecisionOpen: false, rulesOpen: false, confirmationOpen: false, itemDialogOpen: false, coachOpen: false,
+      ...owned,
+    });
+    expect(decisionOwned).toBe(true);
+    expect(select({ decisionOwned, ordinaryAnnouncement: SUMMARY, previousOrdinary: SUMMARY }))
+      .toMatchObject({ text: SUMMARY, announcement: null, announcesNotice: false });
+  });
+
+  it("keeps empty ordinary text while decision ownership suppresses pending or acknowledged #68", () => {
+    const currentFirstTurnNotice = { ...firstTurnNotice, source: "first-turn" as const };
+    const acknowledgedWithEmptyOrdinary: NoticeAnnouncementState = {
+      current: currentFirstTurnNotice,
+      coveredOrdinary: "",
+      deliveredIds: [noticeAnnouncementIdentity(currentFirstTurnNotice)],
+    };
+    const expected = { text: "", announcement: null, announcesNotice: false };
+
+    expect(select({
+      firstTurnNotice,
+      hintAnnouncement: null,
+      ordinaryAnnouncement: "",
+      previousOrdinary: "",
+      decisionOwned: true,
+    })).toEqual(expected);
+    expect(select({
+      state: acknowledgedWithEmptyOrdinary,
+      firstTurnNotice,
+      hintAnnouncement: null,
+      ordinaryAnnouncement: "",
+      previousOrdinary: "",
+      decisionOwned: true,
+    })).toEqual(expected);
   });
 });

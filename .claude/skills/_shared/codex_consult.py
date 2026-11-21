@@ -74,7 +74,7 @@ from orchestra_role import ROLE_ENV, ROLE_EXECUTOR, role_refusal
 
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
-DEFAULT_MODEL = "gpt-6.1-sol"
+DEFAULT_MODEL = "gpt-6.2-sol"
 DEFAULT_TIMEOUT = 600
 SANDBOX_CHOICES = ["read-only", "workspace-write", "danger-full-access"]
 # The wrapper's default is the project's default: `.codex/config.toml` sets
@@ -359,7 +359,7 @@ def main() -> int:  # noqa: C901 — single-function CLI entry point
     parser.add_argument(
         "--model",
         default=None,
-        help="Defaults to $CODEX_MODEL, else gpt-6.1-sol",
+        help="Defaults to $CODEX_MODEL, else gpt-6.2-sol",
     )
     parser.add_argument(
         "--timeout",

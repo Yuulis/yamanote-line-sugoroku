@@ -12,6 +12,7 @@ export interface UseFirstTurnNoticeOptions {
   readonly decisionOpen: boolean;
   readonly confirmOpen: boolean;
   readonly rulesOpen: boolean;
+  readonly coachOpen?: boolean;
 }
 
 export interface UseFirstTurnNoticeResult {
@@ -47,6 +48,7 @@ export function useFirstTurnNotice({
   decisionOpen,
   confirmOpen,
   rulesOpen,
+  coachOpen = false,
 }: UseFirstTurnNoticeOptions): UseFirstTurnNoticeResult {
   const [initiallyDelivered] = useState(() => readFirstTurnNotice(storage));
   const delivered = useRef(initiallyDelivered);
@@ -66,7 +68,7 @@ export function useFirstTurnNotice({
   }, [saveAttempt, currentSessionId]);
 
   const currentAttemptEligible = isFirstTurnNoticeEligible(saveAttempt, currentSessionId, delivered.current);
-  const ready = publicationReady && !decisionOpen && !confirmOpen && !rulesOpen;
+  const ready = publicationReady && !decisionOpen && !confirmOpen && !rulesOpen && !coachOpen;
   const notice = currentAttemptEligible && ready && pending !== null
     && pending.attemptId === saveAttempt?.id && pending.sessionId === currentSessionId
     ? pending.toast

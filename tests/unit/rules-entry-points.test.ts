@@ -6,7 +6,6 @@ import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
 import { serializeGame } from "../../src/features/game/engine";
-import { AUTO_ROLL_GAP_MS } from "../../src/features/game/autoRoll";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import type { ItemGameState } from "../../src/types/network";
 import { itemScenario } from "../e2e/fixtures/itemScenarios";
@@ -95,10 +94,6 @@ function dice(): HTMLButtonElement {
   return mounted!.container.querySelector<HTMLButtonElement>(".game-panel__roll")!;
 }
 
-function storedTurn(): number {
-  return (JSON.parse(localStorage.getItem(edition.saveKey)!) as ItemGameState).turn;
-}
-
 describe("in-game rules entry points", () => {
   it("menu rules action sits outside the five options", async () => {
     openApp(itemScenario("route", network));
@@ -132,43 +127,6 @@ describe("in-game rules entry points", () => {
     expect(document.activeElement).toBe(opener);
   });
 
-  it("auto-roll stays paused while rules are open", async () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    openApp(itemScenario("route", network));
-    const turn = storedTurn();
-    click("おまかせで進む");
-    act(() => vi.advanceTimersByTime(AUTO_ROLL_GAP_MS - 10));
-    // Keep the rules dialog closed in the DOM: only the render-time rulesOpen can pause auto-roll.
-    vi.spyOn(HTMLDialogElement.prototype, "showModal").mockImplementation(() => undefined);
-    openRulesFromMenu();
-    // Isolate the rules suspension from the menu's own surface pause.
-    click("メニュー");
-    expect(mounted!.container.querySelector("dialog[open]")).toBeNull();
-    expect(mounted!.container.querySelector("dialog.rules-dialog")).not.toBeNull();
-    act(() => vi.advanceTimersByTime(AUTO_ROLL_GAP_MS * 2));
-    expect(storedTurn()).toBe(turn);
-
-    await closeRules();
-    act(() => vi.advanceTimersByTime(AUTO_ROLL_GAP_MS - 1));
-    expect(storedTurn()).toBe(turn);
-    act(() => vi.advanceTimersByTime(1));
-    expect(storedTurn()).toBe(turn + 1);
-  });
-
-  it("auto-roll advances after the menu alone opens and closes", () => {
-    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    openApp(itemScenario("route", network));
-    vi.spyOn(HTMLDialogElement.prototype, "showModal").mockImplementation(() => undefined);
-    const turn = storedTurn();
-    click("おまかせで進む");
-    act(() => vi.advanceTimersByTime(AUTO_ROLL_GAP_MS - 10));
-    click("メニュー");
-    click("メニュー");
-    expect(mounted!.container.querySelector("dialog[open]")).toBeNull();
-    act(() => vi.advanceTimersByTime(AUTO_ROLL_GAP_MS * 2));
-    expect(storedTurn()).toBe(turn + 1);
-  });
-
   it("movement completing under rules keeps focus in the guide", async () => {
     openApp(itemScenario("route", network));
     click("サイコロを振る");
@@ -178,7 +136,7 @@ describe("in-game rules entry points", () => {
     expect(document.activeElement).toBe(title);
 
     // Ends the tumble and the movement together, as the running presentation would on its own.
-    click("スキップ");
+    click("演出をスキップ");
     expect(dice().getAttribute("aria-disabled")).toBe("false");
     expect(document.activeElement).toBe(title);
     await closeRules();
@@ -191,7 +149,7 @@ describe("in-game rules entry points", () => {
     openRulesFromMenu();
     const title = rulesDialog()!.querySelector("h1");
     // The tumble ends under the rules: the adjustment is presented but its modal waits.
-    click("スキップ");
+    click("演出をスキップ");
     expect(mounted!.container.querySelector(".item-adjustment")).toBeNull();
     expect(document.activeElement).toBe(title);
 

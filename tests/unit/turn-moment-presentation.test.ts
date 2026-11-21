@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  beginItemTurn, buildRailwayNetwork, createGame, createItemGame, finishItemTurn, playItemTurn, playTurn, rollDie, targetSegmentIds,
+  beginItemTurn, buildRailwayNetwork, createGame, createItemGame, finishItemTurn, playItemTurn, playTurn, resolveItemDiscard, rollDie, targetSegmentIds,
 } from "../../src/features/game/engine";
 import type { ItemGameState, ItemRollAdjustment } from "../../src/types/network";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
@@ -434,7 +434,7 @@ describe("S12 arrival and goal publication", () => {
     const moving = derive({ ...goal, phase: "animating" }, "waiting");
     expect(moving.phase).toBe("moving");
     // 77駅 is the rapid hop budget the HUD compact roll already shows during movement (the record moved 13 stations).
-    expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。スキップできます。");
+    expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。演出をスキップできます。");
     expect(moving.announcement).not.toMatch(/駅移動|使わず|到着|ゴール/);
     expect(moving.summaryTurn).toBeNull();
   });
@@ -511,7 +511,11 @@ describe("S14 lottery announcement boundaries", () => {
 
 describe("S15 pickup publication boundary", () => {
   it("publishes the landing ride before pickup while inventory, notice, toast and discard stay masked", () => {
-    const base = itemScenario("route", network);
+    let base = createItemGame(ITEM_GAME_CONFIG, "00000000000000000000000000000006", network);
+    while (base.turn < 4) {
+      base = playItemTurn(base, {}, network).state;
+      if (base.pending?.kind === "discard") base = resolveItemDiscard(base, base.pending.item.id).state;
+    }
     const committed = playItemTurn(base, {}, network).state;
     const origin = resumeSession(base, network, 95);
     const session = resumeSession(committed, network, 95);
@@ -522,24 +526,28 @@ describe("S15 pickup publication boundary", () => {
     const pickupEvent = session.lastMove?.itemRecord?.kind === "item-ride"
       ? session.lastMove.itemRecord.itemEvents.find((event) => event.type === "pickup-retained") : undefined;
     if (pickupEvent?.type !== "pickup-retained") throw new Error("Expected an engine-built retained pickup");
+    expect(session.lastMove?.landing?.serviceDrawRequired).toBe(true);
 
     const during = deriveTurnMomentDisplay({ session, itemView: liveView, network, presentation: resolver,
       progress: progressFor(session), attempt, revealStage: "pickup", restoredOrOmitted: false });
     expect(during.phase).toBe("pickup");
-    expect(during.ride).toEqual({ serviceId: "fixture-south", direction: -1 });
+    expect(during.ride).toEqual({ serviceId: session.game.currentServiceId, direction: session.game.direction });
+    expect(during.lotteryText).not.toBe("—");
+    expect(during.guideCandidates).toEqual([]);
     expect(during.itemView?.inventory.map((item) => item.id)).toEqual(originView.inventory.map((item) => item.id));
     expect(during.itemView?.inventory.map((item) => item.id)).not.toContain(pickupEvent.item.id);
     expect(during.decision).toBeNull();
     expect(during.showItemNotice).toBe(false);
     expect(during.toastInputs).toEqual([]);
-    expect(during.announcement).toBe("テスト南線のみ ／ エリア端のため折り返し（品川方面）");
+    expect(during.announcement).toContain("抽選");
 
     const published = deriveTurnMomentDisplay({ session, itemView: liveView, network, presentation: resolver,
       progress: progressFor(session), attempt, revealStage: "done", restoredOrOmitted: false });
     expect(published.itemView?.inventory.map((item) => item.id)).toContain(pickupEvent.item.id);
+    expect(published.guideCandidates.slice(0, 2).map((candidate) => candidate.copy.hintId)).toEqual(["lottery", "item"]);
     expect(published.showItemNotice).toBe(true);
-    expect(published.toastInputs.map((input) => input.text)).toEqual(["快速券を手に入れた！"]);
-    expect(published.announcement).toContain("快速券を拾いました");
+    expect(published.toastInputs).toHaveLength(1);
+    expect(published.announcement).toContain("を拾いました");
   });
 });
 
