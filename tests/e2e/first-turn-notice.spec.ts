@@ -26,7 +26,7 @@ import {
   titleScreen,
   writeSaveText,
 } from "./support/app";
-import { advanceTumble } from "./support/turnMoments";
+import { advanceTumble, awaitMovementRelease } from "./support/turnMoments";
 
 const FIRST_TURN_NOTICE_KEY = "yamanote-line-sugoroku:notice:auto-resume:v1";
 const FIRST_TURN_NOTICE_TEXT = "自動で保存しています。いつでも閉じて、続きから遊べます";
@@ -290,6 +290,9 @@ test.describe("combined notice delivery", () => {
     await expect(rules).toBeVisible();
 
     await advanceTumble(page);
+    // The movement requests its first frame only after the release renders; a
+    // clock advance before that frame is lost (#111, seen on WebKit CI).
+    await awaitMovementRelease(page);
     await page.clock.runFor(30_000);
     await expect(panelStat(page, "ターン数")).toHaveText("1");
     await expect(diceMoment(page)).toBeHidden();

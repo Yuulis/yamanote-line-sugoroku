@@ -42,12 +42,7 @@ jobs:
             echo "::error::Playwright image v${image_version}-noble does not match @playwright/test ${package_version}. Bump the image tag in the same PR as the Playwright package."
             exit 1
           fi
-      - name: Run issue #111 diagnostic variants
-        env:
-          DIAG_111: "1"
-        run: xvfb-run --auto-servernum npx playwright test tests/e2e/diag-111.spec.ts --project=desktop-webkit --repeat-each=30 --retries=0 --workers=2 --output=test-results/diag-111
       - name: Run issue #111 baseline test
-        if: always()
         run: xvfb-run --auto-servernum npx playwright test tests/e2e/first-turn-notice.spec.ts --grep "notice waits through rules" --project=desktop-webkit --repeat-each=30 --retries=0 --workers=2 --output=test-results/issue-111-baseline
       - name: Upload Playwright reports and diagnostic records
         if: always()
