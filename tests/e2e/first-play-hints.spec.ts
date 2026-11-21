@@ -684,6 +684,9 @@ test.describe("adjustment decision overlays a visible hint", () => {
     for (let turn = (await readSave(page))?.turn ?? 0; turn < 8; turn += 1) await rollOnce(page);
     expect((await readSave(page))?.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
 
+    // Drain queued toasts before freezing the clock: a toast that takes a slot after the freeze never
+    // finishes its reading time, so the hint it withholds would never return.
+    await expect(page.locator(".toast-host__toast:not(.toast-host__toast--sticky)")).toHaveCount(0, { timeout: 20_000 });
     await freezeClock(page);
     const card = hintCard(page);
     await expect(card).toBeVisible();
@@ -717,6 +720,9 @@ test.describe("adjustment decision overlays a visible hint", () => {
     const card = hintCard(page);
 
     for (let turn = (await readSave(page))?.turn ?? 0; turn < 8; turn += 1) await rollOnce(page);
+    // Back-to-back rolls leave milestone and delay toasts queued two at a time; the hint stays withheld
+    // until the last of them has been read (here up to 8 s), which can outlast the default expect timeout.
+    await expect(page.locator(".toast-host__toast:not(.toast-host__toast--sticky)")).toHaveCount(0, { timeout: 20_000 });
     await expect(card).toBeVisible();
     const saved = await readSave(page);
     expect(saved?.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
