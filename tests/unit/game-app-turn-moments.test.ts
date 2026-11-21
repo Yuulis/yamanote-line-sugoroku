@@ -366,6 +366,74 @@ describe("GameApp 30/30 milestone toast", () => {
   });
 });
 
+describe("Issue #96 milestone live-region publication", () => {
+  const CROSSING_MILESTONE = "20区間突破！あと10区間";
+  const distinctStatusTextsSince = (start: number): string[] => lotteryCommits.slice(start)
+    .filter((text, index, values) => index === 0 || text !== values[index - 1]);
+
+  // #96: flip to it() in Step 2
+  it.fails("does not repeat the milestone after Skip ends a crossing turn's arrival card", () => {
+    injection.level = "all";
+    openWithFrames(itemScenario("discard", network));
+    const start = lotteryCommits.length;
+    playToArrival();
+
+    const arrival = status();
+    expect(banner()).not.toBeNull();
+    expect(arrival).toContain(CROSSING_MILESTONE);
+    const landing = itemLastMove(storedGame().movementHistory.at(-1), network)?.landing;
+    expect(landing?.serviceDrawRequired || landing?.directionDrawRequired).toBe(false);
+    press(panelSkip());
+
+    const published = status();
+    const turnTexts = distinctStatusTextsSince(start);
+    expect(turnTexts.filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([arrival]);
+    expect(published).not.toContain(CROSSING_MILESTONE);
+  });
+
+  // #96: flip to it() in Step 2
+  it.fails("does not repeat a reduced-motion crossing milestone after choosing a discard item", () => {
+    motionPreference(true);
+    injection.level = "all";
+    openSaved(itemScenario("discard", network));
+    const start = lotteryCommits.length;
+
+    click("サイコロを振る");
+    if (adjustmentDialog()) press(continueButton());
+    expect(storedGame().pending?.kind).toBe("discard");
+    const published = status();
+    expect(published).toContain(CROSSING_MILESTONE);
+
+    click("このアイテムを捨てる");
+    const afterDiscard = status();
+    const turnTexts = distinctStatusTextsSince(start);
+    expect(turnTexts.filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([published]);
+    expect(afterDiscard).not.toContain(CROSSING_MILESTONE);
+  });
+
+  // #96: flip to it() in Step 2
+  it.fails("announces a crossing at publication when no arrival, segment flash or lottery is rendered", () => {
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, 31);
+    const result = resumeSession(playItemTurn(base, {}, network).state, network, 31);
+    const attempt: RollAttempt = { ...attemptFor(origin),
+      policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "important" }),
+      newlyCompletedTargetSegmentIds: [] };
+    injection.level = "important";
+    inject(origin);
+    render(propsFor());
+    const start = lotteryCommits.length;
+    inject(result);
+    render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+
+    const published = status();
+    expect(mounted!.container.querySelector(".arrival-banner")).toBeNull();
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].segmentFlash).toBeNull();
+    expect(mounted!.container.querySelector(".lottery-reveal")).toBeNull();
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([published]);
+  });
+});
+
 describe("GameApp publication lifecycle", () => {
   it.each([false, true])("keeps classic first movement silent and the previous summary during the next movement (reduced motion %s)", (reduced) => {
     vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
@@ -1602,6 +1670,24 @@ describe("S12 delayed goal presentation", () => {
   function mapInert(): boolean | undefined {
     return (railwayMapProps.mock.calls.at(-1)?.[0] as { inert?: boolean }).inert;
   }
+
+  it("announces the 30/30 goal once when Skip replaces its arrival card", () => {
+    openWithFrames(beforeGoal());
+    const start = lotteryCommits.length;
+    playToArrival();
+    const arrival = status();
+    expect(arrival).toBe("10ターン目：新橋に到着。踏破 30/30");
+    expect(arrival).not.toContain("ゴールに到着しました");
+
+    press(panelSkip());
+    render(propsFor());
+    const goalAnnouncement = mounted!.container.querySelector(".item-event-notice [role=status]")?.textContent;
+    expect(goalAnnouncement).toBeDefined();
+    const distinctTexts = [...lotteryCommits.slice(start), goalAnnouncement!]
+      .filter((text, index, values) => index === 0 || text !== values[index - 1]);
+    expect(goalAnnouncement).toContain("ゴールに到着しました");
+    expect(distinctTexts.filter((text) => text.includes("ゴールに到着しました"))).toEqual([goalAnnouncement]);
+  });
 
   it("shows the goal banner on the panel first; ClearScreen, its focus, map inertness and game_clear follow together", () => {
     openWithFrames(beforeGoal());
