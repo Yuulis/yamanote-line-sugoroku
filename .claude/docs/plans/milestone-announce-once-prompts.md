@@ -369,3 +369,127 @@ assertions must not be weaker. If `/tmp` is unwritable, set `TMPDIR` under
 
 Do not edit files. Output: Verdict (commit / fix first); Findings P1/P2/P3
 with file:line and failing scenario; Minimal fixes. Under ~60 lines.
+
+## S3 — card-less fallback (Codex Luna xhigh)
+
+Objective: on a turn that never passes the shared arrival-copy phases (no
+arrival card, no renderable segment flash, no lottery; e.g. 重要なときだけ or a
+speed without the card), announce the milestone sentence exactly once, at the
+first eligible published result, so the last S1 `it.fails` passes.
+
+Read first: plan `.claude/docs/plans/milestone-announce-once-plan.md` (Step 3,
+"Existing assertions affected" third bullet), handoff
+`.claude/docs/plans/milestone-announce-once-handoff.md` (S2 design as landed in
+commit `23cb438`), `.claude/docs/reviews/hud65-step5-fable.md` risk 3,
+`AGENTS.md` Guardrails, `.claude/rules/testing.md`.
+
+Current mechanism (landed in S2): `deriveTurnMomentDisplay`
+(`src/features/game/turnMomentPresentation.ts`) emits `milestoneCandidate`
+only in `ARRIVAL_COPY_PHASES` or at `published` when
+`arrivalUnpresented || attempt?.policy.showImportantMoments === false`.
+`GamePanel` composes it via `composeMilestoneAnnouncement`
+(`src/features/game/milestoneAnnouncement.ts`) and `GameApp` consumes keys
+after commit. Consumption already prevents repeats, so the fallback can be a
+widening of the candidate emission at `published`, not new state.
+
+Scope:
+- In: `src/features/game/turnMomentPresentation.ts` (candidate eligibility at
+  `published`), tests in `tests/unit/game-app-turn-moments.test.ts` (flip the
+  "announces a crossing at publication when no arrival, segment flash or
+  lottery is rendered" test from `it.fails` to `it`, drop its `#96` comment),
+  `tests/unit/progress-milestone-publication.test.ts`.
+- Out: toasts, progress flash, `GameApp.tsx`, `GamePanel.tsx`,
+  `milestoneAnnouncement.ts` (touch them only if strictly necessary, and
+  explain why), every other file.
+- Never weaken, skip or delete an assertion.
+
+Required behaviour:
+1. At `published`, an eligible fresh crossing (all existing conditions:
+   movement complete, publication boundary, `publicationTurn > (entryTurn ??
+   0)`, 30/30 rules) emits its candidate whenever the turn's result is
+   published, including presented card-less turns. Consumption (S2) keeps a
+   turn that already committed the sentence at arrival / flash / lottery from
+   repeating it.
+2. `progress-milestone-publication.test.ts` around line 126 currently expects
+   no candidate at `published` after a segment-flash turn in 重要なときだけ.
+   With (1) that pure expectation changes. Move the negative check to a
+   GameApp status-level test: segment flash commits the sentence, then the
+   published result status does not contain it (sentence occurs once in the
+   turn). In the pure test, assert the candidate now present with exact key
+   and text instead of deleting the line.
+3. Keep every other existing assertion as is. If another one breaks, stop
+   and report it rather than editing it.
+
+Acceptance checks (run all, report tails; if `/tmp` is unwritable set
+`TMPDIR` under `.claude/logs/`):
+- `npx vitest run tests/unit/game-app-turn-moments.test.ts tests/unit/progress-milestone-publication.test.ts tests/unit/turn-moment-presentation.test.ts tests/unit/milestone-announcement.test.ts`
+- `npx vitest run` (expected: 0 expected-fail)
+- `npm run typecheck`, `npm run build`
+- `npx playwright test tests/e2e/hud-progress-feedback.spec.ts tests/e2e/accessibility.spec.ts --project=desktop-chromium`
+- `git diff --stat` limited to the In files
+
+Output shape (English markdown): Summary; Change (with the exact new
+eligibility condition); Assertions re-targeted (file:line, before -> after);
+New tests; Check results; Risks. Under ~80 lines. Do not commit. Do not
+touch `.claude/docs/plans/*`.
+
+## S3b — continue S3 with lead rulings (Codex Luna xhigh)
+
+Continue S3 (re-read it) on top of the current uncommitted diff. Your stop was
+correct. Lead rulings:
+
+1. `tests/unit/game-app-turn-moments.test.ts` "holds a discard dialog and new
+   inventory until pickup is published" (line ~863): this mounted test jumps
+   from origin to `pickup` then `done` without rendering arrival / flash, so
+   the sentence was never committed; publishing it once at `done` is exactly
+   the S3 behaviour the user approved. Authorised change: keep the exact
+   `toBe` and append the composed suffix (as `composeMilestoneAnnouncement`
+   joins it, i.e. `…選んでください。20区間突破！あと10区間`). Add one comment
+   line saying the arrival stages were not rendered, so the result carries
+   the sentence (#96 Step 3). No other edit to that test.
+2. Your new "segment flash then publication" GameApp test used a fixture that
+   produces `segmentFlash === null`. Fix the test, not the product: use a
+   fixture/boundary that really renders a segment flash on a crossing turn
+   (look at existing segment-flash tests in that file or
+   `progress-milestone-publication.test.ts` `level: "important", stage:
+   "segment-flash"` for the setup), render `segment-flash` then `done`, and
+   assert the sentence appears in the status exactly once across the turn and
+   not in the published text. If no mounted fixture can render a crossing
+   segment flash, say so and fall back to proving it with an arrival stage
+   (`revealStage: "arrival"` then `done`) instead, naming the gap.
+3. If any other existing assertion breaks, stop and report again.
+
+Acceptance checks: the full S3 list. Output shape: as S3, plus what changed
+since your S3 report. Do not commit. Do not touch `.claude/docs/plans/*`.
+
+## R3 — Step 3 review (Codex Sol low, read-only)
+
+Objective: decide whether the uncommitted Step 3 diff (`git diff HEAD`) is
+safe to commit for #96. Step 3 widens milestone candidate emission at
+`published` (`turnMomentPresentation.ts`: eligible when
+`ARRIVAL_COPY_PHASES.has(phase) || isPublished`) and relies on S2's
+commit-time consumption (`GamePanel` + `milestoneAnnouncement.ts` +
+`GameApp` ledger, commit `23cb438`) to avoid repeats.
+
+Check:
+- Every path where the widened `published` candidate could produce a second
+  announcement in the same turn: arrival -> Skip; lottery -> published;
+  classic carry-forward (`previousClassicAnnouncement`); turns whose first
+  status commit was blocked (rules, dialog, hidden document) and then
+  publish; reduced motion switched mid-turn; adjustment / discard surfaces.
+- Whether `published` now emits for cases that must stay silent: resume /
+  entered history (`entryTurn`), restored records, turns reaching 30/30
+  (goal guidance vs clear screen), toasts-only expectations.
+- Assertion changes: `progress-milestone-publication.test.ts:126,144` and
+  `game-app-turn-moments.test.ts` (~867 exact string with suffix, new
+  segment-flash test, flipped card-less test). Are any weaker or wrong?
+- E2E `hud-progress-feedback.spec.ts:278-280` waits for the toast and then
+  expects the status to contain the sentence; it failed once under load and
+  passed 4/4 when run alone or with `accessibility.spec.ts`. Is this a
+  timing race the S2/S3 behaviour makes more likely, and is a minimal,
+  non-weakening hardening warranted now?
+
+Do not edit files. If `/tmp` is unwritable, set `TMPDIR` under
+`.claude/logs/` before running Vitest. Output: Verdict (commit / fix first);
+Findings P1/P2/P3 with file:line and failing scenario; Minimal fixes. Under
+~60 lines.

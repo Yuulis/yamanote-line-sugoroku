@@ -579,8 +579,37 @@ describe("Issue #96 milestone live-region publication", () => {
     expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([firstCopy]);
   });
 
-  // #96: flip to it() in Step 2
-  it.fails("announces a crossing at publication when no arrival, segment flash or lottery is rendered", () => {
+  it("does not repeat a segment-flash milestone in the published result status", () => {
+    makeDocumentVisible();
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, 31);
+    const resultGame = playItemTurn(base, {}, network).state;
+    const result = resumeSession(resultGame, network, 31);
+    const required = new Set(targetSegmentIds(base.config, network));
+    const pendingRecord = resultGame.pending?.kind === "discard" ? resultGame.pending.record : null;
+    const newlyCompletedTargetSegmentIds = pendingRecord?.traversedSegmentIds ?? resultGame.completedSegmentIds;
+    const attempt: RollAttempt = { ...attemptFor(origin),
+      policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "important" }),
+      newlyCompletedTargetSegmentIds: newlyCompletedTargetSegmentIds.filter((id) =>
+        required.has(id) && !origin.game.completedSegmentIds.includes(id)),
+    };
+    injection.level = "important";
+    inject(origin);
+    render(propsFor());
+    const start = lotteryCommits.length;
+
+    inject(result);
+    render(propsFor({ attempt, revealStage: "segment-flash", restoredOrOmitted: false }));
+    const flashStatus = status();
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].segmentFlash).not.toBeNull();
+    expect(flashStatus).toContain(CROSSING_MILESTONE);
+
+    render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+    expect(status()).not.toContain(CROSSING_MILESTONE);
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([flashStatus]);
+  });
+
+  it("announces a crossing at publication when no arrival, segment flash or lottery is rendered", () => {
     const base = itemScenario("discard", network);
     const origin = resumeSession(base, network, 31);
     const result = resumeSession(playItemTurn(base, {}, network).state, network, 31);
@@ -834,7 +863,8 @@ describe("GameApp decision and empty-event publication", () => {
     expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["遅延証明書", "出目調整券", "倍速券"]);
     render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
     expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
-    expect(status()).toBe("7ターン目：出目2（2マス、2駅移動）、西日暮里に到着。山手線のみ ／ 外回りに固定。踏破 21/30。遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）。捨てるアイテムを1つ選んでください");
+    // The arrival stages were not rendered, so the published result carries the sentence (#96 Step 3).
+    expect(status()).toBe("7ターン目：出目2（2マス、2駅移動）、西日暮里に到着。山手線のみ ／ 外回りに固定。踏破 21/30。遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）。捨てるアイテムを1つ選んでください。20区間突破！あと10区間");
   });
   it("renders the suspension fallback without item events only after publication", () => {
     const origin = resumeSession(itemScenario("route", network), network, 31);

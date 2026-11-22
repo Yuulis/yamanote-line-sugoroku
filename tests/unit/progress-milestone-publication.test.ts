@@ -123,7 +123,10 @@ describe("milestone publication of an engine-played item turn with a pending dis
     const published = result({ stage: "done" });
     expect(keys(published)).not.toContain(key(crossing.threshold));
     expect(published.announcement).not.toContain(sentence);
-    expect(published.milestoneCandidate).toBeNull();
+    expect(published.milestoneCandidate).toEqual({
+      key: `${SESSION_ID}:${record.turn}:${crossing.threshold}`,
+      text: sentence,
+    });
     expect(published.milestoneFlash?.threshold).toBe(crossing.threshold);
   });
 
@@ -138,7 +141,10 @@ describe("milestone publication of an engine-played item turn with a pending dis
     expect(keys(published).indexOf(key(crossing.threshold))).toBe(0);
     expect(keys(published).length).toBeGreaterThan(1);
     expect(published.announcement).not.toContain(sentence);
-    expect(published.milestoneCandidate).toBeNull();
+    expect(published.milestoneCandidate).toEqual({
+      key: `${SESSION_ID}:${record.turn}:${crossing.threshold}`,
+      text: sentence,
+    });
   });
 
   it.each([["演出なし", { level: "none" }], ["OS reduced motion", { restored: true, omitted: true }], ["Skip", { skip: true, omitted: true }]] as const)(

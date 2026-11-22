@@ -466,13 +466,12 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
         : turnMomentAnnouncement({ session: input.session, view: resultPublished ? liveView : itemView, decision,
           stage: announcementStage, canRoll, completedCount, requiredCount, network: input.network, presentation: input.presentation });
   // The milestone sentence is part of its turn's arrival copy: it stays through every stage worded with that copy
-  // (dropping it at the lottery would change the text and announce the arrival again), or joins the publication of
-  // a turn that never worded it (unpresented, or 演出 なし, which plans no arrival or lottery stage).
+  // (dropping it at the lottery would change the text and announce the arrival again), and remains a candidate at
+  // every published result. GameApp's commit-time consumption prevents a turn already announced from repeating it.
   const milestoneSentence = crossingToast ? crossingToast.text
     : goalGuidance !== null && firstCompletionTurn === publicationTurn && firstCompletionTurn > (input.entryTurn ?? 0)
       ? goalGuidance.text : null;
-  const milestoneAnnounced = milestoneSentence !== null && (ARRIVAL_COPY_PHASES.has(phase)
-    || (isPublished && (arrivalUnpresented || attempt?.policy.showImportantMoments === false)));
+  const milestoneAnnounced = milestoneSentence !== null && (ARRIVAL_COPY_PHASES.has(phase) || isPublished);
   const milestoneCandidate: MilestoneAnnouncementCandidate | null = !baseAnnouncement ? null
     : carryClassicSummary ? input.previousClassicAnnouncement?.milestoneCandidate ?? null
     : milestoneAnnounced && milestoneSentence

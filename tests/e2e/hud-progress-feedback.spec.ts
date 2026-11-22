@@ -274,10 +274,22 @@ test.describe("milestone resume lifecycle", () => {
     console.info(`10-segment replay candidate: ${JSON.stringify({ turn: replay.before.turn + 1,
       completedBefore: replay.completedBefore, completedAfter: replay.completedAfter })}`);
     await restore(page);
+    // The sentence lives only in the arrival copy (#96), so record every status text instead of polling the live one.
+    await gamePanel(page).evaluate((panel) => {
+      const texts: string[] = [];
+      (window as unknown as { __statusTexts: string[] }).__statusTexts = texts;
+      const read = (): void => {
+        const text = panel.querySelector('.visually-hidden[role="status"][aria-live="polite"]')?.textContent ?? "";
+        if (texts.at(-1) !== text) texts.push(text);
+      };
+      read();
+      new MutationObserver(read).observe(panel, { subtree: true, childList: true, characterData: true });
+    });
     await diceReady(page).click();
     await expect(milestoneToast(page)).toHaveCount(1);
     const milestoneSentence = (await milestoneToast(page).innerText()).trim();
-    await expect(announcement(page)).toContainText(milestoneSentence);
+    await expect.poll(async () => (await page.evaluate(() => (window as unknown as { __statusTexts: string[] }).__statusTexts))
+      .filter((text) => text.includes(milestoneSentence)).length).toBe(1);
     await expect(flash(page)).toBeVisible();
     // The overlay rests at opacity 0 once its one-shot animation ends, so visibility alone could pass with no flash at all;
     // the computed animation proves the glow was attached (finished CSS animations keep their computed name).
@@ -288,6 +300,9 @@ test.describe("milestone resume lifecycle", () => {
     expect(flashAnimation.name).toBe(FLASH_ANIMATION_NAME);
     expect(flashAnimation.durationSeconds).toBeGreaterThan(0);
     await expect(diceReady(page)).toBeVisible();
+    // Once the turn has settled, the published result must not have repeated the sentence.
+    expect((await page.evaluate(() => (window as unknown as { __statusTexts: string[] }).__statusTexts))
+      .filter((text) => text.includes(milestoneSentence))).toHaveLength(1);
     expect(await readSave(page)).toEqual(replay.after);
 
     await page.reload();
