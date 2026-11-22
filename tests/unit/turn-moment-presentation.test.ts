@@ -408,13 +408,17 @@ describe("30/30 guidance announcement without presented moments", () => {
     const moving = derive("animating", "waiting");
     expect(moving.goalGuidance).toBeNull();
     expect(moving.announcement).not.toContain(SENTENCE);
+    expect(moving.milestoneCandidate).toBeNull();
     const published = derive("idle", "done");
     expect(published.phase).toBe("published");
-    expect(published.announcement.split(SENTENCE)).toHaveLength(2);
+    expect(published.announcement).not.toContain(SENTENCE);
+    expect(published.milestoneCandidate).toEqual({ key: `91:${result.game.turn}:30`, text: SENTENCE });
   });
 
   it("does not announce it for a history entered at or after the completing turn", () => {
-    expect(derive("idle", "done", result.game.turn).announcement).not.toContain(SENTENCE);
+    const entered = derive("idle", "done", result.game.turn);
+    expect(entered.announcement).not.toContain(SENTENCE);
+    expect(entered.milestoneCandidate).toBeNull();
   });
 });
 

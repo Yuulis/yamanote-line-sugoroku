@@ -57,23 +57,34 @@ function display(count: number, options: Scenario = {}): TurnMomentDisplay {
 }
 
 describe("milestone publication", () => {
-  it("publishes nothing while moving, then the toast, sentence and flash with the arrival", () => {
+  it("publishes nothing while moving, then the toast, sentence candidate and flash with the arrival", () => {
     for (const moving of [display(10, { phase: "animating" }), display(10, { phase: "animating", restored: true, omitted: true })]) {
       expect(moving).toMatchObject({ toastInputs: [], milestoneFlash: null });
       expect(moving.announcement).not.toContain("10区間突破！");
+      expect(moving.milestoneCandidate).toBeNull();
     }
     const arrival = display(10);
     expect(keys(arrival)).toEqual([key(10)]);
-    expect(arrival.announcement).toMatch(/。10区間突破！$/);
+    expect(arrival.announcement).not.toContain("10区間突破！");
+    expect(arrival.milestoneCandidate).toEqual({ key: `${SESSION_ID}:10:10`, text: "10区間突破！" });
     expect(arrival.milestoneFlash).toEqual({ key: `${SESSION_ID}:10:10`, threshold: 10 });
     expect(display(10, { omitted: true }).milestoneFlash).toBeNull();
   });
 
   it.each(["segment-flash", "lottery-flip", "lottery-settle"] as const)("keeps the arrival announcement unchanged through %s", (stage) => {
-    expect(display(10, { stage }).announcement).toBe(display(10).announcement);
+    const arrival = display(10);
+    const sharedCopy = display(10, { stage });
+    expect(sharedCopy.announcement).toBe(arrival.announcement);
+    expect(sharedCopy.milestoneCandidate).toEqual(arrival.milestoneCandidate);
     const completion = display(required.length, { jump: true });
-    expect(completion.announcement).toContain(completion.goalGuidance!.text);
-    expect(display(required.length, { jump: true, stage }).announcement).toBe(completion.announcement);
+    expect(completion.announcement).not.toContain(completion.goalGuidance!.text);
+    expect(completion.milestoneCandidate).toEqual({
+      key: `${SESSION_ID}:1:30`,
+      text: completion.goalGuidance!.text,
+    });
+    const completionStage = display(required.length, { jump: true, stage });
+    expect(completionStage.announcement).toBe(completion.announcement);
+    expect(completionStage.milestoneCandidate).toEqual(completion.milestoneCandidate);
   });
 
   it("notifies only the fresh crossing: earlier thresholds and the entered turn stay silent", () => {
@@ -82,6 +93,7 @@ describe("milestone publication", () => {
     const entered = display(20, { stage: "done", restored: true, entryTurn: 20 });
     expect(entered).toMatchObject({ toastInputs: [], milestoneFlash: null });
     expect(entered.announcement).not.toMatch(/区間突破/);
+    expect(entered.milestoneCandidate).toBeNull();
     expect(keys(display(20, { entryTurn: 19 }))).toEqual([key(20)]);
   });
 
@@ -111,19 +123,28 @@ describe("milestone publication of an engine-played item turn with a pending dis
     const published = result({ stage: "done" });
     expect(keys(published)).not.toContain(key(crossing.threshold));
     expect(published.announcement).not.toContain(sentence);
+    expect(published.milestoneCandidate).toEqual({
+      key: `${SESSION_ID}:${record.turn}:${crossing.threshold}`,
+      text: sentence,
+    });
     expect(published.milestoneFlash?.threshold).toBe(crossing.threshold);
   });
 
   it("重要なときだけ announces and flashes with the segment flash, and queues the toast with the results", () => {
     const flash = result({ level: "important", stage: "segment-flash" });
     expect(flash.toastInputs).toEqual([]);
-    expect(flash.announcement).toContain(sentence);
+    expect(flash.announcement).not.toContain(sentence);
+    expect(flash.milestoneCandidate).toEqual({ key: `${SESSION_ID}:${record.turn}:${crossing.threshold}`, text: sentence });
     expect(flash.milestoneFlash?.threshold).toBe(crossing.threshold);
     const published = result({ level: "important", stage: "done" });
     expect(published.decision?.kind).toBe("discard");
     expect(keys(published).indexOf(key(crossing.threshold))).toBe(0);
     expect(keys(published).length).toBeGreaterThan(1);
     expect(published.announcement).not.toContain(sentence);
+    expect(published.milestoneCandidate).toEqual({
+      key: `${SESSION_ID}:${record.turn}:${crossing.threshold}`,
+      text: sentence,
+    });
   });
 
   it.each([["演出なし", { level: "none" }], ["OS reduced motion", { restored: true, omitted: true }], ["Skip", { skip: true, omitted: true }]] as const)(
@@ -131,7 +152,8 @@ describe("milestone publication of an engine-played item turn with a pending dis
       const published = result({ ...options, stage: "done" });
       expect(keys(published).indexOf(key(crossing.threshold))).toBe(0);
       expect(keys(published).length).toBeGreaterThan(1);
-      expect(published.announcement).toContain(sentence);
+      expect(published.announcement).not.toContain(sentence);
+      expect(published.milestoneCandidate).toEqual({ key: `${SESSION_ID}:${record.turn}:${crossing.threshold}`, text: sentence });
       expect(published.milestoneFlash).toBeNull();
     });
 });
