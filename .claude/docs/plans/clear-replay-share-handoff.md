@@ -15,7 +15,8 @@ Resume from here. Plan: `clear-replay-share-plan.md` (Revision 3, Codex validate
 
 | Step | Status | Commit | Notes |
 |---|---|---|---|
-| S1 result model + strict route | in progress | — | |
+| S1 result model + strict route | done | (this commit) | Luna xhigh + 1 fix round after Sol low review (zero-hop transfer leg break, Mercator latitude limit, 3 tests). Lead: typecheck, vitest 2466 passed / 1 skipped (pre-existing), build, diff check, verify_delegation 0 actionable |
+| S2 next | — | — | prompt to be added to clear-replay-share-prompts.md |
 | S2 clear screen, announcements, phone layout | pending | — | visible |
 | S3 full-route layer + camera | pending | — | visible |
 | S4 replay store + partial drawing | pending | — | visible |
