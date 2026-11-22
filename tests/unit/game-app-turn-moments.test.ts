@@ -81,6 +81,16 @@ if (!networkResult.ok) throw new Error(networkResult.reason);
 const network = networkResult.network;
 const edition = EDITIONS[0];
 let mounted: MountedReact | undefined;
+let restoreVisibility: (() => void) | null = null;
+
+function makeDocumentVisible(): void {
+  const original = Object.getOwnPropertyDescriptor(document, "visibilityState");
+  Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+  restoreVisibility = () => {
+    if (original) Object.defineProperty(document, "visibilityState", original);
+    else Reflect.deleteProperty(document, "visibilityState");
+  };
+}
 
 function Harness(value: React.ComponentProps<typeof GameApp>): React.JSX.Element {
   useLayoutEffect(() => { commits.push(document.querySelector('[role="status"]')?.textContent ?? ""); });
@@ -94,6 +104,8 @@ beforeAll(() => {
     value(this: HTMLDialogElement): void { this.removeAttribute("open"); } });
 });
 afterEach(() => {
+  restoreVisibility?.();
+  restoreVisibility = null;
   injection.app = null;
   injection.level = undefined; injection.speedId = undefined;
   trackEvent.mockClear();
@@ -322,6 +334,7 @@ describe("GameApp 30/30 milestone toast", () => {
   }
 
   it("toasts once at the arrival that completes 30/30 and never again", () => {
+    makeDocumentVisible();
     vi.useFakeTimers();
     const origin = sessionWithCompletedTargetHistory(53, false);
     inject(origin); render(propsFor(restoredBoundary));
@@ -366,6 +379,258 @@ describe("GameApp 30/30 milestone toast", () => {
   });
 });
 
+describe("Issue #96 milestone live-region publication", () => {
+  const CROSSING_MILESTONE = "20区間突破！あと10区間";
+  const restoredPublishedBoundary = { attempt: null, revealStage: "done" as const, restoredOrOmitted: true };
+  const distinctStatusTextsSince = (start: number): string[] => lotteryCommits.slice(start)
+    .filter((text, index, values) => index === 0 || text !== values[index - 1]);
+
+  it("does not repeat the milestone after Skip ends a crossing turn's arrival card", () => {
+    makeDocumentVisible();
+    injection.level = "all";
+    openWithFrames(itemScenario("discard", network));
+    const start = lotteryCommits.length;
+    playToArrival();
+
+    const arrival = status();
+    expect(banner()).not.toBeNull();
+    expect(arrival).toContain(CROSSING_MILESTONE);
+    const landing = itemLastMove(storedGame().movementHistory.at(-1), network)?.landing;
+    expect(landing?.serviceDrawRequired || landing?.directionDrawRequired).toBe(false);
+    press(panelSkip());
+
+    const published = status();
+    const turnTexts = distinctStatusTextsSince(start);
+    expect(turnTexts.filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([arrival]);
+    expect(published).not.toContain(CROSSING_MILESTONE);
+  });
+
+  it("does not repeat a reduced-motion crossing milestone after choosing a discard item", () => {
+    makeDocumentVisible();
+    motionPreference(true);
+    injection.level = "all";
+    openSaved(itemScenario("discard", network));
+    const start = lotteryCommits.length;
+
+    click("サイコロを振る");
+    if (adjustmentDialog()) press(continueButton());
+    expect(storedGame().pending?.kind).toBe("discard");
+    const published = status();
+    expect(published).toContain(CROSSING_MILESTONE);
+
+    click("このアイテムを捨てる");
+    const afterDiscard = status();
+    const turnTexts = distinctStatusTextsSince(start);
+    expect(turnTexts.filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([published]);
+    expect(afterDiscard).not.toContain(CROSSING_MILESTONE);
+  });
+
+  it("announces an eligible milestone once after the rules guide closes", () => {
+    makeDocumentVisible();
+    const sessionId = 81;
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, sessionId);
+    inject(origin);
+    render(propsFor(restoredPublishedBoundary));
+    click("メニュー");
+    click("遊び方");
+    expect(mounted!.container.querySelector(".rules-dialog")).not.toBeNull();
+
+    const result = resumeSession(playItemTurn(base, {}, network).state, network, sessionId);
+    inject(result);
+    const start = lotteryCommits.length;
+    render(propsFor(restoredPublishedBoundary));
+    expect(mounted!.container.querySelectorAll('[role="status"]')).toHaveLength(0);
+
+    const closeRules = mounted!.container.querySelector<HTMLButtonElement>(".rules-dialog__close")!;
+    const closePropsKey = Object.keys(closeRules).find((name) => name.startsWith("__reactProps"))!;
+    const closeProps = (closeRules as unknown as Record<string, { onClick?: () => void }>)[closePropsKey];
+    act(() => closeProps?.onClick?.());
+    expect(mounted!.container.querySelector(".rules-dialog")).toBeNull();
+    expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
+    const announced = status();
+    expect(announced).toContain(CROSSING_MILESTONE);
+    render(propsFor(restoredPublishedBoundary));
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([announced]);
+
+    // Reopening rules unmounts the published discard status; its remount must not replay the consumed sentence.
+    const discardStatus = mounted!.container.querySelector('.item-discard [role="status"]');
+    click("メニュー");
+    click("遊び方");
+    expect(mounted!.container.querySelector(".item-discard")).toBeNull();
+    const reopenedClose = mounted!.container.querySelector<HTMLButtonElement>(".rules-dialog__close")!;
+    const reopenedKey = Object.keys(reopenedClose).find((name) => name.startsWith("__reactProps"))!;
+    act(() => (reopenedClose as unknown as Record<string, { onClick?: () => void }>)[reopenedKey]?.onClick?.());
+    const remountedStatus = mounted!.container.querySelector('.item-discard [role="status"]');
+    expect(remountedStatus).not.toBeNull();
+    expect(remountedStatus).not.toBe(discardStatus);
+    expect(status()).not.toContain(CROSSING_MILESTONE);
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([announced]);
+  });
+
+  it("keeps the same arrival status text when rules open and close after a milestone", () => {
+    makeDocumentVisible();
+    injection.level = "all";
+    openWithFrames(itemScenario("discard", network));
+    const start = lotteryCommits.length;
+    playToArrival();
+    const arrival = status();
+    expect(banner()).not.toBeNull();
+    expect(arrival).toContain(CROSSING_MILESTONE);
+
+    click("メニュー");
+    click("遊び方");
+    const closeRules = mounted!.container.querySelector<HTMLButtonElement>(".rules-dialog__close");
+    expect(closeRules).not.toBeNull();
+    expect(status()).toBe(arrival);
+
+    press(closeRules!);
+    expect(mounted!.container.querySelector(".rules-dialog")).toBeNull();
+    expect(status()).toBe(arrival);
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([arrival]);
+  });
+
+  it("withholds a fresh arrival milestone while rules cover the mounted panel status", () => {
+    makeDocumentVisible();
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, 31);
+    inject(origin);
+    render(propsFor(restoredPublishedBoundary));
+    click("メニュー");
+    click("遊び方");
+    const closeRules = mounted!.container.querySelector<HTMLButtonElement>(".rules-dialog__close");
+    expect(closeRules).not.toBeNull();
+
+    const start = lotteryCommits.length;
+    inject(resumeSession(playItemTurn(base, {}, network).state, network, 31));
+    render(propsFor({ attempt: attemptFor(origin), revealStage: "arrival", restoredOrOmitted: false }));
+    const coveredArrival = status();
+    expect(coveredArrival).toMatch(/西日暮里に到着。踏破 21\/30$/);
+    press(closeRules!);
+    const publishedArrival = `${coveredArrival}。${CROSSING_MILESTONE}`;
+    expect(status()).toBe(publishedArrival);
+    expect(distinctStatusTextsSince(start)).toEqual([coveredArrival, publishedArrival]);
+  });
+
+  it("keeps a notice that covers a held panel milestone and does not replay the milestone when the notice leaves", () => {
+    makeDocumentVisible();
+    const sessionId = 83;
+    const base = itemScenario("discard", network);
+    inject(resumeSession(base, network, sessionId));
+    render(propsFor(restoredPublishedBoundary));
+
+    const result = playItemTurn(base, {}, network).state;
+    if (result.pending?.kind !== "discard") throw new Error("Expected the engine-built discard decision");
+    inject(resumeSession(resolveItemDiscard(result, result.pending.item.id).state, network, sessionId));
+    const start = lotteryCommits.length;
+    render(propsFor(restoredPublishedBoundary));
+    const published = status();
+    expect(mounted!.container.querySelector(".game-panel > [role='status']")).not.toBeNull();
+    expect(published).toContain(CROSSING_MILESTONE);
+
+    const notice = { key: `${sessionId}:test-notice`, text: "テスト通知が表示されました。" };
+    render(propsFor({ ...restoredPublishedBoundary, noticeAnnouncement: notice }));
+    expect(status()).toBe(notice.text);
+    render(propsFor({ ...restoredPublishedBoundary, noticeAnnouncement: null }));
+    expect(status()).toBe(notice.text);
+
+    click("メニュー");
+    click("遊び方");
+    const closeRules = mounted!.container.querySelector<HTMLButtonElement>(".rules-dialog__close");
+    expect(closeRules).not.toBeNull();
+    press(closeRules!);
+    expect(mounted!.container.querySelector(".rules-dialog")).toBeNull();
+    const baseCopy = published.slice(0, -CROSSING_MILESTONE.length - 1);
+    expect(status()).toBe(baseCopy);
+    expect(distinctStatusTextsSince(start)).toEqual([published, notice.text, baseCopy]);
+  });
+
+  it("does not restore a consumed milestone after a first-turn notice covers and leaves it", () => {
+    makeDocumentVisible();
+    const sessionId = 82;
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, sessionId);
+    inject(origin);
+    render(propsFor(restoredPublishedBoundary));
+
+    const resultGame = playItemTurn(base, {}, network).state;
+    const result = resumeSession(resultGame, network, sessionId);
+    const pending = resultGame.pending;
+    if (pending?.kind !== "discard") throw new Error("Expected the engine-built discard decision");
+    inject(result);
+    const start = lotteryCommits.length;
+    render(propsFor(restoredPublishedBoundary));
+    const firstCopy = status();
+    expect(firstCopy).toContain(CROSSING_MILESTONE);
+
+    const resolvedGame = resolveItemDiscard(resultGame, pending.item.id).state;
+    const resolved = resumeSession(resolvedGame, network, sessionId);
+    inject(resolved);
+    render(propsFor(restoredPublishedBoundary));
+    const noticeBoundary = { ...restoredPublishedBoundary,
+      noticeAnnouncement: { key: `${sessionId}:test-notice`, text: "テスト通知が表示されました。" } };
+    render(propsFor(noticeBoundary));
+    expect(status()).toContain("テスト通知が表示されました。");
+
+    inject({ ...resolved, phase: "animating" });
+    render(propsFor({ attempt: null, revealStage: "waiting", restoredOrOmitted: false, noticeAnnouncement: null }));
+    expect(status()).not.toContain(CROSSING_MILESTONE);
+    expect(status()).not.toContain("テスト通知が表示されました。");
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([firstCopy]);
+  });
+
+  it("does not repeat a segment-flash milestone in the published result status", () => {
+    makeDocumentVisible();
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, 31);
+    const resultGame = playItemTurn(base, {}, network).state;
+    const result = resumeSession(resultGame, network, 31);
+    const required = new Set(targetSegmentIds(base.config, network));
+    const pendingRecord = resultGame.pending?.kind === "discard" ? resultGame.pending.record : null;
+    const newlyCompletedTargetSegmentIds = pendingRecord?.traversedSegmentIds ?? resultGame.completedSegmentIds;
+    const attempt: RollAttempt = { ...attemptFor(origin),
+      policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "important" }),
+      newlyCompletedTargetSegmentIds: newlyCompletedTargetSegmentIds.filter((id) =>
+        required.has(id) && !origin.game.completedSegmentIds.includes(id)),
+    };
+    injection.level = "important";
+    inject(origin);
+    render(propsFor());
+    const start = lotteryCommits.length;
+
+    inject(result);
+    render(propsFor({ attempt, revealStage: "segment-flash", restoredOrOmitted: false }));
+    const flashStatus = status();
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].segmentFlash).not.toBeNull();
+    expect(flashStatus).toContain(CROSSING_MILESTONE);
+
+    render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+    expect(status()).not.toContain(CROSSING_MILESTONE);
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([flashStatus]);
+  });
+
+  it("announces a crossing at publication when no arrival, segment flash or lottery is rendered", () => {
+    const base = itemScenario("discard", network);
+    const origin = resumeSession(base, network, 31);
+    const result = resumeSession(playItemTurn(base, {}, network).state, network, 31);
+    const attempt: RollAttempt = { ...attemptFor(origin),
+      policy: captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "important" }),
+      newlyCompletedTargetSegmentIds: [] };
+    injection.level = "important";
+    inject(origin);
+    render(propsFor());
+    const start = lotteryCommits.length;
+    inject(result);
+    render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
+
+    const published = status();
+    expect(mounted!.container.querySelector(".arrival-banner")).toBeNull();
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].segmentFlash).toBeNull();
+    expect(mounted!.container.querySelector(".lottery-reveal")).toBeNull();
+    expect(distinctStatusTextsSince(start).filter((text) => text.includes(CROSSING_MILESTONE))).toEqual([published]);
+  });
+});
+
 describe("GameApp publication lifecycle", () => {
   it.each([false, true])("keeps classic first movement silent and the previous summary during the next movement (reduced motion %s)", (reduced) => {
     vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
@@ -392,6 +657,67 @@ describe("GameApp publication lifecycle", () => {
     inject(next); render(propsFor());
     expect(status()).toBe(summary);
   });
+
+  it("carries the ordinary classic summary into movement when an idle notice was showing", () => {
+    makeDocumentVisible();
+    const sessionId = 84;
+    const boundary = { attempt: null, revealStage: "done" as const, restoredOrOmitted: false };
+    const origin = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, sessionId);
+    inject(origin);
+    render(propsFor(boundary));
+    const moving = reduceGameSession(origin, { type: "roll", sessionId, rngSeed: origin.game.rngSeed, turn: 0 }, origin.game.config, network);
+    const arrived = { ...moving, phase: "idle" as const, animation: null };
+    inject(arrived);
+    render(propsFor(boundary));
+    const summary = status();
+    expect(summary).toMatch(/^1ターン目：出目4、品川に到着。/);
+
+    const start = lotteryCommits.length;
+    const notice = { key: `${sessionId}:test-notice`, text: "テスト通知が表示されました。" };
+    render(propsFor({ ...boundary, noticeAnnouncement: notice }));
+    expect(status()).toBe(notice.text);
+
+    const next = reduceGameSession(arrived, { type: "roll", sessionId, rngSeed: arrived.game.rngSeed, turn: 1 }, origin.game.config, network);
+    inject(next);
+    render(propsFor({ ...boundary, noticeAnnouncement: null }));
+    // The first-turn notice stays while the ordinary copy is stable. Rules uncover that copy during movement.
+    expect(status()).toBe(notice.text);
+    click("メニュー");
+    click("遊び方");
+    expect(mounted!.container.querySelector(".rules-dialog")).not.toBeNull();
+    expect(status()).toBe(summary);
+    const recorded = lotteryCommits.slice(start);
+    expect(recorded.filter((text, index) => index === 0 || text !== recorded[index - 1])).toEqual([notice.text, summary]);
+  });
+
+  it.each([false, true])("carries a classic goal milestone only while it is held (covered by notice %s)", (covered) => {
+    makeDocumentVisible();
+    const sessionId = 85;
+    const boundary = { attempt: null, revealStage: "done" as const, restoredOrOmitted: false };
+    inject(sessionWithCompletedTargetHistory(sessionId, false));
+    render(propsFor(boundary));
+
+    const arrived = resumeSession(sessionWithCompletedTargetHistory(sessionId, true).game, network, sessionId);
+    inject(arrived);
+    render(propsFor(boundary));
+    const summary = status();
+    const suffix = "。新橋に着けばクリア";
+    expect(summary.endsWith(suffix)).toBe(true);
+
+    if (covered) {
+      const notice = { key: `${sessionId}:test-notice`, text: "テスト通知が表示されました。" };
+      render(propsFor({ ...boundary, noticeAnnouncement: notice }));
+      expect(status()).toBe(notice.text);
+    }
+
+    inject({ ...arrived, phase: "animating" });
+    render(propsFor(boundary));
+    click("メニュー");
+    click("遊び方");
+    expect(mounted!.container.querySelector(".rules-dialog")).not.toBeNull();
+    expect(status()).toBe(covered ? summary.slice(0, -suffix.length) : summary);
+  });
+
   it("does not announce restored classic history", () => {
     const origin = startSession(LEGACY_CAPITAL_REGION_CONFIG, LEGACY_FIXTURE_GAME_SEED, network, 32);
     const moved = reduceGameSession(origin, { type: "roll", sessionId: 32, rngSeed: origin.game.rngSeed, turn: 0 }, origin.game.config, network);
@@ -537,7 +863,8 @@ describe("GameApp decision and empty-event publication", () => {
     expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["遅延証明書", "出目調整券", "倍速券"]);
     render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
     expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
-    expect(status()).toBe("7ターン目：出目2（2マス、2駅移動）、西日暮里に到着。山手線のみ ／ 外回りに固定。踏破 21/30。遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）。捨てるアイテムを1つ選んでください");
+    // The arrival stages were not rendered, so the published result carries the sentence (#96 Step 3).
+    expect(status()).toBe("7ターン目：出目2（2マス、2駅移動）、西日暮里に到着。山手線のみ ／ 外回りに固定。踏破 21/30。遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）。捨てるアイテムを1つ選んでください。20区間突破！あと10区間");
   });
   it("renders the suspension fallback without item events only after publication", () => {
     const origin = resumeSession(itemScenario("route", network), network, 31);
@@ -1602,6 +1929,24 @@ describe("S12 delayed goal presentation", () => {
   function mapInert(): boolean | undefined {
     return (railwayMapProps.mock.calls.at(-1)?.[0] as { inert?: boolean }).inert;
   }
+
+  it("announces the 30/30 goal once when Skip replaces its arrival card", () => {
+    openWithFrames(beforeGoal());
+    const start = lotteryCommits.length;
+    playToArrival();
+    const arrival = status();
+    expect(arrival).toBe("10ターン目：新橋に到着。踏破 30/30");
+    expect(arrival).not.toContain("ゴールに到着しました");
+
+    press(panelSkip());
+    render(propsFor());
+    const goalAnnouncement = mounted!.container.querySelector(".item-event-notice [role=status]")?.textContent;
+    expect(goalAnnouncement).toBeDefined();
+    const distinctTexts = [...lotteryCommits.slice(start), goalAnnouncement!]
+      .filter((text, index, values) => index === 0 || text !== values[index - 1]);
+    expect(goalAnnouncement).toContain("ゴールに到着しました");
+    expect(distinctTexts.filter((text) => text.includes("ゴールに到着しました"))).toEqual([goalAnnouncement]);
+  });
 
   it("shows the goal banner on the panel first; ClearScreen, its focus, map inertness and game_clear follow together", () => {
     openWithFrames(beforeGoal());
