@@ -18,13 +18,14 @@ import type { RailwayNetwork } from "../../src/features/game/engine";
 import type { PresentationResolver } from "../../src/features/game/presentationResolver";
 import { act } from "react";
 import { mountReact } from "./helpers/reactDom";
+import { buttonByName, clearResultFor } from "./helpers/clearScreen";
 
 const accountingNetwork = buildRailwayNetwork(multiServiceInput());
 const accountingPresentation = createPresentationResolver(accountingNetwork);
 
 const display = EDITIONS[0]!.display;
 const emptyNetwork = { stationsById: new Map() } as unknown as RailwayNetwork;
-const presentation = { stationName: (id: string) => id } as unknown as PresentationResolver;
+const presentation = createPresentationResolver(emptyNetwork);
 const game = {
   turn: 61,
   movementHistory: [],
@@ -36,7 +37,7 @@ function mountClearScreen(actions: ReturnType<typeof createResultShareActions>) 
     game,
     network: emptyNetwork,
     presentation,
-    display,
+    result: clearResultFor(game, emptyNetwork, presentation, display),
     shareActions: actions,
     saveStatus: "saved",
     onPlayAgain: vi.fn(),
@@ -44,8 +45,21 @@ function mountClearScreen(actions: ReturnType<typeof createResultShareActions>) 
   }));
 }
 
-async function click(button: HTMLButtonElement): Promise<void> {
+async function click(button: HTMLButtonElement | undefined): Promise<void> {
+  if (!button) throw new Error("Expected the button to exist");
   await act(async () => button.click());
+}
+
+const COPY = "結果をコピー";
+const SHARE = "共有";
+
+/** The visible share message, and the clear screen's only live region. */
+function shareStatus(container: HTMLElement): string | undefined {
+  return container.querySelector(".clear-screen__share-status")?.textContent ?? undefined;
+}
+
+function liveRegions(container: HTMLElement): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>('[role="status"], [aria-live]')];
 }
 
 const expectedText = "山手線すごろく 東京近郊版をクリア！\n所要ターン数 61・移動回数 0・乗換回数 0\n#山手線すごろく\nhttps://yamanote-line-sugoroku.vercel.app";
@@ -68,9 +82,10 @@ describe("ClearScreen result sharing", () => {
   it("copies and reports success without showing the fallback field", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     const mounted = mountClearScreen(createResultShareActions({ writeText }, undefined));
-    await click(mounted.container.querySelector('button')!);
+    await click(buttonByName(mounted.container, COPY));
     expect(writeText).toHaveBeenCalledWith(expectedText);
-    expect(mounted.container.querySelector('[role="status"]')?.textContent).toBe("結果をコピーしました");
+    expect(shareStatus(mounted.container)).toBe("結果をコピーしました");
+    expect(liveRegions(mounted.container).map((region) => region.textContent)).toEqual(["結果をコピーしました"]);
     expect(mounted.container.querySelector("textarea")).toBeNull();
     mounted.cleanup();
   });
@@ -80,10 +95,13 @@ describe("ClearScreen result sharing", () => {
       ? undefined
       : { writeText: vi.fn().mockRejectedValue(new Error("denied")) };
     const mounted = mountClearScreen(createResultShareActions(clipboard, undefined));
-    await click(mounted.container.querySelector("button")!);
-    expect(mounted.container.querySelector('[role="status"]')?.textContent).toBe(
+    await click(buttonByName(mounted.container, COPY));
+    expect(shareStatus(mounted.container)).toBe(
       "コピーできませんでした。下の文面を選択してコピーしてください。",
     );
+    expect(liveRegions(mounted.container).map((region) => region.textContent)).toEqual([
+      "コピーできませんでした。下の文面を選択してコピーしてください。",
+    ]);
     const textarea = mounted.container.querySelector("textarea");
     expect(textarea?.readOnly).toBe(true);
     expect(textarea?.value).toBe(expectedText);
@@ -93,12 +111,12 @@ describe("ClearScreen result sharing", () => {
 
   it("hides share when unavailable and shows it when supported", () => {
     const unavailable = mountClearScreen(createResultShareActions(undefined, undefined));
-    expect([...unavailable.container.querySelectorAll("button")].some((button) => button.textContent === "共有")).toBe(false);
+    expect(buttonByName(unavailable.container, SHARE)).toBeUndefined();
     unavailable.cleanup();
 
     const share = vi.fn().mockResolvedValue(undefined);
     const available = mountClearScreen(createResultShareActions(undefined, { share }));
-    expect([...available.container.querySelectorAll("button")].some((button) => button.textContent === "共有")).toBe(true);
+    expect(buttonByName(available.container, SHARE)).toBeDefined();
     available.cleanup();
   });
 
@@ -107,16 +125,17 @@ describe("ClearScreen result sharing", () => {
       share: vi.fn(),
       canShare: () => false,
     }));
-    expect([...mounted.container.querySelectorAll("button")].some((button) => button.textContent === "共有")).toBe(false);
+    expect(buttonByName(mounted.container, SHARE)).toBeUndefined();
     mounted.cleanup();
   });
 
   it("shows no message when sharing is cancelled", async () => {
     const share = vi.fn().mockRejectedValue(Object.assign(new Error("cancelled"), { name: "AbortError" }));
     const mounted = mountClearScreen(createResultShareActions(undefined, { share }));
-    await click([...mounted.container.querySelectorAll("button")].find((button) => button.textContent === "共有")!);
+    await click(buttonByName(mounted.container, SHARE));
     expect(share).toHaveBeenCalledWith({ text: expectedText });
-    expect(mounted.container.querySelector('[role="status"]')?.textContent).toBe("");
+    expect(shareStatus(mounted.container)).toBe("");
+    expect(liveRegions(mounted.container).map((region) => region.textContent)).toEqual([""]);
     expect(mounted.container.querySelector("textarea")).toBeNull();
     mounted.cleanup();
   });
@@ -124,10 +143,13 @@ describe("ClearScreen result sharing", () => {
   it("shows selectable text when sharing fails", async () => {
     const share = vi.fn().mockRejectedValue(new Error("failed"));
     const mounted = mountClearScreen(createResultShareActions(undefined, { share }));
-    await click([...mounted.container.querySelectorAll("button")].find((button) => button.textContent === "共有")!);
-    expect(mounted.container.querySelector('[role="status"]')?.textContent).toBe(
+    await click(buttonByName(mounted.container, SHARE));
+    expect(shareStatus(mounted.container)).toBe(
       "共有できませんでした。下の文面を選択してコピーしてください。",
     );
+    expect(liveRegions(mounted.container).map((region) => region.textContent)).toEqual([
+      "共有できませんでした。下の文面を選択してコピーしてください。",
+    ]);
     expect(mounted.container.querySelector("textarea")?.value).toBe(expectedText);
     mounted.cleanup();
   });
@@ -180,11 +202,12 @@ describe("item result accounting", () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     const itemGame = state("jr-yamanote", [deadhead(1, "toei-mita")]);
     const mounted = mountReact(createElement(ClearScreen, {
-      game: itemGame, network: accountingNetwork, presentation: accountingPresentation, display,
+      game: itemGame, network: accountingNetwork, presentation: accountingPresentation,
+      result: clearResultFor(itemGame, accountingNetwork, accountingPresentation, display),
       shareActions: createResultShareActions({ writeText }, undefined), saveStatus: "saved",
       onPlayAgain: vi.fn(), onShowTitle: vi.fn(),
     }));
-    await click(mounted.container.querySelector("button")!);
+    await click(buttonByName(mounted.container, COPY));
     expect(writeText).toHaveBeenCalledWith(buildShareText(display, { turns: 1, moves: 0, transfers: 1 }));
     expect(mounted.container.textContent).toContain("回送");
     mounted.cleanup();

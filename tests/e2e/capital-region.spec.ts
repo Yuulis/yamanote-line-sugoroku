@@ -18,7 +18,7 @@ import {
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
 } from "./fixtures/seeds";
-import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
+import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openClearHistory, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
 import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advancePickup, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
@@ -393,6 +393,7 @@ test.describe("current product scenarios", () => {
     const clear = page.getByRole("region", { name: "クリア！" });
     const items = clear.locator(".clear-screen__history li");
     const history = clear.locator(".clear-screen__history");
+    await openClearHistory(clear);
     await expect(items).toHaveCount(20);
     await expect(items.first()).toContainText("1ターン目");
     await expect(clear.getByRole("button", { name: "前のページ" })).toBeDisabled();
@@ -426,6 +427,7 @@ test.describe("current product scenarios", () => {
     expect((await readSave(page))?.movementHistory).toEqual(game.movementHistory);
     await page.reload();
     await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
+    await openClearHistory(clear);
     await expect(items).toHaveCount(20);
     expect(await readSave(page)).toEqual(game);
   });

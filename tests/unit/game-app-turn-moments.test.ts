@@ -902,9 +902,14 @@ describe("GameApp decision and empty-event publication", () => {
     expect(status()).toBe("10ターン目：新橋に到着。踏破 30/30");
     render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
     expect(mounted!.container.querySelector(".clear-screen")).not.toBeNull();
-    expect(mounted!.container.querySelector(".item-event-notice [role=status]")?.textContent).toBe("10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
-    expect(mounted!.container.querySelectorAll(".item-event-notice [role=status]")).toHaveLength(1);
-    // The existing share feedback region is separate from the gameplay announcement.
+    expect(mounted!.container.querySelector(".clear-screen [role=status]")?.textContent).toBe("10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
+    expect(mounted!.container.querySelectorAll(".clear-screen [role=status]")).toHaveLength(1);
+    // The same goal text stays visible inside the item notice, which is no longer a live region.
+    expect(mounted!.container.querySelector(".item-event-notice__completion")?.textContent).toBe(
+      "10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
+    expect(mounted!.container.querySelectorAll(".item-event-notice [role=status], .item-event-notice [aria-live]")).toHaveLength(0);
+    // The only polite status on the whole page is the clear screen's own (the share feedback is plain text).
+    expect(status()).toBe("10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
     expect(mounted!.container.querySelector(".game-panel")).toBeNull();
     injection.app = { ...injection.app!, itemView: { ...injection.app!.itemView!,
       effects: { ...injection.app!.itemView!.effects, delayDueTurns: [12] } } };
@@ -1940,7 +1945,7 @@ describe("S12 delayed goal presentation", () => {
 
     press(panelSkip());
     render(propsFor());
-    const goalAnnouncement = mounted!.container.querySelector(".item-event-notice [role=status]")?.textContent;
+    const goalAnnouncement = mounted!.container.querySelector(".clear-screen [role=status]")?.textContent;
     expect(goalAnnouncement).toBeDefined();
     const distinctTexts = [...lotteryCommits.slice(start), goalAnnouncement!]
       .filter((text, index, values) => index === 0 || text !== values[index - 1]);
@@ -1978,7 +1983,7 @@ describe("S12 delayed goal presentation", () => {
     expect(document.activeElement).toBe(clearHeading());
     expect(mapInert()).toBe(true);
     expect(gameClearEvents()).toHaveLength(1);
-    const notices = mounted!.container.querySelectorAll(".item-event-notice [role=status]");
+    const notices = mounted!.container.querySelectorAll(".clear-screen [role=status]");
     expect(notices).toHaveLength(1);
     expect(notices[0]!.textContent).toContain("ゴールに到着しました");
     advance(ARRIVAL_MS);
@@ -2382,12 +2387,12 @@ describe.each(["important", "none"] as const)("S7 %s integration", (level) => {
     }
     expect(banner()).toBeNull();
     expect(mounted!.container.querySelector("#clear-title")).not.toBeNull();
-    const announcement = mounted!.container.querySelectorAll('.item-event-notice [role="status"]');
+    const announcement = mounted!.container.querySelectorAll('.clear-screen [role="status"]');
     expect(announcement).toHaveLength(1);
     expect(announcement[0]!.textContent?.match(/ゴールに到着しました/g)).toHaveLength(1);
     const shown = announcement[0];
     render(propsFor()); advance(5_000);
-    expect(mounted!.container.querySelector('.item-event-notice [role="status"]')).toBe(shown);
+    expect(mounted!.container.querySelector('.clear-screen [role="status"]')).toBe(shown);
     expect(gameClearEvents()).toHaveLength(1);
   });
 

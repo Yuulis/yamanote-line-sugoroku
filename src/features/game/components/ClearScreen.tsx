@@ -1,39 +1,45 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import type { GameState, ItemGameState } from "../../../types/network";
-import type { EditionDisplay } from "../../editions/types";
 import type { RailwayNetwork } from "../engine";
-import { earlyStopNote, endpointKindAt, summarizeGame } from "../gameSummary";
-import { buildShareText } from "../shareText";
+import type { ClearResult } from "../clearResult";
 import { browserResultShareActions, type ResultShareActions } from "../resultShareActions";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
-import { itemHistoryText, directionLabel, landingTransitionText, serviceName, stationName } from "../presentation";
+import { stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
 import type { CollectionProgress } from "../collectionProgress";
 import { trackEvent } from "../../analytics/analytics";
 import { PhraseText } from "./PhraseText";
+import { ClearAnnouncements, type ClearAnnouncement } from "./ClearAnnouncements";
+import { ClearHighlights } from "./ClearHighlights";
+import { ClearHistory, HISTORY_PAGE_SIZE } from "./ClearHistory";
+
+export { HISTORY_PAGE_SIZE };
 
 interface ClearScreenProps {
   game: GameState | ItemGameState;
   network: RailwayNetwork;
   presentation: PresentationResolver;
+  /** Result derived once per published clear (see usePublishedClearResult). */
+  result: ClearResult;
   /** Published collection counters; omitted by callers that render the screen outside the game (e.g. share tests). */
   collection?: CollectionProgress;
-  display: EditionDisplay;
   shareActions?: ResultShareActions;
   itemNotice?: ReactNode;
+  /** The goal sentence announced once by the screen's single live region; empty when the turn has none. */
+  completionAnnouncement?: string;
   /** Result of saving the clearing turn; a failure must stay visible here. */
   saveStatus: SaveWriteResult | null;
   onPlayAgain: () => void;
   onShowTitle: () => void;
 }
 
-export const HISTORY_PAGE_SIZE = 20;
-
 /** Shown once the clearing move has finished animating (spec 6.1). */
-export function ClearScreen({ game, network, presentation, display, collection, saveStatus, itemNotice, shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
+export function ClearScreen({ game, network, presentation, result, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
   const [page, setPage] = useState(0);
+  const [phoneHistoryOpen, setPhoneHistoryOpen] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showShareText, setShowShareText] = useState(false);
+  const [announcement, setAnnouncement] = useState<ClearAnnouncement | null>(null);
   const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
   const historyRef = useRef<HTMLOListElement>(null);
@@ -47,25 +53,33 @@ export function ClearScreen({ game, network, presentation, display, collection, 
     screen.scrollTop = 0;
     headingRef.current.focus({ preventScroll: true });
   }, []);
-  const { turns, moves, transfers } = summarizeGame(game, presentation);
-  const shareText = buildShareText(display, { turns, moves, transfers });
+  const { turns, moves, transfers } = result.summary;
+  const { shareText } = result;
   const canShare = shareActions.canShare(shareText);
+  const announce = (text: string): void => setAnnouncement((previous) => ({ id: (previous?.id ?? 0) + 1, text }));
+  const showMessage = (text: string | null, textFallback: boolean): void => {
+    setShowShareText(textFallback);
+    setShareMessage(text);
+    if (text !== null) announce(text);
+  };
   const copyResult = async () => {
     const copied = await shareActions.copy(shareText);
     trackEvent("result_share", { method: "copy", outcome: copied ? "success" : "failed" });
-    setShowShareText(!copied);
-    setShareMessage(copied
+    showMessage(copied
       ? "結果をコピーしました"
-      : "コピーできませんでした。下の文面を選択してコピーしてください。");
+      : "コピーできませんでした。下の文面を選択してコピーしてください。", !copied);
   };
   const shareResult = async () => {
-    const result = await shareActions.share(shareText);
-    trackEvent("result_share", { method: "share", outcome: result });
-    if (result === "cancelled") return;
-    setShowShareText(result === "failed");
-    setShareMessage(result === "failed"
+    const outcome = await shareActions.share(shareText);
+    trackEvent("result_share", { method: "share", outcome });
+    if (outcome === "cancelled") return;
+    showMessage(outcome === "failed"
       ? "共有できませんでした。下の文面を選択してコピーしてください。"
-      : null);
+      : null, outcome === "failed");
+  };
+  const changePage = (next: number): void => {
+    setPage(next);
+    announce(`${next + 1} / ${pageCount}ページ`);
   };
   const goalName = stationName(network, game.config.startStationId, presentation);
   return (
@@ -73,6 +87,7 @@ export function ClearScreen({ game, network, presentation, display, collection, 
       <h1 ref={headingRef} id="clear-title" className="clear-screen__title" tabIndex={-1}>
         クリア！
       </h1>
+      <ClearAnnouncements completion={completionAnnouncement} message={announcement} />
       <p className="clear-screen__summary"><PhraseText text={`山手線の外回り全30区間を踏破し、${goalName}に戻りました。`} /></p>
       {saveStatus !== "saved" && (
         <p className="clear-screen__save-warning" role="alert">
@@ -96,35 +111,11 @@ export function ClearScreen({ game, network, presentation, display, collection, 
           </>
         )}
       </dl>
-      <h2 className="clear-screen__subtitle">移動履歴</h2>
-      <ol ref={historyRef} className="clear-screen__history">
-        {game.movementHistory.slice(currentPage * HISTORY_PAGE_SIZE, (currentPage + 1) * HISTORY_PAGE_SIZE).map((record) => {
-          if ("kind" in record) return <li key={record.turn}><PhraseText text={itemHistoryText(record, network, presentation)} /></li>;
-          const note = earlyStopNote(record, (id) => presentation.serviceStationName(record.serviceId, id), endpointKindAt(network, record.serviceId, record.toStationId));
-          const transition = landingTransitionText(record, network, presentation);
-          return (
-            <li key={record.turn}>
-              <span className="clear-screen__turn">{record.turn}ターン目</span>{" "}
-              <PhraseText text={`出目${record.roll}：${presentation.serviceStationName(record.serviceId, record.fromStationId)} → ${presentation.serviceStationName(record.serviceId, record.toStationId)}（${serviceName(network, record.serviceId, presentation)}・${directionLabel(network, record.serviceId, record.direction)}）`} />
-              {transition && <PhraseText text={` → ${transition}`} />}
-              {note !== null && <PhraseText text={`（${note}）`} />}
-            </li>
-          );
-        })}
-      </ol>
-      {pageCount > 1 && (
-        <nav className="clear-screen__paging" aria-label="移動履歴のページ">
-          <button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)}>前のページ</button>
-          <span role="status">{currentPage + 1} / {pageCount}ページ</span>
-          <button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)}>次のページ</button>
-        </nav>
-      )}
       <div className="clear-screen__share">
         <button type="button" onClick={copyResult}>結果をコピー</button>
         {canShare && <button type="button" onClick={shareResult}>共有</button>}
       </div>
-      {/* Always mounted so screen readers announce later messages. */}
-      <p className="clear-screen__share-status" role="status">{shareMessage}</p>
+      <p className="clear-screen__share-status">{shareMessage}</p>
       {showShareText && (
         <div className="clear-screen__share-fallback">
           <label htmlFor="clear-share-text">共有する結果</label>
@@ -139,6 +130,24 @@ export function ClearScreen({ game, network, presentation, display, collection, 
           タイトルへ
         </button>
       </div>
+      <ClearHighlights
+        highlights={result.highlights}
+        network={network}
+        presentation={presentation}
+        startStationId={game.config.startStationId}
+        targetServiceId={game.config.targetServiceId}
+      />
+      <ClearHistory
+        game={game}
+        network={network}
+        presentation={presentation}
+        page={currentPage}
+        pageCount={pageCount}
+        listRef={historyRef}
+        phoneOpen={phoneHistoryOpen}
+        onPhoneOpenChange={setPhoneHistoryOpen}
+        onPageChange={changePage}
+      />
     </section>
   );
 }

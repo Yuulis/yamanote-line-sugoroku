@@ -434,6 +434,19 @@ describe("title map camera", () => {
     expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
   });
 
+  it("keeps the unsupported notice visible on the clear screen without a second live region", () => {
+    mapState.failConstruction = true;
+    render("clear");
+
+    const notice = document.querySelector(".map-error");
+    expect(notice?.textContent).toContain("この端末・ブラウザでは地図を表示できません");
+    expect(notice?.hasAttribute("role")).toBe(false);
+    expect(document.querySelectorAll("[role='status'], [aria-live]")).toHaveLength(0);
+
+    render("game");
+    expect(document.querySelector(".map-error[role='status']")).not.toBeNull();
+  });
+
   it("style failure shows the placeholder only in title mode", () => {
     render("title");
     const map = mapFromState();

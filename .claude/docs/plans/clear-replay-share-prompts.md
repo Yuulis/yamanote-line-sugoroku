@@ -49,3 +49,49 @@ Include every test case listed under S1 "tests first", plus forward and reverse 
 features each (Revision 3).
 Acceptance: npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build.
 ```
+
+## S2 — published clear result, single announcer, phone layout (Claude subagent: general-purpose-sonnet)
+
+From S2 the user switched implementation to Claude subagents (2026-11-23): Sonnet implements, Opus reviews.
+
+```
+Implement plan "S2 — 結果公開、読み上げ、電話レイアウト" exactly (visible: yes). S1 is committed (e218c98):
+src/features/game/clearResult.ts exports deriveClearResult(input) -> { summary, shareText, highlights, route }.
+Scope:
+- New src/features/game/usePublishedClearResult.ts: called from GameApp at the existing showClear publication; memoised
+  on game/history reference + network/geometry/presentation/display refs (never on history length); monotonically
+  increasing generation per continuous clear publication; ClearScreen keyed by it. Route is NOT drawn yet (S3).
+- New ClearAnnouncements.tsx: the single polite live region on the clear screen (completion, paging, share results; later
+  replay/image). Mount empty, emit the existing turnDisplay.clearAnnouncement once at the same publication timing.
+  Move ItemEventNotice's clear-time live region here, keep its visible text. Paging text and share status stay visible
+  where they are but lose duplicate live attributes. Keep heading focus + scroll-to-top layout effect, the save-failure
+  warning/alert, the text copy/share fallback and both collection counters.
+- Highlights section (on screen only), heading 「ハイライト」, rows (omit a row whose value is null; items show 「なし」 when empty):
+  最長の乗車: 「{line group name} {count}駅（{from}→{to}）」
+  最も使った路線（{target line name}以外）: 「{line group name} {count}区間」
+  一番遠くまで行った駅: 「{station}（{start station}から {km with 1 decimal}km）」
+  使ったアイテム / 避けた不利なアイテム: 「{item name}×{n}」 joined by 「、」, or 「なし」
+  Resolve names via the existing PresentationResolver / item display helpers; reuse LineBadge where natural.
+- Phone (<=600px, existing breakpoint): order = heading, three numbers, share actions, もう一度遊ぶ/title actions,
+  highlights, then the move history inside <details> (summary 「移動履歴」, closed by default). Desktop keeps the history
+  visible (no disclosure) with the same single history DOM and page state across widths. Move clear-only CSS from
+  src/styles.css into src/features/game/components/clearScreen.css (check import order and cascade).
+- GameApp.tsx changes are wiring only.
+Tests first: update/add in tests/unit/game-app-turn-moments.test.ts, hud-progress-components.test.ts, result-share.test.ts
+(publication boundary, all three 演出 levels, one goal announcement, map-unavailable single polite status, heading focus,
+save warning, text-share fallback; query share buttons by accessible name, not order). Add unit tests for the highlights
+rendering (each row, null rows omitted, 「なし」). Audit history usage in tests/e2e/{text-wrapping,capital-region,items,
+tokyo-suburban,full-game}.spec.ts: where the real viewport is phone width, open 「移動履歴」 through the UI and keep every
+original assertion (20 entries, paging, scroll reset, final-entry wrapping, history equality across reload). Never weaken
+or delete assertions.
+Acceptance (run all, report counts): npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build;
+npm run test:e2e -- tests/e2e/text-wrapping.spec.ts tests/e2e/hud-layout.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/items.spec.ts tests/e2e/tokyo-suburban.spec.ts tests/e2e/full-game.spec.ts tests/e2e/accessibility.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/text-wrapping.spec.ts tests/e2e/hud-layout.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/accessibility.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+Also add one E2E (tests/e2e/clear-replay-share.spec.ts, new) that loads tests' pinned tokyo-suburban-before-clear-save.json,
+clears with one roll, and checks: highlights section visible; at 320x568 the three numbers, share buttons and
+もう一度遊ぶ are visible without scrolling the card and the history is closed; no horizontal overflow (save warning case
+included). Tag phone cases @layout.
+Screenshots for the user's review (not committed): after the clear in that save, capture the clear screen at 1280x800,
+390x844 and 320x568 to .claude/logs/screenshots/issue69-s2-{desktop,phone390,phone320}.png (a small throwaway Playwright
+script or a test.step with page.screenshot guarded by an env var that is off in CI).
+```

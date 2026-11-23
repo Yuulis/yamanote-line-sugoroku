@@ -10,7 +10,7 @@ import { longestRideState, longestDirectionState, longLineLotteryState } from ".
 import { createGame as createProductGame, playTurn as playProductTurn } from "./fixtures/productGame";
 import { itemScenario } from "./fixtures/itemScenarios";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HISTORY_SCENARIO_TURNS } from "./fixtures/seeds";
-import { diceButton, gamePanel, openGameLog, openTitle, panelStat, readSave, startNewGame, useInventoryItem, writeSaveText, rollOnce } from "./support/app";
+import { diceButton, gamePanel, openClearHistory, openGameLog, openTitle, panelStat, readSave, startNewGame, useInventoryItem, writeSaveText, rollOnce } from "./support/app";
 import { expectSingleLine, measureTextLayout } from "./support/layout";
 
 const PHONE_HUD_TARGET_BUDGET_PX = 252;
@@ -642,14 +642,18 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
   const historyItems: Locator = clearScreen.locator(".clear-screen__history li");
   const paging: Locator = clearScreen.getByRole("navigation", { name: "移動履歴のページ" });
   const summaryParagraph: Locator = clearScreen.locator(".clear-screen__summary");
-  const goalAnnouncement: Locator = clearScreen.locator(".item-event-notice [role=status]");
+  const goalAnnouncement: Locator = clearScreen.locator(".item-event-notice__completion");
+  const liveRegion: Locator = clearScreen.getByRole("status");
   await expect(clearScreen).toBeVisible();
   await expect(summaryParagraph).toHaveText(CLEAR_SCREEN_SUMMARY_TEXT);
+  await openClearHistory(clearScreen);
   const summaryLayout = await measureTextLayout(summaryParagraph);
   expect(summaryLayout.hintOffsets.length).toBeGreaterThan(0);
   expect(summaryLayout.text).toBe(CLEAR_SCREEN_SUMMARY_TEXT);
   expect(summaryLayout.widthFits).toBe(true);
   await expect(goalAnnouncement).toHaveText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT);
+  await expect(liveRegion).toHaveCount(1);
+  await expect(liveRegion).toHaveText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT);
   const goalAnnouncementWordBreak: string = await goalAnnouncement.evaluate(() =>
     CSS.supports("word-break", "auto-phrase") ? "auto-phrase" : "keep-all",
   );
@@ -668,15 +672,15 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
 
   await paging.getByRole("button", { name: "次のページ", exact: true }).click();
   await expect(historyItems.first()).toContainText("21ターン目");
-  await expect(paging.getByRole("status")).toHaveText("2 / 5ページ");
+  await expect(paging.locator(".clear-screen__page-status")).toHaveText("2 / 5ページ");
   await paging.getByRole("button", { name: "前のページ", exact: true }).click();
   await expect(historyItems.first()).toContainText("1ターン目");
-  await expect(paging.getByRole("status")).toHaveText("1 / 5ページ");
+  await expect(paging.locator(".clear-screen__page-status")).toHaveText("1 / 5ページ");
 
   for (let pageIndex: number = 1; pageIndex < CLEAR_HISTORY_PAGE_COUNT; pageIndex += 1) {
     await paging.getByRole("button", { name: "次のページ", exact: true }).click();
   }
-  await expect(paging.getByRole("status")).toHaveText("5 / 5ページ");
+  await expect(paging.locator(".clear-screen__page-status")).toHaveText("5 / 5ページ");
   const goalHistoryEntry: Locator = historyItems.last();
   const goalHistoryLayout = await measureTextLayout(goalHistoryEntry);
   expect(goalHistoryLayout.hintOffsets.length).toBeGreaterThan(0);

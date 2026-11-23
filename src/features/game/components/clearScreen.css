@@ -1,0 +1,262 @@
+/* Clear screen card. The base position/stacking rule shared with the title screen stays in src/styles.css; this
+   file is imported after it (src/main.tsx), so equal-specificity rules here win. */
+.clear-screen {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 24px));
+  max-height: calc(100% - 80px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+}
+
+.clear-screen__title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  text-align: center;
+}
+
+.clear-screen__summary,
+.clear-screen__history li,
+.clear-screen__highlights dd,
+.clear-screen .item-event-notice__completion {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.clear-screen__summary,
+.clear-screen .item-event-notice__completion {
+  line-height: 1.5;
+}
+
+@supports (word-break: auto-phrase) {
+  .clear-screen__summary,
+  .clear-screen__history li,
+  .clear-screen__highlights dd,
+  .clear-screen .item-event-notice__completion {
+    word-break: auto-phrase;
+  }
+}
+
+.clear-screen__save-warning {
+  margin: 8px 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #fff3cd;
+  color: #8a4b00;
+  font-weight: bold;
+}
+
+.clear-screen__subtitle {
+  margin: 12px 0 4px;
+  font-size: 15px;
+}
+
+.clear-screen__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 8px 0;
+}
+
+.clear-screen__stats dd {
+  margin: 0;
+  font-weight: bold;
+}
+
+.clear-screen__highlights {
+  margin-top: 12px;
+}
+
+.clear-screen__highlight-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.clear-screen__highlight-row {
+  display: grid;
+  gap: 1px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.clear-screen__highlight-row dt {
+  color: #555555;
+  font-size: 12px;
+}
+
+.clear-screen__highlight-row dd {
+  margin: 0;
+  font-weight: bold;
+  line-height: 1.45;
+}
+
+.clear-screen__history {
+  max-height: 200px;
+  overflow-y: auto;
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.clear-screen__history li {
+  padding: 2px 0;
+  border-bottom: 1px solid #eeeeee;
+  line-height: 1.45;
+}
+
+.clear-screen__turn {
+  display: inline-block;
+  min-width: 5em;
+  color: #555555;
+}
+
+/* Phones: the history is a closed disclosure; the summary row is a full-size tap target. */
+.clear-screen__history-details {
+  margin-top: 12px;
+}
+
+.clear-screen__history-details > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.clear-screen__history-details > summary:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.clear-screen__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clear-screen__actions button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.clear-screen__share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clear-screen__share button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.clear-screen__share button:focus-visible,
+.clear-screen__share-fallback textarea:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.clear-screen__share-status {
+  margin: 8px 0 0;
+}
+
+.clear-screen__share-status:empty {
+  margin: 0;
+}
+
+.clear-screen__share-fallback {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.clear-screen__share-fallback textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  font: inherit;
+}
+
+.clear-screen__paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.clear-screen__paging button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+@media (max-width: 390px) {
+  .clear-screen__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phones: bottom sheet above the attribution button, map visible above it. 78% is tall enough for the three
+   numbers, the share actions and the play-again actions to fit on its first screen at 320x568; the
+   highlights and the history scroll below them. */
+@media (max-width: 600px) {
+  .clear-screen {
+    top: auto;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    transform: none;
+    width: auto;
+    max-height: 78%;
+    padding: 12px 14px;
+  }
+
+  .clear-screen__title {
+    margin: 0;
+    font-size: 20px;
+  }
+
+  .clear-screen__summary,
+  .clear-screen .item-event-notice__completion {
+    margin: 4px 0;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .clear-screen .item-event-notice {
+    margin-block: 4px;
+  }
+
+  .clear-screen__save-warning {
+    margin: 4px 0;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .clear-screen__stats {
+    gap: 0 12px;
+    margin: 4px 0;
+    font-size: 14px;
+  }
+
+  .clear-screen__share,
+  .clear-screen__actions {
+    margin-top: 8px;
+  }
+
+  .clear-screen__history {
+    max-height: 120px;
+  }
+}

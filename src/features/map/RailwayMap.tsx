@@ -938,7 +938,8 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       </div>
       {showTitlePlaceholder && <TitleMapPlaceholder />}
       {unsupported && (
-        <div ref={setCoachTarget} className="map-error" role="status">
+        // The clear screen owns the only polite live region, so the notice stays visible there without one.
+        <div ref={setCoachTarget} className="map-error" role={mode === "clear" ? undefined : "status"}>
           <p>
             この端末・ブラウザでは地図を表示できません（WebGL2 が必要です）。
             地図なしでゲームを続けられます。

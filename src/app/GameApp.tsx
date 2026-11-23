@@ -19,6 +19,7 @@ import type { Edition } from "../features/editions/types";
 import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
+import { usePublishedClearResult } from "../features/game/usePublishedClearResult";
 import { useGameSettings } from "../features/game/useGameSettings";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
@@ -534,6 +535,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   }, [showTitleScreen]);
 
   const showClear = turnDisplay?.showClear ?? false;
+  const publishedClear = usePublishedClearResult({
+    sessionId: session?.sessionId ?? null,
+    game: showClear && session ? session.game : null,
+    network, geometry, presentation, display: edition.display,
+  });
   const mapMode: RailwayMapMode = app.state.screen === "title" ? "title" : showClear ? "clear" : "game";
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
@@ -744,17 +750,19 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         />
       )}
       <ToastHost toasts={visibleToasts} reducedMotion={reducedMotion} />
-      {session && turnDisplay?.showClear && presentationGame && (
+      {session && turnDisplay?.showClear && presentationGame && publishedClear && (
         <ClearScreen
-          game={session.game}
+          key={publishedClear.generation}
+          game={publishedClear.game}
+          result={publishedClear.result}
           itemNotice={turnDisplay.itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
             view={turnDisplay.itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation}
             completionAnnouncement={turnDisplay.clearAnnouncement}
           /> : undefined}
+          completionAnnouncement={turnDisplay.clearAnnouncement}
           network={network}
           presentation={presentation}
           collection={turnDisplay.collection}
-          display={edition.display}
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}

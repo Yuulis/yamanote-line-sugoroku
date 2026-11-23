@@ -3,6 +3,7 @@ import { expect, test } from "./fixtures";
 import {
   gamePanel,
   loadStations,
+  openClearHistory,
   openTitle,
   panelStat,
   REQUIRED_SEGMENTS,
@@ -51,6 +52,7 @@ test("[8.3-2/3] play a full game to the clear screen, then play again", async ({
   const stats = clear.locator("dl");
   await expect(stats.locator("dt + dd").first()).toHaveText(`${save.turn}ターン`);
   await expect(stats.locator("dt + dd").nth(1)).toHaveText(`${save.movementHistory.reduce((total, record) => total + record.traversedSegmentIds.length, 0)}回`);
+  await openClearHistory(clear);
   const items = clear.getByRole("listitem");
   await expect(items).toHaveCount(save.turn);
   for (const [index, record] of save.movementHistory.entries()) {

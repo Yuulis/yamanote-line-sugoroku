@@ -14,6 +14,7 @@ import {
 import {
   gamePanel,
   markerPosition,
+  openClearHistory,
   openGameLog,
   openTitle,
   panelStat,
@@ -107,11 +108,12 @@ test("the product game's actual clearing turn saves the exact result and restart
   expect(clear.movementHistory.at(-1)).toMatchObject({ toStationId: "shimbashi" });
   expect(clear.completedSegmentIds.filter((id) => id.startsWith("jr-yamanote:"))).toHaveLength(30);
 
+  await openClearHistory(result);
   const history = result.getByRole("listitem");
   const pager = result.getByRole("navigation", { name: "移動履歴のページ" });
   for (let pageIndex = 0; pageIndex < 5; pageIndex += 1) {
     const pageRecords = clear.movementHistory.slice(pageIndex * 20, (pageIndex + 1) * 20);
-    await expect(pager.getByRole("status")).toHaveText(`${pageIndex + 1} / 5ページ`);
+    await expect(pager.locator(".clear-screen__page-status")).toHaveText(`${pageIndex + 1} / 5ページ`);
     await expect(history).toHaveCount(pageRecords.length);
     for (const [index, record] of pageRecords.entries()) {
       await expect(history.nth(index)).toContainText(`${record.turn}ターン目`);
