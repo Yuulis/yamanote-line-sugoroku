@@ -1,10 +1,8 @@
-import { useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { useId, useLayoutEffect, useRef, useState, type MouseEvent, type RefObject, type SyntheticEvent } from "react";
 import type { GameState, ItemGameState } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
-import { earlyStopNote, endpointKindAt } from "../gameSummary";
-import { directionLabel, itemHistoryText, landingTransitionText, serviceName } from "../presentation";
+import { buildHistoryRows, type HistoryRow } from "../historyRows";
 import type { PresentationResolver } from "../presentationResolver";
-import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
 import { PhraseText } from "./PhraseText";
 
 export const HISTORY_PAGE_SIZE = 20;
@@ -13,80 +11,119 @@ interface ClearHistoryProps {
   game: GameState | ItemGameState;
   network: RailwayNetwork;
   presentation: PresentationResolver;
+}
+
+interface HistoryDialogProps extends ClearHistoryProps {
   page: number;
   pageCount: number;
-  listRef: RefObject<HTMLOListElement | null>;
-  /** Phone only: whether the disclosure is open. Desktop always shows the history. */
-  phoneOpen: boolean;
-  onPhoneOpenChange: (open: boolean) => void;
+  /** The launcher that regains focus when the dialog closes. */
+  opener: RefObject<HTMLButtonElement | null>;
   onPageChange: (page: number) => void;
+  onClose: () => void;
 }
 
-function subscribePhone(onChange: () => void): () => void {
-  if (typeof window.matchMedia !== "function") return () => undefined;
-  const query = window.matchMedia(PHONE_MEDIA_QUERY);
-  query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
-}
-
-function phoneSnapshot(): boolean {
-  return typeof window.matchMedia === "function" && window.matchMedia(PHONE_MEDIA_QUERY).matches;
-}
-
-/** Live phone-width flag from the same breakpoint the stylesheet uses. */
-function useIsPhoneWidth(): boolean {
-  return useSyncExternalStore(subscribePhone, phoneSnapshot, () => false);
+function HistoryRowItem({ row }: { row: HistoryRow }) {
+  return (
+    <li className="clear-history__row">
+      <span className="clear-history__turn">{row.turnText}</span>
+      <span className="clear-history__roll"><PhraseText text={row.rollText} /></span>
+      <span className="clear-history__move"><PhraseText text={row.moveText} /></span>
+      {row.lineText !== null && <span className="clear-history__line"><PhraseText text={row.lineText} /></span>}
+      {row.notes.length > 0 && (
+        <div className="clear-history__notes">
+          {row.notes.map((note, index) => (
+            <p key={index} className="clear-history__note" data-note={note.kind}>
+              {note.label !== null && <span className="clear-history__note-label">{note.label}</span>}
+              <PhraseText text={note.text} />
+            </p>
+          ))}
+        </div>
+      )}
+    </li>
+  );
 }
 
 /**
- * The move history with its pager. There is one history DOM: desktop shows it under a heading, phones put the
- * same content in a disclosure that starts closed so the result numbers and actions stay on the first screen.
+ * The move history on a native modal <dialog>: the browser keeps focus inside, makes the card behind inert and
+ * closes on Escape. React owns closing: Escape, the backdrop and 閉じる only request it, and unmounting closes
+ * the dialog and returns focus to the launcher.
  */
-export function ClearHistory({ game, network, presentation, page, pageCount, listRef, phoneOpen, onPhoneOpenChange, onPageChange }: ClearHistoryProps) {
-  const isPhone = useIsPhoneWidth();
-  const entries = game.movementHistory.slice(page * HISTORY_PAGE_SIZE, (page + 1) * HISTORY_PAGE_SIZE);
-  const body: ReactNode = (
-    <>
+function HistoryDialog({ game, network, presentation, page, pageCount, opener, onPageChange, onClose }: HistoryDialogProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const listRef = useRef<HTMLOListElement>(null);
+  const titleId = useId();
+  const rows = buildHistoryRows(game.movementHistory.slice(page * HISTORY_PAGE_SIZE, (page + 1) * HISTORY_PAGE_SIZE), network, presentation);
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || dialog.open) return;
+    dialog.showModal();
+    headingRef.current?.focus({ preventScroll: true });
+    return () => {
+      dialog.close();
+      const launcher = opener.current;
+      if (launcher?.isConnected) launcher.focus();
+    };
+  }, [opener]);
+  useLayoutEffect(() => {
+    if (listRef.current) listRef.current.scrollTop = 0;
+  }, [page]);
+
+  const onDialogCancel = (event: SyntheticEvent): void => {
+    event.preventDefault();
+    onClose();
+  };
+  const onBackdropClick = (event: MouseEvent<HTMLDialogElement>): void => {
+    if (event.target === event.currentTarget) onClose();
+  };
+
+  return (
+    <dialog ref={dialogRef} className="clear-history" aria-labelledby={titleId} onCancel={onDialogCancel} onClick={onBackdropClick}>
+      <div className="clear-history__header">
+        <h2 id={titleId} ref={headingRef} className="clear-history__title" tabIndex={-1}>移動履歴</h2>
+        <button type="button" onClick={onClose}>閉じる</button>
+      </div>
       <ol ref={listRef} className="clear-screen__history">
-        {entries.map((record) => {
-          if ("kind" in record) return <li key={record.turn}><PhraseText text={itemHistoryText(record, network, presentation)} /></li>;
-          const note = earlyStopNote(record, (id) => presentation.serviceStationName(record.serviceId, id), endpointKindAt(network, record.serviceId, record.toStationId));
-          const transition = landingTransitionText(record, network, presentation);
-          return (
-            <li key={record.turn}>
-              <span className="clear-screen__turn">{record.turn}ターン目</span>{" "}
-              <PhraseText text={`出目${record.roll}：${presentation.serviceStationName(record.serviceId, record.fromStationId)} → ${presentation.serviceStationName(record.serviceId, record.toStationId)}（${serviceName(network, record.serviceId, presentation)}・${directionLabel(network, record.serviceId, record.direction)}）`} />
-              {transition && <PhraseText text={` → ${transition}`} />}
-              {note !== null && <PhraseText text={`（${note}）`} />}
-            </li>
-          );
-        })}
+        {rows.map((row) => <HistoryRowItem key={row.turn} row={row} />)}
       </ol>
       {pageCount > 1 && (
         <nav className="clear-screen__paging" aria-label="移動履歴のページ">
           <button type="button" disabled={page === 0} onClick={() => onPageChange(page - 1)}>前のページ</button>
-          <span className="clear-screen__page-status">{page + 1} / {pageCount}ページ</span>
+          <span className="clear-screen__page-status" role="status" aria-live="polite" aria-atomic="true">{page + 1} / {pageCount}ページ</span>
           <button type="button" disabled={page === pageCount - 1} onClick={() => onPageChange(page + 1)}>次のページ</button>
         </nav>
       )}
-    </>
+    </dialog>
   );
-  if (!isPhone) {
-    return (
-      <>
-        <h2 className="clear-screen__subtitle">移動履歴</h2>
-        {body}
-      </>
-    );
-  }
+}
+
+/**
+ * Launcher and dialog of the move history. The page lives here, so it survives closing and reopening within one
+ * published result; the clear screen is keyed by the publication generation, which resets it for a new result.
+ */
+export function ClearHistory({ game, network, presentation }: ClearHistoryProps) {
+  const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(0);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
   return (
-    <details
-      className="clear-screen__history-details"
-      open={phoneOpen}
-      onToggle={(event) => onPhoneOpenChange(event.currentTarget.open)}
-    >
-      <summary>移動履歴</summary>
-      {body}
-    </details>
+    <>
+      <button ref={launcherRef} type="button" className="clear-screen__history-button" onClick={() => setOpen(true)}>
+        移動履歴を見る
+      </button>
+      {open && (
+        <HistoryDialog
+          game={game}
+          network={network}
+          presentation={presentation}
+          page={Math.min(page, pageCount - 1)}
+          pageCount={pageCount}
+          opener={launcherRef}
+          onPageChange={setPage}
+          onClose={() => setOpen(false)}
+        />
+      )}
+    </>
   );
 }

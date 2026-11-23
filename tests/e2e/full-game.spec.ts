@@ -52,8 +52,8 @@ test("[8.3-2/3] play a full game to the clear screen, then play again", async ({
   const stats = clear.locator("dl");
   await expect(stats.locator("dt + dd").first()).toHaveText(`${save.turn}ターン`);
   await expect(stats.locator("dt + dd").nth(1)).toHaveText(`${save.movementHistory.reduce((total, record) => total + record.traversedSegmentIds.length, 0)}回`);
-  await openClearHistory(clear);
-  const items = clear.getByRole("listitem");
+  const dialog = await openClearHistory(clear);
+  const items = dialog.getByRole("listitem");
   await expect(items).toHaveCount(save.turn);
   for (const [index, record] of save.movementHistory.entries()) {
     const from = stations.get(record.fromStationId)?.name;
@@ -61,19 +61,25 @@ test("[8.3-2/3] play a full game to the clear screen, then play again", async ({
     if (record.kind !== "item-ride") throw new Error("Autoplay should not use deadhead");
     const service = railwayBundle.network.servicesById.get(record.resolvedRide.serviceId)!;
     const direction = record.resolvedRide.direction === 1 ? service.directionLabels.forward : service.directionLabels.backward;
-    await expect(items.nth(index)).toContainText(`${record.turn}ターン目 出目${record.rawRoll}`);
-    await expect(items.nth(index)).toContainText(`${record.physicalHops}駅移動`);
-    await expect(items.nth(index)).toContainText(`${from} → ${to}`);
-    await expect(items.nth(index)).toContainText(`（${service.name}・${direction}）`);
+    const row = items.nth(index);
+    await expect(row.locator(".clear-history__turn")).toHaveText(`${record.turn}ターン目`);
+    await expect(row.locator(".clear-history__roll")).toHaveText(new RegExp(`^出目${record.rawRoll}（`));
+    await expect(row.locator(".clear-history__roll")).toContainText(`${record.physicalHops}駅移動`);
+    await expect(row.locator(".clear-history__move")).toContainText(`${from} → ${to}`);
+    await expect(row.locator(".clear-history__line")).toHaveText(`${service.name}・${direction}`);
     if (record.unusedPips > 0) {
-      await expect(items.nth(index)).toContainText(`残り${record.unusedPips}は使わず`);
+      await expect(row.locator(".clear-history__roll")).toContainText(`残り${record.unusedPips}は使わず`);
     }
     if (record.landing && record.landing.serviceId !== record.resolvedRide.serviceId) {
       const next = railwayBundle.network.servicesById.get(record.landing.serviceId)!;
-      await expect(items.nth(index)).toContainText(`抽選 → ${next.name}`);
+      await expect(row.locator('.clear-history__note[data-note="landing"]')).toContainText(`抽選 → ${next.name}`);
     }
 
   }
+
+  await dialog.getByRole("button", { name: "閉じる" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(clear).toBeVisible();
 
   // The result survives a reload and is offered on the title screen.
   await page.reload();

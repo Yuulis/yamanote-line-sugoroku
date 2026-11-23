@@ -904,10 +904,13 @@ describe("GameApp decision and empty-event publication", () => {
     expect(mounted!.container.querySelector(".clear-screen")).not.toBeNull();
     expect(mounted!.container.querySelector(".clear-screen [role=status]")?.textContent).toBe("10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
     expect(mounted!.container.querySelectorAll(".clear-screen [role=status]")).toHaveLength(1);
-    // The same goal text stays visible inside the item notice, which is no longer a live region.
-    expect(mounted!.container.querySelector(".item-event-notice__completion")?.textContent).toBe(
-      "10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
-    expect(mounted!.container.querySelectorAll(".item-event-notice [role=status], .item-event-notice [aria-live]")).toHaveLength(0);
+    // Revision 4: the clearing turn's own log line is no longer shown on the card. The goal sentence exists once,
+    // in the clear screen's single live region; the empty item notice is not rendered at all.
+    const goalSentence = "10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30";
+    expect(mounted!.container.querySelector(".item-event-notice__completion")).toBeNull();
+    expect(mounted!.container.querySelector(".item-event-notice")).toBeNull();
+    expect(mounted!.container.textContent!.split(goalSentence)).toHaveLength(2);
+    expect(mounted!.container.querySelectorAll(".clear-screen [role=status], .clear-screen [aria-live]")).toHaveLength(1);
     // The only polite status on the whole page is the clear screen's own (the share feedback is plain text).
     expect(status()).toBe("10ターン目：出目1（1マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30");
     expect(mounted!.container.querySelector(".game-panel")).toBeNull();

@@ -17,7 +17,7 @@ Resume from here. Plan: `clear-replay-share-plan.md` (Revision 3, Codex validate
 |---|---|---|---|
 | S1 result model + strict route | done | e218c98 | Luna xhigh + 1 fix round after Sol low review (zero-hop transfer leg break, Mercator latitude limit, 3 tests). Lead: typecheck, vitest 2466 passed / 1 skipped (pre-existing), build, diff check, verify_delegation 0 actionable. Branch CI 44998059885 green. User review pending before S2 |
 | S2 clear screen, announcements, phone layout | done | (see git log) | Sonnet implements, Opus review APPROVE (14 retargeted assertions all have equal/stronger replacements). Lead: typecheck, vitest 2492/1 skipped, build, diff check, phone @layout 24 passed/1 skipped. Deviations: phone sheet max-height 60%→78%; desktop history now below share/actions/highlights (single DOM). Screenshots .claude/logs/screenshots/issue69-s2-*.png. User review pending |
-| S3 clear card cleanup + history dialog + phone sheet 65% | in progress | — | Revision 4 (user 2026-11-23); visible |
+| S3 clear card cleanup + history dialog + phone sheet 65% | done | (see git log) | Sonnet implements; Opus review: 1 blocking (full-game line check unanchored) fixed by lead (toHaveText). Lead: typecheck, vitest 2513/1 skipped, build, diff check, phone @layout 35 passed/4 skipped, full-game desktop 1 passed. 320x568 slack ~11px at 65%; save-warning 320 and landscape 667x375 need scrolling to 移動履歴を見る. Screenshots issue69-s3-*.png. User review pending |
 | S4 full-route layer + camera | pending | — | visible (old S3) |
 | S5 per-turn replay, caption, speed, pause | pending | — | visible (old S4, no duration cap) |
 | S6 PNG exporter + 3-browser probe | pending | — | full CI gate (old S5) |
@@ -39,3 +39,8 @@ Resume from here. Plan: `clear-replay-share-plan.md` (Revision 3, Codex validate
   after removing the clear-turn line, consider lowering the phone sheet cap toward 60-65% and re-run
   clear-replay-share.spec.ts (actions on first screen); new map/credit messages go through ClearAnnouncements; key route
   ownership by the same generation.
+- From the S3 review (for S5): HistoryRow is string-only; add structured fields (kind, rawRoll/effectiveRoll/adjusted, effect kinds,
+  toStationName, recordIndex) so captions are not parsed from strings; add a suspension-note unit test; itemHistoryText
+  (presentation.ts) is now unused in production (only game-presentation.test.ts) — remove or keep deliberately; history roll
+  text shows lastRollText verbatim (e.g. 出目5（5マス、13駅移動、残り5は使わず）) instead of the mock's 出目4・快速 — user asked.
+  Classic truncation note reads 「途中で停止 大森で停止…」 (double 停止).

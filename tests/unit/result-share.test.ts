@@ -199,6 +199,12 @@ describe("item result accounting", () => {
   });
 
   it("ClearScreen copies the item accounting from its original transcript", async () => {
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+      configurable: true, value(this: HTMLDialogElement) { this.setAttribute("open", ""); },
+    });
+    Object.defineProperty(HTMLDialogElement.prototype, "close", {
+      configurable: true, value(this: HTMLDialogElement) { this.removeAttribute("open"); },
+    });
     const writeText = vi.fn().mockResolvedValue(undefined);
     const itemGame = state("jr-yamanote", [deadhead(1, "toei-mita")]);
     const mounted = mountReact(createElement(ClearScreen, {
@@ -209,7 +215,12 @@ describe("item result accounting", () => {
     }));
     await click(buttonByName(mounted.container, COPY));
     expect(writeText).toHaveBeenCalledWith(buildShareText(display, { turns: 1, moves: 0, transfers: 1 }));
-    expect(mounted.container.textContent).toContain("回送");
+    // The deadhead entry now lives in the history dialog, not on the card.
+    expect(mounted.container.textContent).not.toContain("回送");
+    await click(buttonByName(mounted.container, "移動履歴を見る"));
+    expect(mounted.container.querySelector("dialog")?.textContent).toContain("回送");
     mounted.cleanup();
+    Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
+    Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
   });
 });

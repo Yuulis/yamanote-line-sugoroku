@@ -35,18 +35,10 @@ interface ClearScreenProps {
 
 /** Shown once the clearing move has finished animating (spec 6.1). */
 export function ClearScreen({ game, network, presentation, result, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
-  const [page, setPage] = useState(0);
-  const [phoneHistoryOpen, setPhoneHistoryOpen] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showShareText, setShowShareText] = useState(false);
   const [announcement, setAnnouncement] = useState<ClearAnnouncement | null>(null);
-  const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount - 1);
-  const historyRef = useRef<HTMLOListElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
-  useLayoutEffect(() => {
-    if (historyRef.current) historyRef.current.scrollTop = 0;
-  }, [currentPage]);
   useLayoutEffect(() => {
     const screen = headingRef.current?.closest<HTMLElement>(".clear-screen");
     if (!headingRef.current || !screen) return;
@@ -76,10 +68,6 @@ export function ClearScreen({ game, network, presentation, result, collection, s
     showMessage(outcome === "failed"
       ? "共有できませんでした。下の文面を選択してコピーしてください。"
       : null, outcome === "failed");
-  };
-  const changePage = (next: number): void => {
-    setPage(next);
-    announce(`${next + 1} / ${pageCount}ページ`);
   };
   const goalName = stationName(network, game.config.startStationId, presentation);
   return (
@@ -130,23 +118,13 @@ export function ClearScreen({ game, network, presentation, result, collection, s
           タイトルへ
         </button>
       </div>
+      <ClearHistory game={game} network={network} presentation={presentation} />
       <ClearHighlights
         highlights={result.highlights}
         network={network}
         presentation={presentation}
         startStationId={game.config.startStationId}
         targetServiceId={game.config.targetServiceId}
-      />
-      <ClearHistory
-        game={game}
-        network={network}
-        presentation={presentation}
-        page={currentPage}
-        pageCount={pageCount}
-        listRef={historyRef}
-        phoneOpen={phoneHistoryOpen}
-        onPhoneOpenChange={setPhoneHistoryOpen}
-        onPageChange={changePage}
       />
     </section>
   );

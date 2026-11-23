@@ -707,18 +707,21 @@ test.describe("long rapid goal arrival", () => {
     const clearScreen = page.getByRole("region", { name: "クリア！" });
     await expect(clearScreen.getByRole("status")).toHaveCount(1);
     await expect(clearScreen.getByRole("status")).toContainText("ゴールに到着しました");
-    await expect(notices(page)).toContainText("ゴールに到着しました");
+    // Revision 4: the clearing turn's own log line is gone from the card; the goal sentence exists once, in the status.
+    await expect(notices(page)).not.toContainText("ゴールに到着しました");
+    await expect(page.locator(".item-event-notice__completion")).toHaveCount(0);
+    await expect(clearScreen.getByText("ゴールに到着しました")).toHaveCount(1);
     await expect(notices(page).getByRole("status")).toHaveCount(0);
     expect(await itemSave(page)).toEqual(committed);
-    const history = page.locator(".clear-screen__history");
-    await openClearHistory(clearScreen);
+    const dialog = await openClearHistory(clearScreen);
+    const history = dialog.locator(".clear-screen__history");
     await expect(history).not.toContainText("残り-");
     await expect(history).toContainText(`${record.physicalHops}駅移動`);
     const historicalText = await history.locator("li").allTextContents();
     await page.reload();
     await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
     await expect(page.getByRole("heading", { name: "クリア！", exact: true })).toBeFocused();
-    await openClearHistory(clearScreen);
-    await expect(history.locator("li")).toHaveText(historicalText);
+    const reopened = await openClearHistory(clearScreen);
+    await expect(reopened.locator(".clear-screen__history li")).toHaveText(historicalText);
   });
 });

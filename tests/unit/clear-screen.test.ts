@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, createElement, type ComponentProps } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ClearHighlights } from "../../src/features/game/components/ClearHighlights";
 import { ClearScreen } from "../../src/features/game/components/ClearScreen";
 import type { ClearHighlights as ClearHighlightsModel } from "../../src/features/game/clearResult";
@@ -8,7 +8,6 @@ import { buildClearHighlightRows } from "../../src/features/game/clearHighlights
 import { buildRailwayNetwork } from "../../src/features/game/engine";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { EDITIONS } from "../../src/features/editions/registry";
-import { PHONE_MEDIA_QUERY } from "../../src/features/map/mapConfig";
 import type { GameState, ItemKind, HarmfulItemKind } from "../../src/types/network";
 import { M_LINE, M_LOOP, M_START, multiServiceInput } from "./fixtures/multiService";
 import { clearResultFor, buttonByName } from "./helpers/clearScreen";
@@ -102,36 +101,46 @@ const game = {
 } as unknown as GameState;
 
 let mounted: MountedReact | undefined;
+beforeAll(() => {
+  // Native modal stub: `open` stays until close() or unmount, like the browser's.
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+    configurable: true,
+    value(this: HTMLDialogElement) { this.setAttribute("open", ""); },
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", {
+    configurable: true,
+    value(this: HTMLDialogElement) { this.removeAttribute("open"); },
+  });
+});
 afterEach(() => {
   mounted?.cleanup();
   mounted = undefined;
-  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-function stubPhone(isPhone: boolean): { change: (phone: boolean) => void } {
-  const listeners = new Set<() => void>();
-  let phone = isPhone;
-  vi.stubGlobal("matchMedia", vi.fn((query: string) => ({
-    media: query,
-    get matches() { return query === PHONE_MEDIA_QUERY && phone; },
-    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
-    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
-  })));
-  return { change: (next) => { phone = next; act(() => listeners.forEach((listener) => listener())); } };
-}
-
-function mountScreen(overrides: Partial<ComponentProps<typeof ClearScreen>> = {}): MountedReact {
-  mounted = mountReact(createElement(ClearScreen, {
+function screenProps(overrides: Partial<ComponentProps<typeof ClearScreen>> = {}): ComponentProps<typeof ClearScreen> {
+  return {
     game, network, presentation,
     result: clearResultFor(game, network, presentation, display),
     saveStatus: "saved", onPlayAgain: vi.fn(), onShowTitle: vi.fn(),
     ...overrides,
-  }));
+  };
+}
+
+function mountScreen(overrides: Partial<ComponentProps<typeof ClearScreen>> = {}): MountedReact {
+  mounted = mountReact(createElement(ClearScreen, screenProps(overrides)));
   return mounted;
 }
 
 const liveTexts = (container: HTMLElement): string[] =>
   [...container.querySelectorAll('[role="status"], [aria-live]')].map((region) => region.textContent ?? "");
+
+const launcher = (container: HTMLElement): HTMLButtonElement => buttonByName(container, "移動履歴を見る")!;
+const historyDialog = (container: HTMLElement): HTMLDialogElement | null => container.querySelector("dialog");
+const openHistory = (container: HTMLElement): void => act(() => launcher(container).click());
+const click = (button: HTMLButtonElement | undefined): void => act(() => button!.click());
+const rowTurns = (container: HTMLElement): string[] =>
+  [...container.querySelectorAll(".clear-screen__history li")].map((row) => row.querySelector(".clear-history__turn")!.textContent!);
 
 describe("ClearScreen live region", () => {
   it("mounts one polite region and announces the completion text once it is published", () => {
@@ -146,15 +155,25 @@ describe("ClearScreen live region", () => {
     expect(liveTexts(mountScreen().container)).toEqual([""]);
   });
 
-  it("keeps the same region node while later messages replace the text", async () => {
-    stubPhone(false);
+  it("shows the goal sentence once, in the live region only, never as a visible log line on the card", () => {
+    const goal = "96ターン目：出目3（3マス、1駅移動）、新橋に到着。ゴールに到着しました。踏破 30/30";
+    const { container } = mountScreen({ completionAnnouncement: goal });
+    expect(liveTexts(container)).toEqual([goal]);
+    expect(container.querySelector(".item-event-notice__completion")).toBeNull();
+    expect(container.textContent!.split(goal)).toHaveLength(2);
+  });
+
+  it("keeps the completion announcement in the card's region while the history pages announce themselves", () => {
     const { container } = mountScreen({ completionAnnouncement: "ゴール" });
     const region = container.querySelector('[role="status"]');
-    await act(async () => buttonByName(container, "次のページ")!.click());
-    expect(container.querySelector('[role="status"]')).toBe(region);
-    expect(liveTexts(container)).toEqual(["2 / 3ページ"]);
-    expect(container.querySelector(".clear-screen__page-status")?.textContent).toBe("2 / 3ページ");
-    expect(container.querySelector(".clear-screen__page-status")?.hasAttribute("role")).toBe(false);
+    openHistory(container);
+    click(buttonByName(container, "次のページ"));
+    expect(container.querySelector(".clear-screen > [role=status]")).toBe(region);
+    expect(region!.textContent).toBe("ゴール");
+    const pageStatus = container.querySelector(".clear-screen__page-status")!;
+    expect(pageStatus.textContent).toBe("2 / 3ページ");
+    expect(pageStatus.getAttribute("role")).toBe("status");
+    expect(pageStatus.getAttribute("aria-live")).toBe("polite");
   });
 
   it("keeps the save-failure alert next to the single polite region", () => {
@@ -169,12 +188,12 @@ describe("ClearScreen live region", () => {
   });
 });
 
-describe("ClearScreen layout order and history disclosure", () => {
+describe("ClearScreen layout order and history launcher", () => {
   function order(container: HTMLElement): string[] {
     const checks: [string, string][] = [
       ["heading", "#clear-title"], ["numbers", ".clear-screen__stats"], ["share", ".clear-screen__share"],
-      ["actions", ".clear-screen__actions"], ["highlights", ".clear-screen__highlights"],
-      ["history", ".clear-screen__history"],
+      ["actions", ".clear-screen__actions"], ["history", ".clear-screen__history-button"],
+      ["highlights", ".clear-screen__highlights"],
     ];
     return checks
       .map(([name, selector]) => [name, container.querySelector(selector)] as const)
@@ -183,59 +202,148 @@ describe("ClearScreen layout order and history disclosure", () => {
       .map(([name]) => name);
   }
 
-  it("puts numbers, share, actions and highlights before the history", () => {
-    stubPhone(true);
-    const { container } = mountScreen();
-    expect(order(container)).toEqual(["heading", "numbers", "share", "actions", "highlights", "history"]);
+  it("puts the history button right after the main actions, before the highlights", () => {
+    expect(order(mountScreen().container)).toEqual(["heading", "numbers", "share", "actions", "history", "highlights"]);
   });
 
-  it("starts with the phone history closed inside a 移動履歴 disclosure, and opens it through the summary", () => {
-    stubPhone(true);
-    const { container } = mountScreen();
-    const details = container.querySelector("details")!;
-    expect(details.open).toBe(false);
-    expect(details.querySelector("summary")?.textContent).toBe("移動履歴");
-    expect(details.querySelector(".clear-screen__history")).not.toBeNull();
-    act(() => { details.open = true; details.dispatchEvent(new Event("toggle")); });
-    expect(container.querySelector("details")!.open).toBe(true);
-  });
-
-  it("shows the desktop history without a disclosure under a 移動履歴 heading", () => {
-    stubPhone(false);
+  it("renders no history list, disclosure or history heading on the card itself", () => {
     const { container } = mountScreen();
     expect(container.querySelector("details")).toBeNull();
-    expect([...container.querySelectorAll("h2")].map((heading) => heading.textContent)).toContain("移動履歴");
-    expect(container.querySelectorAll(".clear-screen__history li")).toHaveLength(20);
-  });
-
-  it("keeps the page when the width crosses the breakpoint, with one history list at a time", async () => {
-    const media = stubPhone(false);
-    const { container } = mountScreen();
-    await act(async () => buttonByName(container, "次のページ")!.click());
-    expect(container.querySelector(".clear-screen__history li")?.textContent).toContain("21ターン目");
-    media.change(true);
-    expect(container.querySelectorAll(".clear-screen__history")).toHaveLength(1);
-    expect(container.querySelector("details")).not.toBeNull();
-    expect(container.querySelector(".clear-screen__history li")?.textContent).toContain("21ターン目");
-    expect(container.querySelector(".clear-screen__page-status")?.textContent).toBe("2 / 3ページ");
-    media.change(false);
-    expect(container.querySelectorAll(".clear-screen__history")).toHaveLength(1);
-    expect(container.querySelector(".clear-screen__history li")?.textContent).toContain("21ターン目");
-  });
-
-  it("resets the history list scroll when the page changes", async () => {
-    stubPhone(false);
-    const { container } = mountScreen();
-    const list = container.querySelector<HTMLElement>(".clear-screen__history")!;
-    list.scrollTop = 80;
-    await act(async () => buttonByName(container, "次のページ")!.click());
-    expect(list.scrollTop).toBe(0);
+    expect(container.querySelector(".clear-screen__history")).toBeNull();
+    expect(container.querySelector("dialog")).toBeNull();
+    expect([...container.querySelectorAll("h2")].map((heading) => heading.textContent)).toEqual(["ハイライト"]);
+    expect(launcher(container).textContent).toBe("移動履歴を見る");
   });
 
   it("renders the highlights section on screen with a heading", () => {
-    stubPhone(false);
     const { container } = mountScreen();
     expect(container.querySelector(".clear-screen__highlights h2")?.textContent).toBe("ハイライト");
     expect(container.querySelector(".clear-screen__highlights")?.textContent).toContain("使ったアイテム");
+  });
+});
+
+describe("ClearScreen history dialog", () => {
+  it("opens a modal named 移動履歴 with 20 rows per page, focusing its heading", () => {
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    const { container } = mountScreen();
+    openHistory(container);
+    const dialog = historyDialog(container)!;
+    const heading = dialog.querySelector("h2")!;
+    expect(showModal).toHaveBeenCalledTimes(1);
+    expect(dialog.open).toBe(true);
+    expect(heading.textContent).toBe("移動履歴");
+    expect(dialog.getAttribute("aria-labelledby")).toBe(heading.id);
+    expect(document.activeElement).toBe(heading);
+    expect(container.querySelectorAll(".clear-screen__history li")).toHaveLength(20);
+    expect(rowTurns(container)[0]).toBe("1ターン目");
+    expect(dialog.querySelector(".clear-screen__page-status")?.textContent).toBe("1 / 3ページ");
+  });
+
+  it("closes with 閉じる and returns focus to the launcher, and the dialog leaves the DOM", () => {
+    const { container } = mountScreen();
+    openHistory(container);
+    click(buttonByName(historyDialog(container)!, "閉じる"));
+    expect(historyDialog(container)).toBeNull();
+    expect(document.activeElement).toBe(launcher(container));
+  });
+
+  it("closes on Escape (native cancel) and returns focus to the launcher", () => {
+    const { container } = mountScreen();
+    openHistory(container);
+    const cancel = new Event("cancel", { cancelable: true });
+    act(() => { historyDialog(container)!.dispatchEvent(cancel); });
+    expect(cancel.defaultPrevented).toBe(true);
+    expect(historyDialog(container)).toBeNull();
+    expect(document.activeElement).toBe(launcher(container));
+  });
+
+  it("closes on a backdrop click but not on a click inside the dialog", () => {
+    const { container } = mountScreen();
+    openHistory(container);
+    act(() => { historyDialog(container)!.querySelector("ol")!.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    expect(historyDialog(container)).not.toBeNull();
+    act(() => { historyDialog(container)!.dispatchEvent(new MouseEvent("click", { bubbles: true })); });
+    expect(historyDialog(container)).toBeNull();
+  });
+
+  it("pages both ways with disabled ends and announces each page from the dialog's own status", () => {
+    const { container } = mountScreen();
+    openHistory(container);
+    expect(buttonByName(container, "前のページ")!.disabled).toBe(true);
+    click(buttonByName(container, "次のページ"));
+    expect(rowTurns(container)[0]).toBe("21ターン目");
+    expect(container.querySelector(".clear-screen__page-status")?.textContent).toBe("2 / 3ページ");
+    click(buttonByName(container, "次のページ"));
+    expect(container.querySelectorAll(".clear-screen__history li")).toHaveLength(5);
+    expect(buttonByName(container, "次のページ")!.disabled).toBe(true);
+    click(buttonByName(container, "前のページ"));
+    click(buttonByName(container, "前のページ"));
+    expect(rowTurns(container)[0]).toBe("1ターン目");
+    expect(container.querySelector(".clear-screen__page-status")?.textContent).toBe("1 / 3ページ");
+  });
+
+  it("keeps the page while the dialog is closed and reopened within the same result", () => {
+    const { container } = mountScreen();
+    openHistory(container);
+    click(buttonByName(container, "次のページ"));
+    click(buttonByName(historyDialog(container)!, "閉じる"));
+    openHistory(container);
+    expect(rowTurns(container)[0]).toBe("21ターン目");
+    expect(container.querySelector(".clear-screen__page-status")?.textContent).toBe("2 / 3ページ");
+  });
+
+  it("resets to the first page for a new published result (new generation key)", () => {
+    const { container, root } = mountScreen();
+    openHistory(container);
+    click(buttonByName(container, "次のページ"));
+    click(buttonByName(historyDialog(container)!, "閉じる"));
+    // Same props with another key: the published generation is what remounts the screen.
+    act(() => root.render(createElement(ClearScreen, { ...screenProps(), key: "generation-2" })));
+    openHistory(container);
+    expect(rowTurns(container)[0]).toBe("1ターン目");
+    expect(container.querySelector(".clear-screen__page-status")?.textContent).toBe("1 / 3ページ");
+  });
+
+  it("resets the history list scroll when the page changes", () => {
+    const { container } = mountScreen();
+    openHistory(container);
+    const list = container.querySelector<HTMLElement>(".clear-screen__history")!;
+    list.scrollTop = 80;
+    click(buttonByName(container, "次のページ"));
+    expect(list.scrollTop).toBe(0);
+  });
+
+  it("shows every turn of a very long save exactly once, at most 20 rows at a time", () => {
+    const long = {
+      ...game,
+      movementHistory: Array.from({ length: 263 }, (_, index) => ({ ...game.movementHistory[0]!, turn: index + 1 })),
+    } as unknown as GameState;
+    const { container } = mountScreen({ game: long, result: clearResultFor(long, network, presentation, display) });
+    openHistory(container);
+    const seen: string[] = [];
+    for (let pageIndex = 0; pageIndex < 14; pageIndex += 1) {
+      expect(container.querySelectorAll(".clear-screen__history li").length).toBeLessThanOrEqual(20);
+      seen.push(...rowTurns(container));
+      if (pageIndex < 13) click(buttonByName(container, "次のページ"));
+    }
+    expect(container.querySelector(".clear-screen__page-status")?.textContent).toBe("14 / 14ページ");
+    expect(seen).toEqual(Array.from({ length: 263 }, (_, index) => `${index + 1}ターン目`));
+  });
+
+  it("renders each row's fields as separate elements", () => {
+    const { container } = mountScreen();
+    openHistory(container);
+    const row = container.querySelector(".clear-screen__history li")!;
+    expect(row.querySelector(".clear-history__turn")?.textContent).toBe("1ターン目");
+    expect(row.querySelector(".clear-history__roll")?.textContent).toBe("出目1");
+    expect(row.querySelector(".clear-history__move")?.textContent).toBe(`${START_NAME} → ${START_NAME}`);
+    expect(row.querySelector(".clear-history__line")?.textContent).toBe(`${M_LOOP}・正方向`);
+    expect(row.querySelector(".clear-history__note")?.textContent).toBe(`途中で停止${START_NAME}で停止、残り1`);
+  });
+
+  it("unmounts cleanly while the dialog is open", () => {
+    const { container, cleanup } = mountScreen();
+    openHistory(container);
+    expect(() => { cleanup(); mounted = undefined; }).not.toThrow();
   });
 });

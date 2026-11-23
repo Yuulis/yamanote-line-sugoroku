@@ -51,7 +51,15 @@ const CLEAR_SCREEN_VIEWPORT = { width: 320, height: 568 } as const;
 const CLEAR_HISTORY_PAGE_COUNT = 5;
 const CLEAR_SCREEN_SUMMARY_TEXT = "山手線の外回り全30区間を踏破し、新橋に戻りました。";
 const CLEAR_SCREEN_GOAL_ANNOUNCEMENT = "96ターン目：出目3（3マス、1駅移動、残り2は使わず）、新橋に到着。ゴールに到着しました。踏破 30/30";
-const CLEAR_SCREEN_GOAL_HISTORY = "96ターン目 出目3（3マス、1駅移動、残り2は使わず）：有楽町・日比谷 → 新橋（山手線・外回り）。ゴールに到着しました";
+/** Fields of the final history row; joined they read as the former single-line entry. */
+const CLEAR_SCREEN_GOAL_HISTORY = {
+  turn: "96ターン目",
+  roll: "出目3（3マス、1駅移動、残り2は使わず）",
+  move: "有楽町・日比谷 → 新橋",
+  line: "山手線・外回り",
+  note: "ゴールに到着しました",
+} as const;
+const CLEAR_HISTORY_TARGET_PX = 44;
 const PANEL_CANDIDATE_MINIMUM = 5;
 const PHONE_HUD_STATS_ROWS = [
   `${PHONE_HUD_LABEL_HEIGHT_PX}px`,
@@ -639,36 +647,43 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
   await diceButton(page).click();
 
   const clearScreen: Locator = page.getByRole("region", { name: "クリア！" });
-  const historyItems: Locator = clearScreen.locator(".clear-screen__history li");
-  const paging: Locator = clearScreen.getByRole("navigation", { name: "移動履歴のページ" });
   const summaryParagraph: Locator = clearScreen.locator(".clear-screen__summary");
-  const goalAnnouncement: Locator = clearScreen.locator(".item-event-notice__completion");
   const liveRegion: Locator = clearScreen.getByRole("status");
   await expect(clearScreen).toBeVisible();
   await expect(summaryParagraph).toHaveText(CLEAR_SCREEN_SUMMARY_TEXT);
-  await openClearHistory(clearScreen);
   const summaryLayout = await measureTextLayout(summaryParagraph);
   expect(summaryLayout.hintOffsets.length).toBeGreaterThan(0);
   expect(summaryLayout.text).toBe(CLEAR_SCREEN_SUMMARY_TEXT);
   expect(summaryLayout.widthFits).toBe(true);
-  await expect(goalAnnouncement).toHaveText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT);
+  // The clear turn's own log line is not shown on the card; the goal sentence exists once, in the single live region.
+  await expect(clearScreen.locator(".item-event-notice__completion")).toHaveCount(0);
+  await expect(clearScreen.getByText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT)).toHaveCount(1);
   await expect(liveRegion).toHaveCount(1);
   await expect(liveRegion).toHaveText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT);
-  const goalAnnouncementWordBreak: string = await goalAnnouncement.evaluate(() =>
-    CSS.supports("word-break", "auto-phrase") ? "auto-phrase" : "keep-all",
-  );
-  await expect(goalAnnouncement).toHaveCSS("word-break", goalAnnouncementWordBreak);
-  await expectNoHorizontalOverflow(goalAnnouncement);
-  await expect(historyItems).toHaveCount(20);
-  await expect(historyItems.first()).toContainText("1ターン目");
-  await expectButtonsSingleLine(paging.getByRole("button"));
+  await expect(clearScreen.locator(".clear-screen__history")).toHaveCount(0);
   const actionColumns: string[] = await clearScreen.locator(".clear-screen__actions").evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/),
   );
   expect(actionColumns).toHaveLength(1);
-  await expect(paging).toHaveCSS("flex-wrap", "wrap");
+  await expectButtonsSingleLine(clearScreen.locator(".clear-screen__actions button, .clear-screen__share button, .clear-screen__history-button"));
   await expectNoHorizontalOverflow(clearScreen);
   await expectPageNoHorizontalOverflow(page);
+
+  const dialog: Locator = await openClearHistory(clearScreen);
+  const historyItems: Locator = dialog.locator(".clear-screen__history li");
+  const paging: Locator = dialog.getByRole("navigation", { name: "移動履歴のページ" });
+  await expect(historyItems).toHaveCount(20);
+  await expect(historyItems.first()).toContainText("1ターン目");
+  await expectButtonsSingleLine(paging.getByRole("button"));
+  await expectButtonsSingleLine(dialog.getByRole("button", { name: "閉じる", exact: true }));
+  await expect(paging).toHaveCSS("flex-wrap", "wrap");
+  await expectNoHorizontalOverflow(dialog);
+  await expectNoHorizontalOverflow(dialog.locator(".clear-screen__history"));
+  await expectPageNoHorizontalOverflow(page);
+  for (const button of await dialog.getByRole("button").all()) {
+    const box = await button.boundingBox();
+    expect(box?.height ?? 0, "dialog buttons keep a 44px target").toBeGreaterThanOrEqual(CLEAR_HISTORY_TARGET_PX);
+  }
 
   await paging.getByRole("button", { name: "次のページ", exact: true }).click();
   await expect(historyItems.first()).toContainText("21ターン目");
@@ -682,15 +697,32 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
   }
   await expect(paging.locator(".clear-screen__page-status")).toHaveText("5 / 5ページ");
   const goalHistoryEntry: Locator = historyItems.last();
-  const goalHistoryLayout = await measureTextLayout(goalHistoryEntry);
-  expect(goalHistoryLayout.hintOffsets.length).toBeGreaterThan(0);
-  expect(goalHistoryLayout.text).toBe(CLEAR_SCREEN_GOAL_HISTORY);
-  expect(goalHistoryLayout.widthFits).toBe(true);
+  await expect(goalHistoryEntry).toContainText("96ターン目");
+  // The final entry's exact text, field by field; the stacked layout wraps the long fields at phrase hints.
+  const fields: ReadonlyArray<readonly [string, string, boolean]> = [
+    [".clear-history__turn", CLEAR_SCREEN_GOAL_HISTORY.turn, false],
+    [".clear-history__roll", CLEAR_SCREEN_GOAL_HISTORY.roll, true],
+    [".clear-history__move", CLEAR_SCREEN_GOAL_HISTORY.move, true],
+    [".clear-history__line", CLEAR_SCREEN_GOAL_HISTORY.line, true],
+    [".clear-history__note", CLEAR_SCREEN_GOAL_HISTORY.note, false],
+  ];
+  for (const [selector, expected, expectsHints] of fields) {
+    const field: Locator = goalHistoryEntry.locator(selector);
+    const layout = await measureTextLayout(field);
+    if (expectsHints) expect(layout.hintOffsets.length, `${selector} wraps at phrase hints`).toBeGreaterThan(0);
+    expect(layout.text, selector).toBe(expected);
+    expect(layout.widthFits, selector).toBe(true);
+    await expectNoHorizontalOverflow(field);
+  }
   await expectNoHorizontalOverflow(goalHistoryEntry);
 
-  await expectButtonsSingleLine(clearScreen.locator(
-    ".clear-screen__actions button, .clear-screen__share button, .clear-screen__paging button",
-  ));
+  await expectButtonsSingleLine(dialog.locator(".clear-screen__paging button"));
+  await expectNoHorizontalOverflow(dialog);
+  await expectPageNoHorizontalOverflow(page);
+
+  await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(clearScreen.getByRole("button", { name: "移動履歴を見る" })).toBeFocused();
   await expectNoHorizontalOverflow(clearScreen);
   await expectPageNoHorizontalOverflow(page);
 });

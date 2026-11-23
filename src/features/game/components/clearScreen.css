@@ -20,23 +20,20 @@
 }
 
 .clear-screen__summary,
-.clear-screen__history li,
-.clear-screen__highlights dd,
-.clear-screen .item-event-notice__completion {
+.clear-history,
+.clear-screen__highlights dd {
   word-break: keep-all;
   overflow-wrap: anywhere;
 }
 
-.clear-screen__summary,
-.clear-screen .item-event-notice__completion {
+.clear-screen__summary {
   line-height: 1.5;
 }
 
 @supports (word-break: auto-phrase) {
   .clear-screen__summary,
-  .clear-screen__history li,
-  .clear-screen__highlights dd,
-  .clear-screen .item-event-notice__completion {
+  .clear-history,
+  .clear-screen__highlights dd {
     word-break: auto-phrase;
   }
 }
@@ -96,44 +93,10 @@
   line-height: 1.45;
 }
 
-.clear-screen__history {
-  max-height: 200px;
-  overflow-y: auto;
-  margin: 0;
-  padding-left: 0;
-  list-style: none;
-  font-size: 13px;
-}
-
-.clear-screen__history li {
-  padding: 2px 0;
-  border-bottom: 1px solid #eeeeee;
-  line-height: 1.45;
-}
-
-.clear-screen__turn {
-  display: inline-block;
-  min-width: 5em;
-  color: #555555;
-}
-
-/* Phones: the history is a closed disclosure; the summary row is a full-size tap target. */
-.clear-screen__history-details {
-  margin-top: 12px;
-}
-
-.clear-screen__history-details > summary {
-  display: flex;
-  align-items: center;
-  min-height: 44px;
-  font-size: 15px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.clear-screen__history-details > summary:focus-visible {
-  outline: 3px solid var(--color-focus-ring);
-  outline-offset: 2px;
+.clear-screen__history-button {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
 }
 
 .clear-screen__actions {
@@ -202,15 +165,115 @@
   white-space: nowrap;
 }
 
+.clear-screen__paging button:focus-visible,
+.clear-history__header button:focus-visible,
+.clear-history__title:focus-visible,
+.clear-screen__history-button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* History dialog (native modal, top layer): the header and pager stay put, only the list scrolls. */
+.clear-history {
+  box-sizing: border-box;
+  width: min(760px, calc(100% - 32px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
+  color: var(--color-text);
+}
+
+.clear-history[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.clear-history::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.clear-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.clear-history__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.clear-history__header button {
+  flex: 0 0 auto;
+  min-width: 72px;
+  white-space: nowrap;
+}
+
+.clear-screen__history {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  font-size: 13px;
+}
+
+.clear-history .clear-screen__paging {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid #d0d0d0;
+}
+
+/* Desktop columns: turn, roll and effects, movement, line; notes sit under the movement. */
+.clear-history__row {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.2fr);
+  gap: 2px 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eeeeee;
+  line-height: 1.45;
+}
+
+.clear-history__turn {
+  color: #555555;
+  font-weight: bold;
+}
+
+.clear-history__notes {
+  display: grid;
+  grid-column: 2 / -1;
+  gap: 2px;
+  color: #444444;
+}
+
+.clear-history__note {
+  margin: 0;
+}
+
+.clear-history__note-label {
+  display: inline-block;
+  margin-right: 0.6em;
+  color: #555555;
+  font-weight: bold;
+}
+
 @media (max-width: 390px) {
   .clear-screen__actions {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-/* Phones: bottom sheet above the attribution button, map visible above it. 78% is tall enough for the three
-   numbers, the share actions and the play-again actions to fit on its first screen at 320x568; the
-   highlights and the history scroll below them. */
+/* Phones: bottom sheet above the attribution button, map visible above it. The cap is 65%; the three numbers,
+   the share and play-again actions and the history button must fit on its first screen at 320x568, and the
+   highlights scroll below them (the history lives in its own dialog). */
 @media (max-width: 600px) {
   .clear-screen {
     top: auto;
@@ -219,18 +282,18 @@
     right: calc(8px + env(safe-area-inset-right, 0px));
     transform: none;
     width: auto;
-    max-height: 78%;
-    padding: 12px 14px;
+    max-height: 65%;
+    padding: 10px 14px;
   }
 
   .clear-screen__title {
     margin: 0;
     font-size: 20px;
+    line-height: 1.2;
   }
 
-  .clear-screen__summary,
-  .clear-screen .item-event-notice__completion {
-    margin: 4px 0;
+  .clear-screen__summary {
+    margin: 2px 0;
     font-size: 13px;
     line-height: 1.4;
   }
@@ -247,16 +310,27 @@
 
   .clear-screen__stats {
     gap: 0 12px;
-    margin: 4px 0;
+    margin: 2px 0;
     font-size: 14px;
+    line-height: 1.2;
   }
 
   .clear-screen__share,
-  .clear-screen__actions {
-    margin-top: 8px;
+  .clear-screen__actions,
+  .clear-screen__history-button {
+    margin-top: 6px;
   }
 
-  .clear-screen__history {
-    max-height: 120px;
+  .clear-screen__actions {
+    gap: 6px;
+  }
+
+  /* The history dialog stacks each turn: same DOM, one column, names wrap in full. */
+  .clear-history__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clear-history__notes {
+    grid-column: auto;
   }
 }

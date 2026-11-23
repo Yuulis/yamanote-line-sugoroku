@@ -757,7 +757,6 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           result={publishedClear.result}
           itemNotice={turnDisplay.itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
             view={turnDisplay.itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation}
-            completionAnnouncement={turnDisplay.clearAnnouncement}
           /> : undefined}
           completionAnnouncement={turnDisplay.clearAnnouncement}
           network={network}

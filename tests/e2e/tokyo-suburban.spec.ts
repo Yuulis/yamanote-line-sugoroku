@@ -108,9 +108,9 @@ test("the product game's actual clearing turn saves the exact result and restart
   expect(clear.movementHistory.at(-1)).toMatchObject({ toStationId: "shimbashi" });
   expect(clear.completedSegmentIds.filter((id) => id.startsWith("jr-yamanote:"))).toHaveLength(30);
 
-  await openClearHistory(result);
-  const history = result.getByRole("listitem");
-  const pager = result.getByRole("navigation", { name: "移動履歴のページ" });
+  const dialog = await openClearHistory(result);
+  const history = dialog.getByRole("listitem");
+  const pager = dialog.getByRole("navigation", { name: "移動履歴のページ" });
   for (let pageIndex = 0; pageIndex < 5; pageIndex += 1) {
     const pageRecords = clear.movementHistory.slice(pageIndex * 20, (pageIndex + 1) * 20);
     await expect(pager.locator(".clear-screen__page-status")).toHaveText(`${pageIndex + 1} / 5ページ`);
@@ -121,6 +121,9 @@ test("the product game's actual clearing turn saves the exact result and restart
     if (pageIndex < 4) await pager.getByRole("button", { name: "次のページ" }).click();
   }
 
+  await dialog.getByRole("button", { name: "閉じる" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(result.getByRole("button", { name: "移動履歴を見る" })).toBeFocused();
   await page.reload();
   await page.getByRole("button", { name: "クリア結果を見る（96ターンでクリア）" }).click();
   await expect(page.getByRole("region", { name: "クリア！" })).toBeVisible();

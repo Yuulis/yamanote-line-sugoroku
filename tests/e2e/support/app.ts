@@ -82,15 +82,15 @@ export function gamePanel(page: Page): Locator {
 }
 
 /**
- * Open the clear screen's 「移動履歴」 disclosure when the viewport is phone width (it starts closed there).
- * Desktop renders the history without a disclosure, so nothing is clicked; the visible list is then the one asserted.
+ * Open the clear screen's 移動履歴 dialog through its 「移動履歴を見る」 button and return the modal. Rows and paging
+ * are queried from the returned dialog, never from the card (the card itself no longer lists the history).
  */
-export async function openClearHistory(clear: Locator): Promise<void> {
-  const disclosure = clear.locator("details.clear-screen__history-details");
-  if ((await disclosure.count()) === 0) return;
-  if (await disclosure.evaluate((element) => (element as HTMLDetailsElement).open)) return;
-  await disclosure.getByText("移動履歴", { exact: true }).click();
-  await expect(disclosure).toHaveJSProperty("open", true);
+export async function openClearHistory(clear: Locator): Promise<Locator> {
+  await clear.getByRole("button", { name: "移動履歴を見る" }).click();
+  const dialog = clear.page().getByRole("dialog", { name: "移動履歴" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "移動履歴" })).toBeFocused();
+  return dialog;
 }
 
 export function diceButton(page: Page): Locator {

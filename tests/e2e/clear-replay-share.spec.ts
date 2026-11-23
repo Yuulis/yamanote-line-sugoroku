@@ -13,7 +13,10 @@ const PHONE_MEDIUM = { width: 390, height: 844 } as const;
 const DESKTOP = { width: 1280, height: 800 } as const;
 /** Review screenshots are produced on request only (never in CI). */
 const SCREENSHOT_DIR = ".claude/logs/screenshots";
-const SCREENSHOTS_ENABLED = Boolean(process.env.ISSUE69_S2_SCREENSHOTS) && !process.env.CI;
+const SCREENSHOTS_ENABLED = Boolean(process.env.ISSUE69_S3_SCREENSHOTS) && !process.env.CI;
+/** Phone sheet cap (Revision 4): the first screen of the sheet must hold the numbers and the main actions. */
+const PHONE_SHEET_MAX_HEIGHT_RATIO = 0.65;
+const LANDSCAPE_PHONE = { width: 667, height: 375 } as const;
 
 async function failSaveWrites(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -62,7 +65,21 @@ async function expectWithinFirstScreen(clear: Locator, target: Locator, name: st
   expect(fits, `${name} must be visible without scrolling the card`).toBe(true);
 }
 
-test("shows the highlights on screen after the clear, with the history visible on desktop", async ({ page }) => {
+/** After scrolling it into view, the control sits inside both the card's scrollport and the viewport (1px tolerance). */
+async function expectReachable(clear: Locator, target: Locator, name: string): Promise<void> {
+  await target.scrollIntoViewIfNeeded();
+  const reachable = await target.evaluate((element, cardElement) => {
+    const tolerance = 1;
+    const box = element.getBoundingClientRect();
+    const card = (cardElement as HTMLElement).getBoundingClientRect();
+    return box.height > 0
+      && box.top >= Math.max(card.top, 0) - tolerance && box.bottom <= Math.min(card.bottom, window.innerHeight) + tolerance
+      && box.left >= 0 - tolerance && box.right <= window.innerWidth + tolerance;
+  }, await clear.elementHandle());
+  expect(reachable, `${name} must be reachable by scrolling the card`).toBe(true);
+}
+
+test("shows the highlights on screen after the clear, with the history behind a button on desktop", async ({ page }) => {
   await page.setViewportSize(DESKTOP);
   const clear = await clearWithOneRoll(page);
 
@@ -77,14 +94,25 @@ test("shows the highlights on screen after the clear, with the history visible o
   await expect(row("avoided-items")).toBeVisible();
   await expect(highlights.getByRole("listitem")).toHaveCount(0);
 
+  // The card carries no history list or disclosure and no log line of the clearing turn.
   await expect(clear.locator("details")).toHaveCount(0);
-  await expect(clear.getByRole("heading", { name: "移動履歴" })).toBeVisible();
-  await expect(clear.locator(".clear-screen__history li")).toHaveCount(20);
+  await expect(clear.locator(".clear-screen__history")).toHaveCount(0);
+  await expect(clear.locator(".item-event-notice__completion")).toHaveCount(0);
   await expect(clear.getByRole("status")).toHaveCount(1);
+  await expect(clear.getByRole("status")).toContainText("ゴールに到着しました");
+  await expect(clear.getByText("ゴールに到着しました")).toHaveCount(1);
+  await expect(clear.getByRole("button", { name: "移動履歴を見る" })).toBeVisible();
   await expectNoHorizontalOverflow(page, clear);
+
+  const dialog = await openClearHistory(clear);
+  await expect(dialog.locator(".clear-screen__history li")).toHaveCount(20);
+  await expect(dialog.locator(".clear-screen__history li").first()).toContainText("1ターン目");
+  await dialog.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(clear.getByRole("button", { name: "移動履歴を見る" })).toBeFocused();
 });
 
-test("keeps the numbers and main actions on the first phone screen with the history closed", { tag: "@layout" }, async ({ page }) => {
+test("keeps the numbers and main actions on the first phone screen, with the history behind a button", { tag: "@layout" }, async ({ page }) => {
   await page.setViewportSize(PHONE_SMALL);
   const clear = await clearWithOneRoll(page);
 
@@ -92,17 +120,44 @@ test("keeps the numbers and main actions on the first phone screen with the hist
   await expectWithinFirstScreen(clear, clear.getByRole("button", { name: "結果をコピー" }), "the share actions");
   await expectWithinFirstScreen(clear, clear.getByRole("button", { name: "もう一度遊ぶ" }), "もう一度遊ぶ");
   await expectWithinFirstScreen(clear, clear.getByRole("button", { name: "タイトルへ" }), "タイトルへ");
+  await expectWithinFirstScreen(clear, clear.getByRole("button", { name: "移動履歴を見る" }), "移動履歴を見る");
+  const sheet = await clear.evaluate((element) => ({ height: element.getBoundingClientRect().height, viewport: window.innerHeight }));
+  expect(sheet.height, "the phone sheet stays within its 65% cap").toBeLessThanOrEqual(sheet.viewport * PHONE_SHEET_MAX_HEIGHT_RATIO + 1);
 
-  const disclosure = clear.locator("details.clear-screen__history-details");
-  await expect(disclosure).toHaveJSProperty("open", false);
-  await expect(disclosure.getByText("移動履歴", { exact: true })).toBeVisible();
-  await expect(clear.locator(".clear-screen__history")).toBeHidden();
+  await expect(clear.locator("details")).toHaveCount(0);
+  await expect(clear.locator(".clear-screen__history")).toHaveCount(0);
   await expect(clear.getByRole("heading", { name: "ハイライト" })).toBeAttached();
   await expectNoHorizontalOverflow(page, clear);
 
-  await openClearHistory(clear);
-  await expect(clear.locator(".clear-screen__history li")).toHaveCount(20);
+  const dialog = await openClearHistory(clear);
+  await expect(dialog.locator(".clear-screen__history li")).toHaveCount(20);
   await expectNoHorizontalOverflow(page, clear);
+  await expectNoHorizontalOverflow(page, dialog);
+});
+
+test("keeps the 390px phone sheet within its cap with the actions on the first screen", { tag: "@layout" }, async ({ page }) => {
+  await page.setViewportSize(PHONE_MEDIUM);
+  const clear = await clearWithOneRoll(page);
+  await expectWithinFirstScreen(clear, clear.locator(".clear-screen__stats dd").nth(2), "the three numbers");
+  await expectWithinFirstScreen(clear, clear.getByRole("button", { name: "結果をコピー" }), "the share actions");
+  await expectWithinFirstScreen(clear, clear.getByRole("button", { name: "もう一度遊ぶ" }), "もう一度遊ぶ");
+  await expectWithinFirstScreen(clear, clear.getByRole("button", { name: "移動履歴を見る" }), "移動履歴を見る");
+  const sheet = await clear.evaluate((element) => ({ height: element.getBoundingClientRect().height, viewport: window.innerHeight }));
+  expect(sheet.height).toBeLessThanOrEqual(sheet.viewport * PHONE_SHEET_MAX_HEIGHT_RATIO + 1);
+  await expectNoHorizontalOverflow(page, clear);
+});
+
+test("keeps every action reachable in a landscape phone", { tag: "@layout" }, async ({ page }) => {
+  await page.setViewportSize(LANDSCAPE_PHONE);
+  const clear = await clearWithOneRoll(page);
+  for (const name of ["結果をコピー", "もう一度遊ぶ", "タイトルへ", "移動履歴を見る"]) {
+    await expectReachable(clear, clear.getByRole("button", { name }), name);
+  }
+  await expectNoHorizontalOverflow(page, clear);
+  const dialog = await openClearHistory(clear);
+  const box = await dialog.boundingBox();
+  expect(box && box.y >= -1 && box.y + box.height <= LANDSCAPE_PHONE.height + 1, "the dialog fits the landscape viewport").toBe(true);
+  await expectNoHorizontalOverflow(page, dialog);
 });
 
 test("does not overflow horizontally on a small phone when the clear could not be saved", { tag: "@layout" }, async ({ page }) => {
@@ -111,40 +166,80 @@ test("does not overflow horizontally on a small phone when the clear could not b
 
   await expect(clear.getByRole("alert")).toContainText("再読み込みするとこのクリアは残りません");
   await expect(clear.getByRole("status")).toHaveCount(1);
-  await expect(clear.getByRole("button", { name: "もう一度遊ぶ" })).toBeVisible();
+  for (const name of ["結果をコピー", "もう一度遊ぶ", "タイトルへ", "移動履歴を見る"]) {
+    await expectReachable(clear, clear.getByRole("button", { name }), name);
+  }
   await expectNoHorizontalOverflow(page, clear);
-  await openClearHistory(clear);
+  const dialog = await openClearHistory(clear);
   await expectNoHorizontalOverflow(page, clear);
+  await expectNoHorizontalOverflow(page, dialog);
 });
 
-test("opens the phone history through its 移動履歴 summary and pages it", { tag: "@layout" }, async ({ page }) => {
+test("opens the phone history dialog, pages it, and keeps the page when it is reopened", { tag: "@layout" }, async ({ page }) => {
   await page.setViewportSize(PHONE_MEDIUM);
   const clear = await clearWithOneRoll(page);
-  await openClearHistory(clear);
-  const items = clear.locator(".clear-screen__history li");
+  const dialog = await openClearHistory(clear);
+  const items = dialog.locator(".clear-screen__history li");
   await expect(items).toHaveCount(20);
   await expect(items.first()).toContainText("1ターン目");
-  await clear.getByRole("button", { name: "次のページ" }).click();
+  await dialog.getByRole("button", { name: "次のページ" }).click();
   await expect(items.first()).toContainText("21ターン目");
-  await expect(clear.locator(".clear-screen__page-status")).toHaveText("2 / 5ページ");
-  await expect(clear.getByRole("status")).toHaveText("2 / 5ページ");
+  await expect(dialog.locator(".clear-screen__page-status")).toHaveText("2 / 5ページ");
+  await expect(dialog.getByRole("status")).toHaveText("2 / 5ページ");
+
+  await dialog.getByRole("button", { name: "閉じる" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(clear.getByRole("button", { name: "移動履歴を見る" })).toBeFocused();
+  const reopened = await openClearHistory(clear);
+  await expect(reopened.locator(".clear-screen__page-status")).toHaveText("2 / 5ページ");
+  await expect(reopened.locator(".clear-screen__history li").first()).toContainText("21ターン目");
+});
+
+test("keeps focus inside the history modal and restores the same rows after a reload", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  const clear = await clearWithOneRoll(page);
+  const dialog = await openClearHistory(clear);
+  const before = await dialog.locator(".clear-screen__history li").allTextContents();
+  expect(before).toHaveLength(20);
+  await page.keyboard.press("Tab");
+  expect(await dialog.evaluate((element) => element.contains(document.activeElement)), "focus stays inside the modal").toBe(true);
+  await dialog.getByRole("button", { name: "閉じる" }).click();
+  await expect(dialog).toBeHidden();
+
+  await page.reload();
+  await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
+  const reopened = await openClearHistory(page.getByRole("region", { name: "クリア！" }));
+  expect(await reopened.locator(".clear-screen__history li").allTextContents()).toEqual(before);
 });
 
 test("saves the review screenshots on request", async ({ page }) => {
-  test.skip(!SCREENSHOTS_ENABLED, "set ISSUE69_S2_SCREENSHOTS=1 (outside CI) to write the review screenshots");
+  test.skip(!SCREENSHOTS_ENABLED, "set ISSUE69_S3_SCREENSHOTS=1 (outside CI) to write the review screenshots");
   mkdirSync(SCREENSHOT_DIR, { recursive: true });
   await page.setViewportSize(DESKTOP);
-  await clearWithOneRoll(page);
-  const shots: readonly [string, { width: number; height: number }][] = [
-    ["issue69-s2-desktop.png", DESKTOP],
-    ["issue69-s2-phone390.png", PHONE_MEDIUM],
-    ["issue69-s2-phone320.png", PHONE_SMALL],
+  const clear = await clearWithOneRoll(page);
+  const cards: readonly [string, { width: number; height: number }][] = [
+    ["issue69-s3-desktop.png", DESKTOP],
+    ["issue69-s3-phone390.png", PHONE_MEDIUM],
+    ["issue69-s3-phone320.png", PHONE_SMALL],
   ];
-  for (const [file, viewport] of shots) {
+  for (const [file, viewport] of cards) {
     await test.step(file, async () => {
       await page.setViewportSize(viewport);
-      await expect(page.getByRole("region", { name: "クリア！" })).toBeVisible();
+      await expect(clear).toBeVisible();
       await page.screenshot({ path: join(SCREENSHOT_DIR, file) });
+    });
+  }
+  const dialogs: readonly [string, { width: number; height: number }][] = [
+    ["issue69-s3-dialog-desktop.png", DESKTOP],
+    ["issue69-s3-dialog-phone320.png", PHONE_SMALL],
+  ];
+  for (const [file, viewport] of dialogs) {
+    await test.step(file, async () => {
+      await page.setViewportSize(viewport);
+      const dialog = await openClearHistory(clear);
+      await page.screenshot({ path: join(SCREENSHOT_DIR, file) });
+      await dialog.getByRole("button", { name: "閉じる" }).click();
+      await expect(dialog).toBeHidden();
     });
   }
 });
