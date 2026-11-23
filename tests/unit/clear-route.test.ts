@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildRailwayNetwork, createGame, createItemGame } from "../../src/features/game/engine";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { deriveClearResult } from "../../src/features/game/clearResult";
+import { buildClearRouteGeoJson } from "../../src/features/game/clearRoute";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { GeometryIndex, GeometryPath } from "../../src/features/game/animation/movePath";
 import type { GameState, ItemGameState, ItemTurnRecord, MoveRecord, Segment } from "../../src/types/network";
@@ -244,5 +245,69 @@ describe("clear route construction", () => {
     const result = deriveClearResult({ game: game([record([segmentId], "x", "y")]), network, geometry: geometry(), presentation, display });
     expect(result.route).toBeNull();
     expect(result.highlights.mostUsedLine).toBeNull();
+  });
+});
+
+/** The split segment ends exactly at the platform of b, so the next ride on the same line continues the leg. */
+function platformJoinedGeometry(): GeometryIndex {
+  const line = network.servicesById.get(M_LINE)!;
+  const from = line.platformCoordinates.x!;
+  const to = line.platformCoordinates.b!;
+  const middle: [number, number] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+  return geometry([
+    ["x-joint", { fromStationId: "x", toStationId: "joint", points: [from, middle] }],
+    ["joint-b", { fromStationId: "joint", toStationId: "b", points: [middle, to] }],
+  ]);
+}
+
+describe("full-route GeoJSON", () => {
+  it("draws one LineString per leg in the ridden service colour and joins the steps of a leg without a repeated point", () => {
+    const result = deriveClearResult({ game: game([
+      record(),
+      { ...record(["m-spur:b:s1"], "b", "s1"), serviceId: "m-spur" },
+    ]), network, geometry: geometry(), presentation, display });
+    const route = result.route!;
+    const collection = buildClearRouteGeoJson(route);
+    expect(collection.type).toBe("FeatureCollection");
+    expect(collection.features).toHaveLength(route.legs.length);
+    expect(collection.features.map((feature) => feature.properties)).toEqual(route.legs.map((leg) => ({
+      serviceId: leg.serviceId, lineGroupId: leg.lineGroupId, color: leg.color,
+    })));
+    expect(collection.features[0]?.geometry).toEqual({ type: "LineString", coordinates: [[139.7, 35.6], [139.71, 35.61], [139.72, 35.62]] });
+    for (const feature of collection.features) {
+      expect(feature.geometry.coordinates.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it("merges consecutive steps of one leg into one LineString without duplicating the shared joint", () => {
+    const result = deriveClearResult({ game: game([record(), record([`${M_LINE}:b:y`], "b", "y")]),
+      network, geometry: platformJoinedGeometry(), presentation, display });
+    const route = result.route!;
+    expect(route.legs).toHaveLength(1);
+    const [feature] = buildClearRouteGeoJson(route).features;
+    const joint = route.steps[0]!.points.at(-1)!;
+    expect(feature?.geometry.coordinates.filter(([lng, lat]) => lng === joint[0] && lat === joint[1])).toHaveLength(1);
+    expect(feature?.geometry.coordinates).toHaveLength(route.steps[0]!.points.length + route.steps[1]!.points.length - 1);
+  });
+
+  it("never draws a line across a relocation: each side of the break is its own LineString", () => {
+    const line = network.servicesById.get(M_LINE)!;
+    const from = line.platformCoordinates.x!;
+    const to = line.platformCoordinates.b!;
+    const middle: [number, number] = [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2];
+    const continuousGeometry = geometry([
+      ["x-joint", { fromStationId: "x", toStationId: "joint", points: [from, middle] }],
+      ["joint-b", { fromStationId: "joint", toStationId: "b", points: [middle, to] }],
+    ]);
+    const result = deriveClearResult({ game: itemGame([
+      itemRide("x", "b", [segmentId]),
+      itemDeadhead("b"),
+      itemRide("b", "y", [`${M_LINE}:b:y`]),
+    ]), network, geometry: continuousGeometry, presentation, display });
+    const collection = buildClearRouteGeoJson(result.route!);
+    expect(collection.features).toHaveLength(2);
+    expect(collection.features[0]?.geometry.coordinates.at(-1)).toEqual(to);
+    expect(collection.features[1]?.geometry.coordinates[0]).toEqual(to);
+    expect(collection.features.every((feature) => feature.geometry.coordinates.length >= 2)).toBe(true);
   });
 });

@@ -3,6 +3,7 @@ import { join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { diceButton, openClearHistory, openTitle, panelStat, writeSaveText } from "./support/app";
+import { PRODUCT_HISTORY_CLEAR_ROUTE_LEGS } from "./fixtures/seeds";
 
 // Issue #69, S2: the published clear result on screen. The pinned save is one roll before the clear.
 test.use({ dataset: "real" });
@@ -17,6 +18,11 @@ const SCREENSHOTS_ENABLED = Boolean(process.env.ISSUE69_S3_SCREENSHOTS) && !proc
 /** Phone sheet cap (Revision 4): the first screen of the sheet must hold the numbers and the main actions. */
 const PHONE_SHEET_MAX_HEIGHT_RATIO = 0.65;
 const LANDSCAPE_PHONE = { width: 667, height: 375 } as const;
+const SCREENSHOTS_S4_ENABLED = Boolean(process.env.ISSUE69_S4_SCREENSHOTS) && !process.env.CI;
+const CLEAR_ROUTE_LAYERS = ["clear-traveled-route-outline", "clear-traveled-route-line"] as const;
+/** The route must fill at least this share of the open area along its limiting axis, so "somewhere small" fails. */
+const MIN_ROUTE_FILL_RATIO = 0.4;
+const FRAMING_TOLERANCE_PX = 1;
 
 async function failSaveWrites(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -240,6 +246,180 @@ test("saves the review screenshots on request", async ({ page }) => {
       await page.screenshot({ path: join(SCREENSHOT_DIR, file) });
       await dialog.getByRole("button", { name: "閉じる" }).click();
       await expect(dialog).toBeHidden();
+    });
+  }
+});
+
+interface Box { left: number; top: number; right: number; bottom: number }
+
+interface ClearRouteReading {
+  featureCount: number;
+  /** Layer ids in style order. */
+  layerIds: string[];
+  /** Pixel bounds of every projected route vertex, in map-container (= viewport) coordinates. */
+  bounds: Box | null;
+  viewport: { width: number; height: number };
+  card: Box | null;
+  mapControlsVisible: boolean;
+}
+
+interface E2ERouteMap {
+  getSource(id: string): { serialize(): { data: { features: { geometry: { coordinates: [number, number][] } }[] } } } | undefined;
+  getStyle(): { layers: { id: string }[] };
+  project(lngLat: [number, number]): { x: number; y: number };
+}
+
+/** Read the live map through the e2e-build hook: the route source, its layer order and where its vertices are drawn. */
+async function readClearRoute(page: Page): Promise<ClearRouteReading | null> {
+  return page.evaluate(() => {
+    const map = (window as unknown as { __sugorokuE2E?: { map?: E2ERouteMap | null } }).__sugorokuE2E?.map;
+    if (!map) return null;
+    const features = map.getSource("clear-traveled-route")?.serialize().data.features ?? [];
+    let bounds: Box | null = null;
+    for (const feature of features) {
+      for (const coordinate of feature.geometry.coordinates) {
+        const { x, y } = map.project(coordinate);
+        bounds = bounds === null
+          ? { left: x, top: y, right: x, bottom: y }
+          : { left: Math.min(bounds.left, x), top: Math.min(bounds.top, y), right: Math.max(bounds.right, x), bottom: Math.max(bounds.bottom, y) };
+      }
+    }
+    const cardRect = document.querySelector(".clear-screen")?.getBoundingClientRect();
+    return {
+      featureCount: features.length,
+      layerIds: map.getStyle().layers.map((layer) => layer.id),
+      bounds,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      card: cardRect ? { left: cardRect.left, top: cardRect.top, right: cardRect.right, bottom: cardRect.bottom } : null,
+      mapControlsVisible: document.querySelector(".map-overview") !== null,
+    };
+  });
+}
+
+/** The largest map region the card leaves open: above, below, left or right of it. */
+function openRegion(card: Box, viewport: { width: number; height: number }): Box {
+  const regions: Box[] = [
+    { left: 0, top: 0, right: viewport.width, bottom: Math.max(0, card.top) },
+    { left: 0, top: Math.min(viewport.height, card.bottom), right: viewport.width, bottom: viewport.height },
+    { left: 0, top: 0, right: Math.max(0, card.left), bottom: viewport.height },
+    { left: Math.min(viewport.width, card.right), top: 0, right: viewport.width, bottom: viewport.height },
+  ];
+  const area = (box: Box): number => (box.right - box.left) * (box.bottom - box.top);
+  return regions.reduce((best, region) => area(region) > area(best) ? region : best);
+}
+
+/** Empty when the whole route is drawn inside the area the card leaves open and fills it; else what is wrong. */
+function framingProblem(reading: ClearRouteReading | null): string {
+  if (!reading?.bounds || !reading.card) return "route or card not available yet";
+  const { bounds, card, viewport } = reading;
+  const region = openRegion(card, viewport);
+  const t = FRAMING_TOLERANCE_PX;
+  if (bounds.left < region.left - t || bounds.top < region.top - t || bounds.right > region.right + t || bounds.bottom > region.bottom + t) {
+    return `route ${JSON.stringify(bounds)} is outside the open area ${JSON.stringify(region)}`;
+  }
+  const fill = Math.max((bounds.right - bounds.left) / (region.right - region.left), (bounds.bottom - bounds.top) / (region.bottom - region.top));
+  return fill >= MIN_ROUTE_FILL_RATIO ? "" : `route fills only ${fill.toFixed(2)} of the open area ${JSON.stringify(region)}`;
+}
+
+async function expectRouteFramedBesideCard(page: Page): Promise<ClearRouteReading> {
+  await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0, { message: "the route source carries one feature per leg" })
+    .toBe(PRODUCT_HISTORY_CLEAR_ROUTE_LEGS);
+  await expect.poll(async () => framingProblem(await readClearRoute(page)), { message: "the route is framed in the open map area" }).toBe("");
+  const reading = await readClearRoute(page);
+  if (!reading) throw new Error("the e2e map hook is not available");
+  return reading;
+}
+
+test("draws the full route below the stations and frames it beside the desktop card", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await clearWithOneRoll(page);
+  const reading = await expectRouteFramedBesideCard(page);
+
+  const order = (id: string): number => reading.layerIds.indexOf(id);
+  for (const id of CLEAR_ROUTE_LAYERS) expect(order(id), `${id} is on the map`).toBeGreaterThanOrEqual(0);
+  expect(order(CLEAR_ROUTE_LAYERS[0])).toBeLessThan(order(CLEAR_ROUTE_LAYERS[1]));
+  expect(order(CLEAR_ROUTE_LAYERS[1]), "below the station circles").toBeLessThan(order("railway-stations-circle"));
+  expect(order(CLEAR_ROUTE_LAYERS[1]), "below the station names").toBeLessThan(order("railway-stations-label"));
+  expect(order("railway-segments-completed"), "above the gameplay track layers").toBeLessThan(order(CLEAR_ROUTE_LAYERS[0]));
+  expect(reading.mapControlsVisible, "the clear screen keeps the map controls hidden").toBe(false);
+});
+
+test("keeps the route framed when the viewport is resized while the history dialog is open", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  const clear = await clearWithOneRoll(page);
+  await expectRouteFramedBesideCard(page);
+
+  const dialog = await openClearHistory(clear);
+  await page.setViewportSize({ width: 1000, height: 700 });
+  await expect(dialog).toBeVisible();
+  await expectRouteFramedBesideCard(page);
+});
+
+test("frames the route above the 320px phone sheet", { tag: "@layout" }, async ({ page }) => {
+  await page.setViewportSize(PHONE_SMALL);
+  await clearWithOneRoll(page);
+  await expectRouteFramedBesideCard(page);
+});
+
+test("frames the route above the 390px phone sheet", { tag: "@layout" }, async ({ page }) => {
+  await page.setViewportSize(PHONE_MEDIUM);
+  await clearWithOneRoll(page);
+  await expectRouteFramedBesideCard(page);
+});
+
+test("draws the route again after a reload when the cleared save is reopened", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  await clearWithOneRoll(page);
+  await expectRouteFramedBesideCard(page);
+
+  await page.reload();
+  await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
+  await expect(page.getByRole("region", { name: "クリア！" })).toBeVisible();
+  await expectRouteFramedBesideCard(page);
+});
+
+test("removes the route and brings the gameplay map controls back when a new game starts", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  const clear = await clearWithOneRoll(page);
+  await expectRouteFramedBesideCard(page);
+
+  await clear.getByRole("button", { name: "もう一度遊ぶ" }).click();
+  await expect(clear).toBeHidden();
+  await expect(page.getByRole("button", { name: "全体" })).toBeVisible();
+  const reading = await readClearRoute(page);
+  expect(reading?.featureCount, "no route source after leaving the clear screen").toBe(0);
+  for (const id of CLEAR_ROUTE_LAYERS) expect(reading?.layerIds).not.toContain(id);
+  expect(reading?.layerIds, "the gameplay layers are untouched").toContain("railway-segments-completed");
+});
+
+test("removes the route when returning to the title", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  const clear = await clearWithOneRoll(page);
+  await expectRouteFramedBesideCard(page);
+
+  await clear.getByRole("button", { name: "タイトルへ" }).click();
+  await expect(clear).toBeHidden();
+  const reading = await readClearRoute(page);
+  expect(reading?.featureCount).toBe(0);
+  for (const id of CLEAR_ROUTE_LAYERS) expect(reading?.layerIds).not.toContain(id);
+});
+
+test("saves the S4 review screenshots on request", async ({ page }) => {
+  test.skip(!SCREENSHOTS_S4_ENABLED, "set ISSUE69_S4_SCREENSHOTS=1 (outside CI) to write the review screenshots");
+  mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  await page.setViewportSize(DESKTOP);
+  await clearWithOneRoll(page);
+  const shots: readonly [string, { width: number; height: number }][] = [
+    ["issue69-s4-desktop.png", DESKTOP],
+    ["issue69-s4-phone390.png", PHONE_MEDIUM],
+    ["issue69-s4-phone320.png", PHONE_SMALL],
+  ];
+  for (const [file, viewport] of shots) {
+    await test.step(file, async () => {
+      await page.setViewportSize(viewport);
+      const reading = await expectRouteFramedBesideCard(page);
+      console.info(`${file} ${JSON.stringify({ route: reading.bounds, card: reading.card, viewport: reading.viewport })}`);
+      await page.screenshot({ path: join(SCREENSHOT_DIR, file) });
     });
   }
 });

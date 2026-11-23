@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import type { GameState, ItemGameState } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
 import type { ClearResult } from "../clearResult";
@@ -31,10 +31,12 @@ interface ClearScreenProps {
   saveStatus: SaveWriteResult | null;
   onPlayAgain: () => void;
   onShowTitle: () => void;
+  /** The card element, so the map can frame the route in the area the card leaves open. */
+  cardRef?: Ref<HTMLElement>;
 }
 
 /** Shown once the clearing move has finished animating (spec 6.1). */
-export function ClearScreen({ game, network, presentation, result, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), onPlayAgain, onShowTitle }: ClearScreenProps) {
+export function ClearScreen({ game, network, presentation, result, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), onPlayAgain, onShowTitle, cardRef }: ClearScreenProps) {
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showShareText, setShowShareText] = useState(false);
   const [announcement, setAnnouncement] = useState<ClearAnnouncement | null>(null);
@@ -71,7 +73,7 @@ export function ClearScreen({ game, network, presentation, result, collection, s
   };
   const goalName = stationName(network, game.config.startStationId, presentation);
   return (
-    <section className="clear-screen" aria-labelledby="clear-title">
+    <section ref={cardRef} className="clear-screen" aria-labelledby="clear-title">
       <h1 ref={headingRef} id="clear-title" className="clear-screen__title" tabIndex={-1}>
         クリア！
       </h1>

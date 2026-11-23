@@ -194,3 +194,49 @@ export function buildClearRoute(
 
   return { steps, legs, bounds: calculateBounds(steps) };
 }
+
+export interface ClearRouteFeatureProperties {
+  serviceId: string;
+  lineGroupId: string;
+  color: string;
+}
+
+/** Plain mutable shape so MapLibre accepts it as GeoJSON without a cast, like the other map collections. */
+export interface ClearRouteGeoJson {
+  type: "FeatureCollection";
+  features: {
+    type: "Feature";
+    properties: ClearRouteFeatureProperties;
+    geometry: { type: "LineString"; coordinates: Position[] };
+  }[];
+}
+
+function legCoordinates(route: ClearRoute, leg: ClearRouteLeg): Position[] {
+  const coordinates: Position[] = [];
+  for (const step of route.steps.slice(leg.firstStepIndex, leg.endStepIndexExclusive)) {
+    for (const point of step.points) {
+      if (isSamePosition(coordinates.at(-1), point)) continue;
+      coordinates.push([point[0], point[1]]);
+    }
+  }
+  return coordinates;
+}
+
+/**
+ * The complete travelled route, one LineString per leg in the ridden service's colour. A leg break starts a new
+ * LineString, so a relocation or a change of line never produces a connecting line.
+ */
+export function buildClearRouteGeoJson(route: ClearRoute): ClearRouteGeoJson {
+  return {
+    type: "FeatureCollection",
+    features: route.legs.flatMap((leg) => {
+      const coordinates = legCoordinates(route, leg);
+      if (coordinates.length < 2) return [];
+      return [{
+        type: "Feature" as const,
+        properties: { serviceId: leg.serviceId, lineGroupId: leg.lineGroupId, color: leg.color },
+        geometry: { type: "LineString" as const, coordinates },
+      }];
+    }),
+  };
+}

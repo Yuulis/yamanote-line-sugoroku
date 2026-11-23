@@ -133,3 +133,45 @@ npm run test:e2e -- tests/e2e/{clear-replay-share,text-wrapping,hud-layout,capit
 Screenshots (not committed, env-gated, off in CI): clear card at 1280x800, 390x844, 320x568 and the open history dialog
 at 1280x800 and 320x568 to .claude/logs/screenshots/issue69-s3-{desktop,phone390,phone320,dialog-desktop,dialog-phone320}.png.
 ```
+
+## S4 (Revision 4) — full-route layer and clear camera (Claude subagent: general-purpose-sonnet)
+
+```
+Implement plan step "S4 — 全経路レイヤーとカメラ" in "Revision 4 changes (user 2026-11-23)" exactly (visible: yes).
+It ships the old Revision 2/3 "S3 — 全経路レイヤーとカメラ" content: read that old S3 section and the Architecture
+"地図と読み上げ", Interface "リプレイと地図" (only the full-route parts; partial drawing/replay store is S5),
+Error Handling, and Revision 3 changes ("S3 ships the full-route GeoJSON builder and a static full-route input").
+S1-S3 are committed (e218c98, 7b54daa, 0aad2a3). Use publishedClear.result.route (ClearRoute | null) from
+usePublishedClearResult; route ownership keyed by the same generation.
+Scope:
+- src/features/map/clearRouteLayers.ts: one GeoJSON source + casing and main line layers built from ClearRoute legs
+  (ridden-service colour per leg; separate LineStrings at leg breaks; never draw deadhead jumps), inserted below the
+  station circles/labels with a defined fallback anchor when those layers are absent; re-added after style reload
+  (RailwayMap's existing style-restore point) with the latest data.
+- src/features/game/clearRoute.ts (or a small new module): pure full-route GeoJSON builder (no partial cursor yet).
+- src/features/map/clearRouteCamera.ts + useClearRouteMap.ts: on clear (fresh clear and reopening a cleared save,
+  including after reload), fit route.bounds immediately (no animation) into the map area not covered by the clear card:
+  padding from the measured card rect vs the map container (desktop centred card, phone 65% bottom sheet), refit on
+  resize/orientation/visualViewport and card size changes (rAF-coalesced, ResizeObserver), sensible min padding and
+  max zoom, a one-point / zero-space fallback, keep the previous camera while measurements are unavailable, restore
+  padding and gameplay layers/controls when leaving clear (restart, title, edition switch). The history dialog (top
+  layer) must not change the measured card.
+- Clear mode keeps map controls hidden and the map inert (DESIGN row 289); the progress/current-position/goal gameplay
+  layers stay hidden or unchanged per the plan; map credits stay readable. route === null (geometry fault) or a failed
+  map: no route layer, the clear card still works, any message goes through ClearAnnouncements (no new live region).
+- GameApp.tsx / RailwayMap.tsx edits are wiring only (pass route + card ref / mode; call the hook at the existing
+  style-restore point). Keep files ~200-400 lines.
+Tests first: tests/unit/clear-route-map.test.ts (source/layer ids and order, insertion anchor with and without station
+layers, style restore re-adds with latest data, padding computation for desktop card / phone sheet / no-space, one-point
+fit, padding restore and gameplay layer restore on exit, route null), extend tests/unit/title-map-mode.test.ts and the
+existing map double only as needed. E2E in tests/e2e/clear-replay-share.spec.ts: after the pinned one-roll clear the
+route source exists with the expected feature count and its rendered bounds lie inside the uncovered map area
+(desktop 1280x800 and phone 320x568/390x844 @layout), reload and reopen keep it, restart restores gameplay layers and
+controls. Use the existing e2e map hook (src/features/map/e2eHook.ts) to read map state; keep it e2e-build only.
+Acceptance (report counts): npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build;
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/title-screen.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+(if title-screen.spec.ts does not exist, use the spec that covers the title map overview instead and say which).
+Screenshots (env-gated, off in CI, not committed): clear screen with the route at 1280x800, 390x844 and 320x568 using
+the real-data pinned save to .claude/logs/screenshots/issue69-s4-{desktop,phone390,phone320}.png.
+```

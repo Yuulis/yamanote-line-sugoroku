@@ -72,6 +72,8 @@ import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
 import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
 import { TitleMapPlaceholder } from "./components/TitleMapPlaceholder";
+import type { ClearRoute } from "../game/clearResult";
+import { useClearRouteMap } from "./useClearRouteMap";
 
 export interface MapFollow {
   enabled: boolean;
@@ -108,6 +110,12 @@ interface RailwayMapProps {
   overviewKey?: number;
   /** Remove map controls from keyboard and assistive technology while another screen is active. */
   inert?: boolean;
+  /** The published clear's travelled route, drawn and framed in clear mode; null when it could not be verified. */
+  clearRoute?: ClearRoute | null;
+  /** Generation of the published clear; a new publication frames the route again. */
+  clearRouteKey?: number;
+  /** The clear card, so the route is framed in the map area it leaves open. */
+  clearCardRef?: RefObject<HTMLElement | null>;
   targetServiceId?: string;
   minZoom?: number;
 }
@@ -543,7 +551,7 @@ function navigationControlsContainFocus(mapContainer: HTMLElement | null): boole
 
 const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
 
-export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, coachTargetRef, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, coachTargetRef, overviewKey, inert = false, clearRoute = null, clearRouteKey, clearCardRef, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -766,6 +774,9 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     if (loadedMap) updateGoalStation(loadedMap, goalStationId);
   }, [loadedMap, layersRevision, goalStationId]);
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
+  useClearRouteMap({
+    map: loadedMap, layersRevision, active: mode === "clear", route: clearRoute, generation: clearRouteKey, cardRef: clearCardRef,
+  });
 
   useEffect(() => {
     if (mode !== "title" || !loadedMap || !data.services.ok) return;

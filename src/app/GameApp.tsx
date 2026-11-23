@@ -540,6 +540,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
     game: showClear && session ? session.game : null,
     network, geometry, presentation, display: edition.display,
   });
+  const clearCardRef = useRef<HTMLElement | null>(null);
   const mapMode: RailwayMapMode = app.state.screen === "title" ? "title" : showClear ? "clear" : "game";
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
@@ -765,6 +766,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}
+          cardRef={clearCardRef}
         />
       )}
       {rulesOpen && rulesRequest && (
@@ -812,6 +814,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
         coachTargetRef={coachMapTarget}
         inert={app.state.screen === "title" || showClear}
+        clearRoute={publishedClear?.result.route ?? null}
+        clearRouteKey={publishedClear?.generation}
+        clearCardRef={clearCardRef}
       />
     </>
   );
