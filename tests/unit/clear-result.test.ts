@@ -266,7 +266,7 @@ describe("deriveClearResult", () => {
   it("narrows deadhead before reading ride fields and validates same-station relocation", () => {
     const deadhead = deadheadRecord("b", "b");
     const traversal = mapSavedRecord(deadhead, 0, "b", input(itemGame([deadhead])));
-    expect(traversal).toEqual({ kind: "deadhead", toStationId: "b" });
+    expect(traversal).toEqual({ kind: "deadhead", recordIndex: 0, toStationId: "b" });
   });
 
   it("keeps topology highlights identical when only geometry is invalid", () => {

@@ -4,6 +4,7 @@ import { act, createElement, type RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StepPath } from "../../src/features/game/animation/movePath";
 import type { ClearRoute } from "../../src/features/game/clearResult";
+import { createClearReplayStore } from "../../src/features/game/clearReplayStore";
 import {
   applyClearRouteFit,
   CLEAR_FIT_CREDIT_CLEARANCE_PX,
@@ -122,6 +123,7 @@ function route(bounds: ClearRoute["bounds"] = [[139.7, 35.6], [139.8, 35.7]], le
     steps,
     legs: steps.map((_, index) => ({ firstStepIndex: index, endStepIndexExclusive: index + 1, serviceId: `svc-${index}`,
       lineGroupId: `grp-${index}`, color: `#00${index}000` })),
+    turnSpans: steps.map((_, index) => ({ recordIndex: index, firstStepIndex: index, endStepIndexExclusive: index + 1 })),
     bounds,
   };
 }
@@ -391,7 +393,7 @@ describe("useClearRouteMap", () => {
     expect(map.sources.get(CLEAR_ROUTE_SOURCE_ID)?.data.features).toHaveLength(2);
     expect(map.fits).toHaveLength(1);
     expect(map.fits[0]?.options).toEqual({
-      padding: { top: 24, right: 1280 - 420 + 24, bottom: 24 + CLEAR_FIT_CREDIT_CLEARANCE_PX, left: 24 },
+      padding: { top: 60, right: 1280 - 420 + 24, bottom: 24 + CLEAR_FIT_CREDIT_CLEARANCE_PX, left: 24 },
       animate: false, maxZoom: 13,
     });
   });
@@ -520,6 +522,55 @@ describe("useClearRouteMap", () => {
       `addLayer:${CLEAR_ROUTE_LAYER_IDS.line}:${LAYER_IDS.stationCircles}`,
     ]);
     expect(map.sources.get(CLEAR_ROUTE_SOURCE_ID)?.data.features).toHaveLength(3);
+  });
+
+  it("restores the latest partial store snapshot after a style replacement", () => {
+    const map = new FakeMap(container);
+    const scheduler = {
+      callbacks: new Map<number, (now: number) => void>(),
+      time: 0,
+      next: 1,
+      request(callback: (now: number) => void): number {
+        const handle = this.next++;
+        this.callbacks.set(handle, callback);
+        return handle;
+      },
+      cancel(handle: number): void { this.callbacks.delete(handle); },
+      now(): number { return this.time; },
+      frameAt(time: number): void {
+        this.time = time;
+        const entry = this.callbacks.entries().next().value as [number, (now: number) => void] | undefined;
+        if (!entry) return;
+        this.callbacks.delete(entry[0]);
+        entry[1](time);
+      },
+    };
+    const currentRoute = route();
+    const replayStore = createClearReplayStore({ route: currentRoute, scheduler });
+    const input = mount(map, { route: currentRoute, replayStore });
+    replayStore.start();
+    scheduler.frameAt(0);
+    scheduler.frameAt(200);
+    const partial = map.sources.get(CLEAR_ROUTE_SOURCE_ID)?.data.features ?? [];
+    expect(partial).toHaveLength(1);
+    const firstFeature = partial[0] as { geometry: { coordinates: [number, number][] } } | undefined;
+    const currentEndpoint = firstFeature?.geometry.coordinates.at(-1)?.[0];
+    expect(currentEndpoint).toBeDefined();
+    expect(currentEndpoint).toBeLessThan(139.71);
+
+    map.replaceStyle();
+    map.calls.length = 0;
+    render({ ...input, layersRevision: 1 });
+    const restored = map.sources.get(CLEAR_ROUTE_SOURCE_ID)?.data.features ?? [];
+    expect(restored).toHaveLength(1);
+    const restoredFeature = restored[0] as { geometry: { coordinates: [number, number][] } } | undefined;
+    expect(restoredFeature?.geometry.coordinates.at(-1)?.[0]).toBe(currentEndpoint);
+    expect(map.calls.filter((call) => call.startsWith("add"))).toEqual([
+      `addSource:${CLEAR_ROUTE_SOURCE_ID}`,
+      `addLayer:${CLEAR_ROUTE_LAYER_IDS.outline}:${LAYER_IDS.stationCircles}`,
+      `addLayer:${CLEAR_ROUTE_LAYER_IDS.line}:${LAYER_IDS.stationCircles}`,
+    ]);
+    replayStore.dispose();
   });
 
   it("holds the write while the style is absent and applies it when the style is back", () => {

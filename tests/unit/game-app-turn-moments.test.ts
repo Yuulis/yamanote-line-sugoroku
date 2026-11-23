@@ -1985,6 +1985,7 @@ describe("S12 delayed goal presentation", () => {
     expect(clearHeading()).not.toBeNull();
     expect(document.activeElement).toBe(clearHeading());
     expect(mapInert()).toBe(true);
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].goalStationId).toBe("shimbashi");
     expect(gameClearEvents()).toHaveLength(1);
     const notices = mounted!.container.querySelectorAll(".clear-screen [role=status]");
     expect(notices).toHaveLength(1);

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { act, createElement, type ComponentProps } from "react";
+import { act, createElement, StrictMode, type ComponentProps } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { ClearHighlights } from "../../src/features/game/components/ClearHighlights";
 import { ClearScreen } from "../../src/features/game/components/ClearScreen";
 import type { ClearHighlights as ClearHighlightsModel } from "../../src/features/game/clearResult";
+import type { ClearRoute } from "../../src/features/game/clearResult";
 import { buildClearHighlightRows } from "../../src/features/game/clearHighlightsPresentation";
 import { buildRailwayNetwork } from "../../src/features/game/engine";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
@@ -23,6 +24,13 @@ const presentation = createPresentationResolver(network, {
 });
 const display = EDITIONS[0]!.display;
 const START_NAME = "駅start";
+const REPLAY_ROUTE: ClearRoute = {
+  steps: [{ segmentId: "replay-step", fromStationId: M_START, toStationId: "a", newlyCompleted: false,
+    points: [[139.8, 35.7], [139.81, 35.71]], cumulative: [0, 1], total: 1 }],
+  legs: [{ firstStepIndex: 0, endStepIndexExclusive: 1, serviceId: M_LOOP, lineGroupId: "loop", color: "#123456" }],
+  turnSpans: [{ recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1 }],
+  bounds: [[139.8, 35.7], [139.81, 35.71]],
+};
 
 const EMPTY_HIGHLIGHTS: ClearHighlightsModel = {
   longestRide: null,
@@ -215,10 +223,26 @@ describe("ClearScreen layout order and history launcher", () => {
     expect(launcher(container).textContent).toBe("移動履歴を見る");
   });
 
+  it("explains missing route geometry without offering replay or adding a live announcement", () => {
+    const { container } = mountScreen();
+    expect(buttonByName(container, "軌跡を再生")).toBeUndefined();
+    expect(container.querySelector(".clear-screen__replay-unavailable")?.textContent)
+      .toBe("経路を描画できないため、軌跡を再生できません。");
+    expect(container.querySelector(".clear-screen__replay-unavailable")?.getAttribute("aria-live")).toBeNull();
+    expect(liveTexts(container)).toEqual([""]);
+  });
+
   it("renders the highlights section on screen with a heading", () => {
     const { container } = mountScreen();
     expect(container.querySelector(".clear-screen__highlights h2")?.textContent).toBe("ハイライト");
     expect(container.querySelector(".clear-screen__highlights")?.textContent).toContain("使ったアイテム");
+  });
+
+  it("starts its fallback replay store after StrictMode replays the effect lifecycle", () => {
+    const props = screenProps({ result: { ...screenProps().result, route: REPLAY_ROUTE } });
+    mounted = mountReact(createElement(StrictMode, null, createElement(ClearScreen, props)));
+    click(buttonByName(mounted.container, "軌跡を再生"));
+    expect(buttonByName(mounted.container, "一時停止")).toBeDefined();
   });
 });
 
@@ -336,9 +360,9 @@ describe("ClearScreen history dialog", () => {
     const row = container.querySelector(".clear-screen__history li")!;
     expect(row.querySelector(".clear-history__turn")?.textContent).toBe("1ターン目");
     expect(row.querySelector(".clear-history__roll")?.textContent).toBe("出目1");
-    expect(row.querySelector(".clear-history__move")?.textContent).toBe(`${START_NAME} → ${START_NAME}`);
+    expect(row.querySelector(".clear-history__move")?.textContent).toBe(`${START_NAME} → ${START_NAME}（0駅）`);
     expect(row.querySelector(".clear-history__line")?.textContent).toBe(`${M_LOOP}・正方向`);
-    expect(row.querySelector(".clear-history__note")?.textContent).toBe(`途中で停止${START_NAME}で停止、残り1`);
+    expect(row.querySelector(".clear-history__note")?.textContent).toBe(`途中停止${START_NAME}で終了、残り1を使わず`);
   });
 
   it("unmounts cleanly while the dialog is open", () => {

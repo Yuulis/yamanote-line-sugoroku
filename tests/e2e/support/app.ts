@@ -33,6 +33,8 @@ export interface MapSnapshot {
   marker: [number, number] | null;
   /** The marker layer draws a visible feature at `marker` (not just stored). */
   markerRendered: boolean;
+  /** Station currently selected by the independent goal ring layer. */
+  goalStationId: string | null;
   /** The DOM beak, including its applied world bearing and screen alignment. */
   headingMarker: {
     visible: boolean;
@@ -456,6 +458,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         ? map.getFilter(layers.flash) as [string, unknown, [string, unknown, [string, string[]]]]
         : null;
       const flashOpacity = map.getLayer(layers.flash) ? map.getPaintProperty(layers.flash, "line-opacity") : null;
+      const goalFilter = map.getFilter(layers.goal) as [string, unknown, string] | undefined;
       return {
         styleLoaded: Boolean(map.isStyleLoaded()),
         highlightedFeatureIds: (map.getFilter(layers.highlighted) as [string, unknown, [string, string[]]])?.[2]?.[1] ?? [],
@@ -467,6 +470,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
           map.queryRenderedFeatures(map.project(marker), { layers: [layers.marker] }).length > 0 &&
           isPositive(map.getPaintProperty(layers.marker, "circle-radius")) &&
           isPositive(map.getPaintProperty(layers.marker, "circle-opacity") ?? 1),
+        goalStationId: goalFilter?.[0] === "==" && typeof goalFilter[2] === "string" ? goalFilter[2] : null,
         headingMarker,
         completedFilterIds: filter?.[2]?.[2]?.[1] ?? [],
         completedRenderedIds: renderedIds(layers.completed),
@@ -484,6 +488,7 @@ export async function readMap(page: Page): Promise<MapSnapshot | null> {
         pending: LAYER_IDS.segmentsPending,
         flash: LAYER_IDS.segmentsFlash,
         marker: LAYER_IDS.currentPosition,
+        goal: LAYER_IDS.goalStation,
       },
       markerSourceId: SOURCE_IDS.currentPosition,
     },

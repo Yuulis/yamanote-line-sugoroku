@@ -123,6 +123,92 @@
   white-space: nowrap;
 }
 
+.clear-replay-controls {
+  display: contents;
+}
+
+.clear-replay-controls__start {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.clear-replay-controls__active {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-replay-controls__speeds {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 2px;
+}
+
+.clear-replay-controls__speeds button {
+  padding: 4px 7px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.clear-replay-controls__speeds button[aria-pressed="true"] {
+  border: 2px solid #163b5c;
+  background: #1f547e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.clear-replay-controls__speeds button[aria-pressed="true"]::after {
+  content: " ✓";
+}
+
+.clear-screen__replay-unavailable {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.clear-replay-caption {
+  position: fixed;
+  z-index: var(--layer-turn-moment);
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: max(72px, calc(env(safe-area-inset-left, 0px) + 64px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: baseline;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 24%);
+  color: #202124;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.clear-replay-caption__turn,
+.clear-replay-caption__roll {
+  flex: 0 0 auto;
+}
+
+.clear-replay-caption__arrow {
+  flex: 0 0 auto;
+  margin-inline: 0.3em;
+}
+
+.clear-replay-caption__station {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .clear-screen__share button:focus-visible,
 .clear-screen__share-fallback textarea:focus-visible {
   outline: 3px solid var(--color-focus-ring);
@@ -323,6 +409,13 @@
 
   .clear-screen__actions {
     gap: 6px;
+  }
+
+  .clear-replay-caption {
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    left: max(64px, calc(env(safe-area-inset-left, 0px) + 56px));
+    padding: 4px 7px;
+    font-size: 12px;
   }
 
   /* The history dialog stacks each turn: same DOM, one column, names wrap in full. */

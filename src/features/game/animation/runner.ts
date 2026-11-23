@@ -7,11 +7,13 @@ import { type AnimationFrame, frameAt } from "./timeline";
 export interface FrameScheduler {
   request(callback: (now: number) => void): number;
   cancel(handle: number): void;
+  now?: () => number;
 }
 
 export const browserFrameScheduler: FrameScheduler = {
   request: (callback) => window.requestAnimationFrame(callback),
   cancel: (handle) => window.cancelAnimationFrame(handle),
+  now: () => performance.now(),
 };
 
 /**

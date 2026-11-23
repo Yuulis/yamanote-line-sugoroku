@@ -1,16 +1,21 @@
 import { useMemo, useState } from "react";
+import { useEffect } from "react";
 import type { GameState, ItemGameState } from "../../types/network";
 import type { EditionDisplay } from "../editions/types";
 import type { GeometryIndex } from "./animation/movePath";
 import type { RailwayNetwork } from "./engine";
 import { deriveClearResult, type ClearResult } from "./clearResult";
 import type { PresentationResolver } from "./presentationResolver";
+import { buildHistoryRows, type HistoryRow } from "./historyRows";
+import { createClearReplayStore, type ClearReplayStore } from "./clearReplayStore";
 
 export interface PublishedClear {
   /** Increases once per continuous clear publication; the clear screen is keyed by it. */
   readonly generation: number;
   readonly game: GameState | ItemGameState;
   readonly result: ClearResult;
+  readonly historyRows: readonly HistoryRow[];
+  readonly replayStore: ClearReplayStore;
 }
 
 export interface PublishedClearInput {
@@ -21,6 +26,7 @@ export interface PublishedClearInput {
   readonly geometry: GeometryIndex;
   readonly presentation: PresentationResolver;
   readonly display: EditionDisplay;
+  readonly reducedMotion?: boolean;
 }
 
 interface PublicationTracker {
@@ -37,7 +43,7 @@ const NOT_PUBLISHED: PublicationTracker = { sessionId: null, generation: 0 };
  * page and disclosure state survive it.
  */
 export function usePublishedClearResult(input: PublishedClearInput): PublishedClear | null {
-  const { sessionId, game, network, geometry, presentation, display } = input;
+  const { sessionId, game, network, geometry, presentation, display, reducedMotion = false } = input;
   const publishedSessionId = game === null ? null : sessionId;
   const [tracker, setTracker] = useState(NOT_PUBLISHED);
   let current = tracker;
@@ -52,6 +58,17 @@ export function usePublishedClearResult(input: PublishedClearInput): PublishedCl
     () => game === null ? null : deriveClearResult({ game, network, geometry, presentation, display }),
     [game, network, geometry, presentation, display],
   );
+  const replayStore = useMemo(() => createClearReplayStore({ route: null, reducedMotion }), [current.generation]);
+  const historyRows = useMemo(
+    () => game === null ? [] : buildHistoryRows(game.movementHistory, network, presentation),
+    [game, network, presentation],
+  );
+  useEffect(() => {
+    replayStore.activate();
+    replayStore.setRoute(result?.route ?? null);
+    return () => replayStore.dispose();
+  }, [replayStore, result?.route]);
+  useEffect(() => { replayStore.setReducedMotion(reducedMotion); }, [replayStore, reducedMotion]);
   if (game === null || result === null) return null;
-  return { generation: current.generation, game, result };
+  return { generation: current.generation, game, result, historyRows, replayStore };
 }

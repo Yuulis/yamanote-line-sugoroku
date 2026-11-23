@@ -11,6 +11,8 @@ interface ClearHistoryProps {
   game: GameState | ItemGameState;
   network: RailwayNetwork;
   presentation: PresentationResolver;
+  rows?: readonly HistoryRow[];
+  onBeforeOpen?: () => void;
 }
 
 interface HistoryDialogProps extends ClearHistoryProps {
@@ -19,12 +21,13 @@ interface HistoryDialogProps extends ClearHistoryProps {
   /** The launcher that regains focus when the dialog closes. */
   opener: RefObject<HTMLButtonElement | null>;
   onPageChange: (page: number) => void;
+  rows?: readonly HistoryRow[];
   onClose: () => void;
 }
 
 function HistoryRowItem({ row }: { row: HistoryRow }) {
   return (
-    <li className="clear-history__row">
+    <li className="clear-history__row" data-record-index={row.recordIndex} data-record-kind={row.kind}>
       <span className="clear-history__turn">{row.turnText}</span>
       <span className="clear-history__roll"><PhraseText text={row.rollText} /></span>
       <span className="clear-history__move"><PhraseText text={row.moveText} /></span>
@@ -48,12 +51,13 @@ function HistoryRowItem({ row }: { row: HistoryRow }) {
  * closes on Escape. React owns closing: Escape, the backdrop and 閉じる only request it, and unmounting closes
  * the dialog and returns focus to the launcher.
  */
-function HistoryDialog({ game, network, presentation, page, pageCount, opener, onPageChange, onClose }: HistoryDialogProps) {
+function HistoryDialog({ game, network, presentation, page, pageCount, opener, onPageChange, onClose, rows: savedRows }: HistoryDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const listRef = useRef<HTMLOListElement>(null);
   const titleId = useId();
-  const rows = buildHistoryRows(game.movementHistory.slice(page * HISTORY_PAGE_SIZE, (page + 1) * HISTORY_PAGE_SIZE), network, presentation);
+  const rows = (savedRows ?? buildHistoryRows(game.movementHistory, network, presentation))
+    .slice(page * HISTORY_PAGE_SIZE, (page + 1) * HISTORY_PAGE_SIZE);
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -102,14 +106,14 @@ function HistoryDialog({ game, network, presentation, page, pageCount, opener, o
  * Launcher and dialog of the move history. The page lives here, so it survives closing and reopening within one
  * published result; the clear screen is keyed by the publication generation, which resets it for a new result.
  */
-export function ClearHistory({ game, network, presentation }: ClearHistoryProps) {
+export function ClearHistory({ game, network, presentation, rows, onBeforeOpen }: ClearHistoryProps) {
   const [open, setOpen] = useState(false);
   const [page, setPage] = useState(0);
   const launcherRef = useRef<HTMLButtonElement>(null);
   const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
   return (
     <>
-      <button ref={launcherRef} type="button" className="clear-screen__history-button" onClick={() => setOpen(true)}>
+      <button ref={launcherRef} type="button" className="clear-screen__history-button" onClick={() => { onBeforeOpen?.(); setOpen(true); }}>
         移動履歴を見る
       </button>
       {open && (
@@ -119,6 +123,7 @@ export function ClearHistory({ game, network, presentation }: ClearHistoryProps)
           presentation={presentation}
           page={Math.min(page, pageCount - 1)}
           pageCount={pageCount}
+          rows={rows}
           opener={launcherRef}
           onPageChange={setPage}
           onClose={() => setOpen(false)}

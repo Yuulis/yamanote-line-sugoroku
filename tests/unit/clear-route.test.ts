@@ -196,8 +196,15 @@ describe("clear route construction", () => {
       itemRide("x", "b", [segmentId]),
       itemDeadhead("b"),
       itemRide("b", "y", [`${M_LINE}:b:y`]),
+      itemRide("y", "y", []),
     ]), network, geometry: continuousGeometry, presentation, display });
     expect(result.route?.legs.map((leg) => [leg.firstStepIndex, leg.endStepIndexExclusive])).toEqual([[0, 1], [1, 2]]);
+    expect(result.route?.turnSpans).toEqual([
+      { recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1 },
+      { recordIndex: 1, firstStepIndex: 1, endStepIndexExclusive: 1 },
+      { recordIndex: 2, firstStepIndex: 1, endStepIndexExclusive: 2 },
+      { recordIndex: 3, firstStepIndex: 2, endStepIndexExclusive: 2 },
+    ]);
   });
 
   it.each([

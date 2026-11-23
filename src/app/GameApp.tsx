@@ -538,7 +538,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   const publishedClear = usePublishedClearResult({
     sessionId: session?.sessionId ?? null,
     game: showClear && session ? session.game : null,
-    network, geometry, presentation, display: edition.display,
+    network, geometry, presentation, display: edition.display, reducedMotion,
   });
   const clearCardRef = useRef<HTMLElement | null>(null);
   const mapMode: RailwayMapMode = app.state.screen === "title" ? "title" : showClear ? "clear" : "game";
@@ -756,6 +756,9 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           key={publishedClear.generation}
           game={publishedClear.game}
           result={publishedClear.result}
+          historyRows={publishedClear.historyRows}
+          replayStore={publishedClear.replayStore}
+          reducedMotion={reducedMotion}
           itemNotice={turnDisplay.itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
             view={turnDisplay.itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation}
           /> : undefined}
@@ -805,7 +808,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         presentation={presentation}
         progress={progress}
         markerBearing={turnDisplay?.markerBearing ?? null}
-        goalStationId={turnDisplay?.goalGuidance?.stationId ?? null}
+        goalStationId={showClear ? (session?.game.config.startStationId ?? null) : (turnDisplay?.goalGuidance?.stationId ?? null)}
         segmentFlash={turnDisplay?.segmentFlash ?? null}
         adjustmentCandidates={turnDisplay?.adjustmentLandings}
         livePosition={livePosition}
@@ -817,6 +820,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         clearRoute={publishedClear?.result.route ?? null}
         clearRouteKey={publishedClear?.generation}
         clearCardRef={clearCardRef}
+        clearReplayStore={publishedClear?.replayStore}
+        clearHistoryRows={publishedClear?.historyRows}
       />
     </>
   );

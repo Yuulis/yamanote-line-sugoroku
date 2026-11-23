@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import type { ItemGameState } from "../../src/types/network";
 import { playItemTurn, serializeGame } from "../../src/features/game/engine";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { advance } from "../../src/features/game/engine/movement";
 import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
 import { expect, test } from "./fixtures";
@@ -9,6 +10,7 @@ import type { RailwayBundle } from "./fixtures/bundle";
 import { MAP_STYLE_URL, SOURCE_IDS } from "../../src/features/map/mapConfig";
 import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openClearHistory, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
 import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { expectSavedHistoryRowFields } from "./support/clearHistory";
 
 test.use({ dataset: "fixture" });
 
@@ -716,7 +718,11 @@ test.describe("long rapid goal arrival", () => {
     const dialog = await openClearHistory(clearScreen);
     const history = dialog.locator(".clear-screen__history");
     await expect(history).not.toContainText("残り-");
-    await expect(history).toContainText(`${record.physicalHops}駅移動`);
+    const uiPresentation = railwayBundle.data.manifest.ok ? railwayBundle.data.manifest.value.uiPresentation : undefined;
+    await expectSavedHistoryRowFields(
+      history.locator(`[data-record-index="${record.turn - 1}"]`), record, record.turn - 1,
+      railwayBundle.network, createPresentationResolver(railwayBundle.network, uiPresentation),
+    );
     const historicalText = await history.locator("li").allTextContents();
     await page.reload();
     await page.getByRole("button", { name: /^クリア結果を見る/ }).click();

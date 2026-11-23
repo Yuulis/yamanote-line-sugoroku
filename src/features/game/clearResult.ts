@@ -40,11 +40,12 @@ export interface ClearHop {
 export type ClearRecordTraversal =
   | {
       readonly kind: "ride";
+      readonly recordIndex: number;
       readonly ride: LandingChoice;
       readonly landing: LandingChoice | null;
       readonly hops: readonly ClearHop[];
     }
-  | { readonly kind: "deadhead"; readonly toStationId: string }
+  | { readonly kind: "deadhead"; readonly recordIndex: number; readonly toStationId: string }
   | { readonly kind: "invalid" };
 
 export interface ClearRouteLeg {
@@ -55,9 +56,17 @@ export interface ClearRouteLeg {
   readonly color: string;
 }
 
+export interface ClearTurnSpan {
+  readonly recordIndex: number;
+  /** Half-open range of route steps drawn during this saved turn; empty for deadheads and zero-hop rides. */
+  readonly firstStepIndex: number;
+  readonly endStepIndexExclusive: number;
+}
+
 export interface ClearRoute {
   readonly steps: readonly StepPath[];
   readonly legs: readonly ClearRouteLeg[];
+  readonly turnSpans: readonly ClearTurnSpan[];
   readonly bounds: readonly [southWest: Position, northEast: Position];
 }
 
@@ -102,6 +111,7 @@ function invalidTraversal(): ClearRecordTraversal {
 
 function mapDeadheadRecord(
   record: Extract<ItemTurnRecord, { kind: "deadhead" }>,
+  recordIndex: number,
   expectedFromStationId: string,
   input: ClearResultInput,
 ): ClearRecordTraversal {
@@ -111,7 +121,7 @@ function mapDeadheadRecord(
     record.physicalHops !== 0 || !relocation || relocation.fromStationId !== record.fromStationId ||
     relocation.toStationId !== record.toStationId || !input.network.servicesById.has(relocation.serviceId) ||
     !isDirection(relocation.direction)) return invalidTraversal();
-  return { kind: "deadhead", toStationId: record.toStationId };
+  return { kind: "deadhead", recordIndex, toStationId: record.toStationId };
 }
 
 /** Map one saved record only after verifying its complete station and directed-segment chain. */
@@ -122,7 +132,7 @@ export function mapSavedRecord(
   input: ClearResultInput,
 ): ClearRecordTraversal {
   if ("kind" in record && record.kind === "deadhead") {
-    return mapDeadheadRecord(record, expectedFromStationId, input);
+    return mapDeadheadRecord(record, recordIndex, expectedFromStationId, input);
   }
   if (!isSavedRide(record)) return invalidTraversal();
 
@@ -163,7 +173,7 @@ export function mapSavedRecord(
   if (currentStationId !== record.toStationId ||
     (record.traversedSegmentIds.length === 0 && record.fromStationId !== record.toStationId)) return invalidTraversal();
 
-  return { kind: "ride", ride, landing: record.landing, hops };
+  return { kind: "ride", recordIndex, ride, landing: record.landing, hops };
 }
 
 interface RideStreak {

@@ -47,19 +47,21 @@ describe("history rows from a classic save", () => {
 
   it("splits roll, movement, line and a transfer note into fields", () => {
     expect(rows[0]).toEqual({
-      turn: 1, turnText: "1ターン目", rollText: "出目4", moveText: "新橋 → 品川", lineText: "山手線・外回り",
+      kind: "ride", recordIndex: 0, turn: 1, turnText: "1ターン目", rawRoll: 4, effectiveRoll: 4, adjusted: false,
+      effectKinds: [], effectText: "", fromStationName: "新橋", toStationName: "品川", hopCount: 4,
+      lineName: "山手線", directionText: "外回り", rollText: "出目4", moveText: "新橋 → 品川（4駅）", lineText: "山手線・外回り",
       notes: [{ kind: "transfer", label: null, text: "乗換: テスト南線（大森方面）" }],
     });
   });
 
   it("puts a truncated move's stop in a truncation note", () => {
-    expect(rows[1]).toMatchObject({ rollText: "出目3", moveText: "品川 → 大森", lineText: "テスト南線・大森方面" });
-    expect(rows[1]!.notes).toEqual([{ kind: "truncation", label: "途中で停止", text: "大森で停止〔エリア端〕、残り1" }]);
-    expect(rows[14]!.notes).toEqual([{ kind: "truncation", label: "途中で停止", text: "新橋で停止、残り1" }]);
+    expect(rows[1]).toMatchObject({ rollText: "出目3", moveText: "品川 → 大森（2駅）", lineText: "テスト南線・大森方面" });
+    expect(rows[1]!.notes).toEqual([{ kind: "truncation", label: "途中停止", text: "大森で終了〔エリア端〕、残り1を使わず" }]);
+    expect(rows[14]!.notes).toEqual([{ kind: "truncation", label: "途中停止", text: "新橋で終了、残り1を使わず" }]);
   });
 
   it("has no notes for a move that used every pip without changing service", () => {
-    expect(rows[9]).toMatchObject({ turn: 10, rollText: "出目5", moveText: "品川 → 渋谷", notes: [] });
+    expect(rows[9]).toMatchObject({ turn: 10, rollText: "出目5", moveText: "品川 → 渋谷（5駅）", notes: [] });
   });
 
   it("keeps a transfer back to the target line as its own note", () => {
@@ -68,10 +70,12 @@ describe("history rows from a classic save", () => {
 });
 
 describe("history rows from an item save", () => {
-  it("shows item pips and physical hops in the roll text and the landing as a note", () => {
+  it("shows a short roll and carries station count in the move field", () => {
     const rows = buildHistoryRows(completedItemGame().movementHistory, network, presentation);
     expect(rows[0]).toEqual({
-      turn: 1, turnText: "1ターン目", rollText: "出目6（6マス、6駅移動）", moveText: "新橋 → 五反田", lineText: "山手線・外回り",
+      kind: "item-ride", recordIndex: 0, turn: 1, turnText: "1ターン目", rawRoll: 6, effectiveRoll: 6, adjusted: false,
+      effectKinds: [], effectText: "", fromStationName: "新橋", toStationName: "五反田", hopCount: 6,
+      lineName: "山手線", directionText: "外回り", rollText: "出目6", moveText: "新橋 → 五反田（6駅）", lineText: "山手線・外回り",
       notes: [{ kind: "landing", label: "到着", text: "山手線のみ ／ 外回りに固定" }],
     });
     expect(rows.every((row) => !row.rollText.includes("残り-"))).toBe(true);
@@ -90,19 +94,35 @@ describe("history rows from an item save", () => {
   it("marks the clearing turn with a goal note and no landing", () => {
     const rows = buildHistoryRows(completedItemGame().movementHistory, network, presentation);
     expect(rows.at(-1)).toEqual({
-      turn: 10, turnText: "10ターン目", rollText: "出目1（1マス、1駅移動）", moveText: "有楽町 → 新橋", lineText: "山手線・外回り",
+      kind: "item-ride", recordIndex: 9, turn: 10, turnText: "10ターン目", rawRoll: 1, effectiveRoll: 1, adjusted: false,
+      effectKinds: [], effectText: "", fromStationName: "有楽町", toStationName: "新橋", hopCount: 1,
+      lineName: "山手線", directionText: "外回り", rollText: "出目1", moveText: "有楽町 → 新橋（1駅）", lineText: "山手線・外回り",
       notes: [{ kind: "goal", label: null, text: "ゴールに到着しました" }],
     });
   });
 
   it("reports a used effect item and a long truncated rapid ride", () => {
-    const row = useItem("rapid-long", "rapid");
-    expect(row.rollText).toBe("出目5（5マス、13駅移動、残り5は使わず）");
+    const base = itemScenario("rapid-long", network);
+    const rapid = base.inventory.find((entry) => entry.kind === "rapid")!;
+    const record = playItemTurn(base, { command: { items: [{ kind: "rapid", instanceId: rapid.id }] } }, network)
+      .state.movementHistory.at(-1)!;
+    if (record.kind !== "item-ride") throw new Error("Expected a saved rapid ride");
+    const row = buildHistoryRow(record, network, presentation);
+    expect(row.rollText).toBe(`出目${record.rawRoll}・快速`);
+    expect(row.rawRoll).toBe(record.rawRoll);
+    expect(row.effectiveRoll).toBe(record.effectiveFace);
+    expect(row.adjusted).toBe(record.adjustment !== null);
+    expect(row.effectKinds).toEqual(["rapid"]);
+    expect(row.hopCount).toBe(record.traversedSegmentIds.length);
+    expect(row.moveText).toBe(`${row.fromStationName} → ${row.toStationName}（${record.traversedSegmentIds.length}駅）`);
     expect(row.notes).toEqual([
+      { kind: "truncation", label: "途中停止", text: `${row.toStationName}で終了、残り${record.unusedPips}を使わず` },
       { kind: "goal", label: null, text: "ゴールに到着しました" },
       { kind: "item", label: "アイテム", text: "快速券を使いました" },
     ]);
-    expect(useItem("double", "double").rollText).toBe("出目1（2マス、2駅移動）");
+    const doubled = useItem("double", "double");
+    expect(doubled.rollText).toBe("出目1・倍速");
+    expect(doubled.moveText).toContain("（2駅）");
   });
 
   it("shows the adjusted die from the saved adjustment", () => {
@@ -110,19 +130,45 @@ describe("history rows from an item save", () => {
     const pending = beginItemTurn(base, { items: [] }, network).state;
     const ticket = base.inventory.find((item) => item.kind === "roll-adjust")!;
     const arrived = finishItemTurn(pending, { instanceId: ticket.id, delta: 1 }, network).state;
-    const row = buildHistoryRow(arrived.movementHistory.at(-1)!, network, presentation);
-    expect(row.rollText).toMatch(/^出目\d → 調整後\d（\d+マス、\d+駅移動.*）$/);
+    const savedRecord = arrived.movementHistory.at(-1)!;
+    if (savedRecord.kind !== "item-ride") throw new Error("Expected the adjusted item ride");
+    const record = { ...savedRecord, rawRoll: 3, effectiveFace: 4,
+      adjustment: { instanceId: ticket.id, delta: 1 as const } };
+    const row = buildHistoryRow(record, network, presentation);
+    expect(row.rawRoll).toBe(3);
+    expect(row.effectiveRoll).toBe(4);
+    expect(row.rollText).toBe("出目3→4");
+    expect(row.adjusted).toBe(true);
+    expect(row.effectKinds).toEqual(["roll-adjust"]);
+    expect(row.effectText).toBe("");
     expect(row.notes.map((note) => note.text)).toContain("出目調整券を使いました");
   });
 
   it("shows a deadhead without a roll or a line, resolving both stations", () => {
     expect(useItem("deadhead", "deadhead")).toEqual({
-      turn: 5, turnText: "5ターン目", rollText: "回送（サイコロなし）", moveText: "大森 → 品川", lineText: null,
+      kind: "deadhead", recordIndex: 0, turn: 5, turnText: "5ターン目", rawRoll: null, effectiveRoll: null, adjusted: false,
+      effectKinds: ["deadhead"], effectText: "回送", fromStationName: "大森", toStationName: "品川", hopCount: 0,
+      lineName: null, directionText: null, rollText: "回送", moveText: "大森 → 品川（0駅）", lineText: null,
       notes: [
         { kind: "landing", label: null, text: "回送列車で品川へ移りました（走行区間なし）" },
         { kind: "item", label: "アイテム", text: "回送列車を使いました" },
       ],
     });
+  });
+
+  it("keeps the saved suspension fallback as one structured note", () => {
+    const record = completedItemGame().movementHistory.find((candidate) =>
+      candidate.kind === "item-ride" && candidate.landingSnapshot !== null);
+    expect(record?.kind).toBe("item-ride");
+    if (!record || record.kind !== "item-ride" || !record.landingSnapshot) throw new Error("Expected an item landing snapshot");
+    const row = buildHistoryRow({
+      ...record,
+      landingSnapshot: { ...record.landingSnapshot, suspensionIgnored: true },
+    }, network, presentation, 4);
+    expect(row.recordIndex).toBe(4);
+    expect(row.notes.filter((note) => note.kind === "suspension")).toEqual([
+      { kind: "suspension", label: null, text: "この駅では候補がすべて運休のため、運休を無視して抽選しました" },
+    ]);
   });
 
   it("restores the same rows from a resumed save", () => {

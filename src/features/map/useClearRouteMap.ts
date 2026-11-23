@@ -2,6 +2,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { type RefObject, useEffect, useMemo } from "react";
 import { buildClearRouteGeoJson } from "../game/clearRoute";
 import type { ClearRoute } from "../game/clearResult";
+import type { ClearReplayStore } from "../game/clearReplayStore";
 import { applyClearRouteFit, clearFitPadding, clearFitSignature, measureClearFit } from "./clearRouteCamera";
 import { applyClearRouteLayers, removeClearRouteLayers } from "./clearRouteLayers";
 
@@ -18,6 +19,7 @@ export interface ClearRouteMapInput {
   readonly generation: number | undefined;
   /** The clear card whose rectangle the route must stay clear of. */
   readonly cardRef: RefObject<HTMLElement | null> | undefined;
+  readonly replayStore?: ClearReplayStore;
 }
 
 export interface RemovalWatch {
@@ -38,18 +40,30 @@ export function watchRemoval(map: MapLibreMap): RemovalWatch {
  * Leaving the clear screen (or replacing the map) removes the route and restores the camera padding that was
  * retained on entry; the screen that follows then applies its own camera.
  */
-export function useClearRouteMap({ map, layersRevision, active, route, generation, cardRef }: ClearRouteMapInput): void {
+const REPLAY_CAPTION_TOP_CLEARANCE_PX = 60;
+
+export function useClearRouteMap({ map, layersRevision, active, route, generation, cardRef, replayStore }: ClearRouteMapInput): void {
   const routeGeoJson = useMemo(() => route === null ? null : buildClearRouteGeoJson(route), [route]);
 
   useEffect(() => {
-    if (!map || !active || !routeGeoJson) return;
+    if (!map || !active || !route || !routeGeoJson) return;
     const removal = watchRemoval(map);
-    applyClearRouteLayers(map, routeGeoJson);
+    const applyLatest = (): void => {
+      if (removal.isRemoved()) return;
+      const snapshot = replayStore?.getSnapshot();
+      const data = snapshot && (snapshot.phase === "playing" || snapshot.phase === "paused")
+        ? buildClearRouteGeoJson(route, { stepIndex: snapshot.stepIndex, fraction: snapshot.fraction })
+        : routeGeoJson;
+      applyClearRouteLayers(map, data);
+    };
+    applyLatest();
+    const unsubscribe = replayStore?.subscribe(applyLatest);
     return () => {
+      unsubscribe?.();
       if (!removal.isRemoved()) removeClearRouteLayers(map);
       removal.stop();
     };
-  }, [map, layersRevision, active, routeGeoJson]);
+  }, [map, layersRevision, active, route, routeGeoJson, replayStore]);
 
   useEffect(() => {
     if (!map || !active || !route) return;
@@ -64,8 +78,9 @@ export function useClearRouteMap({ map, layersRevision, active, route, generatio
       if (removal.isRemoved()) return;
       const measurement = measureClearFit(container, cardRef?.current ?? null);
       if (!measurement) return;
-      const padding = clearFitPadding(measurement);
-      if (!padding) return;
+      const basePadding = clearFitPadding(measurement);
+      if (!basePadding) return;
+      const padding = { ...basePadding, top: Math.max(basePadding.top, REPLAY_CAPTION_TOP_CLEARANCE_PX) };
       const signature = clearFitSignature(measurement.viewport, padding, route.bounds);
       if (signature === appliedSignature) return;
       appliedSignature = signature;

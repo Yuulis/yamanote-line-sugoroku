@@ -20,6 +20,7 @@ import {
 } from "./fixtures/seeds";
 import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openClearHistory, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
 import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advancePickup, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
+import { expectSavedHistoryRowFields } from "./support/clearHistory";
 
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
@@ -396,36 +397,38 @@ test.describe("current product scenarios", () => {
     const dialog = await openClearHistory(clear);
     const items = dialog.locator(".clear-screen__history li");
     const history = dialog.locator(".clear-screen__history");
+    const uiPresentation = railwayBundle.data.manifest.ok ? railwayBundle.data.manifest.value.uiPresentation : undefined;
+    const presentation = createPresentationResolver(railwayBundle.network, uiPresentation);
     await expect(items).toHaveCount(20);
-    await expect(items.first()).toContainText("1ターン目");
+    await expectSavedHistoryRowFields(items.first(), game.movementHistory[0]!, 0, railwayBundle.network, presentation);
     await expect(dialog.getByRole("button", { name: "前のページ" })).toBeDisabled();
     await history.evaluate((element) => { element.scrollTop = element.scrollHeight; });
     await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
     await expect(items.first()).not.toBeInViewport();
     await dialog.getByRole("button", { name: "次のページ" }).click();
     await expect(items).toHaveCount(20);
-    await expect(items.first()).toContainText("21ターン目");
+    await expectSavedHistoryRowFields(items.first(), game.movementHistory[20]!, 20, railwayBundle.network, presentation);
     await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBe(0);
     await expect(items.first()).toBeInViewport({ ratio: 1 });
     await dialog.getByRole("button", { name: "次のページ" }).click();
     await expect(items).toHaveCount(20);
-    await expect(items.first()).toContainText("41ターン目");
-    await expect(items.last()).toContainText("60ターン目");
+    await expectSavedHistoryRowFields(items.first(), game.movementHistory[40]!, 40, railwayBundle.network, presentation);
+    await expectSavedHistoryRowFields(items.last(), game.movementHistory[59]!, 59, railwayBundle.network, presentation);
     await dialog.getByRole("button", { name: "次のページ" }).click();
     await expect(items).toHaveCount(20);
-    await expect(items.first()).toContainText("61ターン目");
+    await expectSavedHistoryRowFields(items.first(), game.movementHistory[60]!, 60, railwayBundle.network, presentation);
     await dialog.getByRole("button", { name: "次のページ" }).click();
     await expect(items).toHaveCount(16);
-    await expect(items.first()).toContainText("81ターン目");
-    await expect(items.last()).toContainText("96ターン目");
+    await expectSavedHistoryRowFields(items.first(), game.movementHistory[80]!, 80, railwayBundle.network, presentation);
+    await expectSavedHistoryRowFields(items.last(), game.movementHistory[95]!, 95, railwayBundle.network, presentation);
     await expect(dialog.getByRole("button", { name: "次のページ" })).toBeDisabled();
     await dialog.getByRole("button", { name: "前のページ" }).click();
     await dialog.getByRole("button", { name: "前のページ" }).click();
     await dialog.getByRole("button", { name: "前のページ" }).click();
-    await expect(items.first()).toContainText("21ターン目");
+    await expectSavedHistoryRowFields(items.first(), game.movementHistory[20]!, 20, railwayBundle.network, presentation);
     await dialog.getByRole("button", { name: "前のページ" }).click();
     await expect(items).toHaveCount(20);
-    await expect(items.first()).toContainText("1ターン目");
+    await expectSavedHistoryRowFields(items.first(), game.movementHistory[0]!, 0, railwayBundle.network, presentation);
     expect((await readSave(page))?.movementHistory).toEqual(game.movementHistory);
     await expect(dialog.locator(".clear-screen__page-status")).toHaveText("1 / 5ページ");
     await dialog.getByRole("button", { name: "閉じる" }).click();
@@ -435,7 +438,10 @@ test.describe("current product scenarios", () => {
     await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
     const reopened = await openClearHistory(clear);
     await expect(reopened.locator(".clear-screen__history li")).toHaveCount(20);
-    await expect(reopened.locator(".clear-screen__history li").first()).toContainText("1ターン目");
+    await expectSavedHistoryRowFields(
+      reopened.locator(".clear-screen__history li").first(), game.movementHistory[0]!, 0,
+      railwayBundle.network, presentation,
+    );
     expect(await readSave(page)).toEqual(game);
   });
 });

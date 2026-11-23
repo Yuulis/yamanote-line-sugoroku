@@ -205,3 +205,61 @@ npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts tests/e2e/title-map.spe
 npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
 Screenshots (env-gated, off in CI): .claude/logs/screenshots/issue69-s4b-{desktop,phone390,phone320}.png.
 ```
+
+## S5 (Revision 4) — per-turn replay, caption, speed, pause; short history roll form (Codex Luna xhigh)
+
+From S5 the user switched back to Codex (2026-11-23): Luna xhigh implements, Sol low reviews.
+
+```
+Implement plan step "S5 — ターン同期リプレイ、速度、一時停止" in "Revision 4 changes (user 2026-11-23)" exactly
+(visible: yes), plus the carried decisions in .claude/docs/plans/clear-replay-share-handoff.md ("User requests carried"
+and the S3/S4 review notes). S1-S4b are committed (latest 3a57981). Read the Revision 4 "Proposals" rows 字幕 and
+速度と停止 (approved by the user) and the older Interface "リプレイと地図" / Data Flow / Error Handling for the store.
+Scope:
+1. Structured history rows (src/features/game/historyRows.ts): add typed fields shared by captions and the dialog —
+   kind (ride / item-ride / deadhead), recordIndex, turn, rawRoll, effectiveRoll, adjusted, effect kinds, from/to station
+   names, hop count, line/direction text, notes. The dialog roll column uses the SHORT form (user 2026-11-23):
+   「出目4」, 「出目3→4」 (roll adjustment), 「出目4・快速」 (effects, item display names joined by ・), 「回送」 (deadhead).
+   The move column carries the station count: 「永田町 → 半蔵門（3駅）」. Unused pips / early stop become ONE consistent
+   note for classic and item saves (no double 「停止」). Remove or deliberately keep itemHistoryText (presentation.ts) and
+   say which. Add the missing suspension-note unit test. Port full-game / text-wrapping / items / capital-region history
+   assertions to the new fields with exact toHaveText (never weaker).
+2. Replay store (src/features/game/clearReplayStore.ts): external store with subscribe/getSnapshot, start, pause,
+   resume, finish (全経路を表示), setSpeed, dispose; per-turn pacing ゆっくり 900 / ふつう 550 (default) / はやい 250 ms per
+   saved turn, distributed over that turn's hops by the existing distance weighting; no overall cap; speed change keeps
+   the current position; speed kept while the same result generation is shown, reset on reload/new publication.
+   Zero-hop turns and deadheads still show one turn's caption and keep the drawn route (no line across a deadhead).
+   Snapshot = { phase: idle|playing|paused|done, recordIndex, stepIndex, fraction }. Injectable scheduler; stale run
+   callbacks ignored; visibilitychange hidden -> pause (not finish; the user resumes); OS reduced motion -> full route at
+   once and the play control reads 「全経路を表示」 semantics per plan; opening the history dialog pauses.
+   Add turnSpans (recordIndex -> half-open step range) to the result/route model as the plan says; keep steps/legs/bounds
+   and route===null behaviour.
+3. Map: partial GeoJSON (completed legs + current leg prefix by cumulative distance; never a 1-point LineString) applied
+   through applyClearRouteLayers' setData path from an imperative store subscription in useClearRouteMap (never remove /
+   re-add layers per frame; React state changes only on phase/recordIndex changes). After style reload re-apply the
+   latest snapshot. When idle/done the full route is shown (as in S4).
+4. UI: a 「軌跡を再生」 button on the clear card (desktop and phone), and while playing/paused compact controls:
+   一時停止/再開, speed (3 presets, a native radio group or segmented buttons with accessible names), 全経路を表示.
+   Caption: one line over the map in the uncovered area (not under the card or the credit button), format per the
+   approved proposal (「12ターン目：出目4 → 半蔵門」 etc., derived from the structured rows), station part ellipsised on
+   320px, full text kept in the DOM; captions are NOT live-announced per turn. Announce only start / pause / finish via
+   ClearAnnouncements. If route === null, the replay button is not shown and a short non-live note explains that the route
+   cannot be drawn (or announce once via ClearAnnouncements — pick one and say why). Keep the caption slot out of the
+   camera fit area (add it to padding). Re-measure the phone sheet: at 320x568 with scrollTop 0 the three numbers,
+   結果をコピー, もう一度遊ぶ, タイトルへ, 移動履歴を見る and 軌跡を再生 should be inside the 65% sheet; if they cannot fit,
+   report measurements and the smallest change you propose instead of raising the cap silently.
+5. GameApp.tsx / RailwayMap.tsx wiring only; files ~200-400 lines.
+Tests first: unit (store: exact turn/step boundaries, multi-hop, zero-hop, same-station deadhead, trailing empty turn,
+speed change mid-turn, pause/resume, finish, natural end, replay again, hidden tab, reduced motion, style restore, stale
+callbacks, a long fixture past 12 s of virtual time; history rows short form for classic/item/adjust/effects/deadhead/
+transfer/truncation/suspension; caption text incl. 320px truncation class), and E2E in clear-replay-share.spec.ts with
+reducedMotion 'no-preference' for playing cases (caption and drawn feature count advance together; pause holds;
+はやい speeds up; 全経路を表示 completes; replay again works; history open pauses; reduced-motion case shows full route
+at once); phone cases @layout.
+Acceptance (report counts): npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build;
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts tests/e2e/text-wrapping.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/items.spec.ts tests/e2e/tokyo-suburban.spec.ts tests/e2e/full-game.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/title-map.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts tests/e2e/text-wrapping.spec.ts tests/e2e/capital-region.spec.ts tests/e2e/accessibility.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+Screenshots (env-gated, off in CI, not committed): mid-replay at 1280x800 and 390x844 and 320x568, paused state at
+320x568, history dialog with the short roll form at 1280x800 and 320x568 ->
+.claude/logs/screenshots/issue69-s5-{replay-desktop,replay-phone390,replay-phone320,paused-phone320,dialog-desktop,dialog-phone320}.png.
+```

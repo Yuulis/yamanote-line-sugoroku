@@ -51,13 +51,12 @@ const CLEAR_SCREEN_VIEWPORT = { width: 320, height: 568 } as const;
 const CLEAR_HISTORY_PAGE_COUNT = 5;
 const CLEAR_SCREEN_SUMMARY_TEXT = "山手線の外回り全30区間を踏破し、新橋に戻りました。";
 const CLEAR_SCREEN_GOAL_ANNOUNCEMENT = "96ターン目：出目3（3マス、1駅移動、残り2は使わず）、新橋に到着。ゴールに到着しました。踏破 30/30";
-/** Fields of the final history row; joined they read as the former single-line entry. */
 const CLEAR_SCREEN_GOAL_HISTORY = {
   turn: "96ターン目",
-  roll: "出目3（3マス、1駅移動、残り2は使わず）",
-  move: "有楽町・日比谷 → 新橋",
+  roll: "出目3",
+  move: "有楽町・日比谷 → 新橋（1駅）",
   line: "山手線・外回り",
-  note: "ゴールに到着しました",
+  notes: ["途中停止新橋で終了、残り2を使わず", "ゴールに到着しました"],
 } as const;
 const CLEAR_HISTORY_TARGET_PX = 44;
 const PANEL_CANDIDATE_MINIMUM = 5;
@@ -697,21 +696,27 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
   }
   await expect(paging.locator(".clear-screen__page-status")).toHaveText("5 / 5ページ");
   const goalHistoryEntry: Locator = historyItems.last();
-  await expect(goalHistoryEntry).toContainText("96ターン目");
   // The final entry's exact text, field by field; the stacked layout wraps the long fields at phrase hints.
   const fields: ReadonlyArray<readonly [string, string, boolean]> = [
     [".clear-history__turn", CLEAR_SCREEN_GOAL_HISTORY.turn, false],
-    [".clear-history__roll", CLEAR_SCREEN_GOAL_HISTORY.roll, true],
+    [".clear-history__roll", CLEAR_SCREEN_GOAL_HISTORY.roll, false],
     [".clear-history__move", CLEAR_SCREEN_GOAL_HISTORY.move, true],
     [".clear-history__line", CLEAR_SCREEN_GOAL_HISTORY.line, true],
-    [".clear-history__note", CLEAR_SCREEN_GOAL_HISTORY.note, false],
   ];
   for (const [selector, expected, expectsHints] of fields) {
     const field: Locator = goalHistoryEntry.locator(selector);
+    await expect(field).toHaveText(expected);
     const layout = await measureTextLayout(field);
     if (expectsHints) expect(layout.hintOffsets.length, `${selector} wraps at phrase hints`).toBeGreaterThan(0);
     expect(layout.text, selector).toBe(expected);
     expect(layout.widthFits, selector).toBe(true);
+    await expectNoHorizontalOverflow(field);
+  }
+  for (const [index, note] of CLEAR_SCREEN_GOAL_HISTORY.notes.entries()) {
+    const field = goalHistoryEntry.locator(".clear-history__note").nth(index);
+    await expect(field).toHaveText(note);
+    const layout = await measureTextLayout(field);
+    expect(layout.widthFits, `note ${index} stays inside the phone row`).toBe(true);
     await expectNoHorizontalOverflow(field);
   }
   await expectNoHorizontalOverflow(goalHistoryEntry);

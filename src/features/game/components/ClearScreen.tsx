@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import type { GameState, ItemGameState } from "../../../types/network";
 import type { RailwayNetwork } from "../engine";
 import type { ClearResult } from "../clearResult";
@@ -12,6 +12,11 @@ import { PhraseText } from "./PhraseText";
 import { ClearAnnouncements, type ClearAnnouncement } from "./ClearAnnouncements";
 import { ClearHighlights } from "./ClearHighlights";
 import { ClearHistory, HISTORY_PAGE_SIZE } from "./ClearHistory";
+import { ClearReplayControls } from "./ClearReplayControls";
+import type { ClearReplayStore } from "../clearReplayStore";
+import type { HistoryRow } from "../historyRows";
+import { buildHistoryRows } from "../historyRows";
+import { createClearReplayStore } from "../clearReplayStore";
 
 export { HISTORY_PAGE_SIZE };
 
@@ -21,6 +26,9 @@ interface ClearScreenProps {
   presentation: PresentationResolver;
   /** Result derived once per published clear (see usePublishedClearResult). */
   result: ClearResult;
+  historyRows?: readonly HistoryRow[];
+  replayStore?: ClearReplayStore;
+  reducedMotion?: boolean;
   /** Published collection counters; omitted by callers that render the screen outside the game (e.g. share tests). */
   collection?: CollectionProgress;
   shareActions?: ResultShareActions;
@@ -36,11 +44,19 @@ interface ClearScreenProps {
 }
 
 /** Shown once the clearing move has finished animating (spec 6.1). */
-export function ClearScreen({ game, network, presentation, result, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), onPlayAgain, onShowTitle, cardRef }: ClearScreenProps) {
+export function ClearScreen({ game, network, presentation, result, historyRows, replayStore, reducedMotion = false, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), onPlayAgain, onShowTitle, cardRef }: ClearScreenProps) {
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showShareText, setShowShareText] = useState(false);
   const [announcement, setAnnouncement] = useState<ClearAnnouncement | null>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
+  const ownedReplayStore = useMemo(() => createClearReplayStore({ route: result.route, reducedMotion }), [result.route]);
+  const activeReplayStore = replayStore ?? ownedReplayStore;
+  const savedRows = useMemo(() => historyRows ?? buildHistoryRows(game.movementHistory, network, presentation),
+    [historyRows, game, network, presentation]);
+  useEffect(() => {
+    ownedReplayStore.activate();
+    return () => ownedReplayStore.dispose();
+  }, [ownedReplayStore]);
   useLayoutEffect(() => {
     const screen = headingRef.current?.closest<HTMLElement>(".clear-screen");
     if (!headingRef.current || !screen) return;
@@ -50,7 +66,7 @@ export function ClearScreen({ game, network, presentation, result, collection, s
   const { turns, moves, transfers } = result.summary;
   const { shareText } = result;
   const canShare = shareActions.canShare(shareText);
-  const announce = (text: string): void => setAnnouncement((previous) => ({ id: (previous?.id ?? 0) + 1, text }));
+  const announce = useCallback((text: string): void => setAnnouncement((previous) => ({ id: (previous?.id ?? 0) + 1, text })), []);
   const showMessage = (text: string | null, textFallback: boolean): void => {
     setShowShareText(textFallback);
     setShareMessage(text);
@@ -104,7 +120,9 @@ export function ClearScreen({ game, network, presentation, result, collection, s
       <div className="clear-screen__share">
         <button type="button" onClick={copyResult}>結果をコピー</button>
         {canShare && <button type="button" onClick={shareResult}>共有</button>}
+        {result.route !== null && <ClearReplayControls store={activeReplayStore} reducedMotion={reducedMotion} onAnnounce={announce} />}
       </div>
+      {result.route === null && <p className="clear-screen__replay-unavailable">経路を描画できないため、軌跡を再生できません。</p>}
       <p className="clear-screen__share-status">{shareMessage}</p>
       {showShareText && (
         <div className="clear-screen__share-fallback">
@@ -120,7 +138,13 @@ export function ClearScreen({ game, network, presentation, result, collection, s
           タイトルへ
         </button>
       </div>
-      <ClearHistory game={game} network={network} presentation={presentation} />
+      <ClearHistory
+        game={game}
+        network={network}
+        presentation={presentation}
+        rows={savedRows}
+        onBeforeOpen={() => activeReplayStore.pause()}
+      />
       <ClearHighlights
         highlights={result.highlights}
         network={network}

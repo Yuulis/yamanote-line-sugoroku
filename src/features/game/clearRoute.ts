@@ -2,7 +2,7 @@ import type { Position } from "../../types/data";
 import type { RailwayNetwork } from "./engine";
 import { findSegment } from "./engine";
 import { orientPath, stepPath, type GeometryIndex, type GeometryPath, type StepPath } from "./animation/movePath";
-import type { ClearHop, ClearRecordTraversal, ClearRoute, ClearRouteLeg } from "./clearResult";
+import type { ClearHop, ClearRecordTraversal, ClearRoute, ClearRouteLeg, ClearTurnSpan } from "./clearResult";
 
 const MIN_LONGITUDE = -180;
 const MAX_LONGITUDE = 180;
@@ -176,8 +176,22 @@ export function buildClearRoute(
 
   const steps: StepPath[] = [];
   const legs: ClearRouteLeg[] = [];
+  const turnSpans: ClearTurnSpan[] = [];
   let previous: DrawnHop | undefined;
   let legIndex = -1;
+  let spanStepIndex = 0;
+
+  for (const traversal of traversals) {
+    if (traversal.kind === "invalid") return null;
+    const firstStepIndex = spanStepIndex;
+    const stepCount = traversal.kind === "ride" ? traversal.hops.length : 0;
+    turnSpans.push({
+      recordIndex: traversal.recordIndex,
+      firstStepIndex,
+      endStepIndexExclusive: firstStepIndex + stepCount,
+    });
+    spanStepIndex += stepCount;
+  }
 
   for (const current of drawn) {
     const startsLeg = startsNewLeg(previous, current, current.breaksContinuityBefore);
@@ -192,7 +206,7 @@ export function buildClearRoute(
     previous = current;
   }
 
-  return { steps, legs, bounds: calculateBounds(steps) };
+  return { steps, legs, turnSpans, bounds: calculateBounds(steps) };
 }
 
 export interface ClearRouteFeatureProperties {
@@ -211,13 +225,39 @@ export interface ClearRouteGeoJson {
   }[];
 }
 
-function legCoordinates(route: ClearRoute, leg: ClearRouteLeg): Position[] {
-  const coordinates: Position[] = [];
-  for (const step of route.steps.slice(leg.firstStepIndex, leg.endStepIndexExclusive)) {
-    for (const point of step.points) {
-      if (isSamePosition(coordinates.at(-1), point)) continue;
-      coordinates.push([point[0], point[1]]);
+function addCoordinate(coordinates: Position[], point: Position): void {
+  if (!isSamePosition(coordinates.at(-1), point)) coordinates.push([point[0], point[1]]);
+}
+
+function partialStepPoints(step: StepPath, fraction: number): Position[] {
+  const target = step.total * Math.min(1, Math.max(0, fraction));
+  const points: Position[] = [step.points[0]!];
+  for (let index = 1; index < step.points.length; index += 1) {
+    const startDistance = step.cumulative[index - 1] ?? 0;
+    const endDistance = step.cumulative[index] ?? startDistance;
+    const start = step.points[index - 1]!;
+    const end = step.points[index]!;
+    if (endDistance <= target) {
+      addCoordinate(points, end);
+      continue;
     }
+    if (target > startDistance && endDistance > startDistance) {
+      const ratio = (target - startDistance) / (endDistance - startDistance);
+      addCoordinate(points, [start[0] + (end[0] - start[0]) * ratio, start[1] + (end[1] - start[1]) * ratio]);
+    }
+    break;
+  }
+  return points;
+}
+
+function legCoordinates(route: ClearRoute, leg: ClearRouteLeg, cursorStepIndex = Infinity, fraction = 1): Position[] {
+  const coordinates: Position[] = [];
+  for (let stepIndex = leg.firstStepIndex; stepIndex < leg.endStepIndexExclusive; stepIndex += 1) {
+    if (stepIndex > cursorStepIndex) break;
+    const step = route.steps[stepIndex];
+    if (!step) continue;
+    const points = stepIndex === cursorStepIndex ? partialStepPoints(step, fraction) : step.points;
+    for (const point of points) addCoordinate(coordinates, point);
   }
   return coordinates;
 }
@@ -226,11 +266,14 @@ function legCoordinates(route: ClearRoute, leg: ClearRouteLeg): Position[] {
  * The complete travelled route, one LineString per leg in the ridden service's colour. A leg break starts a new
  * LineString, so a relocation or a change of line never produces a connecting line.
  */
-export function buildClearRouteGeoJson(route: ClearRoute): ClearRouteGeoJson {
+export function buildClearRouteGeoJson(
+  route: ClearRoute,
+  cursor?: { readonly stepIndex: number; readonly fraction: number },
+): ClearRouteGeoJson {
   return {
     type: "FeatureCollection",
     features: route.legs.flatMap((leg) => {
-      const coordinates = legCoordinates(route, leg);
+      const coordinates = legCoordinates(route, leg, cursor?.stepIndex, cursor?.fraction);
       if (coordinates.length < 2) return [];
       return [{
         type: "Feature" as const,
