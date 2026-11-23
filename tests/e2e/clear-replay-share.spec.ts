@@ -19,6 +19,7 @@ const SCREENSHOTS_ENABLED = Boolean(process.env.ISSUE69_S3_SCREENSHOTS) && !proc
 const PHONE_SHEET_MAX_HEIGHT_RATIO = 0.65;
 const LANDSCAPE_PHONE = { width: 667, height: 375 } as const;
 const SCREENSHOTS_S4_ENABLED = Boolean(process.env.ISSUE69_S4_SCREENSHOTS) && !process.env.CI;
+const SCREENSHOTS_S4B_ENABLED = Boolean(process.env.ISSUE69_S4B_SCREENSHOTS) && !process.env.CI;
 const CLEAR_ROUTE_LAYERS = ["clear-traveled-route-outline", "clear-traveled-route-line"] as const;
 /** The route must fill at least this share of the open area along its limiting axis, so "somewhere small" fails. */
 const MIN_ROUTE_FILL_RATIO = 0.4;
@@ -392,6 +393,57 @@ test("removes the route and brings the gameplay map controls back when a new gam
   expect(reading?.layerIds, "the gameplay layers are untouched").toContain("railway-segments-completed");
 });
 
+interface NetworkLayersReading {
+  /** Rendered feature counts per layer id, over the whole canvas. */
+  rendered: Record<string, number>;
+  /** The layout visibility of each hidden-in-clear overlay, as MapLibre reports it. */
+  overlayVisibility: Record<string, string | undefined>;
+}
+
+interface E2ENetworkMap {
+  queryRenderedFeatures(geometry: undefined, options: { layers: string[] }): unknown[];
+  getLayoutProperty(layerId: string, name: string): string | undefined;
+}
+
+const NETWORK_BACKGROUND_LAYERS = ["railway-services", "railway-base"] as const;
+const NETWORK_OVERLAY_LAYERS = [
+  "railway-current-service", "railway-segments-pending-casing", "railway-segments-pending",
+  "railway-segments-completed", "railway-segments-flash",
+] as const;
+
+/** Read how many features of the coloured network layers and of the route are actually drawn, plus overlay visibility. */
+async function readNetworkLayers(page: Page): Promise<NetworkLayersReading | null> {
+  return page.evaluate(({ background, overlays, route }) => {
+    const map = (window as unknown as { __sugorokuE2E?: { map?: E2ENetworkMap | null } }).__sugorokuE2E?.map;
+    if (!map) return null;
+    const rendered: Record<string, number> = {};
+    for (const id of [...background, ...route]) rendered[id] = map.queryRenderedFeatures(undefined, { layers: [id] }).length;
+    const overlayVisibility: Record<string, string | undefined> = {};
+    for (const id of overlays) overlayVisibility[id] = map.getLayoutProperty(id, "visibility");
+    return { rendered, overlayVisibility };
+  }, { background: [...NETWORK_BACKGROUND_LAYERS], overlays: [...NETWORK_OVERLAY_LAYERS], route: ["clear-traveled-route-line"] });
+}
+
+test("colours only the travelled route on the clear screen and brings the network back for a new game", async ({ page }) => {
+  await page.setViewportSize(DESKTOP);
+  const clear = await clearWithOneRoll(page);
+  await expectRouteFramedBesideCard(page);
+
+  await expect.poll(async () => (await readNetworkLayers(page))?.rendered["clear-traveled-route-line"] ?? 0, { message: "the route is drawn" })
+    .toBeGreaterThan(0);
+  const inClear = await readNetworkLayers(page);
+  for (const id of NETWORK_BACKGROUND_LAYERS) expect(inClear?.rendered[id], `${id} draws nothing on the clear screen`).toBe(0);
+  for (const id of NETWORK_OVERLAY_LAYERS) expect(inClear?.overlayVisibility[id], `${id} is hidden on the clear screen`).toBe("none");
+
+  await clear.getByRole("button", { name: "もう一度遊ぶ" }).click();
+  await expect(clear).toBeHidden();
+  await expect(page.getByRole("button", { name: "全体" })).toBeVisible();
+  await expect.poll(async () => (await readNetworkLayers(page))?.rendered["railway-services"] ?? 0, { message: "the network lines are drawn again" })
+    .toBeGreaterThan(0);
+  const afterRestart = await readNetworkLayers(page);
+  for (const id of NETWORK_OVERLAY_LAYERS) expect(afterRestart?.overlayVisibility[id], `${id} is shown again`).toBe("visible");
+});
+
 test("removes the route when returning to the title", async ({ page }) => {
   await page.setViewportSize(DESKTOP);
   const clear = await clearWithOneRoll(page);
@@ -419,6 +471,25 @@ test("saves the S4 review screenshots on request", async ({ page }) => {
       await page.setViewportSize(viewport);
       const reading = await expectRouteFramedBesideCard(page);
       console.info(`${file} ${JSON.stringify({ route: reading.bounds, card: reading.card, viewport: reading.viewport })}`);
+      await page.screenshot({ path: join(SCREENSHOT_DIR, file) });
+    });
+  }
+});
+
+test("saves the S4b review screenshots on request", async ({ page }) => {
+  test.skip(!SCREENSHOTS_S4B_ENABLED, "set ISSUE69_S4B_SCREENSHOTS=1 (outside CI) to write the review screenshots");
+  mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  await page.setViewportSize(DESKTOP);
+  await clearWithOneRoll(page);
+  const shots: readonly [string, { width: number; height: number }][] = [
+    ["issue69-s4b-desktop.png", DESKTOP],
+    ["issue69-s4b-phone390.png", PHONE_MEDIUM],
+    ["issue69-s4b-phone320.png", PHONE_SMALL],
+  ];
+  for (const [file, viewport] of shots) {
+    await test.step(file, async () => {
+      await page.setViewportSize(viewport);
+      await expectRouteFramedBesideCard(page);
       await page.screenshot({ path: join(SCREENSHOT_DIR, file) });
     });
   }

@@ -3,6 +3,7 @@ import { act, createElement, StrictMode } from "react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { hideAllLineGroups, updateLineGroupVisibility } from "../../src/features/map/lineVisibility";
 import { RailwayMap } from "../../src/features/map/RailwayMap";
 import { TITLE_FIT_PADDING_PHONE_PX, TITLE_FIT_PADDING_PX, titleFitPadding } from "../../src/features/map/camera";
 import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
@@ -145,7 +146,7 @@ vi.mock("../../src/features/map/railwayLayers", () => ({
   setSegmentFlashFeatures: vi.fn(), setSegmentFlashOpacity: vi.fn(), updateCompletedSegments: vi.fn(),
   updateCurrentPosition: vi.fn(), updateGoalStation: vi.fn(), updateHighlightedService: vi.fn(),
 }));
-vi.mock("../../src/features/map/lineVisibility", () => ({ updateLineGroupVisibility: vi.fn() }));
+vi.mock("../../src/features/map/lineVisibility", () => ({ hideAllLineGroups: vi.fn(), updateLineGroupVisibility: vi.fn() }));
 vi.mock("../../src/features/map/lineVisibilityStore", () => ({ useVisibleLineGroupIds: () => null }));
 vi.mock("../../src/features/map/headingMarker", () => ({
   createHeadingMarker: () => ({ remove: vi.fn(), update: vi.fn() }),
@@ -708,6 +709,23 @@ describe("clear route on the map", () => {
     expect(map.calls.padding.find((padding) => (padding as { bottom: number }).bottom === 200), "entry padding is restored").toBeDefined();
     const gameFit = map.order.indexOf("fitBounds");
     expect(gameFit, "the overview fit of the game screen comes after the restore").toBeGreaterThan(restore);
+  });
+
+  it("empties the coloured network on the clear screen and applies the legend selection again outside it", () => {
+    vi.mocked(hideAllLineGroups).mockClear();
+    vi.mocked(updateLineGroupVisibility).mockClear();
+    const props = clearProps();
+    const map = ready("game", props);
+    expect(hideAllLineGroups).not.toHaveBeenCalled();
+    expect(updateLineGroupVisibility).toHaveBeenCalled();
+
+    vi.mocked(updateLineGroupVisibility).mockClear();
+    render("clear", props);
+    expect(hideAllLineGroups).toHaveBeenCalledWith(map, TARGET_SERVICE_ID);
+    expect(updateLineGroupVisibility, "the legend selection is not applied while the clear screen owns the map").not.toHaveBeenCalled();
+
+    render("game", props);
+    expect(updateLineGroupVisibility).toHaveBeenCalledWith(map, expect.anything(), null, TARGET_SERVICE_ID);
   });
 
   it("keeps the map controls out of the clear screen while the route is shown", () => {

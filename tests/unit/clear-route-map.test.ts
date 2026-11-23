@@ -15,6 +15,8 @@ import {
 import {
   applyClearRouteLayers,
   CLEAR_ROUTE_LAYER_IDS,
+  CLEAR_ROUTE_LINE_WIDTH,
+  CLEAR_ROUTE_OUTLINE_WIDTH,
   CLEAR_ROUTE_SOURCE_ID,
   clearRouteAnchor,
   removeClearRouteLayers,
@@ -38,6 +40,7 @@ class FakeMap {
   readonly listeners = new Map<string, Set<() => void>>();
   layers: StyleLayer[];
   styleLoaded = true;
+  styleReads = 0;
   padding = { top: 7, right: 0, bottom: 300, left: 0 };
 
   constructor(readonly container: HTMLElement, layers: StyleLayer[] = stationStyle()) {
@@ -45,7 +48,10 @@ class FakeMap {
   }
 
   getContainer(): HTMLElement { return this.container; }
-  getStyle(): { layers: StyleLayer[] } | undefined { return this.styleLoaded ? { layers: this.layers } : undefined; }
+  getStyle(): { layers: StyleLayer[] } | undefined {
+    this.styleReads += 1;
+    return this.styleLoaded ? { layers: this.layers } : undefined;
+  }
   getSource(id: string): { setData: (data: { features: unknown[] }) => void } | undefined {
     const source = this.sources.get(id);
     return source && { setData: (data) => { this.calls.push(`setData:${id}`); source.data = data; } };
@@ -170,6 +176,31 @@ describe("clear route layers", () => {
     applyClearRouteLayers(map.asMap(), latest);
     expect(map.calls).toEqual([`setData:${CLEAR_ROUTE_SOURCE_ID}`]);
     expect(map.sources.get(CLEAR_ROUTE_SOURCE_ID)?.data).toBe(latest);
+  });
+
+  it("reads the style only when the route has to be added, never to update an existing source", () => {
+    const map = new FakeMap(document.createElement("div"));
+    applyClearRouteLayers(map.asMap(), { type: "FeatureCollection", features: [] });
+    expect(map.styleReads).toBe(1);
+
+    map.styleLoaded = false;
+    const latest = { type: "FeatureCollection" as const, features: [] };
+    expect(applyClearRouteLayers(map.asMap(), latest), "an existing source is updated even while the style reads as absent").toBe(true);
+    expect(map.styleReads).toBe(1);
+    expect(map.sources.get(CLEAR_ROUTE_SOURCE_ID)?.data).toBe(latest);
+  });
+
+  it("draws the route at 7 px over an 11 px white casing", () => {
+    expect(CLEAR_ROUTE_LINE_WIDTH).toBe(7);
+    expect(CLEAR_ROUTE_OUTLINE_WIDTH).toBe(11);
+    const map = new FakeMap(document.createElement("div"));
+    const added: Array<{ id: string; paint: Record<string, unknown> }> = [];
+    const addLayer = map.addLayer.bind(map);
+    map.addLayer = (layer, beforeId) => { added.push(layer as unknown as typeof added[number]); addLayer(layer, beforeId); };
+    applyClearRouteLayers(map.asMap(), { type: "FeatureCollection", features: [] });
+    expect(added.map((layer) => [layer.id, layer.paint["line-width"]])).toEqual([
+      [CLEAR_ROUTE_LAYER_IDS.outline, 11], [CLEAR_ROUTE_LAYER_IDS.line, 7],
+    ]);
   });
 
   it("writes nothing while the style is not loaded", () => {
@@ -500,6 +531,21 @@ describe("useClearRouteMap", () => {
     map.styleLoaded = true;
     render({ ...input, layersRevision: 1 });
     expect(map.sources.get(CLEAR_ROUTE_SOURCE_ID)?.data.features).toHaveLength(2);
+  });
+
+  it("does not fit a map that was removed before a queued refit ran", () => {
+    const map = new FakeMap(container);
+    mount(map);
+    map.fits.length = 0;
+    map.calls.length = 0;
+
+    mapRect = rect(0, 0, 1100, 700);
+    window.dispatchEvent(new Event("resize"));
+    map.emit("remove");
+    flushFrames();
+
+    expect(map.fits).toHaveLength(0);
+    expect(map.calls).toEqual([]);
   });
 
   it("makes no call on a map that was already removed", () => {

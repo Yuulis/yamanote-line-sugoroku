@@ -18,7 +18,7 @@ import { exposeMapForE2E } from "./e2eHook";
 import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import { indexServiceGeometry } from "./serviceGeometry";
 import { buildMapPresentationIndex } from "./mapPresentation";
-import { updateLineGroupVisibility } from "./lineVisibility";
+import { useClearNetworkVisibility } from "./clearNetworkVisibility";
 import { useVisibleLineGroupIds } from "./lineVisibilityStore";
 import {
   adjustmentPreviewPadding,
@@ -762,9 +762,9 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, layersRevision, completedKey, targetServiceId]);
-  useEffect(() => {
-    if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
-  }, [loadedMap, layersRevision, mapPresentationIndex, selectedGroupIds, targetServiceId]);
+  useClearNetworkVisibility({
+    map: loadedMap, layersRevision, active: mode === "clear", index: mapPresentationIndex, selectedGroupIds, targetServiceId,
+  });
   useEffect(() => {
     if (!loadedMap) return;
     updateCurrentPosition(loadedMap, position);

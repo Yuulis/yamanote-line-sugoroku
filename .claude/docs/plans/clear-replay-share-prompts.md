@@ -175,3 +175,33 @@ npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts --project=phone-chromiu
 Screenshots (env-gated, off in CI, not committed): clear screen with the route at 1280x800, 390x844 and 320x568 using
 the real-data pinned save to .claude/logs/screenshots/issue69-s4-{desktop,phone390,phone320}.png.
 ```
+
+## S4b — clear map shows only the travelled route in colour (Claude subagent: general-purpose-sonnet)
+
+User decision 2026-11-23 after S4 review: on the clear screen colour only the travelled route; every other line looks
+like a line whose legend checkbox is unchecked (i.e. only the basemap's own grey railway remains), and the route line
+is a bit wider.
+
+```
+Implement S4b (visible: yes). S4 is committed (d92ca68).
+- In clear mode, apply the same mechanism the legend uses for unchecked line groups (src/features/map/lineVisibility.ts
+  updateLineGroupVisibility / filters on railway-base and railway-services) as if NO group were selected, so all coloured
+  network overlays disappear and only the basemap's grey railways remain; also hide railway-current-service in clear.
+  Keep station circles/labels, the goal ring and the clear route. Restore the player's legend selection, filters and the
+  current-service layer exactly when leaving clear (restart, title, edition switch) and re-apply after style reload
+  (layersRevision). Check how the completed/pending Yamanote progress layers look in clear; if they overlap or compete
+  with the route, hide them in clear too and restore on exit — report what you chose and why.
+- Route line width: main 5 -> 7 px, casing 9 -> 11 px (constants in clearRouteLayers.ts).
+- Also from the S4 review: in applyClearRouteLayers check getSource before calling map.getStyle(); guard
+  applyClearRouteFit against a removed map.
+- Wiring only in RailwayMap.tsx / GameApp.tsx; put the clear-mode visibility logic in a small module or in
+  useClearRouteMap.ts.
+Tests first: unit tests for entering clear (filters/visibility set), leaving clear (exact restore incl. a custom legend
+selection), style reload while in clear, and the getSource-before-getStyle change; extend clear-replay-share.spec.ts
+to assert in clear that railway-services/railway-base render no features (queryRenderedFeatures or filter state via
+the e2e hook) while clear-traveled-route does, and that after もう一度遊ぶ the network lines are back.
+Acceptance (report counts): npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build;
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts tests/e2e/title-map.spec.ts tests/e2e/accessibility.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+Screenshots (env-gated, off in CI): .claude/logs/screenshots/issue69-s4b-{desktop,phone390,phone320}.png.
+```

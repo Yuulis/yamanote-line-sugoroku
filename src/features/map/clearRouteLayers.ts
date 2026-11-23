@@ -9,9 +9,9 @@ export const CLEAR_ROUTE_LAYER_IDS = {
 } as const;
 
 export const CLEAR_ROUTE_OUTLINE_COLOR = "#ffffff";
-export const CLEAR_ROUTE_OUTLINE_WIDTH = 9;
+export const CLEAR_ROUTE_OUTLINE_WIDTH = 11;
 export const CLEAR_ROUTE_OUTLINE_OPACITY = 0.9;
-export const CLEAR_ROUTE_LINE_WIDTH = 5;
+export const CLEAR_ROUTE_LINE_WIDTH = 7;
 
 /** The route is drawn below the first of these, so station markers and names stay readable above it. */
 const STATION_ANCHOR_IDS: ReadonlySet<string> = new Set([
@@ -68,13 +68,13 @@ function mainLayer(): LayerSpecification {
  * the next reload would replace anyway.
  */
 export function applyClearRouteLayers(map: MapLibreMap, data: ClearRouteGeoJson): boolean {
-  const layers = map.getStyle()?.layers;
-  if (!layers) return false;
   const source = map.getSource<GeoJSONSource>(CLEAR_ROUTE_SOURCE_ID);
   if (source) {
     source.setData(data);
     return true;
   }
+  const layers = map.getStyle()?.layers;
+  if (!layers) return false;
   map.addSource(CLEAR_ROUTE_SOURCE_ID, { type: "geojson", data: data });
   const beforeId = clearRouteAnchor(layers);
   map.addLayer(outlineLayer(), beforeId);

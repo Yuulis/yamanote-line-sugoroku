@@ -20,13 +20,13 @@ export interface ClearRouteMapInput {
   readonly cardRef: RefObject<HTMLElement | null> | undefined;
 }
 
-interface RemovalWatch {
+export interface RemovalWatch {
   readonly isRemoved: () => boolean;
   readonly stop: () => void;
 }
 
 /** MapLibre forbids any call on a removed map, so cleanups ask first. */
-function watchRemoval(map: MapLibreMap): RemovalWatch {
+export function watchRemoval(map: MapLibreMap): RemovalWatch {
   let removed = false;
   const onRemove = (): void => { removed = true; };
   map.on("remove", onRemove);
@@ -61,6 +61,7 @@ export function useClearRouteMap({ map, layersRevision, active, route, generatio
     let scheduled = false;
 
     const refit = (): void => {
+      if (removal.isRemoved()) return;
       const measurement = measureClearFit(container, cardRef?.current ?? null);
       if (!measurement) return;
       const padding = clearFitPadding(measurement);
