@@ -1,13 +1,13 @@
 # Clear screen replay and X image share (#69) — Handoff
 
-Resume from here. Plan: `clear-replay-share-plan.md` (Revision 3, Codex validated PASS round 3). Step prompts:
+Resume from here. Plan: `clear-replay-share-plan.md` (Revision 3, Codex validated PASS round 3; Revision 4 delta approved by the user 2026-11-23 replaces old S3–S6 with new S3–S7). Step prompts:
 `clear-replay-share-prompts.md`. Brief and scans: `.claude/docs/research/feature-clear-screen-replay-and-share-{brief,codebase}.md`,
 `.claude/docs/research/clear-screen-replay-and-share.md`. Decisions: DESIGN.md rows dated 2026-11-22.
 
 - Branch: `feature/clear-replay-share` (from develop 5fdd2d6, v0.18.1)
 - Leaderboard split out to issue #124 (not in this PR).
 - Pacing: stop after every step for user review (user 2026-11-22).
-- Lanes: Codex Luna xhigh implements, Sol low reviews, lead verifies (typecheck, vitest, build, verify_delegation, phone
+- Lanes: from S2 Claude subagents (Sonnet implements, Opus reviews; user 2026-11-23); S1 used Codex Luna xhigh + Sol low. Lead verifies (typecheck, vitest, build, verify_delegation, phone
   @layout for affected specs), commits, pushes, checks branch CI; desktop E2E is left to the implementer + branch CI.
 - Full CI (PR or workflow_dispatch) is required at S5 and S6 for the 3-browser export probe and WebKit download.
 
@@ -17,10 +17,11 @@ Resume from here. Plan: `clear-replay-share-plan.md` (Revision 3, Codex validate
 |---|---|---|---|
 | S1 result model + strict route | done | e218c98 | Luna xhigh + 1 fix round after Sol low review (zero-hop transfer leg break, Mercator latitude limit, 3 tests). Lead: typecheck, vitest 2466 passed / 1 skipped (pre-existing), build, diff check, verify_delegation 0 actionable. Branch CI 44998059885 green. User review pending before S2 |
 | S2 clear screen, announcements, phone layout | done | (see git log) | Sonnet implements, Opus review APPROVE (14 retargeted assertions all have equal/stronger replacements). Lead: typecheck, vitest 2492/1 skipped, build, diff check, phone @layout 24 passed/1 skipped. Deviations: phone sheet max-height 60%→78%; desktop history now below share/actions/highlights (single DOM). Screenshots .claude/logs/screenshots/issue69-s2-*.png. User review pending |
-| S3 full-route layer + camera | pending | — | visible |
-| S4 replay store + partial drawing | pending | — | visible |
-| S5 PNG exporter + 3-browser probe | pending | — | full CI gate |
-| S6 share, save, analytics, privacy | pending | — | visible, full CI, device checklist |
+| S3 clear card cleanup + history dialog + phone sheet 65% | in progress | — | Revision 4 (user 2026-11-23); visible |
+| S4 full-route layer + camera | pending | — | visible (old S3) |
+| S5 per-turn replay, caption, speed, pause | pending | — | visible (old S4, no duration cap) |
+| S6 PNG exporter + 3-browser probe | pending | — | full CI gate (old S5) |
+| S7 share, save, analytics, privacy | pending | — | visible, full CI, device checklist (old S6) |
 
 ## Release checklist additions (physical devices)
 

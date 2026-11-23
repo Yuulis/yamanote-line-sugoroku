@@ -17,6 +17,138 @@
 - Safari 用の画像クリップボード呼び出しと、デスクトップの X 遷移順序を明記した。画像コピーと X 遷移は別々の結果として扱う。
 - S5 で Chromium、Firefox、WebKit の実画像出力を full CI で検証する。WebKit の実ダウンロードも S5 で検証し、合格後に S6 の共有操作を接続する。
 
+> Revision 4 (user 2026-11-23) supersedes S3–S6 below: the remaining work is new S3–S7 in this section. Where Revision 4 and earlier sections disagree, Revision 4 wins.
+
+## Revision 4 changes (user 2026-11-23)
+
+- S1 `e218c98` と S2 `7b54daa` を基点とする。新 S3 でクリアカードを整理し、移動履歴をダイアログに移す。旧 S3〜S6 は新 S4〜S7 に繰り下げる。
+- クリアカードから移動履歴の一覧と、`ItemEventNotice` が表示するクリアターンの到着ログを外す。`ClearAnnouncements` のゴール通知と、クリアターンに実際に発生したアイテム通知は残す。最終ターンは移動履歴の最終行にも残す。
+- リプレイは保存ターン単位で進め、地図上に描画中のターンの短い字幕を出す。12 秒の総時間上限と全体の比例圧縮を廃止する。`全経路を表示` による即時完了と、OS の reduced motion による即時全経路表示を維持する。
+- 変更は D5 の表示・操作の範囲に収める。新規ランタイム依存は追加せず、`GameApp.tsx` と `RailwayMap.tsx` は配線に限る。セーブ形式、エンジン、共有文面、ハイライト集計、厳密な経路検証は既存契約を引き継ぐ。
+
+## Proposals for user confirmation
+
+| 項目 | 推奨案 |
+|---|---|
+| 字幕 | 通常は `12ターン目：出目4 → 半蔵門`。調整は `12ターン目：出目3→4 → 半蔵門`、効果がある場合は `12ターン目：出目4・快速 → 半蔵門`、回送は `12ターン目：回送 → 半蔵門`。数字は保存された出目・効果から取得し、駅間数から逆算しない。到着駅は `PresentationResolver` で解決する。路線名は履歴に掲載する。 |
+| 320px の字幕 | ターン番号と出目・回送の種別を固定し、駅名の領域だけを縮めて CSS の `text-overflow: ellipsis` で１行に収める。効果や出目調整の詳細は履歴で読める。地図上の固定スロットに表示し、文字列全体を DOM に保持する。ターンごとのライブ読み上げは行わない。 |
+| 速度と停止 | `ゆっくり` **900 ms**、`ふつう` **550 ms**、`はやい` **250 ms** を１ターンの目安とし、既定は `ふつう`。同じ結果を表示している間は選択を保持し、再読み込みやタイトルからの再表示で既定に戻す。再生中の変更は現在位置を保ち、残りの進行に適用する。`一時停止`／`再開` を設け、停止中も現在の線と字幕を保持する。`全経路を表示` は停止中も使える。自然完了と即時完了で字幕を閉じ、reduced motion では再生開始時から全経路を表示する。 |
+| 履歴 | カードの主要操作の後に `移動履歴を見る` を置く。ネイティブ `<dialog>` 内に１ターン１行の時系列リストを表示し、１ページ20件とする。デスクトップはターン・出目／効果・移動・路線を横に並べ、乗換、途中打ち切り、アイテム、到着時の注記は行の補足に置く。320px では同じ DOM を縦積みにし、駅名・路線名は折り返して全文を表示する。 |
+| 電話シート | まず `max-height: 65%` を採用候補とする。S2 の 320×568 画像では 78% のシートが地図を大きく覆い、削除対象の到着ログが３行を占める。S3 と再生・共有 UI 追加後の S5・S7 で、シートの `scrollTop === 0` のまま結果数値、通常の共有操作、`もう一度遊ぶ`、`タイトルへ` の矩形全体がシート内に収まることを測る。390px 幅と横向きも確認する。保存警告や共有失敗時は文面と操作への到達、横 overflow がないことも検査する。65% で通常状態が収まらなければ、主要操作を先にした配置と余白を調整し、実測を添えて最終値を判断する。 |
+
+```text
+デスクトップ
+移動履歴                                             閉じる
+12ターン目   出目4・快速   永田町 → 半蔵門   半蔵門線・押上方面
+             アイテム  快速券を使いました
+前のページ                  1 / 14ページ             次のページ
+
+320px
+移動履歴                  閉じる
+12ターン目  出目4・快速
+永田町 → 半蔵門
+半蔵門線・押上方面
+アイテム  快速券を使いました
+
+前のページ          次のページ
+         1 / 14ページ
+```
+
+ダイアログは `ConfirmDialog` の `showModal()` とフォーカス復帰を踏襲する。開いた直後は見出しにフォーカスし、Escape と `閉じる` で起動ボタンへ戻す。離脱時は接続済みの起動元に限って復帰する。`TurnLogDrawer`、`PhoneGameMenu`、`GameMenu` がネイティブモーダルに Escape を譲る既存の境界を利用する。同じ結果内の閉じ直しではページを保持し、新しい結果公開では先頭ページに戻す。ページ変更はモーダル内のページ表示から通知し、クリアカード側からの二重通知を避ける。
+
+## Changes to committed S2 code
+
+| 対象 | 必要な変更 |
+|---|---|
+| `ClearScreen.tsx` / `ClearHistory.tsx` | カード内の履歴と電話専用 `<details>` を、全幅共通の起動ボタンとモーダルへ置き換える。ページ・フォーカス・履歴スクロールは履歴 UI に寄せ、結果公開の `generation` を状態の寿命に使う。`HISTORY_PAGE_SIZE = 20` と既存の公開参照を維持する。 |
+| `GameApp.tsx` / `ItemEventNotice.tsx` / `ClearAnnouncements.tsx` | `GameApp` から `ItemEventNotice` への `completionAnnouncement` 配線と、`.item-event-notice__completion` の描画を外す。`ClearAnnouncements` への同じゴール通知の配線は残す。アイテム通知は実際に表示内容がある場合に出す。通常プレイ側の通知を回帰確認する。 |
+| `presentation.ts` / 履歴表示 | 画像の `Nターン目：出目…踏破` は `arrivalSummary` 系の文面。現在の履歴はアイテム版が `itemHistoryText`、classic が `ClearHistory` 内の組み立てを使う。保存レコードから履歴用の項目を作る表示専用 formatter を抽出し、`lastRollText`、`itemEventTexts`、既存の駅・路線名、方向、乗換、打ち切りの解決を再利用する。字幕と履歴はこの構造化データを共有する。 |
+| `clearScreen.css` | カード内一覧・disclosure・到着ログの CSS を整理し、モーダルの幅、内部スクロール、折り返し、操作のタップ領域を設定する。電話シートを 65% 候補で検証する。 |
+| `clearResult.ts` / `clearRoute.ts` / `usePublishedClearResult.ts` | S5 で走行 step と保存履歴を対応させる読み取り専用メタデータを追加する。案は全保存ターンの `recordIndex` と step の半開区間を持つ `turnSpans`。０区間ターンと回送も空の範囲として記録する。既存 `steps`、`legs`、`bounds` と `route = null` の判定を維持し、公開結果の所有者でリプレイを管理する。 |
+
+## Revised step list
+
+Claude Sonnet サブエージェントが実装し、Claude Opus がレビューする。各ステップはテストを先に更新し、単独で緑にする。lead が差分と対象 SHA の CI を確認し、各ステップ終了時にユーザーレビューを待つ。LOC は各ステップの差分目安。新規モジュールは責務ごとに分け、１ファイルおおむね 200〜400 行を上限の目安とする。
+
+共通受入 **G** は `npm run typecheck`、`git diff --check`、`npm test`、`npm run build`。
+
+### S3 — クリアカード整理と移動履歴ダイアログ
+
+- **goal / visible / LOC** — 到着ログとカード内一覧を外し、履歴モーダルと電話シートを出荷する。**yes、260〜390 行**。
+- **files** — `ClearScreen.tsx`、`ClearHistory.tsx`、`ClearAnnouncements.tsx`、`ItemEventNotice.tsx`、`clearScreen.css`、`presentation.ts` と履歴 formatter、`GameApp.tsx` の配線、`tests/e2e/support/app.ts` と関連テスト。
+- **tests first** — 下表の移植、260件超、初期フォーカス・Escape・復帰、背景操作の抑止、クリア見出しとゴール通知１回、可視ログの削除、アイテム通知、320×568 の初期配置を確認する。
+- **acceptance** — G と次の E2E。
+
+```bash
+npm run test:e2e -- tests/e2e/{clear-replay-share,text-wrapping,hud-layout,capital-region,items,tokyo-suburban,full-game,accessibility}.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/{clear-replay-share,text-wrapping,hud-layout,capital-region,accessibility}.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+```
+
+### S4 — 全経路レイヤーとカメラ
+
+- **goal / visible / LOC** — 旧 S3 の静的な全経路を出荷する。**yes、200〜320 行**。
+- **files** — `clearRouteLayers.ts`、`useClearRouteMap.ts`、`clearRouteCamera.ts`、`RailwayMap.tsx`／`GameApp.tsx` の配線、カード ref・credits、`title-map-mode.test.ts`、`clear-route-map.test.ts`、`clear-replay-share.spec.ts`。
+- **tests first** — 旧 S3 の source／layer 順、style 復元、再表示、１点・余白不足、失敗 map、離脱時の padding・操作復元を継承する。履歴モーダル開閉ではカードの計測対象を変えず、モーダル表示中の viewport resize ではカードと地図の実測値で再フィットする。地図・出典の通知は `ClearAnnouncements` を使う。
+- **acceptance** — G と次の E2E。電話ケースに `@layout` を付ける。
+
+```bash
+npm run test:e2e -- tests/e2e/{clear-replay-share,accessibility}.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+```
+
+### S5 — ターン同期リプレイ、速度、一時停止
+
+- **goal / visible / LOC** — 旧 S4 をターン単位の再生に置き換える。**yes、300〜400 行**。
+- **files** — `clearReplayStore.ts`、`clearRoute.ts`、`clearResult.ts`、`useClearRouteMap.ts`、`usePublishedClearResult.ts`、字幕・操作の小コンポーネントと CSS、`clear-replay.test.ts`、`clear-route-map.test.ts`、`clear-replay-share.spec.ts`。
+- **tests first** — 注入 scheduler で正確なターン／step 境界、複数 hop、０区間・同駅回送・末尾の空ターン、速度変更、一時停止／再開、即時／自然完了、再実行、hidden、reduced motion、style 復元、旧 callback を検証する。長い fixture を仮想時間で最後まで進め、12 秒を越えて継続することを確認する。E2E は再生ケースで `reducedMotion: "no-preference"` を明示し、320px の長い駅名でも字幕と地図が同じターンを示すことを状態待ちで確認する。
+- **実装境界** — １ターンの時間を、既存の距離補正を重みにしてそのターンの hop へ配分する。０区間・回送も１ターン分の字幕を出し、その間は描画済み経路を保つ。回送地点間に線は引かない。同じ再生 snapshot から地図と字幕を更新し、字幕用の購読は `recordIndex` が変わったときだけ描画を起こす。履歴を開く操作は再生を一時停止し、閉じた後は明示操作で再開する。
+- **acceptance** — G と S4 のクリア E2E。再生操作の追加後も 320×568 の初期配置を測定する。
+
+### S6 — PNG 基盤と３ブラウザーの実出力
+
+- **goal / visible / LOC** — 旧 S5 の exporter と probe を出荷する。**no、290〜400 行**。
+- **files** — `routeImage.ts`、`useClearRouteImage.ts`、`src/features/map/e2eHook.ts`、専用 probe、`playwright.config.ts`、画像単体・ライフサイクル・E2E テスト。
+- **tests first** — 旧 S5 の listener／fit 順、同期コピー、３数値と４系統の出典、ライセンス URI の完全一致、例外・abort・15秒境界、context loss、URL 寿命を継承する。PNG は静的な全経路から作り、リプレイの位置・速度・字幕・履歴モーダルを入力に含めない。実 PNG の 1200×675、背景・経路色・情報帯と、実ダウンロードの保存 bytes を検査する。
+- **acceptance** — G と次の E2E。PR または manual dispatch の full CI で対象 SHA の３ブラウザーの export と WebKit の実ダウンロードを確認してから S7 へ進む。pinned runner の問題が残る場合は、旧計画どおり同じブラウザーで実保存 bytes を検査する代替ゲートを lead が承認する。
+
+```bash
+npm run test:e2e -- tests/e2e/route-image-export.spec.ts --project=desktop-chromium --workers=2
+xvfb-run --auto-servernum npm run test:e2e -- tests/e2e/route-image-export.spec.ts --project=desktop-firefox --workers=2
+E2E_WEBKIT=1 xvfb-run --auto-servernum npm run test:e2e -- tests/e2e/route-image-export.spec.ts --project=desktop-webkit --workers=2
+```
+
+### S7 — 画像共有、保存、計測
+
+- **goal / visible / LOC** — 旧 S6 の製品操作を接続する。**yes、260〜400 行**。
+- **files** — `resultImageShareActions.ts`、`resultShareActions.ts`、`usePublishedClearResult.ts`、`ClearScreen.tsx`、`clearScreen.css`、`analytics.ts`、`public/privacy.html`、共有・計測テストと E2E stub。
+- **tests first** — Safari の Promise-valued item、同期 clipboard／popup の順序、個別失敗と部分成功、電話の実 `File` と全文、キャンセル、テキスト fallback、保存 bytes、離脱と二重発行、計測属性を継承する。再生中・一時停止中の共有／コピー／保存／X 遷移はいずれも全経路で完了し、キャンセル後も全経路を表示する。X は `/intent/post` を使用する。
+- **acceptance** — G、S3 のレイアウト・履歴 E2E、S4 のクリア E2E、S6 の画像 probe、次の E2E、Revision 3 の実機表。対象 SHA の full CI 全４プロジェクトを確認する。320×568 では製品共有操作を接続した状態で 65% の初期配置を再計測する。
+
+```bash
+xvfb-run --auto-servernum npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts --project=desktop-firefox --workers=2
+E2E_WEBKIT=1 xvfb-run --auto-servernum npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts --project=desktop-webkit --workers=2
+```
+
+## Ported history assertions
+
+`openClearHistory(clear)` はカードの `移動履歴を見る` を押し、可視の `getByRole("dialog", { name: "移動履歴" })` を返す。各 spec は返されたダイアログから履歴行・ページ操作を取得する。
+
+| 旧 assertion | 新しい検査箇所 |
+|---|---|
+| 20件／ページ、先頭・末尾のターン、最終ページの件数 | `capital-region.spec.ts`、`tokyo-suburban.spec.ts`、`text-wrapping.spec.ts` のダイアログ内リスト。96ターン fixture の `20 / 20 / 20 / 20 / 16` とターン番号を維持する。260件超の fixture でも最終ターンまで欠落・重複がなく、同時表示は最大20行とする。 |
+| 前後移動、ページ表示、両端のボタン無効 | ダイアログ内の `移動履歴のページ` で画面表示と行内容を検査する。`1 → 2 → 1`、最終ページ到達、最終ページからの逆順移動、先頭・末尾の無効状態を維持する。 |
+| ページ移動でスクロールリセット | `capital-region.spec.ts` でモーダル内部の履歴リストを末尾までスクロールし、移動前の `scrollTop > 0` と先頭行の非表示を確認する。ページ移動後は同じスクロール領域が `0` になり、新しい先頭行が全体表示される。 |
+| 最終項目の文面と折り返し | `text-wrapping.spec.ts` の 320×568 で最終ページを開く。最終行のターン・出目・移動・路線・注記を新しい各フィールドに対して完全一致で検査する。折り返しヒント、文面の幅、行・モーダル・ページの横 overflow、ページボタンの単行表示も維持する。旧可視到着ログの検査は、カード上の要素の不在と `ClearAnnouncements` の既存ゴール文面１回の検査に更新する。 |
+| reload 前後の履歴表示と保存データの同値 | `items.spec.ts` と `clear-replay-share.spec.ts` は reload 前にモーダル内の行テキストを取得し、結果を再表示して開き直した同じページと比較する。アイテム版の正しい駅間数と `残り-` の不在も維持する。`capital-region.spec.ts` は保存履歴・セーブの完全一致と、再表示時の先頭ページ20件を維持する。 |
+| 全ターンの内容と結果画面に戻る操作 | `full-game.spec.ts` と `tokyo-suburban.spec.ts` のターン照合をモーダル内へ移し、履歴確認後は `閉じる` からカードへ戻って再スタートを検査する。`accessibility.spec.ts` でフォーカス復帰とカードのスクロール位置を検査する。 |
+
+## Risks
+
+- **字幕と地図のずれ** — 区間番号だけでは空ターンを表せないため、保存履歴のインデックスを再生位置に持たせる。空ターン、複数 hop、正確な境界と style 再読み込みで、字幕と地図を同じ snapshot から復元できることを検査する。
+- **長時間の地図更新負荷** — ターン範囲と時間配分を事前計算し、フレーム更新を地図の source に限定する。履歴とクリアカードの React 再描画がフレームごとに発生しないことを検証し、実機表で長い走行を確認する。
+- **機能追加後の 320×568 の収まり** — 65% は S2 の画像を起点にした提案値。収まりは S3・S5・S7 の矩形測定で判断する。縦横切替、保存警告、共有 fallback も既存の受入に含める。
+- 今回は計画差分の作成まで。ファイル変更、テスト実行、CI と実機での検証は各実装ステップの受入に含める。
+
 ## Revision 3 changes (lead, after Codex validation round 2)
 
 - S1：feature の順序は `findSegment` が返す方向付き区間の `geometryFeatureIds` をそのまま使い、反転しない。`stepPath` と `movePath.ts` は変更しない。2 feature 以上の順方向・逆方向の保存レコードをテストする。

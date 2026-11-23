@@ -95,3 +95,41 @@ Screenshots for the user's review (not committed): after the clear in that save,
 390x844 and 320x568 to .claude/logs/screenshots/issue69-s2-{desktop,phone390,phone320}.png (a small throwaway Playwright
 script or a test.step with page.screenshot guarded by an env var that is off in CI).
 ```
+
+## S3 (Revision 4) — clear card cleanup, history dialog, phone sheet (Claude subagent: general-purpose-sonnet)
+
+```
+Implement plan "Revision 4 changes (user 2026-11-23)" step "S3 — クリアカード整理と移動履歴ダイアログ" exactly (visible: yes).
+S1 (e218c98) and S2 (7b54daa) are committed. Read the Revision 4 section fully: "Proposals for user confirmation" rows
+履歴 and 電話シート (approved by the user 2026-11-23 as written, including the desktop/320px text mock), "Changes to
+committed S2 code", the S3 step, and "Ported history assertions".
+Scope:
+- Remove from the clear card: the in-card history list / phone <details>, and the clear turn's own arrival log line that
+  ItemEventNotice renders on the clear screen (.item-event-notice__completion and its GameApp wiring). Keep the single
+  completion announcement in ClearAnnouncements (announced once), and keep item notices that have real content.
+- Add a 「移動履歴を見る」 button after the main actions that opens a native <dialog> named 「移動履歴」 (showModal, focus
+  on the heading when opened, Escape and 閉じる return focus to the button, background inert like ConfirmDialog).
+  One row per turn, 20 per page, paging inside the dialog with the existing page text format, scroll reset on page change,
+  page kept while reopening within the same result generation, reset on a new publication.
+- Extract a presentation-only history formatter that builds structured row data (turn, roll/effects text, from→to,
+  line + direction, notes for transfer / truncation / items) from saved records, reusing existing helpers
+  (lastRollText, itemEventTexts, item history text, station/line/direction resolvers). S5 will reuse it for captions, so
+  export a typed row model. Classic and item saves both supported.
+- Desktop: columns as in the mock. 320px: same DOM stacked, names wrap in full, no horizontal overflow, ≥44px targets.
+- Phone sheet max-height 65%; at 320x568 with scrollTop 0 the three numbers, 結果をコピー, もう一度遊ぶ, タイトルへ and
+  移動履歴を見る must be fully inside the sheet; also check 390px and landscape 667x375, and the save-warning case for
+  reachability and no horizontal overflow. If 65% cannot fit, adjust spacing first and report measurements instead of
+  silently raising the cap.
+Tests first: port every history assertion listed in "Ported history assertions" into the dialog (update the
+openClearHistory helper in tests/e2e/support/app.ts to click 移動履歴を見る and return the dialog); keep every original
+check (20/20/20/20/16 pages for the 96-turn fixture, paging both ways and disabled ends, scroll reset, final entry
+exact text and wrapping at 320x568, history equality across reload, full-game turn matching then 閉じる and restart).
+Add unit tests for the formatter (classic, item, roll adjust, effects, deadhead, transfer, truncation) and the dialog
+(focus, Escape, page persistence, generation reset). Replace the old visible arrival-log checks with absence on the card
++ one ClearAnnouncements announcement. Never weaken or delete assertions without a stronger replacement.
+Acceptance (report counts): npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build;
+npm run test:e2e -- tests/e2e/{clear-replay-share,text-wrapping,hud-layout,capital-region,items,tokyo-suburban,full-game,accessibility}.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/{clear-replay-share,text-wrapping,hud-layout,capital-region,accessibility}.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+Screenshots (not committed, env-gated, off in CI): clear card at 1280x800, 390x844, 320x568 and the open history dialog
+at 1280x800 and 320x568 to .claude/logs/screenshots/issue69-s3-{desktop,phone390,phone320,dialog-desktop,dialog-phone320}.png.
+```
