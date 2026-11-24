@@ -96,6 +96,7 @@ jobs:
       e2e: ${{ steps.detect.outputs.e2e }}
       matrix: ${{ steps.detect.outputs.matrix }}
       scope: ${{ steps.detect.outputs.scope }}
+      playwright_version: ${{ steps.detect.outputs.playwright_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -117,6 +118,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          echo "playwright_version=$(node -p "require('./package-lock.json').packages['node_modules/@playwright/test'].version")" >> "$GITHUB_OUTPUT"
           run_e2e() {
             echo "e2e=true" >> "$GITHUB_OUTPUT"
             echo "E2E runs: $1"
@@ -134,7 +136,7 @@ jobs:
             *) scope=quick ;;
           esac
           if [ "$scope" = full ]; then
-            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium","shard_index":1,"shard_total":2},{"project":"desktop-chromium","browser":"chromium","shard_index":2,"shard_total":2},{"project":"phone-chromium","browser":"chromium"},{"project":"desktop-firefox","browser":"firefox"}]}'
+            matrix='{"include":[{"project":"desktop-chromium","browser":"chromium","shard_index":1,"shard_total":2},{"project":"desktop-chromium","browser":"chromium","shard_index":2,"shard_total":2},{"project":"phone-chromium","browser":"chromium"}]}'
           else
             matrix='{"include":[{"project":"desktop-chromium","browser":"chromium","shard_index":1,"shard_total":2},{"project":"desktop-chromium","browser":"chromium","shard_index":2,"shard_total":2}]}'
           fi
@@ -196,9 +198,9 @@ jobs:
           echo "Docs-only change against $BASE_REF ($baseline); E2E legs are skipped:"
           echo "$changed"
 
-  # Host-runner legs retain their existing setup: Chromium, phone Chromium,
-  # and Firefox use the matrix below. Full scope adds the separate WebKit
-  # container job; quick scope still runs desktop Chromium only.
+  # Host-runner legs retain their existing setup for Chromium and phone
+  # Chromium. Firefox and WebKit use separate jobs in the official Playwright
+  # container; quick scope still runs desktop Chromium only.
   # desktop-chromium is split into two shards in both scopes (2026-11-12):
   # one leg took 9-11 min; two shards were estimated at ~3.2 / 5.8 min of tests.
   # desktop-webkit remains split into three Playwright shards (issue #83
@@ -211,8 +213,8 @@ jobs:
     name: E2E leg (${{ matrix.project }}${{ matrix.shard_index && format(' {0}/{1}', matrix.shard_index, matrix.shard_total) || '' }})
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
-    # Keep the current runner unchanged for the Chromium, phone, and Firefox
-    # legs. WebKit uses its own Noble-based Playwright container below.
+    # Chromium and phone Chromium stay on the host runner. Firefox and WebKit
+    # use their own Noble-based Playwright container jobs below.
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     strategy:
@@ -237,30 +239,12 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ env.ImageOS }}-${{ steps.playwright.outputs.version }}-${{ matrix.browser }}
       # Host-runner legs install their OS dependencies on each run; browser
-      # cache hits only skip downloads. The WebKit container has its browser,
-      # OS dependencies, xvfb, and CJK fonts preinstalled.
+      # cache hits only skip downloads.
       - name: Install browser and OS dependencies
         env:
           BROWSER: ${{ matrix.browser }}
         run: npx playwright install --with-deps "$BROWSER"
-      # Firefox WebGL2 on the runner (desktop-firefox flakes, 2026-10-20):
-      # - Without Mesa's EGL the runner image has only GLX, and Firefox's GLX
-      #   path fails ~1 in 20 times to create a WebGL2 context right after the
-      #   page lost the previous one (map retry; FEATURE_FAILURE_WEBGL_
-      #   EXHAUSTED_DRIVERS). With libegl-mesa0 Firefox uses EGL: 0 of 800.
-      # - Firefox's launch-time GL probe (gfxtest) has a fixed 4 s deadline
-      #   but took 3.8-7.7 s on a cold runner; a browser that misses it falls
-      #   back to GLX and blocklists WebGL2. One throwaway launch loads the GL
-      #   libraries so the probe then takes ~0.1 s.
-      - name: Install Mesa EGL and warm up Firefox's GL probe
-        if: matrix.browser == 'firefox'
-        run: |
-          sudo apt-get install -y --no-install-recommends libegl1 libegl-mesa0
-          xvfb-run --auto-servernum npx playwright screenshot --browser=firefox about:blank "$RUNNER_TEMP/firefox-warm-up.png"
-      # Headless Firefox on Linux only gets a GL backend (and so WebGL2, which
-      # MapLibre requires) through an X display; runners have none, so Firefox
-      # reports "AllowWebgl2:false" and the app never renders. Every leg keeps
-      # the same wrapper; Chromium/WebKit stay headless under it.
+      # Keep the existing X display wrapper for the host-runner E2E projects.
       # No --pass-with-no-tests: a mistyped project must fail with
       # "No tests found".
       - name: Run E2E tests
@@ -285,6 +269,81 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  # Firefox uses the same versioned official image as WebKit. Playwright's
+  # Noble dependency list supplies Xvfb and libegl1, which pulls in Mesa EGL.
+  # The warm-up launch retains the runner fix for Firefox's cold GL probe.
+  e2e-firefox:
+    name: E2E leg (desktop-firefox)
+    needs: changes
+    if: needs.changes.outputs.e2e == 'true' && needs.changes.outputs.scope == 'full'
+    runs-on: ubuntu-24.04
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright_version }}-noble
+      options: --ipc=host
+    timeout-minutes: 20
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Check Playwright image version
+        run: |
+          image_version="${{ needs.changes.outputs.playwright_version }}"
+          package_version="$(node -p "require('@playwright/test/package.json').version")"
+          if [[ "$package_version" != "$image_version" ]]; then
+            echo "::error::Playwright image v${image_version}-noble does not match @playwright/test ${package_version}. Bump the package lock version used by both container jobs."
+            exit 1
+          fi
+      # Playwright's Noble image includes Xvfb and the browser dependencies.
+      # Install only missing display/EGL packages if the image ever changes.
+      - name: Install missing Firefox display or Mesa EGL dependencies
+        run: |
+          missing=()
+          for package in xvfb libegl1 libegl-mesa0; do
+            if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q '^install ok installed$'; then
+              missing+=("$package")
+            fi
+          done
+          if ((${#missing[@]})); then
+            apt-get update
+            apt-get install -y --no-install-recommends "${missing[@]}"
+          fi
+      - name: Warm up Firefox's GL probe
+        run: xvfb-run --auto-servernum npx playwright screenshot --browser=firefox about:blank "$RUNNER_TEMP/firefox-warm-up.png"
+      # Keep the X display wrapper so Firefox exposes WebGL2 through llvmpipe.
+      # No --pass-with-no-tests: a mistyped project must fail with "No tests found".
+      - name: Run E2E tests
+        env:
+          PROJECT: desktop-firefox
+          SHARD_INDEX: ""
+          SHARD_TOTAL: ""
+        run: |
+          args=(--project="$PROJECT")
+          if [ -n "$SHARD_INDEX" ]; then
+            args+=(--shard="$SHARD_INDEX/$SHARD_TOTAL")
+          fi
+          xvfb-run --auto-servernum npm run test:e2e -- "${args[@]}"
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-artifacts-desktop-firefox
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   # WebKit runs in the official image matching @playwright/test. Splitting it
   # into its own job keeps the other legs on their unchanged host setup and
   # avoids relying on an empty matrix container expression to select a host.
@@ -294,7 +353,7 @@ jobs:
     if: needs.changes.outputs.e2e == 'true' && needs.changes.outputs.scope == 'full'
     runs-on: ubuntu-24.04
     container:
-      image: mcr.microsoft.com/playwright:v1.63.0-noble
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright_version }}-noble
       options: --ipc=host
     timeout-minutes: 20
     strategy:
@@ -318,10 +377,10 @@ jobs:
       - run: npm ci
       - name: Check Playwright image version
         run: |
-          image_version=1.63.0
+          image_version="${{ needs.changes.outputs.playwright_version }}"
           package_version="$(node -p "require('@playwright/test/package.json').version")"
           if [[ "$package_version" != "$image_version" ]]; then
-            echo "::error::Playwright image v${image_version}-noble does not match @playwright/test ${package_version}. Bump the image tag in the same PR as the Playwright package."
+            echo "::error::Playwright image v${image_version}-noble does not match @playwright/test ${package_version}. Bump the package lock version used by both container jobs."
             exit 1
           fi
       # The image already contains the matching browser at /ms-playwright and
@@ -356,7 +415,7 @@ jobs:
   # fails it.
   e2e:
     name: ${{ (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/master'))) && 'E2E (Playwright)' || 'E2E quick (desktop-chromium)' }}
-    needs: [changes, e2e-matrix, e2e-webkit]
+    needs: [changes, e2e-matrix, e2e-firefox, e2e-webkit]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -367,24 +426,25 @@ jobs:
           RUN_E2E: ${{ needs.changes.outputs.e2e }}
           SCOPE: ${{ needs.changes.outputs.scope }}
           MATRIX_RESULT: ${{ needs.e2e-matrix.result }}
+          FIREFOX_RESULT: ${{ needs.e2e-firefox.result }}
           WEBKIT_RESULT: ${{ needs.e2e-webkit.result }}
         run: |
-          echo "changes=$CHANGES_RESULT e2e=$RUN_E2E scope=$SCOPE matrix=$MATRIX_RESULT webkit=$WEBKIT_RESULT"
+          echo "changes=$CHANGES_RESULT e2e=$RUN_E2E scope=$SCOPE matrix=$MATRIX_RESULT firefox=$FIREFOX_RESULT webkit=$WEBKIT_RESULT"
           if [ "$CHANGES_RESULT" != success ]; then
             echo "::error::Docs-only detection did not succeed ($CHANGES_RESULT)"
             exit 1
           fi
           if [ "$RUN_E2E" = true ]; then
-            if [ "$MATRIX_RESULT" = success ] && [ "$SCOPE" = full ] && [ "$WEBKIT_RESULT" = success ]; then
+            if [ "$MATRIX_RESULT" = success ] && [ "$SCOPE" = full ] && [ "$FIREFOX_RESULT" = success ] && [ "$WEBKIT_RESULT" = success ]; then
               exit 0
             fi
-            if [ "$MATRIX_RESULT" = success ] && [ "$SCOPE" = quick ] && [ "$WEBKIT_RESULT" = skipped ]; then
+            if [ "$MATRIX_RESULT" = success ] && [ "$SCOPE" = quick ] && [ "$FIREFOX_RESULT" = skipped ] && [ "$WEBKIT_RESULT" = skipped ]; then
               exit 0
             fi
           fi
-          if [ "$RUN_E2E" = false ] && [ "$MATRIX_RESULT" = skipped ] && [ "$WEBKIT_RESULT" = skipped ]; then
+          if [ "$RUN_E2E" = false ] && [ "$MATRIX_RESULT" = skipped ] && [ "$FIREFOX_RESULT" = skipped ] && [ "$WEBKIT_RESULT" = skipped ]; then
             echo "::notice::Docs-only change: E2E legs were skipped"
             exit 0
           fi
-          echo "::error::E2E legs ended matrix='$MATRIX_RESULT', webkit='$WEBKIT_RESULT' (e2e=$RUN_E2E, scope=$SCOPE)"
+          echo "::error::E2E legs ended matrix='$MATRIX_RESULT', firefox='$FIREFOX_RESULT', webkit='$WEBKIT_RESULT' (e2e=$RUN_E2E, scope=$SCOPE)"
           exit 1
