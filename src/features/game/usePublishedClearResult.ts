@@ -8,6 +8,9 @@ import { deriveClearResult, type ClearResult } from "./clearResult";
 import type { PresentationResolver } from "./presentationResolver";
 import { buildHistoryRows, type HistoryRow } from "./historyRows";
 import { createClearReplayStore, type ClearReplayStore } from "./clearReplayStore";
+import { useClearRouteImage } from "./useClearRouteImage";
+import type { RouteImageInput, RouteImageState, RouteImageRailwayCredit } from "../map/routeImage";
+import { exposeRouteImageForE2E } from "../map/e2eHook";
 
 export interface PublishedClear {
   /** Increases once per continuous clear publication; the clear screen is keyed by it. */
@@ -16,6 +19,8 @@ export interface PublishedClear {
   readonly result: ClearResult;
   readonly historyRows: readonly HistoryRow[];
   readonly replayStore: ClearReplayStore;
+  readonly routeImage: RouteImageState;
+  readonly markRouteImageDownloadStarted: () => void;
 }
 
 export interface PublishedClearInput {
@@ -26,6 +31,7 @@ export interface PublishedClearInput {
   readonly geometry: GeometryIndex;
   readonly presentation: PresentationResolver;
   readonly display: EditionDisplay;
+  readonly railwayCredit?: RouteImageRailwayCredit | null;
   readonly reducedMotion?: boolean;
 }
 
@@ -43,7 +49,7 @@ const NOT_PUBLISHED: PublicationTracker = { sessionId: null, generation: 0 };
  * page and disclosure state survive it.
  */
 export function usePublishedClearResult(input: PublishedClearInput): PublishedClear | null {
-  const { sessionId, game, network, geometry, presentation, display, reducedMotion = false } = input;
+  const { sessionId, game, network, geometry, presentation, display, railwayCredit = null, reducedMotion = false } = input;
   const publishedSessionId = game === null ? null : sessionId;
   const [tracker, setTracker] = useState(NOT_PUBLISHED);
   let current = tracker;
@@ -63,6 +69,18 @@ export function usePublishedClearResult(input: PublishedClearInput): PublishedCl
     () => game === null ? [] : buildHistoryRows(game.movementHistory, network, presentation),
     [game, network, presentation],
   );
+  const routeImageInput = useMemo<RouteImageInput | null>(() => {
+    if (game === null || !result?.route || !railwayCredit) return null;
+    return {
+      route: result.route,
+      title: display.title,
+      editionName: display.subtitle,
+      summary: result.summary,
+      railwayCredit,
+    };
+  }, [display.subtitle, display.title, game, result?.route, result?.summary, railwayCredit]);
+  const routeImage = useClearRouteImage(routeImageInput, current.generation);
+  useEffect(() => { exposeRouteImageForE2E(routeImageInput, routeImage.state); }, [routeImageInput, routeImage.state]);
   useEffect(() => {
     replayStore.activate();
     replayStore.setRoute(result?.route ?? null);
@@ -70,5 +88,13 @@ export function usePublishedClearResult(input: PublishedClearInput): PublishedCl
   }, [replayStore, result?.route]);
   useEffect(() => { replayStore.setReducedMotion(reducedMotion); }, [replayStore, reducedMotion]);
   if (game === null || result === null) return null;
-  return { generation: current.generation, game, result, historyRows, replayStore };
+  return {
+    generation: current.generation,
+    game,
+    result,
+    historyRows,
+    replayStore,
+    routeImage: routeImage.state,
+    markRouteImageDownloadStarted: routeImage.markDownloadStarted,
+  };
 }

@@ -48,6 +48,7 @@ import { createPresentationResolver } from "../features/game/presentationResolve
 import { directionLabel, serviceName, stationName } from "../features/game/presentation";
 import { buildRulesGuide, type RulesSectionId } from "../features/game/rulesGuide";
 import { type MapFollow, type RailwayMapMode, RailwayMap } from "../features/map/RailwayMap";
+import { CC_BY_LICENSE_NAME, CC_BY_URL } from "../features/map/attribution";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
@@ -535,10 +536,19 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   }, [showTitleScreen]);
 
   const showClear = turnDisplay?.showClear ?? false;
+  const railwayCredit = useMemo(() => {
+    if (!data.manifest.ok) return null;
+    const { attribution, license } = data.manifest.value.source;
+    return {
+      source: attribution,
+      licenseName: license,
+      licenseUrl: license === CC_BY_LICENSE_NAME ? CC_BY_URL : null,
+    };
+  }, [data.manifest]);
   const publishedClear = usePublishedClearResult({
     sessionId: session?.sessionId ?? null,
     game: showClear && session ? session.game : null,
-    network, geometry, presentation, display: edition.display, reducedMotion,
+    network, geometry, presentation, display: edition.display, railwayCredit, reducedMotion,
   });
   const clearCardRef = useRef<HTMLElement | null>(null);
   const mapMode: RailwayMapMode = app.state.screen === "title" ? "title" : showClear ? "clear" : "game";

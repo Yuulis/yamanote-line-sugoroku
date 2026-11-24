@@ -291,3 +291,52 @@ Screenshots (env-gated, off in CI): mid-replay collapsed at 390x844 and 320x568,
 .claude/logs/screenshots/issue69-s5b-{replay-phone390,replay-phone320,paused-phone320}.png. Report the band height and
 the map area measurements.
 ```
+
+## S6 (Revision 4) — PNG exporter and 3-browser export probe (Codex Luna xhigh)
+
+```
+Implement plan step "S6 — PNG 基盤と３ブラウザーの実出力" in "Revision 4 changes (user 2026-11-23)" exactly (visible: no;
+no product button is wired in this step). It ships the old "S5 — PNG 基盤と３ブラウザーの出力実証" content: read that
+section, the Interface "PNG 生成" section, Error Handling, and Revision 3 changes (structured railwayCredit with licence
+URI; exact canvas text test; e2e probe via exposeMapForE2E kept e2e-only). S1-S5b are committed (latest c59e838).
+Scope:
+- src/features/map/routeImage.ts: export-map factory and lifecycle: off-screen container 1200x675 CSS px, pixelRatio 1,
+  canvasContextAttributes { preserveDrawingBuffer: true } on THIS map only, fadeDuration 0, interactive false, no
+  attribution control; listener order per plan (error + webglcontextlost + style.load registered synchronously after
+  creation; idle armed only after the full-route source/layers are added and the camera is fitted with padding that
+  leaves room for the top/bottom information bands); the first healthy idle after setup -> redraw() and drawImage into a
+  2D canvas in the same call; any resource error (style/tile/glyph/sprite) is fatal; 15 s timeout; AbortSignal honoured
+  until encode finishes; cleanup exactly once on every path (map.remove, listeners, container, timers, 2D canvas).
+  Draw the full static route from ClearRoute (reuse buildClearRouteGeoJson / clearRouteLayers styling) — never the replay
+  cursor, caption, speed or dialog state. Clear-mode network styling (only the route coloured) applies to the export too.
+- Compose bands on the 2D canvas: top band with title + edition name; bottom band with the existing three numbers from
+  GameSummary (所要ターン数 / 移動回数 / 乗換回数) and the credits as plain text: MAP_CREDITS text, 「© OpenStreetMap
+  contributors (openstreetmap.org/copyright)」, and the railway line built from the structured
+  railwayCredit { source, licenseName, licenseUrl } (licenseUrl = CC_BY_URL when licenseName is CC_BY_LICENSE_NAME).
+  Text >= 12 CSS px, wrapped, high contrast. Highlights are NOT in the PNG. toBlob("image/png") -> non-empty Blob.
+- src/features/game/useClearRouteImage.ts: StrictMode-safe (cancellable start), one generation per result, ready state
+  exposes the original Blob, a File with a fixed safe name (e.g. yamanote-sugoroku-route.png) and an object URL kept
+  alive for downloads (revoke on result disposal; a URL used for a download lives at least 5 s after it); stale results
+  from previous generations are discarded. Not wired to any visible UI yet (S7), but the hook may be called from the
+  clear-result owner if the plan says so — keep it inert for users.
+- E2E probe (e2e build only, via the e2eHook pattern, MODE === "e2e"): run the PRODUCT exporter on the pinned clear,
+  decode the PNG in the page and assert 1200x675, opaque background, route-colour pixels present inside the map area,
+  both bands present; then click a real <a download> created by test DOM code with the object URL, wait for the
+  download (register waitForEvent before clicking), read saved bytes and decode them with the same checks. Never
+  expose the probe in production (verify the production bundle has no probe identifiers).
+- playwright.config.ts: make sure the e2e build/preview never receives VITE_GA_MEASUREMENT_ID (explicit empty value if
+  needed) and keep the existing external-request guards.
+Tests first: tests/unit/route-image.test.ts and tests/unit/clear-route-image-lifecycle.test.ts with injected map and
+canvas doubles + fake timers: listener/fit order, idle before setup ignored, redraw + synchronous copy, exact canvas text
+inputs (title, edition, three numbers, all four credit lines incl. the licence URI), draw/encode exceptions,
+toBlob(null), fatal error then idle, context loss, 15 s boundary, already-aborted signal, abort during style and
+encode, StrictMode, stale callback from a previous generation, URL lifetime; tests/e2e/route-image-export.spec.ts
+for the probe and download.
+Acceptance (report counts): npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build
+(and grep the production dist for probe identifiers: none);
+npm run test:e2e -- tests/e2e/route-image-export.spec.ts --project=desktop-chromium --workers=2
+xvfb-run --auto-servernum npm run test:e2e -- tests/e2e/route-image-export.spec.ts --project=desktop-firefox --workers=2
+(WebKit runs only in CI; the lead dispatches the full CI workflow afterwards.)
+Also save one exported PNG from the e2e probe (env-gated, off in CI) to .claude/logs/screenshots/issue69-s6-export.png
+for the user to look at.
+```
