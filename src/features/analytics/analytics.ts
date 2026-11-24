@@ -30,7 +30,7 @@ const EVENT_KEYS: Record<EventName, readonly string[]> = {
 };
 const EVENT_VALUES: Record<string, readonly string[]> = {
   mode: ["new", "resume"],
-  method: ["copy", "share"],
+  method: ["copy", "share", "x", "save"],
   outcome: ["success", "failed", "cancelled"],
 };
 

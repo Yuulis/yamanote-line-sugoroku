@@ -18,7 +18,7 @@ import { exposeMapForE2E } from "./e2eHook";
 import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import { indexServiceGeometry } from "./serviceGeometry";
 import { buildMapPresentationIndex } from "./mapPresentation";
-import { updateLineGroupVisibility } from "./lineVisibility";
+import { useClearNetworkVisibility } from "./clearNetworkVisibility";
 import { useVisibleLineGroupIds } from "./lineVisibilityStore";
 import {
   adjustmentPreviewPadding,
@@ -72,6 +72,12 @@ import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
 import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
 import { TitleMapPlaceholder } from "./components/TitleMapPlaceholder";
+import type { ClearRoute } from "../game/clearResult";
+import type { ClearReplayStore } from "../game/clearReplayStore";
+import type { HistoryRow } from "../game/historyRows";
+import { ClearReplayMapCaption } from "../game/components/ClearReplayControls";
+import { useClearRouteMap } from "./useClearRouteMap";
+import { shouldShowGameplayPosition } from "./clearReplayMarker";
 
 export interface MapFollow {
   enabled: boolean;
@@ -108,11 +114,23 @@ interface RailwayMapProps {
   overviewKey?: number;
   /** Remove map controls from keyboard and assistive technology while another screen is active. */
   inert?: boolean;
+  /** The published clear's travelled route, drawn and framed in clear mode; null when it could not be verified. */
+  clearRoute?: ClearRoute | null;
+  /** Generation of the published clear; a new publication frames the route again. */
+  clearRouteKey?: number;
+  /** The clear card, so the route is framed in the map area it leaves open. */
+  clearCardRef?: RefObject<HTMLElement | null>;
+  /** Store drives partial route frames imperatively while the map remains outside React state. */
+  clearReplayStore?: ClearReplayStore;
+  clearHistoryRows?: readonly HistoryRow[];
   targetServiceId?: string;
   minZoom?: number;
 }
 
 export type RailwayMapMode = "title" | "game" | "clear";
+
+const subscribeToNoReplayPhase = (_listener: () => void): (() => void) => () => {};
+const getIdleReplayPhase = (): "idle" => "idle";
 
 /** Elements whose size can change the camera layout. */
 export function cameraLayoutTargets(
@@ -543,7 +561,7 @@ function navigationControlsContainFocus(mapContainer: HTMLElement | null): boole
 
 const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
 
-export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, coachTargetRef, overviewKey, inert = false, targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, coachTargetRef, overviewKey, inert = false, clearRoute = null, clearRouteKey, clearCardRef, clearReplayStore, clearHistoryRows = [], targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -721,11 +739,17 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   const completedFeatureIds = progress?.completedFeatureIds;
   // Only this component re-renders on animation frames, not the game UI.
   const framePosition = useSyncExternalStore(livePosition.subscribe, livePosition.get, livePosition.get);
+  const replayPhase = useSyncExternalStore(
+    clearReplayStore?.subscribePhase ?? subscribeToNoReplayPhase,
+    clearReplayStore?.getPhase ?? getIdleReplayPhase,
+    clearReplayStore?.getPhase ?? getIdleReplayPhase,
+  );
   const position = framePosition ?? progress?.currentPosition ?? null;
   // Keyed by content: the list is rebuilt on every hop of a move but only
   // changes when a segment is finished, so the filters are set that often.
   const completedKey = completedFeatureIds?.join("\n");
   const markerBearing = displayedBearing ?? null;
+  const hideGameplayPosition = !shouldShowGameplayPosition(mode, replayPhase);
   const previewOpen = adjustmentCandidates.length > 0;
   const previewOriginKey = position?.join(",") ?? "unknown";
   const previewOriginRef = useRef<Position | null>(position);
@@ -754,18 +778,23 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, layersRevision, completedKey, targetServiceId]);
-  useEffect(() => {
-    if (loadedMap) updateLineGroupVisibility(loadedMap, mapPresentationIndex, selectedGroupIds, targetServiceId);
-  }, [loadedMap, layersRevision, mapPresentationIndex, selectedGroupIds, targetServiceId]);
+  useClearNetworkVisibility({
+    map: loadedMap, layersRevision, active: mode === "clear", index: mapPresentationIndex, selectedGroupIds, targetServiceId,
+  });
   useEffect(() => {
     if (!loadedMap) return;
-    updateCurrentPosition(loadedMap, position);
-    headingMarkerRef.current?.update(position, markerBearing);
-  }, [loadedMap, layersRevision, position, markerBearing]);
+    const displayedPosition = hideGameplayPosition ? null : position;
+    updateCurrentPosition(loadedMap, displayedPosition);
+    headingMarkerRef.current?.update(displayedPosition, hideGameplayPosition ? null : markerBearing);
+  }, [loadedMap, layersRevision, position, markerBearing, hideGameplayPosition]);
   useEffect(() => {
     if (loadedMap) updateGoalStation(loadedMap, goalStationId);
   }, [loadedMap, layersRevision, goalStationId]);
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
+  useClearRouteMap({
+    map: loadedMap, layersRevision, active: mode === "clear", route: clearRoute, generation: clearRouteKey,
+    cardRef: clearCardRef, replayStore: clearReplayStore,
+  });
 
   useEffect(() => {
     if (mode !== "title" || !loadedMap || !data.services.ok) return;
@@ -936,9 +965,13 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
           }}>目標路線</button>
         </div>}
       </div>
+      {mode === "clear" && clearRoute && clearReplayStore && (
+        <ClearReplayMapCaption store={clearReplayStore} rows={clearHistoryRows} />
+      )}
       {showTitlePlaceholder && <TitleMapPlaceholder />}
       {unsupported && (
-        <div ref={setCoachTarget} className="map-error" role="status">
+        // The clear screen owns the only polite live region, so the notice stays visible there without one.
+        <div ref={setCoachTarget} className="map-error" role={mode === "clear" ? undefined : "status"}>
           <p>
             この端末・ブラウザでは地図を表示できません（WebGL2 が必要です）。
             地図なしでゲームを続けられます。

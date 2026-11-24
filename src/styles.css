@@ -1716,135 +1716,6 @@ button[aria-disabled="true"] {
   text-align: center;
 }
 
-.clear-screen {
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(440px, calc(100% - 24px));
-  max-height: calc(100% - 80px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  overflow-y: auto;
-  padding: 16px 20px;
-  border-radius: 10px;
-  background: rgb(255 255 255 / 96%);
-  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
-}
-
-.clear-screen__title {
-  margin: 0 0 4px;
-  font-size: 24px;
-  text-align: center;
-}
-
-.clear-screen__summary,
-.clear-screen__history li,
-.clear-screen .item-event-notice [role="status"] {
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-
-.clear-screen__summary,
-.clear-screen .item-event-notice [role="status"] {
-  line-height: 1.5;
-}
-
-.clear-screen__save-warning {
-  margin: 8px 0;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: #fff3cd;
-  color: #8a4b00;
-  font-weight: bold;
-}
-
-.clear-screen__subtitle {
-  margin: 12px 0 4px;
-  font-size: 15px;
-}
-
-.clear-screen__stats {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 2px 12px;
-  margin: 8px 0;
-}
-
-.clear-screen__stats dd {
-  margin: 0;
-  font-weight: bold;
-}
-
-.clear-screen__history {
-  max-height: 200px;
-  overflow-y: auto;
-  margin: 0;
-  padding-left: 0;
-  list-style: none;
-  font-size: 13px;
-}
-
-.clear-screen__history li {
-  padding: 2px 0;
-  border-bottom: 1px solid #eeeeee;
-  line-height: 1.45;
-}
-
-.clear-screen__turn {
-  display: inline-block;
-  min-width: 5em;
-  color: #555555;
-}
-
-.clear-screen__actions {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.clear-screen__actions button {
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.clear-screen__share {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.clear-screen__share button {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-.clear-screen__share button:focus-visible,
-.clear-screen__share-fallback textarea:focus-visible {
-  outline: 3px solid var(--color-focus-ring);
-  outline-offset: 2px;
-}
-
-.clear-screen__share-status {
-  margin: 8px 0 0;
-}
-
-.clear-screen__share-status:empty {
-  margin: 0;
-}
-
-.clear-screen__share-fallback {
-  display: grid;
-  gap: 4px;
-  margin-top: 8px;
-}
-
-.clear-screen__share-fallback textarea {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  font: inherit;
-}
-
 /* In-page confirmation dialog (native modal <dialog>, top layer). */
 .dialog {
   box-sizing: border-box;
@@ -2137,10 +2008,7 @@ button[aria-disabled="true"] {
   .game-panel__lottery,
   .game-panel__route-summary,
   .game-panel__candidates,
-  .item-staged-summary,
-  .clear-screen__summary,
-  .clear-screen__history li,
-  .clear-screen .item-event-notice [role="status"] {
+  .item-staged-summary {
     word-break: auto-phrase;
   }
 
@@ -2897,21 +2765,6 @@ button[aria-disabled="true"] {
   .title-screen__title {
     font-size: 22px;
   }
-
-  /* Bottom sheet above the attribution button, map visible above it. */
-  .clear-screen {
-    top: auto;
-    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-    left: calc(8px + env(safe-area-inset-left, 0px));
-    right: calc(8px + env(safe-area-inset-right, 0px));
-    transform: none;
-    width: auto;
-    max-height: 60%;
-  }
-
-  .clear-screen__history {
-    max-height: 120px;
-  }
 }
 
 /* The overview controls reserve the same right-hand space as navigation. */
@@ -3325,27 +3178,6 @@ button[aria-disabled="true"] {
     margin: 0;
   }
 
-}
-
-.clear-screen__paging {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
-  font-size: 12px;
-}
-
-.clear-screen__paging button {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-@media (max-width: 390px) {
-  .clear-screen__actions {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .item-event-notice {

@@ -7,9 +7,10 @@ import { ClearScreen } from "../../src/features/game/components/ClearScreen";
 import { EDITIONS } from "../../src/features/editions/registry";
 import type { GameState } from "../../src/types/network";
 import type { RailwayNetwork } from "../../src/features/game/engine";
-import type { PresentationResolver } from "../../src/features/game/presentationResolver";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import type { MilestoneFlash } from "../../src/features/game/progressMilestones";
 import { mountReact } from "./helpers/reactDom";
+import { clearResultFor } from "./helpers/clearScreen";
 
 const FLASH: MilestoneFlash = { key: "session:turn:10", threshold: 10 };
 const PROXIMITY = { hops: 7, trend: "closer", text: "山手線まで あと7駅（近づく）" } as const;
@@ -19,7 +20,7 @@ const COLLECTION = {
 } as const;
 const CLEAR_GAME = { turn: 61, movementHistory: [], config: { startStationId: "tokyo" } } as unknown as GameState;
 const CLEAR_NETWORK = { stationsById: new Map() } as unknown as RailwayNetwork;
-const CLEAR_PRESENTATION = { stationName: (id: string) => id } as unknown as PresentationResolver;
+const CLEAR_PRESENTATION = createPresentationResolver(CLEAR_NETWORK);
 
 function hudProps(overrides: Partial<GameHudProps> = {}): GameHudProps {
   return {
@@ -107,7 +108,8 @@ describe("HUD progress components", () => {
   it("renders both clear-screen collection totals", () => {
     const mount = mountReact(createElement(ClearScreen, {
       game: CLEAR_GAME, network: CLEAR_NETWORK, presentation: CLEAR_PRESENTATION,
-      display: EDITIONS[0]!.display, collection: COLLECTION, saveStatus: "saved",
+      result: clearResultFor(CLEAR_GAME, CLEAR_NETWORK, CLEAR_PRESENTATION, EDITIONS[0]!.display),
+      collection: COLLECTION, saveStatus: "saved",
       onPlayAgain: () => undefined, onShowTitle: () => undefined,
     }));
     try {

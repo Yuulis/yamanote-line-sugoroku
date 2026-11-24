@@ -29,6 +29,8 @@ export const PRODUCT_KORAKUEN_TRANSFER_SEED = "00000000000000000000000000000011"
 export const PRODUCT_KORAKUEN_TRANSFER_TURN = 13;
 export const PRODUCT_COMPOSED_SCENARIO_TURNS = { forward: 148, reverse: 177 } as const;
 export const PRODUCT_HISTORY_SCENARIO_TURNS = { completed: 96 } as const;
+/** Legs of the verified full route of the 96-turn clear; pinned by tests/unit/clear-route-real-data.test.ts. */
+export const PRODUCT_HISTORY_CLEAR_ROUTE_LEGS = 56;
 
 export const PRODUCT_OEDO_GAME_SEED = "00000000000000000000000000000004";
 export const PRODUCT_OEDO_LOTTERY_TURN = 256;

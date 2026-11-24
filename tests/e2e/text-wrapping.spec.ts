@@ -10,7 +10,7 @@ import { longestRideState, longestDirectionState, longLineLotteryState } from ".
 import { createGame as createProductGame, playTurn as playProductTurn } from "./fixtures/productGame";
 import { itemScenario } from "./fixtures/itemScenarios";
 import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HISTORY_SCENARIO_TURNS } from "./fixtures/seeds";
-import { diceButton, gamePanel, openGameLog, openTitle, panelStat, readSave, startNewGame, useInventoryItem, writeSaveText, rollOnce } from "./support/app";
+import { diceButton, gamePanel, openClearHistory, openGameLog, openTitle, panelStat, readSave, startNewGame, useInventoryItem, writeSaveText, rollOnce } from "./support/app";
 import { expectSingleLine, measureTextLayout } from "./support/layout";
 
 const PHONE_HUD_TARGET_BUDGET_PX = 252;
@@ -51,7 +51,14 @@ const CLEAR_SCREEN_VIEWPORT = { width: 320, height: 568 } as const;
 const CLEAR_HISTORY_PAGE_COUNT = 5;
 const CLEAR_SCREEN_SUMMARY_TEXT = "山手線の外回り全30区間を踏破し、新橋に戻りました。";
 const CLEAR_SCREEN_GOAL_ANNOUNCEMENT = "96ターン目：出目3（3マス、1駅移動、残り2は使わず）、新橋に到着。ゴールに到着しました。踏破 30/30";
-const CLEAR_SCREEN_GOAL_HISTORY = "96ターン目 出目3（3マス、1駅移動、残り2は使わず）：有楽町・日比谷 → 新橋（山手線・外回り）。ゴールに到着しました";
+const CLEAR_SCREEN_GOAL_HISTORY = {
+  turn: "96ターン目",
+  roll: "出目3",
+  move: "有楽町・日比谷 → 新橋（1駅）",
+  line: "山手線・外回り",
+  notes: ["途中停止新橋で終了、残り2を使わず", "ゴールに到着しました"],
+} as const;
+const CLEAR_HISTORY_TARGET_PX = 44;
 const PANEL_CANDIDATE_MINIMUM = 5;
 const PHONE_HUD_STATS_ROWS = [
   `${PHONE_HUD_LABEL_HEIGHT_PX}px`,
@@ -639,54 +646,98 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
   await diceButton(page).click();
 
   const clearScreen: Locator = page.getByRole("region", { name: "クリア！" });
-  const historyItems: Locator = clearScreen.locator(".clear-screen__history li");
-  const paging: Locator = clearScreen.getByRole("navigation", { name: "移動履歴のページ" });
   const summaryParagraph: Locator = clearScreen.locator(".clear-screen__summary");
-  const goalAnnouncement: Locator = clearScreen.locator(".item-event-notice [role=status]");
+  const liveRegion: Locator = clearScreen.getByRole("status");
   await expect(clearScreen).toBeVisible();
   await expect(summaryParagraph).toHaveText(CLEAR_SCREEN_SUMMARY_TEXT);
   const summaryLayout = await measureTextLayout(summaryParagraph);
   expect(summaryLayout.hintOffsets.length).toBeGreaterThan(0);
   expect(summaryLayout.text).toBe(CLEAR_SCREEN_SUMMARY_TEXT);
   expect(summaryLayout.widthFits).toBe(true);
-  await expect(goalAnnouncement).toHaveText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT);
-  const goalAnnouncementWordBreak: string = await goalAnnouncement.evaluate(() =>
-    CSS.supports("word-break", "auto-phrase") ? "auto-phrase" : "keep-all",
-  );
-  await expect(goalAnnouncement).toHaveCSS("word-break", goalAnnouncementWordBreak);
-  await expectNoHorizontalOverflow(goalAnnouncement);
-  await expect(historyItems).toHaveCount(20);
-  await expect(historyItems.first()).toContainText("1ターン目");
-  await expectButtonsSingleLine(paging.getByRole("button"));
+  // The clear turn's own log line is not shown on the card; the goal sentence exists once, in the single live region.
+  await expect(clearScreen.locator(".item-event-notice__completion")).toHaveCount(0);
+  await expect(clearScreen.getByText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT)).toHaveCount(1);
+  await expect(liveRegion).toHaveCount(1);
+  await expect(liveRegion).toHaveText(CLEAR_SCREEN_GOAL_ANNOUNCEMENT);
+  await expect(clearScreen.locator(".clear-screen__history")).toHaveCount(0);
   const actionColumns: string[] = await clearScreen.locator(".clear-screen__actions").evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/),
   );
-  expect(actionColumns).toHaveLength(1);
-  await expect(paging).toHaveCSS("flex-wrap", "wrap");
+  // S7 added a second share row (Xでシェア, 画像を保存), so the two main actions now sit side by side at 320px to keep
+  // 移動履歴を見る inside the 65% phone sheet. They must stay on one row, in order, unclipped and single-line.
+  expect(actionColumns).toHaveLength(2);
+  const mainActions = await clearScreen.locator(".clear-screen__actions button").evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect();
+    return { top: box.top, left: box.left, right: box.right, clipped: button.scrollWidth > button.clientWidth + 1 };
+  }));
+  expect(mainActions).toHaveLength(2);
+  expect(Math.abs(mainActions[0]!.top - mainActions[1]!.top)).toBeLessThan(1);
+  expect(mainActions[0]!.right).toBeLessThanOrEqual(mainActions[1]!.left);
+  expect(mainActions.some((action) => action.clipped)).toBe(false);
+  await expectButtonsSingleLine(clearScreen.locator(".clear-screen__actions button, .clear-screen__share button, .clear-screen__history-button"));
   await expectNoHorizontalOverflow(clearScreen);
   await expectPageNoHorizontalOverflow(page);
 
+  const dialog: Locator = await openClearHistory(clearScreen);
+  const historyItems: Locator = dialog.locator(".clear-screen__history li");
+  const paging: Locator = dialog.getByRole("navigation", { name: "移動履歴のページ" });
+  await expect(historyItems).toHaveCount(20);
+  await expect(historyItems.first()).toContainText("1ターン目");
+  await expectButtonsSingleLine(paging.getByRole("button"));
+  await expectButtonsSingleLine(dialog.getByRole("button", { name: "閉じる", exact: true }));
+  await expect(paging).toHaveCSS("flex-wrap", "wrap");
+  await expectNoHorizontalOverflow(dialog);
+  await expectNoHorizontalOverflow(dialog.locator(".clear-screen__history"));
+  await expectPageNoHorizontalOverflow(page);
+  for (const button of await dialog.getByRole("button").all()) {
+    const box = await button.boundingBox();
+    expect(box?.height ?? 0, "dialog buttons keep a 44px target").toBeGreaterThanOrEqual(CLEAR_HISTORY_TARGET_PX);
+  }
+
   await paging.getByRole("button", { name: "次のページ", exact: true }).click();
   await expect(historyItems.first()).toContainText("21ターン目");
-  await expect(paging.getByRole("status")).toHaveText("2 / 5ページ");
+  await expect(paging.locator(".clear-screen__page-status")).toHaveText("2 / 5ページ");
   await paging.getByRole("button", { name: "前のページ", exact: true }).click();
   await expect(historyItems.first()).toContainText("1ターン目");
-  await expect(paging.getByRole("status")).toHaveText("1 / 5ページ");
+  await expect(paging.locator(".clear-screen__page-status")).toHaveText("1 / 5ページ");
 
   for (let pageIndex: number = 1; pageIndex < CLEAR_HISTORY_PAGE_COUNT; pageIndex += 1) {
     await paging.getByRole("button", { name: "次のページ", exact: true }).click();
   }
-  await expect(paging.getByRole("status")).toHaveText("5 / 5ページ");
+  await expect(paging.locator(".clear-screen__page-status")).toHaveText("5 / 5ページ");
   const goalHistoryEntry: Locator = historyItems.last();
-  const goalHistoryLayout = await measureTextLayout(goalHistoryEntry);
-  expect(goalHistoryLayout.hintOffsets.length).toBeGreaterThan(0);
-  expect(goalHistoryLayout.text).toBe(CLEAR_SCREEN_GOAL_HISTORY);
-  expect(goalHistoryLayout.widthFits).toBe(true);
+  // The final entry's exact text, field by field; the stacked layout wraps the long fields at phrase hints.
+  const fields: ReadonlyArray<readonly [string, string, boolean]> = [
+    [".clear-history__turn", CLEAR_SCREEN_GOAL_HISTORY.turn, false],
+    [".clear-history__roll", CLEAR_SCREEN_GOAL_HISTORY.roll, false],
+    [".clear-history__move", CLEAR_SCREEN_GOAL_HISTORY.move, true],
+    [".clear-history__line", CLEAR_SCREEN_GOAL_HISTORY.line, true],
+  ];
+  for (const [selector, expected, expectsHints] of fields) {
+    const field: Locator = goalHistoryEntry.locator(selector);
+    await expect(field).toHaveText(expected);
+    const layout = await measureTextLayout(field);
+    if (expectsHints) expect(layout.hintOffsets.length, `${selector} wraps at phrase hints`).toBeGreaterThan(0);
+    expect(layout.text, selector).toBe(expected);
+    expect(layout.widthFits, selector).toBe(true);
+    await expectNoHorizontalOverflow(field);
+  }
+  for (const [index, note] of CLEAR_SCREEN_GOAL_HISTORY.notes.entries()) {
+    const field = goalHistoryEntry.locator(".clear-history__note").nth(index);
+    await expect(field).toHaveText(note);
+    const layout = await measureTextLayout(field);
+    expect(layout.widthFits, `note ${index} stays inside the phone row`).toBe(true);
+    await expectNoHorizontalOverflow(field);
+  }
   await expectNoHorizontalOverflow(goalHistoryEntry);
 
-  await expectButtonsSingleLine(clearScreen.locator(
-    ".clear-screen__actions button, .clear-screen__share button, .clear-screen__paging button",
-  ));
+  await expectButtonsSingleLine(dialog.locator(".clear-screen__paging button"));
+  await expectNoHorizontalOverflow(dialog);
+  await expectPageNoHorizontalOverflow(page);
+
+  await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(clearScreen.getByRole("button", { name: "移動履歴を見る" })).toBeFocused();
   await expectNoHorizontalOverflow(clearScreen);
   await expectPageNoHorizontalOverflow(page);
 });

@@ -119,6 +119,7 @@ export default defineConfig({
     // Always build fresh: a reused server could be serving a stale bundle.
     reuseExistingServer: false,
     timeout: 120_000,
+    env: { VITE_GA_MEASUREMENT_ID: "" },
     stdout: "ignore",
     stderr: "pipe",
   },
