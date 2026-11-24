@@ -36,6 +36,7 @@ export const NORMAL_STAGE_MS = {
   stamps: 240,
   arrival: 800,
   lotteryFlip: 1_600,
+  lotteryDirectionFlip: 640,
   lotterySettle: 400,
   pickup: 500,
 } as const;
@@ -203,11 +204,20 @@ export async function advanceArrival(page: Page, factor: number = 1): Promise<vo
 
 /**
  * Lottery board flip at the visible map centre. Activated by S14; present only
- * when the turn draws a lottery.
+ * when the turn draws a lottery. The stage length depends on the drawn rows
+ * (read from the board's `data-drawn`): route + direction windows when both are
+ * drawn, the route window when only the route is drawn, and the direction
+ * window when only the direction is drawn.
  */
 export async function advanceLotteryFlip(page: Page, factor: number = 1): Promise<void> {
   await awaitStage(page, "lottery-flip");
-  await advanceStage(page, "lotteryFlip", factor);
+  const drawn = await page.locator(".lottery-reveal__row").evaluateAll(
+    (rows) => rows.map((row) => row.getAttribute("data-drawn") === "true"),
+  );
+  const [routeDrawn = false, directionDrawn = false] = drawn;
+  const stageMs = (routeDrawn ? NORMAL_STAGE_MS.lotteryFlip : 0)
+    + (directionDrawn ? NORMAL_STAGE_MS.lotteryDirectionFlip : 0);
+  await page.clock.runFor(Math.round(stageMs * factor));
 }
 
 /**

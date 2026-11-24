@@ -42,6 +42,26 @@ const TURN_MOMENT_TIMINGS: Readonly<Record<AnimationSpeedId, TurnMomentTiming>> 
   }),
 };
 
+/** Direction window after the route row stops, as a share of the route flip (issue #63). */
+export const LOTTERY_DIRECTION_FLIP_SHARE = 0.4;
+
+/** Which lottery rows are actually drawn for a landing. */
+export interface LotteryDraws {
+  readonly serviceDrawRequired: boolean;
+  readonly directionDrawRequired: boolean;
+}
+
+export function lotteryDirectionFlipMs(routeFlipMs: number): number {
+  return Math.round(routeFlipMs * LOTTERY_DIRECTION_FLIP_SHARE);
+}
+
+/** Flip-stage length: route + direction when both are drawn, otherwise the single drawn row's window. */
+export function lotteryFlipStageMs(routeFlipMs: number, draws: LotteryDraws): number {
+  const directionMs = lotteryDirectionFlipMs(routeFlipMs);
+  if (!draws.serviceDrawRequired) return directionMs;
+  return draws.directionDrawRequired ? routeFlipMs + directionMs : routeFlipMs;
+}
+
 export function turnMomentTiming(speedId: AnimationSpeedId): TurnMomentTiming {
   return TURN_MOMENT_TIMINGS[speedId];
 }

@@ -1,7 +1,7 @@
 import type { DeepReadonly, Direction, ItemTurnRecord, SegmentId } from "../../../types/network";
 import type { MoveEvent, RailwayNetwork } from "../engine";
 import { itemRideHasModifierWording } from "../hudPresentation";
-import type { TurnPresentationPolicy } from "./turnMomentPolicy";
+import { lotteryFlipStageMs, type TurnPresentationPolicy } from "./turnMomentPolicy";
 import type { ItemSessionView } from "../itemSession";
 import type { LastMove } from "../gameSession";
 import type { RevealStage } from "./useRevealSequence";
@@ -142,9 +142,10 @@ export function buildTurnRevealStages(facts: TurnRevealFacts, policy: TurnPresen
   if (record.landing) {
     const services = record.landingSnapshot?.services ?? [];
     const selected = services.find((service) => service.serviceId === record.landing?.serviceId);
-    const drawsLottery = selected !== undefined && (services.length > 1 || selected.directions.length > 1);
-    if (drawsLottery) {
-      stages.push({ key: "lottery-flip", durationMs: timing.lotteryFlipMs },
+    const serviceDrawRequired = services.length > 1;
+    const directionDrawRequired = selected !== undefined && selected.directions.length > 1;
+    if (selected !== undefined && (serviceDrawRequired || directionDrawRequired)) {
+      stages.push({ key: "lottery-flip", durationMs: lotteryFlipStageMs(timing.lotteryFlipMs, { serviceDrawRequired, directionDrawRequired }) },
         { key: "lottery-settle", durationMs: timing.lotterySettleMs });
     }
   }

@@ -294,9 +294,11 @@ describe("buildTurnRevealStages (arrival, conditional lottery and pickup)", () =
 describe("S14-S15 lottery and pickup stage planning", () => {
   it.each([false, true])("plans only actual draws, with serviceDraw=%s", (serviceDraw) => {
     for (const directionDraw of [false, true]) {
-      for (const [speedId, arrivalMs, flipMs, settleMs, pickupMs] of [
-        ["fast", 533, 1067, 267, 333], ["normal", 800, 1600, 400, 500], ["slow", 1067, 2133, 533, 667],
+      for (const [speedId, arrivalMs, routeFlipMs, directionFlipMs, settleMs, pickupMs] of [
+        ["fast", 533, 1067, 427, 267, 333], ["normal", 800, 1600, 640, 400, 500], ["slow", 1067, 2133, 853, 533, 667],
       ] as const) {
+        // Both drawn: route + direction; service only: route; direction only: direction window.
+        const flipMs = serviceDraw ? (directionDraw ? routeFlipMs + directionFlipMs : routeFlipMs) : directionFlipMs;
         const policy = captureTurnPresentationPolicy({ speedId, presentationLevel: "all" });
         const selected = { serviceId: "jr-yamanote", weight: 1, directions: directionDraw ? [1, -1] as const : [1] as const, directionWeights: [1] };
         const record = ride({ landing: { serviceId: "jr-yamanote", direction: 1 }, landingSnapshot: {
