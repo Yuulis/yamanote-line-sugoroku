@@ -795,6 +795,11 @@ test.describe("lottery board with both the route and the direction drawn", () =>
       expect(await boardRect(board), `board rect at ${label}`).toEqual(atStart);
       expect(await rowHeights(), `row heights at ${label}`).toEqual(startHeights);
     }
+    // #63 F4: no name this hub can draw is long, so none is shrunk (the shrink itself is covered by unit tests and the
+    // 135-service measurement; no seed in the real data reaches an overflowing name from here).
+    const nameSizes = await board.evaluate((node) => [...node.querySelectorAll<HTMLElement>(".line-badge__name")]
+      .map((element) => ({ text: element.textContent ?? "", size: Number.parseFloat(getComputedStyle(element).fontSize), long: element.classList.contains("line-badge__name--long") })));
+    expect(nameSizes.filter((name) => name.long || name.size !== FULL_NAME_SIZE_PX), "no short name is shrunk on a phone").toEqual([]);
     const lines = await lotteryNameLineCounts(board);
     expect(Math.max(...lines), "no route name needs more than two lines").toBeLessThanOrEqual(2);
     expect(Math.max(...lines), "the longest candidate wraps onto a second line at 320px").toBe(2);
@@ -804,6 +809,8 @@ test.describe("lottery board with both the route and the direction drawn", () =>
     await expect(board).toHaveCount(0);
   });
 });
+
+const FULL_NAME_SIZE_PX = 16;
 
 async function boardRect(board: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
   return board.evaluate((node) => {

@@ -246,3 +246,6 @@ boundary specs, phone `@layout`.
   not be ellipsized; allow line badges in the lottery board to wrap to two lines and show
   the full name. Row height must still come from the route-independent sizer set (max over
   all candidates), so height cannot reveal the draw. Follow-up after F1+F2.
+- F4 (DONE; DECIDED 2026-11-24): names that still overflow two lines on a narrow (phone) board
+  get a smaller font (85%, the three longest 70% — measured) instead of the ellipsis; other names unchanged; never simplify
+  names (the two 湘南新宿ライン services differ only in the parenthetical).

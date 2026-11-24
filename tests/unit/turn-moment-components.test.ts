@@ -18,6 +18,7 @@ import {
   type DiceTumbleProps,
 } from "../../src/features/game/components/DiceTumble";
 import { lotteryDirectionFlipMs } from "../../src/features/game/animation/turnMomentPolicy";
+import { isLongestLineName, isLongLineName, LONG_LINE_NAME_MIN_CHARS, LONGEST_LINE_NAME_MIN_CHARS } from "../../src/features/game/lineBadge";
 import { LotteryReveal, lotteryDirectionSizingLabels, type LotteryRevealProps } from "../../src/features/game/components/LotteryReveal";
 import { ItemPickupMoment, type ItemPickupMomentProps } from "../../src/features/game/components/ItemPickupMoment";
 import { GameHud, type GameHudProps } from "../../src/features/game/components/GameHud";
@@ -346,6 +347,10 @@ describe("css contract", () => {
     expect(name).not.toContain("white-space: nowrap");
     expect(name).not.toContain("text-overflow");
     expect(css).not.toMatch(/\.lottery-reveal \.line-badge__name wbr/);
+    // #63 F4: long names shrink only on narrow (phone) boards, by a per-name class; the clamp above stays as the safety net.
+    expect(css).toMatch(/@media \(max-width: 600px\) \{\s*\.lottery-reveal \.line-badge--lg \.line-badge__name--long \{\s*--lottery-name-scale: 0\.85;\s*font-size: calc\(16px \* var\(--lottery-name-scale\)\);\s*\}\s*\.lottery-reveal \.line-badge--lg \.line-badge__name--longest \{ --lottery-name-scale: 0\.7; \}\s*\}/);
+    expect(css.match(/line-badge__name--long(?:est)?\b/g)).toHaveLength(2);
+    expect(css).not.toMatch(/\n\.lottery-reveal \.line-badge__name--long/);
     expect(css).not.toContain("last-of-type .lottery-reveal__result");
     expect(css).toMatch(/@keyframes lottery-placeholder-stop \{\s*0% \{ opacity: 1; \}\s*84%, 100% \{ opacity: 0; \}/);
     expect(rule(".lottery-reveal__placeholder")).toMatch(/position: absolute;\s*inset: 0;/);
@@ -1451,6 +1456,36 @@ describe("S14 LotteryReveal", () => {
       const settle = renderRows(landingFor("m-line"), "lottery-settle");
       expect(settle).toEqual(flip);
       expect(settle.route.length).toBeGreaterThan(0);
+    });
+
+    it("shrinks a long route name by the name alone, identically in sizers, frames and the result", () => {
+      const input = multiServiceInput();
+      const names: Record<string, string> = { "m-loop": "山手線", "m-line": "あ".repeat(LONG_LINE_NAME_MIN_CHARS), "m-spur": "い".repeat(LONGEST_LINE_NAME_MIN_CHARS) };
+      const network = buildRailwayNetwork({ ...input, services: input.services.map((svc) => ({ ...svc, name: names[svc.id] ?? svc.name })) });
+      const props: LotteryRevealProps = { network, presentation: createPresentationResolver(network), stage: "lottery-flip", durationMs: 1600,
+        landing: landingFor("m-loop"), rideTarget: createRef<HTMLElement>(), directionTarget: createRef<HTMLElement>() };
+      const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
+      const routeRow = mount.container.querySelector(".lottery-reveal__row")!;
+      const sizeClasses = (selector: string) => [...routeRow.querySelectorAll(selector.split(", ").map((part) => `${part} .line-badge__name`).join(", "))]
+        .map((node) => [node.textContent, node.classList.contains("line-badge__name--long"), node.classList.contains("line-badge__name--longest")]);
+      expect(sizeClasses(".lottery-reveal__sizer")).toEqual([[names["m-loop"], false, false], [names["m-line"], true, false], [names["m-spur"], true, true]]);
+      // Every frame and the result carry the class their own name earns, so a frame never differs from its sizer.
+      const sizerByName = new Map(sizeClasses(".lottery-reveal__sizer").map(([name, long, longest]) => [name, [long, longest]]));
+      const shown = sizeClasses(".lottery-reveal__frame, .lottery-reveal__result");
+      expect(shown.length).toBeGreaterThan(3);
+      for (const [name, long, longest] of shown) expect([long, longest], String(name)).toEqual(sizerByName.get(name));
+      // The drawn short result stays full size even though long candidates flip through the same row.
+      expect(sizeClasses(".lottery-reveal__result")).toEqual([[names["m-loop"], false, false]]);
+    });
+
+    it("classifies line names by length alone", () => {
+      expect(isLongLineName("あ".repeat(LONG_LINE_NAME_MIN_CHARS - 1))).toBe(false);
+      expect(isLongLineName("あ".repeat(LONG_LINE_NAME_MIN_CHARS))).toBe(true);
+      expect(isLongestLineName("あ".repeat(LONGEST_LINE_NAME_MIN_CHARS - 1))).toBe(false);
+      expect(isLongestLineName("あ".repeat(LONGEST_LINE_NAME_MIN_CHARS))).toBe(true);
+      expect(isLongLineName("")).toBe(false);
+      // Counted in characters, not UTF-16 units: an astral character is one.
+      expect(isLongLineName("𠮷".repeat(LONG_LINE_NAME_MIN_CHARS - 1))).toBe(false);
     });
 
     it("exposes the direction sizing set as a pure helper", () => {
