@@ -28,6 +28,11 @@ const CLEAR_ROUTE_LAYERS = ["clear-traveled-route-outline", "clear-traveled-rout
 const MIN_ROUTE_FILL_RATIO = 0.4;
 const FRAMING_TOLERANCE_PX = 1;
 
+interface RouteImageEncodingWindow extends Window {
+  __routeImageEncodeReleases?: Array<() => void>;
+  __releaseRouteImageEncoding?: () => void;
+}
+
 async function failSaveWrites(page: Page): Promise<void> {
   await page.evaluate(() => {
     const storage = Storage.prototype;
@@ -54,21 +59,76 @@ async function clearWithOneRoll(page: Page, options: { failSave?: boolean } = {}
   return clear;
 }
 
-/**
- * Starts the replay once the share row has stopped reflowing. The route image finishes seconds after the clear
- * screen appears and swaps 画像を準備中… for Xでシェア + 画像を保存, which moves 軌跡を再生 along the same wrapping
- * row; a click that straddles that swap (pointerdown on the old position, pointerup after the move) never reaches
- * the button, so the replay silently does not start.
- */
+/** Starts the replay after the route-image controls leave their pending state. */
 async function startReplay(clear: Locator): Promise<void> {
   await waitForSettledShareRow(clear);
   await clear.getByRole("button", { name: "軌跡を再生" }).click();
 }
 
-/** The image leaves 画像を準備中… for ready, failed or unavailable; the share row then keeps its layout. */
+/** The row is settled as soon as its pending controls are in place; it no longer has to wait for PNG encoding. */
 async function waitForSettledShareRow(clear: Locator): Promise<void> {
-  await expect(clear.getByRole("button", { name: "画像を準備中…" }), "the share row settles before the replay is started")
-    .toHaveCount(0, { timeout: IMAGE_READY_TIMEOUT_MS });
+  const note = clear.locator("#clear-image-pending-note");
+  const shareButton = clear.getByRole("button", { name: "Xでシェア" });
+  const saveButton = clear.getByRole("button", { name: "画像を保存" });
+  await expect.poll(async () => {
+    if (await note.isVisible()) {
+      if (await shareButton.count() !== 1 || await saveButton.count() !== 1) return false;
+      return await shareButton.isDisabled() && await saveButton.isDisabled();
+    }
+    const shareCount = await shareButton.count();
+    const saveCount = await saveButton.count();
+    if (shareCount === 0 && saveCount === 0) return true;
+    if (shareCount !== 1 || saveCount !== 1) return false;
+    return await shareButton.isEnabled() && await saveButton.isEnabled();
+  }, { message: "the image action row has a stable pending or settled layout", timeout: IMAGE_READY_TIMEOUT_MS }).toBe(true);
+}
+
+/** Self-contained: hold the export canvas encoding so an E2E can measure the visible pending state. */
+function holdRouteImageEncoding(): void {
+  const windowWithHold = window as RouteImageEncodingWindow;
+  const releases: Array<() => void> = [];
+  const originalToBlob = HTMLCanvasElement.prototype.toBlob;
+  windowWithHold.__routeImageEncodeReleases = releases;
+  windowWithHold.__releaseRouteImageEncoding = () => releases.shift()?.();
+  HTMLCanvasElement.prototype.toBlob = function (callback, type, quality): void {
+    const canvas = this;
+    releases.push(() => originalToBlob.call(canvas, callback, type, quality));
+  };
+}
+
+async function measurePhoneSheet(clear: Locator, buttonNames: readonly string[]): Promise<{
+  readonly sheet: { readonly height: number; readonly width: number };
+  readonly scrollTop: number;
+  readonly targets: Record<string, { readonly top: number; readonly bottom: number; readonly left: number; readonly right: number }>;
+}> {
+  return clear.evaluate((element, names) => {
+    const sheet = element.getBoundingClientRect();
+    const round = (value: number): number => Math.round(value * 10) / 10;
+    const rect = (target: Element): { top: number; bottom: number; left: number; right: number } => {
+      const box = target.getBoundingClientRect();
+      return {
+        top: round(box.top - sheet.top),
+        bottom: round(box.bottom - sheet.top),
+        left: round(box.left - sheet.left),
+        right: round(box.right - sheet.left),
+      };
+    };
+    const targets: Record<string, { top: number; bottom: number; left: number; right: number }> = {};
+    const stats = element.querySelector(".clear-screen__stats");
+    if (!stats) throw new Error("The clear result numbers are missing");
+    targets["三つの数値"] = rect(stats);
+    const buttons = [...element.querySelectorAll<HTMLButtonElement>("button")];
+    for (const name of names) {
+      const button = buttons.find((candidate) => candidate.textContent?.trim() === name);
+      if (!button) throw new Error(`The ${name} button is missing`);
+      targets[name] = rect(button);
+    }
+    return {
+      sheet: { height: round(sheet.height), width: round(sheet.width) },
+      scrollTop: element.scrollTop,
+      targets,
+    };
+  }, [...buttonNames]);
 }
 
 async function expectNoHorizontalOverflow(page: Page, clear: Locator): Promise<void> {
@@ -1269,6 +1329,52 @@ test.describe("image share and save", () => {
     expect(calls.slice(0, 3)).toEqual(["ClipboardItem", "clipboard.write", "open"]);
     expect(calls).not.toContain("share");
     await expect(clear.locator(".clear-screen__share-status")).toHaveText(PASTE_HINT);
+  });
+
+  test("keeps the image and replay button rectangles fixed from pending to ready at 320x568", { tag: "@layout" }, async ({ page }) => {
+    await stubShareApis(page, { canShare: true });
+    await page.addInitScript(holdRouteImageEncoding);
+    await page.setViewportSize(PHONE_SMALL);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const clear = await clearWithOneRoll(page);
+    await expect.poll(
+      () => page.evaluate(() => (window as RouteImageEncodingWindow).__routeImageEncodeReleases?.length ?? 0),
+      { timeout: IMAGE_READY_TIMEOUT_MS },
+    ).toBe(1);
+    await expect(clear.getByText("画像を準備中…", { exact: true })).toBeVisible();
+    await expect(clear.getByRole("button", { name: "Xでシェア" })).toBeDisabled();
+    await expect(clear.getByRole("button", { name: "画像を保存" })).toBeDisabled();
+
+    const buttonNames = ["結果をコピー", "Xでシェア", "画像を保存", "軌跡を再生", "もう一度遊ぶ", "タイトルへ", "移動履歴を見る"] as const;
+    const pendingLayout = await measurePhoneSheet(clear, buttonNames);
+    expect(pendingLayout.scrollTop, "the pending sheet stays at the top").toBe(0);
+    expect(pendingLayout.sheet.height, "the pending sheet stays within its 65% cap")
+      .toBeLessThanOrEqual(PHONE_SMALL.height * PHONE_SHEET_MAX_HEIGHT_RATIO + 1);
+    await expectWithinFirstScreen(clear, clear.locator(".clear-screen__stats"), "the three numbers");
+    for (const name of buttonNames) await expectWithinFirstScreen(clear, clear.getByRole("button", { name, exact: true }), name);
+    await expectNoHorizontalOverflow(page, clear);
+
+    await page.evaluate(() => (window as RouteImageEncodingWindow).__releaseRouteImageEncoding?.());
+    await waitForImageActions(clear);
+    await expect(clear.getByText("画像を準備中…", { exact: true })).toBeHidden();
+    const readyLayout = await measurePhoneSheet(clear, buttonNames);
+    expect(readyLayout.scrollTop, "the ready sheet stays at the top").toBe(0);
+    expect(readyLayout.sheet.height, "the ready sheet stays within its 65% cap")
+      .toBeLessThanOrEqual(PHONE_SMALL.height * PHONE_SHEET_MAX_HEIGHT_RATIO + 1);
+    await expectWithinFirstScreen(clear, clear.locator(".clear-screen__stats"), "the three numbers");
+    for (const name of buttonNames) await expectWithinFirstScreen(clear, clear.getByRole("button", { name, exact: true }), name);
+    await expectNoHorizontalOverflow(page, clear);
+
+    for (const name of ["軌跡を再生", "Xでシェア", "画像を保存"] as const) {
+      for (const edge of ["top", "bottom", "left", "right"] as const) {
+        expect(
+          Math.abs(readyLayout.targets[name]![edge] - pendingLayout.targets[name]![edge]),
+          `${name} ${edge} stays within one pixel while the image becomes ready`,
+        ).toBeLessThanOrEqual(1);
+      }
+    }
+    console.log(`[S7 pending layout 320x568] ${JSON.stringify(pendingLayout)}`);
+    console.log(`[S7 ready layout 320x568] ${JSON.stringify(readyLayout)}`);
   });
 
   test("keeps the share row, numbers and main actions inside the 320px sheet and reports the rectangles", { tag: "@layout" }, async ({ page }) => {

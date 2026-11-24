@@ -168,8 +168,16 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
   const { shareText } = result;
   const canShare = shareActions.canShare(shareText);
   const imageActions = useMemo(() => injectedImageActions ?? browserResultImageShareActions(), [injectedImageActions]);
+  const imageShareProbeFile = useMemo(() => typeof File === "undefined"
+    ? null
+    : new File(["png"], "yamanote-sugoroku-route.png", { type: "image/png" }), []);
+  const fileShareSupported = useMemo(() => {
+    if (routeImage.kind === "ready") return imageActions.canShareFile(routeImage.image.file);
+    if (routeImage.kind === "pending" && imageShareProbeFile) return imageActions.canShareFile(imageShareProbeFile);
+    return false;
+  }, [imageActions, imageShareProbeFile, routeImage]);
   // Where "Xでシェア" opens the native sheet with the PNG and the same text, a text-only 共有 button would only repeat it.
-  const fileShareActive = routeImage.kind === "ready" && imageActions.canShareFile(routeImage.image.file);
+  const fileShareActive = routeImage.kind === "ready" && fileShareSupported;
   const announce = useCallback((text: string): void => setAnnouncement((previous) => ({ id: (previous?.id ?? 0) + 1, text })), []);
   const showMessage = (text: string | null, textFallback: boolean): void => {
     setShowShareText(textFallback);
@@ -218,6 +226,8 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
       : null, outcome === "failed");
   };
   const goalName = stationName(network, game.config.startStationId, presentation);
+  const imageActionsAvailable = routeImage.kind === "pending" || routeImage.kind === "ready";
+  const imagePending = routeImage.kind === "pending";
   return (
     <section ref={setCardRef} className={`clear-screen${replayCollapsed ? " clear-screen--replay-collapsed" : ""}`} aria-labelledby="clear-title">
       <ClearAnnouncements completion={completionAnnouncement} message={announcement} />
@@ -252,7 +262,7 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
       <div className="clear-screen__share">
         <div className="clear-screen__share-actions" hidden={replayCollapsed} aria-hidden={replayCollapsed} inert={replayCollapsed}>
           <button type="button" onClick={copyResult}>結果をコピー</button>
-          {canShare && !fileShareActive && (
+          {canShare && !fileShareSupported && (
             <button
               type="button"
               onClick={shareResult}
@@ -260,11 +270,21 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
               onBlur={() => { textShareFocusedRef.current = false; }}
             >共有</button>
           )}
-          {routeImage.kind === "pending" && <button type="button" disabled aria-busy="true">画像を準備中…</button>}
-          {routeImage.kind === "ready" && (
+          {imageActionsAvailable && (
             <>
-              <button type="button" ref={shareToXRef} onClick={imageShare.shareToX}>Xでシェア</button>
-              <button type="button" onClick={imageShare.saveImage}>画像を保存</button>
+              <button
+                type="button"
+                ref={shareToXRef}
+                onClick={imageShare.shareToX}
+                disabled={imagePending}
+                aria-describedby={imagePending ? "clear-image-pending-note" : undefined}
+              >Xでシェア</button>
+              <button
+                type="button"
+                onClick={imageShare.saveImage}
+                disabled={imagePending}
+                aria-describedby={imagePending ? "clear-image-pending-note" : undefined}
+              >画像を保存</button>
             </>
           )}
         </div>
@@ -287,6 +307,13 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
           <button type="button" onClick={onShowTitle}>
             タイトルへ
           </button>
+          {imageActionsAvailable && (
+            <p
+              id="clear-image-pending-note"
+              className={`clear-screen__image-pending-note${imagePending ? "" : " clear-screen__image-pending-note--reserved"}`}
+              aria-hidden={!imagePending}
+            >画像を準備中…</p>
+          )}
         </div>
         <ClearHistory
           game={game}
