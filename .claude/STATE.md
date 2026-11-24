@@ -307,3 +307,23 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 ### Decisions
 
 - Scope, replay, share flow, image content and highlight definitions per DESIGN.md 2026-11-22 rows (user 2026-11-22).
+
+---
+
+## Current Feature: Issue #63: split-flap lottery route then direction
+<!-- orchestra:block-id: issue-63-split-flap-lottery-route-then-direction -->
+
+### Context
+
+- Goal: the split-flap lottery reveals the route first, then the direction, so the direction row cannot reveal the route; hold the result before settle; size rows from all candidates; phones wrap/shrink long names.
+- Key files: src/features/game/animation/turnMomentPolicy.ts, turnMoments.ts, src/features/game/components/LotteryReveal.tsx, LineBadge.tsx, lineBadge.ts, src/styles.css (lottery block), tests/unit/turn-moment-*.test.ts, tests/e2e/ui-pop-turn-moments.spec.ts, tests/e2e/support/turnMoments.ts
+- Dependencies: none new
+- Complexity: SIMPLE (3 steps + 4 feedback fixes F1-F4)
+- Plan/handoff: .claude/docs/plans/lottery-sequential-reveal-plan.md; branch feature/lottery-sequential-reveal
+
+### Decisions
+
+- Timing: D = round(0.4F), H = round(0.25F); stage F+D+H / F+H / D+H; no new stage key or TurnMomentTiming field.
+- Leak-free sizing: invisible sizer copies of every candidate (direction sizers = both labels of every candidate service + 方向 ？); board cap 27rem.
+- Phones: badge names wrap to 2 lines; names >=19 chars 85%, >=24 chars 70% (<=600px), decided by name only.
+- Implementation by Claude subagents (Sonnet implements, Opus reviews), pause after every step.

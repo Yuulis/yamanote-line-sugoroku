@@ -231,7 +231,7 @@ boundary specs, phone `@layout`.
 |---|---|---|---|
 | 1 Timing source and stage duration | done (lead verified) | 4f80e3a | lead: typecheck, npm test, build pass; implementer: 46 desktop-chromium + 7 phone E2E pass; branch CI run 45401098111 |
 | 2 Sequential board and placeholder | done (lead verified, Opus reviewed; review fixes applied) | (this commit) | lead: typecheck, npm test 2672 pass, build, phone @layout 31 pass; implementer: desktop-chromium lottery 12 pass incl. new (T,T) seek test on real data hub seed |
-| 3 Design record and PR | pending | — | — |
+| 3 Design record and PR | done (PR opened) | (docs commit) | DESIGN.md row via update_design.py; STATE.md block; F1–F4 Opus review: no must-fix, nits applied in c633034 |
 
 ## 7. User feedback after step 2 (2026-11-24)
 
