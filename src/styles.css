@@ -3275,6 +3275,8 @@ button[aria-disabled="true"] {
   font-weight: 800;
   min-width: 0;
   transform-origin: center;
+  --row-delay: 0ms;
+  --row-ms: var(--lottery-ms);
 }
 .lottery-reveal__row::after {
   content: "";
@@ -3291,7 +3293,18 @@ button[aria-disabled="true"] {
   padding: inherit;
   background: var(--color-surface);
   opacity: 0;
-  animation: lottery-frame calc(var(--lottery-ms) * 0.84 / var(--frame-count)) linear calc(var(--lottery-ms) * 0.84 * var(--frame-index) / var(--frame-count)) forwards;
+  animation: lottery-frame calc(var(--row-ms) * 0.84 / var(--frame-count)) linear calc(var(--row-delay) + var(--row-ms) * 0.84 * var(--frame-index) / var(--frame-count)) forwards;
+}
+/* Direction row placeholder: an overlay, so it never changes the row size. */
+.lottery-reveal__placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: inherit;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  pointer-events: none;
 }
 .lottery-reveal__result,
 .lottery-reveal .line-badge {
@@ -3306,8 +3319,23 @@ button[aria-disabled="true"] {
 .lottery-reveal .line-badge__name wbr {
   display: none;
 }
+/* One line, so a long direction label cannot make the row taller before the route stops. */
+.lottery-reveal__row--direction .lottery-reveal__result {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .lottery-reveal__row--flipping .lottery-reveal__result {
-  animation: lottery-result var(--lottery-ms) steps(1, end) both;
+  animation: lottery-result var(--row-ms) steps(1, end) var(--row-delay) both;
+}
+.lottery-reveal__row--snap .lottery-reveal__result {
+  animation: lottery-result var(--row-ms) steps(1, end) both;
+}
+.lottery-reveal__row--flipping .lottery-reveal__placeholder {
+  animation: lottery-placeholder var(--row-delay) steps(1, end) both;
+}
+.lottery-reveal__row--snap .lottery-reveal__placeholder {
+  animation: lottery-placeholder-stop var(--row-ms) steps(1, end) both;
 }
 .lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row[data-motion] {
   animation: lottery-settle var(--lottery-ms) ease-in both;
@@ -3325,6 +3353,14 @@ button[aria-disabled="true"] {
   0% { opacity: 0; }
   84%, 100% { opacity: 1; }
 }
+@keyframes lottery-placeholder {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lottery-placeholder-stop {
+  0% { opacity: 1; }
+  84%, 100% { opacity: 0; }
+}
 @keyframes lottery-settle {
   to { transform: translate(var(--lottery-x, 0px), var(--lottery-y, 0px)) scale(var(--lottery-sx, 1), var(--lottery-sy, 1)); opacity: 0; }
 }
@@ -3332,6 +3368,7 @@ button[aria-disabled="true"] {
 @media (prefers-reduced-motion: reduce) {
   .lottery-reveal *, .lottery-reveal *::after { animation: none !important; }
   .lottery-reveal__frame { display: none; }
+  .lottery-reveal__placeholder { display: none; }
 }
 
 /* The pickup layer owns no timing: the reveal sequence removes it at the captured pickup deadline. */

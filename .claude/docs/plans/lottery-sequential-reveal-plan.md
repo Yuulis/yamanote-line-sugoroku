@@ -229,6 +229,6 @@ boundary specs, phone `@layout`.
 
 | Step | Status | Commit | Verification |
 |---|---|---|---|
-| 1 Timing source and stage duration | implemented, pending lead verification | — | — |
-| 2 Sequential board and placeholder | pending | — | — |
+| 1 Timing source and stage duration | done (lead verified) | 4f80e3a | lead: typecheck, npm test, build pass; implementer: 46 desktop-chromium + 7 phone E2E pass; branch CI run 45401098111 |
+| 2 Sequential board and placeholder | done (lead verified, Opus reviewed; review fixes applied) | (this commit) | lead: typecheck, npm test 2672 pass, build, phone @layout 31 pass; implementer: desktop-chromium lottery 12 pass incl. new (T,T) seek test on real data hub seed |
 | 3 Design record and PR | pending | — | — |

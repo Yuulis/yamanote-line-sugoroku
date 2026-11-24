@@ -5,6 +5,7 @@ import type { ItemGameState, ItemRollAdjustment, ItemRideRecord } from "../../sr
 import { expect, test } from "./fixtures";
 import { seedGameSettings } from "./support/settings";
 import { itemScenario } from "./fixtures/itemScenarios";
+import { PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import {
   combinedMomentGame,
   closeGameMenu,
@@ -29,7 +30,7 @@ import {
   targetFeatureIds,
   writeSaveText,
 } from "./support/app";
-import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble, awaitStage, arrivalStagesForSpeed, advanceStageForSpeed, FRAME_MS, NORMAL_STEP_MS, stageDurationMs, stageMsForSpeed, type PresentedStage, type MomentSpeedId } from "./support/turnMoments";
+import { NORMAL_STAGE_MS, advanceLotteryFlip, advanceLotterySettle, advanceArrival, advanceMovement, advancePickup, advanceStamps, advanceTumble, awaitStage, arrivalStagesForSpeed, advanceStageForSpeed, FRAME_MS, NORMAL_STEP_MS, stageDurationMs, stageMsForSpeed, type PresentedStage, type MomentSpeedId } from "./support/turnMoments";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { TOAST_READING_MS } from "../../src/features/game/toastQueue";
 import { displayedHeading } from "../../src/features/game/mapGuidance";
@@ -677,6 +678,79 @@ test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stati
   await expect(status).toHaveText(/。サイコロを振れます$/);
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "false");
   expect(await readSave(page)).toEqual(saved);
+});
+
+interface LotteryBoardSample {
+  placeholder: number;
+  directionResult: number;
+  /** Highest opacity among the direction row's flip frames; 0 when none are showing or the row has none. */
+  directionFrames: number;
+}
+
+/** Pause every board animation and seek it to `atMs` from the start of the flip stage. */
+async function seekLotteryBoard(board: Locator, atMs: number): Promise<LotteryBoardSample> {
+  return board.evaluate((node, time) => {
+    for (const animation of node.getAnimations({ subtree: true })) { animation.pause(); animation.currentTime = time; }
+    const opacity = (element: Element) => Number(getComputedStyle(element).opacity);
+    const directionFrames = [...node.querySelectorAll(".lottery-reveal__row--direction .lottery-reveal__frame")].map(opacity);
+    return {
+      placeholder: opacity(node.querySelector(".lottery-reveal__placeholder")!),
+      directionResult: opacity(node.querySelector(".lottery-reveal__row--direction .lottery-reveal__result")!),
+      directionFrames: Math.max(0, ...directionFrames),
+    };
+  }, atMs);
+}
+
+async function resumeLotteryBoard(board: Locator): Promise<void> {
+  await board.evaluate((node) => { for (const animation of node.getAnimations({ subtree: true })) animation.play(); });
+}
+
+test("lottery board shows the direction placeholder until the route row stops, then snaps in the single direction", async ({ page }) => {
+  await playLotteryToFlip(page);
+  const board = page.locator(".lottery-reveal");
+  const rows = await board.locator(".lottery-reveal__row").evaluateAll((nodes) => nodes.map((row) => row.getAttribute("data-drawn")));
+  expect(rows, "fixture turn draws the route only").toEqual(["true", "false"]);
+  await expect(board.locator(".lottery-reveal__placeholder")).toHaveText("方向 ？");
+  const flipMs = NORMAL_STAGE_MS.lotteryFlip;
+  expect(await seekLotteryBoard(board, flipMs * 0.5)).toEqual({ placeholder: 1, directionResult: 0, directionFrames: 0 });
+  expect(await seekLotteryBoard(board, flipMs * 0.9)).toEqual({ placeholder: 0, directionResult: 1, directionFrames: 0 });
+  await resumeLotteryBoard(board);
+  await advanceLotteryFlip(page);
+  await advanceLotterySettle(page);
+  await expect(board).toHaveCount(0);
+});
+
+test.describe("lottery board with both the route and the direction drawn", () => {
+  // The hub seed's first turn lands on 品川 with six candidates and a two-way direction draw; the small fixture
+  // network has no such landing (pinned in tests/unit/real-data-e2e-scenarios.test.ts).
+  test.use({ dataset: "real", gameSeed: PRODUCT_HUB_GAME_SEED });
+
+  test("holds the direction placeholder through the route flip, then flips the direction row after it", async ({ page }) => {
+    const saved = await playLotteryToFlip(page);
+    const record = saved.movementHistory.at(-1)!;
+    if (record.kind !== "item-ride") throw new Error("expected ride");
+    const snapshot = record.landingSnapshot!;
+    expect(snapshot.services.length, "route draw").toBeGreaterThan(1);
+    expect(snapshot.services.find((service) => service.serviceId === saved.currentServiceId)!.directions.length, "direction draw").toBeGreaterThan(1);
+    const board = page.locator(".lottery-reveal");
+    const rows = await board.locator(".lottery-reveal__row").evaluateAll((nodes) => nodes.map((row) => row.getAttribute("data-drawn")));
+    expect(rows, "the landing draws both rows").toEqual(["true", "true"]);
+    await expect(board.locator(".lottery-reveal__placeholder")).toHaveText("方向 ？");
+    const routeMs = NORMAL_STAGE_MS.lotteryFlip;
+    const directionMs = NORMAL_STAGE_MS.lotteryDirectionFlip;
+    // The route row owns the first window: the direction row shows only its placeholder, with no frame and no result.
+    expect(await seekLotteryBoard(board, routeMs * 0.5)).toEqual({ placeholder: 1, directionResult: 0, directionFrames: 0 });
+    expect(await seekLotteryBoard(board, routeMs * 0.9)).toEqual({ placeholder: 1, directionResult: 0, directionFrames: 0 });
+    // The direction window starts as the route stops: the placeholder is gone and frames flip before the result lands.
+    const midDirection = await seekLotteryBoard(board, routeMs + directionMs * 0.5);
+    expect(midDirection).toMatchObject({ placeholder: 0, directionResult: 0 });
+    expect(midDirection.directionFrames).toBeGreaterThan(0);
+    expect(await seekLotteryBoard(board, routeMs + directionMs * 0.9)).toMatchObject({ placeholder: 0, directionResult: 1, directionFrames: 0 });
+    await resumeLotteryBoard(board);
+    await advanceLotteryFlip(page);
+    await advanceLotterySettle(page);
+    await expect(board).toHaveCount(0);
+  });
 });
 
 for (const stage of ["lottery-flip", "lottery-settle"] as const) {

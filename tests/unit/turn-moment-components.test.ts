@@ -17,6 +17,7 @@ import {
   type DiceTumbleModel,
   type DiceTumbleProps,
 } from "../../src/features/game/components/DiceTumble";
+import { lotteryDirectionFlipMs } from "../../src/features/game/animation/turnMomentPolicy";
 import { LotteryReveal, type LotteryRevealProps } from "../../src/features/game/components/LotteryReveal";
 import { ItemPickupMoment, type ItemPickupMomentProps } from "../../src/features/game/components/ItemPickupMoment";
 import { GameHud, type GameHudProps } from "../../src/features/game/components/GameHud";
@@ -320,6 +321,20 @@ describe("css contract", () => {
   it("starts lottery settling only after a row has measured its motion", () => {
     expect(css).toMatch(/\.lottery-reveal\[data-stage="lottery-settle"\] \.lottery-reveal__row\[data-motion\] \{\s*animation: lottery-settle var\(--lottery-ms\) ease-in both;/);
     expect(css).not.toContain('.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row {');
+  });
+
+  it("sequences lottery rows with per-row delay and window variables and hides the placeholder under reduced motion", () => {
+    expect(rule(".lottery-reveal__row")).toMatch(/--row-delay: 0ms;\s*--row-ms: var\(--lottery-ms\);/);
+    expect(rule(".lottery-reveal__frame")).toMatch(/animation: lottery-frame calc\(var\(--row-ms\) \* 0\.84 \/ var\(--frame-count\)\) linear calc\(var\(--row-delay\) \+ var\(--row-ms\) \* 0\.84 \* var\(--frame-index\) \/ var\(--frame-count\)\) forwards;/);
+    expect(rule(".lottery-reveal__row--flipping .lottery-reveal__result")).toContain("animation: lottery-result var(--row-ms) steps(1, end) var(--row-delay) both;");
+    expect(rule(".lottery-reveal__row--snap .lottery-reveal__result")).toContain("animation: lottery-result var(--row-ms) steps(1, end) both;");
+    expect(rule(".lottery-reveal__row--flipping .lottery-reveal__placeholder")).toContain("animation: lottery-placeholder var(--row-delay) steps(1, end) both;");
+    expect(rule(".lottery-reveal__row--snap .lottery-reveal__placeholder")).toContain("animation: lottery-placeholder-stop var(--row-ms) steps(1, end) both;");
+    expect(rule(".lottery-reveal__row--direction .lottery-reveal__result")).toMatch(/overflow: hidden;\s*text-overflow: ellipsis;\s*white-space: nowrap;/);
+    expect(css).not.toContain("last-of-type .lottery-reveal__result");
+    expect(css).toMatch(/@keyframes lottery-placeholder-stop \{\s*0% \{ opacity: 1; \}\s*84%, 100% \{ opacity: 0; \}/);
+    expect(rule(".lottery-reveal__placeholder")).toMatch(/position: absolute;\s*inset: 0;/);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^@]*\.lottery-reveal__placeholder \{ display: none; \}/);
   });
 });
 
@@ -1326,11 +1341,40 @@ describe("S14 LotteryReveal", () => {
     const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
     const rows = [...mount.container.querySelectorAll(".lottery-reveal__row")];
     expect(rows.map((row) => row.classList.contains("lottery-reveal__row--flipping"))).toEqual([serviceDrawRequired, directionDrawRequired]);
+    const [routeRow, directionRow] = rows as HTMLElement[];
+    const rowVars = (row: HTMLElement) => [row.style.getPropertyValue("--row-delay"), row.style.getPropertyValue("--row-ms")];
+    const frameCount = (row: Element) => row.querySelectorAll(".lottery-reveal__frame").length;
+    // The placeholder only stands in for a direction that is not yet known behind a drawn route row.
+    expect(mount.container.querySelectorAll(".lottery-reveal__placeholder")).toHaveLength(serviceDrawRequired ? 1 : 0);
+    if (serviceDrawRequired) {
+      expect(directionRow!.querySelector(".lottery-reveal__placeholder")!.textContent).toBe("方向 ？");
+      expect(rowVars(routeRow!)).toEqual(["0ms", "1600ms"]);
+      expect(frameCount(routeRow!)).toBe(8);
+    }
+    expect(directionRow!.classList.contains("lottery-reveal__row--snap")).toBe(serviceDrawRequired && !directionDrawRequired);
+    expect(routeRow!.classList.contains("lottery-reveal__row--snap")).toBe(false);
+    const directionMs = `${lotteryDirectionFlipMs(1600)}ms`;
+    expect(directionRow!.classList.contains("lottery-reveal__row--direction")).toBe(true);
+    expect(routeRow!.classList.contains("lottery-reveal__row--direction")).toBe(false);
+    if (serviceDrawRequired && directionDrawRequired) {
+      expect(rowVars(directionRow!)).toEqual(["1600ms", directionMs]);
+      expect(frameCount(directionRow!)).toBe(4);
+    } else if (directionDrawRequired) {
+      expect(rowVars(directionRow!)).toEqual(["0ms", directionMs]);
+      expect(frameCount(directionRow!)).toBe(4);
+    } else if (serviceDrawRequired) {
+      expect(rowVars(directionRow!)).toEqual(["0ms", "1600ms"]);
+      expect(frameCount(directionRow!)).toBe(0);
+    } else {
+      expect(rowVars(directionRow!)).toEqual(["", ""]);
+    }
     const finalValues = rows.map((row) => row.querySelector(".lottery-reveal__result")!.textContent);
     expect(finalValues[0]).toBe(props.presentation.serviceName(ids[0]!));
     expect(mount.container.querySelector("button, a, input, [tabindex], [role=status]")).toBeNull();
     act(() => mount.root.render(createElement(LotteryHarness, { ...props, stage: "lottery-settle", durationMs: 400 })));
     expect(mount.container.querySelectorAll(".lottery-reveal__frame")).toHaveLength(0);
+    expect(mount.container.querySelectorAll(".lottery-reveal__placeholder")).toHaveLength(0);
+    expect(mount.container.querySelectorAll(".lottery-reveal__row--snap, .lottery-reveal__row--flipping")).toHaveLength(0);
     expect([...mount.container.querySelectorAll(".lottery-reveal__result")].map((row) => row.textContent)).toEqual(finalValues);
     expect([...mount.container.querySelectorAll(".lottery-reveal__row")].map((row) => row.getAttribute("data-motion"))).toEqual(["fade", "fade"]);
     expect(mount.container.textContent).not.toMatch(/%|確率|重み/);
