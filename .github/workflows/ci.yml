@@ -284,6 +284,9 @@ jobs:
     env:
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      # Firefox refuses to launch as root when $HOME (/github/home in a job
+      # container) belongs to another user; Playwright's documented workaround.
+      HOME: /root
     defaults:
       run:
         shell: bash
