@@ -282,3 +282,28 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 
 - Product choices per DESIGN.md 2026-11-20 rows (user 2026-11-20).
 - おまかせ removed in step 1 of the same PR, all touchpoints (user 2026-11-20, issue #113).
+
+---
+
+## Current Feature: Issue #69: clear screen replay, highlights and X image share
+<!-- orchestra:block-id: issue-69-clear-screen-replay-highlights-and-x-image-share -->
+
+### Context
+
+- Goal: on-demand trajectory replay on the real map ending on the full-route view; on-screen highlights; phone clear screen with numbers/share/もう一度遊ぶ first and history in <details>; X share with a pre-generated PNG of the full route (phone file share, desktop clipboard + /intent/post, 画像を保存); result_share method x/save. Presentation only.
+- Plan: .claude/docs/plans/clear-replay-share-plan.md (Revision 3, Codex validated PASS round 3)
+- Research: .claude/docs/research/feature-clear-screen-replay-and-share-{brief,codebase}.md, clear-screen-replay-and-share.md
+- Leaderboard split to issue #124
+- Dependencies: none new
+- Complexity: COMPLEX (6 steps S1-S6, ~1,400-2,200 LOC incl. tests)
+
+### Architecture
+
+- Pure clearResult.ts / clearRoute.ts from saved history; directed-segment feature order used as stored (no reversal, movePath.ts unchanged); route = null on any geometry gap, highlights kept.
+- usePublishedClearResult owns generation, replay store, image and share guards; one ClearAnnouncements polite region.
+- Replay via external store (subscribe/getSnapshot) applied imperatively to a clear-route source; 12 s cap; reduced motion = instant full route.
+- Off-screen 1200x675 export map with preserveDrawingBuffer only there; credits incl. licence URI burned in; proven on chromium/firefox/webkit in S5 before share wiring.
+
+### Decisions
+
+- Scope, replay, share flow, image content and highlight definitions per DESIGN.md 2026-11-22 rows (user 2026-11-22).

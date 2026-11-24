@@ -85,4 +85,26 @@ describe("analytics safeguards", () => {
     instance.trackEvent("game_clear", { turns: 15, moves: 10, transfers: 2 });
     expect(queued()).toContainEqual(["event", "game_clear", { turns: 15, moves: 10, transfers: 2 }]);
   });
+
+  it("allows the image share and save methods for result_share and nothing else", () => {
+    const { instance } = analytics({ measurementId: "G-ABCD1234" });
+    instance.initAnalytics();
+    for (const [method, outcome] of [["x", "success"], ["x", "failed"], ["x", "cancelled"], ["save", "success"], ["save", "failed"], ["copy", "success"], ["share", "cancelled"]]) {
+      instance.trackEvent("result_share", { method: method!, outcome: outcome! });
+      expect(queued()).toContainEqual(["event", "result_share", { method, outcome }]);
+    }
+  });
+
+  it("rejects unknown result_share values, the raw shared outcome, and any extra attribute", () => {
+    const { instance } = analytics({ measurementId: "G-ABCD1234" });
+    instance.initAnalytics();
+    const before = queued().length;
+    instance.trackEvent("result_share", { method: "twitter", outcome: "success" });
+    instance.trackEvent("result_share", { method: "x", outcome: "shared" });
+    instance.trackEvent("result_share", { method: "save", outcome: "success", text: "山手線すごろく" });
+    instance.trackEvent("result_share", { method: "x", outcome: "success", url: "https://x.com/intent/post" });
+    instance.trackEvent("result_share", { method: "x", outcome: "success", seed: "abc", route: "r", history: "h", image: "png" });
+    instance.trackEvent("result_share", { method: 1, outcome: "success" });
+    expect(queued()).toHaveLength(before);
+  });
 });

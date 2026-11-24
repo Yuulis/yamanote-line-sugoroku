@@ -1,14 +1,16 @@
 import type { Page } from "@playwright/test";
 import type { ItemGameState } from "../../src/types/network";
 import { playItemTurn, serializeGame } from "../../src/features/game/engine";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { advance } from "../../src/features/game/engine/movement";
 import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { MAP_STYLE_URL, SOURCE_IDS } from "../../src/features/map/mapConfig";
-import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
+import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openClearHistory, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
 import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
+import { expectSavedHistoryRowFields } from "./support/clearHistory";
 
 test.use({ dataset: "fixture" });
 
@@ -704,15 +706,28 @@ test.describe("long rapid goal arrival", () => {
     await expect(goalBanner).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "クリア！", exact: true })).toBeFocused();
     await expect(notices(page)).toContainText("快速券を使いました");
-    await expect(notices(page).getByRole("status")).toContainText("ゴールに到着しました");
+    const clearScreen = page.getByRole("region", { name: "クリア！" });
+    await expect(clearScreen.getByRole("status")).toHaveCount(1);
+    await expect(clearScreen.getByRole("status")).toContainText("ゴールに到着しました");
+    // Revision 4: the clearing turn's own log line is gone from the card; the goal sentence exists once, in the status.
+    await expect(notices(page)).not.toContainText("ゴールに到着しました");
+    await expect(page.locator(".item-event-notice__completion")).toHaveCount(0);
+    await expect(clearScreen.getByText("ゴールに到着しました")).toHaveCount(1);
+    await expect(notices(page).getByRole("status")).toHaveCount(0);
     expect(await itemSave(page)).toEqual(committed);
-    const history = page.locator(".clear-screen__history");
+    const dialog = await openClearHistory(clearScreen);
+    const history = dialog.locator(".clear-screen__history");
     await expect(history).not.toContainText("残り-");
-    await expect(history).toContainText(`${record.physicalHops}駅移動`);
+    const uiPresentation = railwayBundle.data.manifest.ok ? railwayBundle.data.manifest.value.uiPresentation : undefined;
+    await expectSavedHistoryRowFields(
+      history.locator(`[data-record-index="${record.turn - 1}"]`), record, record.turn - 1,
+      railwayBundle.network, createPresentationResolver(railwayBundle.network, uiPresentation),
+    );
     const historicalText = await history.locator("li").allTextContents();
     await page.reload();
     await page.getByRole("button", { name: /^クリア結果を見る/ }).click();
     await expect(page.getByRole("heading", { name: "クリア！", exact: true })).toBeFocused();
-    await expect(history.locator("li")).toHaveText(historicalText);
+    const reopened = await openClearHistory(clearScreen);
+    await expect(reopened.locator(".clear-screen__history li")).toHaveText(historicalText);
   });
 });

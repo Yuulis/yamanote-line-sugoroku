@@ -393,6 +393,45 @@ test.describe("game accessibility and text navigation", () => {
     expect(clearScrollTop).toBe(0);
     await expect(heading).toBeInViewport();
   });
+
+  test("the clear history dialog takes focus, isolates the card, and returns focus and scroll on close", { tag: "@layout" }, async ({ page }) => {
+    await openTitle(page);
+    await writeSaveText(page, readFileSync("tests/e2e/fixtures/tokyo-suburban-before-clear-save.json", "utf8").trimEnd());
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    await diceButton(page).click();
+    const clear = page.getByRole("region", { name: "クリア！" });
+    await expect(clear.getByRole("heading", { name: "クリア！" })).toBeFocused();
+
+    const launcher = clear.getByRole("button", { name: "移動履歴を見る" });
+    await launcher.scrollIntoViewIfNeeded();
+    const scrollBefore = await clear.evaluate((element) => element.scrollTop);
+    await launcher.focus();
+    await page.keyboard.press("Enter");
+    const dialog = page.getByRole("dialog", { name: "移動履歴" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "移動履歴" })).toBeFocused();
+    expect(await dialog.evaluate((element) => element.matches(":modal")), "the history is a native modal").toBe(true);
+    // The card behind is inert: the topmost element at its play-again button is not the button itself.
+    const covered = await clear.getByRole("button", { name: "もう一度遊ぶ" }).evaluate((button) => {
+      const box = button.getBoundingClientRect();
+      const top = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      return top !== button;
+    });
+    expect(covered, "the card's actions cannot be reached while the dialog is open").toBe(true);
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(launcher).toBeFocused();
+    expect(await clear.evaluate((element) => element.scrollTop)).toBe(scrollBefore);
+
+    await page.keyboard.press("Enter");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "閉じる" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(launcher).toBeFocused();
+    expect(await clear.evaluate((element) => element.scrollTop)).toBe(scrollBefore);
+  });
 });
 
 test.describe("game menu disclosure", () => {

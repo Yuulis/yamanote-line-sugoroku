@@ -3,6 +3,7 @@ import { act, createElement, StrictMode } from "react";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { hideAllLineGroups, updateLineGroupVisibility } from "../../src/features/map/lineVisibility";
 import { RailwayMap } from "../../src/features/map/RailwayMap";
 import { TITLE_FIT_PADDING_PHONE_PX, TITLE_FIT_PADDING_PX, titleFitPadding } from "../../src/features/map/camera";
 import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
@@ -19,6 +20,11 @@ vi.mock("maplibre-gl", () => ({
   setWorkerUrl: vi.fn(),
   Map: class MapDouble {
     readonly calls = { padding: [] as unknown[], fit: [] as unknown[], jump: [] as unknown[], ease: [] as unknown[] };
+    /** Camera and clear-route calls in the order they happened. */
+    readonly order: string[] = [];
+    readonly sources = new Map<string, { data: { features: unknown[] } }>();
+    layers: Array<{ id: string; type: string }> = [{ id: "railway-stations-circle", type: "circle" }];
+    padding = { top: 5, right: 0, bottom: 200, left: 0 };
     readonly listeners = new Map<string, Array<(event?: MapEvent) => void>>();
     readonly onceListeners = new Map<string, Array<(event?: MapEvent) => void>>();
     readonly container: HTMLElement;
@@ -73,16 +79,35 @@ vi.mock("maplibre-gl", () => ({
         (control as { onRemove?: (map: unknown) => void }).onRemove?.(this);
       }
       this.controls.splice(0);
+      this.emit("remove");
     }
-    getSource(): null { return null; }
+    getSource(id: string): { setData: (data: { features: unknown[] }) => void } | undefined {
+      const source = this.sources.get(id);
+      return source && { setData: (data) => { this.order.push(`setData:${id}`); source.data = data; } };
+    }
+    getStyle(): { layers: Array<{ id: string; type: string }> } { return { layers: this.layers }; }
+    addSource(id: string, spec: { data: { features: unknown[] } }): void { this.order.push(`addSource:${id}`); this.sources.set(id, { data: spec.data }); }
+    addLayer(layer: { id: string; type: string }, beforeId?: string): void {
+      this.order.push(`addLayer:${layer.id}:${beforeId ?? "top"}`);
+      this.layers.splice(beforeId === undefined ? this.layers.length : this.layers.findIndex((item) => item.id === beforeId), 0, layer);
+    }
+    getLayer(id: string): { id: string } | undefined { return this.layers.find((layer) => layer.id === id); }
+    removeLayer(id: string): void { this.order.push(`removeLayer:${id}`); this.layers = this.layers.filter((layer) => layer.id !== id); }
+    removeSource(id: string): void { this.order.push(`removeSource:${id}`); this.sources.delete(id); }
+    resize(): void { this.order.push("resize"); }
+    getPadding(): { top: number; right: number; bottom: number; left: number } { return this.padding; }
+    off(event: string, listener: (event?: MapEvent) => void): this {
+      this.listeners.set(event, (this.listeners.get(event) ?? []).filter((item) => item !== listener));
+      return this;
+    }
     getCenter(): { lng: number; lat: number } { return { lng: 0, lat: 0 }; }
     getZoom(): number { return 10; }
     triggerRepaint(): void {}
     project(): { x: number; y: number } { return { x: 100, y: 100 }; }
     unproject(): { lng: number; lat: number } { return { lng: 0, lat: 0 }; }
-    setPadding(padding: unknown): void { this.calls.padding.push(padding); }
-    fitBounds(bounds: unknown, options: unknown): void { this.calls.fit.push({ bounds, options }); }
-    jumpTo(options: unknown): void { this.calls.jump.push(options); }
+    setPadding(padding: unknown): void { this.order.push("setPadding"); this.calls.padding.push(padding); }
+    fitBounds(bounds: unknown, options: unknown): void { this.order.push("fitBounds"); this.calls.fit.push({ bounds, options }); }
+    jumpTo(options: unknown): void { this.order.push("jumpTo"); this.calls.jump.push(options); }
     easeTo(options: unknown): void { this.calls.ease.push(options); }
   },
   AttributionControl: class {},
@@ -115,13 +140,16 @@ vi.mock("../../src/features/map/attribution", () => ({
   buildDataAttribution: vi.fn(),
   watchCompactAttribution: vi.fn(() => () => undefined),
 }));
-vi.mock("../../src/features/map/e2eHook", () => ({ exposeMapForE2E: vi.fn() }));
+vi.mock("../../src/features/map/e2eHook", () => ({
+  exposeMapForE2E: vi.fn(),
+  exposeClearFitPaddingForE2E: vi.fn(),
+}));
 vi.mock("../../src/features/map/railwayLayers", () => ({
   addRailwayLayers: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
   setSegmentFlashFeatures: vi.fn(), setSegmentFlashOpacity: vi.fn(), updateCompletedSegments: vi.fn(),
   updateCurrentPosition: vi.fn(), updateGoalStation: vi.fn(), updateHighlightedService: vi.fn(),
 }));
-vi.mock("../../src/features/map/lineVisibility", () => ({ updateLineGroupVisibility: vi.fn() }));
+vi.mock("../../src/features/map/lineVisibility", () => ({ hideAllLineGroups: vi.fn(), updateLineGroupVisibility: vi.fn() }));
 vi.mock("../../src/features/map/lineVisibilityStore", () => ({ useVisibleLineGroupIds: () => null }));
 vi.mock("../../src/features/map/headingMarker", () => ({
   createHeadingMarker: () => ({ remove: vi.fn(), update: vi.fn() }),
@@ -138,6 +166,10 @@ interface MapDouble {
   readonly controls: unknown[];
   readonly container: HTMLElement;
   readonly removed: boolean;
+  readonly order: string[];
+  readonly sources: Map<string, { data: { features: unknown[] } }>;
+  layers: Array<{ id: string; type: string }>;
+  padding: { top: number; right: number; bottom: number; left: number };
   emit(event: string, payload?: MapEvent): void;
   hasControl(control: unknown): boolean;
 }
@@ -434,6 +466,19 @@ describe("title map camera", () => {
     expect(document.querySelector(".title-map-placeholder")).not.toBeNull();
   });
 
+  it("keeps the unsupported notice visible on the clear screen without a second live region", () => {
+    mapState.failConstruction = true;
+    render("clear");
+
+    const notice = document.querySelector(".map-error");
+    expect(notice?.textContent).toContain("この端末・ブラウザでは地図を表示できません");
+    expect(notice?.hasAttribute("role")).toBe(false);
+    expect(document.querySelectorAll("[role='status'], [aria-live]")).toHaveLength(0);
+
+    render("game");
+    expect(document.querySelector(".map-error[role='status']")).not.toBeNull();
+  });
+
   it("style failure shows the placeholder only in title mode", () => {
     render("title");
     const map = mapFromState();
@@ -596,5 +641,99 @@ describe("title map camera", () => {
     expect(map.calls.padding).toHaveLength(before.padding);
     expect(map.calls.jump).toHaveLength(before.jump);
     expect(map.calls.ease).toHaveLength(before.ease);
+  });
+});
+
+describe("clear route on the map", () => {
+  const ROUTE_STEP = {
+    segmentId: "s", fromStationId: "a", toStationId: "b", newlyCompleted: false,
+    points: [[139.7, 35.6], [139.8, 35.7]] as [number, number][], cumulative: [0, 1], total: 1,
+  };
+  const ROUTE = {
+    steps: [ROUTE_STEP],
+    legs: [{ firstStepIndex: 0, endStepIndexExclusive: 1, serviceId: "svc", lineGroupId: "grp", color: "#123456" }],
+    bounds: [[139.7, 35.6], [139.8, 35.7]] as [[number, number], [number, number]],
+  };
+  const CARD_RECT = new DOMRect(420, 40, 440, 720);
+
+  function clearProps(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+    const card = document.createElement("section");
+    vi.spyOn(card, "getBoundingClientRect").mockReturnValue(CARD_RECT);
+    return { clearRoute: ROUTE, clearRouteKey: 1, clearCardRef: { current: card }, ...overrides };
+  }
+
+  it("draws the route below the station layers and fits it beside the clear card", () => {
+    const map = ready("clear", clearProps());
+
+    expect(map.order).toContain("addSource:clear-traveled-route");
+    expect(map.layers.map((layer) => layer.id)).toEqual([
+      "clear-traveled-route-outline", "clear-traveled-route-line", "railway-stations-circle",
+    ]);
+    expect(map.sources.get("clear-traveled-route")?.data.features).toHaveLength(1);
+    expect(map.calls.fit).toHaveLength(1);
+    expect(fitOptions(map)).toMatchObject({ animate: false, maxZoom: 13, padding: { left: 24, right: 1280 - 420 + 24 } });
+  });
+
+  it("draws and frames nothing for a clear without a verified route", () => {
+    const map = ready("clear", clearProps({ clearRoute: null }));
+
+    expect(map.sources.size).toBe(0);
+    expect(map.calls.fit).toHaveLength(0);
+    expect(map.calls.padding).toHaveLength(0);
+  });
+
+  it("draws the route again when a replaced style dropped it, and never outside the clear screen", () => {
+    const props = clearProps();
+    const map = ready("clear", props);
+    map.sources.clear();
+    map.layers = [{ id: "railway-stations-circle", type: "circle" }];
+    map.order.length = 0;
+    act(() => map.emit("style.load"));
+    expect(map.order, "the style.load of the replaced style bumps the revision").toContain("addSource:clear-traveled-route");
+    expect(map.sources.get("clear-traveled-route")?.data.features).toHaveLength(1);
+
+    render("game", props);
+    expect(map.sources.size).toBe(0);
+    expect(map.layers.map((layer) => layer.id)).toEqual(["railway-stations-circle"]);
+  });
+
+  it("removes the route and restores the entry padding before the game camera acts when the clear screen is left", () => {
+    const props = clearProps();
+    const map = ready("clear", props);
+    map.order.length = 0;
+
+    render("game", { ...props, overviewKey: 3 });
+
+    const restore = map.order.indexOf("setPadding");
+    expect(map.order.slice(0, 4)).toEqual([
+      "removeLayer:clear-traveled-route-line", "removeLayer:clear-traveled-route-outline",
+      "removeSource:clear-traveled-route", "setPadding",
+    ]);
+    expect(map.calls.padding.find((padding) => (padding as { bottom: number }).bottom === 200), "entry padding is restored").toBeDefined();
+    const gameFit = map.order.indexOf("fitBounds");
+    expect(gameFit, "the overview fit of the game screen comes after the restore").toBeGreaterThan(restore);
+  });
+
+  it("empties the coloured network on the clear screen and applies the legend selection again outside it", () => {
+    vi.mocked(hideAllLineGroups).mockClear();
+    vi.mocked(updateLineGroupVisibility).mockClear();
+    const props = clearProps();
+    const map = ready("game", props);
+    expect(hideAllLineGroups).not.toHaveBeenCalled();
+    expect(updateLineGroupVisibility).toHaveBeenCalled();
+
+    vi.mocked(updateLineGroupVisibility).mockClear();
+    render("clear", props);
+    expect(hideAllLineGroups).toHaveBeenCalledWith(map, TARGET_SERVICE_ID);
+    expect(updateLineGroupVisibility, "the legend selection is not applied while the clear screen owns the map").not.toHaveBeenCalled();
+
+    render("game", props);
+    expect(updateLineGroupVisibility).toHaveBeenCalledWith(map, expect.anything(), null, TARGET_SERVICE_ID);
+  });
+
+  it("keeps the map controls out of the clear screen while the route is shown", () => {
+    const map = ready("clear", clearProps());
+    expect(navigationControlCount(map)).toBe(0);
+    expect(map.container.parentElement?.querySelector(".map-overview")).toBeNull();
   });
 });

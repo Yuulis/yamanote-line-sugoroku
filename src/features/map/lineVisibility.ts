@@ -35,6 +35,19 @@ export function targetTrackFilter(
     : ["all", targetFilter, primitiveFilter] as unknown as FilterSpecification;
 }
 
+function setBackgroundFilters(
+  map: MapLibreMap,
+  featureIds: readonly string[] | null,
+  targetServiceId: string,
+): void {
+  if (map.getLayer(LAYER_IDS.base)) {
+    map.setFilter(LAYER_IDS.base, targetTrackFilter(featureIds, targetServiceId));
+  }
+  if (map.getLayer(LAYER_IDS.services)) {
+    map.setFilter(LAYER_IDS.services, backgroundServiceFilter(featureIds, targetServiceId));
+  }
+}
+
 /** Apply UI visibility only to the two background layers; progress/highlight layers remain independent. */
 export function updateLineGroupVisibility(
   map: MapLibreMap,
@@ -42,11 +55,14 @@ export function updateLineGroupVisibility(
   selectedGroupIds: ReadonlySet<string> | null,
   targetServiceId: string,
 ): void {
-  const featureIds = visiblePrimitiveFeatureIds(index, selectedGroupIds);
-  if (map.getLayer(LAYER_IDS.base)) {
-    map.setFilter(LAYER_IDS.base, targetTrackFilter(featureIds, targetServiceId));
-  }
-  if (map.getLayer(LAYER_IDS.services)) {
-    map.setFilter(LAYER_IDS.services, backgroundServiceFilter(featureIds, targetServiceId));
-  }
+  setBackgroundFilters(map, visiblePrimitiveFeatureIds(index, selectedGroupIds), targetServiceId);
+}
+
+/**
+ * Show no line group at all: the same filters as a legend with every checkbox cleared, so the two background
+ * layers draw nothing and only the basemap's own grey railways remain. Independent of the group index, so a
+ * network without line groups is emptied too.
+ */
+export function hideAllLineGroups(map: MapLibreMap, targetServiceId: string): void {
+  setBackgroundFilters(map, [], targetServiceId);
 }

@@ -1,0 +1,530 @@
+/* Clear screen card. The base position/stacking rule shared with the title screen stays in src/styles.css; this
+   file is imported after it (src/main.tsx), so equal-specificity rules here win. */
+.clear-screen {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(440px, calc(100% - 24px));
+  max-height: calc(100% - 80px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 96%);
+  box-shadow: 0 2px 12px rgb(0 0 0 / 35%);
+}
+
+.clear-screen__title {
+  margin: 0 0 4px;
+  font-size: 24px;
+  text-align: center;
+}
+
+/* These wrappers add state without changing the existing clear-card flow. */
+.clear-screen__content,
+.clear-screen__share-actions {
+  display: contents;
+}
+
+.clear-screen__content[hidden],
+.clear-screen__share-actions[hidden] {
+  display: none;
+}
+
+.clear-screen__summary,
+.clear-history,
+.clear-screen__highlights dd {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.clear-screen__summary {
+  line-height: 1.5;
+}
+
+@supports (word-break: auto-phrase) {
+  .clear-screen__summary,
+  .clear-history,
+  .clear-screen__highlights dd {
+    word-break: auto-phrase;
+  }
+}
+
+.clear-screen__save-warning {
+  margin: 8px 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: #fff3cd;
+  color: #8a4b00;
+  font-weight: bold;
+}
+
+.clear-screen__subtitle {
+  margin: 12px 0 4px;
+  font-size: 15px;
+}
+
+.clear-screen__stats {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 12px;
+  margin: 8px 0;
+}
+
+.clear-screen__stats dd {
+  margin: 0;
+  font-weight: bold;
+}
+
+.clear-screen__highlights {
+  margin-top: 12px;
+}
+
+.clear-screen__highlight-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.clear-screen__highlight-row {
+  display: grid;
+  gap: 1px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.clear-screen__highlight-row dt {
+  color: #555555;
+  font-size: 12px;
+}
+
+.clear-screen__highlight-row dd {
+  margin: 0;
+  font-weight: bold;
+  line-height: 1.45;
+}
+
+.clear-screen__history-button {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.clear-screen__actions {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clear-screen__actions button {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.clear-screen__share {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.clear-screen__share button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.clear-screen__image-pending-note {
+  box-sizing: border-box;
+  position: absolute;
+  top: -11px;
+  right: 0;
+  left: 0;
+  margin: 0;
+  color: #555555;
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.clear-screen__image-pending-note--reserved {
+  visibility: hidden;
+}
+
+.clear-replay-controls {
+  display: contents;
+}
+
+.clear-replay-controls__start {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.clear-replay-controls__active {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-replay-controls__speeds {
+  display: inline-flex;
+  flex: 0 1 auto;
+  gap: 2px;
+}
+
+.clear-replay-controls__speeds button {
+  padding: 4px 7px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.clear-replay-controls__speeds button[aria-pressed="true"] {
+  border: 2px solid #163b5c;
+  background: #1f547e;
+  color: #fff;
+  font-weight: 700;
+}
+
+.clear-replay-controls__speeds button[aria-pressed="true"]::after {
+  content: " ✓";
+}
+
+.clear-screen__replay-unavailable {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+.clear-replay-caption {
+  position: fixed;
+  z-index: var(--layer-turn-moment);
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: max(72px, calc(env(safe-area-inset-left, 0px) + 64px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  display: flex;
+  align-items: baseline;
+  box-sizing: border-box;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 1px 6px rgb(0 0 0 / 24%);
+  color: #202124;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.clear-replay-caption__turn,
+.clear-replay-caption__roll {
+  flex: 0 0 auto;
+}
+
+.clear-replay-caption__arrow {
+  flex: 0 0 auto;
+  margin-inline: 0.3em;
+}
+
+.clear-replay-caption__station {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clear-screen__share button:focus-visible,
+.clear-screen__share-fallback textarea:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.clear-screen__share-status {
+  margin: 8px 0 0;
+}
+
+.clear-screen__share-status:empty {
+  margin: 0;
+}
+
+.clear-screen__image-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+}
+
+/* The text-only X link is always available; it follows the history button as a quiet secondary action. */
+.clear-screen__x-text-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding-block: 8px;
+  font-size: 13px;
+}
+
+.clear-screen__x-text-link:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.clear-screen__share-fallback {
+  display: grid;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.clear-screen__share-fallback textarea {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  font: inherit;
+}
+
+.clear-screen__paging {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.clear-screen__paging button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.clear-screen__paging button:focus-visible,
+.clear-history__header button:focus-visible,
+.clear-history__title:focus-visible,
+.clear-screen__history-button:focus-visible {
+  outline: 3px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+/* History dialog (native modal, top layer): the header and pager stay put, only the list scrolls. */
+.clear-history {
+  box-sizing: border-box;
+  width: min(760px, calc(100% - 32px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 32px);
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 2px 12px rgb(0 0 0 / 40%);
+  color: var(--color-text);
+}
+
+.clear-history[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.clear-history::backdrop {
+  background: rgb(0 0 0 / 45%);
+}
+
+.clear-history__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #d0d0d0;
+}
+
+.clear-history__title {
+  margin: 0;
+  font-size: 18px;
+}
+
+.clear-history__header button {
+  flex: 0 0 auto;
+  min-width: 72px;
+  white-space: nowrap;
+}
+
+.clear-screen__history {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 16px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  font-size: 13px;
+}
+
+.clear-history .clear-screen__paging {
+  margin: 0;
+  padding: 8px 16px;
+  border-top: 1px solid #d0d0d0;
+}
+
+/* Desktop columns: turn, roll and effects, movement, line; notes sit under the movement. */
+.clear-history__row {
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1.2fr) minmax(0, 1.5fr) minmax(0, 1.2fr);
+  gap: 2px 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid #eeeeee;
+  line-height: 1.45;
+}
+
+.clear-history__turn {
+  color: #555555;
+  font-weight: bold;
+}
+
+.clear-history__notes {
+  display: grid;
+  grid-column: 2 / -1;
+  gap: 2px;
+  color: #444444;
+}
+
+.clear-history__note {
+  margin: 0;
+}
+
+.clear-history__note-label {
+  display: inline-block;
+  margin-right: 0.6em;
+  color: #555555;
+  font-weight: bold;
+}
+
+/* Phones: bottom sheet above the attribution button, map visible above it. The cap is 65%; the three numbers,
+   the share and play-again actions and the history button must fit on its first screen at 320x568, and the
+   highlights scroll below them (the history lives in its own dialog). */
+@media (max-width: 600px) {
+  .clear-screen {
+    top: auto;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    transform: none;
+    width: auto;
+    max-height: 65%;
+    padding: 10px 14px;
+  }
+
+  .clear-screen__title {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.2;
+  }
+
+  .clear-screen__summary {
+    margin: 2px 0;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  .clear-screen .item-event-notice {
+    margin-block: 4px;
+  }
+
+  .clear-screen__save-warning {
+    margin: 4px 0;
+    padding: 4px 8px;
+    font-size: 13px;
+  }
+
+  .clear-screen__stats {
+    gap: 0 12px;
+    margin: 2px 0;
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .clear-screen__share {
+    margin-top: 0;
+  }
+
+  .clear-screen__actions {
+    margin-top: 12px;
+  }
+
+  .clear-screen__history-button {
+    margin-top: 6px;
+  }
+
+  .clear-screen__actions {
+    gap: 6px;
+  }
+
+  .clear-replay-caption {
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    left: max(64px, calc(env(safe-area-inset-left, 0px) + 56px));
+    padding: 4px 7px;
+    font-size: 12px;
+  }
+
+  /* During replay the measured card becomes a bottom-anchored control band. The hidden wrappers use the native
+     hidden/inert semantics as well as display:none, so their actions leave both layout and keyboard navigation. */
+  .clear-screen--replay-collapsed {
+    max-height: none;
+    overflow: visible;
+    padding: 8px 12px;
+  }
+
+  .clear-screen--replay-collapsed .clear-screen__share {
+    gap: 0;
+    margin: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-screen__replay-unavailable,
+  .clear-screen--replay-collapsed .clear-screen__share-status,
+  .clear-screen--replay-collapsed .clear-screen__share-fallback {
+    display: none;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__active {
+    display: grid;
+    flex: 1 0 100%;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__active > button,
+  .clear-screen--replay-collapsed .clear-replay-controls__speeds button {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__speeds {
+    display: grid;
+    flex: initial;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__speeds button {
+    min-width: 0;
+    padding: 3px 2px;
+    font-size: 12px;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__finish {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  /* The history dialog stacks each turn: same DOM, one column, names wrap in full. */
+  .clear-history__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .clear-history__notes {
+    grid-column: auto;
+  }
+}

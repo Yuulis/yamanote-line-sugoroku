@@ -183,4 +183,12 @@ describe("privacy policy", () => {
     expect(privacy).toContain('href="https://github.com/Yuulis/yamanote-line-sugoroku/issues"');
     expect(privacy).toContain('href="https://tools.google.com/dlpage/gaoptout"');
   });
+
+  it("discloses the user-initiated x.com handoff and that share and save actions are measured", () => {
+    const privacy = readFileSync(`${PUBLIC_DIR}/privacy.html`, "utf8");
+    expect(privacy).toContain("x.com");
+    expect(privacy).toContain("利用者が押したときに限り");
+    expect(privacy).toContain("共有・画像保存・エラーの件数");
+    expect(privacy).toContain("共有する文面、画像、経路、乱数の種、移動履歴は送信しません");
+  });
 });

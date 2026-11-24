@@ -19,6 +19,7 @@ import type { Edition } from "../features/editions/types";
 import type { EditionId, EditionRegistry } from "../features/editions/types";
 import { getBrowserStorage } from "../features/game/store/browserStorage";
 import { useGameApp } from "../features/game/useGameApp";
+import { usePublishedClearResult } from "../features/game/usePublishedClearResult";
 import { useGameSettings } from "../features/game/useGameSettings";
 import { usePrefersReducedMotion } from "../features/game/usePrefersReducedMotion";
 import { ItemEventNotice } from "../features/game/components/ItemEventNotice";
@@ -47,6 +48,7 @@ import { createPresentationResolver } from "../features/game/presentationResolve
 import { directionLabel, serviceName, stationName } from "../features/game/presentation";
 import { buildRulesGuide, type RulesSectionId } from "../features/game/rulesGuide";
 import { type MapFollow, type RailwayMapMode, RailwayMap } from "../features/map/RailwayMap";
+import { CC_BY_LICENSE_NAME, CC_BY_URL } from "../features/map/attribution";
 import type { MapProgress } from "../features/map/railwayLayers";
 import type { GameState, ItemRollAdjustment, ItemTurnCommand, LineMetadata } from "../types/network";
 import { trackEvent } from "../features/analytics/analytics";
@@ -534,6 +536,21 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   }, [showTitleScreen]);
 
   const showClear = turnDisplay?.showClear ?? false;
+  const railwayCredit = useMemo(() => {
+    if (!data.manifest.ok) return null;
+    const { attribution, license } = data.manifest.value.source;
+    return {
+      source: attribution,
+      licenseName: license,
+      licenseUrl: license === CC_BY_LICENSE_NAME ? CC_BY_URL : null,
+    };
+  }, [data.manifest]);
+  const publishedClear = usePublishedClearResult({
+    sessionId: session?.sessionId ?? null,
+    game: showClear && session ? session.game : null,
+    network, geometry, presentation, display: edition.display, railwayCredit, reducedMotion,
+  });
+  const clearCardRef = useRef<HTMLElement | null>(null);
   const mapMode: RailwayMapMode = app.state.screen === "title" ? "title" : showClear ? "clear" : "game";
   const panelShown = Boolean(session && shown && turnDisplay && !showClear);
   // The one source for every rules suspension; the rules live only beside a mounted panel.
@@ -744,20 +761,27 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         />
       )}
       <ToastHost toasts={visibleToasts} reducedMotion={reducedMotion} />
-      {session && turnDisplay?.showClear && presentationGame && (
+      {session && turnDisplay?.showClear && presentationGame && publishedClear && (
         <ClearScreen
-          game={session.game}
+          key={publishedClear.generation}
+          game={publishedClear.game}
+          result={publishedClear.result}
+          historyRows={publishedClear.historyRows}
+          replayStore={publishedClear.replayStore}
+          routeImage={publishedClear.routeImage}
+          onImageDownloadStarted={publishedClear.markRouteImageDownloadStarted}
+          reducedMotion={reducedMotion}
           itemNotice={turnDisplay.itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
             view={turnDisplay.itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation}
-            completionAnnouncement={turnDisplay.clearAnnouncement}
           /> : undefined}
+          completionAnnouncement={turnDisplay.clearAnnouncement}
           network={network}
           presentation={presentation}
           collection={turnDisplay.collection}
-          display={edition.display}
           saveStatus={app.saveStatus}
           onPlayAgain={startNewGame}
           onShowTitle={showTitle}
+          cardRef={clearCardRef}
         />
       )}
       {rulesOpen && rulesRequest && (
@@ -796,7 +820,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         presentation={presentation}
         progress={progress}
         markerBearing={turnDisplay?.markerBearing ?? null}
-        goalStationId={turnDisplay?.goalGuidance?.stationId ?? null}
+        goalStationId={showClear ? (session?.game.config.startStationId ?? null) : (turnDisplay?.goalGuidance?.stationId ?? null)}
         segmentFlash={turnDisplay?.segmentFlash ?? null}
         adjustmentCandidates={turnDisplay?.adjustmentLandings}
         livePosition={livePosition}
@@ -805,6 +829,11 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         overviewKey={session?.game.turn === 0 ? session.sessionId : undefined}
         coachTargetRef={coachMapTarget}
         inert={app.state.screen === "title" || showClear}
+        clearRoute={publishedClear?.result.route ?? null}
+        clearRouteKey={publishedClear?.generation}
+        clearCardRef={clearCardRef}
+        clearReplayStore={publishedClear?.replayStore}
+        clearHistoryRows={publishedClear?.historyRows}
       />
     </>
   );
