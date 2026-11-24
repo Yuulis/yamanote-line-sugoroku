@@ -614,21 +614,26 @@ test.describe("turn-synced replay", () => {
   test("keeps the caption and partial route in the same turn, completes, and replays", async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     const clear = await clearWithOneRoll(page);
+    // The route source is filled asynchronously after the clear (WebKit can lag a frame), so wait for it.
+    await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0, { message: "the full route is drawn" })
+      .toBeGreaterThan(0);
     const fullFeatureCount = (await readClearRoute(page))?.featureCount ?? 0;
-    expect(fullFeatureCount).toBeGreaterThan(0);
     const caption = page.locator(".clear-replay-caption");
 
-    const replayStartTime = new Date("2026-11-23T00:00:00.000Z");
-    await page.clock.install({ time: replayStartTime });
-    await page.clock.pauseAt(replayStartTime);
+    // install() starts the fake clock running from installTime; pauseAt() may only move forward, so pause a safe
+    // margin later than the install time rather than at the same instant (which already lies in the past).
+    const installTime = new Date("2026-11-23T00:00:00.000Z");
+    const CLOCK_PAUSE_MARGIN_MS = 10_000;
+    await page.clock.install({ time: installTime });
+    await page.clock.pauseAt(new Date(installTime.getTime() + CLOCK_PAUSE_MARGIN_MS));
     await clear.getByRole("button", { name: "軌跡を再生" }).click();
     await expect(caption).toBeVisible();
     await expect(caption).toHaveAttribute("data-record-index", "0");
     await page.clock.runFor(1_100);
     await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(0);
     const advancedIndex = Number(await caption.getAttribute("data-record-index"));
-    const advancedFeatureCount = (await readClearRoute(page))?.featureCount ?? 0;
-    expect(advancedFeatureCount, "the map source advances with the caption turn").toBeGreaterThan(0);
+    await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0,
+      { message: "the map source advances with the caption turn" }).toBeGreaterThan(0);
 
     await clear.getByRole("button", { name: "全経路を表示" }).click();
     await expect(caption).toHaveCount(0);
