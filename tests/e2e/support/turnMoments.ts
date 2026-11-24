@@ -37,6 +37,7 @@ export const NORMAL_STAGE_MS = {
   arrival: 800,
   lotteryFlip: 1_600,
   lotteryDirectionFlip: 640,
+  lotteryResultHold: 400,
   lotterySettle: 400,
   pickup: 500,
 } as const;
@@ -61,16 +62,19 @@ async function advanceStage(page: Page, stage: TurnMomentStage, factor: number):
 export type PresentedStage = "tumble" | "stamps" | "arrival" | "segment-flash" | "lottery-flip" | "lottery-settle" | "pickup";
 export type MomentSpeedId = "slow" | "normal" | "fast" | "very-fast";
 
-/** Independent specification literals; legacy factor helpers above retain their original contract. */
+/**
+ * Independent specification literals; legacy factor helpers above retain their original contract.
+ * `lottery-flip` is the stage of a route-only draw (the fixture turn): F + H with H = round(0.25 * F).
+ */
 export const STAGE_MS_BY_SPEED = {
   slow: { tumble: 800, stamps: 320, arrival: 1_067, "segment-flash": 1_067,
-    "lottery-flip": 2_133, "lottery-settle": 533, pickup: 667 },
+    "lottery-flip": 2_666, "lottery-settle": 533, pickup: 667 },
   normal: { tumble: 600, stamps: 240, arrival: 800, "segment-flash": 800,
-    "lottery-flip": 1_600, "lottery-settle": 400, pickup: 500 },
+    "lottery-flip": 2_000, "lottery-settle": 400, pickup: 500 },
   fast: { tumble: 400, stamps: 160, arrival: 533, "segment-flash": 533,
-    "lottery-flip": 1_067, "lottery-settle": 267, pickup: 333 },
+    "lottery-flip": 1_334, "lottery-settle": 267, pickup: 333 },
   "very-fast": { tumble: 160, stamps: 64, arrival: null, "segment-flash": 180,
-    "lottery-flip": 280, "lottery-settle": 100, pickup: 140 },
+    "lottery-flip": 350, "lottery-settle": 100, pickup: 140 },
 } as const satisfies Readonly<Record<MomentSpeedId, Readonly<Record<PresentedStage, number | null>>>>;
 
 export function stageMsForSpeed(stage: PresentedStage, speedId: MomentSpeedId): number | null {
@@ -207,7 +211,7 @@ export async function advanceArrival(page: Page, factor: number = 1): Promise<vo
  * when the turn draws a lottery. The stage length depends on the drawn rows
  * (read from the board's `data-drawn`): route + direction windows when both are
  * drawn, the route window when only the route is drawn, and the direction
- * window when only the direction is drawn.
+ * window when only the direction is drawn; the result hold follows in every case.
  */
 export async function advanceLotteryFlip(page: Page, factor: number = 1): Promise<void> {
   await awaitStage(page, "lottery-flip");
@@ -216,7 +220,8 @@ export async function advanceLotteryFlip(page: Page, factor: number = 1): Promis
   );
   const [routeDrawn = false, directionDrawn = false] = drawn;
   const stageMs = (routeDrawn ? NORMAL_STAGE_MS.lotteryFlip : 0)
-    + (directionDrawn ? NORMAL_STAGE_MS.lotteryDirectionFlip : 0);
+    + (directionDrawn ? NORMAL_STAGE_MS.lotteryDirectionFlip : 0)
+    + NORMAL_STAGE_MS.lotteryResultHold;
   await page.clock.runFor(Math.round(stageMs * factor));
 }
 

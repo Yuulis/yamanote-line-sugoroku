@@ -2018,8 +2018,9 @@ describe("S12 delayed goal presentation", () => {
   });
 });
 
+// Route-only draw: the flip stage is F + H (normal 1600 + 400 = 2000; very-fast 280 + 70 = 350).
 function finishLotteryIfPresented(): void {
-  if (mounted!.container.querySelector('.lottery-reveal[data-stage="lottery-flip"]')) advance(1_600);
+  if (mounted!.container.querySelector('.lottery-reveal[data-stage="lottery-flip"]')) advance(2_000);
   if (mounted!.container.querySelector('.lottery-reveal[data-stage="lottery-settle"]')) advance(400);
 }
 
@@ -2042,7 +2043,7 @@ describe("S14 lottery publication lifecycle", () => {
     const start = lotteryCommits.length;
     click("メニュー");
     click("速度: ふつう");
-    advance(1_599);
+    advance(1_999);
     expect(lotteryStage()).toBe("lottery-flip");
     advance(1);
     expect(lotteryStage()).toBe("lottery-settle");
@@ -2068,7 +2069,7 @@ describe("S14 lottery publication lifecycle", () => {
     const setReduced = motionPreference(false);
     openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
     playToArrival(); advance(800);
-    if (stage === "lottery-settle") advance(1_600);
+    if (stage === "lottery-settle") advance(2_000);
     expect(lotteryStage()).toBe(stage);
     setReduced(true);
     expect(lotteryStage()).toBeNull();
@@ -2082,7 +2083,7 @@ describe("S14 lottery publication lifecycle", () => {
   it.each(["lottery-flip", "lottery-settle"] as const)("one Skip completes %s with no replay", (stage) => {
     openWithFrames(createItemGame(edition.config, FIXTURE_GAME_SEED, network));
     playToArrival(); advance(800);
-    if (stage === "lottery-settle") advance(1_600);
+    if (stage === "lottery-settle") advance(2_000);
     expect(lotteryStage()).toBe(stage);
     const saved = storedGame();
     press(panelSkip());
@@ -2107,7 +2108,7 @@ it("S14 resolving a restored adjustment plays its newly created lottery normally
   expect(banner()).toBe(stationName(network, storedGame().currentStationId));
   advance(800);
   expect(lotteryStage()).toBe("lottery-flip");
-  advance(1_600);
+  advance(2_000);
   expect(lotteryStage()).toBe("lottery-settle");
   advance(400);
   expect(lotteryStage()).toBeNull();
@@ -2255,7 +2256,7 @@ describe("S6 very-fast GameApp integration", () => {
     advance(1);
     expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toBeNull();
     expect(lotteryStage()).toBe("lottery-flip");
-    advance(279);
+    advance(349);
     expect(lotteryStage()).toBe("lottery-flip");
     advance(1);
     expect(lotteryStage()).toBe("lottery-settle");
@@ -2347,7 +2348,7 @@ describe.each(["important", "none"] as const)("S7 %s integration", (level) => {
       expect(lotteryStage()).toBeNull();
       advance(180);
       expect(lotteryStage()).toBe("lottery-flip");
-      advance(280); advance(100);
+      advance(350); advance(100);
       expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
       expect(mounted!.container.querySelector(".item-discard")).toBeNull();
       advance(140);
@@ -2415,7 +2416,7 @@ describe.each(["important", "none"] as const)("S7 %s integration", (level) => {
       expect(railwayMapProps.mock.calls.at(-1)![0].segmentFlash).toEqual(flash);
       advance(1);
       expect(lotteryStage()).toBe("lottery-flip");
-      advance(280); advance(100);
+      advance(350); advance(100);
     } else expect(flash).toBeNull();
     expect(dice().getAttribute("aria-disabled")).toBe("false");
   });
@@ -2466,7 +2467,7 @@ describe("S8 persisted presentation settings", () => {
       expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
       advance(180);
       expect(lotteryStage()).toBe("lottery-flip");
-      advance(280); advance(100);
+      advance(350); advance(100);
       expect(mounted!.container.querySelector('[data-stage="pickup"]')).not.toBeNull();
       expect(mounted!.container.querySelector(".item-discard")).toBeNull();
       advance(140);
@@ -2487,7 +2488,7 @@ describe("S8 persisted presentation settings", () => {
     advance(600);
     finishMovement();
     expect(banner()).not.toBeNull();
-    advance(800); advance(1_600); advance(400);
+    advance(800); advance(2_000); advance(400);
     expect(dice().getAttribute("aria-disabled")).toBe("false");
     click("サイコロを振る");
     expect(tumble()).toBeNull();

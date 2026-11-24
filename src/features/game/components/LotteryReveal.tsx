@@ -42,12 +42,14 @@ type RowFlip =
 
 interface LotteryRowProps {
   drawn: boolean;
-  /** Extra semantic class for this row, e.g. the direction row's one-line label rule. */
+  /** Extra semantic class for this row, e.g. the direction row's semantic hook. */
   variant?: string;
   flip: RowFlip;
   placeholder?: string;
   stage: LotteryRevealProps["stage"];
   frames: readonly ReactNode[];
+  /** Invisible copies that size the row; the set must not depend on the drawn outcome. */
+  sizers: readonly ReactNode[];
   target: RefObject<HTMLElement | null>;
   boardScale: number;
 }
@@ -59,7 +61,7 @@ interface MeasuredSettleMotion {
 }
 
 /** Layout measurement affects decoration only; the sequence owns the deadline, including fallback fades. */
-function LotteryRow({ drawn, variant, flip, placeholder, stage, frames, target, boardScale }: LotteryRowProps): React.JSX.Element {
+function LotteryRow({ drawn, variant, flip, placeholder, stage, frames, sizers, target, boardScale }: LotteryRowProps): React.JSX.Element {
   const source = useRef<HTMLDivElement>(null);
   const [measuredSettle, setMeasuredSettle] = useState<MeasuredSettleMotion | null>(null);
   const motion: SettleMotion | null = stage === "lottery-settle" && measuredSettle?.target === target
@@ -89,6 +91,7 @@ function LotteryRow({ drawn, variant, flip, placeholder, stage, frames, target, 
   const variantClass = variant === undefined ? "" : ` ${variant}`;
   return <div ref={source} className={`lottery-reveal__row${variantClass}${modifier}`}
     data-drawn={drawn} data-motion={motion?.kind} style={{ ...windowStyle, ...style } as CSSProperties}>
+    {sizers.map((sizer, index) => <span key={index} className="lottery-reveal__sizer">{sizer}</span>)}
     <span className="lottery-reveal__result">{frames.at(-1)}</span>
     {inFlip && placeholder !== undefined && <span className="lottery-reveal__placeholder">{placeholder}</span>}
     {flipping && frames.slice(0, -1).map((frame, index) => <span key={index} className="lottery-reveal__frame"
@@ -106,6 +109,21 @@ function rowFlips(landing: LotteryRevealProps["landing"], routeMs: number): { re
   return { route, direction: { kind: "flip", delayMs: landing.serviceDrawRequired ? routeMs : 0, windowMs: directionMs } };
 }
 
+function unique<T>(values: readonly T[]): T[] {
+  return [...new Set(values)];
+}
+
+/**
+ * Labels the direction row must be wide enough for, independent of the drawn outcome. While the route is drawn the
+ * drawn service is still unknown, so both directions of every candidate service count (plus the placeholder); when
+ * the route is shown statically, the drawn service's two labels leak nothing.
+ */
+export function lotteryDirectionSizingLabels(landing: LotteryRevealProps["landing"], network: RailwayNetwork): string[] {
+  const services = landing.serviceDrawRequired ? landing.serviceCandidates : [landing.serviceId];
+  const labels = services.flatMap((id) => [directionLabel(network, id, 1), directionLabel(network, id, -1)]);
+  return unique(landing.serviceDrawRequired ? [...labels, DIRECTION_PLACEHOLDER] : labels);
+}
+
 /** Saved candidates in deterministic order, ending on the saved result; no presentation RNG or probabilities. */
 export function LotteryReveal({ landing, stage, durationMs, network, presentation, rideTarget, directionTarget, boardScale = 1 }: LotteryRevealProps): React.JSX.Element {
   const scale: number = Number.isFinite(boardScale) && boardScale > 0 ? boardScale : 1;
@@ -114,10 +132,12 @@ export function LotteryReveal({ landing, stage, durationMs, network, presentatio
   const directionFrame = (direction: Direction): ReactNode => directionLabel(network, landing.serviceId, direction);
   const serviceFrames = [...Array.from({ length: FLIP_FRAME_COUNT }, (_unused, index) => serviceFrame(landing.serviceCandidates[index % landing.serviceCandidates.length] ?? landing.serviceId)), serviceFrame(landing.serviceId)];
   const directionFrames = [...Array.from({ length: DIRECTION_FLIP_FRAME_COUNT }, (_unused, index) => directionFrame(landing.directionCandidates[index % landing.directionCandidates.length] ?? landing.direction)), directionFrame(landing.direction)];
+  const routeSizers = unique([...landing.serviceCandidates, landing.serviceId]).map(serviceFrame);
+  const directionSizers = lotteryDirectionSizingLabels(landing, network);
   return <div className="lottery-reveal" data-stage={stage} aria-hidden="true" style={{ "--lottery-ms": `${durationMs}ms` } as CSSProperties}>
     <p className="lottery-reveal__heading">次の乗車</p>
-    <LotteryRow drawn={landing.serviceDrawRequired} flip={flips.route} stage={stage} frames={serviceFrames} target={rideTarget} boardScale={scale} />
+    <LotteryRow drawn={landing.serviceDrawRequired} flip={flips.route} stage={stage} frames={serviceFrames} sizers={routeSizers} target={rideTarget} boardScale={scale} />
     <LotteryRow drawn={landing.directionDrawRequired} variant="lottery-reveal__row--direction" flip={flips.direction} placeholder={landing.serviceDrawRequired ? DIRECTION_PLACEHOLDER : undefined}
-      stage={stage} frames={directionFrames} target={directionTarget} boardScale={scale} />
+      stage={stage} frames={directionFrames} sizers={directionSizers} target={directionTarget} boardScale={scale} />
   </div>;
 }

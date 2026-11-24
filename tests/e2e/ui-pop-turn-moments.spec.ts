@@ -746,6 +746,36 @@ test.describe("lottery board with both the route and the direction drawn", () =>
     expect(midDirection).toMatchObject({ placeholder: 0, directionResult: 0 });
     expect(midDirection.directionFrames).toBeGreaterThan(0);
     expect(await seekLotteryBoard(board, routeMs + directionMs * 0.9)).toMatchObject({ placeholder: 0, directionResult: 1, directionFrames: 0 });
+    // The hold keeps the final direction on screen after its window ends; only the settle stage removes it.
+    expect(await seekLotteryBoard(board, routeMs + directionMs + NORMAL_STAGE_MS.lotteryResultHold * 0.5))
+      .toMatchObject({ placeholder: 0, directionResult: 1, directionFrames: 0 });
+    await resumeLotteryBoard(board);
+    await advanceLotteryFlip(page);
+    await advanceLotterySettle(page);
+    await expect(board).toHaveCount(0);
+  });
+
+  test("never truncates a candidate frame and keeps the board size fixed through the flip", async ({ page }) => {
+    await playLotteryToFlip(page);
+    const board = page.locator(".lottery-reveal");
+    const routeMs = NORMAL_STAGE_MS.lotteryFlip;
+    const directionMs = NORMAL_STAGE_MS.lotteryDirectionFlip;
+    const boardRect = () => board.evaluate((node) => {
+      const { x, y, width, height } = node.getBoundingClientRect();
+      return { x, y, width, height };
+    });
+    const clipped = () => board.evaluate((node) => [...node.querySelectorAll<HTMLElement>(
+      ".lottery-reveal__frame .line-badge__name, .lottery-reveal__row--direction .lottery-reveal__frame, .lottery-reveal__result .line-badge__name, .lottery-reveal__row--direction .lottery-reveal__result",
+    )].filter((element) => element.scrollWidth > element.clientWidth + 1).map((element) => element.textContent));
+    const atStart = await boardRect();
+    await seekLotteryBoard(board, 0);
+    expect(await clipped(), "frames at the flip start").toEqual([]);
+    await seekLotteryBoard(board, routeMs * 0.5);
+    expect(await clipped(), "frames mid route flip").toEqual([]);
+    expect(await boardRect()).toEqual(atStart);
+    await seekLotteryBoard(board, routeMs + directionMs * 0.9);
+    expect(await clipped(), "frames after the direction stops").toEqual([]);
+    expect(await boardRect()).toEqual(atStart);
     await resumeLotteryBoard(board);
     await advanceLotteryFlip(page);
     await advanceLotterySettle(page);

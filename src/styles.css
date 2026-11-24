@@ -3253,7 +3253,7 @@ button[aria-disabled="true"] {
   box-shadow: none;
 }
 .lottery-reveal {
-  width: min(26rem, 100%);
+  width: min(27rem, 100%);
   color: var(--color-text);
   text-align: center;
   perspective: 700px;
@@ -3319,11 +3319,17 @@ button[aria-disabled="true"] {
 .lottery-reveal .line-badge__name wbr {
   display: none;
 }
-/* One line, so a long direction label cannot make the row taller before the route stops. */
-.lottery-reveal__row--direction .lottery-reveal__result {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+/* The result and the invisible sizers share one cell. The sizers cover every label the row may need, so the row
+   size is the same whichever outcome was drawn and no frame is squeezed into a narrower drawn result. */
+.lottery-reveal__result,
+.lottery-reveal__sizer {
+  grid-area: 1 / 1;
+}
+.lottery-reveal__sizer {
+  visibility: hidden;
+  max-width: 100%;
+  min-width: 0;
+  pointer-events: none;
 }
 .lottery-reveal__row--flipping .lottery-reveal__result {
   animation: lottery-result var(--row-ms) steps(1, end) var(--row-delay) both;

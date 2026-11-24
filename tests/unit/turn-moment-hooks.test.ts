@@ -208,8 +208,8 @@ describe("useTurnMoments", () => {
     harness.update({ latestRecord: REVEAL_RECORD, revealObservation: { sessionId: 7, recordTurn: 1, gameTurn: 1,
       pendingDecisionTurn: null, movementComplete: true } });
     for (const [stage, duration] of [
-      // Single service with two directions: only the direction row is drawn, so the flip lasts the direction window.
-      ["arrival", 800], ["lottery-flip", 640], ["lottery-settle", 400], ["pickup", 500],
+      // Single service with two directions: only the direction row is drawn, so the flip lasts the direction window 640 plus the 400 result hold.
+      ["arrival", 800], ["lottery-flip", 1040], ["lottery-settle", 400], ["pickup", 500],
     ] as const) {
       expect(harness.moments.revealStage).toBe(stage);
       act(() => vi.advanceTimersByTime(duration - 1));

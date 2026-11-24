@@ -232,3 +232,17 @@ boundary specs, phone `@layout`.
 | 1 Timing source and stage duration | done (lead verified) | 4f80e3a | lead: typecheck, npm test, build pass; implementer: 46 desktop-chromium + 7 phone E2E pass; branch CI run 45401098111 |
 | 2 Sequential board and placeholder | done (lead verified, Opus reviewed; review fixes applied) | (this commit) | lead: typecheck, npm test 2672 pass, build, phone @layout 31 pass; implementer: desktop-chromium lottery 12 pass incl. new (T,T) seek test on real data hub seed |
 | 3 Design record and PR | pending | — | — |
+
+## 7. User feedback after step 2 (2026-11-24)
+
+- F1 (DECIDED): add a hold H = round(0.25·F) (ふつう 400 ms) after the final direction result
+  appears, in every draw case, before the settle stage. Stage = F + D + H (both drawn),
+  F + H (service only, 山手線 → 外回り snap), D + H (direction only). The row windows inside
+  the stage are unchanged (result still at 0.84 of its window); only the tail is longer.
+- F2: candidate labels longer than the drawn result are ellipsized during the flip (route
+  and direction rows). Fix must size rows from route-independent content so the direction
+  row's size cannot reveal the route. Analysis: .claude/docs/research/feature-lottery-sequential-reveal-truncation.md
+- F3 (DECIDED 2026-11-24): on phones (board capped ~180px at 320px wide) route names must
+  not be ellipsized; allow line badges in the lottery board to wrap to two lines and show
+  the full name. Row height must still come from the route-independent sizer set (max over
+  all candidates), so height cannot reveal the draw. Follow-up after F1+F2.

@@ -45,6 +45,9 @@ const TURN_MOMENT_TIMINGS: Readonly<Record<AnimationSpeedId, TurnMomentTiming>> 
 /** Direction window after the route row stops, as a share of the route flip (issue #63). */
 export const LOTTERY_DIRECTION_FLIP_SHARE = 0.4;
 
+/** Hold after the last result lands and before the settle, as a share of the route flip (issue #63). */
+export const LOTTERY_RESULT_HOLD_SHARE = 0.25;
+
 /** Which lottery rows are actually drawn for a landing. */
 export interface LotteryDraws {
   readonly serviceDrawRequired: boolean;
@@ -55,11 +58,16 @@ export function lotteryDirectionFlipMs(routeFlipMs: number): number {
   return Math.round(routeFlipMs * LOTTERY_DIRECTION_FLIP_SHARE);
 }
 
-/** Flip-stage length: route + direction when both are drawn, otherwise the single drawn row's window. */
+export function lotteryResultHoldMs(routeFlipMs: number): number {
+  return Math.round(routeFlipMs * LOTTERY_RESULT_HOLD_SHARE);
+}
+
+/** Flip-stage length: the drawn rows' windows plus the result hold that follows the last one. */
 export function lotteryFlipStageMs(routeFlipMs: number, draws: LotteryDraws): number {
+  const holdMs = lotteryResultHoldMs(routeFlipMs);
   const directionMs = lotteryDirectionFlipMs(routeFlipMs);
-  if (!draws.serviceDrawRequired) return directionMs;
-  return draws.directionDrawRequired ? routeFlipMs + directionMs : routeFlipMs;
+  if (!draws.serviceDrawRequired) return directionMs + holdMs;
+  return (draws.directionDrawRequired ? routeFlipMs + directionMs : routeFlipMs) + holdMs;
 }
 
 export function turnMomentTiming(speedId: AnimationSpeedId): TurnMomentTiming {
