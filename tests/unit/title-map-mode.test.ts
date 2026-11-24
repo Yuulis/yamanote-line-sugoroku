@@ -140,7 +140,10 @@ vi.mock("../../src/features/map/attribution", () => ({
   buildDataAttribution: vi.fn(),
   watchCompactAttribution: vi.fn(() => () => undefined),
 }));
-vi.mock("../../src/features/map/e2eHook", () => ({ exposeMapForE2E: vi.fn() }));
+vi.mock("../../src/features/map/e2eHook", () => ({
+  exposeMapForE2E: vi.fn(),
+  exposeClearFitPaddingForE2E: vi.fn(),
+}));
 vi.mock("../../src/features/map/railwayLayers", () => ({
   addRailwayLayers: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
   setSegmentFlashFeatures: vi.fn(), setSegmentFlashOpacity: vi.fn(), updateCompletedSegments: vi.fn(),

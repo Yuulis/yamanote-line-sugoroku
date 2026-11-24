@@ -71,7 +71,7 @@ export function ClearReplayControls({ store, reducedMotion, onAnnounce }: ClearR
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => store.finish()}>全経路を表示</button>
+          <button className="clear-replay-controls__finish" type="button" onClick={() => store.finish()}>全経路を表示</button>
         </div>
       )}
     </div>

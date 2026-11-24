@@ -21,6 +21,7 @@ const LANDSCAPE_PHONE = { width: 667, height: 375 } as const;
 const SCREENSHOTS_S4_ENABLED = Boolean(process.env.ISSUE69_S4_SCREENSHOTS) && !process.env.CI;
 const SCREENSHOTS_S4B_ENABLED = Boolean(process.env.ISSUE69_S4B_SCREENSHOTS) && !process.env.CI;
 const SCREENSHOTS_S5_ENABLED = Boolean(process.env.ISSUE69_S5_SCREENSHOTS) && !process.env.CI;
+const SCREENSHOTS_S5B_ENABLED = Boolean(process.env.ISSUE69_S5B_SCREENSHOTS) && !process.env.CI;
 const CLEAR_ROUTE_LAYERS = ["clear-traveled-route-outline", "clear-traveled-route-line"] as const;
 /** The route must fill at least this share of the open area along its limiting axis, so "somewhere small" fails. */
 const MIN_ROUTE_FILL_RATIO = 0.4;
@@ -285,7 +286,13 @@ interface ClearRouteReading {
   bounds: Box | null;
   viewport: { width: number; height: number };
   card: Box | null;
+  padding: { top: number; right: number; bottom: number; left: number } | null;
   mapControlsVisible: boolean;
+}
+
+interface E2EMapHook {
+  map?: E2ERouteMap | null;
+  clearFitPadding?: ClearRouteReading["padding"];
 }
 
 interface E2ERouteMap {
@@ -297,7 +304,8 @@ interface E2ERouteMap {
 /** Read the live map through the e2e-build hook: the route source, its layer order and where its vertices are drawn. */
 async function readClearRoute(page: Page): Promise<ClearRouteReading | null> {
   return page.evaluate(() => {
-    const map = (window as unknown as { __sugorokuE2E?: { map?: E2ERouteMap | null } }).__sugorokuE2E?.map;
+    const hook = (window as unknown as { __sugorokuE2E?: E2EMapHook }).__sugorokuE2E;
+    const map = hook?.map;
     if (!map) return null;
     const features = map.getSource("clear-traveled-route")?.serialize().data.features ?? [];
     let bounds: Box | null = null;
@@ -316,9 +324,19 @@ async function readClearRoute(page: Page): Promise<ClearRouteReading | null> {
       bounds,
       viewport: { width: window.innerWidth, height: window.innerHeight },
       card: cardRect ? { left: cardRect.left, top: cardRect.top, right: cardRect.right, bottom: cardRect.bottom } : null,
+      padding: hook.clearFitPadding ?? null,
       mapControlsVisible: document.querySelector(".map-overview") !== null,
     };
   });
+}
+
+function cameraPaddingChanged(
+  before: ClearRouteReading["padding"] | null,
+  after: ClearRouteReading["padding"] | null,
+): boolean {
+  if (!before || !after) return false;
+  return (["top", "right", "bottom", "left"] as const)
+    .some((edge) => Math.abs(before[edge] - after[edge]) > 0.5);
 }
 
 /** The largest map region the card leaves open: above, below, left or right of it. */
@@ -346,6 +364,19 @@ function framingProblem(reading: ClearRouteReading | null): string {
   return fill >= MIN_ROUTE_FILL_RATIO ? "" : `route fills only ${fill.toFixed(2)} of the open area ${JSON.stringify(region)}`;
 }
 
+/** Empty when a partial replay route stays in the open map region, without requiring the full route bounds. */
+function routeOutsideOpenRegion(reading: ClearRouteReading | null): string {
+  if (!reading?.bounds || !reading.card) return "route or card not available yet";
+  const { bounds, card, viewport } = reading;
+  const region = openRegion(card, viewport);
+  const tolerance = FRAMING_TOLERANCE_PX;
+  if (bounds.left < region.left - tolerance || bounds.top < region.top - tolerance
+    || bounds.right > region.right + tolerance || bounds.bottom > region.bottom + tolerance) {
+    return `route ${JSON.stringify(bounds)} is outside the open area ${JSON.stringify(region)}`;
+  }
+  return "";
+}
+
 async function expectRouteFramedBesideCard(page: Page): Promise<ClearRouteReading> {
   await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0, { message: "the route source carries one feature per leg" })
     .toBe(PRODUCT_HISTORY_CLEAR_ROUTE_LEGS);
@@ -353,6 +384,64 @@ async function expectRouteFramedBesideCard(page: Page): Promise<ClearRouteReadin
   const reading = await readClearRoute(page);
   if (!reading) throw new Error("the e2e map hook is not available");
   return reading;
+}
+
+async function expectPartialRouteInsideOpenMap(page: Page): Promise<void> {
+  await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0,
+    { message: "the partial replay route is still drawn" }).toBeGreaterThan(0);
+  await expect.poll(async () => routeOutsideOpenRegion(await readClearRoute(page)),
+    { message: "the partial route remains inside the uncovered map area after refit" }).toBe("");
+}
+
+async function expectExpandedPhoneSheet(clear: Locator, viewportHeight: number): Promise<void> {
+  await expect(clear).not.toHaveClass(/clear-screen--replay-collapsed/);
+  await expect(clear.locator(".clear-screen__content").first()).toBeVisible();
+  await expect(clear.getByRole("button", { name: "軌跡を再生" })).toBeFocused();
+  const sheet = await clear.evaluate((element) => ({
+    scrollTop: (element as HTMLElement).scrollTop,
+    maxHeight: Number.parseFloat(getComputedStyle(element).maxHeight),
+    bottomGap: window.innerHeight - element.getBoundingClientRect().bottom,
+  }));
+  expect(sheet.scrollTop).toBe(0);
+  expect(sheet.maxHeight).toBeLessThanOrEqual(viewportHeight * PHONE_SHEET_MAX_HEIGHT_RATIO + 1);
+  expect(sheet.bottomGap).toBeLessThanOrEqual(9);
+  await expectWithinFirstScreen(clear, clear.locator(".clear-screen__stats dd").nth(2), "the three result numbers");
+  for (const button of await clear.locator(".clear-screen__share button, .clear-screen__actions button, .clear-screen__history-button").all()) {
+    await expectWithinFirstScreen(clear, button, (await button.textContent())?.trim() ?? "clear action");
+  }
+}
+
+async function measureCollapsedBand(clear: Locator): Promise<{
+  readonly height: number;
+  readonly bottomGap: number;
+  readonly controlRows: number;
+  readonly controlsInside: boolean;
+  readonly openMapWidth: number;
+  readonly openMapHeight: number;
+}> {
+  return clear.evaluate((element) => {
+    const card = element.getBoundingClientRect();
+    const controls = [...element.querySelectorAll<HTMLElement>(".clear-replay-controls__active button")]
+      .map((button) => button.getBoundingClientRect());
+    const rowTops = new Set(controls.map((rect) => Math.round(rect.top)));
+    const regions = [
+      { left: 0, top: 0, right: innerWidth, bottom: Math.max(0, card.top) },
+      { left: 0, top: Math.min(innerHeight, card.bottom), right: innerWidth, bottom: innerHeight },
+      { left: 0, top: 0, right: Math.max(0, card.left), bottom: innerHeight },
+      { left: Math.min(innerWidth, card.right), top: 0, right: innerWidth, bottom: innerHeight },
+    ];
+    const area = (region: typeof regions[number]): number => (region.right - region.left) * (region.bottom - region.top);
+    const open = regions.reduce((best, region) => area(region) > area(best) ? region : best);
+    return {
+      height: card.height,
+      bottomGap: innerHeight - card.bottom,
+      controlRows: rowTops.size,
+      controlsInside: controls.every((rect) => rect.height >= 44 && rect.width >= 44
+        && rect.left >= card.left && rect.right <= card.right && rect.top >= card.top && rect.bottom <= card.bottom),
+      openMapWidth: open.right - open.left,
+      openMapHeight: open.bottom - open.top,
+    };
+  });
 }
 
 test("draws the full route below the stations and frames it beside the desktop card", async ({ page }) => {
@@ -529,9 +618,13 @@ test.describe("turn-synced replay", () => {
     expect(fullFeatureCount).toBeGreaterThan(0);
     const caption = page.locator(".clear-replay-caption");
 
+    const replayStartTime = new Date("2026-11-23T00:00:00.000Z");
+    await page.clock.install({ time: replayStartTime });
+    await page.clock.pauseAt(replayStartTime);
     await clear.getByRole("button", { name: "軌跡を再生" }).click();
     await expect(caption).toBeVisible();
     await expect(caption).toHaveAttribute("data-record-index", "0");
+    await page.clock.runFor(1_100);
     await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(0);
     const advancedIndex = Number(await caption.getAttribute("data-record-index"));
     const advancedFeatureCount = (await readClearRoute(page))?.featureCount ?? 0;
@@ -543,6 +636,7 @@ test.describe("turn-synced replay", () => {
     await clear.getByRole("button", { name: "軌跡を再生" }).click();
     await expect(caption).toHaveAttribute("data-record-index", "0");
     expect(advancedIndex).toBeGreaterThan(0);
+    await page.clock.runFor(1_100);
     await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? fullFeatureCount).toBeLessThan(fullFeatureCount);
   });
 
@@ -579,6 +673,7 @@ test.describe("turn-synced replay", () => {
   });
 
   test("shows the selected speed, keeps it for this result, and fast speed advances more turns", async ({ page }) => {
+    test.setTimeout(60_000);
     await page.setViewportSize(DESKTOP);
     const clear = await clearWithOneRoll(page);
     await clear.getByRole("button", { name: "軌跡を再生" }).click();
@@ -666,6 +761,128 @@ test.describe("turn-synced replay", () => {
     await expectNoHorizontalOverflow(page, clear);
     await expectReachable(clear, clear.getByRole("button", { name: "再開" }), "再開");
     await expectReachable(clear, clear.getByRole("button", { name: "全経路を表示" }), "全経路を表示");
+  });
+
+  test("collapses the phone card to replay controls and refits the partial route at 320px and 390px", { tag: "@layout" }, async ({ page }) => {
+    await page.setViewportSize(PHONE_SMALL);
+    const clear = await clearWithOneRoll(page);
+    const caption = page.locator(".clear-replay-caption");
+    const fullFeatureCount = (await readClearRoute(page))?.featureCount ?? 0;
+    const expandedPadding = (await readClearRoute(page))?.padding ?? null;
+    expect(expandedPadding).not.toBeNull();
+
+    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
+    await expect(clear.getByRole("button", { name: "一時停止" })).toBeFocused();
+    await expect(clear.locator(".clear-screen__content").first()).toBeHidden();
+    await expect(clear.getByRole("heading", { name: "クリア！" })).toHaveCount(0);
+    await expect(clear.getByRole("button", { name: "結果をコピー" })).toHaveCount(0);
+    await expect(clear.getByRole("button", { name: "移動履歴を見る" })).toHaveCount(0);
+    await expect(caption).toBeVisible();
+    await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(0);
+    await expect.poll(async () => cameraPaddingChanged(expandedPadding, (await readClearRoute(page))?.padding ?? null),
+      { message: "the camera padding changes when the card collapses" }).toBe(true);
+    await expectPartialRouteInsideOpenMap(page);
+    const smallBand = await measureCollapsedBand(clear);
+    expect(smallBand.height, "the replay band stays low").toBeLessThanOrEqual(130);
+    expect(smallBand.bottomGap, "the replay band stays bottom-anchored").toBeLessThanOrEqual(9);
+    expect(smallBand.controlRows, "replay controls fit within two rows").toBeLessThanOrEqual(2);
+    expect(smallBand.controlsInside, "all replay controls meet the target size inside the band").toBe(true);
+    console.log(`S5b 320x568 band=${smallBand.height.toFixed(1)}px map=${smallBand.openMapWidth.toFixed(1)}x${smallBand.openMapHeight.toFixed(1)}px`);
+
+    await clear.getByRole("button", { name: "一時停止" }).click();
+    await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
+    const pausedIndex = await caption.getAttribute("data-record-index");
+    await page.waitForTimeout(600);
+    await expect(caption).toHaveAttribute("data-record-index", pausedIndex!);
+    await expectPartialRouteInsideOpenMap(page);
+    const pausedBand = await measureCollapsedBand(clear);
+    expect(pausedBand.controlsInside).toBe(true);
+
+    await clear.getByRole("button", { name: "全経路を表示" }).click();
+    await expect(caption).toHaveCount(0);
+    await expectExpandedPhoneSheet(clear, PHONE_SMALL.height);
+    await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0).toBe(fullFeatureCount);
+    await expectRouteFramedBesideCard(page);
+
+    await page.setViewportSize(PHONE_MEDIUM);
+    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
+    await expectPartialRouteInsideOpenMap(page);
+    const mediumBand = await measureCollapsedBand(clear);
+    expect(mediumBand.height).toBeLessThanOrEqual(130);
+    expect(mediumBand.bottomGap).toBeLessThanOrEqual(9);
+    expect(mediumBand.controlRows).toBeLessThanOrEqual(2);
+    expect(mediumBand.controlsInside).toBe(true);
+    console.log(`S5b 390x844 band=${mediumBand.height.toFixed(1)}px map=${mediumBand.openMapWidth.toFixed(1)}x${mediumBand.openMapHeight.toFixed(1)}px`);
+    await clear.getByRole("button", { name: "全経路を表示" }).click();
+    await expectExpandedPhoneSheet(clear, PHONE_MEDIUM.height);
+    await expectRouteFramedBesideCard(page);
+  });
+
+  test("restores the phone sheet when replay ends naturally", { tag: "@layout" }, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize(PHONE_SMALL);
+    const clear = await clearWithOneRoll(page);
+    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
+    await clear.getByRole("button", { name: "速度: はやい" }).click();
+    await expect(clear.getByRole("button", { name: "軌跡を再生" })).toBeVisible({ timeout: 40_000 });
+    await expectExpandedPhoneSheet(clear, PHONE_SMALL.height);
+    await expectRouteFramedBesideCard(page);
+  });
+
+  test("leaves the desktop clear card expanded during replay", async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    const clear = await clearWithOneRoll(page);
+    const maxHeightBeforeReplay = await clear.evaluate((element) => getComputedStyle(element).maxHeight);
+    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+
+    await expect(clear).not.toHaveClass(/clear-screen--replay-collapsed/);
+    await expect(clear.getByRole("heading", { name: "クリア！" })).toBeVisible();
+    await expect(clear.getByRole("button", { name: "結果をコピー" })).toBeVisible();
+    const desktopLayout = await clear.evaluate((element) => ({
+      maxHeight: getComputedStyle(element).maxHeight,
+      overflowY: getComputedStyle(element).overflowY,
+    }));
+    expect(desktopLayout.maxHeight).toBe(maxHeightBeforeReplay);
+    expect(desktopLayout.overflowY).toBe("auto");
+  });
+
+  test("keeps the history dialog open across a phone resize, then collapses after closing", { tag: "@layout" }, async ({ page }) => {
+    await page.setViewportSize(DESKTOP);
+    const clear = await clearWithOneRoll(page);
+    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    const dialog = clear.getByRole("dialog", { name: "移動履歴" });
+    await clear.getByRole("button", { name: "移動履歴を見る" }).click();
+    await expect(dialog).toBeVisible();
+    await expect(clear.getByRole("button", { name: "再開" })).toBeVisible();
+
+    await page.setViewportSize(PHONE_MEDIUM);
+    await expect(dialog).toBeVisible();
+    await expect(clear).not.toHaveClass(/clear-screen--replay-collapsed/);
+    await dialog.getByRole("button", { name: "閉じる" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
+    await expect(clear.getByRole("button", { name: "再開" })).toBeFocused();
+  });
+
+  test("saves S5b phone replay screenshots on request", async ({ page }) => {
+    test.skip(!SCREENSHOTS_S5B_ENABLED, "set ISSUE69_S5B_SCREENSHOTS=1 (outside CI) to write the S5b review screenshots");
+    mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    await page.setViewportSize(PHONE_MEDIUM);
+    const clear = await clearWithOneRoll(page);
+    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
+    await page.waitForTimeout(650);
+    await page.screenshot({ path: join(SCREENSHOT_DIR, "issue69-s5b-replay-phone390.png") });
+
+    await page.setViewportSize(PHONE_SMALL);
+    await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
+    await page.waitForTimeout(350);
+    await page.screenshot({ path: join(SCREENSHOT_DIR, "issue69-s5b-replay-phone320.png") });
+    await clear.getByRole("button", { name: "一時停止" }).click();
+    await page.screenshot({ path: join(SCREENSHOT_DIR, "issue69-s5b-paused-phone320.png") });
   });
 
   test("saves S5 replay and dialog screenshots on request", async ({ page }) => {

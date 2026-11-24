@@ -263,3 +263,31 @@ Screenshots (env-gated, off in CI, not committed): mid-replay at 1280x800 and 39
 320x568, history dialog with the short roll form at 1280x800 and 320x568 ->
 .claude/logs/screenshots/issue69-s5-{replay-desktop,replay-phone390,replay-phone320,paused-phone320,dialog-desktop,dialog-phone320}.png.
 ```
+
+## S5b — phone clear card collapses during replay (Codex Luna xhigh)
+
+```
+Implement S5b (visible: yes). User decision 2026-11-23: on phones (<=600px), while the replay phase is playing or paused,
+the clear card collapses to a low band containing only the replay controls (一時停止/再開, speeds, 全経路を表示), so the
+map gets most of the screen. When replay finishes naturally, or 全経路を表示 is pressed, the card returns to its normal
+65% sheet. Desktop is unchanged. S5 is committed (7a12201).
+- Implement in ClearScreen / ClearReplayControls / clearScreen.css driven by the replay phase (subscribe to phase only).
+  Collapsed band: the controls on at most two rows at 320px with >=44px targets; the rest of the card content is hidden
+  from layout and from the accessibility tree while collapsed (and its focusable elements are not tabbable); focus moves
+  to the pause button on start and back to 軌跡を再生 (or the heading) when the card expands.
+- The camera must refit to the larger uncovered map area when the card collapses and again when it expands (the existing
+  measured-card padding and ResizeObserver path; the caption slot stays out of the fit area). The partial route keeps
+  drawing during the refit (no restart of the replay).
+- Opening the history dialog still pauses; the 移動履歴を見る button is not in the collapsed band, so nothing changes there.
+- OS reduced motion: replay shows the full route at once, so the card never collapses.
+Tests first: unit tests for the collapsed state by phase and width, focus handoff, accessibility hiding; E2E @layout at
+320x568 and 390x844: start replay -> band height and map area measured (band bottom-anchored, controls inside, card
+content not visible), route still inside the uncovered area after refit, pause keeps the band, 全経路を表示 and natural end
+restore the 65% sheet with all actions inside it (scrollTop 0); desktop 1280x800 unchanged.
+Acceptance (report counts): npm run typecheck; git diff --check; npx vitest run --maxWorkers=2; npm run build;
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts tests/e2e/accessibility.spec.ts --project=desktop-chromium --workers=2
+npm run test:e2e -- tests/e2e/clear-replay-share.spec.ts tests/e2e/accessibility.spec.ts --project=phone-chromium --workers=2 --grep '@layout'
+Screenshots (env-gated, off in CI): mid-replay collapsed at 390x844 and 320x568, paused collapsed at 320x568 ->
+.claude/logs/screenshots/issue69-s5b-{replay-phone390,replay-phone320,paused-phone320}.png. Report the band height and
+the map area measurements.
+```

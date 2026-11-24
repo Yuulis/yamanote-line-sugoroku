@@ -5,6 +5,7 @@ import type { ClearRoute } from "../game/clearResult";
 import type { ClearReplayStore } from "../game/clearReplayStore";
 import { applyClearRouteFit, clearFitPadding, clearFitSignature, measureClearFit } from "./clearRouteCamera";
 import { applyClearRouteLayers, removeClearRouteLayers } from "./clearRouteLayers";
+import { exposeClearFitPaddingForE2E } from "./e2eHook";
 
 export interface ClearRouteMapInput {
   /** The map once its railway layers exist; null before that and while it is rebuilt. */
@@ -79,12 +80,19 @@ export function useClearRouteMap({ map, layersRevision, active, route, generatio
       const measurement = measureClearFit(container, cardRef?.current ?? null);
       if (!measurement) return;
       const basePadding = clearFitPadding(measurement);
-      if (!basePadding) return;
+      if (!basePadding) {
+        exposeClearFitPaddingForE2E(null);
+        return;
+      }
       const padding = { ...basePadding, top: Math.max(basePadding.top, REPLAY_CAPTION_TOP_CLEARANCE_PX) };
       const signature = clearFitSignature(measurement.viewport, padding, route.bounds);
-      if (signature === appliedSignature) return;
+      if (signature === appliedSignature) {
+        exposeClearFitPaddingForE2E(padding);
+        return;
+      }
       appliedSignature = signature;
       applyClearRouteFit(map, route.bounds, padding);
+      exposeClearFitPaddingForE2E(padding);
     };
     const scheduleRefit = (): void => {
       if (scheduled) return;
@@ -112,6 +120,7 @@ export function useClearRouteMap({ map, layersRevision, active, route, generatio
       window.removeEventListener("orientationchange", scheduleRefit);
       viewport?.removeEventListener("resize", scheduleRefit);
       if (!removal.isRemoved()) map.setPadding(entryPadding);
+      exposeClearFitPaddingForE2E(null);
       removal.stop();
     };
   }, [map, active, route, generation, cardRef]);

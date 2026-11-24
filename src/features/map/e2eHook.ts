@@ -1,4 +1,5 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
+import type { CameraPadding } from "./camera";
 
 /**
  * Observation point for the Playwright suite (tests/e2e). The map is drawn on
@@ -13,10 +14,24 @@ import type { Map as MapLibreMap } from "maplibre-gl";
  */
 const E2E_HOOK_ENABLED = import.meta.env.MODE === "e2e";
 
+interface SugorokuE2EHook {
+  readonly [key: string]: unknown;
+  readonly map?: MapLibreMap | null;
+  readonly clearFitPadding?: CameraPadding | null;
+}
+
+function updateE2EHook(values: Partial<SugorokuE2EHook>): void {
+  if (!E2E_HOOK_ENABLED) return;
+  const windowWithHook = window as unknown as { __sugorokuE2E?: SugorokuE2EHook };
+  windowWithHook.__sugorokuE2E = { ...windowWithHook.__sugorokuE2E, ...values };
+}
+
 /** Publish the map once its layers exist; pass null when it is removed. */
 export function exposeMapForE2E(map: MapLibreMap | null): void {
-  if (!E2E_HOOK_ENABLED) return;
-  (window as unknown as { __sugorokuE2E?: { map: MapLibreMap | null } }).__sugorokuE2E = {
-    map,
-  };
+  updateE2EHook({ map, clearFitPadding: null });
+}
+
+/** Expose the actual padding passed to the live map's latest clear-route fit. */
+export function exposeClearFitPaddingForE2E(padding: CameraPadding | null): void {
+  updateE2EHook({ clearFitPadding: padding === null ? null : { ...padding } });
 }

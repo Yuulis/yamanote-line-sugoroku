@@ -19,6 +19,17 @@
   text-align: center;
 }
 
+/* These wrappers add state without changing the existing clear-card flow. */
+.clear-screen__content,
+.clear-screen__share-actions {
+  display: contents;
+}
+
+.clear-screen__content[hidden],
+.clear-screen__share-actions[hidden] {
+  display: none;
+}
+
 .clear-screen__summary,
 .clear-history,
 .clear-screen__highlights dd {
@@ -416,6 +427,60 @@
     left: max(64px, calc(env(safe-area-inset-left, 0px) + 56px));
     padding: 4px 7px;
     font-size: 12px;
+  }
+
+  /* During replay the measured card becomes a bottom-anchored control band. The hidden wrappers use the native
+     hidden/inert semantics as well as display:none, so their actions leave both layout and keyboard navigation. */
+  .clear-screen--replay-collapsed {
+    max-height: none;
+    overflow: visible;
+    padding: 8px 12px;
+  }
+
+  .clear-screen--replay-collapsed .clear-screen__share {
+    gap: 0;
+    margin: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-screen__replay-unavailable,
+  .clear-screen--replay-collapsed .clear-screen__share-status,
+  .clear-screen--replay-collapsed .clear-screen__share-fallback {
+    display: none;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__active {
+    display: grid;
+    flex: 1 0 100%;
+    grid-template-columns: max-content minmax(0, 1fr);
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__active > button,
+  .clear-screen--replay-collapsed .clear-replay-controls__speeds button {
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__speeds {
+    display: grid;
+    flex: initial;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__speeds button {
+    min-width: 0;
+    padding: 3px 2px;
+    font-size: 12px;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__finish {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   /* The history dialog stacks each turn: same DOM, one column, names wrap in full. */
