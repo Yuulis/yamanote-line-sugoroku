@@ -57,3 +57,10 @@ Resume from here. Plan: `clear-replay-share-plan.md` (Revision 3, Codex validate
   serialisation; after style reload re-apply the latest store snapshot; add the route===null / replay-unavailable notice
   via ClearAnnouncements; keep the caption slot out of the fit area (or include it in padding); guard applyClearRouteFit
   against a removed map. Pre-existing: the map wrapper is inert on clear, so the phone compact credit cannot be expanded.
+- 2026-11-24 after S7 (PR #125 to develop): full CI fixes — WebKit replay test polls featureCount and pauses the clock
+  ahead of install (2b6a7dc); the Firefox leg runs in the Playwright container (623242d) with HOME=/root (9760ca4).
+  Firefox history-pause flake came from 軌跡を再生 jumping ~57px when the PNG became ready (0c1d621 waits for the row).
+  User decision: keep the row stable instead — while pending, Xでシェア / 画像を保存 render disabled with a reserved
+  「画像を準備中…」 note, and text-only 共有 is decided from file-share support up front (2115758, Luna xhigh;
+  E2E checks the 320x568 rectangles stay within 1px). Local phone @layout passed with 2 workers. Release: v0.19.0,
+  PR #126 (chore/release-0.19.0) follows #125 into develop, then develop→master with `Closes #69`.

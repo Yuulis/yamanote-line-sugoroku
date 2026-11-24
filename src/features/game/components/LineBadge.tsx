@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import type { LineBadgeModel } from "../lineBadge";
+import { isLongestLineName, isLongLineName, type LineBadgeModel } from "../lineBadge";
 import { PhraseText } from "./PhraseText";
 
 export interface LineBadgeProps {
@@ -15,12 +15,18 @@ export function LineBadge({ model, showName = true, size = "md" }: LineBadgeProp
   };
   const className: string = `line-badge line-badge--${size}`;
 
+  const nameClassName: string = [
+    "line-badge__name",
+    isLongLineName(model.name) ? "line-badge__name--long" : null,
+    isLongestLineName(model.name) ? "line-badge__name--longest" : null,
+  ].filter((part) => part !== null).join(" ");
+
   return (
     <span className={className}>
       <span className="line-badge__mark" style={markStyle} aria-hidden="true">
         {model.code === null ? null : <span className="line-badge__code">{model.code}</span>}
       </span>
-      {showName ? <span className="line-badge__name"><PhraseText text={model.name} /></span> : null}
+      {showName ? <span className={nameClassName}><PhraseText text={model.name} /></span> : null}
     </span>
   );
 }

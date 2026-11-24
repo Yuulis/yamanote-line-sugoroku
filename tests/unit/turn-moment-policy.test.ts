@@ -3,6 +3,9 @@ import type { AnimationSpeedId } from "../../src/features/game/gameConfig";
 import type { PresentationLevel } from "../../src/features/game/gameSettings";
 import {
   captureTurnPresentationPolicy,
+  lotteryDirectionFlipMs,
+  lotteryFlipStageMs,
+  lotteryResultHoldMs,
   turnMomentTiming,
 } from "../../src/features/game/animation/turnMomentPolicy";
 
@@ -54,6 +57,24 @@ describe("very-fast turn moment policy", () => {
     });
     expect(policy.timing.lotteryFlipMs + policy.timing.lotterySettleMs).toBe(380);
     expect(Object.isFrozen(policy.timing)).toBe(true);
+  });
+});
+
+describe("lottery direction window, result hold and flip stage length", () => {
+  // Independent literals: D = round(0.4 * F), H = round(0.25 * F);
+  // stage = F + D + H (both) / F + H (service only) / D + H (direction only).
+  it.each([
+    ["slow", 2133, 853, 533, 3519, 2666, 1386],
+    ["normal", 1600, 640, 400, 2640, 2000, 1040],
+    ["fast", 1067, 427, 267, 1761, 1334, 694],
+    ["very-fast", 280, 112, 70, 462, 350, 182],
+  ] as const)("derives D, H and the stage length at %s", (speedId, routeFlipMs, directionMs, holdMs, bothMs, serviceOnlyMs, directionOnlyMs) => {
+    expect(turnMomentTiming(speedId).lotteryFlipMs).toBe(routeFlipMs);
+    expect(lotteryDirectionFlipMs(routeFlipMs)).toBe(directionMs);
+    expect(lotteryResultHoldMs(routeFlipMs)).toBe(holdMs);
+    expect(lotteryFlipStageMs(routeFlipMs, { serviceDrawRequired: true, directionDrawRequired: true })).toBe(bothMs);
+    expect(lotteryFlipStageMs(routeFlipMs, { serviceDrawRequired: true, directionDrawRequired: false })).toBe(serviceOnlyMs);
+    expect(lotteryFlipStageMs(routeFlipMs, { serviceDrawRequired: false, directionDrawRequired: true })).toBe(directionOnlyMs);
   });
 });
 

@@ -178,6 +178,24 @@ export const NO_CODE_LINE_GROUP_IDS: ReadonlySet<string> = new Set([
   "jr-suigun-ota",
 ]);
 
+/**
+ * Line names of at least this many characters are "long": on a narrow lottery board they are drawn in a smaller font so
+ * they still fit two lines. Measured at 320px over every service (#63 F4): the five names that overflow two lines are
+ * 19 to 25 characters; two other names (19 and 20 characters) reach the threshold without needing it.
+ */
+export const LONG_LINE_NAME_MIN_CHARS: number = 19;
+/** The three names of this length or more (24 and 25 characters) need a smaller step than the other long names. */
+export const LONGEST_LINE_NAME_MIN_CHARS: number = 24;
+
+/** Both predicates depend on the name alone, never on a draw, so the result, frames and sizers of a row always agree. */
+export function isLongLineName(name: string): boolean {
+  return [...name].length >= LONG_LINE_NAME_MIN_CHARS;
+}
+
+export function isLongestLineName(name: string): boolean {
+  return [...name].length >= LONGEST_LINE_NAME_MIN_CHARS;
+}
+
 export function badgeTextColor(background: string): "#000000" | "#ffffff" {
   const blackContrast: number = contrastRatio("#000000", background);
   const whiteContrast: number = contrastRatio("#ffffff", background);
