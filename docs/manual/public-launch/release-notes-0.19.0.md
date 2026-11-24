@@ -21,8 +21,8 @@
 
 ## 確認（内部メモ）
 
-- `npm run typecheck`、`npm run build`、`npx vitest run`（2665 passed / 1 skipped）、`git diff --check` は通過しました。本番ビルドに E2E 用の仕組みが含まれないことも確認しました。
-- 関連する E2E を Chromium・Firefox・WebKit で CI 実行し、S6 のコミットで全ブラウザの通過を確認しました。S7 を含む変更は PR #125 の CI で確認します。
+- `npm run typecheck`、`npm run build`、`npx vitest run`（2667 passed / 1 skipped）、`git diff --check` は通過しました。本番ビルドに E2E 用の仕組みが含まれないことも確認しました。
+- PR #125 の最後のコミット（`2115758`）で、Chromium・Firefox・WebKit・スマホを含む CI の全項目が通過しました（run 45348391803）。画像の準備中も「Xでシェア」「画像を保存」を押せない状態で出し、画像ができても「軌跡を再生」の位置が動かないようにしています。
 - 実機では未確認です。公開前に以下を確認してください。
   - iPhone Safari / Android Chrome：共有シートから X アプリを選んだときに文章が残るか。残らない場合に「結果をコピー」で補えるか。
   - macOS Safari / Chrome / Edge / Firefox：画像をクリップボードにコピーして X を開いたあと、投稿画面に画像を貼り付けられるか。ポップアップが止められたときや、X のログイン画面を経由するときの動き。
