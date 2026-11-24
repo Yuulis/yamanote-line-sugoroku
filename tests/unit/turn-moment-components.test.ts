@@ -335,6 +335,17 @@ describe("css contract", () => {
     expect(css).toMatch(/\n\.lottery-reveal__sizer \{\s*visibility: hidden;\s*max-width: 100%;\s*min-width: 0;/);
     expect(css).not.toContain(".lottery-reveal__row--direction .lottery-reveal__result");
     expect(rule(".lottery-reveal")).toContain("width: min(27rem, 100%);");
+    // #63 F3: a badge may wrap its name below the mark, and the name wraps at its phrase hints onto at most two lines;
+    // ellipsis is only the clamp.
+    const badge = rule(".lottery-reveal .line-badge");
+    expect(badge).toContain("flex-wrap: wrap;");
+    const name = rule(".lottery-reveal .line-badge__name");
+    expect(name).toContain("-webkit-line-clamp: 2;");
+    expect(name).toContain("line-clamp: 2;");
+    expect(name).toContain("overflow: hidden;");
+    expect(name).not.toContain("white-space: nowrap");
+    expect(name).not.toContain("text-overflow");
+    expect(css).not.toMatch(/\.lottery-reveal \.line-badge__name wbr/);
     expect(css).not.toContain("last-of-type .lottery-reveal__result");
     expect(css).toMatch(/@keyframes lottery-placeholder-stop \{\s*0% \{ opacity: 1; \}\s*84%, 100% \{ opacity: 0; \}/);
     expect(rule(".lottery-reveal__placeholder")).toMatch(/position: absolute;\s*inset: 0;/);

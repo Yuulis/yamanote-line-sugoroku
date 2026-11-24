@@ -3306,18 +3306,28 @@ button[aria-disabled="true"] {
   color: var(--color-text-muted);
   pointer-events: none;
 }
-.lottery-reveal__result,
+.lottery-reveal__result {
+  max-width: 100%;
+  min-width: 0;
+}
+/* Inside the board a badge may wrap: a name too long to sit beside the mark drops to a second flex line, and the
+   name itself wraps at its phrase hints (the <wbr> from PhraseText, as in the phone HUD) onto at most two lines. The
+   clamp ellipsizes only a name that still overflows two lines. Result, frames and sizers share these rules, so every
+   candidate wraps the same way and the row height is the maximum over all candidates, never the draw. A wide board
+   (27rem) fits every name beside its mark on one line, so nothing wraps there. */
 .lottery-reveal .line-badge {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 2px;
   max-width: 100%;
   min-width: 0;
 }
 .lottery-reveal .line-badge__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.lottery-reveal .line-badge__name wbr {
-  display: none;
 }
 /* The result and the invisible sizers share one cell. The sizers cover every label the row may need, so the row
    size is the same whichever outcome was drawn and no frame is squeezed into a narrower drawn result. */

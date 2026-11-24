@@ -760,28 +760,73 @@ test.describe("lottery board with both the route and the direction drawn", () =>
     const board = page.locator(".lottery-reveal");
     const routeMs = NORMAL_STAGE_MS.lotteryFlip;
     const directionMs = NORMAL_STAGE_MS.lotteryDirectionFlip;
-    const boardRect = () => board.evaluate((node) => {
-      const { x, y, width, height } = node.getBoundingClientRect();
-      return { x, y, width, height };
-    });
-    const clipped = () => board.evaluate((node) => [...node.querySelectorAll<HTMLElement>(
-      ".lottery-reveal__frame .line-badge__name, .lottery-reveal__row--direction .lottery-reveal__frame, .lottery-reveal__result .line-badge__name, .lottery-reveal__row--direction .lottery-reveal__result",
-    )].filter((element) => element.scrollWidth > element.clientWidth + 1).map((element) => element.textContent));
-    const atStart = await boardRect();
+    const atStart = await boardRect(board);
     await seekLotteryBoard(board, 0);
-    expect(await clipped(), "frames at the flip start").toEqual([]);
+    expect(await clippedLotteryText(board), "frames at the flip start").toEqual([]);
     await seekLotteryBoard(board, routeMs * 0.5);
-    expect(await clipped(), "frames mid route flip").toEqual([]);
-    expect(await boardRect()).toEqual(atStart);
+    expect(await clippedLotteryText(board), "frames mid route flip").toEqual([]);
+    expect(await boardRect(board)).toEqual(atStart);
     await seekLotteryBoard(board, routeMs + directionMs * 0.9);
-    expect(await clipped(), "frames after the direction stops").toEqual([]);
-    expect(await boardRect()).toEqual(atStart);
+    expect(await clippedLotteryText(board), "frames after the direction stops").toEqual([]);
+    expect(await boardRect(board)).toEqual(atStart);
+    // The desktop board is wide enough that no route name needs its second line.
+    expect(Math.max(...await lotteryNameLineCounts(board)), "route name lines on desktop").toBe(1);
+    await resumeLotteryBoard(board);
+    await advanceLotteryFlip(page);
+    await advanceLotterySettle(page);
+    await expect(board).toHaveCount(0);
+  });
+
+  // #63 F3: on a 320px phone the board is about 180px wide, so route names wrap onto two lines instead of ellipsizing.
+  test("wraps long route names onto two lines on a phone without clipping, with a board size independent of the draw", { tag: "@layout" }, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: 320, height: 568 });
+    await playLotteryToFlip(page);
+    const board = page.locator(".lottery-reveal");
+    const routeMs = NORMAL_STAGE_MS.lotteryFlip;
+    const directionMs = NORMAL_STAGE_MS.lotteryDirectionFlip;
+    const atStart = await boardRect(board);
+    const rowHeights = () => board.evaluate((node) => [...node.querySelectorAll<HTMLElement>(".lottery-reveal__row")].map((row) => row.getBoundingClientRect().height));
+    const startHeights = await rowHeights();
+    for (const [label, atMs] of [["flip start", 0], ["mid route flip", routeMs * 0.5], ["route stopped", routeMs + directionMs * 0.1],
+      ["direction stopped", routeMs + directionMs * 0.9], ["result hold", routeMs + directionMs + NORMAL_STAGE_MS.lotteryResultHold * 0.5]] as const) {
+      await seekLotteryBoard(board, atMs);
+      expect(await clippedLotteryText(board), `names clipped at ${label}`).toEqual([]);
+      expect(await boardRect(board), `board rect at ${label}`).toEqual(atStart);
+      expect(await rowHeights(), `row heights at ${label}`).toEqual(startHeights);
+    }
+    const lines = await lotteryNameLineCounts(board);
+    expect(Math.max(...lines), "no route name needs more than two lines").toBeLessThanOrEqual(2);
+    expect(Math.max(...lines), "the longest candidate wraps onto a second line at 320px").toBe(2);
     await resumeLotteryBoard(board);
     await advanceLotteryFlip(page);
     await advanceLotterySettle(page);
     await expect(board).toHaveCount(0);
   });
 });
+
+async function boardRect(board: Locator): Promise<{ x: number; y: number; width: number; height: number }> {
+  return board.evaluate((node) => {
+    const { x, y, width, height } = node.getBoundingClientRect();
+    return { x, y, width, height };
+  });
+}
+
+/** Texts whose box is cut off: sideways overflow in a result or direction frame, or a name clamped below its content. */
+async function clippedLotteryText(board: Locator): Promise<(string | null)[]> {
+  return board.evaluate((node) => [...node.querySelectorAll<HTMLElement>(
+    ".lottery-reveal__frame .line-badge__name, .lottery-reveal__row--direction .lottery-reveal__frame, .lottery-reveal__result .line-badge__name, .lottery-reveal__row--direction .lottery-reveal__result, .lottery-reveal__sizer .line-badge__name",
+  )].filter((element) => element.scrollWidth > element.clientWidth + 1 || element.scrollHeight > element.clientHeight + 1).map((element) => element.textContent));
+}
+
+/** Rendered line count of every route name in the board (frames, result and sizers), read from its text line boxes. */
+async function lotteryNameLineCounts(board: Locator): Promise<number[]> {
+  return board.evaluate((node) => [...node.querySelectorAll<HTMLElement>(".line-badge__name")].map((element) => {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
+  }));
+}
 
 for (const stage of ["lottery-flip", "lottery-settle"] as const) {
   for (const end of ["Skip", "reduced motion"] as const) {

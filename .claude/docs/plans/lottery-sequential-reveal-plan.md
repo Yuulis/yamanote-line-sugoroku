@@ -242,7 +242,7 @@ boundary specs, phone `@layout`.
 - F2: candidate labels longer than the drawn result are ellipsized during the flip (route
   and direction rows). Fix must size rows from route-independent content so the direction
   row's size cannot reveal the route. Analysis: .claude/docs/research/feature-lottery-sequential-reveal-truncation.md
-- F3 (DECIDED 2026-11-24): on phones (board capped ~180px at 320px wide) route names must
+- F3 (DONE, see commit below; DECIDED 2026-11-24): on phones (board capped ~180px at 320px wide) route names must
   not be ellipsized; allow line badges in the lottery board to wrap to two lines and show
   the full name. Row height must still come from the route-independent sizer set (max over
   all candidates), so height cannot reveal the draw. Follow-up after F1+F2.
