@@ -111,6 +111,7 @@
 }
 
 .clear-screen__actions {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 8px;
@@ -132,6 +133,23 @@
 .clear-screen__share button {
   flex: 0 0 auto;
   white-space: nowrap;
+}
+
+.clear-screen__image-pending-note {
+  box-sizing: border-box;
+  position: absolute;
+  top: -11px;
+  right: 0;
+  left: 0;
+  margin: 0;
+  color: #555555;
+  font-size: 11px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.clear-screen__image-pending-note--reserved {
+  visibility: hidden;
 }
 
 .clear-replay-controls {
@@ -424,8 +442,14 @@
     line-height: 1.2;
   }
 
-  .clear-screen__share,
-  .clear-screen__actions,
+  .clear-screen__share {
+    margin-top: 0;
+  }
+
+  .clear-screen__actions {
+    margin-top: 12px;
+  }
+
   .clear-screen__history-button {
     margin-top: 6px;
   }

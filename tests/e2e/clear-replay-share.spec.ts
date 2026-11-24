@@ -28,6 +28,11 @@ const CLEAR_ROUTE_LAYERS = ["clear-traveled-route-outline", "clear-traveled-rout
 const MIN_ROUTE_FILL_RATIO = 0.4;
 const FRAMING_TOLERANCE_PX = 1;
 
+interface RouteImageEncodingWindow extends Window {
+  __routeImageEncodeReleases?: Array<() => void>;
+  __releaseRouteImageEncoding?: () => void;
+}
+
 async function failSaveWrites(page: Page): Promise<void> {
   await page.evaluate(() => {
     const storage = Storage.prototype;
@@ -52,6 +57,78 @@ async function clearWithOneRoll(page: Page, options: { failSave?: boolean } = {}
   await expect(clear).toBeVisible();
   await expect(clear.getByRole("heading", { name: "クリア！" })).toBeFocused();
   return clear;
+}
+
+/** Starts the replay after the route-image controls leave their pending state. */
+async function startReplay(clear: Locator): Promise<void> {
+  await waitForSettledShareRow(clear);
+  await clear.getByRole("button", { name: "軌跡を再生" }).click();
+}
+
+/** The row is settled as soon as its pending controls are in place; it no longer has to wait for PNG encoding. */
+async function waitForSettledShareRow(clear: Locator): Promise<void> {
+  const note = clear.locator("#clear-image-pending-note");
+  const shareButton = clear.getByRole("button", { name: "Xでシェア" });
+  const saveButton = clear.getByRole("button", { name: "画像を保存" });
+  await expect.poll(async () => {
+    if (await note.isVisible()) {
+      if (await shareButton.count() !== 1 || await saveButton.count() !== 1) return false;
+      return await shareButton.isDisabled() && await saveButton.isDisabled();
+    }
+    const shareCount = await shareButton.count();
+    const saveCount = await saveButton.count();
+    if (shareCount === 0 && saveCount === 0) return true;
+    if (shareCount !== 1 || saveCount !== 1) return false;
+    return await shareButton.isEnabled() && await saveButton.isEnabled();
+  }, { message: "the image action row has a stable pending or settled layout", timeout: IMAGE_READY_TIMEOUT_MS }).toBe(true);
+}
+
+/** Self-contained: hold the export canvas encoding so an E2E can measure the visible pending state. */
+function holdRouteImageEncoding(): void {
+  const windowWithHold = window as RouteImageEncodingWindow;
+  const releases: Array<() => void> = [];
+  const originalToBlob = HTMLCanvasElement.prototype.toBlob;
+  windowWithHold.__routeImageEncodeReleases = releases;
+  windowWithHold.__releaseRouteImageEncoding = () => releases.shift()?.();
+  HTMLCanvasElement.prototype.toBlob = function (callback, type, quality): void {
+    const canvas = this;
+    releases.push(() => originalToBlob.call(canvas, callback, type, quality));
+  };
+}
+
+async function measurePhoneSheet(clear: Locator, buttonNames: readonly string[]): Promise<{
+  readonly sheet: { readonly height: number; readonly width: number };
+  readonly scrollTop: number;
+  readonly targets: Record<string, { readonly top: number; readonly bottom: number; readonly left: number; readonly right: number }>;
+}> {
+  return clear.evaluate((element, names) => {
+    const sheet = element.getBoundingClientRect();
+    const round = (value: number): number => Math.round(value * 10) / 10;
+    const rect = (target: Element): { top: number; bottom: number; left: number; right: number } => {
+      const box = target.getBoundingClientRect();
+      return {
+        top: round(box.top - sheet.top),
+        bottom: round(box.bottom - sheet.top),
+        left: round(box.left - sheet.left),
+        right: round(box.right - sheet.left),
+      };
+    };
+    const targets: Record<string, { top: number; bottom: number; left: number; right: number }> = {};
+    const stats = element.querySelector(".clear-screen__stats");
+    if (!stats) throw new Error("The clear result numbers are missing");
+    targets["三つの数値"] = rect(stats);
+    const buttons = [...element.querySelectorAll<HTMLButtonElement>("button")];
+    for (const name of names) {
+      const button = buttons.find((candidate) => candidate.textContent?.trim() === name);
+      if (!button) throw new Error(`The ${name} button is missing`);
+      targets[name] = rect(button);
+    }
+    return {
+      sheet: { height: round(sheet.height), width: round(sheet.width) },
+      scrollTop: element.scrollTop,
+      targets,
+    };
+  }, [...buttonNames]);
 }
 
 async function expectNoHorizontalOverflow(page: Page, clear: Locator): Promise<void> {
@@ -620,6 +697,8 @@ test.describe("turn-synced replay", () => {
       .toBeGreaterThan(0);
     const fullFeatureCount = (await readClearRoute(page))?.featureCount ?? 0;
     const caption = page.locator(".clear-replay-caption");
+    // The route image is drawn with real frames; let it finish before the fake clock freezes them.
+    await waitForSettledShareRow(clear);
 
     // install() starts the fake clock running from installTime; pauseAt() may only move forward, so pause a safe
     // margin later than the install time rather than at the same instant (which already lies in the past).
@@ -627,7 +706,7 @@ test.describe("turn-synced replay", () => {
     const CLOCK_PAUSE_MARGIN_MS = 10_000;
     await page.clock.install({ time: installTime });
     await page.clock.pauseAt(new Date(installTime.getTime() + CLOCK_PAUSE_MARGIN_MS));
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(caption).toBeVisible();
     await expect(caption).toHaveAttribute("data-record-index", "0");
     await page.clock.runFor(1_100);
@@ -639,7 +718,7 @@ test.describe("turn-synced replay", () => {
     await clear.getByRole("button", { name: "全経路を表示" }).click();
     await expect(caption).toHaveCount(0);
     await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0).toBe(fullFeatureCount);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(caption).toHaveAttribute("data-record-index", "0");
     expect(advancedIndex).toBeGreaterThan(0);
     await page.clock.runFor(1_100);
@@ -656,7 +735,7 @@ test.describe("turn-synced replay", () => {
     const idle = await readMap(page);
     expect(idle?.goalStationId).toBe("shimbashi");
 
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect.poll(async () => {
       const map = await readMap(page);
       return map ? [map.markerRendered, map.headingMarker?.visible] : null;
@@ -682,7 +761,7 @@ test.describe("turn-synced replay", () => {
     test.setTimeout(60_000);
     await page.setViewportSize(DESKTOP);
     const clear = await clearWithOneRoll(page);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     const caption = page.locator(".clear-replay-caption");
     const normal = clear.getByRole("button", { name: "速度: ふつう" });
     const fast = clear.getByRole("button", { name: "速度: はやい" });
@@ -694,7 +773,7 @@ test.describe("turn-synced replay", () => {
     expect(normalProgress).toBeGreaterThan(0);
 
     await clear.getByRole("button", { name: "全経路を表示" }).click();
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(normal).toHaveAttribute("aria-pressed", "true");
     await fast.click();
     await expect(fast).toHaveAttribute("aria-pressed", "true");
@@ -705,7 +784,7 @@ test.describe("turn-synced replay", () => {
     expect(fastProgress, "fast mode should advance more saved turns in the same 1.2 seconds").toBeGreaterThan(normalProgress);
 
     await clear.getByRole("button", { name: "全経路を表示" }).click();
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(fast).toHaveAttribute("aria-pressed", "true");
     await clear.getByRole("button", { name: "一時停止" }).click();
     const pausedIndex = await caption.getAttribute("data-record-index");
@@ -718,25 +797,50 @@ test.describe("turn-synced replay", () => {
   test("opening the history dialog pauses replay until the user resumes", async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     const clear = await clearWithOneRoll(page);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
     const caption = page.locator(".clear-replay-caption");
+    // The route image is drawn with real frames; let it finish before the fake clock freezes them.
+    await waitForSettledShareRow(clear);
+    // Replay time only moves when the test says so: two normal-speed turns (550 ms each) per step below. Each step
+    // runs one frame (the replay anchors its clock on it) and then jumps, so a due frame fires once instead of
+    // rendering every frame of the jump in software WebGL.
+    const installTime = new Date("2026-11-23T00:00:00.000Z");
+    const CLOCK_PAUSE_MARGIN_MS = 10_000;
+    const TWO_TURNS_MS = 1_100;
+    const ONE_FRAME_MS = 20;
+    const advanceTwoTurns = async (): Promise<void> => {
+      await page.clock.runFor(ONE_FRAME_MS);
+      await page.clock.fastForward(TWO_TURNS_MS);
+      await page.clock.runFor(ONE_FRAME_MS);
+    };
+    await page.clock.install({ time: installTime });
+    await page.clock.pauseAt(new Date(installTime.getTime() + CLOCK_PAUSE_MARGIN_MS));
+    await startReplay(clear);
+    await advanceTwoTurns();
     await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(0);
+
     const dialog = await openClearHistory(clear);
-    await expect(clear.getByRole("button", { name: "再開" })).toBeVisible();
+    const resume = clear.getByRole("button", { name: "再開" });
+    await expect(resume).toBeVisible();
     const index = await caption.getAttribute("data-record-index");
     const features = (await readClearRoute(page))?.featureCount;
-    await page.waitForTimeout(600);
+    expect(features, "the partial route is drawn when the dialog opens").toBeGreaterThan(0);
+    await advanceTwoTurns();
     await expect(caption).toHaveAttribute("data-record-index", index!);
-    expect((await readClearRoute(page))?.featureCount).toBe(features);
+    expect((await readClearRoute(page))?.featureCount, "the paused route does not grow while the dialog is open").toBe(features);
     await dialog.getByRole("button", { name: "閉じる" }).click();
     await expect(dialog).toBeHidden();
-    await expect(clear.getByRole("button", { name: "再開" })).toBeVisible();
+    await expect(resume, "closing the dialog leaves the replay paused").toBeVisible();
+
+    // The same clock does advance the replay once the user resumes, so the paused check above is not vacuous.
+    await resume.click();
+    await advanceTwoTurns();
+    await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(Number(index));
   });
 
   test("clips only the station part of the replay caption on a 320px phone", { tag: "@layout" }, async ({ page }) => {
     await page.setViewportSize(PHONE_SMALL);
     const clear = await clearWithOneRoll(page);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     const caption = page.locator(".clear-replay-caption");
     await expect(caption).toBeVisible();
     await clear.getByRole("button", { name: "一時停止" }).click();
@@ -777,7 +881,7 @@ test.describe("turn-synced replay", () => {
     const expandedPadding = (await readClearRoute(page))?.padding ?? null;
     expect(expandedPadding).not.toBeNull();
 
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
     await expect(clear.getByRole("button", { name: "一時停止" })).toBeFocused();
     await expect(clear.locator(".clear-screen__content").first()).toBeHidden();
@@ -812,7 +916,7 @@ test.describe("turn-synced replay", () => {
     await expectRouteFramedBesideCard(page);
 
     await page.setViewportSize(PHONE_MEDIUM);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
     await expectPartialRouteInsideOpenMap(page);
     const mediumBand = await measureCollapsedBand(clear);
@@ -830,7 +934,7 @@ test.describe("turn-synced replay", () => {
     test.setTimeout(60_000);
     await page.setViewportSize(PHONE_SMALL);
     const clear = await clearWithOneRoll(page);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
     await clear.getByRole("button", { name: "速度: はやい" }).click();
     await expect(clear.getByRole("button", { name: "軌跡を再生" })).toBeVisible({ timeout: 40_000 });
@@ -842,7 +946,7 @@ test.describe("turn-synced replay", () => {
     await page.setViewportSize(DESKTOP);
     const clear = await clearWithOneRoll(page);
     const maxHeightBeforeReplay = await clear.evaluate((element) => getComputedStyle(element).maxHeight);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
 
     await expect(clear).not.toHaveClass(/clear-screen--replay-collapsed/);
     await expect(clear.getByRole("heading", { name: "クリア！" })).toBeVisible();
@@ -858,7 +962,7 @@ test.describe("turn-synced replay", () => {
   test("keeps the history dialog open across a phone resize, then collapses after closing", { tag: "@layout" }, async ({ page }) => {
     await page.setViewportSize(DESKTOP);
     const clear = await clearWithOneRoll(page);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     const dialog = clear.getByRole("dialog", { name: "移動履歴" });
     await clear.getByRole("button", { name: "移動履歴を見る" }).click();
     await expect(dialog).toBeVisible();
@@ -878,7 +982,7 @@ test.describe("turn-synced replay", () => {
     mkdirSync(SCREENSHOT_DIR, { recursive: true });
     await page.setViewportSize(PHONE_MEDIUM);
     const clear = await clearWithOneRoll(page);
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
     await page.waitForTimeout(650);
     await page.screenshot({ path: join(SCREENSHOT_DIR, "issue69-s5b-replay-phone390.png") });
@@ -898,7 +1002,7 @@ test.describe("turn-synced replay", () => {
     const clear = await clearWithOneRoll(page);
     const caption = page.locator(".clear-replay-caption");
 
-    await clear.getByRole("button", { name: "軌跡を再生" }).click();
+    await startReplay(clear);
     await expect(caption).toBeVisible();
     await page.waitForTimeout(650);
     await page.screenshot({ path: join(SCREENSHOT_DIR, "issue69-s5-replay-desktop.png") });
@@ -1154,7 +1258,7 @@ test.describe("image share and save", () => {
       await waitForImageActions(clear);
       await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0).toBeGreaterThan(0);
       const fullFeatureCount = (await readClearRoute(page))?.featureCount ?? 0;
-      await clear.getByRole("button", { name: "軌跡を再生" }).click();
+      await startReplay(clear);
       await expect(page.locator(".clear-replay-caption")).toBeVisible();
 
       await clear.getByRole("button", { name: "Xでシェア" }).click();
@@ -1225,6 +1329,52 @@ test.describe("image share and save", () => {
     expect(calls.slice(0, 3)).toEqual(["ClipboardItem", "clipboard.write", "open"]);
     expect(calls).not.toContain("share");
     await expect(clear.locator(".clear-screen__share-status")).toHaveText(PASTE_HINT);
+  });
+
+  test("keeps the image and replay button rectangles fixed from pending to ready at 320x568", { tag: "@layout" }, async ({ page }) => {
+    await stubShareApis(page, { canShare: true });
+    await page.addInitScript(holdRouteImageEncoding);
+    await page.setViewportSize(PHONE_SMALL);
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    const clear = await clearWithOneRoll(page);
+    await expect.poll(
+      () => page.evaluate(() => (window as RouteImageEncodingWindow).__routeImageEncodeReleases?.length ?? 0),
+      { timeout: IMAGE_READY_TIMEOUT_MS },
+    ).toBe(1);
+    await expect(clear.getByText("画像を準備中…", { exact: true })).toBeVisible();
+    await expect(clear.getByRole("button", { name: "Xでシェア" })).toBeDisabled();
+    await expect(clear.getByRole("button", { name: "画像を保存" })).toBeDisabled();
+
+    const buttonNames = ["結果をコピー", "Xでシェア", "画像を保存", "軌跡を再生", "もう一度遊ぶ", "タイトルへ", "移動履歴を見る"] as const;
+    const pendingLayout = await measurePhoneSheet(clear, buttonNames);
+    expect(pendingLayout.scrollTop, "the pending sheet stays at the top").toBe(0);
+    expect(pendingLayout.sheet.height, "the pending sheet stays within its 65% cap")
+      .toBeLessThanOrEqual(PHONE_SMALL.height * PHONE_SHEET_MAX_HEIGHT_RATIO + 1);
+    await expectWithinFirstScreen(clear, clear.locator(".clear-screen__stats"), "the three numbers");
+    for (const name of buttonNames) await expectWithinFirstScreen(clear, clear.getByRole("button", { name, exact: true }), name);
+    await expectNoHorizontalOverflow(page, clear);
+
+    await page.evaluate(() => (window as RouteImageEncodingWindow).__releaseRouteImageEncoding?.());
+    await waitForImageActions(clear);
+    await expect(clear.getByText("画像を準備中…", { exact: true })).toBeHidden();
+    const readyLayout = await measurePhoneSheet(clear, buttonNames);
+    expect(readyLayout.scrollTop, "the ready sheet stays at the top").toBe(0);
+    expect(readyLayout.sheet.height, "the ready sheet stays within its 65% cap")
+      .toBeLessThanOrEqual(PHONE_SMALL.height * PHONE_SHEET_MAX_HEIGHT_RATIO + 1);
+    await expectWithinFirstScreen(clear, clear.locator(".clear-screen__stats"), "the three numbers");
+    for (const name of buttonNames) await expectWithinFirstScreen(clear, clear.getByRole("button", { name, exact: true }), name);
+    await expectNoHorizontalOverflow(page, clear);
+
+    for (const name of ["軌跡を再生", "Xでシェア", "画像を保存"] as const) {
+      for (const edge of ["top", "bottom", "left", "right"] as const) {
+        expect(
+          Math.abs(readyLayout.targets[name]![edge] - pendingLayout.targets[name]![edge]),
+          `${name} ${edge} stays within one pixel while the image becomes ready`,
+        ).toBeLessThanOrEqual(1);
+      }
+    }
+    console.log(`[S7 pending layout 320x568] ${JSON.stringify(pendingLayout)}`);
+    console.log(`[S7 ready layout 320x568] ${JSON.stringify(readyLayout)}`);
   });
 
   test("keeps the share row, numbers and main actions inside the 320px sheet and reports the rectangles", { tag: "@layout" }, async ({ page }) => {

@@ -286,15 +286,41 @@ describe("ClearScreen image sharing", () => {
 
   beforeEach(() => { trackEventMock.mockClear(); });
 
-  it("shows only a disabled 画像を準備中… state on the image actions while the PNG is pending", () => {
+  it("keeps the image actions visible and disabled while the PNG is pending", () => {
     const mounted = mountImageScreen({ routeImage: { kind: "pending" } });
-    const pending = buttonByName(mounted.container, "画像を準備中…");
-    expect(pending?.disabled).toBe(true);
-    expect(buttonByName(mounted.container, "Xでシェア")).toBeUndefined();
-    expect(buttonByName(mounted.container, "画像を保存")).toBeUndefined();
+    const share = buttonByName(mounted.container, "Xでシェア");
+    const save = buttonByName(mounted.container, "画像を保存");
+    const note = mounted.container.querySelector<HTMLParagraphElement>("#clear-image-pending-note");
+    expect(share?.disabled).toBe(true);
+    expect(save?.disabled).toBe(true);
+    expect(share?.getAttribute("aria-describedby")).toBe("clear-image-pending-note");
+    expect(save?.getAttribute("aria-describedby")).toBe("clear-image-pending-note");
+    expect(note?.tagName).toBe("P");
+    expect(note?.textContent).toBe("画像を準備中…");
+    expect(buttonByName(mounted.container, "画像を準備中…")).toBeUndefined();
     expect(buttonByName(mounted.container, COPY)).toBeDefined();
     expect(textLink(mounted.container)?.getAttribute("href")).toBe(X_INTENT);
     mounted.cleanup();
+  });
+
+  it("keeps the image button order unchanged from pending to ready", () => {
+    const pending = mountImageScreen({ routeImage: { kind: "pending" } });
+    const ready = mountImageScreen({ routeImage: readyImage });
+    const buttons = (container: HTMLElement): HTMLButtonElement[] =>
+      [...container.querySelectorAll<HTMLButtonElement>(".clear-screen__share-actions > button")];
+    const pendingButtons = buttons(pending.container);
+    const readyButtons = buttons(ready.container);
+    const names = (items: HTMLButtonElement[]): string[] => items.map((button) => button.textContent?.trim() ?? "");
+
+    expect(names(pendingButtons)).toEqual([COPY, "Xでシェア", "画像を保存"]);
+    expect(names(readyButtons)).toEqual(names(pendingButtons));
+    expect(pendingButtons.map((button) => button.disabled)).toEqual([false, true, true]);
+    expect(readyButtons.map((button) => button.disabled)).toEqual([false, false, false]);
+    expect(ready.container.querySelector("#clear-image-pending-note")?.classList)
+      .toContain("clear-screen__image-pending-note--reserved");
+
+    pending.cleanup();
+    ready.cleanup();
   });
 
   it.each(["unavailable", "failed"] as const)("keeps only the text paths when the image is %s", (kind) => {
@@ -324,7 +350,7 @@ describe("ClearScreen image sharing", () => {
         { share: vi.fn().mockResolvedValue(undefined), canShare: () => true },
       ),
       saveStatus: "saved" as const, onPlayAgain: vi.fn(), onShowTitle: vi.fn(),
-      imageShareActions: stubImageActions([], { canShareFile: () => true }),
+      imageShareActions: stubImageActions([], { canShareFile: (candidate) => candidate === readyImage.image.file }),
     };
     const mounted = mountReact(createElement(ClearScreen, { ...props, routeImage: { kind: "pending" } }));
     const textShare = buttonByName(mounted.container, "共有");
@@ -335,6 +361,25 @@ describe("ClearScreen image sharing", () => {
     act(() => mounted.root.render(createElement(ClearScreen, { ...props, routeImage: readyImage })));
     expect(buttonByName(mounted.container, "共有")).toBeUndefined();
     expect(document.activeElement).toBe(buttonByName(mounted.container, "Xでシェア"));
+    mounted.cleanup();
+  });
+
+  it("hides text-only 共有 while the image is pending on a file-share device", () => {
+    const mounted = mountReact(createElement(ClearScreen, {
+      game, network: emptyNetwork, presentation,
+      result: clearResultFor(game, emptyNetwork, presentation, display),
+      shareActions: createResultShareActions(
+        { writeText: vi.fn().mockResolvedValue(undefined) },
+        { share: vi.fn().mockResolvedValue(undefined), canShare: () => true },
+      ),
+      saveStatus: "saved", onPlayAgain: vi.fn(), onShowTitle: vi.fn(),
+      routeImage: { kind: "pending" },
+      imageShareActions: stubImageActions([], { canShareFile: () => true }),
+    }));
+
+    expect(buttonByName(mounted.container, SHARE)).toBeUndefined();
+    expect(buttonByName(mounted.container, "Xでシェア")?.disabled).toBe(true);
+    expect(buttonByName(mounted.container, "画像を保存")?.disabled).toBe(true);
     mounted.cleanup();
   });
 
