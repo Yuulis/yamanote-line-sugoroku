@@ -768,6 +768,8 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
           result={publishedClear.result}
           historyRows={publishedClear.historyRows}
           replayStore={publishedClear.replayStore}
+          routeImage={publishedClear.routeImage}
+          onImageDownloadStarted={publishedClear.markRouteImageDownloadStarted}
           reducedMotion={reducedMotion}
           itemNotice={turnDisplay.itemView && turnDisplay.itemNoticePublished ? <ItemEventNotice
             view={turnDisplay.itemView} lastMove={turnDisplay.itemNoticeMove} turn={turnDisplay.turn} network={network} presentation={presentation}

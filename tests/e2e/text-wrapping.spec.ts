@@ -663,7 +663,17 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
   const actionColumns: string[] = await clearScreen.locator(".clear-screen__actions").evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/),
   );
-  expect(actionColumns).toHaveLength(1);
+  // S7 added a second share row (Xでシェア, 画像を保存), so the two main actions now sit side by side at 320px to keep
+  // 移動履歴を見る inside the 65% phone sheet. They must stay on one row, in order, unclipped and single-line.
+  expect(actionColumns).toHaveLength(2);
+  const mainActions = await clearScreen.locator(".clear-screen__actions button").evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect();
+    return { top: box.top, left: box.left, right: box.right, clipped: button.scrollWidth > button.clientWidth + 1 };
+  }));
+  expect(mainActions).toHaveLength(2);
+  expect(Math.abs(mainActions[0]!.top - mainActions[1]!.top)).toBeLessThan(1);
+  expect(mainActions[0]!.right).toBeLessThanOrEqual(mainActions[1]!.left);
+  expect(mainActions.some((action) => action.clipped)).toBe(false);
   await expectButtonsSingleLine(clearScreen.locator(".clear-screen__actions button, .clear-screen__share button, .clear-screen__history-button"));
   await expectNoHorizontalOverflow(clearScreen);
   await expectPageNoHorizontalOverflow(page);

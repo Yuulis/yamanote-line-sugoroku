@@ -4,6 +4,9 @@ import type { RailwayNetwork } from "../engine";
 import type { ClearResult } from "../clearResult";
 import { PHONE_MEDIA_QUERY } from "../../map/mapConfig";
 import { browserResultShareActions, type ResultShareActions } from "../resultShareActions";
+import { browserResultImageShareActions, buildXIntentUrl, type ResultImageShareActions } from "../resultImageShareActions";
+import { useClearImageShare } from "../useClearImageShare";
+import type { RouteImageState } from "../../map/routeImage";
 import { type SaveWriteResult, saveStatusMessage } from "../store/persistence";
 import { stationName } from "../presentation";
 import type { PresentationResolver } from "../presentationResolver";
@@ -49,6 +52,11 @@ interface ClearScreenProps {
   /** Published collection counters; omitted by callers that render the screen outside the game (e.g. share tests). */
   collection?: CollectionProgress;
   shareActions?: ResultShareActions;
+  /** The pre-generated route PNG; image actions exist only while it is pending or ready. */
+  routeImage?: RouteImageState;
+  imageShareActions?: ResultImageShareActions;
+  /** Called in the click that starts a PNG download, so its object URL outlives the download. */
+  onImageDownloadStarted?: () => void;
   itemNotice?: ReactNode;
   /** The goal sentence announced once by the screen's single live region; empty when the turn has none. */
   completionAnnouncement?: string;
@@ -60,8 +68,12 @@ interface ClearScreenProps {
   cardRef?: Ref<HTMLElement>;
 }
 
+const UNAVAILABLE_IMAGE: RouteImageState = { kind: "unavailable" };
+const IMAGE_FAILED_NOTE = "画像を作成できませんでした。文面だけで共有できます。";
+const noop = (): void => {};
+
 /** Shown once the clearing move has finished animating (spec 6.1). */
-export function ClearScreen({ game, network, presentation, result, historyRows, replayStore, reducedMotion = false, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), onPlayAgain, onShowTitle, cardRef }: ClearScreenProps) {
+export function ClearScreen({ game, network, presentation, result, historyRows, replayStore, reducedMotion = false, collection, saveStatus, itemNotice, completionAnnouncement = "", shareActions = browserResultShareActions(), routeImage = UNAVAILABLE_IMAGE, imageShareActions: injectedImageActions, onImageDownloadStarted = noop, onPlayAgain, onShowTitle, cardRef }: ClearScreenProps) {
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [showShareText, setShowShareText] = useState(false);
   const [announcement, setAnnouncement] = useState<ClearAnnouncement | null>(null);
@@ -155,13 +167,41 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
   const { turns, moves, transfers } = result.summary;
   const { shareText } = result;
   const canShare = shareActions.canShare(shareText);
+  const imageActions = useMemo(() => injectedImageActions ?? browserResultImageShareActions(), [injectedImageActions]);
+  // Where "Xでシェア" opens the native sheet with the PNG and the same text, a text-only 共有 button would only repeat it.
+  const fileShareActive = routeImage.kind === "ready" && imageActions.canShareFile(routeImage.image.file);
   const announce = useCallback((text: string): void => setAnnouncement((previous) => ({ id: (previous?.id ?? 0) + 1, text })), []);
   const showMessage = (text: string | null, textFallback: boolean): void => {
     setShowShareText(textFallback);
     setShareMessage(text);
     if (text !== null) announce(text);
   };
+  // Every share, copy or save completes a running replay first, so the route is whole when the action starts.
+  const finishReplay = useCallback((): void => {
+    const phase = activeReplayStore.getPhase();
+    if (phase === "playing" || phase === "paused") activeReplayStore.finish();
+  }, [activeReplayStore]);
+  // An image message keeps the selectable text fallback of an earlier failed copy on screen.
+  const showImageMessage = useCallback((text: string | null): void => {
+    setShareMessage(text);
+    if (text !== null) announce(text);
+  }, [announce]);
+  // An image failure is only shown as a note, never announced: it can land in the same commit as the publication and
+  // would replace the completion sentence in the single polite region before it is spoken.
+  // When the image becomes ready, 共有 is replaced by Xでシェア; keep keyboard focus on the share row.
+  const textShareFocusedRef = useRef(false);
+  const shareToXRef = useRef<HTMLButtonElement | null>(null);
+  useLayoutEffect(() => {
+    if (!fileShareActive || !textShareFocusedRef.current) return;
+    textShareFocusedRef.current = false;
+    shareToXRef.current?.focus({ preventScroll: true });
+  }, [fileShareActive]);
+  const imageShare = useClearImageShare({
+    image: routeImage, shareText, actions: imageActions, finishReplay,
+    onMessage: showImageMessage, onDownloadStarted: onImageDownloadStarted,
+  });
   const copyResult = async () => {
+    finishReplay();
     const copied = await shareActions.copy(shareText);
     trackEvent("result_share", { method: "copy", outcome: copied ? "success" : "failed" });
     showMessage(copied
@@ -169,8 +209,9 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
       : "コピーできませんでした。下の文面を選択してコピーしてください。", !copied);
   };
   const shareResult = async () => {
+    finishReplay();
     const outcome = await shareActions.share(shareText);
-    trackEvent("result_share", { method: "share", outcome });
+    trackEvent("result_share", { method: "share", outcome: outcome === "shared" ? "success" : outcome });
     if (outcome === "cancelled") return;
     showMessage(outcome === "failed"
       ? "共有できませんでした。下の文面を選択してコピーしてください。"
@@ -211,13 +252,28 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
       <div className="clear-screen__share">
         <div className="clear-screen__share-actions" hidden={replayCollapsed} aria-hidden={replayCollapsed} inert={replayCollapsed}>
           <button type="button" onClick={copyResult}>結果をコピー</button>
-          {canShare && <button type="button" onClick={shareResult}>共有</button>}
+          {canShare && !fileShareActive && (
+            <button
+              type="button"
+              onClick={shareResult}
+              onFocus={() => { textShareFocusedRef.current = true; }}
+              onBlur={() => { textShareFocusedRef.current = false; }}
+            >共有</button>
+          )}
+          {routeImage.kind === "pending" && <button type="button" disabled aria-busy="true">画像を準備中…</button>}
+          {routeImage.kind === "ready" && (
+            <>
+              <button type="button" ref={shareToXRef} onClick={imageShare.shareToX}>Xでシェア</button>
+              <button type="button" onClick={imageShare.saveImage}>画像を保存</button>
+            </>
+          )}
         </div>
         {result.route !== null && <ClearReplayControls store={activeReplayStore} reducedMotion={reducedMotion} onAnnounce={announce} />}
       </div>
       <div className="clear-screen__content" hidden={replayCollapsed} aria-hidden={replayCollapsed} inert={replayCollapsed}>
         {result.route === null && <p className="clear-screen__replay-unavailable">経路を描画できないため、軌跡を再生できません。</p>}
         <p className="clear-screen__share-status">{shareMessage}</p>
+        {routeImage.kind === "failed" && <p className="clear-screen__image-note">{IMAGE_FAILED_NOTE}</p>}
         {showShareText && (
           <div className="clear-screen__share-fallback">
             <label htmlFor="clear-share-text">共有する結果</label>
@@ -240,6 +296,15 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
           onBeforeOpen={() => activeReplayStore.pause()}
           onDialogOpenChange={setHistoryDialogOpen}
         />
+        <a
+          className="clear-screen__x-text-link"
+          href={buildXIntentUrl(shareText)}
+          target="_blank"
+          rel="noopener"
+          onClick={imageShare.handOffTextToX}
+        >
+          文面だけXに投稿
+        </a>
         <ClearHighlights
           highlights={result.highlights}
           network={network}

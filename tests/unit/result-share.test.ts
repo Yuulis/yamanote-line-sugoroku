@@ -7,18 +7,25 @@ import { buildRailwayNetwork } from "../../src/features/game/engine";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { createElement } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ClearScreen } from "../../src/features/game/components/ClearScreen";
 import type { GameState } from "../../src/types/network";
 import { EDITIONS } from "../../src/features/editions/registry";
 import { FIXTURE_EDITION_A } from "./fixtures/editions";
 import { buildShareText } from "../../src/features/game/shareText";
 import { createResultShareActions } from "../../src/features/game/resultShareActions";
+import { createResultImageShareActions, type ResultImageShareActions } from "../../src/features/game/resultImageShareActions";
+import type { ClearReplayStore } from "../../src/features/game/clearReplayStore";
+import type { RouteImageState } from "../../src/features/map/routeImage";
+import { trackEvent } from "../../src/features/analytics/analytics";
 import type { RailwayNetwork } from "../../src/features/game/engine";
 import type { PresentationResolver } from "../../src/features/game/presentationResolver";
 import { act } from "react";
 import { mountReact } from "./helpers/reactDom";
 import { buttonByName, clearResultFor } from "./helpers/clearScreen";
+
+vi.mock("../../src/features/analytics/analytics", () => ({ trackEvent: vi.fn() }));
+const trackEventMock = vi.mocked(trackEvent);
 
 const accountingNetwork = buildRailwayNetwork(multiServiceInput());
 const accountingPresentation = createPresentationResolver(accountingNetwork);
@@ -222,5 +229,324 @@ describe("item result accounting", () => {
     mounted.cleanup();
     Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal");
     Reflect.deleteProperty(HTMLDialogElement.prototype, "close");
+  });
+});
+
+
+describe("ClearScreen image sharing", () => {
+  const X_TEXT = expectedText;
+  const X_INTENT = `https://x.com/intent/post?text=${encodeURIComponent(X_TEXT)}`;
+  const PASTE_HINT = "Xの投稿画面に画像を貼り付けてください";
+  const blob = new Blob(["png"], { type: "image/png" });
+  const file = new File([blob], "yamanote-sugoroku-route.png", { type: "image/png" });
+  const readyImage: RouteImageState = {
+    kind: "ready", image: { blob, file, url: "blob:http://localhost/route", filename: "yamanote-sugoroku-route.png" },
+  };
+
+  /** Image actions whose every platform call lands in `log`; `overrides` swap single behaviours. */
+  function stubImageActions(log: string[], overrides: Partial<ResultImageShareActions> = {}): ResultImageShareActions {
+    return {
+      canShareFile: () => false,
+      shareFile: () => { log.push("shareFile"); return Promise.resolve("success"); },
+      copyImageAndOpenX: () => { log.push("copyImageAndOpenX"); return { clipboard: Promise.resolve("copied"), navigation: "started" }; },
+      saveImage: () => { log.push("saveImage"); return "dispatched"; },
+      ...overrides,
+    };
+  }
+
+  function replayStoreAt(phase: "idle" | "playing" | "paused", log: string[]): ClearReplayStore {
+    return {
+      subscribePhase: () => () => undefined,
+      getPhase: () => phase,
+      pause: vi.fn(),
+      finish: vi.fn(() => { log.push("finish"); }),
+    } as unknown as ClearReplayStore;
+  }
+
+  function mountImageScreen(options: {
+    routeImage?: RouteImageState;
+    imageShareActions?: ResultImageShareActions;
+    replayStore?: ClearReplayStore;
+    onImageDownloadStarted?: () => void;
+  }) {
+    return mountReact(createElement(ClearScreen, {
+      game, network: emptyNetwork, presentation,
+      result: clearResultFor(game, emptyNetwork, presentation, display),
+      shareActions: createResultShareActions({ writeText: vi.fn().mockResolvedValue(undefined) }, undefined),
+      saveStatus: "saved", onPlayAgain: vi.fn(), onShowTitle: vi.fn(),
+      routeImage: options.routeImage ?? readyImage,
+      imageShareActions: options.imageShareActions ?? stubImageActions([]),
+      replayStore: options.replayStore,
+      onImageDownloadStarted: options.onImageDownloadStarted,
+    }));
+  }
+
+  const textLink = (container: HTMLElement): HTMLAnchorElement | null => container.querySelector("a.clear-screen__x-text-link");
+  const events = (): Array<Record<string, unknown>> => trackEventMock.mock.calls.map(([, params]) => params);
+
+  beforeEach(() => { trackEventMock.mockClear(); });
+
+  it("shows only a disabled 画像を準備中… state on the image actions while the PNG is pending", () => {
+    const mounted = mountImageScreen({ routeImage: { kind: "pending" } });
+    const pending = buttonByName(mounted.container, "画像を準備中…");
+    expect(pending?.disabled).toBe(true);
+    expect(buttonByName(mounted.container, "Xでシェア")).toBeUndefined();
+    expect(buttonByName(mounted.container, "画像を保存")).toBeUndefined();
+    expect(buttonByName(mounted.container, COPY)).toBeDefined();
+    expect(textLink(mounted.container)?.getAttribute("href")).toBe(X_INTENT);
+    mounted.cleanup();
+  });
+
+  it.each(["unavailable", "failed"] as const)("keeps only the text paths when the image is %s", (kind) => {
+    const mounted = mountImageScreen({ routeImage: { kind } });
+    for (const name of ["Xでシェア", "画像を保存", "画像を準備中…"]) expect(buttonByName(mounted.container, name)).toBeUndefined();
+    expect(buttonByName(mounted.container, COPY)).toBeDefined();
+    const link = textLink(mounted.container);
+    expect(link?.textContent).toBe("文面だけXに投稿");
+    expect(link?.getAttribute("href")).toBe(X_INTENT);
+    expect(link?.getAttribute("target")).toBe("_blank");
+    expect(link?.getAttribute("rel")).toBe("noopener");
+    const note = mounted.container.querySelector(".clear-screen__image-note")?.textContent ?? null;
+    expect(note).toBe(kind === "failed" ? "画像を作成できませんでした。文面だけで共有できます。" : null);
+    // The failure is a visible note only: the single polite region is not used for it (it would replace the
+    // completion sentence), and the note itself has no live attributes.
+    expect(liveRegions(mounted.container).map((region) => region.textContent)).toEqual([""]);
+    expect(mounted.container.querySelector(".clear-screen__image-note")?.closest("[aria-live],[role=status]") ?? null).toBeNull();
+    mounted.cleanup();
+  });
+
+  it("moves keyboard focus from 共有 to Xでシェア when the image becomes ready on a file-share device", () => {
+    const props = {
+      game, network: emptyNetwork, presentation,
+      result: clearResultFor(game, emptyNetwork, presentation, display),
+      shareActions: createResultShareActions(
+        { writeText: vi.fn().mockResolvedValue(undefined) },
+        { share: vi.fn().mockResolvedValue(undefined), canShare: () => true },
+      ),
+      saveStatus: "saved" as const, onPlayAgain: vi.fn(), onShowTitle: vi.fn(),
+      imageShareActions: stubImageActions([], { canShareFile: () => true }),
+    };
+    const mounted = mountReact(createElement(ClearScreen, { ...props, routeImage: { kind: "pending" } }));
+    const textShare = buttonByName(mounted.container, "共有");
+    if (!textShare) throw new Error("共有 is shown while the image is pending");
+    act(() => textShare.focus());
+    expect(document.activeElement).toBe(textShare);
+
+    act(() => mounted.root.render(createElement(ClearScreen, { ...props, routeImage: readyImage })));
+    expect(buttonByName(mounted.container, "共有")).toBeUndefined();
+    expect(document.activeElement).toBe(buttonByName(mounted.container, "Xでシェア"));
+    mounted.cleanup();
+  });
+
+  it("starts the desktop copy-and-open in the click and shows the paste hint only after both succeed", async () => {
+    const log: string[] = [];
+    const mounted = mountImageScreen({ imageShareActions: stubImageActions(log), replayStore: replayStoreAt("playing", log) });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(log).toEqual(["finish", "copyImageAndOpenX"]);
+    expect(shareStatus(mounted.container)).toBe(PASTE_HINT);
+    expect(liveRegions(mounted.container).map((region) => region.textContent)).toEqual([PASTE_HINT]);
+    expect(events()).toEqual([{ method: "x", outcome: "success" }]);
+    mounted.cleanup();
+  });
+
+  it("passes the original blob and the full unchanged text to the desktop path", async () => {
+    const copyImageAndOpenX = vi.fn(() => ({ clipboard: Promise.resolve("copied" as const), navigation: "started" as const }));
+    const mounted = mountImageScreen({ imageShareActions: stubImageActions([], { copyImageAndOpenX }) });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(copyImageAndOpenX).toHaveBeenCalledWith(blob, X_TEXT);
+    mounted.cleanup();
+  });
+
+  it.each([
+    ["copied", "blocked", "画像をコピーしましたが、Xを開けませんでした。「文面だけXに投稿」から開いて貼り付けるか、「画像を保存」を使ってください。"],
+    ["rejected", "started", "Xを開きましたが、画像をコピーできませんでした。「画像を保存」して投稿に添付してください。"],
+    ["unavailable", "open-threw", "Xを開けず、画像もコピーできませんでした。「画像を保存」と「文面だけXに投稿」を使ってください。"],
+    ["sync-failed", "location-failed", "Xを開けず、画像もコピーできませんでした。「画像を保存」と「文面だけXに投稿」を使ってください。"],
+  ] as const)("reports partial or total failure (%s, %s) without the paste hint", async (clipboard, navigation, message) => {
+    const mounted = mountImageScreen({
+      imageShareActions: stubImageActions([], { copyImageAndOpenX: () => ({ clipboard: Promise.resolve(clipboard), navigation }) }),
+    });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(shareStatus(mounted.container)).toBe(message);
+    expect(shareStatus(mounted.container)).not.toContain("貼り付けてください。");
+    expect(events()).toEqual([{ method: "x", outcome: "failed" }]);
+    expect(buttonByName(mounted.container, "画像を保存")).toBeDefined();
+    expect(textLink(mounted.container)).not.toBeNull();
+    mounted.cleanup();
+  });
+
+  it("shares the real File and the full text natively on a phone, hides the text-only 共有 and stays silent on success", async () => {
+    const log: string[] = [];
+    const shareFile = vi.fn(() => { log.push("shareFile"); return Promise.resolve("success" as const); });
+    const copyImageAndOpenX = vi.fn();
+    const mounted = mountImageScreen({
+      imageShareActions: stubImageActions(log, { canShareFile: (candidate) => candidate === file, shareFile, copyImageAndOpenX }),
+      replayStore: replayStoreAt("paused", log),
+    });
+    // The text-only native 共有 would repeat what the file share already does.
+    expect(buttonByName(mounted.container, SHARE)).toBeUndefined();
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(log).toEqual(["finish", "shareFile"]);
+    expect(shareFile).toHaveBeenCalledWith(file, X_TEXT);
+    expect(copyImageAndOpenX).not.toHaveBeenCalled();
+    expect(shareStatus(mounted.container)).toBe("");
+    expect(events()).toEqual([{ method: "x", outcome: "success" }]);
+    mounted.cleanup();
+  });
+
+  it("keeps the text-only 共有 when the file share is not available", () => {
+    const withShare = mountReact(createElement(ClearScreen, {
+      game, network: emptyNetwork, presentation, result: clearResultFor(game, emptyNetwork, presentation, display),
+      shareActions: createResultShareActions(undefined, { share: vi.fn() }), saveStatus: "saved",
+      onPlayAgain: vi.fn(), onShowTitle: vi.fn(), routeImage: readyImage, imageShareActions: stubImageActions([]),
+    }));
+    expect(buttonByName(withShare.container, SHARE)).toBeDefined();
+    withShare.cleanup();
+  });
+
+  it("treats a cancelled file share as silent, finishes the replay first, and still records one event", async () => {
+    const log: string[] = [];
+    const mounted = mountImageScreen({
+      imageShareActions: stubImageActions(log, { canShareFile: () => true, shareFile: () => Promise.resolve("cancelled") }),
+      replayStore: replayStoreAt("playing", log),
+    });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(log).toEqual(["finish"]);
+    expect(shareStatus(mounted.container)).toBe("");
+    expect(liveRegions(mounted.container).map((region) => region.textContent)).toEqual([""]);
+    expect(events()).toEqual([{ method: "x", outcome: "cancelled" }]);
+    mounted.cleanup();
+  });
+
+  it("guides to saving the image and the text link when the file share fails", async () => {
+    const mounted = mountImageScreen({
+      imageShareActions: stubImageActions([], { canShareFile: () => true, shareFile: () => Promise.resolve("failed") }),
+    });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(shareStatus(mounted.container)).toBe(
+      "共有できませんでした。「画像を保存」してXの投稿に添付するか、「文面だけXに投稿」を使ってください。",
+    );
+    expect(events()).toEqual([{ method: "x", outcome: "failed" }]);
+    mounted.cleanup();
+  });
+
+  it("uses the desktop copy-and-open path when file sharing is not available", async () => {
+    const log: string[] = [];
+    const mounted = mountImageScreen({ imageShareActions: stubImageActions(log, { canShareFile: () => false }) });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(log).toEqual(["copyImageAndOpenX"]);
+    mounted.cleanup();
+  });
+
+  it("emits one event and no state update when the screen is left before the share settles", async () => {
+    let settle: (outcome: "success" | "failed" | "cancelled") => void = () => undefined;
+    const mounted = mountImageScreen({
+      imageShareActions: stubImageActions([], {
+        canShareFile: () => true,
+        shareFile: () => new Promise((resolve) => { settle = resolve; }),
+      }),
+    });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    const container = mounted.container;
+    mounted.cleanup();
+    await act(async () => settle("failed"));
+    expect(events()).toEqual([{ method: "x", outcome: "failed" }]);
+    expect(container.textContent).toBe("");
+  });
+
+  it("ignores a second click while the first share is unsettled, and accepts a new one after it settles", async () => {
+    const log: string[] = [];
+    let settle: (outcome: "success") => void = () => undefined;
+    const mounted = mountImageScreen({
+      imageShareActions: stubImageActions(log, {
+        canShareFile: () => true,
+        shareFile: () => { log.push("shareFile"); return new Promise((resolve) => { settle = resolve; }); },
+      }),
+    });
+    const button = buttonByName(mounted.container, "Xでシェア");
+    await click(button);
+    await click(button);
+    expect(log).toEqual(["shareFile"]);
+    await act(async () => settle("success"));
+    expect(events()).toEqual([{ method: "x", outcome: "success" }]);
+    await click(button);
+    expect(log).toEqual(["shareFile", "shareFile"]);
+    mounted.cleanup();
+  });
+
+  it("saves through the adapter, marks the download in the same click, and reports one event", async () => {
+    const log: string[] = [];
+    const saveImage = vi.fn(() => { log.push("saveImage"); return "dispatched" as const; });
+    const mounted = mountImageScreen({
+      imageShareActions: stubImageActions(log, { saveImage }),
+      replayStore: replayStoreAt("playing", log),
+      onImageDownloadStarted: () => { log.push("marked"); },
+    });
+    await click(buttonByName(mounted.container, "画像を保存"));
+    expect(log).toEqual(["finish", "marked", "saveImage"]);
+    expect(saveImage).toHaveBeenCalledWith("blob:http://localhost/route", "yamanote-sugoroku-route.png");
+    expect(shareStatus(mounted.container)).toBe("画像の保存を始めました");
+    expect(events()).toEqual([{ method: "save", outcome: "success" }]);
+    mounted.cleanup();
+  });
+
+  it("reports a failed save with the text fallbacks", async () => {
+    const mounted = mountImageScreen({ imageShareActions: stubImageActions([], { saveImage: () => "failed" }) });
+    await click(buttonByName(mounted.container, "画像を保存"));
+    expect(shareStatus(mounted.container)).toBe("画像を保存できませんでした。「文面だけXに投稿」か「結果をコピー」を使ってください。");
+    expect(events()).toEqual([{ method: "save", outcome: "failed" }]);
+    mounted.cleanup();
+  });
+
+  it("counts the text-only X link as one handoff and finishes the replay without preventing the navigation", async () => {
+    const log: string[] = [];
+    const mounted = mountImageScreen({ routeImage: { kind: "failed" }, replayStore: replayStoreAt("paused", log) });
+    const link = textLink(mounted.container)!;
+    const event = new MouseEvent("click", { bubbles: true, cancelable: true });
+    link.addEventListener("click", (clickEvent) => clickEvent.preventDefault(), { once: true });
+    await act(async () => link.dispatchEvent(event));
+    expect(log).toEqual(["finish"]);
+    expect(events()).toEqual([{ method: "x", outcome: "success" }]);
+    mounted.cleanup();
+  });
+
+  it("finishes a running replay before copying or sharing the text, and not when no replay runs", async () => {
+    const log: string[] = [];
+    const mounted = mountImageScreen({ replayStore: replayStoreAt("playing", log) });
+    await click(buttonByName(mounted.container, COPY));
+    expect(log).toEqual(["finish"]);
+    mounted.cleanup();
+    const idleLog: string[] = [];
+    const idle = mountImageScreen({ replayStore: replayStoreAt("idle", idleLog), imageShareActions: stubImageActions(idleLog) });
+    await click(buttonByName(idle.container, COPY));
+    await click(buttonByName(idle.container, "Xでシェア"));
+    await click(buttonByName(idle.container, "画像を保存"));
+    expect(idleLog).toEqual(["copyImageAndOpenX", "saveImage"]);
+    idle.cleanup();
+  });
+
+  it("normalises the existing text share outcome shared to success", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    const mounted = mountClearScreen(createResultShareActions(undefined, { share }));
+    await click(buttonByName(mounted.container, SHARE));
+    expect(events()).toEqual([{ method: "share", outcome: "success" }]);
+    mounted.cleanup();
+  });
+
+  it("builds the real image adapter chain from platform doubles end to end", async () => {
+    const log: string[] = [];
+    const actions = createResultImageShareActions({
+      createClipboardItem: () => { log.push("item"); return {} as ClipboardItem; },
+      writeClipboard: () => { log.push("write"); return Promise.resolve(); },
+      openWindow: () => {
+        log.push("open");
+        return { opener: {}, location: { set href(value: string) { log.push(`href=${value}`); } }, close: vi.fn() } as unknown as WindowProxy;
+      },
+    });
+    const mounted = mountImageScreen({ imageShareActions: actions });
+    await click(buttonByName(mounted.container, "Xでシェア"));
+    expect(log).toEqual(["item", "write", "open", `href=${X_INTENT}`]);
+    expect(shareStatus(mounted.container)).toBe(PASTE_HINT);
+    mounted.cleanup();
   });
 });
