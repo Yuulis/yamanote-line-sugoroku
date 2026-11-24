@@ -13,8 +13,9 @@ export interface LotteryRevealProps {
   landing: NonNullable<LastMove["landing"]>;
   stage: "lottery-flip" | "lottery-settle";
   /**
-   * Stage window in ms. During lottery-flip this is the route window F; the stage itself may last F + D when the
-   * direction is drawn after the route (D = lotteryDirectionFlipMs(F)). During lottery-settle it is the settle window.
+   * Stage window in ms. During lottery-flip this is the route window F; the stage itself lasts F + D + H (both rows
+   * drawn), F + H (route only) or D + H (direction only), with D = lotteryDirectionFlipMs(F) and
+   * H = lotteryResultHoldMs(F). During lottery-settle it is the settle window.
    */
   durationMs: number;
   network: RailwayNetwork;

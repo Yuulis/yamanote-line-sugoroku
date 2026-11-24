@@ -1437,7 +1437,7 @@ describe("S14 LotteryReveal", () => {
     });
 
     it.each([
-      ["both drawn, loop (single direction)", { directionDrawRequired: false, directionCandidates: [1] as Landing["directionCandidates"] }, "m-loop"],
+      ["route only, loop (single direction)", { directionDrawRequired: false, directionCandidates: [1] as Landing["directionCandidates"] }, "m-loop"],
       ["both drawn, line (two directions)", {}, "m-line"],
       ["both drawn, spur reversed", { direction: -1 as const }, "m-spur"],
     ])("keeps the sizer lists identical whichever outcome is drawn (%s)", (_name, overrides, serviceId) => {

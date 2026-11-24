@@ -222,6 +222,7 @@ export async function advanceLotteryFlip(page: Page, factor: number = 1): Promis
   const stageMs = (routeDrawn ? NORMAL_STAGE_MS.lotteryFlip : 0)
     + (directionDrawn ? NORMAL_STAGE_MS.lotteryDirectionFlip : 0)
     + NORMAL_STAGE_MS.lotteryResultHold;
+  // Rounded once: with factor != 1 this can differ by 1 ms from the policy, which rounds each term.
   await page.clock.runFor(Math.round(stageMs * factor));
 }
 

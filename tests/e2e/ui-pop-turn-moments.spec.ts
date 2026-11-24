@@ -778,6 +778,8 @@ test.describe("lottery board with both the route and the direction drawn", () =>
   });
 
   // #63 F3: on a 320px phone the board is about 180px wide, so route names wrap onto two lines instead of ellipsizing.
+  // This checks the size stays constant through one draw; independence across draws is pinned by the sizer unit tests
+  // in turn-moment-components.test.ts.
   test("wraps long route names onto two lines on a phone without clipping, with a board size independent of the draw", { tag: "@layout" }, async ({ page }) => {
     test.setTimeout(60_000);
     await page.setViewportSize({ width: 320, height: 568 });

@@ -235,17 +235,17 @@ boundary specs, phone `@layout`.
 
 ## 7. User feedback after step 2 (2026-11-24)
 
-- F1 (DECIDED): add a hold H = round(0.25·F) (ふつう 400 ms) after the final direction result
+- F1 (DONE e5f7df5; DECIDED): add a hold H = round(0.25·F) (ふつう 400 ms) after the final direction result
   appears, in every draw case, before the settle stage. Stage = F + D + H (both drawn),
   F + H (service only, 山手線 → 外回り snap), D + H (direction only). The row windows inside
   the stage are unchanged (result still at 0.84 of its window); only the tail is longer.
-- F2: candidate labels longer than the drawn result are ellipsized during the flip (route
+- F2 (DONE e5f7df5): candidate labels longer than the drawn result are ellipsized during the flip (route
   and direction rows). Fix must size rows from route-independent content so the direction
   row's size cannot reveal the route. Analysis: .claude/docs/research/feature-lottery-sequential-reveal-truncation.md
-- F3 (DONE, see commit below; DECIDED 2026-11-24): on phones (board capped ~180px at 320px wide) route names must
+- F3 (DONE 3e774fe; DECIDED 2026-11-24): on phones (board capped ~180px at 320px wide) route names must
   not be ellipsized; allow line badges in the lottery board to wrap to two lines and show
   the full name. Row height must still come from the route-independent sizer set (max over
   all candidates), so height cannot reveal the draw. Follow-up after F1+F2.
-- F4 (DONE; DECIDED 2026-11-24): names that still overflow two lines on a narrow (phone) board
+- F4 (DONE 32f4e05; DECIDED 2026-11-24): names that still overflow two lines on a narrow (phone) board
   get a smaller font (85%, the three longest 70% — measured) instead of the ellipsis; other names unchanged; never simplify
   names (the two 湘南新宿ライン services differ only in the parenthetical).
