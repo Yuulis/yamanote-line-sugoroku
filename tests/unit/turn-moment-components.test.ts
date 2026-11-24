@@ -17,7 +17,9 @@ import {
   type DiceTumbleModel,
   type DiceTumbleProps,
 } from "../../src/features/game/components/DiceTumble";
-import { LotteryReveal, type LotteryRevealProps } from "../../src/features/game/components/LotteryReveal";
+import { lotteryDirectionFlipMs } from "../../src/features/game/animation/turnMomentPolicy";
+import { isLongestLineName, isLongLineName, LONG_LINE_NAME_MIN_CHARS, LONGEST_LINE_NAME_MIN_CHARS } from "../../src/features/game/lineBadge";
+import { LotteryReveal, lotteryDirectionSizingLabels, type LotteryRevealProps } from "../../src/features/game/components/LotteryReveal";
 import { ItemPickupMoment, type ItemPickupMomentProps } from "../../src/features/game/components/ItemPickupMoment";
 import { GameHud, type GameHudProps } from "../../src/features/game/components/GameHud";
 import { GamePanel, type GamePanelProps } from "../../src/features/game/components/GamePanel";
@@ -320,6 +322,39 @@ describe("css contract", () => {
   it("starts lottery settling only after a row has measured its motion", () => {
     expect(css).toMatch(/\.lottery-reveal\[data-stage="lottery-settle"\] \.lottery-reveal__row\[data-motion\] \{\s*animation: lottery-settle var\(--lottery-ms\) ease-in both;/);
     expect(css).not.toContain('.lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row {');
+  });
+
+  it("sequences lottery rows with per-row delay and window variables and hides the placeholder under reduced motion", () => {
+    expect(rule(".lottery-reveal__row")).toMatch(/--row-delay: 0ms;\s*--row-ms: var\(--lottery-ms\);/);
+    expect(rule(".lottery-reveal__frame")).toMatch(/animation: lottery-frame calc\(var\(--row-ms\) \* 0\.84 \/ var\(--frame-count\)\) linear calc\(var\(--row-delay\) \+ var\(--row-ms\) \* 0\.84 \* var\(--frame-index\) \/ var\(--frame-count\)\) forwards;/);
+    expect(rule(".lottery-reveal__row--flipping .lottery-reveal__result")).toContain("animation: lottery-result var(--row-ms) steps(1, end) var(--row-delay) both;");
+    expect(rule(".lottery-reveal__row--snap .lottery-reveal__result")).toContain("animation: lottery-result var(--row-ms) steps(1, end) both;");
+    expect(rule(".lottery-reveal__row--flipping .lottery-reveal__placeholder")).toContain("animation: lottery-placeholder var(--row-delay) steps(1, end) both;");
+    expect(rule(".lottery-reveal__row--snap .lottery-reveal__placeholder")).toContain("animation: lottery-placeholder-stop var(--row-ms) steps(1, end) both;");
+    // Leak-free sizing: the result and the invisible sizers share one grid cell; direction labels wrap, never ellipsize.
+    expect(css).toMatch(/\.lottery-reveal__result,\s*\.lottery-reveal__sizer \{\s*grid-area: 1 \/ 1;/);
+    expect(css).toMatch(/\n\.lottery-reveal__sizer \{\s*visibility: hidden;\s*max-width: 100%;\s*min-width: 0;/);
+    expect(css).not.toContain(".lottery-reveal__row--direction .lottery-reveal__result");
+    expect(rule(".lottery-reveal")).toContain("width: min(27rem, 100%);");
+    // #63 F3: a badge may wrap its name below the mark, and the name wraps at its phrase hints onto at most two lines;
+    // ellipsis is only the clamp.
+    const badge = rule(".lottery-reveal .line-badge");
+    expect(badge).toContain("flex-wrap: wrap;");
+    const name = rule(".lottery-reveal .line-badge__name");
+    expect(name).toContain("-webkit-line-clamp: 2;");
+    expect(name).toContain("line-clamp: 2;");
+    expect(name).toContain("overflow: hidden;");
+    expect(name).not.toContain("white-space: nowrap");
+    expect(name).not.toContain("text-overflow");
+    expect(css).not.toMatch(/\.lottery-reveal \.line-badge__name wbr/);
+    // #63 F4: long names shrink only on narrow (phone) boards, by a per-name class; the clamp above stays as the safety net.
+    expect(css).toMatch(/@media \(max-width: 600px\) \{\s*\.lottery-reveal \.line-badge--lg \.line-badge__name--long \{\s*--lottery-name-scale: 0\.85;\s*font-size: calc\(16px \* var\(--lottery-name-scale\)\);\s*\}\s*\.lottery-reveal \.line-badge--lg \.line-badge__name--longest \{ --lottery-name-scale: 0\.7; \}\s*\}/);
+    expect(css.match(/line-badge__name--long(?:est)?\b/g)).toHaveLength(2);
+    expect(css).not.toMatch(/\n\.lottery-reveal \.line-badge__name--long/);
+    expect(css).not.toContain("last-of-type .lottery-reveal__result");
+    expect(css).toMatch(/@keyframes lottery-placeholder-stop \{\s*0% \{ opacity: 1; \}\s*84%, 100% \{ opacity: 0; \}/);
+    expect(rule(".lottery-reveal__placeholder")).toMatch(/position: absolute;\s*inset: 0;/);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\) \{[^@]*\.lottery-reveal__placeholder \{ display: none; \}/);
   });
 });
 
@@ -1326,14 +1361,140 @@ describe("S14 LotteryReveal", () => {
     const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
     const rows = [...mount.container.querySelectorAll(".lottery-reveal__row")];
     expect(rows.map((row) => row.classList.contains("lottery-reveal__row--flipping"))).toEqual([serviceDrawRequired, directionDrawRequired]);
+    const [routeRow, directionRow] = rows as HTMLElement[];
+    const rowVars = (row: HTMLElement) => [row.style.getPropertyValue("--row-delay"), row.style.getPropertyValue("--row-ms")];
+    const frameCount = (row: Element) => row.querySelectorAll(".lottery-reveal__frame").length;
+    // The placeholder only stands in for a direction that is not yet known behind a drawn route row.
+    expect(mount.container.querySelectorAll(".lottery-reveal__placeholder")).toHaveLength(serviceDrawRequired ? 1 : 0);
+    if (serviceDrawRequired) {
+      expect(directionRow!.querySelector(".lottery-reveal__placeholder")!.textContent).toBe("方向 ？");
+      expect(rowVars(routeRow!)).toEqual(["0ms", "1600ms"]);
+      expect(frameCount(routeRow!)).toBe(8);
+    }
+    expect(directionRow!.classList.contains("lottery-reveal__row--snap")).toBe(serviceDrawRequired && !directionDrawRequired);
+    expect(routeRow!.classList.contains("lottery-reveal__row--snap")).toBe(false);
+    const directionMs = `${lotteryDirectionFlipMs(1600)}ms`;
+    expect(directionRow!.classList.contains("lottery-reveal__row--direction")).toBe(true);
+    expect(routeRow!.classList.contains("lottery-reveal__row--direction")).toBe(false);
+    if (serviceDrawRequired && directionDrawRequired) {
+      expect(rowVars(directionRow!)).toEqual(["1600ms", directionMs]);
+      expect(frameCount(directionRow!)).toBe(4);
+    } else if (directionDrawRequired) {
+      expect(rowVars(directionRow!)).toEqual(["0ms", directionMs]);
+      expect(frameCount(directionRow!)).toBe(4);
+    } else if (serviceDrawRequired) {
+      expect(rowVars(directionRow!)).toEqual(["0ms", "1600ms"]);
+      expect(frameCount(directionRow!)).toBe(0);
+    } else {
+      expect(rowVars(directionRow!)).toEqual(["", ""]);
+    }
     const finalValues = rows.map((row) => row.querySelector(".lottery-reveal__result")!.textContent);
     expect(finalValues[0]).toBe(props.presentation.serviceName(ids[0]!));
     expect(mount.container.querySelector("button, a, input, [tabindex], [role=status]")).toBeNull();
     act(() => mount.root.render(createElement(LotteryHarness, { ...props, stage: "lottery-settle", durationMs: 400 })));
     expect(mount.container.querySelectorAll(".lottery-reveal__frame")).toHaveLength(0);
+    expect(mount.container.querySelectorAll(".lottery-reveal__placeholder")).toHaveLength(0);
+    expect(mount.container.querySelectorAll(".lottery-reveal__row--snap, .lottery-reveal__row--flipping")).toHaveLength(0);
     expect([...mount.container.querySelectorAll(".lottery-reveal__result")].map((row) => row.textContent)).toEqual(finalValues);
     expect([...mount.container.querySelectorAll(".lottery-reveal__row")].map((row) => row.getAttribute("data-motion"))).toEqual(["fade", "fade"]);
     expect(mount.container.textContent).not.toMatch(/%|確率|重み/);
+  });
+
+  describe("sizers", () => {
+    type Landing = LotteryRevealProps["landing"];
+    /** Same shape as multiServiceInput, but every service gets its own direction labels. */
+    function labeledNetwork(): ReturnType<typeof buildRailwayNetwork> {
+      const input = multiServiceInput();
+      return buildRailwayNetwork({ ...input, services: input.services.map((svc) => (
+        { ...svc, directionLabels: { forward: `${svc.id}-前方面`, backward: `${svc.id}-後方面` } })) });
+    }
+    const landingFor = (serviceId: string, overrides: Partial<Landing> = {}): Landing => ({
+      type: "landing-resolved", stationId: "b", serviceId, direction: 1, serviceCandidates: ["m-loop", "m-line", "m-spur"],
+      directionCandidates: [1, -1], serviceDrawRequired: true, directionDrawRequired: true, changedService: false, ...overrides,
+    });
+    function renderRows(landing: Landing, stage: LotteryRevealProps["stage"] = "lottery-flip"): { route: string[]; direction: string[] } {
+      const network = labeledNetwork();
+      const props: LotteryRevealProps = { network, presentation: createPresentationResolver(network), stage, durationMs: 1600, landing,
+        rideTarget: createRef<HTMLElement>(), directionTarget: createRef<HTMLElement>() };
+      const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
+      const [routeRow, directionRow] = [...mount.container.querySelectorAll(".lottery-reveal__row")];
+      const sizers = (row: Element | undefined) => [...row!.querySelectorAll(".lottery-reveal__sizer")].map((node) => node.textContent ?? "");
+      return { route: sizers(routeRow), direction: sizers(directionRow) };
+    }
+
+    it("sizes the route row by every unique candidate and the direction row by both labels of each candidate", () => {
+      const rows = renderRows(landingFor("m-loop"));
+      expect(rows.route).toEqual(["m-loop", "m-line", "m-spur"]);
+      expect(rows.direction).toEqual([
+        "m-loop-前方面", "m-loop-後方面", "m-line-前方面", "m-line-後方面", "m-spur-前方面", "m-spur-後方面", "方向 ？",
+      ]);
+    });
+
+    it("renders each unique candidate once even when the candidate list repeats the drawn service", () => {
+      const rows = renderRows(landingFor("m-line", { serviceCandidates: ["m-line", "m-line", "m-spur"] }));
+      expect(rows.route).toEqual(["m-line", "m-spur"]);
+      expect(rows.direction).toEqual(["m-line-前方面", "m-line-後方面", "m-spur-前方面", "m-spur-後方面", "方向 ？"]);
+    });
+
+    it.each([
+      ["route only, loop (single direction)", { directionDrawRequired: false, directionCandidates: [1] as Landing["directionCandidates"] }, "m-loop"],
+      ["both drawn, line (two directions)", {}, "m-line"],
+      ["both drawn, spur reversed", { direction: -1 as const }, "m-spur"],
+    ])("keeps the sizer lists identical whichever outcome is drawn (%s)", (_name, overrides, serviceId) => {
+      const reference = renderRows(landingFor("m-loop", { direction: 1 }));
+      const other = renderRows(landingFor(serviceId, overrides));
+      expect(other).toEqual(reference);
+    });
+
+    it("sizes the direction row by the drawn service alone when the route is not drawn", () => {
+      const rows = renderRows(landingFor("m-line", { serviceDrawRequired: false, serviceCandidates: ["m-line"] }));
+      expect(rows.direction).toEqual(["m-line-前方面", "m-line-後方面"]);
+    });
+
+    it("keeps the sizers in the settle stage so the board does not resize", () => {
+      const flip = renderRows(landingFor("m-line"));
+      const settle = renderRows(landingFor("m-line"), "lottery-settle");
+      expect(settle).toEqual(flip);
+      expect(settle.route.length).toBeGreaterThan(0);
+    });
+
+    it("shrinks a long route name by the name alone, identically in sizers, frames and the result", () => {
+      const input = multiServiceInput();
+      const names: Record<string, string> = { "m-loop": "山手線", "m-line": "あ".repeat(LONG_LINE_NAME_MIN_CHARS), "m-spur": "い".repeat(LONGEST_LINE_NAME_MIN_CHARS) };
+      const network = buildRailwayNetwork({ ...input, services: input.services.map((svc) => ({ ...svc, name: names[svc.id] ?? svc.name })) });
+      const props: LotteryRevealProps = { network, presentation: createPresentationResolver(network), stage: "lottery-flip", durationMs: 1600,
+        landing: landingFor("m-loop"), rideTarget: createRef<HTMLElement>(), directionTarget: createRef<HTMLElement>() };
+      const mount = mountReact(createElement(LotteryHarness, props)); mounted.push(mount);
+      const routeRow = mount.container.querySelector(".lottery-reveal__row")!;
+      const sizeClasses = (selector: string) => [...routeRow.querySelectorAll(selector.split(", ").map((part) => `${part} .line-badge__name`).join(", "))]
+        .map((node) => [node.textContent, node.classList.contains("line-badge__name--long"), node.classList.contains("line-badge__name--longest")]);
+      expect(sizeClasses(".lottery-reveal__sizer")).toEqual([[names["m-loop"], false, false], [names["m-line"], true, false], [names["m-spur"], true, true]]);
+      // Every frame and the result carry the class their own name earns, so a frame never differs from its sizer.
+      const sizerByName = new Map(sizeClasses(".lottery-reveal__sizer").map(([name, long, longest]) => [name, [long, longest]]));
+      const shown = sizeClasses(".lottery-reveal__frame, .lottery-reveal__result");
+      expect(shown.length).toBeGreaterThan(3);
+      for (const [name, long, longest] of shown) expect([long, longest], String(name)).toEqual(sizerByName.get(name));
+      // The drawn short result stays full size even though long candidates flip through the same row.
+      expect(sizeClasses(".lottery-reveal__result")).toEqual([[names["m-loop"], false, false]]);
+    });
+
+    it("classifies line names by length alone", () => {
+      expect(isLongLineName("あ".repeat(LONG_LINE_NAME_MIN_CHARS - 1))).toBe(false);
+      expect(isLongLineName("あ".repeat(LONG_LINE_NAME_MIN_CHARS))).toBe(true);
+      expect(isLongestLineName("あ".repeat(LONGEST_LINE_NAME_MIN_CHARS - 1))).toBe(false);
+      expect(isLongestLineName("あ".repeat(LONGEST_LINE_NAME_MIN_CHARS))).toBe(true);
+      expect(isLongLineName("")).toBe(false);
+      // Counted in characters, not UTF-16 units: an astral character is one.
+      expect(isLongLineName("𠮷".repeat(LONG_LINE_NAME_MIN_CHARS - 1))).toBe(false);
+    });
+
+    it("exposes the direction sizing set as a pure helper", () => {
+      const network = labeledNetwork();
+      expect(lotteryDirectionSizingLabels(landingFor("m-spur", { serviceCandidates: ["m-line", "m-spur"] }), network))
+        .toEqual(["m-line-前方面", "m-line-後方面", "m-spur-前方面", "m-spur-後方面", "方向 ？"]);
+      expect(lotteryDirectionSizingLabels(landingFor("m-spur", { serviceDrawRequired: false, serviceCandidates: ["m-line", "m-spur"] }), network))
+        .toEqual(["m-spur-前方面", "m-spur-後方面"]);
+    });
   });
 
   it("measures both HUD targets for settle without changing either target", () => {

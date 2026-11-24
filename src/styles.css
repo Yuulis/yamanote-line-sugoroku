@@ -3253,7 +3253,7 @@ button[aria-disabled="true"] {
   box-shadow: none;
 }
 .lottery-reveal {
-  width: min(26rem, 100%);
+  width: min(27rem, 100%);
   color: var(--color-text);
   text-align: center;
   perspective: 700px;
@@ -3275,6 +3275,8 @@ button[aria-disabled="true"] {
   font-weight: 800;
   min-width: 0;
   transform-origin: center;
+  --row-delay: 0ms;
+  --row-ms: var(--lottery-ms);
 }
 .lottery-reveal__row::after {
   content: "";
@@ -3291,23 +3293,77 @@ button[aria-disabled="true"] {
   padding: inherit;
   background: var(--color-surface);
   opacity: 0;
-  animation: lottery-frame calc(var(--lottery-ms) * 0.84 / var(--frame-count)) linear calc(var(--lottery-ms) * 0.84 * var(--frame-index) / var(--frame-count)) forwards;
+  animation: lottery-frame calc(var(--row-ms) * 0.84 / var(--frame-count)) linear calc(var(--row-delay) + var(--row-ms) * 0.84 * var(--frame-index) / var(--frame-count)) forwards;
 }
-.lottery-reveal__result,
+/* Direction row placeholder: an overlay, so it never changes the row size. */
+.lottery-reveal__placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: inherit;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  pointer-events: none;
+}
+.lottery-reveal__result {
+  max-width: 100%;
+  min-width: 0;
+}
+/* Inside the board a badge may wrap: a name too long to sit beside the mark drops to a second flex line, and the
+   name itself wraps at its phrase hints (the <wbr> from PhraseText, as in the phone HUD) onto at most two lines. The
+   clamp ellipsizes only a name that still overflows two lines. Result, frames and sizers share these rules, so every
+   candidate wraps the same way and the row height is the maximum over all candidates, never the draw. A wide board
+   (27rem) fits every name beside its mark on one line, so nothing wraps there. */
 .lottery-reveal .line-badge {
+  flex-wrap: wrap;
+  justify-content: center;
+  row-gap: 2px;
   max-width: 100%;
   min-width: 0;
 }
 .lottery-reveal .line-badge__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.lottery-reveal .line-badge__name wbr {
-  display: none;
+/* A name that still overflows two lines on a narrow board gets a smaller font instead of the ellipsis. The classes
+   come from the name alone (isLongLineName / isLongestLineName), so result, frames and sizers shrink the same names
+   and the row height stays the maximum over all candidates. At 320px 85% fits every long name but the three longest,
+   which need 70%. Phone width matches the other 600px rules; a wide board never needs it. Every longest name is
+   also long (24 >= 19 chars), so --longest only lowers the scale and takes its font-size from the --long rule. */
+@media (max-width: 600px) {
+  .lottery-reveal .line-badge--lg .line-badge__name--long {
+    --lottery-name-scale: 0.85;
+    font-size: calc(16px * var(--lottery-name-scale));
+  }
+  .lottery-reveal .line-badge--lg .line-badge__name--longest { --lottery-name-scale: 0.7; }
+}
+/* The result and the invisible sizers share one cell. The sizers cover every label the row may need, so the row
+   size is the same whichever outcome was drawn and no frame is squeezed into a narrower drawn result. */
+.lottery-reveal__result,
+.lottery-reveal__sizer {
+  grid-area: 1 / 1;
+}
+.lottery-reveal__sizer {
+  visibility: hidden;
+  max-width: 100%;
+  min-width: 0;
+  pointer-events: none;
 }
 .lottery-reveal__row--flipping .lottery-reveal__result {
-  animation: lottery-result var(--lottery-ms) steps(1, end) both;
+  animation: lottery-result var(--row-ms) steps(1, end) var(--row-delay) both;
+}
+.lottery-reveal__row--snap .lottery-reveal__result {
+  animation: lottery-result var(--row-ms) steps(1, end) both;
+}
+.lottery-reveal__row--flipping .lottery-reveal__placeholder {
+  animation: lottery-placeholder var(--row-delay) steps(1, end) both;
+}
+.lottery-reveal__row--snap .lottery-reveal__placeholder {
+  animation: lottery-placeholder-stop var(--row-ms) steps(1, end) both;
 }
 .lottery-reveal[data-stage="lottery-settle"] .lottery-reveal__row[data-motion] {
   animation: lottery-settle var(--lottery-ms) ease-in both;
@@ -3325,6 +3381,14 @@ button[aria-disabled="true"] {
   0% { opacity: 0; }
   84%, 100% { opacity: 1; }
 }
+@keyframes lottery-placeholder {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes lottery-placeholder-stop {
+  0% { opacity: 1; }
+  84%, 100% { opacity: 0; }
+}
 @keyframes lottery-settle {
   to { transform: translate(var(--lottery-x, 0px), var(--lottery-y, 0px)) scale(var(--lottery-sx, 1), var(--lottery-sy, 1)); opacity: 0; }
 }
@@ -3332,6 +3396,7 @@ button[aria-disabled="true"] {
 @media (prefers-reduced-motion: reduce) {
   .lottery-reveal *, .lottery-reveal *::after { animation: none !important; }
   .lottery-reveal__frame { display: none; }
+  .lottery-reveal__placeholder { display: none; }
 }
 
 /* The pickup layer owns no timing: the reveal sequence removes it at the captured pickup deadline. */
