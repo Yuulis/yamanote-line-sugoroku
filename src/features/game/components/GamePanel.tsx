@@ -781,6 +781,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onRoll={requestRoll}
         onSkip={props.onSkip}
         effects={effectModels}
+        policy={game.config.itemPolicy}
         canSkip={turnDisplay.canSkip}
         rideTargetRef={props.turnMomentTargets?.ride}
         directionTargetRef={props.turnMomentTargets?.direction}

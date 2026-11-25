@@ -13,7 +13,7 @@ import { resumeSession } from "../../src/features/game/gameSession";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { itemLastMove, itemSessionView } from "../../src/features/game/itemSession";
 import { landingText, lastRollText } from "../../src/features/game/presentation";
-import { compactRollFor, compactRollText } from "../../src/features/game/hudPresentation";
+import { compactRollFor, compactRollText, effectChipModels } from "../../src/features/game/hudPresentation";
 import { multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { dispatchReactEvent, mountReact } from "./helpers/reactDom";
 import { seedFirstTurnNotice } from "./helpers/notices";
@@ -713,6 +713,93 @@ it("expires an ordinary toast in production GameApp without rendering HUD or leg
     vi.useRealTimers();
     localStorage.clear();
   }
+});
+
+describe("GameHud effect chips", () => {
+  const chipNetwork = buildRailwayNetwork(multiServiceInput());
+  const chipEffects = { delayDueTurns: [8], suspensions: [], detourPending: true, oversleepPending: false };
+  const chipModels = effectChipModels(chipEffects, 5, chipNetwork);
+  const policy = { ...ITEM_GAME_CONFIG.itemPolicy!, delayTurns: 7 };
+
+  function mountChips(): ReturnType<typeof mountReact> {
+    return mountReact(createElement(Harness, { value: props({ effects: chipModels, policy }) }));
+  }
+  function hover(chip: Element, pointerType: string): void {
+    const enter = new MouseEvent("pointerover", { bubbles: true });
+    Object.defineProperty(enter, "pointerType", { value: pointerType });
+    act(() => dispatchReactEvent(chip, enter));
+  }
+  const tooltip = (container: HTMLElement): Element | null => container.querySelector("[role=tooltip]");
+
+  it("renders each chip as its own button named by the full effect text, without a native title", () => {
+    const mount = mountChips();
+    try {
+      const chips = [...mount.container.querySelectorAll<HTMLButtonElement>(".effect-chips button.effect-chip")];
+      expect(chips).toHaveLength(chipModels.length);
+      chips.forEach((chip, index) => {
+        expect(chip.getAttribute("title")).toBeNull();
+        expect(chip.querySelector(".visually-hidden")?.textContent).toBe(chipModels[index]!.text);
+      });
+    } finally { mount.cleanup(); }
+  });
+
+  it("opens the card with policy numbers and live status on click, then returns focus to the chip on close", () => {
+    const mount = mountChips();
+    try {
+      const chip = mount.container.querySelector<HTMLButtonElement>(".effect-chip")!;
+      act(() => chip.focus());
+      act(() => chip.click());
+      const card = mount.container.querySelector<HTMLElement>("[role=dialog]")!;
+      expect(card.hidden).toBe(false);
+      expect(card.querySelector(".item-card__name")?.textContent).toBe("遅延");
+      expect(card.querySelector(".item-card__effect")?.textContent).toContain("7ターン後");
+      expect(card.querySelector(".item-card__timing")?.textContent).toBe("拾うと自動で発動");
+      expect(card.querySelector(".item-card__status")?.textContent).toBe(chipModels[0]!.text);
+      expect(chip.getAttribute("aria-expanded")).toBe("true");
+      expect(tooltip(mount.container)).toBeNull();
+      act(() => [...card.querySelectorAll("button")].find((button) => button.textContent === "閉じる")!.click());
+      expect(card.hidden).toBe(true);
+      expect(chip.getAttribute("aria-expanded")).toBe("false");
+      expect(document.activeElement).toBe(chip);
+    } finally { mount.cleanup(); }
+  });
+
+  it("shows a tooltip on mouse hover and keyboard focus, never on touch, and dismisses it with Escape", () => {
+    const mount = mountChips();
+    try {
+      const chip = mount.container.querySelector<HTMLButtonElement>(".effect-chip")!;
+      hover(chip, "touch");
+      expect(tooltip(mount.container)).toBeNull();
+      hover(chip, "mouse");
+      expect(tooltip(mount.container)?.textContent).toContain("7ターン後の出目が1");
+      expect(chip.getAttribute("aria-describedby")).toBe(tooltip(mount.container)!.id);
+      const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+      act(() => { window.dispatchEvent(escape); });
+      expect(escape.defaultPrevented).toBe(true);
+      expect(tooltip(mount.container)).toBeNull();
+      act(() => chip.dispatchEvent(new MouseEvent("pointerout", { bubbles: true, relatedTarget: document.body })));
+      act(() => chip.focus());
+      expect(tooltip(mount.container)).not.toBeNull();
+      act(() => chip.blur());
+      expect(tooltip(mount.container)).toBeNull();
+    } finally { mount.cleanup(); }
+  });
+
+  it("closes the tooltip when the card opens and leaves Escape to the card", () => {
+    const mount = mountChips();
+    try {
+      const chip = mount.container.querySelector<HTMLButtonElement>(".effect-chip")!;
+      hover(chip, "mouse");
+      expect(tooltip(mount.container)).not.toBeNull();
+      act(() => chip.click());
+      expect(tooltip(mount.container)).toBeNull();
+      const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+      act(() => { window.dispatchEvent(escape); });
+      expect(escape.defaultPrevented).toBe(true);
+      expect(mount.container.querySelector<HTMLElement>("[role=dialog]")!.hidden).toBe(true);
+      expect(document.activeElement).toBe(chip);
+    } finally { mount.cleanup(); }
+  });
 });
 
 // Mounted trees are cleaned up by their tests before clearing shared preferences.

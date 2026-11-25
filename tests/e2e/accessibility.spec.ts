@@ -590,6 +590,8 @@ test.describe("turn log disclosure", () => {
     await page.reload();
     await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
     await expect(gamePanel(page).locator(".effect-chip__label")).toContainText(["寝過ごし"]);
+    // The chip is a button whose accessible name is the full effect sentence.
+    await expect(gamePanel(page).getByRole("button", { name: "寝過ごし：次のターンは終点まで（環状線は6駅）進みます", exact: true })).toBeVisible();
     await openGameLog(page);
     const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
     const explanation = log.getByRole("region", { name: "効果の説明", exact: true });

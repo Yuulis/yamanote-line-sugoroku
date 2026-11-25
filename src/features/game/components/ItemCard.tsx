@@ -93,7 +93,7 @@ type FocusRestore = "anchor" | "dice" | null;
 
 export function ItemCardPopover({ open, anchor, onClose, children, labelledBy, id }: ItemCardPopoverProps): React.JSX.Element {
   const elementRef = useRef<HTMLDivElement>(null);
-  const nativeSupported: boolean = useRef(typeof HTMLElement.prototype.showPopover === "function").current;
+  const nativeSupported: boolean = useRef(typeof HTMLElement !== "undefined" && typeof HTMLElement.prototype.showPopover === "function").current;
   const nativeOpenRef = useRef<boolean>(false);
   const openRef = useRef<boolean>(open);
   const onCloseRef = useRef<() => void>(onClose);
