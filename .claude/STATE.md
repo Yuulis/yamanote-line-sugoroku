@@ -327,3 +327,22 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Leak-free sizing: invisible sizer copies of every candidate (direction sizers = both labels of every candidate service + 方向 ？); board cap 27rem.
 - Phones: badge names wrap to 2 lines; names >=19 chars 85%, >=24 chars 70% (<=600px), decided by name only.
 - Implementation by Claude subagents (Sonnet implements, Opus reviews), pause after every step.
+
+---
+
+## Current Feature: Issue #61: item explanations and roll adjustment range
+<!-- orchestra:block-id: issue-61-item-explanations-and-roll-adjustment-range -->
+
+### Context
+
+- Goal: PR1 = effect chips and harmful items explainable by hover/tap, harmful-pickup toast 2nd line, non-modal roll-adjustment dialog so the map pans/zooms; PR2 = 出目調整券±2/±3 (exactly ±N), faces above 6, SAVE_VERSION 5.
+- Plan/handoff: .claude/docs/plans/item-explanations-roll-range-plan.md (PR1 steps 1.1-1.6, PR2 steps 2.1-2.4)
+- Research: .claude/docs/research/feature-item-explanations-and-roll-adjustment-range-codebase.md
+- Dependencies: none new
+- Complexity: COMPLEX (10 steps, 2 PRs)
+
+### Decisions
+
+- Product decisions per DESIGN.md 2026-11-25 rows (user 2026-11-25).
+- Weights ±1/±2/±3 = 3:2:1; toast copy C2 as in plan section 7; following restored after the adjustment decision (C3 changed by user).
+- Pacing: stop after every step; Claude subagents (Sonnet implements, Opus reviews).
