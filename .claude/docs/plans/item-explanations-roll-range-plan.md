@@ -449,5 +449,6 @@ PR1 branch `feature/item-explanations` from `develop`; PR2 branches from `develo
 
 | Step | Status | Commit | Verification |
 |---|---|---|---|
-| 1.1–1.6 | not started | — | — |
+| 1.1 | done | 14f55b2 | lead: typecheck, vitest 2693 pass/1 skip, build, verify_delegation 0 actionable; Opus review APPROVE (nits applied). Note for 1.2: pass `policy` to every ItemCard in a configured game |
+| 1.2–1.6 | not started | — | — |
 | 2.1–2.4 | not started | — | — |
