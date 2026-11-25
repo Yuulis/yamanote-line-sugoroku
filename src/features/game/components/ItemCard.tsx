@@ -1,10 +1,10 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { ItemIcon } from "./ItemIcon";
 import {
-  ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, itemTiming, itemTone, itemUnavailableText,
+  ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, itemEffectText, itemTiming, itemTone, itemUnavailableText,
   type ItemHint,
 } from "../itemPresentation";
-import type { ItemKind } from "../../../types/network";
+import type { ItemKind, ItemPolicy } from "../../../types/network";
 import type { ItemUnavailableReason } from "../itemSession";
 import { modalDialogOpen } from "./GameMenu";
 
@@ -285,6 +285,10 @@ export interface ItemCardProps {
   isNew?: boolean;
   unavailableReason?: ItemUnavailableReason | null;
   hint?: ItemHint | null;
+  /** When given, the effect text uses this policy's turn counts instead of the production defaults. */
+  policy?: ItemPolicy;
+  /** Live status of a scheduled effect (e.g. when a delay fires); shown under the timing. */
+  statusLine?: string | null;
   replacesSelection?: boolean;
   action?: ItemCardAction;
   footer?: React.ReactNode;
@@ -294,7 +298,7 @@ export interface ItemCardProps {
 
 export function ItemCard({
   kind, headingId, selected = false, isNew = false, unavailableReason = null,
-  hint = null, replacesSelection = false, action, footer, onOpenRules,
+  hint = null, policy, statusLine = null, replacesSelection = false, action, footer, onOpenRules,
 }: ItemCardProps): React.JSX.Element {
   const generatedId: string = useId();
   const actualHeadingId: string = headingId ?? `item-card-heading-${generatedId}`;
@@ -314,8 +318,9 @@ export function ItemCard({
         {footer && markers}
       </div>
       {!footer && markers}
-      <p className="item-card__effect">{description.effect}</p>
+      <p className="item-card__effect">{policy ? itemEffectText(kind, policy) : description.effect}</p>
       <p className="item-card__timing">{itemTiming(kind)}</p>
+      {statusLine && <p className="item-card__status">{statusLine}</p>}
       {hint && <p className={`item-card__hint${hint.caution ? " item-card__hint--caution" : ""}`}>{hint.text}</p>}
       {replacesSelection && !selected && <p className="item-card__note">{ITEM_REPLACEMENT_NOTE}</p>}
       {unavailableText && <p className="item-card__reason" id={reasonId}>{unavailableText}</p>}

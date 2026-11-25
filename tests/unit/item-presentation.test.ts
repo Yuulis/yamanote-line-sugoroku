@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  adjustedPips, directionGuidance, ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, ITEM_SHORT_NAMES,
-  itemHint, itemTiming, itemTone, itemUnavailableLabel, itemUnavailableText,
+  adjustedPips, AUTOMATIC_ITEM_TIMING, directionGuidance, ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE,
+  ITEM_SHORT_NAMES, itemEffectText, itemHint, itemTiming, itemTone, itemUnavailableLabel, itemUnavailableText,
 } from "../../src/features/game/itemPresentation";
-import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, type ItemKind } from "../../src/types/network";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy } from "../../src/types/network";
 
 const ITEM_KINDS: readonly ItemKind[] = [...BENEFICIAL_ITEM_KINDS, ...HARMFUL_ITEM_KINDS];
 
@@ -26,6 +27,26 @@ describe("item presentation", () => {
     expect(ITEM_DESCRIPTIONS.suspension.effect).toBe("その路線が5ターン乗れない");
     expect(ITEM_DESCRIPTIONS.detour.effect).toBe("次の乗換駅で別の路線へ");
     expect(ITEM_DESCRIPTIONS.oversleep.effect).toBe("次のターンは終点まで、環状線は6駅");
+  });
+
+  it.each(HARMFUL_ITEM_KINDS)("describes %s as taking effect automatically on pickup", (kind) => {
+    expect(itemTiming(kind)).toBe(AUTOMATIC_ITEM_TIMING);
+  });
+
+  it("words the automatic timing for harmful items", () => {
+    expect(AUTOMATIC_ITEM_TIMING).toBe("拾うと自動で発動");
+  });
+
+  it("substitutes the configured turn counts into delay and suspension effects", () => {
+    const base = ITEM_GAME_CONFIG.itemPolicy as ItemPolicy;
+    const changed: ItemPolicy = { ...base, delayTurns: 2, suspensionTurns: 7 };
+
+    expect(itemEffectText("delay", changed)).toBe("2ターン後の出目が1");
+    expect(itemEffectText("suspension", changed)).toBe("その路線が7ターン乗れない");
+    expect(itemEffectText("delay", base)).toBe(ITEM_DESCRIPTIONS.delay.effect);
+    expect(itemEffectText("suspension", base)).toBe(ITEM_DESCRIPTIONS.suspension.effect);
+    expect(itemEffectText("detour", changed)).toBe(ITEM_DESCRIPTIONS.detour.effect);
+    expect(itemEffectText("double", changed)).toBe(ITEM_DESCRIPTIONS.double.effect);
   });
 
   it("describes item timing and disabled reasons for players", () => {

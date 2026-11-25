@@ -2133,6 +2133,7 @@ button[aria-disabled="true"] {
 
 .item-card__effect,
 .item-card__timing,
+.item-card__status,
 .item-card__hint,
 .item-card__note,
 .item-card__reason {
@@ -2140,6 +2141,7 @@ button[aria-disabled="true"] {
 }
 
 .item-card__timing,
+.item-card__status,
 .item-card__note {
   color: var(--color-text-muted);
 }

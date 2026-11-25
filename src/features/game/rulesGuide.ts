@@ -1,7 +1,7 @@
 import type { GameConfig, ItemKind, ItemPolicy, ServiceKind } from "../../types/network";
 import { ANIMATION_SPEEDS } from "./gameConfig";
 import { PRESENTATION_LEVELS } from "./gameSettings";
-import { ITEM_DESCRIPTIONS, itemTiming } from "./itemPresentation";
+import { ITEM_DESCRIPTIONS, itemEffectText, itemTiming } from "./itemPresentation";
 
 export type RulesSectionId = "goal" | "lottery" | "items" | "controls" | "save";
 /** Child-facing opener: the opener comes from the activating event (`event.currentTarget`), never `document.activeElement`. */
@@ -58,9 +58,7 @@ const PER_MILLE_PER_PERCENT = 10;
 const DEFAULT_TARGET_LABEL = "目標路線";
 const DEFAULT_START_LABEL = "出発駅";
 const NO_ITEMS_TEXT = "このルールではアイテムはありません";
-const AUTOMATIC_ITEM_TIMING = "拾うと自動で発動";
 const LABEL_SEPARATOR = "→";
-const TURN_COUNT_PATTERN = /\d+(?=ターン)/;
 
 const SHORTCUTS: readonly string[] = [
   "Space / Enter：サイコロを振る",
@@ -167,25 +165,14 @@ function hasHarmfulItems(policy: ItemPolicy): boolean {
   return policy.harmfulChancePercent > 0 && policy.harmfulKinds.length > 0;
 }
 
-/** Descriptions carry the production turn counts; swap in the configured ones. */
-function itemEffect(kind: ItemKind, policy: ItemPolicy): string {
-  const { effect } = ITEM_DESCRIPTIONS[kind];
-  if (kind === "delay") return effect.replace(TURN_COUNT_PATTERN, String(policy.delayTurns));
-  if (kind === "suspension") return effect.replace(TURN_COUNT_PATTERN, String(policy.suspensionTurns));
-  return effect;
-}
-
 function itemRows(policy: ItemPolicy | undefined): readonly RulesGuideItem[] {
   if (!policy) return [];
-  const beneficial = policy.beneficialKinds.map((kind) => ({ kind, timing: itemTiming(kind) }));
-  const harmful = hasHarmfulItems(policy)
-    ? policy.harmfulKinds.map((kind) => ({ kind, timing: AUTOMATIC_ITEM_TIMING }))
-    : [];
-  return [...beneficial, ...harmful].map(({ kind, timing }) => ({
+  const harmful = hasHarmfulItems(policy) ? policy.harmfulKinds : [];
+  return [...policy.beneficialKinds, ...harmful].map((kind) => ({
     kind,
     name: ITEM_DESCRIPTIONS[kind].name,
-    effect: itemEffect(kind, policy),
-    timing,
+    effect: itemEffectText(kind, policy),
+    timing: itemTiming(kind),
   }));
 }
 
