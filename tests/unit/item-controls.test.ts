@@ -664,8 +664,7 @@ describe("item controls", () => {
       turn: 1,
       rawRoll: 2,
       resolvedRide: { serviceId: "line-a", direction: 1 as const },
-      allowedDeltas: [1] as const,
-      itemInstanceIds: ["adjust-1"],
+      choices: [{ delta: 1, instanceId: "adjust-1" }] as const,
       canContinue: true as const,
     };
     const mount = mountReact(createElement(RollAdjustment, { decision, onContinue }));
@@ -674,6 +673,8 @@ describe("item controls", () => {
     expect(mount.container.textContent).toContain("出目：2");
     expect(mount.container.textContent).toContain("出目 3、3マス進む");
     expect(mount.container.textContent).toContain("そのまま：出目 2、2マス進む");
+    expect(mount.container.querySelectorAll(".item-dialog__hint")[1]?.textContent)
+      .toBe("±1を選ぶと出目調整券を1枚使います。");
     expect(mount.container.textContent).not.toContain("−1：");
     const plus = mount.container.querySelector<HTMLInputElement>("input[value='1']")!;
     dispatchReactEvent(plus, new MouseEvent("click", { bubbles: true }));
@@ -683,6 +684,47 @@ describe("item controls", () => {
     expect(onContinue).toHaveBeenCalledWith({ instanceId: "adjust-1", delta: 1 });
   });
 
+  it("renders seven choices in magnitude order and continues with the matching ticket instance", () => {
+    const onContinue = vi.fn();
+    const decision = {
+      kind: "adjust" as const,
+      turn: 1,
+      rawRoll: 4,
+      resolvedRide: { serviceId: "line-a", direction: 1 as const },
+      choices: [
+        { delta: -3, instanceId: "adjust-3" },
+        { delta: -2, instanceId: "adjust-2" },
+        { delta: -1, instanceId: "adjust-1" },
+        { delta: 1, instanceId: "adjust-1" },
+        { delta: 2, instanceId: "adjust-2" },
+        { delta: 3, instanceId: "adjust-3" },
+      ] as const,
+      canContinue: true as const,
+    };
+    const mount = mountReact(createElement(RollAdjustment, { decision, onContinue }));
+    mounted.push(mount);
+
+    const labels = [...mount.container.querySelectorAll<HTMLLabelElement>(".item-adjustment__choice")]
+      .map((label) => label.textContent);
+    expect(labels).toEqual([
+      "−3：出目 1、1マス進む",
+      "−2：出目 2、2マス進む",
+      "−1：出目 3、3マス進む",
+      "そのまま：出目 4、4マス進む",
+      "+1：出目 5、5マス進む",
+      "+2：出目 6、6マス進む",
+      "+3：出目 7、7マス進む",
+    ]);
+    expect(mount.container.textContent).toContain("±1・±2・±3を選ぶと出目調整券を1枚使います。");
+
+    const plusThree = mount.container.querySelector<HTMLInputElement>('input[value="3"]')!;
+    dispatchReactEvent(plusThree, new MouseEvent("click", { bubbles: true }));
+    const continueButton = [...mount.container.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent === "出目7で続ける")!;
+    dispatchReactEvent(continueButton, new MouseEvent("click", { bubbles: true }));
+    expect(onContinue).toHaveBeenCalledWith({ instanceId: "adjust-3", delta: 3 });
+  });
+
   it("treats window Escape in the revealed-roll dialog as continue without adjustment", () => {
     const onContinue = vi.fn();
     const decision = {
@@ -690,8 +732,7 @@ describe("item controls", () => {
       turn: 1,
       rawRoll: 6,
       resolvedRide: { serviceId: "line-a", direction: 1 as const },
-      allowedDeltas: [-1] as const,
-      itemInstanceIds: ["adjust-1"],
+      choices: [{ delta: -1, instanceId: "adjust-1" }] as const,
       canContinue: true as const,
     };
     const mount = mountReact(createElement(RollAdjustment, { decision, onContinue }));
@@ -732,8 +773,7 @@ describe("item controls", () => {
       turn: 1,
       rawRoll: 4,
       resolvedRide: { serviceId: "line-a", direction: 1 as const },
-      allowedDeltas: [1] as const,
-      itemInstanceIds: ["adjust-1"],
+      choices: [{ delta: 1, instanceId: "adjust-1" }] as const,
       canContinue: true as const,
     };
     const mount = mountReact(createElement(RollAdjustment, { decision, onContinue: vi.fn(), onSkip: vi.fn(), canSkip: false }));
@@ -756,8 +796,7 @@ describe("item controls", () => {
       turn: 1,
       rawRoll: 4,
       resolvedRide: { serviceId: "line-a", direction: 1 as const },
-      allowedDeltas: [-1, 1] as const,
-      itemInstanceIds: ["adjust-1"],
+      choices: [{ delta: -1, instanceId: "adjust-1" }, { delta: 1, instanceId: "adjust-1" }] as const,
       canContinue: true as const,
     };
     const landings = [
@@ -792,8 +831,7 @@ describe("item controls", () => {
       turn: 1,
       rawRoll: 3,
       resolvedRide: { serviceId: "line-a", direction: 1 as const },
-      allowedDeltas: [1] as const,
-      itemInstanceIds: ["adjust-1"],
+      choices: [{ delta: 1, instanceId: "adjust-1" }] as const,
       canContinue: true as const,
     };
     const landings = [
@@ -994,7 +1032,7 @@ describe("GamePanel item card integration", () => {
     try {
       const adjustedView: ItemSessionView = { ...value.turnDisplay.itemView!, decision: {
         kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
-        allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
+        choices: [{ delta: 1, instanceId: "adjust-1" }] as const, canContinue: true,
       } };
       renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: adjustedView, decision: adjustedView.decision } });
       expect(seenHidden).toEqual([true]);
@@ -1018,7 +1056,7 @@ describe("GamePanel item card integration", () => {
     expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.getAttribute("aria-expanded")).toBe("true");
     const decisionView: ItemSessionView = { ...value.turnDisplay.itemView!, decision: {
       kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
-      allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
+      choices: [{ delta: 1, instanceId: "adjust-1" }] as const, canContinue: true,
     } };
     renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: decisionView, decision: decisionView.decision } });
     expect(mount.container.querySelector(".game-panel")?.hasAttribute("inert")).toBe(true);
@@ -1030,7 +1068,7 @@ describe("GamePanel item card integration", () => {
     expect(mount.container.querySelector<HTMLElement>(".game-panel__menu")?.hidden).toBe(false);
     const menuDecisionView: ItemSessionView = { ...value.turnDisplay.itemView!, decision: {
       kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
-      allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
+      choices: [{ delta: 1, instanceId: "adjust-1" }] as const, canContinue: true,
     } };
     renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: menuDecisionView, decision: menuDecisionView.decision } });
     expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")?.getAttribute("aria-expanded")).toBe("true");
@@ -1200,7 +1238,7 @@ describe("GamePanel presented-decision handoffs and action guards", () => {
     ...value, turnDisplay: { ...value.turnDisplay, canRoll: false, canSkip: true, itemUseLocked: true, ...overrides } });
   const adjustDecision: NonNullable<ItemSessionView["decision"]> = {
     kind: "adjust", turn: 1, rawRoll: 2, resolvedRide: { serviceId: "line-a", direction: 1 },
-    allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
+    choices: [{ delta: 1, instanceId: "adjust-1" }] as const, canContinue: true,
   };
   const slotButton = (mount: MountedReact, index: number): HTMLButtonElement =>
     mount.container.querySelectorAll<HTMLButtonElement>(".item-slot button")[index]!;

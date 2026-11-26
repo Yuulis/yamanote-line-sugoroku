@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   beginItemTurn, buildRailwayNetwork, createGame, createItemGame, finishItemTurn, playItemTurn, playTurn, resolveItemDiscard, rollDie, targetSegmentIds,
 } from "../../src/features/game/engine";
-import type { ItemGameState, ItemRollAdjustment } from "../../src/types/network";
+import type { ItemGameState, ItemRollAdjustment, RollAdjustDelta } from "../../src/types/network";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LOOP_SEGMENT_IDS, M_LINE, M_START, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
@@ -687,7 +687,7 @@ describe("roll adjustment landing preview", () => {
   }
 
   /** The station each choice really reaches, plus its truncation facts. */
-  function resolved(game: ItemGameState, delta: -1 | 0 | 1) {
+  function resolved(game: ItemGameState, delta: RollAdjustDelta | 0) {
     const adjustment: ItemRollAdjustment | null = delta === 0 ? null : { instanceId: "held-0", delta };
     const { record } = finishItemTurn(game, adjustment, multiNetwork);
     if (record?.kind !== "item-ride") throw new Error("Expected item ride");

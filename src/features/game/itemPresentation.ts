@@ -1,4 +1,4 @@
-import { HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy } from "../../types/network";
+import { HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy, type RollAdjustDelta } from "../../types/network";
 import type { ItemSessionView, ItemUnavailableReason } from "./itemSession";
 
 export const ITEM_SHORT_NAMES: Readonly<Record<ItemKind, string>> = {
@@ -122,6 +122,6 @@ export function directionGuidance(
   return `${distance}。${directionIsCloser ? "山手線に近づく方向" : "山手線から遠ざかる方向"}`;
 }
 
-export function adjustedPips(rawRoll: number, delta: -1 | 0 | 1): number {
+export function adjustedPips(rawRoll: number, delta: RollAdjustDelta | 0): number {
   return rawRoll + delta;
 }

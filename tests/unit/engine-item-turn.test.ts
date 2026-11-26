@@ -268,6 +268,7 @@ describe("active item validation and adjustment", () => {
     }
     const pending = beginItemTurn(holding(withRawRoll(3), "roll-adjust"), noItems, network).state;
     expectInvalid(() => finishItemTurn(pending, { instanceId: "held-0", delta: 0 } as unknown as ItemRollAdjustment, network));
+    expectInvalid(() => finishItemTurn(pending, { instanceId: "held-0", delta: 2 }, network));
   });
 });
 

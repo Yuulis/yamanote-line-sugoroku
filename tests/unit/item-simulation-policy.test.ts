@@ -85,7 +85,7 @@ describe("round-3 production policy adapter", () => {
     expect(PRODUCT_SIMULATION_CONFIG.maxFace).toBeUndefined();
   });
 
-  it("uses the legacy chooser cap while allowing the product chooser to reach seven", () => {
+  it("keeps both chooser paths within the temporary 1..6 face bound", () => {
     let revealed: ItemGameState | null = null;
     for (let index = 0; index < 100 && revealed === null; index += 1) {
       const candidate = engine.beginItemTurn(stateWith(["roll-adjust"], `s1m-20261012-${index}`), { items: [] }, network).state;
@@ -102,8 +102,8 @@ describe("round-3 production policy adapter", () => {
     const legacy = chooseAdjustment(revealed, network, "random", true, productRng, { maxFace: LEGACY_SIMULATION_CONFIG.maxFace });
     const product = chooseAdjustment(revealed, network, "random", true, productRng, { maxFace: PRODUCT_SIMULATION_CONFIG.maxFace });
     expect(legacy.adjustment).toEqual({ instanceId: "test-0", delta: -1 });
+    expect(product.adjustment).toEqual({ instanceId: "test-0", delta: -1 });
     expect(legacy.rng).toBe(productRng);
-    expect(product.adjustment).toEqual({ instanceId: "test-0", delta: 1 });
-    expect(product.rng).toBe(engine.drawIndex(productRng, 2).nextRngState);
+    expect(product.rng).toBe(productRng);
   });
 });

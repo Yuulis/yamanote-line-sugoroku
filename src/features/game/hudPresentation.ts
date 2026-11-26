@@ -62,7 +62,10 @@ function compactItemRoll(record: DeepReadonly<ItemRideRecord>): CompactRollModel
 export function itemRideModifierWording(record: DeepReadonly<ItemRideRecord>): string | null {
   if (record.movementMode === "oversleep") return null;
   if (record.movementMode === "rapid") return "快速";
-  if (record.adjustment !== null) return record.adjustment.delta > 0 ? "調整+1" : "調整-1";
+  if (record.adjustment !== null) {
+    const sign = record.adjustment.delta > 0 ? "+" : "-";
+    return `調整${sign}${Math.abs(record.adjustment.delta)}`;
+  }
   if (record.command.items.some((item) => item.kind === "double")) return "×2";
   // A due delay forces the effective face to 1 without an adjustment ticket.
   if (record.effectiveFace !== record.rawRoll) return "遅延";

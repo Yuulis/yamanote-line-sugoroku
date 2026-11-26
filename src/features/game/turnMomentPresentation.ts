@@ -212,7 +212,7 @@ function visibleDecision(
 function visibleAdjustmentLandings(input: TurnMomentDisplayInput, decision: ItemSessionView["decision"]): readonly AdjustmentLanding[] {
   if (decision?.kind !== "adjust") return [];
   const position = { ...input.session.game, currentServiceId: decision.resolvedRide.serviceId, direction: decision.resolvedRide.direction };
-  return adjustmentLandings(position, decision.rawRoll, decision.allowedDeltas, input.network, input.presentation);
+  return adjustmentLandings(position, decision.rawRoll, decision.choices, input.network, input.presentation);
 }
 
 function visibleCandidates(move: LastMove | null, presentation: PresentationResolver): PresentationCandidateRow[] {

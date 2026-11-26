@@ -220,3 +220,49 @@ use the real ones and say so.)
 Output (markdown): changed files (one line each); how the run config is threaded (game
 creation, restore checks, chooser `maxFace`); acceptance results with counts and the sim
 summary lines; any assertion edited; risks.
+
+## Step 2.2 — implement
+
+Objective: implement Step 2.2 of `.claude/docs/plans/item-explanations-roll-range-plan.md`
+(generalise the roll adjustment to magnitudes with only ±1 existing — a refactor with no rule,
+save or visible change) as one uncommitted step.
+
+Scope:
+- IN: exactly the "Step 2.2" section of the plan and decisions D2 and D11. User decisions
+  (plan section 2 / 7): a ±N ticket offers exactly −N and +N (not "up to N"); the adjusted face
+  must stay ≥ 1; distinct legal deltas map to the first owned instance of their kind
+  (inventory order). In this step only `roll-adjust` exists and the face stays 1..6 through the
+  temporary `MAX_ADJUSTED_FACE = 6` constant (removed in 2.3).
+- OUT: new item kinds, drop weights, ruleset/SAVE_VERSION, save schema (stays ±1 and 1..6),
+  fixtures under tests/e2e/fixtures, docs, DESIGN.md, STATE.md, the plan file. No new
+  dependencies. Do not commit or push.
+- Hard constraints: no visible change for today's ±1 ticket (labels, order, focus, copy stay
+  byte-identical unless the plan says otherwise — list any string you change); do not weaken,
+  skip or delete assertions (fixture-shape updates only for the `allowedDeltas` +
+  `itemInstanceIds` → `choices` contract); 5,000-game legacy parity must still pass.
+
+Context: Step 2.1 (7248632) split the simulation into `LEGACY_SIMULATION_CONFIG` (maxFace 6) and
+`PRODUCT_SIMULATION_CONFIG` (temporary `supportedMaxFace: 6` in runner.ts — leave it for 2.3).
+PR1 made the dialog non-modal (RollAdjustment.tsx uses `show()` and a window Escape handler —
+keep that behaviour). Research map:
+`.claude/docs/research/feature-item-explanations-and-roll-adjustment-range-codebase.md`.
+Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (iterate with --grep on one project; no full E2E suite, no other browsers;
+LOCAL_WORKERS 2; never `pkill -f`):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/item-roll-adjust.test.ts tests/unit/engine-item-turn.test.ts tests/unit/game-session-items.test.ts tests/unit/item-controls.test.ts tests/unit/hud-presentation.test.ts tests/unit/roll-adjustment-preview.test.ts tests/unit/item-presentation.test.ts tests/unit/turn-moments.test.ts tests/unit/turn-moment-hooks.test.ts tests/unit/item-simulation-policy.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/items.spec.ts --project=desktop-chromium --grep "adjust|map failure keeps"
+npx playwright test tests/e2e/items.spec.ts --project=phone-chromium --grep "decision sheet fit|roll adjustment landing map preview"
+npx playwright test tests/e2e/accessibility.spec.ts --project=desktop-chromium --grep "adjust|Escape"
+```
+
+(Check `package.json` for `npm test`; the lead runs the 5,000-game simulation separately.)
+
+Output (markdown): changed files (one line each); the new decision contract (`choices` shape) and
+where kind ↔ |delta| and the face bounds are validated; any user-visible string changed
+(expected: none); acceptance results with counts; any assertion edited (before/after, why); risks.

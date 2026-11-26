@@ -2391,7 +2391,7 @@ button[aria-disabled="true"] {
   }
 }
 
-/* Phones: a bottom strip over the HUD area (same 8px margins as .game-panel), three segmented native radios,
+/* Phones: a bottom strip over the HUD area (same 8px margins as .game-panel), segmented native radios,
    then the Continue / Skip actions. The map above the strip stays visible. */
 @media (max-width: 600px) {
   .item-adjustment {
@@ -2425,6 +2425,11 @@ button[aria-disabled="true"] {
     margin: 4px 0;
     padding: 0;
     border: 0;
+  }
+
+  .item-adjustment .item-dialog__group:has(.item-adjustment__choice:nth-of-type(4)) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-flow: row;
   }
 
   .item-adjustment .item-dialog__group legend {

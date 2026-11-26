@@ -109,19 +109,19 @@ describe("item session phases and identity", () => {
     const adjusting = saved(committing);
     expect(adjusting.phase).toBe("awaiting-adjust");
     const game = itemGame(adjusting);
-    const delta = adjustmentOptions(game)[0]!;
+    const choice = adjustmentOptions(game)[0]!;
     const pending = game.pending;
     if (pending?.kind !== "roll") throw new Error("Expected roll");
     const resolving = reduce(adjusting, { type: "item-adjust", ...itemActionIdentity(adjusting),
-      adjustment: { instanceId: "held-0", delta } });
+      adjustment: choice });
     expect(resolving).toMatchObject({ phase: "resolving", animation: null, game: { turn: 1, pending: null } });
     expect(displayedProgress(sessionProgress(resolving), network, null)).toMatchObject({
       stationId: game.currentStationId, completedSegmentIds: game.completedSegmentIds,
     });
-    expect(itemGame(resolving)).toEqual(finishItemTurn(game, { instanceId: "held-0", delta }, network).state);
+    expect(itemGame(resolving)).toEqual(finishItemTurn(game, choice, network).state);
     const animating = saved(resolving);
     expect(animating.phase).toBe("animating");
-    expect(animating.lastMove?.roll).toBe(pending.rawRoll + delta);
+    expect(animating.lastMove?.roll).toBe(pending.rawRoll + choice.delta);
     expect(finishAnimation(animating)).toMatchObject({ phase: "idle", animation: null });
   });
 
@@ -458,7 +458,9 @@ describe("read-only S9 view model", () => {
       if (!adjusting) throw new Error("No boundary fixture");
       const before = serializeGame(adjusting.game);
       const view = itemSessionView(adjusting, network)!;
-      expect(view.decision).toMatchObject({ kind: "adjust", rawRoll: face, allowedDeltas: face === 1 ? [1] : [-1] });
+      expect(view.decision).toMatchObject({ kind: "adjust", rawRoll: face, choices: [{
+        delta: face === 1 ? 1 : -1, instanceId: "held-0",
+      }] });
       itemSessionView(adjusting, network);
       expect(serializeGame(adjusting.game)).toBe(before);
     }

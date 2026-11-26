@@ -1,11 +1,12 @@
 import { Marker } from "maplibre-gl";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { Position } from "../../types/data";
+import type { RollAdjustDelta } from "../../types/network";
 import type { PreviewCalloutBounds } from "./camera";
 
 /** The part of a landing the map needs; `AdjustmentLanding` satisfies it structurally. */
 export interface AdjustmentCandidate {
-  delta: -1 | 0 | 1;
+  delta: RollAdjustDelta | 0;
   stationId: string;
   position: Position | null;
   travelledSteps: number;
@@ -40,9 +41,9 @@ export interface BubbleBox {
   height?: number;
 }
 
-function deltaLabel(delta: -1 | 0 | 1): string {
+function deltaLabel(delta: RollAdjustDelta | 0): string {
   if (delta === 0) return "そのまま";
-  return delta === -1 ? "−1" : "+1";
+  return `${delta < 0 ? "−" : "+"}${Math.abs(delta)}`;
 }
 
 /** One group per landing station, in first-seen (delta) order; entries without a platform are skipped. */
