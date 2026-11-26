@@ -8,7 +8,7 @@ import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { MAP_STYLE_URL, SOURCE_IDS } from "../../src/features/map/mapConfig";
-import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openClearHistory, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
+import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openClearHistory, openGameLog, openGameMenu, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
 import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 import { expectSavedHistoryRowFields } from "./support/clearHistory";
 
@@ -457,7 +457,40 @@ test("roll adjustment landing map preview", { tag: "@layout" }, async ({ page, r
   })).toBeGreaterThan(zoomBefore);
   await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
 
+  const cameraBeforeResize = await page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: {
+      getCenter(): { lng: number; lat: number };
+      getZoom(): number;
+    } | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must remain available during the adjustment preview");
+    const center = map.getCenter();
+    return { center: [center.lng, center.lat] as const, zoom: map.getZoom() };
+  });
+  await actAndWaitForPreviewMapSettled(page, () => page.setViewportSize(viewport.width <= 600
+    ? { width: 360, height: 568 }
+    : { width: 1180, height: viewport.height }));
+  const resizedCallouts = page.locator("[data-map-adjustment-callout]");
+  await expect(resizedCallouts).toHaveCount(expectedCalloutCount);
+  for (let index = 0; index < expectedCalloutCount; index += 1) {
+    await expect(resizedCallouts.nth(index)).toBeVisible();
+  }
+  const cameraAfterResize = await page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: {
+      getCenter(): { lng: number; lat: number };
+      getZoom(): number;
+    } | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must remain available during the adjustment preview");
+    const center = map.getCenter();
+    return { center: [center.lng, center.lat] as const, zoom: map.getZoom() };
+  });
+  expect(cameraAfterResize.zoom).toBeCloseTo(cameraBeforeResize.zoom, 2);
+  expect(cameraAfterResize.center[0]).toBeCloseTo(cameraBeforeResize.center[0], 5);
+  expect(cameraAfterResize.center[1]).toBeCloseTo(cameraBeforeResize.center[1], 5);
+
   await dialog.getByRole("button", { name: "そのまま続ける" }).click();
+  await expect(dialog).toBeHidden();
+  await openGameMenu(page);
+  await expect(gamePanel(page).getByRole("button", { name: "追尾: ON", exact: true })).toBeVisible();
   await expect(page.locator("[data-map-adjustment-callout]")).toHaveCount(0);
 });
 

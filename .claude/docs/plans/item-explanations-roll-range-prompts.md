@@ -137,3 +137,47 @@ npx playwright test tests/e2e/items.spec.ts --project=desktop-chromium --grep "r
 
 Output (markdown): changed files and lines; how the modal check works; the new test name;
 acceptance results.
+
+## Step 1.5 — implement
+
+Objective: implement Step 1.5 of `.claude/docs/plans/item-explanations-roll-range-plan.md`
+(during the roll-adjustment preview, a user camera move stops the auto refit, and following is
+restored when the decision closes the dialog) as one uncommitted step.
+
+Scope:
+- IN: exactly the "Step 1.5" section of the plan and decision D7; user decision C3 (plan
+  section 7, changed 2026-11-25): a camera move during the adjustment preview must not leave
+  following OFF — when the decision is made (any choice or 「そのまま」) and the dialog closes,
+  following returns to the state it had when the dialog opened, so the camera follows the token
+  as it starts moving. Manual moves outside the adjustment dialog keep today's behaviour
+  (following OFF until the menu toggle). Use the existing owner of the follow state (find where
+  `onUserCameraMove` turns following off); do not add a second source of truth.
+- OUT: Step 1.6 and PR2 work; DESIGN.md, STATE.md, the plan file. No new dependencies. Do not
+  commit or push.
+- Hard constraints: do not weaken, skip or delete test assertions; existing no-gesture refit
+  assertions in "roll adjustment landing map preview" stay.
+
+Context: Step 1.4 landed in 69350be (dialog is non-modal; the map is operable while it is open;
+`tests/e2e/items.spec.ts` already zooms during the preview). Research map:
+`.claude/docs/research/feature-item-explanations-and-roll-adjustment-range-codebase.md`
+(RailwayMap.tsx:717-723 onUserCameraMove, :850-852 and :862-887 fitAdjustmentPreview).
+Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (iterate with --grep on one project; no full E2E suite, no other browsers;
+LOCAL_WORKERS 2; never `pkill -f`):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/roll-adjustment-preview.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/items.spec.ts --project=desktop-chromium --grep "roll adjustment landing map preview"
+npx playwright test tests/e2e/items.spec.ts --project=phone-chromium --grep "roll adjustment landing map preview"
+npx playwright test tests/e2e/map-guidance.spec.ts tests/e2e/accessibility.spec.ts --project=desktop-chromium --grep "follow|追尾|camera"
+```
+
+(If `map-guidance.spec.ts` does not exist, grep tests/e2e for the specs that cover following /
+「追尾」 and run those instead; list them.)
+
+Output (markdown): changed files (one line each); how the override flag and the follow restore
+work (where state lives, when it resets); acceptance results; any assertion edited; risks.
