@@ -130,3 +130,66 @@ Output (markdown):
 - the acceptance results with pass/fail counts;
 - the line counts;
 - risks.
+
+## Step 1.3 — implement
+
+Objective: implement Step 1.3 of `.claude/docs/plans/map-readability-plan.md`, a pure move of
+the title, overview and follow camera helpers out of `src/features/map/RailwayMap.tsx` into
+`src/features/map/railwayMapCamera.ts`, as one uncommitted step.
+
+Scope:
+- IN: exactly the "Step 1.3" section of the plan. Move these module-level functions from
+  `RailwayMap.tsx` (current line numbers at HEAD 2f43e99) into `railwayMapCamera.ts`, and import
+  them back into `RailwayMap.tsx`:
+  - `fitNetworkOverview` (~215)
+  - `fitTitleService` (~238)
+  - `phonePanelBottomPadding` (~250)
+  - `usesBottomPanelCameraPadding` (~259)
+  - `cameraLayoutKey` (~272)
+  - `recentre` (~279)
+- Shared dependencies: a constant or helper the moved functions need may also be used by code
+  that stays, for example `IMMEDIATE_CAMERA_DURATION_MS` or `COMPACT_VIEWPORT_QUERY`. Move it
+  into `railwayMapCamera.ts` as well, export it, and import it back. This still counts as the
+  pure move.
+- Stop and report only if a dependency reads component state, props or refs.
+- `RailwayMap.tsx` keeps:
+  - the camera mode, lifecycle and effects;
+  - `attributionPosition`, `usesCompactAttribution`, `attachStationPopup`, `createMap`,
+    `navigationControlsContainFocus` and `useSegmentFlash`, unless one is purely a dependency
+    of the moved functions. Step 1.4 moves `useSegmentFlash`.
+- Tests: `tests/unit/title-map-mode.test.ts`, `map-camera.test.ts` and `map-helpers.test.ts`
+  run as written. Update an import path only if a test imports a moved symbol.
+- OUT: Step 1.4 and later, DESIGN.md, STATE.md and the plan file. Add no new dependencies, and
+  do not commit or push.
+- Hard constraints:
+  - Bodies and constants stay byte-identical, apart from `import`/`export` lines.
+  - Do not rename anything, and do not refactor.
+  - Do not weaken, skip or delete any test assertion.
+  - Add no import from `railwayMapCamera.ts` back to `RailwayMap.tsx`.
+
+Context:
+- Steps 1.1 (a5487da) and 1.2 (2f43e99) already moved the layout observer, the preview
+  helpers, `ZERO_MAP_PADDING` and `positionsBounds` into `railwayMapCamera.ts`. That file is
+  248 lines, and `RailwayMap.tsx` is 787 lines.
+- Plan sections 1–3; `.claude/docs/research/feature-map-readability-codebase.md`.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all; do NOT run the E2E suite):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/title-map-mode.test.ts tests/unit/map-camera.test.ts tests/unit/map-helpers.test.ts
+npx vitest run
+npm run build
+wc -l src/features/map/RailwayMap.tsx src/features/map/railwayMapCamera.ts
+git diff --check
+```
+
+Output (markdown):
+- the changed files, one line each;
+- a table of the moved symbols with their old and new line ranges, marking the shared
+  dependencies;
+- how you confirmed the bodies are identical;
+- the acceptance results with pass/fail counts;
+- the line counts;
+- risks.

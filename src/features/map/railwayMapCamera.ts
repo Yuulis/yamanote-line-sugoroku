@@ -2,11 +2,23 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
 import type { Position } from "../../types/data";
-import { CURRENT_POSITION_RADIUS, CURRENT_POSITION_STROKE_WIDTH, MAP_ZOOM } from "./mapConfig";
+import type { ServicePattern } from "../../types/network";
+import {
+  CURRENT_POSITION_RADIUS,
+  CURRENT_POSITION_STROKE_WIDTH,
+  FOLLOW_EASE_MS,
+  MAP_ZOOM,
+  NETWORK_FIT_PADDING_DESKTOP,
+  NETWORK_FIT_PADDING_PHONE,
+  NETWORK_FIT_PANEL_GAP,
+  isPhoneWidth,
+} from "./mapConfig";
 import {
   adjustmentPreviewFitSignature,
   adjustmentPreviewPadding,
   bestUnobstructedPoint,
+  needsRecentre,
+  titleFitPadding,
   type CameraPoint,
   type CameraRect,
 } from "./camera";
@@ -245,4 +257,84 @@ export function fitAdjustmentPreview(
     }
   }
   return signature;
+}
+
+export const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
+const IMMEDIATE_CAMERA_DURATION_MS = 0;
+
+/** Fit all service platforms above/beside the panel without retaining camera padding. */
+export function fitNetworkOverview(map: MapLibreMap, services: readonly ServicePattern[]): void {
+  const points = services.flatMap((service) => Object.values(service.platformCoordinates));
+  if (points.length === 0) return;
+  const longitudes = points.map((point) => point[0]);
+  const latitudes = points.map((point) => point[1]);
+  const bounds: [Position, Position] = [
+    [Math.min(...longitudes), Math.min(...latitudes)],
+    [Math.max(...longitudes), Math.max(...latitudes)],
+  ];
+  const padding = isPhoneWidth()
+    ? {
+        ...NETWORK_FIT_PADDING_PHONE,
+        bottom: phonePanelBottomPadding(map),
+      }
+    : NETWORK_FIT_PADDING_DESKTOP;
+  // Clear follow padding before solving the fit: MapLibre combines retained
+  // padding with fit padding, which can exceed the viewport on item panels.
+  map.setPadding(ZERO_MAP_PADDING);
+  map.fitBounds(bounds, { padding, duration: IMMEDIATE_CAMERA_DURATION_MS, maxZoom: MAP_ZOOM });
+  map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+}
+
+/** Fit only the configured target service around the title with symmetric viewport padding. */
+export function fitTitleService(map: MapLibreMap, service: ServicePattern | undefined): void {
+  if (!service) return;
+  const bounds = positionsBounds(Object.values(service.platformCoordinates));
+  if (!bounds) return;
+  const viewport = map.getContainer().getBoundingClientRect();
+  const padding = titleFitPadding({ width: viewport.width, height: viewport.height }, isPhoneWidth());
+  map.setPadding(ZERO_MAP_PADDING);
+  map.fitBounds(bounds, { padding, duration: IMMEDIATE_CAMERA_DURATION_MS, maxZoom: MAP_ZOOM });
+  map.setPadding(ZERO_MAP_PADDING);
+}
+
+/** Reserve the visible panel height, which can be smaller than its CSS cap. */
+export function phonePanelBottomPadding(map: MapLibreMap): number {
+  const container = map.getContainer();
+  const panel = document.querySelector<HTMLElement>(".game-panel");
+  if (!panel) return NETWORK_FIT_PANEL_GAP;
+  const containerBottom = container.getBoundingClientRect().bottom;
+  const panelTop = panel.getBoundingClientRect().top;
+  return Math.max(0, containerBottom - panelTop) + NETWORK_FIT_PANEL_GAP;
+}
+
+export function usesBottomPanelCameraPadding(): boolean {
+  return isPhoneWidth() || (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia(COMPACT_VIEWPORT_QUERY).matches
+  );
+}
+
+/**
+ * The layout the follow camera depends on: the map size and the bottom padding
+ * it reserves for the panel. On desktop the panel never pads the camera, so
+ * its size changes are not part of the key.
+ */
+export function cameraLayoutKey(map: MapLibreMap): string {
+  const container = map.getContainer();
+  const bottom = usesBottomPanelCameraPadding() ? phonePanelBottomPadding(map) : 0;
+  return `${container.clientWidth}x${container.clientHeight}:${bottom}`;
+}
+
+/** Centre the camera on `position` without touching the zoom; true if it moved. */
+export function recentre(map: MapLibreMap, position: Position, immediate: boolean, force = false): boolean {
+  const { lng, lat } = map.getCenter();
+  if (!force && !needsRecentre([lng, lat], position)) return false;
+  const padding = usesBottomPanelCameraPadding()
+    ? { top: 0, right: 0, bottom: phonePanelBottomPadding(map), left: 0 }
+    : ZERO_MAP_PADDING;
+  const camera = { center: position, padding };
+  if (immediate) map.jumpTo(camera);
+  else map.easeTo({ ...camera, duration: FOLLOW_EASE_MS });
+  return true;
 }
