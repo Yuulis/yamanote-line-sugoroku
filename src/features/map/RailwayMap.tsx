@@ -62,6 +62,7 @@ import {
   updateHighlightedService,
 } from "./railwayLayers";
 import { createHeadingMarker, type HeadingMarkerController } from "./headingMarker";
+import { isVisibleLayoutTarget, useCameraLayoutObserver } from "./railwayMapCamera";
 import {
   type AdjustmentCandidate,
   mountAdjustmentCallouts,
@@ -70,7 +71,7 @@ import {
 import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
-import { TURN_RESULT_PILL_LAYOUT_EVENT, TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
+import { TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
 import { TitleMapPlaceholder } from "./components/TitleMapPlaceholder";
 import type { ClearRoute } from "../game/clearResult";
 import type { ClearReplayStore } from "../game/clearReplayStore";
@@ -134,68 +135,6 @@ export type RailwayMapMode = "title" | "game" | "clear";
 
 const subscribeToNoReplayPhase = (_listener: () => void): (() => void) => () => {};
 const getIdleReplayPhase = (): "idle" => "idle";
-
-/** Elements whose size can change the camera layout. */
-export function cameraLayoutTargets(
-  container: HTMLElement,
-  panelRoot: HTMLElement | null,
-  extraTargets: readonly HTMLElement[] = [],
-): HTMLElement[] {
-  const targets = panelRoot ? [container, panelRoot] : [container];
-  return [...targets, ...extraTargets.filter((target) => !targets.includes(target))];
-}
-
-/**
- * Watch the map's container, the current `.game-panel` root and the window, and call `onLayoutChange` at
- * most once per animation frame. A new map or a new `panelKey` (a new session's panel element) rebinds the
- * observer to the replacement panel; `onBind` runs on every (re)bind before any observation. A null map
- * observes nothing.
- */
-export function useCameraLayoutObserver(
-  map: Pick<MapLibreMap, "getContainer"> | null,
-  panelKey: number | undefined,
-  onBind: () => void,
-  onLayoutChange: () => void,
-  previewOpen = false,
-  previewKey = "",
-): void {
-  const callbacksRef = useRef({ onBind, onLayoutChange });
-  useEffect(() => {
-    callbacksRef.current = { onBind, onLayoutChange };
-  });
-  useEffect(() => {
-    if (!map) return;
-    const container: HTMLElement = map.getContainer();
-    callbacksRef.current.onBind();
-    const panel = document.querySelector<HTMLElement>(".game-panel");
-    const previewTargets = previewOpen
-      ? PREVIEW_LAYOUT_SELECTORS.flatMap((selector) =>
-          [...document.querySelectorAll<HTMLElement>(selector)].filter(isVisibleLayoutTarget))
-      : [];
-    let animationFrame = 0;
-    const requestLayoutUpdate = () => {
-      if (animationFrame) return;
-      animationFrame = window.requestAnimationFrame(() => {
-        animationFrame = 0;
-        callbacksRef.current.onLayoutChange();
-      });
-    };
-    const observer = typeof ResizeObserver === "undefined"
-      ? null
-      : new ResizeObserver(requestLayoutUpdate);
-    for (const target of cameraLayoutTargets(container, panel, previewTargets)) observer?.observe(target);
-    window.addEventListener("resize", requestLayoutUpdate);
-    window.addEventListener("orientationchange", requestLayoutUpdate);
-    if (previewOpen) window.addEventListener(TURN_RESULT_PILL_LAYOUT_EVENT, requestLayoutUpdate);
-    return () => {
-      observer?.disconnect();
-      window.removeEventListener("resize", requestLayoutUpdate);
-      window.removeEventListener("orientationchange", requestLayoutUpdate);
-      if (previewOpen) window.removeEventListener(TURN_RESULT_PILL_LAYOUT_EVENT, requestLayoutUpdate);
-      if (animationFrame) window.cancelAnimationFrame(animationFrame);
-    };
-  }, [map, panelKey, previewOpen, previewKey]);
-}
 
 /** Start time of the flash for one request key; kept across style reloads so a reload never restarts it. */
 interface SegmentFlashClock {
@@ -262,16 +201,6 @@ const NO_LIVE_POSITION: LivePosition = {
 };
 const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
 const ZERO_MAP_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
-const PREVIEW_LAYOUT_SELECTORS = [
-  ".item-adjustment",
-  ".map-overview",
-  ".maplibregl-ctrl-top-left",
-  ".maplibregl-ctrl-top-right",
-  ".maplibregl-ctrl-bottom-left",
-  ".maplibregl-ctrl-bottom-right",
-  "[data-map-adjustment-callout]",
-  TURN_RESULT_PILL_SELECTOR,
-] as const;
 const PREVIEW_OBSTRUCTION_SELECTORS = [
   ".game-panel",
   ".item-adjustment",
@@ -287,12 +216,6 @@ const IMMEDIATE_CAMERA_DURATION_MS = 0;
 
 function attributionPosition(atTop: boolean): "top-left" | "bottom-right" {
   return atTop ? "top-left" : "bottom-right";
-}
-
-function isVisibleLayoutTarget(element: HTMLElement): boolean {
-  if (element instanceof HTMLDialogElement && !element.open) return false;
-  if (element.matches(TURN_RESULT_PILL_SELECTOR) && getComputedStyle(element).visibility === "hidden") return false;
-  return element.getClientRects().length > 0;
 }
 
 function toMapRect(rect: DOMRect, mapRect: DOMRect): CameraRect {

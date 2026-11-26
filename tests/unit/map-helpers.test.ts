@@ -24,7 +24,8 @@ import { labelSortKey, isStationLabelEligible } from "../../src/features/map/sta
 import { updateLineGroupSelection } from "../../src/features/map/lineVisibilityStore";
 import { LAYER_IDS, SOURCE_IDS, isBasemapError } from "../../src/features/map/mapConfig";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
-import { cameraLayoutTargets, RailwayMap } from "../../src/features/map/RailwayMap";
+import { RailwayMap } from "../../src/features/map/RailwayMap";
+import { cameraLayoutTargets } from "../../src/features/map/railwayMapCamera";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { validManifest, validService, validStation } from "./fixtures/railway";
 

@@ -26,8 +26,10 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
-| 1.1 | next | — | — |
+| 1.1 | done | (this commit) | Luna xhigh; lead: 76 removed lines verbatim in railwayMapCamera.ts, typecheck, vitest 2746 pass / 1 pre-existing skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 1,022 -> 945 lines |
+| 1.2 | next | — | — |
 
 ## Next action
 
-Run Step 1.1 (pure move of the camera layout observer) with the prompt in the prompts file.
+Write the Step 1.2 prompt (pure move of the adjustment-preview camera helpers) and run it with Luna xhigh.
+Open question for PR2: what 次 does from the done view (lead default: disabled); ask the user before Step 2.1.
