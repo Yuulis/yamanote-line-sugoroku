@@ -459,5 +459,5 @@ PR1 branch `feature/item-explanations` from `develop`; PR2 branches from `develo
 | 1.4 | done | (this commit) | Codex Luna xhigh; lead: typecheck, vitest 2712 pass/1 skip, build, phone @layout 23 pass, firefox accessibility adjust/Escape 6 pass. Sol low review CHANGES → Luna fix: adjustment Escape yields to an open `dialog:modal` (新規 confirmation) + regression test; status count asserted across panel+dialog. verify_delegation flags = planned replacements (cancel→window Escape, panel→panel+dialog status count) |
 | 1.4 CI fix | done | 08c9b4b | CI red on 69350be: first-play-hints "Escape continues once…" counted `.game-panel [role=status]` only; the status now lives in the dialog → helper counts panel+dialog; local chromium 2 pass |
 | 1.5 | done | (this commit) | Codex Luna xhigh; follow snapshot/restore in useGameSettings (begin/endAdjustmentPreview), override flag in RailwayMap. lead: typecheck, vitest 2716 pass/1 skip, build, verify_delegation 0 actionable, phone preview pass. Sol low APPROVE; nit applied (stored follow OFF stays OFF unit test) |
-| 1.6 | not started | — | — |
+| 1.6 | done | (this commit) | DESIGN.md row, implementation-status line; PR to develop |
 | 2.1–2.4 | not started | — | — |
