@@ -1,6 +1,7 @@
 import { expect, test } from "./fixtures";
 import { playItemTurn } from "../../src/features/game/engine";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
+import { isRollAdjustKind } from "../../src/features/game/itemRollAdjust";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { ItemRideRecord } from "../../src/types/network";
 import {
@@ -179,8 +180,8 @@ test.describe("S15 full-inventory pickup reload", () => {
     await freezeClock(page);
     await clickDice(page);
     await advanceTumble(page);
-    const adjust = gamePanel(page).getByRole("dialog", { name: "出目を調整しますか？" });
-    if (base.inventory.some((item) => item.kind === "roll-adjust")) {
+    const adjust = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    if (base.inventory.some((item) => isRollAdjustKind(item.kind))) {
       await expect(adjust).toBeVisible();
       await adjust.getByRole("button", { name: "そのまま続ける" }).click();
     }

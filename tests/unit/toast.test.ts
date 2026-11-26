@@ -151,20 +151,25 @@ describe("canonical item event toast conversion", () => {
   });
 
   it.each([
-    ["route", "pickup-retained", "good", "rapid", "快速券を手に入れた！"],
-    ["discard", "pickup-pending-discard", "good", "delay-certificate", "遅延証明書を手に入れた！"],
-    ["certificate", "cancelled-by-certificate", "good", "delay-certificate", "遅延証明書で寝過ごしを打ち消した"],
-    ["delay", "harmful-scheduled", "bad", "delay", "遅延を拾ってしまった！"],
-    ["adjust", "harmful-scheduled", "bad", "oversleep", "寝過ごしを拾ってしまった！"],
-    ["oversleep", "effect-activated", "bad", "oversleep", "寝過ごしが発動！"],
-  ] as const)("converts the engine-generated %s turn into a %s toast", (name, type, tone, itemKind, expectedText) => {
-    const record = arrivedRecord(playItemTurn(itemScenario(name, network), {}, network).state);
+    ["route", "pickup-retained", "good", "route-ticket", "路線指定券を手に入れた！", undefined],
+    ["discard", "pickup-pending-discard", "good", "delay-certificate", "遅延証明書を手に入れた！", undefined],
+    ["certificate", "cancelled-by-certificate", "good", "delay-certificate", "遅延証明書で運休を打ち消した", undefined],
+    ["delay", "harmful-scheduled", "bad", "delay", "遅延を拾ってしまった！", "3ターン後の出目が1になります"],
+    ["adjust-harmful", "harmful-scheduled", "bad", "suspension", "山手線が運休！", "あと5ターン、この路線に乗れません"],
+    ["oversleep", "effect-activated", "bad", "oversleep", "寝過ごしが発動！", undefined],
+  ] as const)("converts the engine-generated %s turn into a %s toast", (name, type, tone, itemKind, expectedText, detail) => {
+    const base = itemScenario(name, network);
+    const result = name === "adjust-harmful"
+      ? playItemTurn(base, { adjustment: { instanceId: base.inventory.find((item) => item.kind === "roll-adjust")!.id, delta: -1 } }, network)
+      : playItemTurn(base, {}, network);
+    const record = arrivedRecord(result.state);
     const eventIndex = record.itemEvents.findIndex((event) => event.type === type);
     expect(eventIndex).toBeGreaterThanOrEqual(0);
     const converted = turnToasts(5, itemLastMove(record, network), network);
     expect(converted.find((entry) => entry.eventIndex === eventIndex)).toEqual({
       key: `5:${record.turn}:${eventIndex}`, sessionId: 5, turn: record.turn, eventIndex,
       text: expectedText,
+      ...(detail === undefined ? {} : { detail }),
       tone, itemKind, sticky: false,
     });
   });
@@ -240,13 +245,34 @@ describe("canonical item event toast conversion", () => {
     expect(enqueue(state, secondList)).toBe(state);
   });
 
-  it("uses the short caught-item wording without exposing scheduled turn details", () => {
+  it("keeps the short first line for a scheduled pickup", () => {
     const event: ItemEvent = { type: "harmful-scheduled", item: "delay", effect: "delay", dueTurn: 5 };
     const record = recordWithEvents([event], 2);
     const first = turnToasts(3, itemLastMove(record, network), network);
     const second = turnToasts(3, itemLastMove(record, network), network);
     expect(second).toEqual(first);
     expect(first[0]?.text).toBe("遅延を拾ってしまった！");
+  });
+
+  it.each([
+    [{ type: "harmful-scheduled", item: "delay", effect: "delay", dueTurn: 7 }, 4, "遅延を拾ってしまった！", "3ターン後の出目が1になります"],
+    [{ type: "harmful-scheduled", item: "suspension", effect: "suspension", serviceId: "jr-yamanote", expiresTurn: 9 }, 4, "山手線が運休！", "あと5ターン、この路線に乗れません"],
+    [{ type: "harmful-scheduled", item: "detour", effect: "detour" }, 4, "寄り道を拾ってしまった！", "次に乗り換えられる駅で、別の路線に移ります"],
+    [{ type: "harmful-scheduled", item: "oversleep", effect: "oversleep" }, 4, "寝過ごしを拾ってしまった！", "次のターンは終点まで進みます（環状線は6駅）"],
+  ] as const)("adds the scheduled %s consequence below the unchanged first line", (event, turn, text, detail) => {
+    const [output] = convert([event as ItemEvent], turn);
+    expect(output).toMatchObject({ text, detail });
+  });
+
+  it.each([
+    { type: "cancelled-by-certificate", item: "delay", certificate: { id: "c", kind: "delay-certificate" } },
+    { type: "effect-activated", effect: "delay" },
+    { type: "effect-activated", effect: "detour" },
+    { type: "effect-activated", effect: "oversleep" },
+    { type: "effect-expired", effect: "suspension", serviceId: "jr-yamanote" },
+  ] as const)("keeps %s as a single-line toast", (event) => {
+    const [output] = convert([event as ItemEvent]);
+    expect(output).not.toHaveProperty("detail");
   });
 });
 

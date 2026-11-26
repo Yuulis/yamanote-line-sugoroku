@@ -45,19 +45,22 @@ function transition(session: GameSession, action: GameAction): GameSession {
 describe("turn moment item publication", () => {
   it("keeps consumed inventory during stamps and removes it only after release", () => {
     const base = itemScenario("adjust", network);
+    const ticket = base.inventory.find((item) => item.kind === "roll-adjust");
+    if (!ticket) throw new Error("Expected the saved adjustment ticket");
     const started = beginItemTurn(base, { items: [] }, network).state;
-    const consumed = finishItemTurn(started, { instanceId: "item-7", delta: 1 }, network).state;
+    const consumed = finishItemTurn(started, { instanceId: ticket.id, delta: 1 }, network).state;
     const origin = resumeSession(base, network, 61);
     const originView = itemSessionView(origin, network)!;
     const committed = resumeSession(consumed, network, 61);
-    expect(committed.lastMove?.itemRecord?.itemEvents.map((event) => event.type)).toEqual(["consumed", "harmful-scheduled"]);
+    expect(committed.lastMove?.itemRecord?.itemEvents.map((event) => event.type)).toEqual(["consumed"]);
     const liveView = itemSessionView(committed, network)!;
     const during = display(committed, liveView, releasedAttempt(origin, originView, "stamps"), "arrival");
-    expect(during.itemView?.inventory.map((item) => item.id)).toEqual(["item-1", "item-7"]);
-    expect(during.itemView?.usableItems.map((item) => item.instanceId)).toEqual(["item-1", "item-7"]);
+    expect(during.itemView?.inventory.map((item) => item.id)).toEqual(base.inventory.map((item) => item.id));
+    expect(during.itemView?.usableItems.map((item) => item.instanceId)).toEqual(base.inventory.map((item) => item.id));
     const after = display(committed, liveView, releasedAttempt(origin, originView, "released"), "arrival");
-    expect(after.itemView?.inventory.map((item) => item.id)).toEqual(["item-1"]);
-    expect(after.itemView?.usableItems.map((item) => item.instanceId)).toEqual(["item-1"]);
+    const remainingIds = base.inventory.filter((item) => item.id !== ticket.id).map((item) => item.id);
+    expect(after.itemView?.inventory.map((item) => item.id)).toEqual(remainingIds);
+    expect(after.itemView?.usableItems.map((item) => item.instanceId)).toEqual(remainingIds);
   });
 
   it("keeps a certificate during arrival and publishes its cancellation at the result boundary", () => {
@@ -69,11 +72,11 @@ describe("turn moment item publication", () => {
     const liveView = itemSessionView(resultSession, network)!;
     const attempt = releasedAttempt(origin, originView);
     const before = display(resultSession, liveView, attempt, "arrival");
-    expect(before.itemView?.inventory.map((item) => item.id)).toEqual(["item-3", "item-4", "item-5"]);
+    expect(before.itemView?.inventory.map((item) => item.id)).toEqual(base.inventory.map((item) => item.id));
     expect(before.toastInputs).toEqual([]);
     const after = display(resultSession, liveView, attempt, "done");
-    expect(after.itemView?.inventory.map((item) => item.id)).toEqual(["item-4", "item-5"]);
-    expect(after.toastInputs[0]?.text).toBe("遅延証明書で寝過ごしを打ち消した");
+    expect(after.itemView?.inventory.map((item) => item.id)).toEqual(["item-15"]);
+    expect(after.toastInputs[0]?.text).toBe("遅延証明書で運休を打ち消した");
     expect(after.toastInputs[0]?.itemKind).toBe("delay-certificate");
   });
 
@@ -87,7 +90,7 @@ describe("turn moment item publication", () => {
     const before = display(resultSession, liveView, attempt, "arrival");
     expect(before.itemView?.effects.delayDueTurns).toEqual([]);
     expect(before.itemView?.hints.suspensionIgnored).toBe(false);
-    expect(before.itemView?.usableItems[0]?.reason).toBe("no-route-choice");
+    expect(before.itemView?.usableItems[0]?.reason).toBeNull();
     expect(before.decision).toBeNull();
     expect(before.effectModels).toEqual([]);
     const staleDone = display(resultSession, liveView, releasedAttempt(origin, originView, "tumble"), "done");
@@ -97,7 +100,7 @@ describe("turn moment item publication", () => {
     const after = display(resultSession, liveView, attempt, "done");
     expect(after.itemView?.effects.delayDueTurns).toEqual([8]);
     expect(after.itemView?.hints.suspensionIgnored).toBe(false);
-    expect(after.itemView?.usableItems[0]?.reason).toBe("no-route-choice");
+    expect(after.itemView?.usableItems[0]?.reason).toBeNull();
     expect(after.effectModels.map((effect) => effect.label)).toEqual(["遅延 あと3"]);
   });
 
@@ -138,7 +141,7 @@ describe("turn moment item publication", () => {
     expect(published.itemView?.hints.deadheadRecommended).toBe(true);
     expect(published.itemView?.usableItems).toEqual([
       { instanceId: "item-1", kind: "route-ticket", usable: false, reason: "no-route-choice", selected: false, recommended: true },
-      { instanceId: "item-3", kind: "rapid", usable: true, reason: null, selected: false, recommended: true },
+      { instanceId: "item-3", kind: "route-ticket", usable: false, reason: "no-route-choice", selected: false, recommended: true },
     ]);
   });
 
@@ -148,7 +151,7 @@ describe("turn moment item publication", () => {
     const origin = resumeSession(base, network, 74);
     const session = resumeSession(playItemTurn(base, {}, network).state, network, 74);
     expect(session.lastMove?.itemRecord?.itemEvents).toEqual([
-      { type: "pickup-retained", item: { id: "item-5", kind: "roll-adjust" } },
+      { type: "pickup-retained", item: { id: "item-5", kind: "direction-ticket" } },
     ]);
     const live = itemSessionView(session, network)!;
     const attempt = releasedAttempt(origin, itemSessionView(origin, network)!);
@@ -172,7 +175,7 @@ describe("turn moment item publication", () => {
     expect(pickup.toastInputs).toEqual([]);
     expect(pickup.announcement).toBe("新宿：山手線・テスト西線から抽選 → 山手線 ／ 外回りに固定");
     const done = display(session, live, attempt, "done");
-    expect(done.itemView?.inventory).toEqual([{ id: "item-5", kind: "roll-adjust" }]);
+    expect(done.itemView?.inventory).toEqual([{ id: "item-5", kind: "direction-ticket" }]);
   });
 
   it("publishes a plain turn's full completion announcement without a pickup stage", () => {
@@ -181,28 +184,28 @@ describe("turn moment item publication", () => {
     const session = resumeSession(playItemTurn(base, {}, network).state, network, 75);
     const attempt = releasedAttempt(origin, itemSessionView(origin, network)!);
     const done = display(session, itemSessionView(session, network)!, attempt, "done");
-    expect(done.announcement).toBe("6ターン目：出目1（1マス、1駅移動）、駒込に到着。山手線のみ ／ 外回りに固定。踏破 19/30。サイコロを振れます");
+    expect(done.announcement).toBe("3ターン目：出目6（6マス、6駅移動）、池袋に到着。山手線のみ ／ 外回りに固定。踏破 16/30。サイコロを振れます");
     expect(done.toastInputs).toEqual([]);
     expect(done.showItemNotice).toBe(false);
   });
 
   it("publishes a retained pickup, notice, toast, and exact ready announcement when pickup completes", () => {
-    const base = itemScenario("rapid-long", network);
+    const base = itemScenario("route", network);
     const origin = resumeSession(base, network, 64);
     const originView = itemSessionView(origin, network)!;
     const resultSession = resumeSession(playItemTurn(base, {}, network).state, network, 64);
     const liveView = itemSessionView(resultSession, network)!;
     const attempt = releasedAttempt(origin, originView);
     const during = display(resultSession, liveView, attempt, "pickup");
-    expect(during.itemView?.inventory.map((item) => item.id)).toEqual(["item-2", "item-7"]);
+    expect(during.itemView?.inventory.map((item) => item.id)).toEqual(["item-1"]);
     expect(during.toastInputs).toEqual([]);
     expect(during.showItemNotice).toBe(false);
-    expect(during.announcement).toBe("山手線のみ ／ 外回りに固定");
+    expect(during.announcement).toBe("テスト南線のみ ／ エリア端のため折り返し（品川方面）");
     const after = display(resultSession, liveView, attempt, "done");
-    expect(after.itemView?.inventory.map((item) => item.id)).toEqual(["item-2", "item-7", "item-8"]);
-    expect(after.toastInputs.map((toast) => toast.text)).toEqual(["遅延証明書を手に入れた！"]);
+    expect(after.itemView?.inventory.map((item) => item.id)).toEqual(["item-1", "item-3"]);
+    expect(after.toastInputs.map((toast) => toast.text)).toEqual(["路線指定券を手に入れた！"]);
     expect(after.showItemNotice).toBe(true);
-    expect(after.announcement).toBe("8ターン目：出目5（5マス、5駅移動）、日暮里に到着。山手線のみ ／ 外回りに固定。踏破 22/30。遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）。サイコロを振れます");
+    expect(after.announcement).toBe("3ターン目：出目4（4マス、2駅移動、残り2は使わず）、大森に到着。テスト南線のみ ／ エリア端のため折り返し（品川方面）。踏破 4/30。路線指定券を拾いました。今いる駅で乗る路線を選べる（向きは抽選）。サイコロを振れます");
     expect(after.canRoll).toBe(true);
     expect(after.canSkip).toBe(false);
     expect(after.itemUseLocked).toBe(false);
@@ -245,10 +248,10 @@ describe("turn moment item publication", () => {
     expect(before.turn).toBe(7);
     expect(after.turn).toBe(7);
     expect(before.toastInputs.map((toast) => toast.text)).toEqual(["遅延証明書を手に入れた！"]);
-    expect(after.toastInputs.map((toast) => toast.text)).toEqual(["遅延証明書を手に入れた！", "遅延証明書を捨てた"]);
+    expect(after.toastInputs.map((toast) => toast.text)).toEqual(["遅延証明書を手に入れた！", "回送列車を捨てた"]);
     expect(after.decision).toBeNull();
     expect(after.showItemNotice).toBe(true);
-    expect(after.announcement).toBe("7ターン目：出目2（2マス、2駅移動）、西日暮里に到着。山手線のみ ／ 外回りに固定。踏破 21/30。遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）。遅延証明書を選んで捨てました。サイコロを振れます");
+    expect(after.announcement).toBe("7ターン目：出目2（2マス、2駅移動）、西日暮里に到着。山手線のみ ／ 外回りに固定。踏破 21/30。遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）。回送列車を選んで捨てました。サイコロを振れます");
   });
 
   it("publishes harmful drops and certificate cancellation without a pickup stage", () => {
@@ -270,12 +273,12 @@ describe("turn moment item publication", () => {
     const certificateSession = resumeSession(playItemTurn(certificateBase, {}, network).state, network, 67);
     const certificateDuring = display(certificateSession, itemSessionView(certificateSession, network)!,
       releasedAttempt(certificateOrigin, certificateView), "arrival");
-    expect(certificateDuring.announcement).toBe("8ターン目：鶯谷に到着。踏破 23/30");
+    expect(certificateDuring.announcement).toBe("20ターン目：池袋に到着。踏破 16/30");
     const cancelled = display(certificateSession, itemSessionView(certificateSession, network)!,
       releasedAttempt(certificateOrigin, certificateView), "done");
-    expect(cancelled.itemView?.inventory.map((item) => item.id)).toEqual(["item-4", "item-5"]);
-    expect(cancelled.toastInputs.map((toast) => toast.text)).toEqual(["遅延証明書で寝過ごしを打ち消した"]);
-    expect(cancelled.announcement).toBe("8ターン目：出目2（2マス、2駅移動）、鶯谷に到着。山手線のみ ／ 外回りに固定。踏破 23/30。拾った寝過ごしを遅延証明書で打ち消しました。サイコロを振れます");
+    expect(cancelled.itemView?.inventory.map((item) => item.id)).toEqual(["item-15"]);
+    expect(cancelled.toastInputs.map((toast) => toast.text)).toEqual(["遅延証明書で運休を打ち消した"]);
+    expect(cancelled.announcement).toBe("20ターン目：出目2（2マス、2駅移動）、池袋に到着。山手線のみ ／ 外回りに固定。踏破 16/30。拾った運休を遅延証明書で打ち消しました。サイコロを振れます");
   });
 
   it.each([
@@ -316,28 +319,31 @@ describe("turn moment item publication", () => {
     expect(result.canRoll).toBe(true);
     expect(result.canSkip).toBe(false);
     expect(result.itemUseLocked).toBe(false);
-    expect(result.announcement).toBe("6ターン目：出目1（1マス、1駅移動）、駒込に到着。山手線のみ ／ 外回りに固定。踏破 19/30。サイコロを振れます");
+    expect(result.announcement).toBe("3ターン目：出目6（6マス、6駅移動）、池袋に到着。山手線のみ ／ 外回りに固定。踏破 16/30。サイコロを振れます");
   });
 
   it("uses live action identity across engine commit, adjustment, save, and movement transitions", () => {
     const origin = resumeSession(itemScenario("adjust", network), network, 69);
     const snapshot = itemSessionView(origin, network)!;
+    const ticket = snapshot.inventory.find((item) => item.kind === "roll-adjust");
+    if (!ticket) throw new Error("Expected the saved adjustment ticket");
     expect(snapshot.identity).toEqual({ sessionId: 69, turn: 8, decisionRevision: 0 });
     const committing = transition(origin, { type: "item-commit", ...itemActionIdentity(origin) });
     const adjusting = transition(committing, { type: "item-save-attempted", ...itemActionIdentity(committing) });
     expect(adjusting.phase).toBe("awaiting-adjust");
     expect(itemActionIdentity(adjusting)).toEqual({ sessionId: 69, turn: 8, decisionRevision: 2 });
     const resolving = transition(adjusting, { type: "item-adjust", ...itemActionIdentity(adjusting),
-      adjustment: { instanceId: "item-7", delta: 1 } });
+      adjustment: { instanceId: ticket.id, delta: 1 } });
     const moving = transition(resolving, { type: "item-save-attempted", ...itemActionIdentity(resolving) });
     expect(moving.phase).toBe("animating");
     const stamps = display(moving, itemSessionView(moving, network)!, releasedAttempt(origin, snapshot, "stamps"), "waiting");
     expect(stamps.itemView?.identity).toEqual({ sessionId: 69, turn: 9, decisionRevision: 4 });
-    expect(stamps.itemView?.inventory.map((item) => item.id)).toEqual(["item-1", "item-7"]);
+    expect(stamps.itemView?.inventory.map((item) => item.id)).toEqual(snapshot.inventory.map((item) => item.id));
     const arrived = transition(moving, { type: "animation-finished", ...itemActionIdentity(moving) });
     const arrival = display(arrived, itemSessionView(arrived, network)!, releasedAttempt(origin, snapshot), "arrival");
     expect(arrival.itemView?.identity).toEqual({ sessionId: 69, turn: 9, decisionRevision: 5 });
-    expect(arrival.itemView?.inventory.map((item) => item.id)).toEqual(["item-1"]);
+    expect(arrival.itemView?.inventory.map((item) => item.id)).toEqual(snapshot.inventory
+      .filter((item) => item.id !== ticket.id).map((item) => item.id));
     expect(arrival.itemView?.effects.delayDueTurns).toEqual([]);
   });
 
@@ -351,10 +357,10 @@ describe("turn moment item publication", () => {
     expect(turnMomentAnnouncement({ ...common, stage: "tumble" })).toBe("サイコロを振っています。移動の準備中です。");
     expect(turnMomentAnnouncement({ ...common, stage: "waiting-record" })).toBe("");
     expect(turnMomentAnnouncement({ ...common, stage: "stamps" })).toBe("移動の準備中です。");
-    expect(turnMomentAnnouncement({ ...common, stage: "movement" })).toBe("出目は1マス 遅延です。移動中です。演出をスキップできます。");
-    expect(turnMomentAnnouncement({ ...common, stage: "arrival" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
-    expect(turnMomentAnnouncement({ ...common, stage: "lottery-flip" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
-    expect(turnMomentAnnouncement({ ...common, stage: "lottery-settle" })).toBe("8ターン目：秋葉原に到着。踏破 0/30");
+    expect(turnMomentAnnouncement({ ...common, stage: "movement" })).toBe("出目は3マスです。移動中です。演出をスキップできます。");
+    expect(turnMomentAnnouncement({ ...common, stage: "arrival" })).toBe("8ターン目：巣鴨に到着。踏破 0/30");
+    expect(turnMomentAnnouncement({ ...common, stage: "lottery-flip" })).toBe("8ターン目：巣鴨に到着。踏破 0/30");
+    expect(turnMomentAnnouncement({ ...common, stage: "lottery-settle" })).toBe("8ターン目：巣鴨に到着。踏破 0/30");
     expect(turnMomentAnnouncement({ ...common, stage: "ready", canRoll: false })).toBe("");
     expect(turnMomentAnnouncement({ ...common, stage: "ready", canRoll: true })).toBe("");
     expect(turnMomentAnnouncement({ ...common, decision: null, stage: "awaiting-adjust" })).toBe("");

@@ -69,7 +69,7 @@ const CASES: InvalidSaveCase[] = [
   {
     name: "unknown saveVersion",
     message: "このバージョンでは読み込めない形式のセーブデータです。",
-    tamper: (valid) => withField(valid, "saveVersion", 5),
+    tamper: (valid) => withField(valid, "saveVersion", 6),
   },
   {
     name: "historical v3 saveVersion",
@@ -134,6 +134,28 @@ for (const { name, message, tamper } of CASES) {
 test.describe("captured pre-S5 save against the live product bundle", () => {
   test.use({ dataset: "real" });
 
+  test("reports an unsupported format for the same-data v4 item ruleset and retains it until explicit discard", async ({ page }) => {
+    const tampered = await storeTamperedSave(page, (valid) => {
+      const save = JSON.parse(valid);
+      save.saveVersion = 4;
+      save.config = { ...save.config, rulesetVersion: "tokyo-suburban-items-1" };
+      return JSON.stringify(save);
+    });
+    const message = "ゲームのルールが変わったため、このセーブデータは続きから遊べません。";
+    await expect(titleScreen(page).getByRole("alert")).toContainText(message);
+    await expect(page.getByRole("button", { name: /^つづきから/ })).toHaveCount(0);
+    expect(await readSaveText(page)).toBe(tampered);
+    await page.reload();
+    await expect(titleScreen(page).getByRole("alert")).toContainText(message);
+    expect(await readSaveText(page)).toBe(tampered);
+
+    await titleScreen(page).getByRole("alert").getByRole("button", { name: "セーブデータを破棄" }).click();
+    const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });
+    await dialog.getByRole("button", { name: "削除する" }).click();
+    await expect(dialog).toBeHidden();
+    expect(await readSaveText(page)).toBeNull();
+  });
+
   test("rejects the historical classic v4 save and retains it until explicit discard", async ({ page }) => {
     const historical = readFileSync(new URL("./fixtures/historical-classic-before-clear-save.json", import.meta.url), "utf8");
     await openTitle(page);
@@ -193,7 +215,7 @@ test.describe("fixture save discard cancellation", () => {
   test.use({ dataset: "fixture" });
 
   test("[8.3-4] cancelling the discard keeps the invalid save untouched", async ({ page }) => {
-    const tampered = await storeTamperedSave(page, (valid) => withField(valid, "saveVersion", 5));
+    const tampered = await storeTamperedSave(page, (valid) => withField(valid, "saveVersion", 6));
 
     await page.getByRole("button", { name: "セーブデータを破棄" }).click();
     const dialog = page.getByRole("alertdialog", { name: "セーブデータの削除" });

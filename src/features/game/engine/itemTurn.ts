@@ -5,10 +5,11 @@ import type {
 } from "../../../types/network";
 import { GameEngineError } from "./errors";
 import { clearDetour, consumeInventoryInstance } from "./itemEffects";
+import { isAdjustedFaceInRange, isRollAdjustDeltaForKind, isRollAdjustKind } from "../itemRollAdjust";
 import { advanceWithMode, type ItemMovementResult } from "./itemMovement";
 import { itemLandingOptions } from "./itemOptions";
 import { drawItemDrop, resolvePendingItemDiscard } from "./items";
-import { assertItemPlaying, deepFreeze, invalidItemTurn, ownedItem, prepareItemTurn, revealItemRoll, type PreparedItemTurn } from "./itemTurnPreparation";
+import { assertItemPlaying, deepFreeze, invalidItemTurn, prepareItemTurn, revealItemRoll, type PreparedItemTurn } from "./itemTurnPreparation";
 import { drawLanding, resolveLandingEvent } from "./landing";
 import type { RailwayNetwork } from "./network";
 import type { ItemTurnEvent, ItemTurnResult } from "./types";
@@ -46,10 +47,13 @@ export function finishItemTurn(state: ItemGameState, adjustment: ItemRollAdjustm
     if (prepared.command.items.length > 0 || prepared.delayed || prepared.oversleep) {
       invalidItemTurn("Adjustment requires an unforced turn with no pre-roll item");
     }
-    ownedItem(state, adjustment.instanceId, "roll-adjust");
-    if (adjustment.delta !== -1 && adjustment.delta !== 1) invalidItemTurn("Adjustment must be -1 or +1");
+    const ownedAdjustment = state.inventory.find((item) => item.id === adjustment.instanceId);
+    if (!ownedAdjustment || !isRollAdjustKind(ownedAdjustment.kind)) invalidItemTurn("An owned roll-adjust item is required");
+    if (!isRollAdjustDeltaForKind(ownedAdjustment.kind, adjustment.delta)) {
+      invalidItemTurn("Adjustment magnitude does not match the owned item");
+    }
     face += adjustment.delta;
-    if (face < 1 || face > 6) throw new GameEngineError("INVALID_ROLL", "Adjusted face must stay within 1-6");
+    if (!isAdjustedFaceInRange(face)) throw new GameEngineError("INVALID_ROLL", "Adjusted face must be an integer >= 1");
     const consumed = consumeInventoryInstance(prepared.inventory, adjustment.instanceId);
     prepared.inventory = consumed.inventory;
     prepared.events.push(...consumed.events);

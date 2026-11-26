@@ -109,7 +109,7 @@ function expectPhaseGating(previousSession: GameSession, currentSession: GameSes
 }
 
 describe("turn-result publication integration", () => {
-  const previousGame = itemScenario("rapid-long", network);
+  const previousGame = itemScenario("route", network);
   const currentGame = playItemTurn(previousGame, {}, network).state;
   const previousSession = resumeSession(previousGame, network, 501);
   const currentSession = resumeSession(currentGame, network, 501);

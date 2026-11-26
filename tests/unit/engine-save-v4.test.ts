@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   beginItemTurn, buildRailwayNetwork, createGame, createItemGame, finishItemTurn,
-  isItemSave, movableDirections, playItemTurn, playTurn, routeTicketOptions, resolveItemDiscard, restoreGame, seedRng,
+  isItemSave, movableDirections, playItemTurn, playTurn, rollDie, routeTicketOptions, resolveItemDiscard, restoreGame, SAVE_VERSION, seedRng,
   serializeGame, verifySeededHistory,
 } from "../../src/features/game/engine";
 import { replayItemSave } from "../../src/features/game/engine/saveItemReplay";
@@ -15,7 +15,14 @@ const noItems = { items: [] };
 const invalid = expect.objectContaining({ code: "INVALID_SAVE" });
 const rngMismatch = expect.objectContaining({ code: "RNG_MISMATCH" });
 function config(overrides: Partial<ItemPolicy> = {}): ItemGameState["config"] {
-  return { ...multiConfig(), rulesetVersion: "save-items-1", itemPolicy: { ...ITEM_GAME_CONFIG.itemPolicy!, ...overrides } };
+  const base = ITEM_GAME_CONFIG.itemPolicy!;
+  const beneficialKinds = overrides.beneficialKinds ?? base.beneficialKinds;
+  const beneficialWeights = overrides.beneficialWeights ?? (overrides.beneficialKinds
+    ? Array.from({ length: beneficialKinds.length }, () => 1)
+    : base.beneficialWeights);
+  return { ...multiConfig(), rulesetVersion: "save-items-1", itemPolicy: {
+    ...base, ...overrides, beneficialKinds, beneficialWeights,
+  } };
 }
 function restore(state: ItemGameState): ItemGameState {
   return restoreGame(serializeGame(state), network, { expectedConfig: state.config, requireSeededRolls: true });
@@ -62,7 +69,7 @@ function findState(policy: Partial<ItemPolicy>, predicate: (state: ItemGameState
   }
   throw new Error("No matching save fixture");
 }
-const beneficial = { dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["double"] } as const;
+const beneficial = { dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["double"], beneficialWeights: [1] } as const;
 const firstDrop = findState(beneficial, (state) => state.turn === 1 && state.pending === null);
 const pendingDiscard = findState(beneficial, (state) => state.pending?.kind === "discard");
 const delayed = findState({ dropChancePerMille: 1000, harmfulChancePercent: 100, harmfulKinds: ["delay"] },
@@ -71,10 +78,20 @@ const suspended = findState({ dropChancePerMille: 1000, harmfulChancePercent: 10
   (state) => state.turn === 1 && state.pending === null);
 const completed = findState({ dropChancePerMille: 0 }, (state) => state.status === "completed");
 
-describe("save v4 envelopes and item decision round trips", () => {
-  it("round trips classic under v4 and keeps its record shape", () => {
-    const state = playTurn(createGame(multiConfig(), "classic-v4", network), network).state;
-    expect(state.saveVersion).toBe(4);
+const pendingPlusThree = (() => {
+  const base = findState({ dropChancePerMille: 1000, harmfulChancePercent: 0,
+    beneficialKinds: ["roll-adjust-3"], beneficialWeights: [1] }, (state) =>
+    state.turn === 1 && state.inventory.some((item) => item.kind === "roll-adjust-3") && rollDie(state.rngState).value === 6);
+  const pending = beginItemTurn(base, noItems, network).state;
+  if (pending.pending?.kind !== "roll" || pending.pending.rawRoll !== 6) throw new Error("Expected a pending six");
+  return pending;
+})();
+
+describe("save v5 envelopes and item decision round trips", () => {
+  it("round trips classic under v5 and keeps its record shape", () => {
+    const state = playTurn(createGame(multiConfig(), "classic-v5", network), network).state;
+    expect(state.saveVersion).toBe(5);
+    expect(state.saveVersion).toBe(SAVE_VERSION);
     expect(state.movementHistory[0]).not.toHaveProperty("kind");
     expect(restoreGame(serializeGame(state), network, { requireSeededRolls: true })).toEqual(state);
   });
@@ -95,6 +112,14 @@ describe("save v4 envelopes and item decision round trips", () => {
     expect(state.turn).toBe(0);
     expect(restore(state)).toEqual(state);
     expect(() => beginItemTurn(restore(state), noItems, network)).toThrow();
+  });
+  it("round trips a pending ±3 roll and the completed 9-face record", () => {
+    const pending = restore(pendingPlusThree);
+    expect(pending.pending).toMatchObject({ kind: "roll", rawRoll: 6 });
+    expect(pending).toEqual(pendingPlusThree);
+    const resolved = finishItemTurn(pending, { instanceId: pendingPlusThree.inventory[0]!.id, delta: 3 }, network).state;
+    expect(resolved.movementHistory.at(-1)).toMatchObject({ rawRoll: 6, effectiveFace: 9, adjustment: { delta: 3 } });
+    expect(restore(resolved)).toEqual(resolved);
   });
   it.each([firstDrop, pendingDiscard])("deep-freezes reconstructed transcripts and their nested arrays", (base) => {
     const state = base.pending ? base : beginItemTurn(base, noItems, network).state;
@@ -181,7 +206,7 @@ describe("save v4 envelopes and item decision round trips", () => {
   });
 });
 
-describe("save v4 strict parsing and structural legality", () => {
+describe("save v5 strict parsing and structural legality", () => {
   it.each(["inventory", "effects", "itemRngState", "pending", "rngState", "movementHistory", "config"])("requires %s", (key) => {
     const raw = JSON.parse(serializeGame(firstDrop));
     delete raw[key];
@@ -270,7 +295,7 @@ describe("save v4 strict parsing and structural legality", () => {
   });
 });
 
-describe("save v4 seeded outcome and RNG verification", () => {
+describe("save v5 seeded outcome and RNG verification", () => {
   it("ties item games to both seeds even without the classic opt-in", () => {
     const state = createItemGame(config(), "initial", network);
     expect(() => restoreGame(edit(state, (copy) => { copy.itemRngState = seedRng("other"); }), network)).toThrowError(rngMismatch);
@@ -298,7 +323,7 @@ describe("save v4 seeded outcome and RNG verification", () => {
     }, rngMismatch);
   });
   it("rejects a legal alternative drop kind consistently forged in events and inventory", () => {
-    const state = findState({ ...beneficial, beneficialKinds: ["double", "rapid"] }, (current) => current.turn === 1 && current.pending === null);
+    const state = findState({ ...beneficial, beneficialKinds: ["double", "rapid"], beneficialWeights: [1, 1] }, (current) => current.turn === 1 && current.pending === null);
     expectRejected(state, (copy) => {
       const kind = copy.inventory[0]!.kind === "double" ? "rapid" : "double";
       copy.inventory[0]!.kind = kind;
@@ -356,8 +381,8 @@ describe("save v4 seeded outcome and RNG verification", () => {
   });
 });
 
-describe("v4 version rejection and byte-preserving persistence", () => {
-  it.each([1, 2, 3, 5])("rejects version %d before malformed data/config/history and preserves stored bytes", (saveVersion) => {
+describe("v4/v5 version rejection and byte-preserving persistence", () => {
+  it.each([1, 2, 3, 6])("rejects version %d before malformed data/config/history and preserves stored bytes", (saveVersion) => {
     const bytes = ` { "saveVersion": ${saveVersion}, "config": null, "movementHistory": "bad" }\n`;
     const values = new Map([[SAVE_STORAGE_KEY, bytes]]);
     const storage: StorageLike = { getItem: (key) => values.get(key) ?? null,
@@ -368,8 +393,41 @@ describe("v4 version rejection and byte-preserving persistence", () => {
     expect(deleteSave(storage)).toBe(true);
     expect(readSave(storage, network, multiConfig())).toEqual({ kind: "none" });
   });
+  it("classifies a same-data v4 save as a rules change before parsing its old shape", () => {
+    const bytes = JSON.stringify({ saveVersion: 4, dataVersion: network.dataVersion, config: null, movementHistory: "old" });
+    expect(() => restoreGame(bytes, network)).toThrowError(expect.objectContaining({ code: "RULES_VERSION_MISMATCH" }));
+    const storage: StorageLike = { getItem: () => bytes, setItem: () => {}, removeItem: () => {} };
+    expect(readSave(storage, network, multiConfig())).toEqual({ kind: "invalid", problem: "rules-changed" });
+  });
+  it("keeps the historical v4 railway-data classification", () => {
+    const bytes = JSON.stringify({ saveVersion: 4, dataVersion: "historic-data", config: null, movementHistory: "old" });
+    expect(() => restoreGame(bytes, network)).toThrowError(expect.objectContaining({ code: "DATA_VERSION_MISMATCH" }));
+    const storage: StorageLike = { getItem: () => bytes, setItem: () => {}, removeItem: () => {} };
+    expect(readSave(storage, network, multiConfig())).toEqual({ kind: "invalid", problem: "data-version" });
+  });
+  it.each([
+    ["missing", (raw: Record<string, unknown>) => { delete raw.dataVersion; }],
+    ["non-string", (raw: Record<string, unknown>) => { raw.dataVersion = 7; }],
+  ])("classifies a v4 save with %s dataVersion as malformed", (_label, edit) => {
+    const raw: Record<string, unknown> = { saveVersion: 4, dataVersion: network.dataVersion };
+    edit(raw);
+    const bytes = JSON.stringify(raw);
+    expect(() => restoreGame(bytes, network)).toThrowError(expect.objectContaining({ code: "INVALID_SAVE" }));
+    const storage: StorageLike = { getItem: () => bytes, setItem: () => {}, removeItem: () => {} };
+    expect(readSave(storage, network, multiConfig())).toEqual({ kind: "invalid", problem: "corrupt" });
+  });
   it("checks config mismatch before either replay and identifies item states", () => {
     expect(isItemSave(restore(firstDrop))).toBe(true);
     expect(() => restoreGame(serializeGame(firstDrop), network, { expectedConfig: multiConfig() })).toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
+  });
+  it("rejects an expected config that differs only in beneficial draw weights", () => {
+    const expectedConfig = structuredClone(firstDrop.config);
+    if (!expectedConfig.itemPolicy) throw new Error("Expected item policy");
+    expectedConfig.itemPolicy = {
+      ...expectedConfig.itemPolicy,
+      beneficialWeights: expectedConfig.itemPolicy.beneficialWeights.map((weight, index) => index === 0 ? weight + 1 : weight),
+    };
+    expect(() => restoreGame(serializeGame(firstDrop), network, { expectedConfig }))
+      .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
   });
 });

@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  adjustedPips, directionGuidance, ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, ITEM_SHORT_NAMES,
-  itemHint, itemTiming, itemTone, itemUnavailableLabel, itemUnavailableText,
+  adjustedPips, AUTOMATIC_ITEM_TIMING, directionGuidance, ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE,
+  ITEM_SHORT_NAMES, itemEffectText, itemHint, itemTiming, itemTone, itemUnavailableLabel, itemUnavailableText,
 } from "../../src/features/game/itemPresentation";
-import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, type ItemKind } from "../../src/types/network";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy } from "../../src/types/network";
 
 const ITEM_KINDS: readonly ItemKind[] = [...BENEFICIAL_ITEM_KINDS, ...HARMFUL_ITEM_KINDS];
 
@@ -15,7 +16,15 @@ describe("item presentation", () => {
     expect(ITEM_DESCRIPTIONS["direction-ticket"]).toEqual({
       name: "方向指定券", effect: "山手線以外の路線で進む向きを選べる",
     });
-    expect(ITEM_DESCRIPTIONS["roll-adjust"]).toEqual({ name: "出目調整券", effect: "出目を見てから ±1 できる" });
+    expect(ITEM_DESCRIPTIONS["roll-adjust"]).toEqual({
+      name: "出目調整券±1", effect: "出目を見てから、出目に1を足すか引くかできる（1より小さくはできない）",
+    });
+    expect(ITEM_DESCRIPTIONS["roll-adjust-2"]).toEqual({
+      name: "出目調整券±2", effect: "出目を見てから、出目に2を足すか引くかできる（1より小さくはできない）",
+    });
+    expect(ITEM_DESCRIPTIONS["roll-adjust-3"]).toEqual({
+      name: "出目調整券±3", effect: "出目を見てから、出目に3を足すか引くかできる（1より小さくはできない）",
+    });
     expect(ITEM_DESCRIPTIONS.double).toEqual({ name: "倍速券", effect: "この回の出目が2倍になる" });
     expect(ITEM_DESCRIPTIONS.rapid).toEqual({ name: "快速券", effect: "2路線以上が止まる駅だけを1駅と数えて進む" });
     expect(ITEM_DESCRIPTIONS.deadhead).toEqual({ name: "回送列車", effect: "いちばん近い山手線の駅へ移る（サイコロは振らない）" });
@@ -26,6 +35,26 @@ describe("item presentation", () => {
     expect(ITEM_DESCRIPTIONS.suspension.effect).toBe("その路線が5ターン乗れない");
     expect(ITEM_DESCRIPTIONS.detour.effect).toBe("次の乗換駅で別の路線へ");
     expect(ITEM_DESCRIPTIONS.oversleep.effect).toBe("次のターンは終点まで、環状線は6駅");
+  });
+
+  it.each(HARMFUL_ITEM_KINDS)("describes %s as taking effect automatically on pickup", (kind) => {
+    expect(itemTiming(kind)).toBe(AUTOMATIC_ITEM_TIMING);
+  });
+
+  it("words the automatic timing for harmful items", () => {
+    expect(AUTOMATIC_ITEM_TIMING).toBe("拾うと自動で発動");
+  });
+
+  it("substitutes the configured turn counts into delay and suspension effects", () => {
+    const base = ITEM_GAME_CONFIG.itemPolicy as ItemPolicy;
+    const changed: ItemPolicy = { ...base, delayTurns: 2, suspensionTurns: 7 };
+
+    expect(itemEffectText("delay", changed)).toBe("2ターン後の出目が1");
+    expect(itemEffectText("suspension", changed)).toBe("その路線が7ターン乗れない");
+    expect(itemEffectText("delay", base)).toBe(ITEM_DESCRIPTIONS.delay.effect);
+    expect(itemEffectText("suspension", base)).toBe(ITEM_DESCRIPTIONS.suspension.effect);
+    expect(itemEffectText("detour", changed)).toBe(ITEM_DESCRIPTIONS.detour.effect);
+    expect(itemEffectText("double", changed)).toBe(ITEM_DESCRIPTIONS.double.effect);
   });
 
   it("describes item timing and disabled reasons for players", () => {
@@ -57,7 +86,8 @@ describe("item presentation", () => {
 
   it("provides the exact short names for every item kind", () => {
     expect(ITEM_SHORT_NAMES).toEqual({
-      "route-ticket": "路線指定", "direction-ticket": "方向指定", "roll-adjust": "出目調整",
+      "route-ticket": "路線指定", "direction-ticket": "方向指定", "roll-adjust": "調整±1",
+      "roll-adjust-2": "調整±2", "roll-adjust-3": "調整±3",
       double: "倍速", rapid: "快速", deadhead: "回送", "delay-certificate": "証明書",
       delay: "遅延", suspension: "運休", detour: "寄り道", oversleep: "寝過ごし",
     });

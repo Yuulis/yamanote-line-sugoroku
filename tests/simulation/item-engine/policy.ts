@@ -1,11 +1,13 @@
 // Round-3 policy decisions only. Every preview/transition uses production queries.
 import * as engine from "../../../src/features/game/engine";
 import type { BeneficialItemKind, ItemGameState, ItemInstance, ItemRollAdjustment, ItemTurnCommand, PreRollItemCommand } from "../../../src/types/network";
+import { isRollAdjustKind, legalAdjustments } from "../../../src/features/game/itemRollAdjust";
 
 export type Policy = "greedy" | "random";
 export const KEEP_PRIORITY: Readonly<Record<BeneficialItemKind, number>> = {
   deadhead: 7, "route-ticket": 6, "direction-ticket": 5, double: 4,
   "roll-adjust": 3, rapid: 2, "delay-certificate": 1,
+  "roll-adjust-2": 3, "roll-adjust-3": 3,
 };
 
 /** Forced choices consume no policy draw, matching round 3's uniformPick. */
@@ -65,7 +67,8 @@ export function choosePreRoll(state: ItemGameState, network: engine.RailwayNetwo
     }
   }
   const base = { ...none, rng, decision: true };
-  if (kind === null || kind === "roll-adjust") return { ...base, adjust: policy === "greedy" || kind === "roll-adjust" };
+  const adjustmentKind = kind !== null && isRollAdjustKind(kind);
+  if (kind === null || adjustmentKind) return { ...base, adjust: policy === "greedy" || adjustmentKind };
   const instanceId = state.inventory.find((item) => item.kind === kind)!.id;
   let action: PreRollItemCommand;
   if (kind === "route-ticket") {
@@ -88,14 +91,21 @@ export function choosePreRoll(state: ItemGameState, network: engine.RailwayNetwo
   return { command: { items: [action] }, adjust: false, rng, decision: true };
 }
 
-export function chooseAdjustment(state: ItemGameState, network: engine.RailwayNetwork, policy: Policy, allowed: boolean, rng: string): { adjustment: ItemRollAdjustment | null; rng: string } {
+export interface AdjustmentOptions {
+  /** Maximum adjusted die face; omitted when the policy is unbounded above. */
+  maxFace?: number;
+}
+
+export function chooseAdjustment(state: ItemGameState, network: engine.RailwayNetwork, policy: Policy, allowed: boolean, rng: string, options: AdjustmentOptions = {}): { adjustment: ItemRollAdjustment | null; rng: string } {
   const pending = state.pending;
-  const item = state.inventory.find((entry) => entry.kind === "roll-adjust");
-  if (!allowed || !item || pending?.kind !== "roll" || pending.command.items.length > 0 || state.effects.oversleepPending || engine.isDelayDue(state.effects, pending.turn)) return { adjustment: null, rng };
-  const deltas = ([-1, 1] as const).filter((delta) => pending.rawRoll + delta >= 1 && pending.rawRoll + delta <= 6);
+  if (!allowed || pending?.kind !== "roll" || pending.command.items.length > 0 || state.effects.oversleepPending || engine.isDelayDue(state.effects, pending.turn)) return { adjustment: null, rng };
+  const maxFace = options.maxFace ?? Number.POSITIVE_INFINITY;
+  const choices = legalAdjustments(pending.rawRoll, state.inventory)
+    .filter(({ delta }) => pending.rawRoll + delta <= maxFace);
+  if (choices.length === 0) return { adjustment: null, rng };
   if (policy === "random") {
-    const chosen = pick(deltas, rng);
-    return { adjustment: { instanceId: item.id, delta: chosen.value }, rng: chosen.rng };
+    const chosen = pick(choices, rng);
+    return { adjustment: chosen.value ?? null, rng: chosen.rng };
   }
   const targetSegments = new Set(engine.targetSegmentIds(state.config, network));
   const distances = engine.targetHopDistances(network, state.config.targetServiceId);
@@ -113,11 +123,11 @@ export function chooseAdjustment(state: ItemGameState, network: engine.RailwayNe
   };
   let bestScore = score(pending.rawRoll);
   let adjustment: ItemRollAdjustment | null = null;
-  for (const delta of deltas) {
-    const value = score(pending.rawRoll + delta);
+  for (const choice of choices) {
+    const value = score(pending.rawRoll + choice.delta);
     if (value > bestScore) {
       bestScore = value;
-      adjustment = { instanceId: item.id, delta };
+      adjustment = { ...choice };
     }
   }
   return { adjustment, rng };

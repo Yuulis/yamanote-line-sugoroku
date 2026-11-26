@@ -1,7 +1,7 @@
 # Save fixture provenance
 
 Product scenarios use `DEFAULT_GAME_CONFIG` (`ITEM_GAME_CONFIG`,
-`tokyo-suburban-items-1`) and the real engine. `productGame.ts` never stages a
+`tokyo-suburban-items-2`) and the real engine. `productGame.ts` never stages a
 beneficial ticket, declines roll adjustment, and discards the incoming ticket
 on overflow. Harmful effects and passive certificates remain fully active.
 Browser `rollOnce` follows the same explicit choices; item-specific specs test
@@ -13,17 +13,26 @@ other choices separately. Saves contain real item records and both RNG streams.
 - Small bundle: first seed with roll 4 transferring to fixture-south; rolls 3
   hitting the area boundary and terminus on turns 2/3; a direction-only reverse
   draw at fixture-oimachi on turn 5; completion within 100 turns: `5ff`, turn 14.
-- Real bundle: hub `09`; both directions of the composed rapid hop with an
-  arrival transfer within 250 turns `08` (turns 148/177); cross-operator
-  Korakuen transfer `11` (turn 13); Ueno on Joban Rapid `13` (within 5,000 turns).
-- Completed history uses `00`, turn 96. The Oedo grouped-candidate arrival uses
-  `04`, turn 256 (first matching seed scanning up to 5,000 turns per seed).
+- Fixture item turns: the retained rapid arrival pickup uses `0c`, turn 6; the
+  very-fast overflow/adjustment continuation uses `ba9cf`, turn 6. Its six-hop
+  oversleep crosses target segments and has multiple lottery candidates; the
+  overflow keeps the new ±2 ticket by discarding the existing deadhead ticket.
+- Real bundle: hub `09`; both directions of the composed rapid hop with direct
+  plain-roll resolution use `50` (turns 119/125); a reverse rapid arrival onto
+  Fukutoshin uses `989`, turn 64; cross-operator Korakuen transfer `0f` (turn
+  112); Ueno on Joban Rapid `0f` (within 5,000 turns).
+- Completed history uses `00`, turn 83. The Oedo grouped-candidate arrival uses
+  `07`, turn 366 (first matching seed scanning up to 5,000 turns per seed).
+  Accessibility's repeated-roll announcement uses `1b` (equal rolls on turns
+  2 and 3, with no item pickup after turn 1 through turn 5).
 
 The three current `tokyo-suburban-*-save.json` files were regenerated on
-2026-10-27 at turns 95, 12, 255. `item-saves.provenance.json` records seed,
+2026-11-26 at turns 82, 111, 365. `item-saves.provenance.json` records seed,
 turn, ruleset/data versions, the SHA-256 of every bundle file and saved file.
 The script also regenerates `tests/unit/fixtures/edition-save-compatibility.json`
-from the before-clear save and its next production turn.
+from the before-clear save and its next production turn, plus
+`tests/unit/fixtures/current-product-records.json` from the pinned Korakuen and
+composed-hop scenarios.
 
 Regenerate from the repository root:
 
@@ -40,7 +49,8 @@ JS
 fixtures: they fail with `UNSUPPORTED_SAVE_VERSION`, even on their source data.
 `historical-classic-before-clear-save.json` preserves the exact pre-S11 v4
 classic fixture bytes: it fails with `DATA_VERSION_MISMATCH` against the live
-product bundle. Its rules mismatch and seeded turn-41 restore remain covered
-with a test-only network view using the fixture's historical data version.
+product bundle. With a test-only network view using the fixture's historical
+data version, it yields `RULES_VERSION_MISMATCH`; v4 rejection happens before
+the saved history or its seeded turn-41 trajectory is replayed.
 Neither historical fixture is a regeneration target. Rejection must preserve
 storage bytes across reloads until the player explicitly discards them.

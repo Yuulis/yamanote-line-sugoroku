@@ -50,7 +50,7 @@ describe("save v3 lottery policies", () => {
     const config = lotteryConfig();
     if (kind === "weight") config.serviceLottery.target = { kind: "weight", weight: 3 };
     const states = seededStates(config, seed);
-    expect(SAVE_VERSION).toBe(4);
+    expect(SAVE_VERSION).toBe(5);
     expect(states.at(-1)?.status).toBe("completed");
     let nonEqualServiceDraws = 0;
     let nonEqualDirectionDraws = 0;
@@ -69,7 +69,7 @@ describe("save v3 lottery policies", () => {
     for (const state of states) {
       const restored = restoreGame(serializeGame(state), network, { expectedConfig: config, requireSeededRolls: true });
       expect(restored).toEqual(state);
-      expect(restored.saveVersion).toBe(4);
+      expect(restored.saveVersion).toBe(5);
       if (state.status === "playing") expect(playTurn(restored, network)).toEqual(playTurn(state, network));
     }
   });
@@ -111,6 +111,7 @@ describe("save v3 lottery policies", () => {
     expect(restored.config.directionLottery).toEqual({ towardTargetWeight: 3, awayFromTargetWeight: 2 });
     expect(restored.config.itemPolicy?.beneficialKinds).toEqual([
       "route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate",
+      "roll-adjust-2", "roll-adjust-3",
     ]);
     expect(restored.config.itemPolicy?.harmfulKinds).toEqual(["delay", "suspension", "detour", "oversleep"]);
   });

@@ -20,6 +20,9 @@ vi.mock("maplibre-gl", () => {
     setLngLat(): this {
       return this;
     }
+    setOffset(): this {
+      return this;
+    }
     addTo(): this {
       document.body.append(this.element);
       return this;
@@ -36,6 +39,7 @@ vi.mock("maplibre-gl", () => {
 function fakeMap(): MapLibreMap {
   return {
     project: ([longitude]: [number, number]) => ({ x: longitude * 1000, y: 0 }),
+    getContainer: () => ({ clientHeight: 500 }),
     on: vi.fn(),
     off: vi.fn(),
   } as unknown as MapLibreMap;

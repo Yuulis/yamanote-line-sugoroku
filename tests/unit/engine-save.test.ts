@@ -77,9 +77,9 @@ describe("restoreGame rejects invalid saves", () => {
   });
 
   it("rejects an unknown save version", () => {
-    // Version 4 is now current; 5 stands for any future, unknown format.
+    // Version 5 is current; 6 stands for any future, unknown format.
     const json = tampered(playTurns(1), (raw) => {
-      raw.saveVersion = 5;
+      raw.saveVersion = 6;
     });
     expect(() => restoreGame(json, network)).toThrowError(
       expect.objectContaining({ code: "UNSUPPORTED_SAVE_VERSION" }),

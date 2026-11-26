@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
-import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
+import { PRODUCT_ANNOUNCEMENT_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import { itemScenario } from "./fixtures/itemScenarios";
 import { playItemTurn, serializeGame } from "../../src/features/game/engine";
 import { ANIMATION_SPEEDS, DEFAULT_ANIMATION_SPEED, DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
@@ -206,7 +206,7 @@ test.describe("animated roll focus", () => {
 });
 
 test.describe("game accessibility and text navigation", () => {
-  test.use({ reducedMotion: "reduce", gameSeed: PRODUCT_HISTORY_GAME_SEED });
+  test.use({ reducedMotion: "reduce", gameSeed: PRODUCT_ANNOUNCEMENT_GAME_SEED });
 
   test("focus moves to each new screen heading and the title map is inert", async ({ page }) => {
     await openTitle(page);
@@ -384,7 +384,7 @@ test.describe("game accessibility and text navigation", () => {
     await page.getByRole("button", { name: /つづきから/ }).click();
     await expect(gamePanel(page).getByRole("heading", { name: "山手線すごろく" })).toBeFocused();
 
-    await diceButton(page).click();
+    await rollOnce(page);
     const clear = page.getByRole("region", { name: "クリア！" });
     await expect(clear).toBeVisible();
     const heading = clear.getByRole("heading", { name: "クリア！" });
@@ -399,7 +399,7 @@ test.describe("game accessibility and text navigation", () => {
     await writeSaveText(page, readFileSync("tests/e2e/fixtures/tokyo-suburban-before-clear-save.json", "utf8").trimEnd());
     await page.reload();
     await page.getByRole("button", { name: /つづきから/ }).click();
-    await diceButton(page).click();
+    await rollOnce(page);
     const clear = page.getByRole("region", { name: "クリア！" });
     await expect(clear.getByRole("heading", { name: "クリア！" })).toBeFocused();
 
@@ -531,9 +531,51 @@ test.describe("game menu disclosure", () => {
     await diceButton(page).click();
     const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
     await expect(adjustment).toBeVisible();
+    await expect(adjustment.getByRole("heading", { name: "出目を調整しますか？" })).toBeFocused();
+    const zoomIn = page.getByRole("button", { name: "Zoom in", exact: true });
+    let reachedMapControl = false;
+    for (let tab = 0; tab < 40; tab += 1) {
+      await page.keyboard.press("Tab");
+      if (await zoomIn.evaluate((element) => element === document.activeElement)) {
+        reachedMapControl = true;
+        break;
+      }
+    }
+    expect(reachedMapControl).toBe(true);
     await page.keyboard.press("Escape");
     await expect(adjustment).toBeHidden();
     await expect(panel.getByRole("button", { name: "メニュー", exact: true })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("Escape closes 新規 confirmation before the roll adjustment", async ({ page, railwayBundle }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const game = itemScenario("adjust", railwayBundle.network);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const panel = gamePanel(page);
+    await openGameMenu(page);
+    await diceButton(page).click();
+
+    const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await expect(adjustment).toBeVisible();
+    expect((await readSave(page))?.pending?.kind).toBe("roll");
+
+    const newGame = panel.getByRole("button", { name: "新規", exact: true });
+    await newGame.evaluate((element) => (element as HTMLButtonElement).click());
+    const confirmation = page.getByRole("alertdialog", { name: "新しく始めますか？" });
+    await expect(confirmation).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(confirmation).toBeHidden();
+    await expect(adjustment).toBeVisible();
+    expect((await readSave(page))?.pending?.kind).toBe("roll");
+
+    await page.keyboard.press("Escape");
+    await expect(adjustment).toBeHidden();
+    await expect.poll(async () => (await readSave(page))?.pending).toBeNull();
+    expect((await readSave(page))?.movementHistory).toHaveLength(game.movementHistory.length + 1);
   });
 
   test("新規 confirmation Escape preserves the staged item before the next Escape clears it", async ({ page, railwayBundle }) => {
@@ -582,14 +624,15 @@ test.describe("turn log disclosure", () => {
   });
 
   test("shows the pending oversleep sentence as visible log text, not only in the chip tooltip", async ({ page, railwayBundle }) => {
-    // The adjust fixture's next plain turn picks up 寝過ごし (pending at turn 9).
-    const game = playItemTurn(itemScenario("adjust", railwayBundle.network), {}, railwayBundle.network).state;
+    const game = playItemTurn(itemScenario("oversleep-pickup", railwayBundle.network), {}, railwayBundle.network).state;
     expect(game.effects.oversleepPending).toBe(true);
     await page.goto("/");
     await writeSaveText(page, serializeGame(game));
     await page.reload();
     await titleScreen(page).getByRole("button", { name: /つづきから/ }).click();
     await expect(gamePanel(page).locator(".effect-chip__label")).toContainText(["寝過ごし"]);
+    // The chip is a button whose accessible name is the full effect sentence.
+    await expect(gamePanel(page).getByRole("button", { name: "寝過ごし：次のターンは終点まで（環状線は6駅）進みます", exact: true })).toBeVisible();
     await openGameLog(page);
     const log = gamePanel(page).getByRole("region", { name: "ターンのログ", exact: true });
     const explanation = log.getByRole("region", { name: "効果の説明", exact: true });

@@ -1,4 +1,5 @@
 import { useCallback, type ReactNode, type RefObject } from "react";
+import type { ItemPolicy } from "../../../types/network";
 import type { SaveWriteResult } from "../store/persistence";
 import type { LineBadgeModel } from "../lineBadge";
 import type { EffectChipModel } from "../hudPresentation";
@@ -44,6 +45,10 @@ export interface GameHudProps {
   onRoll: () => void;
   onSkip: () => void;
   effects: readonly EffectChipModel[];
+  /** A revealed adjustment decision closes any open effect-chip card. */
+  decisionOpen?: boolean;
+  /** The game's item policy: effect chip cards show its turn counts, like the rules guide. */
+  policy?: ItemPolicy;
   /** Optional animation targets; measured only, they add no elements and change no markup. */
   rideTargetRef?: TurnMomentTargetRef;
   directionTargetRef?: TurnMomentTargetRef;
@@ -69,7 +74,7 @@ export function GameHud({
   inventory,
   title, subtitle, headingRef,
   station, ride, lineBadge, direction, turn, completed, required, proximity = null, collection, milestoneFlash = null, goalGuidanceText = null, goalGuidanceShortText = null, compactRoll, saveStatus, saveStatusMessage,
-  canRoll, canSkip, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects,
+  canRoll, canSkip, animating, draftSelected, rollButtonRef, onRoll, onSkip, effects, decisionOpen = false, policy,
   rideTargetRef, directionTargetRef, coachDiceTargetRef, coachProgressTargetRef,
 }: GameHudProps): React.JSX.Element {
   const rideRef = useCallback((element: HTMLSpanElement | null): void => setTargetRef(rideTargetRef, element), [rideTargetRef]);
@@ -142,7 +147,7 @@ export function GameHud({
       </div>
       {turnResult}
       {inventory}
-      <EffectChips models={effects} />
+      <EffectChips models={effects} policy={policy} decisionOpen={decisionOpen} />
       {!saveMark && <p
         className={`game-panel__save${failed ? " game-panel__save--warning" : ""}`}
       >

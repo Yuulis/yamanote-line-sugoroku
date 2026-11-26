@@ -50,13 +50,13 @@ const DIALOG_VIEWPORTS = [
 const CLEAR_SCREEN_VIEWPORT = { width: 320, height: 568 } as const;
 const CLEAR_HISTORY_PAGE_COUNT = 5;
 const CLEAR_SCREEN_SUMMARY_TEXT = "山手線の外回り全30区間を踏破し、新橋に戻りました。";
-const CLEAR_SCREEN_GOAL_ANNOUNCEMENT = "96ターン目：出目3（3マス、1駅移動、残り2は使わず）、新橋に到着。ゴールに到着しました。踏破 30/30";
+const CLEAR_SCREEN_GOAL_ANNOUNCEMENT = "83ターン目：出目4（4マス、1駅移動、残り3は使わず）、新橋に到着。ゴールに到着しました。踏破 30/30";
 const CLEAR_SCREEN_GOAL_HISTORY = {
-  turn: "96ターン目",
-  roll: "出目3",
+  turn: "83ターン目",
+  roll: "出目4",
   move: "有楽町・日比谷 → 新橋（1駅）",
   line: "山手線・外回り",
-  notes: ["途中停止新橋で終了、残り2を使わず", "ゴールに到着しました"],
+  notes: ["途中停止新橋で終了、残り3を使わず", "ゴールに到着しました"],
 } as const;
 const CLEAR_HISTORY_TARGET_PX = 44;
 const PANEL_CANDIDATE_MINIMUM = 5;
@@ -643,7 +643,7 @@ test("clear-screen wrapping", { tag: "@layout" }, async ({ page, railwayBundle }
   await writeSaveText(page, serializeGame(beforeFinalTurn));
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
-  await diceButton(page).click();
+  await rollOnce(page);
 
   const clearScreen: Locator = page.getByRole("region", { name: "クリア！" });
   const summaryParagraph: Locator = clearScreen.locator(".clear-screen__summary");

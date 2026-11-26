@@ -21,6 +21,8 @@ export interface EffectChipModel {
   key: string;
   kind: HarmfulItemKind;
   text: string;
+  /** Live status shown on the explanation card; null when the card's own effect text already says it. */
+  statusLine: string | null;
   label: string;
   remainingTurns: number | null;
   serviceId: string | null;
@@ -60,7 +62,10 @@ function compactItemRoll(record: DeepReadonly<ItemRideRecord>): CompactRollModel
 export function itemRideModifierWording(record: DeepReadonly<ItemRideRecord>): string | null {
   if (record.movementMode === "oversleep") return null;
   if (record.movementMode === "rapid") return "快速";
-  if (record.adjustment !== null) return record.adjustment.delta > 0 ? "調整+1" : "調整-1";
+  if (record.adjustment !== null) {
+    const sign = record.adjustment.delta > 0 ? "+" : "-";
+    return `調整${sign}${Math.abs(record.adjustment.delta)}`;
+  }
   if (record.command.items.some((item) => item.kind === "double")) return "×2";
   // A due delay forces the effective face to 1 without an adjustment ticket.
   if (record.effectiveFace !== record.rawRoll) return "遅延";
@@ -99,7 +104,7 @@ export function effectChipModels(
   const models: EffectChipModel[] = [];
   effects.delayDueTurns.forEach((dueTurn: number): void => {
     const remainingTurns: number = Math.max(0, dueTurn - turn);
-    models.push({ key: keyFor(`delay:${dueTurn}`), kind: "delay", text: texts[models.length]!,
+    models.push({ key: keyFor(`delay:${dueTurn}`), kind: "delay", text: texts[models.length]!, statusLine: texts[models.length]!,
       label: `遅延 あと${remainingTurns}`,
       remainingTurns, serviceId: null, lineBadge: null, countdown: null });
   });
@@ -107,15 +112,15 @@ export function effectChipModels(
     const remainingTurns: number = entry.expiresTurn - turn;
     const service = network.servicesById.get(entry.serviceId);
     models.push({ key: keyFor(`suspension:${entry.serviceId}:${entry.expiresTurn}`), kind: "suspension",
-      text: texts[models.length]!,
+      text: texts[models.length]!, statusLine: texts[models.length]!,
       label: "運休", remainingTurns, serviceId: entry.serviceId,
       lineBadge: lineBadgeFor(entry.serviceId, resolver, service?.color ?? undefined), countdown: `あと${remainingTurns}` });
   });
   if (effects.detourPending) {
-    models.push({ key: keyFor("detour:pending"), kind: "detour", text: texts[models.length]!, label: "寄り道", remainingTurns: null, serviceId: null, lineBadge: null, countdown: null });
+    models.push({ key: keyFor("detour:pending"), kind: "detour", text: texts[models.length]!, statusLine: null, label: "寄り道", remainingTurns: null, serviceId: null, lineBadge: null, countdown: null });
   }
   if (effects.oversleepPending) {
-    models.push({ key: keyFor("oversleep:pending"), kind: "oversleep", text: texts[models.length]!, label: "寝過ごし", remainingTurns: null, serviceId: null, lineBadge: null, countdown: null });
+    models.push({ key: keyFor("oversleep:pending"), kind: "oversleep", text: texts[models.length]!, statusLine: null, label: "寝過ごし", remainingTurns: null, serviceId: null, lineBadge: null, countdown: null });
   }
   return models;
 }

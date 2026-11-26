@@ -8,10 +8,11 @@ import { PRESENTATION_LEVELS } from "../../src/features/game/gameSettings";
 import { ITEM_DESCRIPTIONS, itemTiming } from "../../src/features/game/itemPresentation";
 import {
   buildRulesGuide,
+  type RulesGuideItem,
   type RulesGuideModel,
   type RulesSectionId,
 } from "../../src/features/game/rulesGuide";
-import type { GameConfig, ItemPolicy } from "../../src/types/network";
+import type { GameConfig, ItemKind, ItemPolicy } from "../../src/types/network";
 
 const BASE_ITEM_POLICY = ITEM_GAME_CONFIG.itemPolicy as ItemPolicy;
 
@@ -20,7 +21,11 @@ function configWith(overrides: Partial<GameConfig>): GameConfig {
 }
 
 function itemPolicyWith(overrides: Partial<ItemPolicy>): GameConfig {
-  return configWith({ itemPolicy: { ...BASE_ITEM_POLICY, ...overrides } });
+  const beneficialKinds = overrides.beneficialKinds ?? BASE_ITEM_POLICY.beneficialKinds;
+  const beneficialWeights = overrides.beneficialWeights ?? (overrides.beneficialKinds
+    ? Array.from({ length: beneficialKinds.length }, () => 1)
+    : BASE_ITEM_POLICY.beneficialWeights);
+  return configWith({ itemPolicy: { ...BASE_ITEM_POLICY, ...overrides, beneficialKinds, beneficialWeights } });
 }
 
 function text(model: RulesGuideModel, id: RulesSectionId): string {
@@ -255,6 +260,17 @@ describe("rules guide model", () => {
     expect(effect(changed, "suspension")).toBe("その路線が7ターン乗れない");
     expect(effect(buildRulesGuide(ITEM_GAME_CONFIG), "delay")).toBe(ITEM_DESCRIPTIONS.delay.effect);
     expect(effect(buildRulesGuide(ITEM_GAME_CONFIG), "suspension")).toBe(ITEM_DESCRIPTIONS.suspension.effect);
+  });
+
+  it("lists harmful items with the automatic timing and policy turn counts", () => {
+    const model = buildRulesGuide(itemPolicyWith({ delayTurns: 4, suspensionTurns: 9 }));
+    const row = (kind: ItemKind): RulesGuideItem | undefined => model.items.find((item) => item.kind === kind);
+
+    for (const kind of ["delay", "suspension", "detour", "oversleep"] as const) {
+      expect(row(kind)?.timing, kind).toBe("拾うと自動で発動");
+    }
+    expect(row("delay")?.effect).toBe("4ターン後の出目が1");
+    expect(row("suspension")?.effect).toBe("その路線が9ターン乗れない");
   });
 
   it("describes saving and lists the shortcuts", () => {

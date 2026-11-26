@@ -13,6 +13,7 @@ import type { GameAction, GameSession, LastMove, MoveAnimation } from "./gameSes
 import { MAX_MOVE_DURATION_MS } from "./animation/timeline";
 import type { ProgressState } from "./animation/displayedProgress";
 import { endpointKindAt } from "./gameSummary";
+import { isRollAdjustKind, legalAdjustments, type RollAdjustmentChoice } from "./itemRollAdjust";
 
 export interface ItemActionIdentity {
   sessionId: number;
@@ -43,12 +44,11 @@ export function itemActionIdentity(session: GameSession): ItemActionIdentity {
     decisionRevision: session.item?.decisionRevision ?? 0 };
 }
 
-export function adjustmentOptions(game: ItemGameState): readonly (-1 | 1)[] {
+export function adjustmentOptions(game: ItemGameState): readonly RollAdjustmentChoice[] {
   const pending = game.pending;
   if (pending?.kind !== "roll" || pending.command.items.length > 0 ||
-      game.effects.oversleepPending || game.effects.delayDueTurns.includes(pending.turn) ||
-      !game.inventory.some((item) => item.kind === "roll-adjust")) return [];
-  return ([-1, 1] as const).filter((delta) => pending.rawRoll + delta >= 1 && pending.rawRoll + delta <= 6);
+      game.effects.oversleepPending || game.effects.delayDueTurns.includes(pending.turn)) return [];
+  return legalAdjustments(pending.rawRoll, game.inventory);
 }
 
 export function createItemSession(
@@ -200,8 +200,7 @@ export interface ItemSessionView {
     readonly turn: number;
     readonly rawRoll: number;
     readonly resolvedRide: DeepReadonly<LandingChoice>;
-    readonly allowedDeltas: readonly (-1 | 1)[];
-    readonly itemInstanceIds: readonly string[];
+    readonly choices: readonly RollAdjustmentChoice[];
     readonly canContinue: true;
   } | { readonly kind: "discard"; readonly turn: number; readonly candidates: DeepReadonly<ItemGameState["inventory"]>;
     readonly newItemInstanceId: string };
@@ -228,8 +227,7 @@ export function itemSessionView(session: GameSession, network: RailwayNetwork): 
   const rapidAvailable = !service.circular || service.stationIds.some((id) => (network.servicesByStation.get(id)?.length ?? 0) >= 2);
   const deltas = adjustmentOptions(game);
   const decision: ItemSessionView["decision"] = session.phase === "awaiting-adjust" && pending?.kind === "roll" ? {
-    kind: "adjust", turn: pending.turn, rawRoll: pending.rawRoll, resolvedRide: pending.resolvedRide, allowedDeltas: deltas,
-    itemInstanceIds: game.inventory.filter((owned) => owned.kind === "roll-adjust").map((owned) => owned.id), canContinue: true,
+    kind: "adjust", turn: pending.turn, rawRoll: pending.rawRoll, resolvedRide: pending.resolvedRide, choices: deltas, canContinue: true,
   } : session.phase === "awaiting-discard" && pending?.kind === "discard" ? {
     kind: "discard", turn: pending.turn, candidates: pending.candidates, newItemInstanceId: pending.item.id,
   } : null;
@@ -257,10 +255,10 @@ export function itemSessionView(session: GameSession, network: RailwayNetwork): 
       let reason: ItemUnavailableReason | null = null;
       if (game.status !== "playing") reason = "completed";
       else if (owned.kind === "delay-certificate") reason = "passive";
-      else if (owned.kind === "roll-adjust" && decision?.kind === "adjust") reason = deltas.length > 0 ? null : "forced-turn";
+      else if (isRollAdjustKind(owned.kind) && decision?.kind === "adjust") reason = deltas.length > 0 ? null : "forced-turn";
       else if (session.phase !== "idle") reason = "decision-pending";
       else if (forced) reason = "forced-turn";
-      else if (owned.kind === "roll-adjust") reason = "after-roll";
+      else if (isRollAdjustKind(owned.kind)) reason = "after-roll";
       else if (owned.kind === "route-ticket" && !hasRouteChoice) reason = hasSuspendedAlternative ? "suspended-route" : "no-route-choice";
       else if (owned.kind === "direction-ticket" && position.currentServiceId === game.config.targetServiceId) reason = "fixed-direction";
       else if (owned.kind === "direction-ticket" && direction.directions.length !== 2) reason = "single-direction";

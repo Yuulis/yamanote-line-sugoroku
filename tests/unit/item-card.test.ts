@@ -8,7 +8,8 @@ import {
   ITEM_DESCRIPTIONS, ITEM_REPLACEMENT_NOTE, itemHint, itemTiming, itemTone,
   itemUnavailableLabel,
 } from "../../src/features/game/itemPresentation";
-import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, type ItemKind } from "../../src/types/network";
+import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy } from "../../src/types/network";
 import type { ItemUnavailableReason } from "../../src/features/game/itemSession";
 import { mountReact } from "./helpers/reactDom";
 
@@ -36,6 +37,22 @@ describe("ItemCard", () => {
       expect(container.querySelector("svg")?.getAttribute("aria-hidden"), kind).toBe("true");
       expect(container.firstElementChild?.classList.contains(`item-card--${itemTone(kind)}`), kind).toBe(true);
     }
+  });
+
+  it.each(HARMFUL_ITEM_KINDS)("renders the automatic timing on the %s card", (kind) => {
+    const container: HTMLDivElement = document.createElement("div");
+    container.innerHTML = markup(kind);
+    expect(container.querySelector(".item-card__timing")?.textContent).toBe("拾うと自動で発動");
+    expect(container.querySelector(".item-card__status")).toBeNull();
+  });
+
+  it("renders the status line under the timing and policy-aware effect text when given", () => {
+    const policy: ItemPolicy = { ...(ITEM_GAME_CONFIG.itemPolicy as ItemPolicy), delayTurns: 5 };
+    const container: HTMLDivElement = document.createElement("div");
+    container.innerHTML = markup("delay", { policy, statusLine: "遅延：12ターン目に発動（あと3ターン）" });
+    expect(container.querySelector(".item-card__effect")?.textContent).toBe("5ターン後の出目が1");
+    expect(container.querySelector(".item-card__timing + .item-card__status")?.textContent)
+      .toBe("遅延：12ターン目に発動（あと3ターン）");
   });
 
   it("renders a passive certificate without an action button", () => {

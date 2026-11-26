@@ -9,7 +9,7 @@ body {
   font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
 
-/* Stacking order: map < panel < turn moment < screens < map error < data banner.
+/* Stacking order: map < panel < turn moment < adjustment < screens < map error < data banner.
    The confirmation <dialog> sits in the browser's top layer above all. */
 :root {
   --color-brand: #d9502f;
@@ -39,6 +39,7 @@ body {
   --motion-slow: 300ms;
   --layer-panel: 10;
   --layer-turn-moment: 15;
+  --layer-adjustment: 16;
   --layer-screen: 20;
   --layer-map-error: 25;
   --layer-toast: 30;
@@ -144,7 +145,13 @@ body {
 }
 
 .toast-host__text {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+}
+
+.toast-host__detail {
+  display: block;
 }
 
 .toast-host__toast--motion {
@@ -1111,12 +1118,42 @@ button[aria-disabled="true"] {
   align-items: center;
   gap: 4px;
   max-width: 100%;
+  min-height: 0;
+  margin: 0;
   padding: 4px 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   background: var(--color-cream);
   color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+
+/* Fixed and outside the scrolling chip row, so the row's overflow never clips it. */
+.effect-chip__tooltip {
+  position: fixed;
+  z-index: var(--layer-panel);
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 16px));
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-md);
+  color: var(--color-ink);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  /* Never blocks the controls it covers; EffectChips keeps it open while the pointer is over it. */
+  pointer-events: none;
+}
+
+.effect-chip__tooltip p { margin: 2px 0 0; }
+.effect-chip__tooltip-name { font-size: 13px; font-weight: bold; }
+.effect-chip__tooltip-timing { color: var(--color-text-muted); }
 
 .effect-chip__label {
   min-width: 0;
@@ -2133,6 +2170,7 @@ button[aria-disabled="true"] {
 
 .item-card__effect,
 .item-card__timing,
+.item-card__status,
 .item-card__hint,
 .item-card__note,
 .item-card__reason {
@@ -2140,6 +2178,7 @@ button[aria-disabled="true"] {
 }
 
 .item-card__timing,
+.item-card__status,
 .item-card__note {
   color: var(--color-text-muted);
 }
@@ -2311,13 +2350,10 @@ button[aria-disabled="true"] {
   }
 }
 
-/* Roll adjustment: a compact sheet anchored bottom-right so the map stays visible. Scoped to this dialog; the
-   shared `.dialog::backdrop` keeps its dim for every other dialog. The native modal still isolates the page. */
-.item-adjustment::backdrop {
-  background: transparent;
-}
-
+/* Roll adjustment: a non-modal sheet anchored bottom-right over the panel and map. */
 .item-adjustment {
+  position: fixed;
+  z-index: var(--layer-adjustment);
   --item-adjustment-edge: 12px;
   inset: auto calc(var(--item-adjustment-edge) + env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) auto;
   /* Clear of the left HUD panel (12px + 310px) plus a 12px gap, then the right edge gap. */
@@ -2355,7 +2391,7 @@ button[aria-disabled="true"] {
   }
 }
 
-/* Phones: a bottom strip over the HUD area (same 8px margins as .game-panel), three segmented native radios,
+/* Phones: a bottom strip over the HUD area (same 8px margins as .game-panel), segmented native radios,
    then the Continue / Skip actions. The map above the strip stays visible. */
 @media (max-width: 600px) {
   .item-adjustment {
@@ -2367,7 +2403,7 @@ button[aria-disabled="true"] {
   }
 
   .item-adjustment .dialog__body {
-    padding: 8px 10px;
+    padding: 4px 10px;
   }
 
   .item-adjustment .dialog__title {
@@ -2376,7 +2412,7 @@ button[aria-disabled="true"] {
   }
 
   .item-adjustment .item-dialog__hint {
-    margin-bottom: 4px;
+    margin-bottom: 2px;
     font-size: 12px;
     line-height: 1.4;
   }
@@ -2385,10 +2421,15 @@ button[aria-disabled="true"] {
     display: grid;
     grid-auto-columns: minmax(0, 1fr);
     grid-auto-flow: column;
-    gap: 6px;
-    margin: 4px 0;
+    gap: 2px;
+    margin: 0;
     padding: 0;
     border: 0;
+  }
+
+  .item-adjustment .item-dialog__group:has(.item-adjustment__choice:nth-of-type(4)) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-flow: row;
   }
 
   .item-adjustment .item-dialog__group legend {
@@ -2704,7 +2745,7 @@ button[aria-disabled="true"] {
     margin: 0 0 4px;
     scrollbar-width: thin;
   }
-  .game-panel .effect-chip { flex: 0 0 auto; }
+  .game-panel .effect-chip { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
   .game-panel__save { grid-area: save; margin: 0 0 4px; }
   .game-panel__disclosures { grid-area: disclosures; }
   .game-panel__disclosures > .phone-menu { grid-column: 1 / -1; }
@@ -3070,7 +3111,7 @@ button[aria-disabled="true"] {
     margin: 0 0 4px;
     scrollbar-width: thin;
   }
-  .game-panel .effect-chip { flex: 0 0 auto; }
+  .game-panel .effect-chip { flex: 0 0 auto; min-width: 44px; min-height: 44px; }
   .game-panel__log-trigger,
   .game-panel__menu-trigger { margin: 0; }
   .game-panel__log { margin: 0; }

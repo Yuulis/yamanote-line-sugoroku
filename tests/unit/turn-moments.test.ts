@@ -33,7 +33,7 @@ const ORIGIN: TurnOrigin = {
 };
 const DECISION: NonNullable<ItemSessionView["decision"]> & { kind: "adjust" } = {
   kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: { serviceId: "jr-yamanote", direction: 1 },
-  allowedDeltas: [-1, 1], itemInstanceIds: ["adjust-a"], canContinue: true,
+  choices: [{ delta: -1, instanceId: "adjust-a" }, { delta: 1, instanceId: "adjust-a" }] as const, canContinue: true,
 };
 
 function ride(overrides: Partial<ItemRideRecord> = {}): ItemRideRecord {

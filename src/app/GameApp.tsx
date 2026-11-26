@@ -200,7 +200,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
   }), []);
   const turnMomentTargets = useMemo(() => ({ ride: rideTarget, direction: directionTarget,
     slots: [inventorySlot0Target, inventorySlot1Target, inventorySlot2Target], inventoryHeader: inventoryHeaderTarget }), []);
-  const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing } = useGameSettings(storage);
+  const { settings: { speedId, follow, presentationLevel }, cycleSpeed, cyclePresentation, toggleFollow, stopFollowing, beginAdjustmentPreview, endAdjustmentPreview } = useGameSettings(storage);
   const [confirm, setConfirm] = useState<PendingConfirm>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [firstTurnNoticeAnnouncement, setFirstTurnNoticeAnnouncement] = useState<NoticeAnnouncementCopy | null>(null);
@@ -413,8 +413,10 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
       enabled: follow && game !== null && game.turn > 0,
       immediate: reducedMotion || animating,
       onUserCameraMove: stopFollowing,
+      onAdjustmentPreviewOpen: beginAdjustmentPreview,
+      onAdjustmentPreviewClose: endAdjustmentPreview,
     }),
-    [follow, game, reducedMotion, animating, stopFollowing],
+    [follow, game, reducedMotion, animating, stopFollowing, beginAdjustmentPreview, endAdjustmentPreview],
   );
 
   // Callbacks passed to the memoised panel keep their identity between turns.

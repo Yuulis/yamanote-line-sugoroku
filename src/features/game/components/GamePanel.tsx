@@ -737,7 +737,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
 
   return (
     <>
-    <main ref={panelRef} className="game-panel" aria-label="ゲーム操作">
+    <main ref={panelRef} className="game-panel" aria-label="ゲーム操作" inert={Boolean(adjustmentDecision)}>
       <GameHud
         turnResult={<TurnResultCard model={turnDisplay.turnResult} />}
         milestoneFlash={turnDisplay.milestoneFlash}
@@ -781,6 +781,8 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
         onRoll={requestRoll}
         onSkip={props.onSkip}
         effects={effectModels}
+        decisionOpen={adjustmentDecision !== null}
+        policy={game.config.itemPolicy}
         canSkip={turnDisplay.canSkip}
         rideTargetRef={props.turnMomentTargets?.ride}
         directionTargetRef={props.turnMomentTargets?.direction}
@@ -806,21 +808,21 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
           onClose={() => { setItemDialog(null); restoreItemDialogFocus(); }}
         />
       )}
-      {/* Deferred under the rules (state retained); they mount in the same commit that unmounts the rules. */}
-      {adjustmentDecision && <RollAdjustment
-        announcement={statusText}
-        decision={adjustmentDecision}
-        landings={turnDisplay.adjustmentLandings}
-        onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
-        onSkip={props.onSkip}
-        canSkip={turnDisplay.canSkip}
-      />}
       {discardDecision && <DiscardChoice
         announcement={statusText}
         decision={discardDecision}
         onDiscard={(instanceId) => props.onDiscardItem?.(instanceId)}
       />}
     </main>
+    {/* Deferred under the rules (state retained); it mounts after the inert panel when shown. */}
+    {adjustmentDecision && <RollAdjustment
+      announcement={statusText}
+      decision={adjustmentDecision}
+      landings={turnDisplay.adjustmentLandings}
+      onContinue={(adjustment) => props.onAdjustItemRoll?.(adjustment)}
+      onSkip={props.onSkip}
+      canSkip={turnDisplay.canSkip}
+    />}
     {props.hintCard && (
       <FirstPlayHint
         key={props.hintCard.candidate.key}
@@ -835,7 +837,7 @@ export const GamePanel = memo(function GamePanel(props: GamePanelProps) {
       />
     )}
     <TurnResultPill model={turnDisplay.turnResult} active={pillActive} position={pillPosition}
-      logRegionId={logRegionId} expanded={phoneLogOpen} onActivate={activateLogPill} />
+      logRegionId={logRegionId} expanded={phoneLogOpen} onActivate={activateLogPill} inert={Boolean(adjustmentDecision)} />
     </>
   );
 });

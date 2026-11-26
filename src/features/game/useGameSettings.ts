@@ -7,6 +7,7 @@ import { readSettings, writeSettings } from "./store/settings";
 interface SettingsState {
   readonly preferences: GameSettings;
   readonly followStopped: boolean;
+  readonly adjustmentPreviewFollow: boolean | null;
   readonly revision: number;
 }
 
@@ -15,6 +16,8 @@ interface GameSettingsControls {
   readonly cycleSpeed: () => void;
   readonly toggleFollow: () => void;
   readonly stopFollowing: () => void;
+  readonly beginAdjustmentPreview: () => void;
+  readonly endAdjustmentPreview: () => void;
   readonly cyclePresentation: () => void;
   readonly writeStatus: "unchanged" | SaveWriteResult;
 }
@@ -24,6 +27,7 @@ export function useGameSettings(storage: StorageLike | null): GameSettingsContro
   const [state, setState] = useState<SettingsState>(() => ({
     preferences: readSettings(storage).settings,
     followStopped: false,
+    adjustmentPreviewFollow: null,
     revision: 0,
   }));
   const [writeStatus, setWriteStatus] = useState<GameSettingsControls["writeStatus"]>("unchanged");
@@ -60,6 +64,27 @@ export function useGameSettings(storage: StorageLike | null): GameSettingsContro
     });
   }, []);
 
+  const beginAdjustmentPreview = useCallback((): void => {
+    setState((previous) => {
+      if (previous.adjustmentPreviewFollow !== null) return previous;
+      return {
+        ...previous,
+        adjustmentPreviewFollow: previous.preferences.follow && !previous.followStopped,
+      };
+    });
+  }, []);
+
+  const endAdjustmentPreview = useCallback((): void => {
+    setState((previous) => {
+      if (previous.adjustmentPreviewFollow === null) return previous;
+      return {
+        ...previous,
+        followStopped: previous.preferences.follow && !previous.adjustmentPreviewFollow,
+        adjustmentPreviewFollow: null,
+      };
+    });
+  }, []);
+
   const cyclePresentation = useCallback((): void => {
     setState((previous) => ({
       ...previous,
@@ -73,6 +98,8 @@ export function useGameSettings(storage: StorageLike | null): GameSettingsContro
     cycleSpeed,
     toggleFollow,
     stopFollowing,
+    beginAdjustmentPreview,
+    endAdjustmentPreview,
     cyclePresentation,
     writeStatus,
   };

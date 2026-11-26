@@ -145,10 +145,19 @@ function parseMoveRecord(value: unknown, path: string): MoveRecord {
   };
 }
 
-function parseSaveVersion(raw: UnknownRecord): void {
+const RETIRED_ITEM_RULES_SAVE_VERSION = 4;
+
+function parseSaveVersion(raw: UnknownRecord, network: RailwayNetwork): void {
   const version = raw.saveVersion;
   if (!Number.isSafeInteger(version)) invalid("saveVersion must be an integer");
   if (version !== SAVE_VERSION) {
+    if (version === RETIRED_ITEM_RULES_SAVE_VERSION) {
+      const dataVersion = asString(raw.dataVersion, "dataVersion");
+      if (dataVersion !== network.dataVersion) {
+        throw new GameEngineError("DATA_VERSION_MISMATCH", "Save was made with different railway data");
+      }
+      throw new GameEngineError("RULES_VERSION_MISMATCH", "Save was made under retired item rules");
+    }
     throw new GameEngineError(
       "UNSUPPORTED_SAVE_VERSION",
       `Unsupported saveVersion ${String(version)}`,
@@ -158,7 +167,7 @@ function parseSaveVersion(raw: UnknownRecord): void {
 
 /** Shape-only parse into a fresh object holding just the known fields. */
 function parsePosition(raw: UnknownRecord): Omit<GameState, "movementHistory"> {
-  if (raw.saveVersion !== SAVE_VERSION) invalid("Position saveVersion must match the v4 envelope");
+  if (raw.saveVersion !== SAVE_VERSION) invalid("Position saveVersion must match the v5 envelope");
   const rngState = raw.rngState;
   if (!isValidRngState(rngState)) invalid("rngState is malformed");
   return {
@@ -226,7 +235,7 @@ export function isItemSave(state: SavedGameState): state is ItemGameState {
   return Object.hasOwn(state, "pending");
 }
 
-function sameList(left: readonly string[], right: readonly string[]): boolean {
+function sameList<T>(left: readonly T[], right: readonly T[]): boolean {
   return left.length === right.length && left.every((item, index) => item === right[index]);
 }
 
@@ -356,6 +365,7 @@ function sameConfig(left: GameConfig, right: GameConfig): boolean {
       leftItems.suspensionTurns === rightItems.suspensionTurns &&
       leftItems.fullInventoryPolicy === rightItems.fullInventoryPolicy &&
       sameList(leftItems.beneficialKinds, rightItems.beneficialKinds) &&
+      sameList(leftItems.beneficialWeights, rightItems.beneficialWeights) &&
       sameList(leftItems.harmfulKinds, rightItems.harmfulKinds);
   return (
     left.rulesetVersion === right.rulesetVersion &&
@@ -442,7 +452,7 @@ export function restoreGame(
     invalid("Save is not valid JSON");
   }
   const raw = asRecord(parsed, "save");
-  parseSaveVersion(raw);
+  parseSaveVersion(raw, network);
   const state = parseState(raw, network);
   if (state.dataVersion !== network.dataVersion) {
     throw new GameEngineError(

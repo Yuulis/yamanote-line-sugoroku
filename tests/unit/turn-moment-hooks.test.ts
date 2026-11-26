@@ -100,7 +100,7 @@ describe("useTurnMoments", () => {
     act(() => harness.moments.begin());
     harness.update({ speedId: "slow", observation: { ...INITIAL_OBSERVATION,
       decision: { kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-        allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true },
+        choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true },
     } });
     expect(harness.moments.attempt?.policy.timing.stepMs).toBe(120);
     act(() => vi.advanceTimersByTime(159));
@@ -129,7 +129,7 @@ describe("useTurnMoments", () => {
     act(() => harness.moments.begin());
     harness.update({ observation: { ...INITIAL_OBSERVATION,
       decision: { kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-        allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true },
+        choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true },
     } });
     expect(harness.moments.attempt?.stage).toBe("tumble");
     expect(vi.getTimerCount()).toBe(1);
@@ -153,7 +153,7 @@ describe("useTurnMoments", () => {
     const harness = mountHarness();
     act(() => harness.moments.begin());
     const decision = { kind: "adjust" as const, turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1] as const, itemInstanceIds: ["adjust"], canContinue: true as const };
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true as const };
     harness.update({ observation: { ...INITIAL_OBSERVATION, decision } });
     act(() => vi.advanceTimersByTime(250));
     harness.update({ observation: { ...INITIAL_OBSERVATION, decision, movementEvents: [] } });
@@ -171,7 +171,7 @@ describe("useTurnMoments", () => {
     const harness = mountHarness();
     act(() => harness.moments.begin());
     const decision = { kind: "adjust" as const, turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1] as const, itemInstanceIds: ["adjust"], canContinue: true as const };
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true as const };
     harness.update({ speedId: "fast", observation: { ...INITIAL_OBSERVATION, decision } });
     expect(harness.moments.attempt?.policy.timing.stepMs).toBe(450);
     act(() => vi.advanceTimersByTime(600));
@@ -232,7 +232,7 @@ describe("useTurnMoments", () => {
     act(() => harness.moments.begin());
     harness.update({ observation: { ...INITIAL_OBSERVATION, decision: {
       kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true,
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true,
     } } });
     expect(harness.moments.attempt?.stage).toBe("tumble");
     expect(vi.getTimerCount()).toBe(1);
@@ -244,7 +244,7 @@ describe("useTurnMoments", () => {
     expect(harness.moments.attempt?.key).toBe("7:roll:1:4");
     harness.update({ observation: { ...INITIAL_OBSERVATION, decision: {
       kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true,
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true,
     } } });
     expect(harness.moments.attempt?.stage).toBe("tumble");
     expect(vi.getTimerCount()).toBe(1);
@@ -254,7 +254,7 @@ describe("useTurnMoments", () => {
     act(() => harness.moments.begin());
     harness.update({ observation: { ...INITIAL_OBSERVATION, decision: {
       kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true,
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true,
     } } });
     expect(harness.moments.attempt?.stage).toBe("tumble");
     expect(vi.getTimerCount()).toBe(1);
@@ -336,7 +336,7 @@ describe("useTurnMoments", () => {
     act(() => commits.at(-1)!.begin());
     render({ observation: { ...INITIAL_OBSERVATION, decision: {
       kind: "adjust", turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true,
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true,
     } } });
     expect(commits.at(-1)?.attempt?.stage).toBe("tumble");
     act(() => commits.at(-1)!.skip());
@@ -391,7 +391,7 @@ describe("useTurnMoments", () => {
     const harness = mountHarness();
     act(() => harness.moments.begin());
     const decision = { kind: "adjust" as const, turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1] as const, itemInstanceIds: ["adjust"], canContinue: true as const };
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true as const };
     harness.update({ observation: { ...INITIAL_OBSERVATION, decision } });
     expect(harness.moments.attempt?.stage).toBe("tumble");
     harness.update({ reducedMotion: true, observation: acceptedRecordObservation(),
@@ -412,7 +412,7 @@ describe("useTurnMoments", () => {
   it("gives a restored pending adjustment a fresh arrival without replaying tumble", () => {
     vi.useFakeTimers();
     const adjustment = { kind: "adjust" as const, turn: 1, rawRoll: 4, resolvedRide: RECORD.resolvedRide,
-      allowedDeltas: [-1, 1] as const, itemInstanceIds: ["adjust"], canContinue: true as const };
+      choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true as const };
     const harness = mountHarness(options({
       observation: { ...INITIAL_OBSERVATION, decision: adjustment },
       revealObservation: { sessionId: 7, recordTurn: null, gameTurn: 0, pendingDecisionTurn: 1, movementComplete: false },
@@ -720,7 +720,7 @@ describe.each(["important", "none"] as const)("%s captured coordination", (prese
   it("restores pending adjustment without tumble, then runs only the captured later stages", () => {
     vi.useFakeTimers();
     const decision: NonNullable<ItemSessionView["decision"]> = { kind: "adjust", turn: 1, rawRoll: 4,
-      resolvedRide: RECORD.resolvedRide, allowedDeltas: [-1, 1], itemInstanceIds: ["adjust"], canContinue: true };
+      resolvedRide: RECORD.resolvedRide, choices: [{ delta: -1, instanceId: "adjust" }, { delta: 1, instanceId: "adjust" }] as const, canContinue: true };
     const segmentId = "jr-yamanote:shimbashi:hamamatsucho";
     const harness = mountHarness(options({ presentationLevel, observation: { ...INITIAL_OBSERVATION, decision },
       segmentFlashGeometry: { segmentsById: NETWORK.segmentsById, targetSegmentIds: [segmentId] } }));

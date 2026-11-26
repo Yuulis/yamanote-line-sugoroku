@@ -17,6 +17,8 @@ import {
   PRODUCT_HISTORY_GAME_SEED,
   PRODUCT_HISTORY_SCENARIO_TURNS,
   PRODUCT_HUB_GAME_SEED,
+  PRODUCT_REVERSE_LANDING_GAME_SEED,
+  PRODUCT_REVERSE_LANDING_TURN,
 } from "./fixtures/seeds";
 import { clickDice, closeGameLog, closeGameMenu, diceButton, diceMoment, freezeClock, gamePanel, markerPosition, openClearHistory, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, REQUIRED_SEGMENTS, rollOnce, stampsExpected, startNewGame, targetCompletedIds, waitForRollOutcome, writeSaveText } from "./support/app";
 import { advanceLotteryFlip, advanceLotterySettle, advanceArrival, advancePickup, advanceStamps, advanceTumble, awaitMovementRelease } from "./support/turnMoments";
@@ -320,7 +322,7 @@ test.describe("current product scenarios", () => {
     test.use({ reducedMotion: "no-preference" });
 
     test("switches from the ridden rapid to the landing service", async ({ page, railwayBundle }) => {
-      const before = gameBeforeTurn(railwayBundle.network, PRODUCT_COMPOSED_GAME_SEED, PRODUCT_COMPOSED_SCENARIO_TURNS.reverse - 1);
+      const before = gameBeforeTurn(railwayBundle.network, PRODUCT_REVERSE_LANDING_GAME_SEED, PRODUCT_REVERSE_LANDING_TURN - 1);
       const result = playTurn(before, railwayBundle.network);
       const record = result.state.movementHistory.at(-1)!;
       expect(record).toMatchObject({
@@ -336,7 +338,7 @@ test.describe("current product scenarios", () => {
       await freezeClock(page);
       // S11: the 16 ms frame and the composed-hop clock below start after the tumble/stamps.
       await rollThroughPreMove(page);
-      await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
+      await expect.poll(async () => (await readSave(page))?.turn).toBe(PRODUCT_REVERSE_LANDING_TURN);
       const committed = (await readSave(page))!;
       expect(committed).toEqual(result.state);
       await page.clock.runFor(16);
@@ -418,9 +420,9 @@ test.describe("current product scenarios", () => {
     await expect(items).toHaveCount(20);
     await expectSavedHistoryRowFields(items.first(), game.movementHistory[60]!, 60, railwayBundle.network, presentation);
     await dialog.getByRole("button", { name: "次のページ" }).click();
-    await expect(items).toHaveCount(16);
+    await expect(items).toHaveCount(3);
     await expectSavedHistoryRowFields(items.first(), game.movementHistory[80]!, 80, railwayBundle.network, presentation);
-    await expectSavedHistoryRowFields(items.last(), game.movementHistory[95]!, 95, railwayBundle.network, presentation);
+    await expectSavedHistoryRowFields(items.last(), game.movementHistory[82]!, 82, railwayBundle.network, presentation);
     await expect(dialog.getByRole("button", { name: "次のページ" })).toBeDisabled();
     await dialog.getByRole("button", { name: "前のページ" }).click();
     await dialog.getByRole("button", { name: "前のページ" }).click();

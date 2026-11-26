@@ -1,5 +1,5 @@
-import { useId, useLayoutEffect, useRef, useState, type SyntheticEvent } from "react";
-import type { ItemRollAdjustment } from "../../../types/network";
+import { useId, useLayoutEffect, useRef, useState } from "react";
+import type { ItemRollAdjustment, RollAdjustDelta } from "../../../types/network";
 import type { ItemSessionView } from "../itemSession";
 import { adjustedPips } from "../itemPresentation";
 import type { AdjustmentLanding } from "../mapGuidance";
@@ -12,15 +12,20 @@ export interface RollAdjustmentProps {
   landings?: readonly AdjustmentLanding[];
   onContinue: (adjustment: ItemRollAdjustment | null) => void;
   /**
-   * The shared presentation skip. The native modal makes the panel's 「演出をスキップ」 inert, so the dialog offers the same
-   * action. It ends the presentation only: the chosen radio stays and Continue is still required.
+   * The shared presentation skip. The panel's 「演出をスキップ」 is inert while this decision is open,
+   * so the dialog offers the same action. It ends the presentation only: the chosen radio stays and Continue is still required.
    */
   onSkip?: () => void;
   /** Whether a presentation is still running; otherwise the Skip button stays focusable but `aria-disabled`. */
   canSkip?: boolean;
 }
 
-type AdjustmentChoice = -1 | 0 | 1;
+type AdjustmentChoice = RollAdjustDelta | 0;
+
+function deltaLabel(delta: AdjustmentChoice): string {
+  if (delta === 0) return "そのまま";
+  return `${delta < 0 ? "−" : "+"}${Math.abs(delta)}`;
+}
 
 export function RollAdjustment({ decision, onContinue, announcement, onSkip, canSkip = false, landings = [] }: RollAdjustmentProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -33,44 +38,56 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || dialog.open) return;
-    dialog.showModal();
+    dialog.show();
     headingRef.current?.focus({ preventScroll: true });
     return () => dialog.close();
   }, []);
 
-  const continueTurn = (nextChoice: AdjustmentChoice) => {
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape" || event.defaultPrevented || !dialog.open) return;
+      if (document.querySelector("dialog:modal")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onContinue(null);
+    };
+    window.addEventListener("keydown", handleEscape, true);
+    return () => window.removeEventListener("keydown", handleEscape, true);
+  }, [onContinue]);
+
+  const continueTurn = (nextChoice: AdjustmentChoice): void => {
     if (nextChoice === 0) {
       onContinue(null);
       return;
     }
-    const instanceId = decision.itemInstanceIds[0];
-    if (!instanceId) return;
-    onContinue({ instanceId, delta: nextChoice });
-  };
-  const handleCancel = (event: SyntheticEvent) => {
-    event.preventDefault();
-    continueTurn(0);
+    const selected = decision.choices.find((candidate) => candidate.delta === nextChoice);
+    if (!selected) return;
+    onContinue({ instanceId: selected.instanceId, delta: selected.delta });
   };
   const choices: AdjustmentChoice[] = [
-    ...decision.allowedDeltas.filter((delta) => delta === -1),
+    ...decision.choices.filter(({ delta }) => delta < 0).map(({ delta }) => delta),
     0,
-    ...decision.allowedDeltas.filter((delta) => delta === 1),
+    ...decision.choices.filter(({ delta }) => delta > 0).map(({ delta }) => delta),
   ];
+  const magnitudes = [...new Set(decision.choices.map(({ delta }) => Math.abs(delta)))].sort((left, right) => left - right);
+  const adjustmentHint = `${magnitudes.map((magnitude) => `±${magnitude}`).join("・")}を選ぶと、同じ数字の出目調整券を1枚使います。`;
 
   return (
-    <dialog ref={dialogRef} className="dialog item-dialog item-adjustment" aria-labelledby={titleId} onCancel={handleCancel}>
+    <dialog ref={dialogRef} className="dialog item-dialog item-adjustment" aria-labelledby={titleId}>
       <div className="dialog__body">
         {announcement !== undefined && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
         <h2 id={titleId} aria-describedby={rollId} ref={headingRef} className="dialog__title" tabIndex={-1}>出目を調整しますか？</h2>
         <p id={rollId} className="item-dialog__hint">出目：<strong>{decision.rawRoll}</strong></p>
-        <p className="item-dialog__hint"><PhraseText text="±1を選ぶと出目調整券を1枚使います。" /></p>
+        <p className="item-dialog__hint"><PhraseText text={adjustmentHint} /></p>
         <fieldset className="item-dialog__group">
           <legend>進むマス数を選ぶ</legend>
           {choices.map((delta) => {
             const pips = adjustedPips(decision.rawRoll, delta);
             const landing = landings.find((candidate) => candidate.delta === delta);
             const steps = landing?.travelledSteps ?? pips;
-            const label = delta === 0 ? "そのまま" : `${delta === -1 ? "−1" : "+1"}`;
+            const label = deltaLabel(delta);
             return <label className="item-adjustment__choice" key={delta}>
               <input
                 type="radio"

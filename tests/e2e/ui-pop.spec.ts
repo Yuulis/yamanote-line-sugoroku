@@ -72,7 +72,7 @@ async function buildPopulatedState(page: import("@playwright/test").Page, bundle
     };
   });
   await diceButton(page).click();
-  // A held 出目調整券 asks before the move finishes; keep the roll as it is.
+  // A held 出目調整券±1 asks before the move finishes; keep the roll as it is.
   const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
   const save = gamePanel(page).locator(".game-panel__save");
   await expect.poll(async () => await adjustment.isVisible() || ((await save.textContent()) ?? "").includes("失敗")).toBe(true);
@@ -175,24 +175,24 @@ test("menu, log, and item card transitions preserve a selected draft", async ({ 
 
 test("reclicking the open slot closes it and switching slots opens the other card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "pointer click contract runs on desktop projects");
-  await scenario(page, "discard", railwayBundle);
+  await scenario(page, "discard-adjust", railwayBundle);
   const slots = gamePanel(page).locator(".item-slot");
-  const first = inventoryItem(page, "倍速券");
+  const first = inventoryItem(page, "方向指定券");
   const firstOpener = first.getByRole("button");
   await firstOpener.click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeVisible();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeVisible();
   await firstOpener.click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeHidden();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeHidden();
   await expect(firstOpener).toHaveAttribute("aria-expanded", "false");
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeHidden();
-  const second = gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name: "出目調整券" }) });
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeHidden();
+  const second = gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name: "出目調整券±1" }) });
   // Switching goes straight from an open card to the other slot's card.
   await firstOpener.click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeVisible();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeVisible();
   await second.getByRole("button").click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "出目調整券" })).toBeVisible();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeHidden();
+  await expect(gamePanel(page).getByRole("dialog", { name: "出目調整券±1" })).toBeVisible();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeHidden();
   await expect(firstOpener).toHaveAttribute("aria-expanded", "false");
   await expect(second.getByRole("button")).toHaveAttribute("aria-expanded", "true");
   await expect(slots).toHaveCount(3);
@@ -200,7 +200,7 @@ test("reclicking the open slot closes it and switching slots opens the other car
 
 test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(!test.info().project.use.hasTouch, "needs a touch project");
-  await scenario(page, "double", railwayBundle);
+  await scenario(page, "double-adjust", railwayBundle);
   const slot = inventoryItem(page, "倍速券");
   const opener = slot.getByRole("button");
   await opener.tap();
@@ -213,10 +213,10 @@ test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, asyn
   await expect(card).toBeHidden();
   await opener.tap();
   await expect(card).toBeVisible();
-  const otherSlot = inventoryItem(page, "出目調整券");
+  const otherSlot = inventoryItem(page, "出目調整券±1");
   const otherOpener = otherSlot.getByRole("button");
   await otherOpener.tap();
-  const otherCard = gamePanel(page).getByRole("dialog", { name: "出目調整券", exact: true });
+  const otherCard = gamePanel(page).getByRole("dialog", { name: "出目調整券±1", exact: true });
   await expect(otherCard).toBeVisible();
   await expect(card).toBeHidden();
   await otherOpener.tap();
@@ -237,9 +237,9 @@ test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, asyn
 
 test("unusable and passive items remain inspectable with the right card actions", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await scenario(page, "adjust", railwayBundle);
-  const adjust = inventoryItem(page, "出目調整券");
+  const adjust = inventoryItem(page, "出目調整券±1");
   await adjust.getByRole("button").click();
-  const adjustCard = gamePanel(page).getByRole("dialog", { name: "出目調整券" });
+  const adjustCard = gamePanel(page).getByRole("dialog", { name: "出目調整券±1" });
   await expect(adjustCard.getByRole("button", { name: "使う" })).toBeDisabled();
   await expect(adjustCard).toContainText("出目が出た後に使えるアイテムです");
   await scenario(page, "certificate", railwayBundle);
@@ -349,13 +349,13 @@ test("direction ticket card opens its use dialog and cancellation restores its o
 
 test("desktop card hides its own hover tooltip, keeps other slot hover, and closes on Tab out", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "requires desktop hover and keyboard focus");
-  await scenario(page, "discard", railwayBundle);
+  await scenario(page, "double-adjust", railwayBundle);
   const first = inventoryItem(page, "倍速券");
   const firstOpener = first.getByRole("button");
   await firstOpener.click();
   await first.hover();
   await expect(first.locator(".item-slot__tooltip")).toHaveCount(0);
-  const second = inventoryItem(page, "出目調整券");
+  const second = inventoryItem(page, "出目調整券±1");
   await second.hover();
   await expect(second.locator(".item-slot__tooltip")).toBeVisible();
 
@@ -364,6 +364,55 @@ test("desktop card hides its own hover tooltip, keeps other slot hover, and clos
   await page.keyboard.press("Tab");
   await expect(card).toBeHidden();
   await expect(firstOpener).not.toBeFocused();
+});
+
+test("effect chip explains on hover and tap", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  const game: ItemGameState = playItemTurn(itemScenario("delay", railwayBundle.network), {}, railwayBundle.network).state;
+  await page.goto("/");
+  await writeSaveText(page, serializeGame(game));
+  await page.reload();
+  await page.getByRole("button", { name: /つづきから/ }).click();
+  await expect(gamePanel(page)).toBeVisible();
+  // The chip's accessible name is its full effect text; the native title is gone.
+  const chip = gamePanel(page).getByRole("button", { name: "遅延：8ターン目に発動（あと3ターン）", exact: true });
+  await expect(chip).toBeVisible();
+  await expect(chip).not.toHaveAttribute("title", /.+/);
+  const card = gamePanel(page).getByRole("dialog", { name: "遅延", exact: true });
+  if (test.info().project.use.hasTouch) {
+    await chip.tap();
+    await expect(card).toBeVisible();
+    await expect(chip).toHaveAttribute("aria-expanded", "true");
+    await expect(card).toContainText("拾うと自動で発動");
+    await expect(card).toContainText("遅延：8ターン目に発動（あと3ターン）");
+    await expect(gamePanel(page).locator("[role=tooltip]")).toHaveCount(0);
+    await card.getByRole("button", { name: "閉じる", exact: true }).tap();
+    await expect(card).toBeHidden();
+    await expect(chip).toBeFocused();
+    await chip.tap();
+    await expect(card).toBeVisible();
+    // Light dismiss: a tap on a non-interactive panel area closes the card.
+    await gamePanel(page).locator(".game-panel__stats dt").first().tap();
+    await expect(card).toBeHidden();
+    return;
+  }
+  await chip.hover();
+  const tooltip = page.getByRole("tooltip");
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).toContainText("3ターン後の出目が1");
+  await expect(tooltip).toContainText("拾うと自動で発動");
+  const inside: boolean = await tooltip.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
+  });
+  expect(inside, "the tooltip is not clipped by the scrolling chip row or the viewport").toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(tooltip).toHaveCount(0);
+  await chip.click();
+  await expect(card).toBeVisible();
+  await expect(tooltip).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(card).toBeHidden();
+  await expect(chip).toBeFocused();
 });
 
 test.describe("S25 failed-save toast expiry", () => {
@@ -715,9 +764,15 @@ test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
   });
 
   test("toasts clear attribution and map controls across layouts in both attribution states", async ({ page, railwayBundle }, testInfo) => {
-    await buildPopulatedState(page, railwayBundle);
-    // Ordinary toasts expire after 4 s, so per-toast rects cover the sticky failure toast and the
-    // toast stack itself (fixed top/left/right, growing downwards) is checked independently of its length.
+    await page.clock.install();
+    await scenario(page, "delay", railwayBundle);
+    await revealUnadjustedRoll(page);
+    const harmfulToast = page.locator(".toast-host__toast").filter({ hasText: "遅延を拾ってしまった！" });
+    await expect(harmfulToast).toContainText("遅延を拾ってしまった！");
+    await expect(harmfulToast.locator(".toast-host__detail")).toHaveText("3ターン後の出目が1になります");
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 500));
+    // Keep the real two-line harmful toast visible while checking each per-toast rect and the
+    // toast stack's fixed top/left/right position across layouts.
     const assertToastClearance = async (width: number, height: number, expanded: boolean): Promise<void> => {
       await page.setViewportSize({ width, height });
       // Crossing the compact/desktop boundary reattaches the control in the other corner from a
@@ -803,21 +858,19 @@ test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
     await expect(dialog).toBeHidden();
   });
 
-  test("tab order follows the visual inventory, staged, effects, and disclosure order", async ({ page, railwayBundle, browserName }, testInfo) => {
+  test("tab order follows the visual inventory, staged, effects, and disclosure order", async ({ page, railwayBundle }, testInfo) => {
     await buildPopulatedState(page, railwayBundle);
-    // An overflowing chips row has no tabindex: Chromium (keyboard-focusable scrollers) and Firefox
-    // make such a scroller a tab stop, WebKit (like Safari) does not add it automatically, so it is
-    // expected only where the engine adds it.
-    // Every other stop and the order are asserted identically in all engines.
-    const scrollersAreTabStops: boolean = browserName !== "webkit";
+    // Every effect chip is its own button, so the chips row is no longer a single scroller stop in any engine:
+    // one tab stop per chip, in visual order, between 「選択を解除」 and the disclosure triggers.
     for (const viewport of [{ width: 320, height: 568 }, { width: 667, height: 375 }, { width: 1280, height: 800 }]) {
       await page.setViewportSize(viewport);
       const panel = gamePanel(page);
       await diceButton(page).focus();
-      const visited: Array<{ name: string; top: number; left: number }> = [];
-      const effectsScrollable = await panel.locator(".effect-chips").evaluate((element) => element.scrollWidth > element.clientWidth);
+      const visited: Array<{ name: string; top: number; left: number; chipVisible: boolean }> = [];
       const expectedSlots = await panel.locator(".item-slot:not(.item-slot--empty) h3").allTextContents();
-      const expected = [...expectedSlots.map((name) => name.trim()), "選択を解除", ...(effectsScrollable && scrollersAreTabStops ? ["effects"] : []), ...(viewport.width <= PHONE_MAX_WIDTH_PX ? ["メニュー"] : ["ログ", "メニュー"])];
+      const expectedChips = (await panel.locator(".effect-chip .visually-hidden").allTextContents()).map((text) => text.trim());
+      expect(expectedChips.length).toBeGreaterThanOrEqual(2);
+      const expected = [...expectedSlots.map((name) => name.trim()), "選択を解除", ...expectedChips, ...(viewport.width <= PHONE_MAX_WIDTH_PX ? ["メニュー"] : ["ログ", "メニュー"])];
       for (let index = 0; index < expected.length; index += 1) {
         await page.keyboard.press("Tab");
         const active = await page.evaluate(() => {
@@ -825,13 +878,19 @@ test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
           if (!element) throw new Error("no focused element");
           const slot = element.closest<HTMLElement>(".item-slot");
           const name = slot?.querySelector("h3")?.textContent?.trim()
-            ?? (element.matches(".effect-chips") ? "effects" : element.textContent?.trim() ?? "");
+            ?? (element.matches(".effect-chip") ? element.querySelector(".visually-hidden")?.textContent?.trim() ?? "" : element.textContent?.trim() ?? "");
           const rect = element.getBoundingClientRect();
           const panel = element.closest<HTMLElement>(".game-panel");
-          return { name, top: rect.top + (panel?.scrollTop ?? 0), left: rect.left,
+          const row = element.closest<HTMLElement>(".effect-chips");
+          const rowRect = row?.getBoundingClientRect();
+          // Position in the row's own coordinates, so scrolling it to reveal a chip does not reorder the stops.
+          return { name, top: rect.top + (panel?.scrollTop ?? 0), left: rect.left + (row?.scrollLeft ?? 0),
+            // Focusing an off-screen chip must scroll it into the row's visible area.
+            chipVisible: !row || !rowRect || (rect.left >= rowRect.left - 1 && rect.right <= rowRect.right + 1),
             inPanel: Boolean(element.closest(".game-panel")), className: element.className };
         });
         expect(active.inPanel, `${viewport.width}px ${active.name} stays in the game panel`).toBe(true);
+        expect(active.chipVisible, `${viewport.width}px ${active.name} is scrolled into the chip row`).toBe(true);
         visited.push(active);
       }
       expect(visited.map((entry) => entry.name)).toEqual(expected);
@@ -850,7 +909,7 @@ test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
         reversed.push(await page.evaluate(() => {
           const element = document.activeElement as HTMLElement;
           return element.closest<HTMLElement>(".item-slot")?.querySelector("h3")?.textContent?.trim()
-            ?? (element.matches(".effect-chips") ? "effects" : element.textContent?.trim() ?? "");
+            ?? (element.matches(".effect-chip") ? element.querySelector(".visually-hidden")?.textContent?.trim() ?? "" : element.textContent?.trim() ?? "");
         }));
       }
       expect(reversed).toEqual([...expected.slice(0, -1)].reverse().concat((await diceButton(page).innerText()).trim()));

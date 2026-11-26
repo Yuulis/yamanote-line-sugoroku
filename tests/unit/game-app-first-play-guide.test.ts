@@ -155,7 +155,7 @@ describe("GameApp first-play eligibility", () => {
         text: "アイテムを手に入れました。使うタイミングは、持ち物の説明で確認できます。",
       },
     };
-    const toastText = "出目調整券を手に入れた！";
+    const toastText = "出目調整券±1を手に入れた！";
     const derive = turnMomentPresentation.deriveTurnMomentDisplay;
     vi.spyOn(motionPreference, "usePrefersReducedMotion").mockReturnValue(true);
     vi.spyOn(turnMomentPresentation, "deriveTurnMomentDisplay").mockImplementation((input) => {
