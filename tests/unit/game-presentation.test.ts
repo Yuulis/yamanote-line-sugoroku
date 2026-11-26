@@ -324,17 +324,41 @@ describe("verified item notices", () => {
 it("pins replay-valid item E2E scenarios using the production item policy", async () => {
   const { ITEM_SCENARIOS, itemScenario } = await import("../e2e/fixtures/itemScenarios");
   const { beginItemTurn, playItemTurn, restoreGame, serializeGame } = await import("../../src/features/game/engine");
+  const { legalAdjustments } = await import("../../src/features/game/itemRollAdjust");
   for (const name of Object.keys(ITEM_SCENARIOS) as (keyof typeof ITEM_SCENARIOS)[]) {
     const base = itemScenario(name, network);
     expect(restoreGame(serializeGame(base), network, { expectedConfig: base.config })).toEqual(base);
-    if (name === "adjust") {
+    if (name === "adjust" || name === "adjust-harmful" || name === "adjust-lottery" || name === "adjust-toast") {
       const pending = beginItemTurn(base, { items: [] }, network).state;
       expect(pending.pending).toMatchObject({ kind: "roll" });
       if (pending.pending?.kind !== "roll") throw new Error("Expected die");
-      expect(pending.pending.rawRoll).toBeGreaterThan(1);
-      expect(pending.pending.rawRoll).toBeLessThan(6);
       expect(base.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
-    } else if (name === "discard") {
+      if (name === "adjust-lottery") {
+        expect(pending.pending.rawRoll).toBe(1);
+        expect(legalAdjustments(pending.pending.rawRoll, base.inventory)).toEqual([
+          { instanceId: base.inventory.find((item) => item.kind === "roll-adjust")!.id, delta: 1 },
+        ]);
+        const result = playItemTurn(base, {}, network);
+        expect(result.record?.kind).toBe("item-ride");
+        if (result.record?.kind !== "item-ride") throw new Error("Expected item ride");
+        expect(result.record.landingSnapshot?.services.length).toBeGreaterThan(1);
+      } else {
+        expect(pending.pending.rawRoll).toBeGreaterThan(1);
+        expect(pending.pending.rawRoll).toBeLessThan(6);
+      }
+      if (name === "adjust-toast") {
+        expect(base.movementHistory.at(-1)?.itemEvents).toContainEqual(expect.objectContaining({ type: "cancelled-by-certificate" }));
+      }
+      if (name === "adjust-harmful") {
+        const ticket = base.inventory.find((item) => item.kind === "roll-adjust")!;
+        expect(playItemTurn(base, { adjustment: { instanceId: ticket.id, delta: -1 } }, network).events)
+          .toContainEqual(expect.objectContaining({ type: "harmful-scheduled" }));
+      }
+    } else if (name === "adjust-wide") {
+      expect(new Set(base.inventory.map((item) => item.kind))).toEqual(new Set([
+        "roll-adjust", "roll-adjust-2", "roll-adjust-3",
+      ]));
+    } else if (name === "discard" || name === "discard-adjust") {
       expect(playItemTurn(base, {}, network).state.pending?.kind).toBe("discard");
     } else if (name === "certificate" || name === "delay") {
       expect(playItemTurn(base, {}, network).events.some((event) => name === "certificate"
@@ -362,7 +386,7 @@ it("announces the revealed die and selected adjustment during animation without 
   const session = { ...resumeSession(arrived, network), phase: "animating" as const };
   const message = itemTurnAnnouncement(session, itemSessionView(session, network)!, 0, 30, network);
   expect(message).toContain("調整後");
-  expect(message).toContain("出目調整券を使いました");
+  expect(message).toContain("出目調整券±1を使いました");
   expect(message).toContain("スキップできます");
   expect(message).not.toContain("拾いました");
   expect(itemEventTexts([

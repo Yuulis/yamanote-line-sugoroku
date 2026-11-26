@@ -7,10 +7,10 @@ export interface RollAdjustmentChoice {
   readonly instanceId: string;
 }
 
-export const MAX_ADJUSTED_FACE = 6;
-
 export const ROLL_ADJUST_MAGNITUDE: Readonly<Record<RollAdjustKind, 1 | 2 | 3>> = {
   "roll-adjust": 1,
+  "roll-adjust-2": 2,
+  "roll-adjust-3": 3,
 };
 
 export function isRollAdjustKind(kind: ItemKind): kind is RollAdjustKind {
@@ -24,7 +24,7 @@ export function isRollAdjustDeltaForKind(kind: ItemKind, delta: unknown): delta 
 }
 
 export function isAdjustedFaceInRange(face: number): boolean {
-  return Number.isInteger(face) && face >= 1 && face <= MAX_ADJUSTED_FACE;
+  return Number.isSafeInteger(face) && face >= 1;
 }
 
 export function legalAdjustments(

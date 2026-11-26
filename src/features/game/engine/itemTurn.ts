@@ -53,7 +53,7 @@ export function finishItemTurn(state: ItemGameState, adjustment: ItemRollAdjustm
       invalidItemTurn("Adjustment magnitude does not match the owned item");
     }
     face += adjustment.delta;
-    if (!isAdjustedFaceInRange(face)) throw new GameEngineError("INVALID_ROLL", "Adjusted face must stay within 1-6");
+    if (!isAdjustedFaceInRange(face)) throw new GameEngineError("INVALID_ROLL", "Adjusted face must be an integer >= 1");
     const consumed = consumeInventoryInstance(prepared.inventory, adjustment.instanceId);
     prepared.inventory = consumed.inventory;
     prepared.events.push(...consumed.events);

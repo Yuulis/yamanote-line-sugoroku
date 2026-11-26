@@ -297,7 +297,7 @@ describe("item controls", () => {
     };
     expect(textFor("快速券")).toContain("注意：現在の向きは山手線から遠ざかります。");
     expect(textFor("快速券")).toContain("ほかのアイテムを選択中です。使うと置き換わります。");
-    expect(textFor("出目調整券")).toContain("遅延・寝過ごしのターンは使えない。");
+    expect(textFor("出目調整券±1")).toContain("遅延・寝過ごしのターンは使えない。");
     expect(textFor("遅延証明書")).toContain("持っているだけで効く。");
     expect(textFor("遅延証明書")).not.toContain("持っているだけで効くアイテムです");
   });
@@ -674,7 +674,7 @@ describe("item controls", () => {
     expect(mount.container.textContent).toContain("出目 3、3マス進む");
     expect(mount.container.textContent).toContain("そのまま：出目 2、2マス進む");
     expect(mount.container.querySelectorAll(".item-dialog__hint")[1]?.textContent)
-      .toBe("±1を選ぶと出目調整券を1枚使います。");
+      .toBe("±1を選ぶと、同じ数字の出目調整券を1枚使います。");
     expect(mount.container.textContent).not.toContain("−1：");
     const plus = mount.container.querySelector<HTMLInputElement>("input[value='1']")!;
     dispatchReactEvent(plus, new MouseEvent("click", { bubbles: true }));
@@ -715,7 +715,7 @@ describe("item controls", () => {
       "+2：出目 6、6マス進む",
       "+3：出目 7、7マス進む",
     ]);
-    expect(mount.container.textContent).toContain("±1・±2・±3を選ぶと出目調整券を1枚使います。");
+    expect(mount.container.textContent).toContain("±1・±2・±3を選ぶと、同じ数字の出目調整券を1枚使います。");
 
     const plusThree = mount.container.querySelector<HTMLInputElement>('input[value="3"]')!;
     dispatchReactEvent(plusThree, new MouseEvent("click", { bubbles: true }));

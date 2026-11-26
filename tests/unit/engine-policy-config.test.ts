@@ -86,6 +86,12 @@ describe("lottery config validation", () => {
   it.each<[string, (policy: Record<string, unknown>) => void]>([
     ["unknown key", (policy) => { policy.typo = 1; }],
     ["unknown beneficial kind", (policy) => { policy.beneficialKinds = ["unknown"]; }],
+    ["missing beneficial weights", (policy) => { delete policy.beneficialWeights; }],
+    ["misaligned beneficial weights", (policy) => { policy.beneficialWeights = [1]; }],
+    ["sparse beneficial weights", (policy) => { policy.beneficialWeights = new Array((policy.beneficialKinds as unknown[]).length); }],
+    ["zero beneficial weight", (policy) => { (policy.beneficialWeights as number[])[0] = 0; }],
+    ["fractional beneficial weight", (policy) => { (policy.beneficialWeights as number[])[0] = 1.5; }],
+    ["beneficial weight total exceeds draw limit", (policy) => { policy.beneficialWeights = [2 ** 32, 1, 1, 1, 1, 1, 1, 1, 1]; }],
     ["unknown harmful kind", (policy) => { policy.harmfulKinds = ["unknown"]; }],
     ["duplicate kind", (policy) => { policy.beneficialKinds = ["double", "double"]; }],
     ["empty beneficial pool", (policy) => { policy.beneficialKinds = []; }],
@@ -134,6 +140,9 @@ describe("nested config isolation", () => {
     const item = createGame(itemConfig, "items", network);
     expect(item.config.itemPolicy).not.toBe(itemConfig.itemPolicy);
     expect(item.config.itemPolicy?.beneficialKinds).not.toBe(itemConfig.itemPolicy?.beneficialKinds);
+    expect(item.config.itemPolicy?.beneficialWeights).not.toBe(itemConfig.itemPolicy?.beneficialWeights);
+    (item.config.itemPolicy!.beneficialWeights as number[])[0] = 99;
+    expect(itemConfig.itemPolicy?.beneficialWeights[0]).toBe(6);
   });
 
   it("seeded and injected turns deep copy nested config instead of sharing earlier states", () => {

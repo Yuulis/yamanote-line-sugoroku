@@ -32,6 +32,10 @@ function pinnedSave(name: string): string {
   return readFileSync(fileURLToPath(new URL(`../e2e/fixtures/${name}`, import.meta.url)), "utf8");
 }
 
+const CURRENT_PRODUCT_RECORDS = JSON.parse(readFileSync(
+  fileURLToPath(new URL("./fixtures/current-product-records.json", import.meta.url)), "utf8",
+)) as Record<string, unknown>;
+
 const PRODUCT_COMPOSED_FORWARD = "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama";
 const PRODUCT_COMPOSED_REVERSE = "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi";
 const PRODUCT_COMPOSED_FEATURES = [
@@ -190,97 +194,13 @@ describe("current product E2E scenarios", () => {
     const next = playTurn(scenario.result.state, network);
     expect(scenario.seed).toBe(PRODUCT_KORAKUEN_TRANSFER_SEED);
     expect(scenario.result.state.turn).toBe(PRODUCT_KORAKUEN_TRANSFER_TURN);
-    expect(scenario.result.record).toEqual({
-  "turn": 13,
-  "fromStationId": "suidobashi",
-  "toStationId": "metro-korakuen",
-  "command": {
-    "items": []
-  },
-  "resolvedRide": {
-    "serviceId": "toei-mita",
-    "direction": 1
-  },
-  "traversedSegmentIds": [
-    "toei-mita:suidobashi:metro-korakuen"
-  ],
-  "landing": {
-    "serviceId": "metro-marunouchi",
-    "direction": 1
-  },
-  "landingSnapshot": {
-    "stationId": "metro-korakuen",
-    "suspensionIgnored": false,
-    "detourConsumed": false,
-    "services": [
-      {
-        "serviceId": "metro-marunouchi",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          2,
-          3
-        ]
-      },
-      {
-        "serviceId": "metro-namboku",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          3,
-          2
-        ]
-      },
-      {
-        "serviceId": "toei-mita",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          1,
-          1
-        ]
-      },
-      {
-        "serviceId": "toei-oedo-loop",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          3,
-          2
-        ]
-      }
-    ]
-  },
-  "itemEvents": [
-    {
-      "type": "effect-activated",
-      "effect": "delay"
-    }
-  ],
-  "discardedInstanceId": null,
-  "kind": "item-ride",
-  "rawRoll": 5,
-  "effectiveFace": 1,
-  "adjustment": null,
-  "movementMode": "normal",
-  "pips": 1,
-  "hopBudget": 1,
-  "physicalHops": 1,
-  "unusedPips": 0,
-  "stopReason": "roll"
-});
+    expect(CURRENT_PRODUCT_RECORDS.metadata).toEqual({
+      rulesetVersion: DEFAULT_GAME_CONFIG.rulesetVersion,
+      korakuenSeed: PRODUCT_KORAKUEN_TRANSFER_SEED,
+      composedSeed: PRODUCT_COMPOSED_GAME_SEED,
+    });
+    expect(scenario.result.record).toEqual(CURRENT_PRODUCT_RECORDS.korakuenTransfer);
+
     expect(scenario.result.events.at(-1)).toMatchObject({
       type: "landing-resolved",
       stationId: "metro-korakuen",
@@ -288,57 +208,8 @@ describe("current product E2E scenarios", () => {
       serviceId: "metro-marunouchi",
       changedService: true,
     });
-    expect(next.record).toEqual({
-  "turn": 14,
-  "fromStationId": "metro-korakuen",
-  "toStationId": "metro-shin-otsuka",
-  "command": {
-    "items": []
-  },
-  "resolvedRide": {
-    "serviceId": "metro-marunouchi",
-    "direction": 1
-  },
-  "traversedSegmentIds": [
-    "metro-marunouchi:metro-korakuen:metro-myogadani",
-    "metro-marunouchi:metro-myogadani:metro-shin-otsuka"
-  ],
-  "landing": {
-    "serviceId": "metro-marunouchi",
-    "direction": 1
-  },
-  "landingSnapshot": {
-    "stationId": "metro-shin-otsuka",
-    "suspensionIgnored": false,
-    "detourConsumed": false,
-    "services": [
-      {
-        "serviceId": "metro-marunouchi",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          3,
-          2
-        ]
-      }
-    ]
-  },
-  "itemEvents": [],
-  "discardedInstanceId": null,
-  "kind": "item-ride",
-  "rawRoll": 2,
-  "effectiveFace": 2,
-  "adjustment": null,
-  "movementMode": "normal",
-  "pips": 2,
-  "hopBudget": 2,
-  "physicalHops": 2,
-  "unusedPips": 0,
-  "stopReason": "roll"
-});
+    expect(next.record).toEqual(CURRENT_PRODUCT_RECORDS.korakuenNext);
+
   });
   it("uses the frozen catalogue counts and derives the six-candidate hub scenario by ascending seed search", () => {
     expect(network.stationsById.size).toBe(1_586);
@@ -378,305 +249,14 @@ describe("current product E2E scenarios", () => {
     expect(trajectory.seed).toBe(PRODUCT_COMPOSED_GAME_SEED);
     expect(trajectory.forward.result.state.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.forward);
     expect(trajectory.reverse.result.state.turn).toBe(PRODUCT_COMPOSED_SCENARIO_TURNS.reverse);
-    expect(trajectory.forward.result.record).toEqual({
-  "turn": 148,
-  "fromStationId": "musashi-kosugi",
-  "toStationId": "yokohama",
-  "command": {
-    "items": []
-  },
-  "resolvedRide": {
-    "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
-    "direction": 1
-  },
-  "traversedSegmentIds": [
-    "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama"
-  ],
-  "landing": {
-    "serviceId": "keikyu-main",
-    "direction": -1
-  },
-  "landingSnapshot": {
-    "stationId": "yokohama",
-    "suspensionIgnored": false,
-    "detourConsumed": false,
-    "services": [
-      {
-        "serviceId": "jr-keihin-tohoku",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          1,
-          1
-        ]
-      },
-      {
-        "serviceId": "jr-tokaido",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          2,
-          3
-        ]
-      },
-      {
-        "serviceId": "jr-yokosuka",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          2,
-          3
-        ]
-      },
-      {
-        "serviceId": "jr-shonan-shinjuku-local",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          2,
-          3
-        ]
-      },
-      {
-        "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          2,
-          3
-        ]
-      },
-      {
-        "serviceId": "yokohama-blue",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          1,
-          1
-        ]
-      },
-      {
-        "serviceId": "keikyu-main",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          1,
-          1
-        ]
-      },
-      {
-        "serviceId": "tokyu-toyoko",
-        "weight": 1,
-        "directions": [
-          -1
-        ],
-        "directionWeights": [
-          1
-        ]
-      },
-      {
-        "serviceId": "sotetsu-main",
-        "weight": 1,
-        "directions": [
-          1
-        ],
-        "directionWeights": [
-          1
-        ]
-      },
-      {
-        "serviceId": "mm-minatomirai",
-        "weight": 1,
-        "directions": [
-          1
-        ],
-        "directionWeights": [
-          1
-        ]
-      }
-    ]
-  },
-  "itemEvents": [],
-  "discardedInstanceId": null,
-  "kind": "item-ride",
-  "rawRoll": 1,
-  "effectiveFace": 1,
-  "adjustment": null,
-  "movementMode": "normal",
-  "pips": 1,
-  "hopBudget": 1,
-  "physicalHops": 1,
-  "unusedPips": 0,
-  "stopReason": "roll"
-});
-    expect(trajectory.reverse.result.record).toEqual({
-  "turn": 177,
-  "fromStationId": "yokohama",
-  "toStationId": "ikebukuro",
-  "command": {
-    "items": []
-  },
-  "resolvedRide": {
-    "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
-    "direction": -1
-  },
-  "traversedSegmentIds": [
-    "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi",
-    "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:osaki",
-    "jr-shonan-shinjuku-rapid-takasaki:osaki:ebisu",
-    "jr-shonan-shinjuku-rapid-takasaki:ebisu:shibuya",
-    "jr-shonan-shinjuku-rapid-takasaki:shibuya:shinjuku",
-    "jr-shonan-shinjuku-rapid-takasaki:shinjuku:ikebukuro"
-  ],
-  "landing": {
-    "serviceId": "metro-fukutoshin",
-    "direction": 1
-  },
-  "landingSnapshot": {
-    "stationId": "ikebukuro",
-    "suspensionIgnored": false,
-    "detourConsumed": false,
-    "services": [
-      {
-        "serviceId": "jr-yamanote",
-        "weight": 8,
-        "directions": [
-          1
-        ],
-        "directionWeights": [
-          1
-        ]
-      },
-      {
-        "serviceId": "jr-saikyo",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          2,
-          3
-        ]
-      },
-      {
-        "serviceId": "jr-shonan-shinjuku-local",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          3,
-          2
-        ]
-      },
-      {
-        "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          3,
-          2
-        ]
-      },
-      {
-        "serviceId": "metro-marunouchi",
-        "weight": 1,
-        "directions": [
-          -1
-        ],
-        "directionWeights": [
-          1
-        ]
-      },
-      {
-        "serviceId": "metro-yurakucho",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          1,
-          1
-        ]
-      },
-      {
-        "serviceId": "metro-fukutoshin",
-        "weight": 1,
-        "directions": [
-          1,
-          -1
-        ],
-        "directionWeights": [
-          1,
-          1
-        ]
-      },
-      {
-        "serviceId": "tobu-tojo",
-        "weight": 1,
-        "directions": [
-          1
-        ],
-        "directionWeights": [
-          1
-        ]
-      },
-      {
-        "serviceId": "seibu-ikebukuro",
-        "weight": 1,
-        "directions": [
-          1
-        ],
-        "directionWeights": [
-          1
-        ]
-      }
-    ]
-  },
-  "itemEvents": [],
-  "discardedInstanceId": null,
-  "kind": "item-ride",
-  "rawRoll": 6,
-  "effectiveFace": 6,
-  "adjustment": null,
-  "movementMode": "normal",
-  "pips": 6,
-  "hopBudget": 6,
-  "physicalHops": 6,
-  "unusedPips": 0,
-  "stopReason": "roll"
-});
+    expect(trajectory.forward.result.record).toEqual(CURRENT_PRODUCT_RECORDS.composedForward);
+
+    expect(trajectory.reverse.result.record).toEqual(CURRENT_PRODUCT_RECORDS.composedReverse);
+
     expect(landingText(resumeSession(trajectory.forward.result.state, network).lastMove, network))
-      .toBe("横浜：10系統から抽選 → 京急本線 普通 ／ 方向抽選 → 泉岳寺方面");
+      .toBe("辻堂：東海道線・湘南新宿ライン 快速 (高崎線・東海道線系統)から抽選 → 東海道線 ／ 方向抽選 → 東京方面");
     expect(landingText(resumeSession(trajectory.reverse.result.state, network).lastMove, network))
-      .toBe("池袋：9系統から抽選 → 東京メトロ副都心線 各停 ／ 方向抽選 → 渋谷方面");
+      .toBe("武蔵小杉：7系統から抽選 → 横須賀線 ／ 方向抽選 → 東京方面");
 
     const geometry = buildGeometryIndex(geometryData);
     for (const scenario of [trajectory.forward, trajectory.reverse]) {

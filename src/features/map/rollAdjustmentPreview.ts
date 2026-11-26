@@ -119,8 +119,15 @@ function layoutLanes(map: MapLibreMap, callouts: readonly Callout[]): void {
     const { x, y } = map.project(callout.group.position);
     return { x, y, width: callout.bubble.offsetWidth, height: callout.bubble.offsetHeight };
   }));
+  const mapHeight = map.getContainer().clientHeight;
   callouts.forEach((callout, index) => {
-    callout.leader.style.height = `${TAIL_HEIGHT_PX + (lanes[index] ?? 0) * LANE_HEIGHT_PX}px`;
+    const leaderHeight = TAIL_HEIGHT_PX + (lanes[index] ?? 0) * LANE_HEIGHT_PX;
+    callout.leader.style.height = `${leaderHeight}px`;
+    const { y } = map.project(callout.group.position);
+    const topOverflow = Math.max(0, callout.bubble.offsetHeight + leaderHeight + ANCHOR_OFFSET_PX - y);
+    const bottomOverflow = Math.max(0, y - ANCHOR_OFFSET_PX + topOverflow - mapHeight);
+    // Keep the leader close to its station while preventing fractional clipping at map edges.
+    callout.marker.setOffset([0, -ANCHOR_OFFSET_PX + topOverflow - bottomOverflow]);
   });
 }
 

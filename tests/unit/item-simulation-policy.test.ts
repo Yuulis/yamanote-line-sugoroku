@@ -79,31 +79,75 @@ describe("round-3 production policy adapter", () => {
     expect({ ...full, saveChecks: {} }).toEqual(trimmed);
   }, 10000);
 
-  it("keeps the test-only legacy config identical to the current product config", () => {
-    expect(LEGACY_ITEM_CONFIG).toEqual(ITEM_GAME_CONFIG);
+  it("keeps the test-only simulation config equal to the frozen legacy rules literal", () => {
+    expect(LEGACY_ITEM_CONFIG).toEqual({
+      rulesetVersion: "tokyo-suburban-items-1",
+      targetServiceId: "jr-yamanote",
+      startStationId: "shimbashi",
+      targetDirection: 1,
+      goalArrivalPolicy: "truncate-on-target-service",
+      serviceLottery: { kindWeights: { local: 1, rapid: 1 }, target: { kind: "share", numerator: 1, denominator: 2 } },
+      directionLottery: { towardTargetWeight: 3, awayFromTargetWeight: 2 },
+      itemPolicy: {
+        dropChancePerMille: 300,
+        harmfulChancePercent: 30,
+        inventoryCapacity: 3,
+        maxActiveItemsPerTurn: 1,
+        delayTurns: 3,
+        suspensionTurns: 5,
+        fullInventoryPolicy: "player-chooses-discard",
+        beneficialKinds: ["route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate"],
+        beneficialWeights: [1, 1, 1, 1, 1, 1, 1],
+        harmfulKinds: ["delay", "suspension", "detour", "oversleep"],
+      },
+    });
+    expect(LEGACY_SIMULATION_CONFIG.gameConfig).toEqual(LEGACY_ITEM_CONFIG);
+    expect(PRODUCT_SIMULATION_CONFIG.gameConfig).toEqual(ITEM_GAME_CONFIG);
     expect(LEGACY_SIMULATION_CONFIG.maxFace).toBe(6);
     expect(PRODUCT_SIMULATION_CONFIG.maxFace).toBeUndefined();
   });
 
-  it("keeps both chooser paths within the temporary 1..6 face bound", () => {
-    let revealed: ItemGameState | null = null;
-    for (let index = 0; index < 100 && revealed === null; index += 1) {
-      const candidate = engine.beginItemTurn(stateWith(["roll-adjust"], `s1m-20261012-${index}`), { items: [] }, network).state;
-      if (candidate.pending?.kind === "roll" && candidate.pending.rawRoll === 6) revealed = candidate;
-    }
-    if (revealed === null) throw new Error("Could not find a seeded six for the adjustment boundary test");
+  it("lets the product chooser reach face 7 and 9 while legacy stays capped at six", () => {
+    const pendingWith = (kind: "roll-adjust" | "roll-adjust-3", suffix: string): ItemGameState => {
+      for (let index = 0; index < 100; index += 1) {
+        const base = engine.createItemGame(PRODUCT_SIMULATION_CONFIG.gameConfig, `${suffix}-${index}`, network);
+        const held = { ...base, inventory: [{ id: "test-adjust", kind }] };
+        const candidate = engine.beginItemTurn(held, { items: [] }, network).state;
+        if (candidate.pending?.kind === "roll" && candidate.pending.rawRoll === 6) return candidate;
+      }
+      throw new Error(`Could not find a seeded six for ${kind}`);
+    };
     let productRng = "";
     for (let index = 0; index < 100 && productRng === ""; index += 1) {
-      const candidate = engine.seedRng(`item-policy-max-face-${index}`);
+      const candidate = engine.seedRng(`item-policy-positive-adjust-${index}`);
       if (engine.drawIndex(candidate, 2).index === 1) productRng = candidate;
     }
-    if (productRng === "") throw new Error("Could not find a policy seed that chooses +1");
+    if (productRng === "") throw new Error("Could not find a policy seed that chooses a positive adjustment");
 
-    const legacy = chooseAdjustment(revealed, network, "random", true, productRng, { maxFace: LEGACY_SIMULATION_CONFIG.maxFace });
-    const product = chooseAdjustment(revealed, network, "random", true, productRng, { maxFace: PRODUCT_SIMULATION_CONFIG.maxFace });
-    expect(legacy.adjustment).toEqual({ instanceId: "test-0", delta: -1 });
-    expect(product.adjustment).toEqual({ instanceId: "test-0", delta: -1 });
+    const plusOne = chooseAdjustment(pendingWith("roll-adjust", "product-plus-one"), network, "random", true, productRng,
+      { maxFace: PRODUCT_SIMULATION_CONFIG.maxFace });
+    const plusThree = chooseAdjustment(pendingWith("roll-adjust-3", "product-plus-three"), network, "random", true, productRng,
+      { maxFace: PRODUCT_SIMULATION_CONFIG.maxFace });
+    const legacyState = engine.createItemGame(LEGACY_SIMULATION_CONFIG.gameConfig, "legacy-boundary", network);
+    const legacyPending = (() => {
+      for (let index = 0; index < 100; index += 1) {
+        const base = engine.createItemGame(LEGACY_SIMULATION_CONFIG.gameConfig, `legacy-boundary-${index}`, network);
+        const held = { ...base, inventory: [{ id: "test-adjust", kind: "roll-adjust" as const }] };
+        const candidate = engine.beginItemTurn(held, { items: [] }, network).state;
+        if (candidate.pending?.kind === "roll" && candidate.pending.rawRoll === 6) return candidate;
+      }
+      throw new Error("Could not find a seeded legacy six");
+    })();
+    expect(legacyState.turn).toBe(0);
+    const legacy = chooseAdjustment(legacyPending, network, "random", true, productRng, { maxFace: LEGACY_SIMULATION_CONFIG.maxFace });
+    expect(plusOne.adjustment).toEqual({ instanceId: "test-adjust", delta: 1 });
+    expect(legacyPending.pending?.kind === "roll" ? legacyPending.pending.rawRoll + legacy.adjustment!.delta : null).toBe(5);
+    expect(plusThree.adjustment).toEqual({ instanceId: "test-adjust", delta: 3 });
+    const randomAdjustmentRng = engine.drawIndex(productRng, 2).nextRngState;
+    expect(plusOne.rng).toBe(randomAdjustmentRng);
+    expect(plusThree.rng).toBe(randomAdjustmentRng);
     expect(legacy.rng).toBe(productRng);
-    expect(product.rng).toBe(productRng);
+    expect(6 + plusOne.adjustment!.delta).toBe(7);
+    expect(6 + plusThree.adjustment!.delta).toBe(9);
   });
 });

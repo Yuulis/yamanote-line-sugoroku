@@ -63,7 +63,7 @@ const action = tagged("kind", Object.fromEntries(["route-ticket", "direction-tic
     ...(kind === "direction-ticket" ? { direction } : {}) }),
 ])));
 const command = object({ items: array(action) });
-const adjustment = object({ instanceId: id, delta: oneOf(-1, 1) });
+const adjustment = object({ instanceId: id, delta: oneOf(-3, -2, -1, 1, 2, 3) });
 const snapshot = object({ stationId: string, suspensionIgnored: boolean, detourConsumed: boolean,
   services: array(object({ serviceId: string, weight: integer(1), directions: array(direction), directionWeights: array(integer(1)) })) });
 const harmful = oneOf(...HARMFUL_ITEM_KINDS);
@@ -89,7 +89,7 @@ const commonRecord = {
 };
 export const itemRecordShape: Shape = tagged("kind", {
   "item-ride": object({ ...commonRecord, kind: oneOf("item-ride"), resolvedRide: ride,
-    rawRoll: integer(1, 6), effectiveFace: integer(1, 6), adjustment: nullable(adjustment),
+    rawRoll: integer(1, 6), effectiveFace: integer(1), adjustment: nullable(adjustment),
     movementMode: oneOf("normal", "rapid", "oversleep"), pips: integer(), hopBudget: integer(), physicalHops: integer(), unusedPips: integer(),
     stopReason: oneOf("roll", "goal", "endpoint") }),
   deadhead: object({ ...commonRecord, kind: oneOf("deadhead"), resolvedRide: oneOf(null), rawRoll: oneOf(null), effectiveFace: oneOf(null),

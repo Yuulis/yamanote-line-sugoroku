@@ -5,6 +5,7 @@ import type { ItemGameState, ItemRollAdjustment, ItemRideRecord } from "../../sr
 import { expect, test } from "./fixtures";
 import { seedGameSettings } from "./support/settings";
 import { itemScenario } from "./fixtures/itemScenarios";
+import { isRollAdjustKind } from "../../src/features/game/itemRollAdjust";
 import { PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import {
   combinedMomentGame,
@@ -91,7 +92,7 @@ async function chooseAdjustment(page: Page, base: ItemGameState): Promise<ItemRo
   const plus = adjustmentDialog(page).getByRole("radio", { name: /^\+1/ });
   const delta = await plus.count() > 0 ? 1 : -1;
   await adjustmentDialog(page).getByRole("radio", { name: delta > 0 ? /^\+1/ : /^−1/ }).check();
-  const ticket = base.inventory.find((item) => item.kind === "roll-adjust");
+  const ticket = base.inventory.find((item) => isRollAdjustKind(item.kind));
   if (!ticket) throw new Error("the adjust scenario has no adjustment ticket");
   return { instanceId: ticket.id, delta };
 }
@@ -341,7 +342,7 @@ async function playDiscardTurnToPickup(page: Page, bundle: RailwayBundle): Promi
   await clickDice(page);
   await advanceTumble(page);
   const adjustDialog = adjustmentDialog(page);
-  if (base.inventory.some((item) => item.kind === "roll-adjust")) {
+  if (base.inventory.some((item) => isRollAdjustKind(item.kind))) {
     await expect(adjustDialog).toBeVisible();
     await adjustDialog.getByRole("button", { name: "そのまま続ける" }).click();
   }

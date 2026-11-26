@@ -98,7 +98,7 @@ function structuralTurn(state: ItemGameState, record: ItemTurnRecord, network: R
         invalidSave("Adjustment magnitude does not match the owned item");
       }
       face += adjustment.delta;
-      if (!isAdjustedFaceInRange(face)) invalidSave("Adjusted roll is outside 1-6");
+      if (!isAdjustedFaceInRange(face)) invalidSave("Adjusted face must be an integer >= 1");
       const consumed = consumeInventoryInstance(prepared.inventory, record.adjustment.instanceId);
       prepared.inventory = consumed.inventory;
       prepared.events.push(...consumed.events);

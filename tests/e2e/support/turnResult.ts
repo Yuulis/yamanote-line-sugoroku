@@ -4,6 +4,7 @@ import { deriveTurnResult, replayTurnResultHistory } from "../../../src/features
 import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame, targetSegmentIds, type RailwayNetwork }
   from "../../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
+import { isRollAdjustKind } from "../../../src/features/game/itemRollAdjust";
 import type { ItemGameState, ItemTurnRecord } from "../../../src/types/network";
 import { FIXTURE_GAME_SEED, PRODUCT_HISTORY_GAME_SEED, PRODUCT_HISTORY_SCENARIO_TURNS } from "../fixtures/seeds";
 import { expect, type Page } from "@playwright/test";
@@ -66,7 +67,7 @@ export function findTargetTurn(start: ItemGameState, network: RailwayNetwork): T
     const record: ItemTurnRecord | undefined = after.movementHistory.at(-1);
     if (!record) throw new Error(`Replay turn ${after.turn} has no completed record`);
     const facts = replayTurnResultHistory(after.movementHistory, record.turn, targets, after.config.targetServiceId, presentation);
-    const hasAdjustmentChoice: boolean = before.inventory.some((item) => item.kind === "roll-adjust");
+    const hasAdjustmentChoice: boolean = before.inventory.some((item) => isRollAdjustKind(item.kind));
     const hasDiscardChoice: boolean = record.itemEvents.some((event) => event.type === "pickup-pending-discard");
     const predicates = { turn: record.turn, newTargetSegmentCount: facts.newTargetSegmentCount,
       noAdjustment: !hasAdjustmentChoice && (record.kind !== "item-ride" || record.adjustment === null),
@@ -128,7 +129,7 @@ export function replayTwoManualRolls(network: RailwayNetwork): ManualRollReplay 
       turn: before.turn,
       restoredRecord: before.movementHistory.length > 0,
       restoredPending: before.pending?.kind ?? null,
-      noAdjustment: ![before, firstResult.state].some((game) => game.inventory.some((item) => item.kind === "roll-adjust")),
+      noAdjustment: ![before, firstResult.state].some((game) => game.inventory.some((item) => isRollAdjustKind(item.kind))),
       secondPlayed: secondResult !== null,
       pending: [firstResult.state.pending?.kind ?? null, secondResult?.state.pending?.kind ?? null],
       status: [firstResult.state.status, secondResult?.state.status ?? null],

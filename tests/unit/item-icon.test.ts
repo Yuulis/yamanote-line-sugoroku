@@ -17,8 +17,9 @@ describe("ItemIcon", () => {
       expect(document.querySelectorAll("svg"), kind).toHaveLength(1);
       expect(svg?.getAttribute("aria-hidden"), kind).toBe("true");
       expect(svg?.getAttribute("focusable"), kind).toBe("false");
-      expect(svg?.textContent, kind).toBe("");
-      expect(document.querySelector("[id], title, text, use, image, [href], [xlink\\:href]"), kind).toBeNull();
+      expect(svg?.textContent, kind).toBe(kind === "roll-adjust-2" ? "±2" : kind === "roll-adjust-3" ? "±3" : "");
+      expect(document.querySelector("[id], title, use, image, [href], [xlink\\:href]"), kind).toBeNull();
+      expect(svg?.querySelectorAll("text"), kind).toHaveLength(kind === "roll-adjust-2" || kind === "roll-adjust-3" ? 1 : 0);
       expect(svg?.querySelectorAll("path, circle, rect").length, kind).toBeGreaterThan(0);
       expect(svg?.querySelectorAll(".item-icon__accent, .item-icon__accent-stroke").length, kind).toBeGreaterThan(0);
     }

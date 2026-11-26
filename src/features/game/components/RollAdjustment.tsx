@@ -72,7 +72,7 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
     ...decision.choices.filter(({ delta }) => delta > 0).map(({ delta }) => delta),
   ];
   const magnitudes = [...new Set(decision.choices.map(({ delta }) => Math.abs(delta)))].sort((left, right) => left - right);
-  const adjustmentHint = `${magnitudes.map((magnitude) => `±${magnitude}`).join("・")}を選ぶと出目調整券を1枚使います。`;
+  const adjustmentHint = `${magnitudes.map((magnitude) => `±${magnitude}`).join("・")}を選ぶと、同じ数字の出目調整券を1枚使います。`;
 
   return (
     <dialog ref={dialogRef} className="dialog item-dialog item-adjustment" aria-labelledby={titleId}>

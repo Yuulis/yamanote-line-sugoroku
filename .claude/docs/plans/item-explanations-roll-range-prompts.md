@@ -266,3 +266,112 @@ npx playwright test tests/e2e/accessibility.spec.ts --project=desktop-chromium -
 Output (markdown): changed files (one line each); the new decision contract (`choices` shape) and
 where kind ↔ |delta| and the face bounds are validated; any user-visible string changed
 (expected: none); acceptance results with counts; any assertion edited (before/after, why); risks.
+
+## Step 2.3 — implement
+
+Objective: implement Step 2.3 of `.claude/docs/plans/item-explanations-roll-range-plan.md`
+(ruleset switch: 出目調整券±2/±3 as new kinds, no upper bound on the adjusted face, weighted
+beneficial drops, ruleset `tokyo-suburban-items-2`, SAVE_VERSION 5, regenerated fixtures, docs)
+as ONE uncommitted step.
+
+Scope:
+- IN: the whole "Step 2.3" section of the plan INCLUDING the paragraph "Added after the 2.1
+  review" (remove the temporary `supportedMaxFace: 6` cap in
+  `tests/simulation/item-engine/runner.ts`; boundary test on the real `PRODUCT_SIMULATION_CONFIG`
+  asserting 6→7 and 6+3→9 are reachable; the legacy-config identity test becomes an assertion
+  against the frozen legacy literal). Decisions D1, D2, D3, D11 and user decisions (plan §2/§7),
+  all final:
+  - three separate kinds; a ±N ticket offers exactly −N and +N; adjusted face ≥ 1, no upper
+    bound (remove `MAX_ADJUSTED_FACE`).
+  - weights: six other beneficial kinds 6 each, ±1/±2/±3 = 3/2/1; 300‰ drop chance and 30%
+    harmful share unchanged.
+  - names (C4): 「出目調整券±1」「出目調整券±2」「出目調整券±3」; short 「調整±1」「調整±2」「調整±3」;
+    effect 「出目を見てから、出目にNを足すか引くかできる（1より小さくはできない）」.
+  - old v4 save in the same data version (C5): 「ゲームのルールが変わったため、このセーブデータは続きから遊べません。」;
+    historical classic v4 keeps 「路線データが更新されたため…」; other unsupported versions keep
+    「このバージョンでは読み込めない形式のセーブデータです。」; malformed stays 「壊れている」.
+- OUT: drop chance, harmful share, any new item kind besides the two tickets, DESIGN.md,
+  STATE.md, the plan file. No new dependencies. Do not commit or push.
+- Hard constraints: do not weaken, skip or delete assertions (fixture regeneration and
+  v4→v5 / name changes per C4 are expected — list each); historical fixtures keep their bytes;
+  the frozen spike `tests/simulation/item-spike/` is untouched; the legacy sim config keeps
+  passing frozen parity (seven explicit equal weights). Phone decision sheet with 7 choices:
+  every choice visible, ≥ 44px, sheet ≤ 45% of the viewport — if that cannot hold, STOP and
+  report measurements instead of loosening thresholds.
+
+Context: Steps 2.1 (7248632) and 2.2 (2a37bf7) landed: `choices: {delta, instanceId}[]`
+contract, `src/features/game/itemRollAdjust.ts` (`ROLL_ADJUST_MAGNITUDE`, `legalAdjustments`,
+temporary `MAX_ADJUSTED_FACE = 6`), sim `LEGACY_SIMULATION_CONFIG` / `PRODUCT_SIMULATION_CONFIG`.
+PR1 made the adjustment dialog non-modal. Fixture regeneration command:
+`tests/e2e/fixtures/README.md`. Research map:
+`.claude/docs/research/feature-item-explanations-and-roll-adjustment-range-codebase.md`.
+Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (iterate with --grep on one project; do NOT run the whole E2E suite or other
+browsers; LOCAL_WORKERS 2; never `pkill -f`):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/engine-items.test.ts tests/unit/engine-item-turn.test.ts tests/unit/engine-save.test.ts tests/unit/engine-save-v2.test.ts tests/unit/engine-save-v3.test.ts tests/unit/engine-save-v4.test.ts tests/unit/engine-game.test.ts tests/unit/persistence.test.ts tests/unit/engine-policy-config.test.ts tests/unit/edition-registry.test.ts tests/unit/game-session-items.test.ts tests/unit/item-controls.test.ts tests/unit/item-presentation.test.ts tests/unit/rules-guide.test.ts tests/unit/e2e-fixture-seeds.test.ts tests/unit/real-data-e2e-scenarios.test.ts tests/unit/item-simulation-policy.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/items.spec.ts tests/e2e/save-errors.spec.ts --project=desktop-chromium --grep "adjust|decision sheet|map failure keeps|unsupported format|historical classic v4"
+npx playwright test tests/e2e/turn-result-card.spec.ts tests/e2e/resume.spec.ts --project=desktop-chromium --grep "adjust"
+npx playwright test tests/e2e/items.spec.ts --project=phone-chromium --grep "decision sheet fit|roll adjustment landing map preview"
+ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=100 npm run sim -- tests/simulation/item-engine
+```
+
+Also grep tests/e2e for `roll-adjust`, `出目調整券`, `tokyo-suburban-items-1` and `SAVE_VERSION`/`version: 4`
+and run the affected specs with `--grep` on desktop-chromium.
+
+Output (markdown): changed files grouped (rules/persistence, UI, sim, fixtures, docs, tests);
+seeds that drifted and the new `adjust-wide` seed; the exact user-visible strings added/changed;
+phone 7-choice sheet measurements at 320×568 and 390×844; acceptance results with counts and the
+100-game product/legacy sim summary; every assertion edited (before/after, why); risks.
+
+## Step 2.3 — fix after Sol review (CHANGES)
+
+Objective: fix the blocking findings of the Sol review of the uncommitted Step 2.3 diff (ruleset
+switch: ±2/±3 tickets, weights, save v5) without changing anything else. The rest of Step 2.3 is
+done and green (typecheck, vitest, build, E2E acceptance, 5,000-game sim) — keep it that way.
+
+Blocking:
+1. `src/features/game/engine/save.ts` (~:366 `sameConfig` / `sameList`): `beneficialWeights` are
+   not compared, so a v5 save with different draw weights passes `expectedConfig`. Make `sameList`
+   work for number arrays and compare the weights in order. Regression test: a v5 save whose
+   config differs only in weights is rejected like any other config mismatch.
+2. `src/features/game/engine/config.ts` (~:114): weights validation uses `map`, which skips holes,
+   so a sparse array of the right length passes and fails later at draw time. Validate every
+   index (positive integer, length = kinds). Regression test with a sparse array.
+3. `src/features/game/engine/save.ts` (~:151): the v4 peek compares `dataVersion` without checking
+   it is a string, so `{"saveVersion":4}` is classified as "路線データ更新". Validate it as a
+   string first: same current dataVersion → rules-changed problem; a different valid string →
+   data-version problem (historical classic v4 unchanged); missing/invalid → the generic
+   unsupported/malformed path (choose the existing problem that matches today's behaviour for a
+   malformed envelope; say which). Regression tests for missing and non-string dataVersion.
+
+Non-blocking (do these too):
+4. `tests/unit/fixtures/current-product-records.json` (new, untracked) must be produced by the
+   existing regeneration script `tests/e2e/fixtures/regenerate-saves.ts` (~:31) so the command in
+   `tests/e2e/fixtures/README.md` regenerates it; verify the regenerated bytes equal the current
+   file.
+5. `docs/manual/tokyo-suburban/rules.md:18`: state that the six ordinary beneficial kinds have
+   weight 6 each (so the 3/2/1 ticket ratio reads correctly).
+6. `tests/e2e/fixtures/README.md` (~:41): the "seeded turn-41 restore" text must match the current
+   test (a v4 save now yields RULES_VERSION_MISMATCH even with the old data version).
+
+Constraints: no other changes; do not weaken or remove assertions; do not commit or push;
+LOCAL_WORKERS 2; never `pkill -f`; no full E2E suite or other browsers.
+
+Acceptance:
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/engine-save.test.ts tests/unit/engine-save-v4.test.ts tests/unit/engine-policy-config.test.ts tests/unit/persistence.test.ts tests/unit/real-data-e2e-scenarios.test.ts tests/unit/e2e-fixture-seeds.test.ts
+npx vitest run
+npx playwright test tests/e2e/save-errors.spec.ts --project=desktop-chromium
+```
+
+Output (markdown): changed files and what changed; the classification table for v4 envelopes
+(current dataVersion / other string / missing / non-string → problem + copy); regeneration
+check result for item 4; acceptance results with counts.

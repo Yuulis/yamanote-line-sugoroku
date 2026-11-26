@@ -1,9 +1,10 @@
 import type { Page } from "@playwright/test";
 import type { ItemGameState } from "../../src/types/network";
-import { playItemTurn, serializeGame } from "../../src/features/game/engine";
+import { beginItemTurn, finishItemTurn, playItemTurn, serializeGame } from "../../src/features/game/engine";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { advance } from "../../src/features/game/engine/movement";
 import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
+import { legalAdjustments } from "../../src/features/game/itemRollAdjust";
 import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
@@ -41,9 +42,6 @@ interface PreviewRect {
 
 const ORIGIN_MARKER_HALF_SIZE_PX = 15;
 const VIEWPORT_TOLERANCE_PX = 1;
-const MIN_DIE_FACE = 1;
-const MAX_DIE_FACE = 6;
-const ADJUSTMENT_DELTAS = [-1, 0, 1] as const;
 
 async function expectPreviewGeometryVisible(page: Page, expectedCalloutCount: number): Promise<void> {
   const geometry = await page.evaluate(async ({ markerSourceId, markerHalfSize }) => {
@@ -206,7 +204,7 @@ function notices(page: Page) {
 test("the default edition starts an item game without a rules picker", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "はじめから" }).click();
-  expect((await itemSave(page)).config.rulesetVersion).toBe("tokyo-suburban-items-1");
+  expect((await itemSave(page)).config.rulesetVersion).toBe("tokyo-suburban-items-2");
   await expect(page.getByRole("heading", { name: "アイテム（3枠）" })).toBeVisible();
   await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
   await expect(gamePanel(page).getByRole("status")).toContainText("サイコロを振れます");
@@ -408,12 +406,13 @@ test("roll adjustment landing map preview", { tag: "@layout" }, async ({ page, r
     currentServiceId: resolvedRide.serviceId,
     direction: resolvedRide.direction,
   };
-  const expectedLandings = ADJUSTMENT_DELTAS.map((delta) => {
-    const pips = Math.max(1, rawRoll + delta);
+  const legalDeltas = legalAdjustments(rawRoll, pendingGame.inventory).map(({ delta }) => delta);
+  const expectedLandings = [...legalDeltas.filter((delta) => delta < 0), 0, ...legalDeltas.filter((delta) => delta > 0)].map((delta) => {
+    const pips = rawRoll + delta;
     const landing = advance(previewPosition, pips, railwayBundle.network);
     const station = railwayBundle.network.stationsById.get(landing.stationId);
     if (!station) throw new Error(`Missing landing station ${landing.stationId}`);
-    const label = delta === 0 ? "そのまま" : delta === -1 ? "−1" : "+1";
+    const label = delta === 0 ? "そのまま" : delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`;
     const separator = (page.viewportSize()?.width ?? 0) <= 600 ? " ：" : "：";
     return {
       accessibleName: `${label}${separator}出目 ${pips}、${landing.traversedSegmentIds.length}マス進む → ${station.name}`,
@@ -492,6 +491,78 @@ test("roll adjustment landing map preview", { tag: "@layout" }, async ({ page, r
   await openGameMenu(page);
   await expect(gamePanel(page).getByRole("button", { name: "追尾: ON", exact: true })).toBeVisible();
   await expect(page.locator("[data-map-adjustment-callout]")).toHaveCount(0);
+});
+
+test("adjust-wide uses +3 above six without truncating the ride", async ({ page, railwayBundle }) => {
+  const base = await scenario(page, railwayBundle, "adjust-wide");
+  expect(new Set(base.inventory.map((item) => item.kind))).toEqual(new Set([
+    "roll-adjust", "roll-adjust-2", "roll-adjust-3",
+  ]));
+  const pending = beginItemTurn(base, { items: [] }, railwayBundle.network).state.pending;
+  if (pending?.kind !== "roll") throw new Error("Expected an actionable adjustment roll");
+  expect(pending.rawRoll).toBeGreaterThanOrEqual(4);
+  const ticket = base.inventory.find((item) => item.kind === "roll-adjust-3");
+  if (!ticket) throw new Error("Expected the +3 adjustment ticket");
+  const adjusted = finishItemTurn({ ...base, pending }, { instanceId: ticket.id, delta: 3 }, railwayBundle.network);
+  expect(adjusted.record).toMatchObject({
+    kind: "item-ride", rawRoll: pending.rawRoll, effectiveFace: pending.rawRoll + 3,
+    pips: pending.rawRoll + 3, physicalHops: pending.rawRoll + 3, stopReason: "roll", unusedPips: 0,
+  });
+
+  await diceButton(page).click();
+  const dialog = page.getByRole("dialog", { name: "出目を調整しますか？" });
+  await expect(dialog.getByRole("radio", { name: /\+3/ })).toBeVisible();
+  const livePending = await itemSave(page);
+  if (livePending.pending?.kind !== "roll") throw new Error("Expected the browser's pending adjustment roll");
+  await dialog.getByRole("radio", { name: /\+3/ }).check();
+  await dialog.getByRole("button", { name: `出目${livePending.pending.rawRoll + 3}で続ける` }).click();
+  const record = (await itemSave(page)).movementHistory.at(-1)!;
+  expect(record).toMatchObject({
+    kind: "item-ride", rawRoll: livePending.pending.rawRoll, effectiveFace: livePending.pending.rawRoll + 3,
+    pips: livePending.pending.rawRoll + 3, physicalHops: livePending.pending.rawRoll + 3, stopReason: "roll", unusedPips: 0,
+    adjustment: { delta: 3 },
+  });
+  await expect(panelStat(page, "出目")).toContainText(`${record.pips}マス`);
+  await openGameLog(page);
+  await expect(notices(page)).toContainText(`アイテム出目調整券±3を使いました`);
+  await expect(page.getByTitle(`出目調整券±3を使いました（出目${record.rawRoll} → ${record.effectiveFace}）`)).toBeVisible();
+});
+
+test("decision sheet fit", { tag: "@layout" }, async ({ page, railwayBundle }) => {
+  const measurements = [] as { viewport: string; sheetHeight: number; maxSheetHeight: number; choices: { width: number; height: number; top: number; bottom: number }[] }[];
+  for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    const base = await scenario(page, railwayBundle, "adjust-wide");
+    expect(new Set(base.inventory.map((item) => item.kind))).toEqual(new Set([
+      "roll-adjust", "roll-adjust-2", "roll-adjust-3",
+    ]));
+    await diceButton(page).click();
+    const dialog = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("radio")).toHaveCount(7);
+    const measured = await dialog.evaluate((element) => {
+      const sheet = element.getBoundingClientRect();
+      const choices = [...element.querySelectorAll<HTMLElement>(".item-adjustment__choice")].map((choice) => {
+        const rect = choice.getBoundingClientRect();
+        return { width: rect.width, height: rect.height, top: rect.top, bottom: rect.bottom };
+      });
+      return { sheetTop: sheet.top, sheetHeight: sheet.height, maxSheetHeight: window.innerHeight * 0.45, choices };
+    });
+    measurements.push({ viewport: `${viewport.width}×${viewport.height}`, sheetHeight: measured.sheetHeight,
+      maxSheetHeight: measured.maxSheetHeight, choices: measured.choices });
+    console.info("decision sheet measurement", JSON.stringify(measurements.at(-1)));
+    expect(measured.sheetHeight, `${viewport.width}×${viewport.height}: sheet height`).toBeLessThanOrEqual(measured.maxSheetHeight);
+    for (const [index, choice] of measured.choices.entries()) {
+      await expect(dialog.locator(".item-adjustment__choice").nth(index)).toBeVisible();
+      expect(choice.width, `${viewport.width}×${viewport.height}: choice ${index + 1} width`).toBeGreaterThanOrEqual(44);
+      expect(choice.height, `${viewport.width}×${viewport.height}: choice ${index + 1} height`).toBeGreaterThanOrEqual(44);
+      expect(choice.top, `${viewport.width}×${viewport.height}: choice ${index + 1} starts in sheet`).toBeGreaterThanOrEqual(measured.sheetTop);
+      expect(choice.bottom, `${viewport.width}×${viewport.height}: choice ${index + 1} ends in sheet`).toBeLessThanOrEqual(measured.sheetTop + measured.sheetHeight);
+      expect(choice.top, `${viewport.width}×${viewport.height}: choice ${index + 1} starts in viewport`).toBeGreaterThanOrEqual(0);
+      expect(choice.bottom, `${viewport.width}×${viewport.height}: choice ${index + 1} ends in viewport`).toBeLessThanOrEqual(viewport.height);
+    }
+    await dialog.getByRole("button", { name: "そのまま続ける" }).click();
+  }
 });
 
 test("full inventory survives reload and reports the player's chosen discard", async ({ page, railwayBundle }) => {
@@ -646,9 +717,10 @@ for (const name of ["route", "direction", "adjust", "discard"] as const) {
       const pendingGame = await itemSave(page);
       const pendingRoll = pendingGame.pending;
       if (pendingRoll?.kind !== "roll") throw new Error("Expected the pending roll adjustment");
-      const expectedLandingNames = ADJUSTMENT_DELTAS.flatMap((delta) => {
+      const expectedLandingNames = [...legalAdjustments(pendingRoll.rawRoll, pendingGame.inventory).map(({ delta }) => delta), 0]
+        .sort((left, right) => left - right)
+        .map((delta) => {
         const pips = pendingRoll.rawRoll + delta;
-        if (pips < MIN_DIE_FACE || pips > MAX_DIE_FACE) return [];
         const landing = advance({
           ...base,
           currentServiceId: pendingRoll.resolvedRide.serviceId,
@@ -656,7 +728,7 @@ for (const name of ["route", "direction", "adjust", "discard"] as const) {
         }, pips, railwayBundle.network);
         const station = railwayBundle.network.stationsById.get(landing.stationId);
         if (!station) throw new Error(`Missing landing station ${landing.stationId}`);
-        return [station.name];
+        return station.name;
       });
       const radios = dialog.getByRole("radio");
       await expect(radios).toHaveCount(expectedLandingNames.length);

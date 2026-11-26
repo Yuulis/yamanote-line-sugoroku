@@ -454,7 +454,7 @@ describe("item progress in GameApp", () => {
 
   it("pauses a live toast through the roll-adjustment decision", () => {
     vi.useFakeTimers();
-    openApp(gameBefore(ITEM_SCENARIOS.adjust.seed, ITEM_SCENARIOS.adjust.turn - 1));
+    openApp(gameBefore(ITEM_SCENARIOS["adjust-toast"].seed, ITEM_SCENARIOS["adjust-toast"].turn - 1));
     const toastText = rollUntilToast();
     advanceTime(1500);
     click("サイコロを振る");

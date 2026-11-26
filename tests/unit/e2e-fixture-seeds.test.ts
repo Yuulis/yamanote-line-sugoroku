@@ -1,11 +1,13 @@
 import { createGame, playTurn, type ProductTurnResult } from "../e2e/fixtures/productGame";
 import { describe, expect, it } from "vitest";
-import { restoreGame, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
+import { beginItemTurn, finishItemTurn, restoreGame, rollDie, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { resumeSession, reduceGameSession, startSession } from "../../src/features/game/gameSession";
 import { displayedRide, landingText, lastRollText } from "../../src/features/game/presentation";
 import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
 import { loadBundle } from "../e2e/fixtures/bundle";
+import { itemScenario } from "../e2e/fixtures/itemScenarios";
+import { legalAdjustments } from "../../src/features/game/itemRollAdjust";
 import {
   FIXTURE_GAME_SEED,
   FIXTURE_SCENARIO_TURNS,
@@ -155,6 +157,26 @@ describe("pinned legacy browser-fixture trajectory", () => {
 });
 
 describe("pinned production browser-fixture trajectory", () => {
+  it("pins adjust-wide to three tickets, seven choices, and an untruncated +3 ride above six", () => {
+    const before = itemScenario("adjust-wide", network);
+    expect(before).toMatchObject({ turn: 5, rngSeed: "0000000000000000000000000000560b" });
+    expect(new Set(before.inventory.map((item) => item.kind))).toEqual(new Set([
+      "roll-adjust", "roll-adjust-2", "roll-adjust-3",
+    ]));
+    expect(legalAdjustments(rollDie(before.rngState).value, before.inventory)).toHaveLength(6);
+
+    const pending = beginItemTurn(before, { items: [] }, network).state;
+    if (pending.pending?.kind !== "roll") throw new Error("Expected an actionable adjustment roll");
+    expect(pending.pending.rawRoll).toBeGreaterThanOrEqual(4);
+    const ticket = before.inventory.find((item) => item.kind === "roll-adjust-3")!;
+    const adjusted = finishItemTurn(pending, { instanceId: ticket.id, delta: 3 }, network).record;
+    expect(adjusted).toMatchObject({
+      kind: "item-ride", rawRoll: pending.pending.rawRoll, effectiveFace: pending.pending.rawRoll + 3,
+      pips: pending.pending.rawRoll + 3, physicalHops: pending.pending.rawRoll + 3,
+      stopReason: "roll", unusedPips: 0,
+    });
+  });
+
   it("selects the first ascending-search seed proved by the production engine", () => {
     expect(productionFixture.seed).toBe(FIXTURE_GAME_SEED);
     expect(FIXTURE_GAME_SEED).toBe("000000000000000000000000000005ff");

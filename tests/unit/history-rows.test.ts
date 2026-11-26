@@ -121,8 +121,8 @@ describe("history rows from an item save", () => {
       { kind: "item", label: "アイテム", text: "快速券を使いました" },
     ]);
     const doubled = useItem("double", "double");
-    expect(doubled.rollText).toBe("出目1・倍速");
-    expect(doubled.moveText).toContain("（2駅）");
+    expect(doubled.rollText).toBe("出目6・倍速");
+    expect(doubled.moveText).toContain("（12駅）");
   });
 
   it("shows the adjusted die from the saved adjustment", () => {
@@ -141,12 +141,12 @@ describe("history rows from an item save", () => {
     expect(row.adjusted).toBe(true);
     expect(row.effectKinds).toEqual(["roll-adjust"]);
     expect(row.effectText).toBe("");
-    expect(row.notes.map((note) => note.text)).toContain("出目調整券を使いました");
+    expect(row.notes.map((note) => note.text)).toContain("出目調整券±1を使いました");
   });
 
   it("shows a deadhead without a roll or a line, resolving both stations", () => {
     expect(useItem("deadhead", "deadhead")).toEqual({
-      kind: "deadhead", recordIndex: 0, turn: 5, turnText: "5ターン目", rawRoll: null, effectiveRoll: null, adjusted: false,
+      kind: "deadhead", recordIndex: 0, turn: 9, turnText: "9ターン目", rawRoll: null, effectiveRoll: null, adjusted: false,
       effectKinds: ["deadhead"], effectText: "回送", fromStationName: "大森", toStationName: "品川", hopCount: 0,
       lineName: null, directionText: null, rollText: "回送", moveText: "大森 → 品川（0駅）", lineText: null,
       notes: [

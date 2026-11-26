@@ -151,14 +151,18 @@ describe("canonical item event toast conversion", () => {
   });
 
   it.each([
-    ["route", "pickup-retained", "good", "rapid", "快速券を手に入れた！", undefined],
+    ["route", "pickup-retained", "good", "route-ticket", "路線指定券を手に入れた！", undefined],
     ["discard", "pickup-pending-discard", "good", "delay-certificate", "遅延証明書を手に入れた！", undefined],
-    ["certificate", "cancelled-by-certificate", "good", "delay-certificate", "遅延証明書で寝過ごしを打ち消した", undefined],
+    ["certificate", "cancelled-by-certificate", "good", "delay-certificate", "遅延証明書で運休を打ち消した", undefined],
     ["delay", "harmful-scheduled", "bad", "delay", "遅延を拾ってしまった！", "3ターン後の出目が1になります"],
-    ["adjust", "harmful-scheduled", "bad", "oversleep", "寝過ごしを拾ってしまった！", "次のターンは終点まで進みます（環状線は6駅）"],
+    ["adjust-harmful", "harmful-scheduled", "bad", "suspension", "山手線が運休！", "あと5ターン、この路線に乗れません"],
     ["oversleep", "effect-activated", "bad", "oversleep", "寝過ごしが発動！", undefined],
   ] as const)("converts the engine-generated %s turn into a %s toast", (name, type, tone, itemKind, expectedText, detail) => {
-    const record = arrivedRecord(playItemTurn(itemScenario(name, network), {}, network).state);
+    const base = itemScenario(name, network);
+    const result = name === "adjust-harmful"
+      ? playItemTurn(base, { adjustment: { instanceId: base.inventory.find((item) => item.kind === "roll-adjust")!.id, delta: -1 } }, network)
+      : playItemTurn(base, {}, network);
+    const record = arrivedRecord(result.state);
     const eventIndex = record.itemEvents.findIndex((event) => event.type === type);
     expect(eventIndex).toBeGreaterThanOrEqual(0);
     const converted = turnToasts(5, itemLastMove(record, network), network);

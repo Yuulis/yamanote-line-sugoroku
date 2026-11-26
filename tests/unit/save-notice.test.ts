@@ -20,7 +20,7 @@ const SESSION = 1;
 const OTHER_SESSION = 2;
 const items = { ...multiConfig(), rulesetVersion: "save-notice-items-1",
   itemPolicy: { ...ITEM_GAME_CONFIG.itemPolicy!, dropChancePerMille: 1000, harmfulChancePercent: 0,
-    beneficialKinds: ["double"] as BeneficialItemKind[] } };
+    beneficialKinds: ["double"] as BeneficialItemKind[], beneficialWeights: [1] } };
 /** A classic game still playing after its first turn (the small network can finish in one). */
 function playingAfterFirstTurn(): { baseline: GameState; completed: GameState } {
   for (let seed = 0; seed < 100; seed++) {

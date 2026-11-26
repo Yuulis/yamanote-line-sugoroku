@@ -2,6 +2,7 @@ import type { DeepReadonly, ItemEvent, ItemKind, ItemTurnRecord, MoveRecord, Pen
 import type { LastMove } from "./gameSession";
 import { directionLabel, itemEventTexts, serviceName } from "./presentation";
 import { ITEM_DESCRIPTIONS } from "./itemPresentation";
+import { isRollAdjustKind } from "./itemRollAdjust";
 import { lineBadgeFor, type LineBadgeModel } from "./lineBadge";
 import type { RailwayNetwork } from "./engine";
 import type { PresentationResolver } from "./presentationResolver";
@@ -135,9 +136,13 @@ function rollAdjustWording(move: LastMove): { readonly label: string; readonly t
   const record = move.itemRecord;
   if (record?.kind !== "item-ride" || !record.adjustment) return null;
   const sign = record.adjustment.delta > 0 ? "+" : "-";
+  const consumed = record.itemEvents.find((event) => event.type === "consumed" && event.item.id === record.adjustment?.instanceId);
+  const name = consumed?.type === "consumed" && isRollAdjustKind(consumed.item.kind)
+    ? ITEM_DESCRIPTIONS[consumed.item.kind].name
+    : ITEM_DESCRIPTIONS["roll-adjust"].name;
   return {
     label: `${ROLL_ADJUST_LABEL} ${sign}${Math.abs(record.adjustment.delta)}`,
-    text: `${ITEM_DESCRIPTIONS["roll-adjust"].name}を使いました（出目${record.rawRoll} → ${record.effectiveFace}）`,
+    text: `${name}を使いました（出目${record.rawRoll} → ${record.effectiveFace}）`,
   };
 }
 
@@ -167,7 +172,7 @@ function itemEventChip(
     }
     case "consumed": {
       const label = ITEM_DESCRIPTIONS[event.item.kind].name;
-      const adjusted = event.item.kind === "roll-adjust" ? rollAdjustWording(context.move) : null;
+      const adjusted = isRollAdjustKind(event.item.kind) ? rollAdjustWording(context.move) : null;
       return { kind: "effect", outcome: "consumed", itemKind: event.item.kind, key: `${key}:${event.item.id}`,
         label: adjusted?.label ?? label, text: adjusted?.text ?? verifiedEventText(event, label, context) };
     }

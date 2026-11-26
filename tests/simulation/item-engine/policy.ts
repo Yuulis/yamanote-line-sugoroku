@@ -1,12 +1,13 @@
 // Round-3 policy decisions only. Every preview/transition uses production queries.
 import * as engine from "../../../src/features/game/engine";
 import type { BeneficialItemKind, ItemGameState, ItemInstance, ItemRollAdjustment, ItemTurnCommand, PreRollItemCommand } from "../../../src/types/network";
-import { legalAdjustments } from "../../../src/features/game/itemRollAdjust";
+import { isRollAdjustKind, legalAdjustments } from "../../../src/features/game/itemRollAdjust";
 
 export type Policy = "greedy" | "random";
 export const KEEP_PRIORITY: Readonly<Record<BeneficialItemKind, number>> = {
   deadhead: 7, "route-ticket": 6, "direction-ticket": 5, double: 4,
   "roll-adjust": 3, rapid: 2, "delay-certificate": 1,
+  "roll-adjust-2": 3, "roll-adjust-3": 3,
 };
 
 /** Forced choices consume no policy draw, matching round 3's uniformPick. */
@@ -66,7 +67,8 @@ export function choosePreRoll(state: ItemGameState, network: engine.RailwayNetwo
     }
   }
   const base = { ...none, rng, decision: true };
-  if (kind === null || kind === "roll-adjust") return { ...base, adjust: policy === "greedy" || kind === "roll-adjust" };
+  const adjustmentKind = kind !== null && isRollAdjustKind(kind);
+  if (kind === null || adjustmentKind) return { ...base, adjust: policy === "greedy" || adjustmentKind };
   const instanceId = state.inventory.find((item) => item.kind === kind)!.id;
   let action: PreRollItemCommand;
   if (kind === "route-ticket") {
@@ -92,14 +94,12 @@ export function choosePreRoll(state: ItemGameState, network: engine.RailwayNetwo
 export interface AdjustmentOptions {
   /** Maximum adjusted die face; omitted when the policy is unbounded above. */
   maxFace?: number;
-  /** Temporary cap of the current engine API while the product range is not implemented. */
-  supportedMaxFace?: number;
 }
 
 export function chooseAdjustment(state: ItemGameState, network: engine.RailwayNetwork, policy: Policy, allowed: boolean, rng: string, options: AdjustmentOptions = {}): { adjustment: ItemRollAdjustment | null; rng: string } {
   const pending = state.pending;
   if (!allowed || pending?.kind !== "roll" || pending.command.items.length > 0 || state.effects.oversleepPending || engine.isDelayDue(state.effects, pending.turn)) return { adjustment: null, rng };
-  const maxFace = Math.min(options.maxFace ?? Number.POSITIVE_INFINITY, options.supportedMaxFace ?? Number.POSITIVE_INFINITY);
+  const maxFace = options.maxFace ?? Number.POSITIVE_INFINITY;
   const choices = legalAdjustments(pending.rawRoll, state.inventory)
     .filter(({ delta }) => pending.rawRoll + delta <= maxFace);
   if (choices.length === 0) return { adjustment: null, rng };

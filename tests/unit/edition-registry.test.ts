@@ -42,7 +42,7 @@ describe("edition registry", () => {
     const edition = EDITIONS[0]!;
     expect(edition.dataBaseUrl).toBe(`${import.meta.env.BASE_URL}data/`);
     expect(edition.config).toBe(DEFAULT_GAME_CONFIG);
-    expect(edition.config.rulesetVersion).toBe("tokyo-suburban-items-1");
+    expect(edition.config.rulesetVersion).toBe("tokyo-suburban-items-2");
     expect(edition.expectedStationCounts).toEqual(EXPECTED_STATION_COUNTS);
     const indexHtml = readFileSync(fileURLToPath(new URL("../../index.html", import.meta.url)), "utf8");
     expect(indexHtml).toContain(`<title>${edition.display.documentTitle}</title>`);

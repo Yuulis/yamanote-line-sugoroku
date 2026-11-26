@@ -56,7 +56,7 @@ function storageOf(game?: ItemGameState): StorageLike {
 }
 function persistedFixture(kind: "adjust" | "discard"): ItemGameState {
   const policy = { ...config.itemPolicy, dropChancePerMille: 1000, harmfulChancePercent: 0,
-    beneficialKinds: [kind === "adjust" ? "roll-adjust" : "double"] as BeneficialItemKind[] };
+    beneficialKinds: [kind === "adjust" ? "roll-adjust" : "double"] as BeneficialItemKind[], beneficialWeights: [1] };
   for (let seed = 0; seed < 100; seed++) {
     let game = createItemGame({ ...config, itemPolicy: policy }, `persist-${seed}`, network);
     for (let turn = 0; turn < 30 && game.status === "playing"; turn++) {
@@ -458,9 +458,9 @@ describe("read-only S9 view model", () => {
       if (!adjusting) throw new Error("No boundary fixture");
       const before = serializeGame(adjusting.game);
       const view = itemSessionView(adjusting, network)!;
-      expect(view.decision).toMatchObject({ kind: "adjust", rawRoll: face, choices: [{
-        delta: face === 1 ? 1 : -1, instanceId: "held-0",
-      }] });
+      expect(view.decision).toMatchObject({ kind: "adjust", rawRoll: face, choices: face === 1
+        ? [{ delta: 1, instanceId: "held-0" }]
+        : [{ delta: -1, instanceId: "held-0" }, { delta: 1, instanceId: "held-0" }] });
       itemSessionView(adjusting, network);
       expect(serializeGame(adjusting.game)).toBe(before);
     }

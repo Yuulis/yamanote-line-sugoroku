@@ -24,6 +24,7 @@ export const LEGACY_ITEM_CONFIG = {
     suspensionTurns: 5,
     fullInventoryPolicy: "player-chooses-discard",
     beneficialKinds: ["route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate"] as const,
+    beneficialWeights: [1, 1, 1, 1, 1, 1, 1] as const,
     harmfulKinds: ["delay", "suspension", "detour", "oversleep"] as const,
   },
 } satisfies GameConfig;
@@ -32,19 +33,15 @@ export interface SimulationRunConfig {
   gameConfig: GameConfig;
   /** Omit the cap when the simulation should allow every legal adjusted face. */
   maxFace?: number;
-  /** Current production-engine boundary, removed when the ruleset supports larger faces. */
-  supportedMaxFace: number;
 }
 
 export const LEGACY_SIMULATION_CONFIG: SimulationRunConfig = {
   gameConfig: LEGACY_ITEM_CONFIG,
   maxFace: 6,
-  supportedMaxFace: 6,
 };
 
 export const PRODUCT_SIMULATION_CONFIG: SimulationRunConfig = {
   gameConfig: ITEM_GAME_CONFIG,
-  supportedMaxFace: 6,
 };
 
 export interface GameMeasurement {
@@ -121,7 +118,6 @@ export function runProductionGame(network: engine.RailwayNetwork, seed: string, 
         if (state.turn >= 3) roundTrip("pending-roll");
         const adjusted = chooseAdjustment(state, network, policy, choice.adjust, rng, {
           maxFace: runConfig.maxFace,
-          supportedMaxFace: runConfig.supportedMaxFace,
         });
         rng = adjusted.rng;
         state = engine.finishItemTurn(state, adjusted.adjustment, network).state;

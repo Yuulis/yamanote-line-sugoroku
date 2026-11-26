@@ -91,6 +91,7 @@ export interface DirectionLotteryPolicy {
 
 export const BENEFICIAL_ITEM_KINDS = [
   "route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate",
+  "roll-adjust-2", "roll-adjust-3",
 ] as const;
 export const HARMFUL_ITEM_KINDS = ["delay", "suspension", "detour", "oversleep"] as const;
 export type BeneficialItemKind = (typeof BENEFICIAL_ITEM_KINDS)[number];
@@ -133,6 +134,7 @@ export interface ItemPolicy {
   suspensionTurns: number;
   fullInventoryPolicy: "player-chooses-discard";
   beneficialKinds: readonly BeneficialItemKind[];
+  beneficialWeights: readonly number[];
   harmfulKinds: readonly HarmfulItemKind[];
 }
 

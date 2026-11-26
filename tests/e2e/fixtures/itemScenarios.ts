@@ -4,22 +4,34 @@ import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
 
 // First ascending 128-bit hex seeds with the scenario, replayed with no active
 // items and choosing the new pickup on overflow. Turns name the completed base.
+// Scenario pins were re-searched with weighted items-2 drops. The adjustment
+// pin keeps the original raw-2 / turn-8 presentation fixture; discard-adjust
+// holds an adjustable ticket before a full-inventory decision. adjust-wide is
+// the first ascending seed through 0x560b (decimal 22027) with all three ticket
+// kinds, a raw 4+, and an untruncated +3 ride beyond face 6. double also holds a
+// ±1 ticket (phone card switching) and stays playing after a doubled roll on
+// both the fixture and real datasets.
 export const ITEM_SCENARIOS = {
-  double: { seed: "00000000000000000000000000000004", turn: 5 },
-  "rapid-long": { seed: "00000000000000000000000000000001", turn: 7 },
-  rapid: { seed: "0000000000000000000000000000000c", turn: 8 },
+  double: { seed: "0000000000000000000000000000006b", turn: 10 },
+  "rapid-long": { seed: "00000000000000000000000000000002", turn: 1 },
+  rapid: { seed: "00000000000000000000000000000002", turn: 1 },
   delay: { seed: "00000000000000000000000000000002", turn: 4 },
-  adjust: { seed: "00000000000000000000000000000002", turn: 8 },
-  oversleep: { seed: "00000000000000000000000000000010", turn: 3 },
+  adjust: { seed: "000000000000000000000000000000c8", turn: 8 },
+  "adjust-lottery": { seed: "00000000000000000000000000000009", turn: 8 },
+  "adjust-toast": { seed: "0000000000000000000000000000000f", turn: 8 },
+  "adjust-harmful": { seed: "00000000000000000000000000000024", turn: 7 },
+  "adjust-wide": { seed: "0000000000000000000000000000560b", turn: 5 },
+  oversleep: { seed: "00000000000000000000000000000004", turn: 8 },
   discard: { seed: "00000000000000000000000000000004", turn: 6 },
-  certificate: { seed: "00000000000000000000000000000004", turn: 7 },
-  deadhead: { seed: "00000000000000000000000000000009", turn: 4 },
+  "discard-adjust": { seed: "00000000000000000000000000000009", turn: 13 },
+  certificate: { seed: "00000000000000000000000000000005", turn: 19 },
+  deadhead: { seed: "00000000000000000000000000000032", turn: 8 },
   route: { seed: "0000000000000000000000000000000c", turn: 2 },
-  direction: { seed: "00000000000000000000000000000022", turn: 6 },
+  direction: { seed: "00000000000000000000000000000005", turn: 15 },
 } as const;
 export type ItemScenario = keyof typeof ITEM_SCENARIOS;
 
-/** Build a legitimate v4 save by replaying the pinned fixture seed. */
+/** Build a legitimate v5 save by replaying the pinned fixture seed. */
 export function itemScenario(name: ItemScenario, network: RailwayNetwork): ItemGameState {
   const { seed, turn } = ITEM_SCENARIOS[name];
   let game = createItemGame(ITEM_GAME_CONFIG, seed, network);

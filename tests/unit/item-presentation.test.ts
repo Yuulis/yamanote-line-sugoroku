@@ -16,7 +16,15 @@ describe("item presentation", () => {
     expect(ITEM_DESCRIPTIONS["direction-ticket"]).toEqual({
       name: "方向指定券", effect: "山手線以外の路線で進む向きを選べる",
     });
-    expect(ITEM_DESCRIPTIONS["roll-adjust"]).toEqual({ name: "出目調整券", effect: "出目を見てから ±1 できる" });
+    expect(ITEM_DESCRIPTIONS["roll-adjust"]).toEqual({
+      name: "出目調整券±1", effect: "出目を見てから、出目に1を足すか引くかできる（1より小さくはできない）",
+    });
+    expect(ITEM_DESCRIPTIONS["roll-adjust-2"]).toEqual({
+      name: "出目調整券±2", effect: "出目を見てから、出目に2を足すか引くかできる（1より小さくはできない）",
+    });
+    expect(ITEM_DESCRIPTIONS["roll-adjust-3"]).toEqual({
+      name: "出目調整券±3", effect: "出目を見てから、出目に3を足すか引くかできる（1より小さくはできない）",
+    });
     expect(ITEM_DESCRIPTIONS.double).toEqual({ name: "倍速券", effect: "この回の出目が2倍になる" });
     expect(ITEM_DESCRIPTIONS.rapid).toEqual({ name: "快速券", effect: "2路線以上が止まる駅だけを1駅と数えて進む" });
     expect(ITEM_DESCRIPTIONS.deadhead).toEqual({ name: "回送列車", effect: "いちばん近い山手線の駅へ移る（サイコロは振らない）" });
@@ -78,7 +86,8 @@ describe("item presentation", () => {
 
   it("provides the exact short names for every item kind", () => {
     expect(ITEM_SHORT_NAMES).toEqual({
-      "route-ticket": "路線指定", "direction-ticket": "方向指定", "roll-adjust": "出目調整",
+      "route-ticket": "路線指定", "direction-ticket": "方向指定", "roll-adjust": "調整±1",
+      "roll-adjust-2": "調整±2", "roll-adjust-3": "調整±3",
       double: "倍速", rapid: "快速", deadhead: "回送", "delay-certificate": "証明書",
       delay: "遅延", suspension: "運休", detour: "寄り道", oversleep: "寝過ごし",
     });
