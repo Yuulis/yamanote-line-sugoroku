@@ -1,5 +1,5 @@
 import type { Position } from "../../types/data";
-import type { Direction } from "../../types/network";
+import type { Direction, RollAdjustDelta } from "../../types/network";
 import type { DisplayedProgress } from "./animation/displayedProgress";
 import { nextStationId, platformPosition, type RailwayNetwork } from "./engine";
 import { advance, assertSettledPosition, type GamePosition } from "./engine/movement";
@@ -14,7 +14,7 @@ export interface GoalGuidance {
 
 /** One legal roll-adjustment choice and the exact station its real resolution stops at. */
 export interface AdjustmentLanding {
-  delta: -1 | 0 | 1;
+  delta: RollAdjustDelta | 0;
   pips: number;
   stationId: string;
   stationName: string;
@@ -112,12 +112,13 @@ export function firstTargetCompletionTurn(
 export function adjustmentLandings(
   position: GamePosition,
   rawRoll: number,
-  allowedDeltas: readonly (-1 | 1)[],
+  choices: readonly { readonly delta: RollAdjustDelta }[],
   network: RailwayNetwork,
   presentation: PresentationResolver,
 ): readonly AdjustmentLanding[] {
   assertSettledPosition(position, network);
-  const deltas = ([-1, 0, 1] as const).filter((delta) => delta === 0 || allowedDeltas.includes(delta));
+  const allowedDeltas = new Set(choices.map((choice) => choice.delta));
+  const deltas = ([-3, -2, -1, 0, 1, 2, 3] as const).filter((delta) => delta === 0 || allowedDeltas.has(delta));
   return deltas.map((delta) => {
     const pips = adjustedPips(rawRoll, delta);
     const moved = advance(position, pips, network);

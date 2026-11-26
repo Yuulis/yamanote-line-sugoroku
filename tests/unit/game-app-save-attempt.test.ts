@@ -91,7 +91,7 @@ function trace(attempts: readonly SaveAttempt[]): unknown[] {
 /** A persisted item game at turn >= 1 holding `kind` (no pending) or waiting for a discard. */
 function itemFixture(kind: "roll" | "discard"): ItemGameState {
   const policy = { ...items.itemPolicy!, dropChancePerMille: 1000, harmfulChancePercent: 0,
-    beneficialKinds: [kind === "roll" ? "roll-adjust" : "double"] as BeneficialItemKind[] };
+    beneficialKinds: [kind === "roll" ? "roll-adjust" : "double"] as BeneficialItemKind[], beneficialWeights: [1] };
   for (let seed = 0; seed < 100; seed++) {
     let game = createItemGame({ ...items, itemPolicy: policy }, `attempt-${seed}`, network);
     for (let turn = 0; turn < 30 && game.status === "playing"; turn++) {

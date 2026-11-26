@@ -1,10 +1,13 @@
-import { HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy } from "../../types/network";
+import { HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy, type RollAdjustDelta } from "../../types/network";
 import type { ItemSessionView, ItemUnavailableReason } from "./itemSession";
+import { isRollAdjustKind } from "./itemRollAdjust";
 
 export const ITEM_SHORT_NAMES: Readonly<Record<ItemKind, string>> = {
   "route-ticket": "路線指定",
   "direction-ticket": "方向指定",
-  "roll-adjust": "出目調整",
+  "roll-adjust": "調整±1",
+  "roll-adjust-2": "調整±2",
+  "roll-adjust-3": "調整±3",
   double: "倍速",
   rapid: "快速",
   deadhead: "回送",
@@ -51,7 +54,9 @@ export interface ItemDescription {
 export const ITEM_DESCRIPTIONS: Readonly<Record<ItemKind, ItemDescription>> = {
   "route-ticket": { name: "路線指定券", effect: "今いる駅で乗る路線を選べる（向きは抽選）" },
   "direction-ticket": { name: "方向指定券", effect: "山手線以外の路線で進む向きを選べる" },
-  "roll-adjust": { name: "出目調整券", effect: "出目を見てから ±1 できる" },
+  "roll-adjust": { name: "出目調整券±1", effect: "出目を見てから、出目に1を足すか引くかできる（1より小さくはできない）" },
+  "roll-adjust-2": { name: "出目調整券±2", effect: "出目を見てから、出目に2を足すか引くかできる（1より小さくはできない）" },
+  "roll-adjust-3": { name: "出目調整券±3", effect: "出目を見てから、出目に3を足すか引くかできる（1より小さくはできない）" },
   double: { name: "倍速券", effect: "この回の出目が2倍になる" },
   rapid: { name: "快速券", effect: "2路線以上が止まる駅だけを1駅と数えて進む" },
   deadhead: { name: "回送列車", effect: "いちばん近い山手線の駅へ移る（サイコロは振らない）" },
@@ -81,7 +86,7 @@ export function itemEffectText(kind: ItemKind, policy: ItemPolicy): string {
 export function itemTiming(kind: ItemKind): string {
   if (itemTone(kind) === "bad") return AUTOMATIC_ITEM_TIMING;
   if (kind === "delay-certificate") return "持っているだけで効く";
-  if (kind === "roll-adjust") return "出目を見てから使う";
+  if (isRollAdjustKind(kind)) return "出目を見てから使う";
   return "サイコロを振る前に使う";
 }
 
@@ -122,6 +127,6 @@ export function directionGuidance(
   return `${distance}。${directionIsCloser ? "山手線に近づく方向" : "山手線から遠ざかる方向"}`;
 }
 
-export function adjustedPips(rawRoll: number, delta: -1 | 0 | 1): number {
+export function adjustedPips(rawRoll: number, delta: RollAdjustDelta | 0): number {
   return rawRoll + delta;
 }

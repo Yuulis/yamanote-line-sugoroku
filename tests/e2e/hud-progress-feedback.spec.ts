@@ -1,6 +1,7 @@
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame, targetSegmentIds, type RailwayNetwork } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { isRollAdjustKind } from "../../src/features/game/itemRollAdjust";
 import type { ItemGameState } from "../../src/types/network";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
@@ -71,7 +72,7 @@ function replayToTenSegmentMilestone(network: RailwayNetwork): MilestoneReplay {
       completedBefore,
       completedAfter,
       pending: result.state.pending?.kind ?? null,
-      rollAdjustmentInventory: before.inventory.some((item) => item.kind === "roll-adjust"),
+      rollAdjustmentInventory: before.inventory.some((item) => isRollAdjustKind(item.kind)),
       status: after.status,
     };
     if (completedBefore < TEN_SEGMENT_MILESTONE && completedAfter >= TEN_SEGMENT_MILESTONE

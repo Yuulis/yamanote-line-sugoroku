@@ -9,6 +9,7 @@ import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { ITEM_SCENARIOS } from "./fixtures/itemScenarios";
 import { endpointKindAt } from "../../src/features/game/gameSummary";
+import { isRollAdjustKind } from "../../src/features/game/itemRollAdjust";
 import {
   diceReady,
   diceButton,
@@ -673,7 +674,7 @@ test("ClearScreen discards queued hints without marking them seen", async ({ pag
 });
 
 test.describe("adjustment decision overlays a visible hint", () => {
-  test.use({ gameSeed: "00000000000000000000000000000002" });
+  test.use({ gameSeed: ITEM_SCENARIOS.adjust.seed });
 
   test("hint details keeps rules above the next turn's pending adjustment", async ({ page }) => {
     test.setTimeout(120_000);
@@ -683,7 +684,7 @@ test.describe("adjustment decision overlays a visible hint", () => {
     await firstHint(page);
 
     for (let turn = (await readSave(page))?.turn ?? 0; turn < 8; turn += 1) await rollOnce(page);
-    expect((await readSave(page))?.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
+    expect((await readSave(page))?.inventory.some((item) => isRollAdjustKind(item.kind))).toBe(true);
 
     // Drain queued toasts before freezing the clock: a toast that takes a slot after the freeze never
     // finishes its reading time, so the hint it withholds would never return.
@@ -726,7 +727,7 @@ test.describe("adjustment decision overlays a visible hint", () => {
     await expect(page.locator(".toast-host__toast:not(.toast-host__toast--sticky)")).toHaveCount(0, { timeout: 20_000 });
     await expect(card).toBeVisible();
     const saved = await readSave(page);
-    expect(saved?.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
+    expect(saved?.inventory.some((item) => isRollAdjustKind(item.kind))).toBe(true);
 
     const turnBefore = saved?.turn ?? 0;
     await diceButton(page).click();

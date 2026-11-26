@@ -161,7 +161,7 @@ describe("independent RNG streams", () => {
     expect(result.state.rngState).toBe(die.nextRngState);
     const drop = drawIndex(seedItemRng("ordered-streams"), 1000);
     const harmful = drawIndex(drop.nextRngState, 100);
-    const kind = drawIndex(harmful.nextRngState, policy.beneficialKinds.length);
+    const kind = drawWeightedIndex(harmful.nextRngState, policy.beneficialWeights);
     expect(result.state.itemRngState).toBe(kind.nextRngState);
     expect(result.state.inventory).toEqual([{ id: "item-1", kind: policy.beneficialKinds[kind.index] }]);
     expect(state.itemRngState).toBe(seedItemRng("ordered-streams"));
@@ -256,18 +256,25 @@ describe("active item validation and adjustment", () => {
     expect(result.state.inventory).toEqual([]);
   });
 
-  it("rejects adjustment after pre-roll use, without ownership, outside face bounds or with invalid deltas", () => {
+  it("rejects adjustment after pre-roll use, without ownership, below face one or with invalid deltas", () => {
     const state = holding(withRawRoll(3), "double", "roll-adjust");
     const began = beginItemTurn(state, command("double"), network).state;
     expectInvalid(() => finishItemTurn(began, { instanceId: "held-1", delta: 1 }, network));
     expectInvalid(() => finishItemTurn(beginItemTurn(game(), noItems, network).state, { instanceId: "missing", delta: 1 }, network));
-    for (const [face, delta] of [[1, -1], [6, 1]] as const) {
-      const pending = beginItemTurn(holding(withRawRoll(face), "roll-adjust"), noItems, network).state;
-      expectInvalid(() => finishItemTurn(pending, { instanceId: "held-0", delta }, network), "INVALID_ROLL");
-      expect(pending.turn).toBe(0);
-    }
+    const pendingBelowOne = beginItemTurn(holding(withRawRoll(1), "roll-adjust"), noItems, network).state;
+    expectInvalid(() => finishItemTurn(pendingBelowOne, { instanceId: "held-0", delta: -1 }, network), "INVALID_ROLL");
+    expect(pendingBelowOne.turn).toBe(0);
     const pending = beginItemTurn(holding(withRawRoll(3), "roll-adjust"), noItems, network).state;
     expectInvalid(() => finishItemTurn(pending, { instanceId: "held-0", delta: 0 } as unknown as ItemRollAdjustment, network));
+    expectInvalid(() => finishItemTurn(pending, { instanceId: "held-0", delta: 2 }, network));
+  });
+
+  it("accepts a +3 adjustment from six and records a nine-face move", () => {
+    const state = holding(withRawRoll(6), "roll-adjust-3");
+    const adjustment = { instanceId: "held-0", delta: 3 } as const;
+    const result = playItemTurn(state, { adjustment }, network);
+    expect(result.record).toMatchObject({ rawRoll: 6, effectiveFace: 9, pips: 9, adjustment });
+    expect(result.state.inventory).toEqual([]);
   });
 });
 
@@ -302,7 +309,7 @@ describe("forced effects, clearing and deadhead", () => {
 
   it("deadhead uses no die, lottery, segments or clear, but drops at the arrival", () => {
     const realNetwork = buildRailwayNetwork(inputWithShuttle());
-    const base = createItemGame({ ...ITEM_GAME_CONFIG, itemPolicy: { ...policy, dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["double"] } }, "deadhead", realNetwork);
+    const base = createItemGame({ ...ITEM_GAME_CONFIG, itemPolicy: { ...policy, dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["double"], beneficialWeights: [1] } }, "deadhead", realNetwork);
     const state = holding({ ...base, currentStationId: "test-b", currentServiceId: OTHER_SERVICE_ID,
       completedSegmentIds: [...SEGMENT_IDS], effects: { ...base.effects, detourPending: true } }, "deadhead");
     const result = beginItemTurn(deepFreeze(state), command("deadhead"), realNetwork);
@@ -340,7 +347,7 @@ describe("forced effects, clearing and deadhead", () => {
 describe("arrival drops and saveable full inventory", () => {
   it.each(["held-0", "held-1", "held-2", "item-1"])("discards choice %s and commits exactly one record", (discardedInstanceId) => {
     const state = holding({ ...withRawRoll(1), config: { ...game().config, itemPolicy: {
-      ...policy, dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["rapid"],
+      ...policy, dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["rapid"], beneficialWeights: [1],
     } } }, "double", "roll-adjust", "delay-certificate");
     const began = beginItemTurn(deepFreeze(state), noItems, network);
     const arrived = finishItemTurn(deepFreeze(began.state), null, network);
@@ -368,7 +375,7 @@ describe("arrival drops and saveable full inventory", () => {
 
   it("returns independent mutable state and record copies after discard", () => {
     const state = holding({ ...withRawRoll(1), config: { ...game().config, itemPolicy: {
-      ...policy, dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["rapid"],
+      ...policy, dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["rapid"], beneficialWeights: [1],
     } } }, "double", "roll-adjust", "delay-certificate");
     const arrived = finishItemTurn(beginItemTurn(state, noItems, network).state, null, network);
     if (arrived.state.pending?.kind !== "discard") throw new Error("Expected discard");
@@ -395,7 +402,7 @@ describe("arrival drops and saveable full inventory", () => {
   });
 
   it("deadhead frees a slot before its arrival drop with a full starting inventory", () => {
-    const state = holding(game("deadhead-drop", { dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["double"] }), "deadhead", "rapid", "roll-adjust");
+    const state = holding(game("deadhead-drop", { dropChancePerMille: 1000, harmfulChancePercent: 0, beneficialKinds: ["double"], beneficialWeights: [1] }), "deadhead", "rapid", "roll-adjust");
     const result = beginItemTurn(deepFreeze(state), command("deadhead"), network);
     expect(result.state.pending).toBeNull();
     expect(result.record).toMatchObject({ kind: "deadhead", discardedInstanceId: null });

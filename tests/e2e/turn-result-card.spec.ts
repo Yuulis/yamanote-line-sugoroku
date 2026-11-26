@@ -7,6 +7,7 @@ import { CURRENT_POSITION_RADIUS, CURRENT_POSITION_STROKE_WIDTH, SOURCE_IDS } fr
 import { TURN_RESULT_PILL_GAP_PX } from "../../src/features/game/turnResultPillLayout";
 import { LOTTERY_FIT_MIN_SCALE, MIN_CARD_REGION_PX } from "../../src/features/game/components/TurnMomentHost";
 import { ITEM_DESCRIPTIONS } from "../../src/features/game/itemPresentation";
+import { isRollAdjustKind } from "../../src/features/game/itemRollAdjust";
 import { expect, test } from "./fixtures";
 import type { Page, Locator } from "@playwright/test";
 import type { RailwayBundle } from "./fixtures/bundle";
@@ -254,7 +255,7 @@ function predictR1NextTurn(railwayBundle: RailwayBundle): { readonly before: Ite
   const after: ItemGameState = acceptOfflineTurn(before, railwayBundle.network);
   const record = after.movementHistory.at(-1);
   const predicates = { turnAdvanced: after.turn === before.turn + 1, status: after.status,
-    hasAdjustmentChoice: before.inventory.some((item) => item.kind === "roll-adjust"),
+    hasAdjustmentChoice: before.inventory.some((item) => isRollAdjustKind(item.kind)),
     pending: after.pending?.kind ?? null,
     hasDiscardChoice: record?.itemEvents.some((event) => event.type === "pickup-pending-discard") ?? null };
   if (!record || !predicates.turnAdvanced || after.pending !== null || predicates.hasAdjustmentChoice || predicates.hasDiscardChoice) {

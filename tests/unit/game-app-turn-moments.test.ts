@@ -7,7 +7,7 @@ import { REDUCED_MOTION_QUERY } from "../../src/features/game/usePrefersReducedM
 import { GameApp } from "../../src/app/GameApp";
 import { loadRailwayData } from "../../src/data/loaders";
 import { EDITIONS } from "../../src/features/editions/registry";
-import { beginItemTurn, createItemGame, playItemTurn, resolveItemDiscard, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
+import { beginItemTurn, createItemGame, isDelayDue, playItemTurn, resolveItemDiscard, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { itemActionIdentity, itemSessionView, itemLastMove } from "../../src/features/game/itemSession";
 import { networkFromData } from "../../src/features/game/networkFromData";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
@@ -760,7 +760,7 @@ describe("GameApp publication lifecycle", () => {
     expect(mounted!.container.querySelector('[data-stat="station"]')?.textContent).toBe("巣鴨");
     expect(mounted!.container.querySelector('[data-stat="ride"]')?.textContent).toBe("山手線");
     expect(mounted!.container.textContent).toContain("山手線の未踏破区間（12）");
-    expect(mounted!.container.querySelectorAll(".item-slot h3")[0]?.textContent).toBe("路線指定券");
+    expect(mounted!.container.querySelectorAll(".item-slot h3")[0]?.textContent).toBe("快速券");
     expect(mounted!.container.querySelector(".item-event-notice")).toBeNull();
     expect(mounted!.container.textContent).not.toContain("遅延 あと3");
     expect(status()).toBe("5ターン目：巣鴨に到着。踏破 18/30");
@@ -846,11 +846,11 @@ describe("GameApp decision and empty-event publication", () => {
     const result = resumeSession(playItemTurn(base, {}, network).state, network, 31);
     const attempt = attemptFor(origin);
     inject(result); render(propsFor({ attempt, revealStage: "arrival", restoredOrOmitted: false }));
-    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["遅延証明書", "出目調整券", "倍速券"]);
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["方向指定券", "遅延証明書"]);
     expect(mounted!.container.querySelector(".item-event-notice")).toBeNull();
     render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
-    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["出目調整券", "倍速券"]);
-    expect(mounted!.container.querySelector(".item-event-notice")?.textContent).toBe("8ターン目のアイテム拾った寝過ごしを遅延証明書で打ち消しました");
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["方向指定券"]);
+    expect(mounted!.container.querySelector(".item-event-notice")?.textContent).toBe("20ターン目のアイテム拾った運休を遅延証明書で打ち消しました");
     expect(mounted!.container.querySelector(".game-panel__roll")?.getAttribute("aria-disabled")).toBe("false");
   });
   it("holds a discard dialog and new inventory until pickup is published", () => {
@@ -862,7 +862,7 @@ describe("GameApp decision and empty-event publication", () => {
     inject(result); render(propsFor({ attempt, revealStage: "pickup", restoredOrOmitted: false }));
     expect(mounted!.container.querySelector(".item-discard")).toBeNull();
     expect(status()).toBe("山手線のみ ／ 外回りに固定");
-    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["遅延証明書", "出目調整券", "倍速券"]);
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((entry) => entry.textContent)).toEqual(["回送列車", "回送列車", "倍速券"]);
     render(propsFor({ attempt, revealStage: "done", restoredOrOmitted: false }));
     expect(mounted!.container.querySelector(".item-discard")).not.toBeNull();
     // The arrival stages were not rendered, so the published result carries the sentence (#96 Step 3).
@@ -1528,7 +1528,7 @@ describe("S11 review round 2: reduced-motion latches and discard turns", () => {
 
   it("holds a discard turn's movement behind the tumble and finishes it with the latched Skip", () => {
     // The engine-built discard turn first asks for an adjustment (its full inventory holds a ticket).
-    openSaved(itemScenario("discard", network));
+    openSaved(itemScenario("discard-adjust", network));
     click("サイコロを振る");
     expect(storedGame().pending?.kind).toBe("roll");
     expect(tumble()?.stage).toBe("tumble");
@@ -1551,7 +1551,7 @@ describe("S11 review round 2: reduced-motion latches and discard turns", () => {
   });
 
   it("gates a discard turn's movement until its pre-move moment ends", () => {
-    openSaved(itemScenario("discard", network));
+    openSaved(itemScenario("discard-adjust", network));
     click("サイコロを振る");
     advance(TUMBLE_MS - 1);
     expect(frames()).toBe(0);
@@ -1617,18 +1617,20 @@ describe("S11 carry-over guards", () => {
     for (const name of ["route", "rapid", "double", "discard", "certificate", "delay", "adjust", "oversleep", "deadhead", "direction"] as const) {
       const game = itemScenario(name, network);
       const ticket = (kind: string) => game.inventory.find((item) => item.kind === kind);
-      const commands = [{}, ...(["double", "rapid", "deadhead"] as const).flatMap((kind) => ticket(kind)
-        ? [{ command: { items: [{ kind, instanceId: ticket(kind)!.id }] } }] : [])];
+      const forced = game.effects.oversleepPending || isDelayDue(game.effects, game.turn + 1);
+      const activeCommands = forced ? [] : (["double", "rapid", "deadhead"] as const).flatMap((kind) => ticket(kind)
+        ? [{ command: { items: [{ kind, instanceId: ticket(kind)!.id }] } }] : []);
+      const commands = [{}, ...activeCommands];
       for (const options of commands) {
         const record = playItemTurn(game, options, network).record;
         if (record) records.push(record);
       }
       const adjusted = beginItemTurn(game, { items: [] }, network).state;
       const adjustTicket = adjusted.inventory.find((item) => item.kind === "roll-adjust");
-      if (adjusted.pending?.kind === "roll" && adjustTicket) {
+      if (!forced && adjusted.pending?.kind === "roll" && adjustTicket) {
         for (const delta of [-1, 1] as const) {
           const raw = adjusted.pending.rawRoll + delta;
-          if (raw < 1 || raw > 6) continue;
+          if (raw < 1) continue;
           const record = playItemTurn(game, { adjustment: { instanceId: adjustTicket.id, delta } }, network).record;
           if (record) records.push(record);
         }
@@ -1753,7 +1755,7 @@ describe("S12 arrival banner in GameApp", () => {
     // The engine-built turn: raw 4, two stations to the area end (two pips unused), a forced reversal, a pickup.
     expect(record).toMatchObject({ turn: 3, kind: "item-ride", rawRoll: 4, physicalHops: 2, unusedPips: 2,
       toStationId: "fixture-omori", resolvedRide: { serviceId: "fixture-south", direction: 1 },
-      landing: { serviceId: "fixture-south", direction: -1 }, itemEvents: [{ type: "pickup-retained", item: { kind: "rapid" } }] });
+      landing: { serviceId: "fixture-south", direction: -1 }, itemEvents: [{ type: "pickup-retained", item: { kind: "route-ticket" } }] });
     // Movement copy: the raw face only (no stamps on this turn), never the hops, unused pips or the landing.
     expect(status()).toBe("出目は4です。移動中です。演出をスキップできます。");
     expect(banner()).toBeNull();
@@ -1767,7 +1769,7 @@ describe("S12 arrival banner in GameApp", () => {
     expect(railwayMapProps.mock.calls.at(-1)?.[0].progress.highlightedServiceId).toBe("fixture-south");
     expect(railwayMapProps.mock.calls.at(-1)?.[0].progress.currentPosition)
       .toEqual(network.servicesById.get("fixture-south")!.platformCoordinates["fixture-omori"]);
-    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).not.toContain("快速券");
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).toEqual(["路線指定券"]);
     expect(dice().textContent).toBe("サイコロを振る");
     expect(dice().getAttribute("aria-disabled")).toBe("true");
     expect(panelSkip().disabled).toBe(false);
@@ -1782,19 +1784,19 @@ describe("S12 arrival banner in GameApp", () => {
     expect(pickup).not.toBeNull();
     expect(pickup?.closest('.turn-moment-host[aria-hidden="true"]')).not.toBeNull();
     expect(pickup?.querySelector("button, a, input, [tabindex]")).toBeNull();
-    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).not.toContain("快速券");
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).toEqual(["路線指定券"]);
     expect(mounted!.container.querySelectorAll('.game-panel [role="status"]')).toHaveLength(1);
     expect(status()).toBe("テスト南線のみ ／ エリア端のため折り返し（品川方面）");
     advance(499);
     expect(mounted!.container.querySelector('.item-pickup-moment[data-stage="pickup"]')).not.toBeNull();
-    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).not.toContain("快速券");
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).toEqual(["路線指定券"]);
     advance(1);
     expect(mounted!.container.querySelector(".turn-moment-host")).toBeNull();
     expect(mounted!.container.querySelector('[data-stat="direction"]')?.textContent).toBe(directionLabel(network, "fixture-south", -1));
-    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).toContain("快速券");
+    expect([...mounted!.container.querySelectorAll(".item-slot h3")].map((slot) => slot.textContent)).toEqual(["路線指定券", "路線指定券"]);
     expect(dice().getAttribute("aria-disabled")).toBe("false");
     expect(status()).toBe("3ターン目：出目4（4マス、2駅移動、残り2は使わず）、大森に到着。テスト南線のみ ／ エリア端のため折り返し（品川方面）。"
-      + "踏破 4/30。快速券を拾いました。2路線以上が止まる駅だけを1駅と数えて進む。サイコロを振れます");
+      + "踏破 4/30。路線指定券を拾いました。今いる駅で乗る路線を選べる（向きは抽選）。サイコロを振れます");
     expect(storedGame().movementHistory).toHaveLength(origin.movementHistory.length + 1);
   });
 
@@ -2099,7 +2101,7 @@ describe("S14 lottery publication lifecycle", () => {
 
 it("S14 resolving a restored adjustment plays its newly created lottery normally", () => {
   // This legitimate save holds an adjustment ticket before its next direction draw.
-  const pending = beginItemTurn(itemScenario("deadhead", network), { items: [] }, network).state;
+  const pending = beginItemTurn(itemScenario("adjust-lottery", network), { items: [] }, network).state;
   expect(pending.pending?.kind).toBe("roll");
   openWithFrames(pending);
   expect(adjustmentDialog()).not.toBeNull();

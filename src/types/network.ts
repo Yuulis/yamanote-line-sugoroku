@@ -91,11 +91,13 @@ export interface DirectionLotteryPolicy {
 
 export const BENEFICIAL_ITEM_KINDS = [
   "route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate",
+  "roll-adjust-2", "roll-adjust-3",
 ] as const;
 export const HARMFUL_ITEM_KINDS = ["delay", "suspension", "detour", "oversleep"] as const;
 export type BeneficialItemKind = (typeof BENEFICIAL_ITEM_KINDS)[number];
 export type HarmfulItemKind = (typeof HARMFUL_ITEM_KINDS)[number];
 export type ItemKind = BeneficialItemKind | HarmfulItemKind;
+export type RollAdjustDelta = -3 | -2 | -1 | 1 | 2 | 3;
 
 /** One inventory slot. IDs are deterministic within a turn history. */
 export interface ItemInstance {
@@ -132,6 +134,7 @@ export interface ItemPolicy {
   suspensionTurns: number;
   fullInventoryPolicy: "player-chooses-discard";
   beneficialKinds: readonly BeneficialItemKind[];
+  beneficialWeights: readonly number[];
   harmfulKinds: readonly HarmfulItemKind[];
 }
 
@@ -173,7 +176,7 @@ export interface ItemTurnCommand {
 
 export interface ItemRollAdjustment {
   readonly instanceId: string;
-  readonly delta: -1 | 1;
+  readonly delta: RollAdjustDelta;
 }
 
 /** Serializable candidates after suspension and detour filtering. */

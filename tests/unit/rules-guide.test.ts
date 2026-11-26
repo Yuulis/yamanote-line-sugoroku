@@ -21,7 +21,11 @@ function configWith(overrides: Partial<GameConfig>): GameConfig {
 }
 
 function itemPolicyWith(overrides: Partial<ItemPolicy>): GameConfig {
-  return configWith({ itemPolicy: { ...BASE_ITEM_POLICY, ...overrides } });
+  const beneficialKinds = overrides.beneficialKinds ?? BASE_ITEM_POLICY.beneficialKinds;
+  const beneficialWeights = overrides.beneficialWeights ?? (overrides.beneficialKinds
+    ? Array.from({ length: beneficialKinds.length }, () => 1)
+    : BASE_ITEM_POLICY.beneficialWeights);
+  return configWith({ itemPolicy: { ...BASE_ITEM_POLICY, ...overrides, beneficialKinds, beneficialWeights } });
 }
 
 function text(model: RulesGuideModel, id: RulesSectionId): string {

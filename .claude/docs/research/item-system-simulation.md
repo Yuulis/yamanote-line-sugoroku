@@ -868,3 +868,29 @@ left untouched.
 ### Round 4 follow-up (2026-10-27): single-eligible route ticket
 
 User decision: a route ticket may board the only eligible service when it differs from the current ride (e.g. leaving a suspended line). The engine (`itemTurnPreparation.ts`) now allows it; the production greedy adapter boards Yamanote in that case like the reference, while the random adapter keeps the reference's "two or more eligible services" usability rule. Rerun at 5,000 games: greedy 65 / 143 / 241, random 113 / 234 / 373 (unchanged, all tolerances pass); the only remaining greedy per-seed divergence class is `oedo-oversleep-hop-limit` (178 games), the intended six-hop rule versus the spike's hop-cap bug.
+
+## Issue #61 roll-range baseline (2026-11-26)
+
+Ruleset `tokyo-suburban-items-2` (save v5): 出目調整券±1/±2/±3 as three kinds (a ±N ticket offers
+exactly −N/+N, adjusted face ≥ 1, no upper bound), beneficial weights six other kinds 6 each and
+±1/±2/±3 = 3/2/1; drop chance 300‰ and harmful share 30% unchanged. Same 5,000 seeds
+(`s1m-20261012-*`), `ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=5000 npm run sim -- tests/simulation/item-engine`
+on branch `feature/roll-adjust-range` (a0e32c5). "Legacy" is the test-only snapshot of
+`tokyo-suburban-items-1` with faces capped at 6; it still passes the frozen round-3 parity.
+
+| Config | Policy | Median | p90 | p99 | Mean | Max | >500 | Cap hits | Errors |
+|---|---|---|---|---|---|---|---|---|---|
+| legacy (items-1) | greedy | 65 | 143 | 241 | 75.6 | 448 | 0 | 0 | 0 |
+| legacy (items-1) | random | 113 | 234 | 373 | 126.6 | 565 | 5 | 0 | 0 |
+| product (items-2) | greedy | 65 | 144 | 245 | 76.3 | 561 | 2 | 0 | 0 |
+| product (items-2) | random | 109 | 234 | 374 | 124.2 | 582 | 2 | 0 | 0 |
+
+Ticket pickups / uses (product): greedy ±1 5,102/4,847, ±2 3,343/3,164, ±3 1,748/1,660;
+random ±1 9,193/9,192, ±2 6,077/6,077, ±3 3,091/3,091. Legacy ±1: greedy 10,139/9,515,
+random 18,824/18,822. The family's pickup share is unchanged (≈ 10.2k vs 10.1k greedy), split
+≈ 3:2:1 as configured.
+
+Reading: game length is essentially unchanged (greedy median equal, p99 +4; random median −4).
+Wider tickets do not shorten games much because the greedy policy mostly uses them to land on
+target segments, not to travel further. Determinism and save round-trip checks pass for both
+configs.

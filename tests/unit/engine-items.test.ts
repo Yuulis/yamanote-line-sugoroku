@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  drawIndex, drawItemDrop, resolvePendingItemDiscard, seedItemRng,
+  drawIndex, drawItemDrop, drawWeightedIndex, resolvePendingItemDiscard, seedItemRng,
 } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemEffectsState, ItemInstance, ItemPolicy } from "../../src/types/network";
@@ -46,12 +46,59 @@ describe("item drop draws", () => {
     expect(found).toEqual(new Set([...policy.beneficialKinds, ...policy.harmfulKinds]));
   });
 
+  it("draws one seeded example from every beneficial weight interval", () => {
+    for (const [targetIndex, expectedKind] of policy.beneficialKinds.entries()) {
+      let chosenState: string | undefined;
+      for (let candidate = 0; candidate < 100_000 && chosenState === undefined; candidate += 1) {
+        const state = seedItemRng(`weighted-kind-${candidate}`);
+        const drop = drawIndex(state, 1000);
+        const harmful = drawIndex(drop.nextRngState, 100);
+        if (drop.index !== 0 || harmful.index < policy.harmfulChancePercent) continue;
+        if (drawWeightedIndex(harmful.nextRngState, policy.beneficialWeights).index === targetIndex) chosenState = state;
+      }
+      expect(chosenState, `seed for ${expectedKind}`).toBeDefined();
+      const result = drawItemDrop(chosenState!, targetIndex + 1, policy, [], emptyEffects, ["service"]);
+      expect(result.events).toEqual([{ type: "pickup-retained", item: { id: `item-${targetIndex + 1}`, kind: expectedKind } }]);
+    }
+  });
+
+  it("keeps equal-weight legacy draws identical to drawIndex(7)", () => {
+    const legacyKinds = policy.beneficialKinds.slice(0, 7);
+    const legacyPolicy: ItemPolicy = { ...policy, beneficialKinds: legacyKinds, beneficialWeights: [1, 1, 1, 1, 1, 1, 1] };
+    let state = "";
+    let expected = 0;
+    let expectedNext = "";
+    for (let candidate = 0; candidate < 10_000 && state === ""; candidate += 1) {
+      const seed = seedItemRng(`legacy-weight-${candidate}`);
+      const drop = drawIndex(seed, 1000);
+      const harmful = drawIndex(drop.nextRngState, 100);
+      if (drop.index !== 0 || harmful.index < policy.harmfulChancePercent) continue;
+      const kind = drawIndex(harmful.nextRngState, 7);
+      state = seed;
+      expected = kind.index;
+      expectedNext = kind.nextRngState;
+    }
+    const result = drawItemDrop(state, 1, legacyPolicy, [], emptyEffects, ["service"]);
+    expect(result.events).toEqual([{ type: "pickup-retained", item: { id: "item-1", kind: legacyKinds[expected] } }]);
+    expect(result.nextItemRngState).toBe(expectedNext);
+  });
+
+  it("keeps singleton beneficial pools on the no-kind-draw path", () => {
+    const singlePolicy: ItemPolicy = { ...policy, beneficialKinds: ["roll-adjust"], beneficialWeights: [42] };
+    const state = stateWithFirstZeroAndSecondIndex(30);
+    const drop = drawIndex(state, 1000);
+    const harmful = drawIndex(drop.nextRngState, 100);
+    const result = drawItemDrop(state, 1, singlePolicy, [], emptyEffects, ["service"]);
+    expect(result.events).toEqual([{ type: "pickup-retained", item: { id: "item-1", kind: "roll-adjust" } }]);
+    expect(result.nextItemRngState).toBe(harmful.nextRngState);
+  });
+
   it("returns all four discard candidates and honors each valid choice", () => {
     const held: ItemInstance[] = deepFreeze([
       { id: "a", kind: "double" }, { id: "b", kind: "rapid" }, { id: "c", kind: "deadhead" },
     ]);
     const before = JSON.stringify({ held, emptyEffects });
-    const fullPolicy: ItemPolicy = { ...policy, beneficialKinds: ["roll-adjust"] };
+    const fullPolicy: ItemPolicy = { ...policy, beneficialKinds: ["roll-adjust"], beneficialWeights: [1] };
     const pending = drawItemDrop(stateWithFirstZeroAndSecondIndex(30), 4, fullPolicy, held, emptyEffects, ["service"]).pendingDiscard!;
     expect(pending.candidates).toHaveLength(4);
     for (const id of pending.candidates.map((item) => item.id)) {

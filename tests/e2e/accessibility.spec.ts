@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
-import { PRODUCT_HISTORY_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
+import { PRODUCT_ANNOUNCEMENT_GAME_SEED, PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import { itemScenario } from "./fixtures/itemScenarios";
 import { playItemTurn, serializeGame } from "../../src/features/game/engine";
 import { ANIMATION_SPEEDS, DEFAULT_ANIMATION_SPEED, DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
@@ -206,7 +206,7 @@ test.describe("animated roll focus", () => {
 });
 
 test.describe("game accessibility and text navigation", () => {
-  test.use({ reducedMotion: "reduce", gameSeed: PRODUCT_HISTORY_GAME_SEED });
+  test.use({ reducedMotion: "reduce", gameSeed: PRODUCT_ANNOUNCEMENT_GAME_SEED });
 
   test("focus moves to each new screen heading and the title map is inert", async ({ page }) => {
     await openTitle(page);
@@ -384,7 +384,7 @@ test.describe("game accessibility and text navigation", () => {
     await page.getByRole("button", { name: /つづきから/ }).click();
     await expect(gamePanel(page).getByRole("heading", { name: "山手線すごろく" })).toBeFocused();
 
-    await diceButton(page).click();
+    await rollOnce(page);
     const clear = page.getByRole("region", { name: "クリア！" });
     await expect(clear).toBeVisible();
     const heading = clear.getByRole("heading", { name: "クリア！" });
@@ -399,7 +399,7 @@ test.describe("game accessibility and text navigation", () => {
     await writeSaveText(page, readFileSync("tests/e2e/fixtures/tokyo-suburban-before-clear-save.json", "utf8").trimEnd());
     await page.reload();
     await page.getByRole("button", { name: /つづきから/ }).click();
-    await diceButton(page).click();
+    await rollOnce(page);
     const clear = page.getByRole("region", { name: "クリア！" });
     await expect(clear.getByRole("heading", { name: "クリア！" })).toBeFocused();
 
@@ -624,8 +624,7 @@ test.describe("turn log disclosure", () => {
   });
 
   test("shows the pending oversleep sentence as visible log text, not only in the chip tooltip", async ({ page, railwayBundle }) => {
-    // The adjust fixture's next plain turn picks up 寝過ごし (pending at turn 9).
-    const game = playItemTurn(itemScenario("adjust", railwayBundle.network), {}, railwayBundle.network).state;
+    const game = playItemTurn(itemScenario("oversleep-pickup", railwayBundle.network), {}, railwayBundle.network).state;
     expect(game.effects.oversleepPending).toBe(true);
     await page.goto("/");
     await writeSaveText(page, serializeGame(game));

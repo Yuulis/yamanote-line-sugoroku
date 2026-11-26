@@ -1,21 +1,29 @@
 import { createGame, playTurn, type ProductTurnResult } from "../e2e/fixtures/productGame";
 import { describe, expect, it } from "vitest";
-import { restoreGame, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
+import { beginItemTurn, createItemGame, finishItemTurn, playItemTurn, resolveItemDiscard, restoreGame, rollDie, serializeGame, targetSegmentIds } from "../../src/features/game/engine";
 import { resumeSession, reduceGameSession, startSession } from "../../src/features/game/gameSession";
 import { displayedRide, landingText, lastRollText } from "../../src/features/game/presentation";
-import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
+import { DEFAULT_GAME_CONFIG, ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState } from "../../src/types/network";
 import { loadBundle } from "../e2e/fixtures/bundle";
+import { itemScenario } from "../e2e/fixtures/itemScenarios";
+import { legalAdjustments } from "../../src/features/game/itemRollAdjust";
 import {
   FIXTURE_GAME_SEED,
   FIXTURE_SCENARIO_TURNS,
+  FIXTURE_VERY_FAST_MOMENT_GAME_SEED,
+  FIXTURE_VERY_FAST_MOMENT_TURN,
   LEGACY_FIXTURE_GAME_SEED,
   LEGACY_FIXTURE_SCENARIO_TURNS,
+  PRODUCT_ANNOUNCEMENT_GAME_SEED,
+  PRODUCT_REVERSE_LANDING_GAME_SEED,
+  PRODUCT_REVERSE_LANDING_TURN,
 } from "../e2e/fixtures/seeds";
 import { isItemSave, createGame as createClassicGame, playTurn as playClassicTurn, type MoveResult } from "../../src/features/game/engine";
 import { LEGACY_CAPITAL_REGION_CONFIG } from "./fixtures/legacyConfig";
 
 const { network } = await loadBundle("fixture");
+const { network: realNetwork } = await loadBundle("real");
 
 function endpointKind(result: ProductTurnResult | MoveResult): string | null {
   const record = result.state.movementHistory.at(-1);
@@ -155,6 +163,127 @@ describe("pinned legacy browser-fixture trajectory", () => {
 });
 
 describe("pinned production browser-fixture trajectory", () => {
+  it("keeps the unit double scenario and phone double-adjust scenario pinned", () => {
+    const unitScenario = itemScenario("double", network);
+    expect(unitScenario).toMatchObject({ turn: 2, rngSeed: "00000000000000000000000000000003", status: "playing", pending: null });
+    expect(unitScenario.inventory.some((item) => item.kind === "double")).toBe(true);
+
+    for (const datasetNetwork of [network, realNetwork]) {
+      const phoneScenario = itemScenario("double-adjust", datasetNetwork);
+      expect(phoneScenario).toMatchObject({ turn: 10, rngSeed: "0000000000000000000000000000006b", status: "playing", pending: null });
+      expect(phoneScenario.inventory.some((item) => item.kind === "double")).toBe(true);
+      expect(phoneScenario.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
+
+      const double = phoneScenario.inventory.find((item) => item.kind === "double")!;
+      const doubledTurn = playItemTurn(phoneScenario, { command: { items: [{ kind: "double", instanceId: double.id }] } }, datasetNetwork).state;
+      expect(doubledTurn.status).toBe("playing");
+      expect(doubledTurn.pending).toBeNull();
+    }
+  });
+
+  it("pins the rapid animation scenario to a non-clearing rapid turn", () => {
+    const before = itemScenario("rapid", network);
+    expect(before).toMatchObject({ turn: 2, rngSeed: "00000000000000000000000000000002", status: "playing", pending: null });
+    const rapid = before.inventory.find((item) => item.kind === "rapid");
+    expect(rapid).toBeDefined();
+    expect(before.inventory.some((item) => item.kind === "roll-adjust")).toBe(false);
+
+    const after = playItemTurn(before, { command: { items: [{ kind: "rapid", instanceId: rapid!.id }] } }, network);
+    expect(after.state).toMatchObject({ status: "playing", pending: null });
+    const rapidRecord = after.record;
+    if (!rapidRecord || rapidRecord.kind !== "item-ride") throw new Error("Expected a rapid ride");
+    expect(rapidRecord).toMatchObject({ movementMode: "rapid" });
+    expect(rapidRecord.physicalHops).toBeGreaterThan(rapidRecord.pips);
+  });
+
+  it("pins the route arrival pickup to a retained rapid ticket", () => {
+    const before = itemScenario("route-rapid-pickup", network);
+    expect(before).toMatchObject({ turn: 6, rngSeed: "0000000000000000000000000000000c", status: "playing", pending: null });
+    expect(before.inventory.length).toBeLessThan(3);
+    expect(before.inventory.some((item) => item.kind === "roll-adjust")).toBe(false);
+    expect(before.inventory.some((item) => item.kind === "rapid")).toBe(false);
+
+    const result = playItemTurn(before, {}, network);
+    expect(result.state).toMatchObject({ turn: 7, status: "playing", pending: null });
+    expect(result.record).toMatchObject({ movementMode: "normal", unusedPips: 4, fromStationId: "shinagawa", toStationId: "fixture-omori",
+      resolvedRide: { direction: 1 }, landing: { serviceId: "fixture-south", direction: -1 } });
+    expect(result.record?.itemEvents).toContainEqual(expect.objectContaining({
+      type: "pickup-retained", item: expect.objectContaining({ kind: "rapid" }),
+    }));
+  });
+
+  it("pins the very-fast overflow path with a retained adjustment ticket for the following turn", () => {
+    let before = createItemGame(ITEM_GAME_CONFIG, FIXTURE_VERY_FAST_MOMENT_GAME_SEED, network);
+    while (before.turn < FIXTURE_VERY_FAST_MOMENT_TURN) {
+      const result = playItemTurn(before, {}, network);
+      before = result.state.pending?.kind === "discard" ? resolveItemDiscard(result.state, result.state.pending.item.id).state : result.state;
+    }
+    expect(before).toMatchObject({ turn: 6, status: "playing", pending: null, effects: { oversleepPending: true } });
+    expect(before.inventory.map((item) => item.kind)).toEqual(["deadhead", "route-ticket", "rapid"]);
+
+    const overflow = playItemTurn(before, {}, network).state;
+    if (overflow.pending?.kind !== "discard") throw new Error("Expected a full-inventory pickup");
+    expect(overflow.pending.item.kind).toBe("roll-adjust-2");
+    expect(overflow.pending.record).toMatchObject({ movementMode: "oversleep", physicalHops: 6 });
+    expect(overflow.pending.record.traversedSegmentIds).toContain("jr-yamanote:gotanda:meguro");
+    expect(overflow.pending.record.itemEvents).toContainEqual({ type: "effect-activated", effect: "oversleep" });
+    expect(overflow.pending.record.landingSnapshot?.services.length).toBeGreaterThan(1);
+
+    const afterDiscard = resolveItemDiscard(overflow, before.inventory[0]!.id).state;
+    expect(afterDiscard.inventory.map((item) => item.kind)).toEqual(["route-ticket", "rapid", "roll-adjust-2"]);
+    const nextPending = beginItemTurn(afterDiscard, { items: [] }, network).state;
+    expect(nextPending.pending).toMatchObject({ kind: "roll", rawRoll: 3 });
+    expect(finishItemTurn(nextPending, null, network).state).toMatchObject({ turn: 8, status: "playing", pending: null });
+  });
+
+  it("pins the real-data oversleep pickup and repeated-roll announcement trajectories", () => {
+    const oversleepBase = itemScenario("oversleep-pickup", realNetwork);
+    const oversleep = playItemTurn(oversleepBase, {}, realNetwork).state;
+    expect(oversleep).toMatchObject({ turn: 9, status: "playing", pending: null, effects: { oversleepPending: true } });
+
+    let announcementGame = createGame(DEFAULT_GAME_CONFIG, PRODUCT_ANNOUNCEMENT_GAME_SEED, realNetwork);
+    const turns: ProductTurnResult[] = [];
+    while (announcementGame.turn < 5) {
+      const result = playTurn(announcementGame, realNetwork);
+      turns.push(result);
+      announcementGame = result.state;
+    }
+    expect(announcementGame.status).toBe("playing");
+    expect(turns[1]!.roll).toBe(turns[2]!.roll);
+    expect(turns.slice(1).every((turn) => turn.record.itemEvents.length === 0)).toBe(true);
+
+    let reverseGame = createGame(DEFAULT_GAME_CONFIG, PRODUCT_REVERSE_LANDING_GAME_SEED, realNetwork);
+    while (reverseGame.turn < PRODUCT_REVERSE_LANDING_TURN) reverseGame = playTurn(reverseGame, realNetwork).state;
+    const reverseRecord = reverseGame.movementHistory.at(-1);
+    expect(reverseGame).toMatchObject({ turn: PRODUCT_REVERSE_LANDING_TURN, status: "playing" });
+    expect(reverseRecord).toMatchObject({
+      traversedSegmentIds: expect.arrayContaining(["jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi"]),
+      resolvedRide: { serviceId: "jr-shonan-shinjuku-rapid-takasaki", direction: -1 },
+      landing: { serviceId: "metro-fukutoshin", direction: 1 },
+    });
+    expect(reverseRecord?.itemEvents.some((event) => event.type === "pickup-pending-discard")).toBe(false);
+  });
+
+  it("pins adjust-wide to three tickets, seven choices, and an untruncated +3 ride above six", () => {
+    const before = itemScenario("adjust-wide", network);
+    expect(before).toMatchObject({ turn: 5, rngSeed: "0000000000000000000000000000560b" });
+    expect(new Set(before.inventory.map((item) => item.kind))).toEqual(new Set([
+      "roll-adjust", "roll-adjust-2", "roll-adjust-3",
+    ]));
+    expect(legalAdjustments(rollDie(before.rngState).value, before.inventory)).toHaveLength(6);
+
+    const pending = beginItemTurn(before, { items: [] }, network).state;
+    if (pending.pending?.kind !== "roll") throw new Error("Expected an actionable adjustment roll");
+    expect(pending.pending.rawRoll).toBeGreaterThanOrEqual(4);
+    const ticket = before.inventory.find((item) => item.kind === "roll-adjust-3")!;
+    const adjusted = finishItemTurn(pending, { instanceId: ticket.id, delta: 3 }, network).record;
+    expect(adjusted).toMatchObject({
+      kind: "item-ride", rawRoll: pending.pending.rawRoll, effectiveFace: pending.pending.rawRoll + 3,
+      pips: pending.pending.rawRoll + 3, physicalHops: pending.pending.rawRoll + 3,
+      stopReason: "roll", unusedPips: 0,
+    });
+  });
+
   it("selects the first ascending-search seed proved by the production engine", () => {
     expect(productionFixture.seed).toBe(FIXTURE_GAME_SEED);
     expect(FIXTURE_GAME_SEED).toBe("000000000000000000000000000005ff");

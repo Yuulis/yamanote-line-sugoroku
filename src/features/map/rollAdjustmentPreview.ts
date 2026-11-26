@@ -1,11 +1,12 @@
 import { Marker } from "maplibre-gl";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { Position } from "../../types/data";
+import type { RollAdjustDelta } from "../../types/network";
 import type { PreviewCalloutBounds } from "./camera";
 
 /** The part of a landing the map needs; `AdjustmentLanding` satisfies it structurally. */
 export interface AdjustmentCandidate {
-  delta: -1 | 0 | 1;
+  delta: RollAdjustDelta | 0;
   stationId: string;
   position: Position | null;
   travelledSteps: number;
@@ -40,9 +41,9 @@ export interface BubbleBox {
   height?: number;
 }
 
-function deltaLabel(delta: -1 | 0 | 1): string {
+function deltaLabel(delta: RollAdjustDelta | 0): string {
   if (delta === 0) return "そのまま";
-  return delta === -1 ? "−1" : "+1";
+  return `${delta < 0 ? "−" : "+"}${Math.abs(delta)}`;
 }
 
 /** One group per landing station, in first-seen (delta) order; entries without a platform are skipped. */
@@ -118,8 +119,15 @@ function layoutLanes(map: MapLibreMap, callouts: readonly Callout[]): void {
     const { x, y } = map.project(callout.group.position);
     return { x, y, width: callout.bubble.offsetWidth, height: callout.bubble.offsetHeight };
   }));
+  const mapHeight = map.getContainer().clientHeight;
   callouts.forEach((callout, index) => {
-    callout.leader.style.height = `${TAIL_HEIGHT_PX + (lanes[index] ?? 0) * LANE_HEIGHT_PX}px`;
+    const leaderHeight = TAIL_HEIGHT_PX + (lanes[index] ?? 0) * LANE_HEIGHT_PX;
+    callout.leader.style.height = `${leaderHeight}px`;
+    const { y } = map.project(callout.group.position);
+    const topOverflow = Math.max(0, callout.bubble.offsetHeight + leaderHeight + ANCHOR_OFFSET_PX - y);
+    const bottomOverflow = Math.max(0, y - ANCHOR_OFFSET_PX + topOverflow - mapHeight);
+    // Keep the leader close to its station while preventing fractional clipping at map edges.
+    callout.marker.setOffset([0, -ANCHOR_OFFSET_PX + topOverflow - bottomOverflow]);
   });
 }
 

@@ -247,8 +247,9 @@ describe("frozen Tokyo suburban runtime contract", () => {
     const historicalDataVersion = (JSON.parse(historical) as { dataVersion: string }).dataVersion;
     const historicalNetwork = { ...network, dataVersion: historicalDataVersion };
     expect(() => restoreGame(historical, historicalNetwork, { expectedConfig: DEFAULT_GAME_CONFIG, requireSeededRolls: true }))
-      .toThrowError(expect.objectContaining({ code: "CONFIG_MISMATCH" }));
-    expect(restoreGame(historical, historicalNetwork, { expectedConfig: CLASSIC_GAME_CONFIG, requireSeededRolls: true }).turn).toBe(41);
+      .toThrowError(expect.objectContaining({ code: "RULES_VERSION_MISMATCH" }));
+    expect(() => restoreGame(historical, historicalNetwork, { expectedConfig: CLASSIC_GAME_CONFIG, requireSeededRolls: true }))
+      .toThrowError(expect.objectContaining({ code: "RULES_VERSION_MISMATCH" }));
     const storage = memoryStorage(historical);
     expect(readSave(storage, network, DEFAULT_GAME_CONFIG)).toEqual({ kind: "invalid", problem: "data-version" });
     expect(storage.value).toBe(historical);

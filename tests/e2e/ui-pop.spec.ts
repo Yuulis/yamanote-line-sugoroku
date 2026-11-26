@@ -72,7 +72,7 @@ async function buildPopulatedState(page: import("@playwright/test").Page, bundle
     };
   });
   await diceButton(page).click();
-  // A held 出目調整券 asks before the move finishes; keep the roll as it is.
+  // A held 出目調整券±1 asks before the move finishes; keep the roll as it is.
   const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
   const save = gamePanel(page).locator(".game-panel__save");
   await expect.poll(async () => await adjustment.isVisible() || ((await save.textContent()) ?? "").includes("失敗")).toBe(true);
@@ -175,24 +175,24 @@ test("menu, log, and item card transitions preserve a selected draft", async ({ 
 
 test("reclicking the open slot closes it and switching slots opens the other card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "pointer click contract runs on desktop projects");
-  await scenario(page, "discard", railwayBundle);
+  await scenario(page, "discard-adjust", railwayBundle);
   const slots = gamePanel(page).locator(".item-slot");
-  const first = inventoryItem(page, "倍速券");
+  const first = inventoryItem(page, "方向指定券");
   const firstOpener = first.getByRole("button");
   await firstOpener.click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeVisible();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeVisible();
   await firstOpener.click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeHidden();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeHidden();
   await expect(firstOpener).toHaveAttribute("aria-expanded", "false");
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeHidden();
-  const second = gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name: "出目調整券" }) });
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeHidden();
+  const second = gamePanel(page).locator(".item-slot").filter({ has: page.getByRole("heading", { name: "出目調整券±1" }) });
   // Switching goes straight from an open card to the other slot's card.
   await firstOpener.click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeVisible();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeVisible();
   await second.getByRole("button").click();
-  await expect(gamePanel(page).getByRole("dialog", { name: "出目調整券" })).toBeVisible();
-  await expect(gamePanel(page).getByRole("dialog", { name: "倍速券" })).toBeHidden();
+  await expect(gamePanel(page).getByRole("dialog", { name: "出目調整券±1" })).toBeVisible();
+  await expect(gamePanel(page).getByRole("dialog", { name: "方向指定券" })).toBeHidden();
   await expect(firstOpener).toHaveAttribute("aria-expanded", "false");
   await expect(second.getByRole("button")).toHaveAttribute("aria-expanded", "true");
   await expect(slots).toHaveCount(3);
@@ -200,7 +200,7 @@ test("reclicking the open slot closes it and switching slots opens the other car
 
 test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(!test.info().project.use.hasTouch, "needs a touch project");
-  await scenario(page, "double", railwayBundle);
+  await scenario(page, "double-adjust", railwayBundle);
   const slot = inventoryItem(page, "倍速券");
   const opener = slot.getByRole("button");
   await opener.tap();
@@ -213,10 +213,10 @@ test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, asyn
   await expect(card).toBeHidden();
   await opener.tap();
   await expect(card).toBeVisible();
-  const otherSlot = inventoryItem(page, "出目調整券");
+  const otherSlot = inventoryItem(page, "出目調整券±1");
   const otherOpener = otherSlot.getByRole("button");
   await otherOpener.tap();
-  const otherCard = gamePanel(page).getByRole("dialog", { name: "出目調整券", exact: true });
+  const otherCard = gamePanel(page).getByRole("dialog", { name: "出目調整券±1", exact: true });
   await expect(otherCard).toBeVisible();
   await expect(card).toBeHidden();
   await otherOpener.tap();
@@ -237,9 +237,9 @@ test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, asyn
 
 test("unusable and passive items remain inspectable with the right card actions", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   await scenario(page, "adjust", railwayBundle);
-  const adjust = inventoryItem(page, "出目調整券");
+  const adjust = inventoryItem(page, "出目調整券±1");
   await adjust.getByRole("button").click();
-  const adjustCard = gamePanel(page).getByRole("dialog", { name: "出目調整券" });
+  const adjustCard = gamePanel(page).getByRole("dialog", { name: "出目調整券±1" });
   await expect(adjustCard.getByRole("button", { name: "使う" })).toBeDisabled();
   await expect(adjustCard).toContainText("出目が出た後に使えるアイテムです");
   await scenario(page, "certificate", railwayBundle);
@@ -349,13 +349,13 @@ test("direction ticket card opens its use dialog and cancellation restores its o
 
 test("desktop card hides its own hover tooltip, keeps other slot hover, and closes on Tab out", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "requires desktop hover and keyboard focus");
-  await scenario(page, "discard", railwayBundle);
+  await scenario(page, "double-adjust", railwayBundle);
   const first = inventoryItem(page, "倍速券");
   const firstOpener = first.getByRole("button");
   await firstOpener.click();
   await first.hover();
   await expect(first.locator(".item-slot__tooltip")).toHaveCount(0);
-  const second = inventoryItem(page, "出目調整券");
+  const second = inventoryItem(page, "出目調整券±1");
   await second.hover();
   await expect(second.locator(".item-slot__tooltip")).toBeVisible();
 

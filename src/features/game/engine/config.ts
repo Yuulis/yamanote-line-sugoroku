@@ -2,6 +2,7 @@ import type { Direction, GameConfig, ItemPolicy, ServicePattern } from "../../..
 import { BENEFICIAL_ITEM_KINDS, HARMFUL_ITEM_KINDS, SERVICE_KINDS } from "../../../types/network";
 import { GameEngineError } from "./errors";
 import { DIRECTIONS, findSegment, type RailwayNetwork, servicePairs } from "./network";
+import { MAX_WEIGHT_TOTAL } from "./rng";
 
 export const GOAL_ARRIVAL_POLICIES = [
   "truncate-on-target-service",
@@ -95,7 +96,7 @@ function boundedInteger(value: unknown, min: number, max: number, path: string):
 
 /** Parse the not-yet-shipped item policy without accepting future/unknown keys. */
 export function parseItemPolicy(value: unknown): ItemPolicy {
-  const keys = ["dropChancePerMille", "harmfulChancePercent", "inventoryCapacity", "maxActiveItemsPerTurn", "delayTurns", "suspensionTurns", "fullInventoryPolicy", "beneficialKinds", "harmfulKinds"];
+  const keys = ["dropChancePerMille", "harmfulChancePercent", "inventoryCapacity", "maxActiveItemsPerTurn", "delayTurns", "suspensionTurns", "fullInventoryPolicy", "beneficialKinds", "beneficialWeights", "harmfulKinds"];
   const raw = policyRecord(value, keys, "itemPolicy");
   if (raw.fullInventoryPolicy !== "player-chooses-discard") invalid("itemPolicy.fullInventoryPolicy is unknown");
   const parseKinds = <T extends string>(input: unknown, allowed: readonly T[], path: string): T[] => {
@@ -109,6 +110,20 @@ export function parseItemPolicy(value: unknown): ItemPolicy {
   };
   const capacity = boundedInteger(raw.inventoryCapacity, 1, 10, "itemPolicy.inventoryCapacity");
   const activeLimit = boundedInteger(raw.maxActiveItemsPerTurn, 1, capacity, "itemPolicy.maxActiveItemsPerTurn");
+  const beneficialKinds = parseKinds(raw.beneficialKinds, BENEFICIAL_ITEM_KINDS, "itemPolicy.beneficialKinds");
+  if (!Array.isArray(raw.beneficialWeights) || raw.beneficialWeights.length !== beneficialKinds.length) {
+    invalid("itemPolicy.beneficialWeights must align with beneficialKinds");
+  }
+  let beneficialWeightTotal = 0;
+  const beneficialWeights: number[] = [];
+  for (let index = 0; index < raw.beneficialWeights.length; index += 1) {
+    const weight: unknown = raw.beneficialWeights[index];
+    if (typeof weight !== "number" || !Number.isSafeInteger(weight) || weight < 1 || weight > MAX_WEIGHT_TOTAL - beneficialWeightTotal) {
+      invalid(`itemPolicy.beneficialWeights[${index}] must be a positive integer within the weighted-draw total limit`);
+    }
+    beneficialWeightTotal += weight;
+    beneficialWeights.push(weight);
+  }
   return {
     dropChancePerMille: boundedInteger(raw.dropChancePerMille, 0, 1000, "itemPolicy.dropChancePerMille"),
     harmfulChancePercent: boundedInteger(raw.harmfulChancePercent, 0, 100, "itemPolicy.harmfulChancePercent"),
@@ -117,7 +132,8 @@ export function parseItemPolicy(value: unknown): ItemPolicy {
     delayTurns: boundedInteger(raw.delayTurns, 1, 100, "itemPolicy.delayTurns"),
     suspensionTurns: boundedInteger(raw.suspensionTurns, 1, 100, "itemPolicy.suspensionTurns"),
     fullInventoryPolicy: "player-chooses-discard",
-    beneficialKinds: parseKinds(raw.beneficialKinds, BENEFICIAL_ITEM_KINDS, "itemPolicy.beneficialKinds"),
+    beneficialKinds,
+    beneficialWeights,
     harmfulKinds: parseKinds(raw.harmfulKinds, HARMFUL_ITEM_KINDS, "itemPolicy.harmfulKinds"),
   };
 }
@@ -134,6 +150,7 @@ export function copyGameConfig(config: GameConfig): GameConfig {
     ...(config.itemPolicy ? { itemPolicy: {
       ...config.itemPolicy,
       beneficialKinds: [...config.itemPolicy.beneficialKinds],
+      beneficialWeights: [...config.itemPolicy.beneficialWeights],
       harmfulKinds: [...config.itemPolicy.harmfulKinds],
     } } : {}),
   };

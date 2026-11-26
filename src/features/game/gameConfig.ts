@@ -33,8 +33,9 @@ const ITEM_POLICY: ItemPolicy = {
   delayTurns: 3,
   suspensionTurns: 5,
   fullInventoryPolicy: "player-chooses-discard",
-  // Spike mapping: route, direction, adjust, double, rapid, deadhead, certificate.
+  // Six ordinary beneficial kinds keep weight 6; the three adjust tickets use 3/2/1.
   beneficialKinds: [...BENEFICIAL_ITEM_KINDS],
+  beneficialWeights: [6, 6, 3, 6, 6, 6, 6, 2, 1],
   // Spike names are already product ids: delay, suspension, detour, oversleep.
   harmfulKinds: [...HARMFUL_ITEM_KINDS],
 };
@@ -42,7 +43,7 @@ const ITEM_POLICY: ItemPolicy = {
 /** The sole playable Tokyo suburban ruleset. */
 export const ITEM_GAME_CONFIG: GameConfig = {
   ...CLASSIC_GAME_CONFIG,
-  rulesetVersion: "tokyo-suburban-items-1",
+  rulesetVersion: "tokyo-suburban-items-2",
   serviceLottery: {
     kindWeights: { local: 1, rapid: 1 },
     target: { kind: "share", numerator: 1, denominator: 2 },

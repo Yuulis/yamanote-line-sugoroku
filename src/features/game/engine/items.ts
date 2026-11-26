@@ -16,7 +16,7 @@ import {
   scheduleOversleep,
   scheduleSuspension,
 } from "./itemEffects";
-import { drawIndex, seedRng } from "./rng";
+import { drawIndex, drawWeightedIndex, seedRng } from "./rng";
 
 export interface PendingItemDiscard {
   item: ItemInstance;
@@ -124,9 +124,11 @@ export function drawItemDrop(
   const harmfulDraw = drawIndex(dropDraw.nextRngState, 100);
   const harmful = harmfulDraw.index < policy.harmfulChancePercent;
   const pool: readonly string[] = harmful ? policy.harmfulKinds : policy.beneficialKinds;
-  const kindDraw = pool.length > 1
-    ? drawIndex(harmfulDraw.nextRngState, pool.length)
-    : { index: 0, nextRngState: harmfulDraw.nextRngState };
+  const kindDraw = pool.length === 1
+    ? { index: 0, nextRngState: harmfulDraw.nextRngState }
+    : harmful
+      ? drawIndex(harmfulDraw.nextRngState, pool.length)
+      : drawWeightedIndex(harmfulDraw.nextRngState, policy.beneficialWeights);
   const kind = pool[kindDraw.index];
   if (kind === undefined) invalid("Item pool draw did not resolve an item");
   if (harmful) {

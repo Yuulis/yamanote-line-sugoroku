@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   beginItemTurn, buildRailwayNetwork, createGame, createItemGame, finishItemTurn, playItemTurn, playTurn, resolveItemDiscard, rollDie, targetSegmentIds,
 } from "../../src/features/game/engine";
-import type { ItemGameState, ItemRollAdjustment } from "../../src/types/network";
+import type { ItemGameState, ItemRollAdjustment, RollAdjustDelta } from "../../src/types/network";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { LOOP_SEGMENT_IDS, M_LINE, M_START, multiConfig, multiServiceInput } from "./fixtures/multiService";
 import { displayedProgress, sessionProgress } from "../../src/features/game/animation/displayedProgress";
@@ -216,7 +216,7 @@ describe("shared turn moment publication", () => {
     attempt.stage = "stamps";
     const stamped = deriveTurnMomentDisplay({ session, network, presentation: resolver, progress: progressFor(session), attempt,
       revealStage: "waiting", restoredOrOmitted: false });
-    expect(stamped.compactRoll).toBe("2マス ×2");
+    expect(stamped.compactRoll).toBe("12マス ×2");
   });
 
   it("withholds item physical hops and unused pips during movement, then publishes the literal detail at arrival", () => {
@@ -228,10 +228,10 @@ describe("shared turn moment publication", () => {
     const moving = { ...session, phase: "animating" as const };
     const gated = deriveTurnMomentDisplay({ session: moving, network, presentation: resolver, progress: progressFor(moving), attempt,
       revealStage: "waiting", restoredOrOmitted: false });
-    expect(gated.rollText).toBe("1（1マス、1駅移動）");
+    expect(gated.rollText).toBe("5（5マス、5駅移動）");
     const arrival = deriveTurnMomentDisplay({ session, network, presentation: resolver, progress: progressFor(session), attempt,
       revealStage: "arrival", restoredOrOmitted: false });
-    expect(arrival.rollText).toBe("5（5マス、13駅移動、残り5は使わず）");
+    expect(arrival.rollText).toBe("3（3マス、25駅移動、残り2は使わず）");
   });
 
   it("does not publish the final completed-segment set while displayed movement is in progress", () => {
@@ -437,8 +437,8 @@ describe("S12 arrival and goal publication", () => {
     expect(goalState.status).toBe("completed");
     const moving = derive({ ...goal, phase: "animating" }, "waiting");
     expect(moving.phase).toBe("moving");
-    // 77駅 is the rapid hop budget the HUD compact roll already shows during movement (the record moved 13 stations).
-    expect(moving.announcement).toBe("出目は5、77駅 快速です。移動中です。演出をスキップできます。");
+    // 37駅 is the rapid hop budget the HUD compact roll already shows during movement (the record moves farther).
+    expect(moving.announcement).toBe("出目は3、37駅 快速です。移動中です。演出をスキップできます。");
     expect(moving.announcement).not.toMatch(/駅移動|使わず|到着|ゴール/);
     expect(moving.summaryTurn).toBeNull();
   });
@@ -472,7 +472,7 @@ describe("S12 arrival and goal publication", () => {
     expect(arrival.itemUseLocked).toBe(true);
     expect(arrival.canSkip).toBe(true);
     expect(arrival.goalGuidance).toBeNull();
-    expect(arrival.announcement).toBe("8ターン目：新橋に到着。踏破 30/30");
+    expect(arrival.announcement).toBe("2ターン目：新橋に到着。踏破 30/30");
     expect(derive(goal, "segment-flash").goalGuidance).toBeNull();
     expect(arrival.clearAnnouncement).toBe("");
     expect(arrival.toastInputs).toEqual([]);
@@ -687,7 +687,7 @@ describe("roll adjustment landing preview", () => {
   }
 
   /** The station each choice really reaches, plus its truncation facts. */
-  function resolved(game: ItemGameState, delta: -1 | 0 | 1) {
+  function resolved(game: ItemGameState, delta: RollAdjustDelta | 0) {
     const adjustment: ItemRollAdjustment | null = delta === 0 ? null : { instanceId: "held-0", delta };
     const { record } = finishItemTurn(game, adjustment, multiNetwork);
     if (record?.kind !== "item-ride") throw new Error("Expected item ride");
@@ -705,7 +705,7 @@ describe("roll adjustment landing preview", () => {
     return display.adjustmentLandings;
   }
 
-  it.each([[1, [0, 1]], [6, [-1, 0]], [3, [-1, 0, 1]]] as const)("lists only the legal choices for a roll of %i", (face, deltas) => {
+  it.each([[1, [0, 1]], [6, [-1, 0, 1]], [3, [-1, 0, 1]]] as const)("lists only the legal choices for a roll of %i", (face, deltas) => {
     const landings = expectPreviewMatchesEngine(pendingGame(face));
     expect(landings.map(({ delta }) => delta)).toEqual(deltas);
   });

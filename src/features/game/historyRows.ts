@@ -7,6 +7,7 @@ import {
   directionLabel, itemEventTexts, landingText, landingTransitionText, serviceName,
 } from "./presentation";
 import { ITEM_SHORT_NAMES } from "./itemPresentation";
+import { isRollAdjustKind } from "./itemRollAdjust";
 import type { PresentationResolver } from "./presentationResolver";
 import type { RailwayNetwork } from "./engine";
 
@@ -79,7 +80,7 @@ function shortRollText(
   const roll = rawRoll === null || effectiveRoll === null
     ? "—"
     : adjusted ? `出目${rawRoll}→${effectiveRoll}` : `出目${rawRoll}`;
-  const names = effects.filter((effect) => effect !== "roll-adjust").map((effect) => ITEM_SHORT_NAMES[effect]);
+  const names = effects.filter((effect) => !isRollAdjustKind(effect)).map((effect) => ITEM_SHORT_NAMES[effect]);
   return names.length > 0 ? `${roll}・${names.join("・")}` : roll;
 }
 
@@ -170,7 +171,7 @@ function itemRow(
   const rawRoll = isDeadhead ? null : record.rawRoll;
   const effectiveRoll = isDeadhead ? null : record.effectiveFace;
   const adjusted = !isDeadhead && record.adjustment !== null;
-  const effectText = effectKinds.filter((effect) => effect !== "roll-adjust").map((effect) => ITEM_SHORT_NAMES[effect]).join("・");
+  const effectText = effectKinds.filter((effect) => !isRollAdjustKind(effect)).map((effect) => ITEM_SHORT_NAMES[effect]).join("・");
   return {
     kind: isDeadhead ? "deadhead" : "item-ride",
     recordIndex,

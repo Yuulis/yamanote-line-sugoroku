@@ -2,8 +2,8 @@ import { mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
-import { diceButton, openClearHistory, openTitle, panelStat, readMap, writeSaveText } from "./support/app";
-import { PRODUCT_HISTORY_CLEAR_ROUTE_LEGS } from "./fixtures/seeds";
+import { openClearHistory, openTitle, panelStat, readMap, revealUnadjustedRoll, rollOnce, writeSaveText } from "./support/app";
+import { PRODUCT_HISTORY_CLEAR_ROUTE_LEGS, PRODUCT_HISTORY_SCENARIO_TURNS } from "./fixtures/seeds";
 import { readShareLog, stubShareApis, type ShareLogEntry } from "./support/shareStubs";
 
 // Issue #69, S2: the published clear result on screen. The pinned save is one roll before the clear.
@@ -38,7 +38,9 @@ async function failSaveWrites(page: Page): Promise<void> {
     const storage = Storage.prototype;
     const original = storage.setItem;
     storage.setItem = function (key: string, value: string): void {
-      if (key.includes("save")) throw new Error("quota");
+      if (key.includes("save") && (JSON.parse(value) as { status?: unknown }).status === "completed") {
+        throw new Error("quota");
+      }
       original.call(this, key, value);
     };
   });
@@ -50,9 +52,13 @@ async function clearWithOneRoll(page: Page, options: { failSave?: boolean } = {}
   await writeSaveText(page, PINNED_SAVE);
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
-  await expect(panelStat(page, "ターン数")).toHaveText("95");
-  if (options.failSave) await failSaveWrites(page);
-  await diceButton(page).click();
+  await expect(panelStat(page, "ターン数")).toHaveText(String(PRODUCT_HISTORY_SCENARIO_TURNS.completed - 1));
+  if (options.failSave) {
+    await failSaveWrites(page);
+    await revealUnadjustedRoll(page);
+  } else {
+    await rollOnce(page);
+  }
   const clear = page.getByRole("region", { name: "クリア！" });
   await expect(clear).toBeVisible();
   await expect(clear.getByRole("heading", { name: "クリア！" })).toBeFocused();
@@ -1061,7 +1067,7 @@ const PINNED_HISTORY_LITERALS: readonly {
     page: 1, recordIndex: 3, turn: "4ターン目", roll: "出目6", move: "浜松町・大門 → 蒲田（6駅）", line: "京浜東北線・大船方面",
     notes: [
       ["landing", "到着蒲田：京浜東北線・東急池上線 各停・東急多摩川線 各停から抽選 → 京浜東北線 ／ 方向抽選 → 大船方面"],
-      ["item", "アイテム遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）"],
+      ["item", "アイテム出目調整券±3を拾いました。出目を見てから、出目に3を足すか引くかできる（1より小さくはできない）"],
     ],
   },
   {
@@ -1069,12 +1075,12 @@ const PINNED_HISTORY_LITERALS: readonly {
     notes: [
       ["landing", "到着横浜：10系統から抽選 → 横須賀線 ／ 方向抽選 → 東京方面"],
       ["truncation", "途中停止横浜で終了〔系統の端〕、残り2を使わず"],
-      ["item", "アイテム遅延証明書を拾いました。持っているだけで、次に拾う不利なアイテムを1回打ち消す（枠を1つ使う）"],
+      ["item", "アイテム方向指定券を拾いました。山手線以外の路線で進む向きを選べる"],
     ],
   },
   {
-    page: 5, recordIndex: 95, turn: "96ターン目", roll: "出目3", move: "有楽町・日比谷 → 新橋（1駅）", line: "山手線・外回り",
-    notes: [["truncation", "途中停止新橋で終了、残り2を使わず"], ["goal", "ゴールに到着しました"]],
+    page: 5, recordIndex: 82, turn: "83ターン目", roll: "出目4", move: "有楽町・日比谷 → 新橋（1駅）", line: "山手線・外回り",
+    notes: [["truncation", "途中停止新橋で終了、残り3を使わず"], ["goal", "ゴールに到着しました"]],
   },
 ];
 

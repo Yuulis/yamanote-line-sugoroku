@@ -8,6 +8,12 @@ export interface ItemIconProps {
 
 type IconDrawing = () => ReactNode;
 
+const ROLL_ADJUST_DRAWING: IconDrawing = () => <>
+  <path d="M12 7h24a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H12a5 5 0 0 1-5-5V12a5 5 0 0 1 5-5z" />
+  <path d="M24 14v10m-5-5h10M19 33h10" className="item-icon__accent-stroke" />
+  <circle cx="15" cy="15" r="1" /><circle cx="33" cy="33" r="1" />
+</>;
+
 const ITEM_ICON_DRAWINGS: Readonly<Record<ItemKind, IconDrawing>> = {
   "route-ticket": () => <>
     <path d="M9 11h10v26H9z" />
@@ -20,11 +26,9 @@ const ITEM_ICON_DRAWINGS: Readonly<Record<ItemKind, IconDrawing>> = {
     <path d="m27 17 7 7-7 7" className="item-icon__accent-stroke" />
     <path d="M14 16h5M14 32h5" />
   </>,
-  "roll-adjust": () => <>
-    <path d="M12 7h24a5 5 0 0 1 5 5v24a5 5 0 0 1-5 5H12a5 5 0 0 1-5-5V12a5 5 0 0 1 5-5z" />
-    <path d="M24 14v10m-5-5h10M19 33h10" className="item-icon__accent-stroke" />
-    <circle cx="15" cy="15" r="1" /><circle cx="33" cy="33" r="1" />
-  </>,
+  "roll-adjust": () => ROLL_ADJUST_DRAWING(),
+  "roll-adjust-2": () => ROLL_ADJUST_DRAWING(),
+  "roll-adjust-3": () => ROLL_ADJUST_DRAWING(),
   double: () => <>
     <path d="M22 5 9 26h9l-3 17 15-23h-9l4-15z" className="item-icon__accent" />
     <path d="M22 5 9 26h9l-3 17 15-23h-9l4-15z" />
@@ -82,6 +86,10 @@ export function ItemIcon({ kind, size = 24 }: ItemIconProps): React.JSX.Element 
       focusable="false"
     >
       {drawing()}
+      {(kind === "roll-adjust-2" || kind === "roll-adjust-3") && <text
+        x="43" y="12" textAnchor="end" fontSize="11" fontWeight="700"
+        fill="currentColor" stroke="white" strokeWidth="2" paintOrder="stroke"
+      >±{kind === "roll-adjust-2" ? 2 : 3}</text>}
     </svg>
   );
 }

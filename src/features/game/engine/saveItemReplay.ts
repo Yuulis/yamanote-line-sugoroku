@@ -8,8 +8,9 @@ import { createItemGame } from "./game";
 import { clearDetour, consumeInventoryInstance, scheduleDelay, scheduleDetour, scheduleOversleep, scheduleSuspension } from "./itemEffects";
 import { advanceWithMode } from "./itemMovement";
 import { itemLandingOptions, routeTicketOptions } from "./itemOptions";
+import { isAdjustedFaceInRange, isRollAdjustDeltaForKind, isRollAdjustKind } from "../itemRollAdjust";
 import { beginItemTurn, finishItemTurn, resolveItemDiscard } from "./itemTurn";
-import { ownedItem, prepareItemTurn, type PreparedItemTurn } from "./itemTurnPreparation";
+import { prepareItemTurn, type PreparedItemTurn } from "./itemTurnPreparation";
 import { resolvePendingItemDiscard, type ItemDropResult } from "./items";
 import { resolveLandingEvent } from "./landing";
 import type { RailwayNetwork } from "./network";
@@ -90,9 +91,14 @@ function structuralTurn(state: ItemGameState, record: ItemTurnRecord, network: R
     face = prepared.delayed && !prepared.oversleep ? 1 : record.rawRoll;
     if (record.adjustment !== null) {
       if (action || prepared.delayed || prepared.oversleep) invalidSave("Illegal roll adjustment");
-      ownedItem(state, record.adjustment.instanceId, "roll-adjust");
-      face += record.adjustment.delta;
-      if (face < 1 || face > 6) invalidSave("Adjusted roll is outside 1-6");
+      const adjustment = record.adjustment;
+      const ownedAdjustment = state.inventory.find((item) => item.id === adjustment.instanceId);
+      if (!ownedAdjustment || !isRollAdjustKind(ownedAdjustment.kind)) invalidSave("Adjustment item is not owned");
+      if (!isRollAdjustDeltaForKind(ownedAdjustment.kind, adjustment.delta)) {
+        invalidSave("Adjustment magnitude does not match the owned item");
+      }
+      face += adjustment.delta;
+      if (!isAdjustedFaceInRange(face)) invalidSave("Adjusted face must be an integer >= 1");
       const consumed = consumeInventoryInstance(prepared.inventory, record.adjustment.instanceId);
       prepared.inventory = consumed.inventory;
       prepared.events.push(...consumed.events);

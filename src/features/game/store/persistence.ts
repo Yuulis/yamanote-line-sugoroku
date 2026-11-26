@@ -30,6 +30,7 @@ export interface StorageLike {
 export type SaveProblem =
   | "corrupt"
   | "unsupported-version"
+  | "rules-changed"
   | "data-version"
   | "rules"
   | "rng-mismatch";
@@ -45,6 +46,7 @@ export type SaveWriteResult = "saved" | "unavailable" | "failed";
 
 const PROBLEM_BY_CODE: Partial<Record<GameEngineErrorCode, SaveProblem>> = {
   UNSUPPORTED_SAVE_VERSION: "unsupported-version",
+  RULES_VERSION_MISMATCH: "rules-changed",
   DATA_VERSION_MISMATCH: "data-version",
   CONFIG_MISMATCH: "rules",
   RNG_MISMATCH: "rng-mismatch",
@@ -53,6 +55,7 @@ const PROBLEM_BY_CODE: Partial<Record<GameEngineErrorCode, SaveProblem>> = {
 const PROBLEM_MESSAGES: Record<SaveProblem, string> = {
   corrupt: "セーブデータが壊れているため読み込めません。",
   "unsupported-version": "このバージョンでは読み込めない形式のセーブデータです。",
+  "rules-changed": "ゲームのルールが変わったため、このセーブデータは続きから遊べません。",
   "data-version": "路線データが更新されたため、このセーブデータは使えません。",
   rules: "ルールが異なるセーブデータのため読み込めません。",
   "rng-mismatch": "サイコロの記録が一致しないため、このセーブデータは使えません。",

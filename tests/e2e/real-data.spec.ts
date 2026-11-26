@@ -8,14 +8,12 @@ import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { UiLineGroup } from "../../src/types/data";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
-import { PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
+import { PRODUCT_OEDO_GAME_SEED, PRODUCT_OEDO_LOTTERY_TURN, PRODUCT_UENO_TRANSFER_SEED } from "./fixtures/seeds";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { closeGameMenu, diceButton, gamePanel, markerPosition, openGameLog, openGameMenu, openTitle, panelStat, readMap, readSave, rollOnce, startNewGame, writeSaveText } from "./support/app";
 
 test.use({ dataset: "real" });
 const SCREENSHOT_DIR = resolve(".claude/logs/s6/screenshots");
-const OEDO_LOTTERY_SEED = "00000000000000000000000000000004";
-const OEDO_LOTTERY_TURN = 256;
 const OEDO_BEFORE_LOTTERY_SAVE = readFileSync(
   new URL("./fixtures/tokyo-suburban-oedo-before-lottery-save.json", import.meta.url),
   "utf8",
@@ -142,12 +140,12 @@ test("the Oedo legend checkbox groups both services and works by keyboard and ph
 });
 
 test("Oedo candidates at 都庁前 display one row with two lottery slots", async ({ page, railwayBundle }) => {
-  const before = gameAfterTurn(railwayBundle, OEDO_LOTTERY_SEED, OEDO_LOTTERY_TURN - 1);
+  const before = gameAfterTurn(railwayBundle, PRODUCT_OEDO_GAME_SEED, PRODUCT_OEDO_LOTTERY_TURN - 1);
   expect(serializeGame(before)).toBe(OEDO_BEFORE_LOTTERY_SAVE);
   const result = playTurn(before, railwayBundle.network);
   const game = result.state;
   const record = game.movementHistory.at(-1)!;
-  expect(record).toMatchObject({ turn: OEDO_LOTTERY_TURN, toStationId: "toei-tochomae" });
+  expect(record).toMatchObject({ turn: PRODUCT_OEDO_LOTTERY_TURN, toStationId: "toei-tochomae" });
   expect(result.events.find((event) => event.type === "landing-resolved")).toMatchObject({
     type: "landing-resolved",
     stationId: "toei-tochomae",
@@ -158,7 +156,7 @@ test("Oedo candidates at 都庁前 display one row with two lottery slots", asyn
   await writeSaveText(page, OEDO_BEFORE_LOTTERY_SAVE);
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
-  await expect(panelStat(page, "ターン数")).toHaveText("255");
+  await expect(panelStat(page, "ターン数")).toHaveText(String(PRODUCT_OEDO_LOTTERY_TURN - 1));
   await rollOnce(page);
   expect(await readSave(page)).toEqual(game);
   await expect(panelStat(page, "現在駅")).toHaveText("都庁前");

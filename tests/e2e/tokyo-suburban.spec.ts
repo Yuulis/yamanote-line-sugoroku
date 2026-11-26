@@ -41,13 +41,13 @@ test("the real Korakuen transfer shows joined station names, candidates, platfor
   const before = stateAt(PRODUCT_KORAKUEN_TRANSFER_SEED, PRODUCT_KORAKUEN_TRANSFER_TURN - 1, railwayBundle.network);
   expect(serializeGame(before)).toBe(pinnedSave("tokyo-suburban-korakuen-before-transfer-save.json"));
   const expected = playTurn(before, railwayBundle.network).state;
-  expect(expected.movementHistory.at(-1)).toMatchObject({ toStationId: "metro-korakuen", landing: { serviceId: "metro-marunouchi", direction: 1 } });
+  expect(expected.movementHistory.at(-1)).toMatchObject({ toStationId: "metro-korakuen", landing: { serviceId: "metro-marunouchi", direction: -1 } });
 
   await openTitle(page);
   await writeSaveText(page, pinnedSave("tokyo-suburban-korakuen-before-transfer-save.json"));
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
-  await expect(panelStat(page, "ターン数")).toHaveText("12");
+  await expect(panelStat(page, "ターン数")).toHaveText(String(PRODUCT_KORAKUEN_TRANSFER_TURN - 1));
   await rollOnce(page);
   await openGameLog(page);
   expect(await readSave(page)).toEqual(expected);
@@ -70,10 +70,10 @@ test("the real Korakuen transfer shows joined station names, candidates, platfor
   await rollOnce(page);
   expect(await readSave(page)).toEqual(next);
   expect(next.movementHistory.at(-1)).toMatchObject({
-    turn: 14,
-    resolvedRide: { serviceId: "metro-marunouchi", direction: 1 },
+    turn: PRODUCT_KORAKUEN_TRANSFER_TURN + 1,
+    resolvedRide: { serviceId: "metro-marunouchi", direction: -1 },
     fromStationId: "metro-korakuen",
-    toStationId: "metro-shin-otsuka",
+    toStationId: "ogikubo",
   });
 
   const smallKeStation = railwayBundle.network.stationsById.get("odakyu-shin-yurigaoka")!;
@@ -95,16 +95,16 @@ test("the product game's actual clearing turn saves the exact result and restart
   await writeSaveText(page, pinnedSave("tokyo-suburban-before-clear-save.json"));
   await page.reload();
   await page.getByRole("button", { name: /つづきから/ }).click();
-  await expect(panelStat(page, "ターン数")).toHaveText("95");
+  await expect(panelStat(page, "ターン数")).toHaveText(String(PRODUCT_HISTORY_SCENARIO_TURNS.completed - 1));
   await rollOnce(page);
   expect(await readSave(page)).toEqual(clear);
   const result = page.getByRole("region", { name: "クリア！" });
   await expect(result).toBeVisible();
   await expect(result).toContainText("新橋に戻りました");
-  await expect(result.locator("dt + dd").first()).toHaveText("96ターン");
-  await expect(result.locator("dt + dd").nth(1)).toHaveText("298回");
-  await expect(result.locator("dt + dd").nth(2)).toHaveText("53回");
-  expect(clear.movementHistory).toHaveLength(96);
+  await expect(result.locator("dt + dd").first()).toHaveText(`${PRODUCT_HISTORY_SCENARIO_TURNS.completed}ターン`);
+  await expect(result.locator("dt + dd").nth(1)).toHaveText("256回");
+  await expect(result.locator("dt + dd").nth(2)).toHaveText("46回");
+  expect(clear.movementHistory).toHaveLength(PRODUCT_HISTORY_SCENARIO_TURNS.completed);
   expect(clear.movementHistory.at(-1)).toMatchObject({ toStationId: "shimbashi" });
   expect(clear.completedSegmentIds.filter((id) => id.startsWith("jr-yamanote:"))).toHaveLength(30);
 
@@ -125,7 +125,7 @@ test("the product game's actual clearing turn saves the exact result and restart
   await expect(dialog).toBeHidden();
   await expect(result.getByRole("button", { name: "移動履歴を見る" })).toBeFocused();
   await page.reload();
-  await page.getByRole("button", { name: "クリア結果を見る（96ターンでクリア）" }).click();
+  await page.getByRole("button", { name: `クリア結果を見る（${PRODUCT_HISTORY_SCENARIO_TURNS.completed}ターンでクリア）` }).click();
   await expect(page.getByRole("region", { name: "クリア！" })).toBeVisible();
   await page.getByRole("region", { name: "クリア！" }).getByRole("button", { name: "もう一度遊ぶ" }).click();
   await expect(panelStat(page, "ターン数")).toHaveText("0");
