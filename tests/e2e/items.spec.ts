@@ -528,6 +528,10 @@ test("adjust-wide uses +3 above six without truncating the ride", async ({ page,
   await expect(page.getByTitle(`出目調整券±3を使いました（出目${record.rawRoll} → ${record.effectiveFace}）`)).toBeVisible();
 });
 
+// Firefox lays out in 1/60 px units, so a sheet clamped exactly at the 45% cap can read back a
+// few millionths of a pixel above innerHeight * 0.45; this absorbs rounding, not overflow.
+const SHEET_CAP_ROUNDING_TOLERANCE_PX = 0.5;
+
 test("decision sheet fit", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const measurements = [] as { viewport: string; sheetHeight: number; maxSheetHeight: number; choices: { width: number; height: number; top: number; bottom: number }[] }[];
   for (const viewport of [{ width: 320, height: 568 }, { width: 390, height: 844 }]) {
@@ -551,7 +555,7 @@ test("decision sheet fit", { tag: "@layout" }, async ({ page, railwayBundle }) =
     measurements.push({ viewport: `${viewport.width}×${viewport.height}`, sheetHeight: measured.sheetHeight,
       maxSheetHeight: measured.maxSheetHeight, choices: measured.choices });
     console.info("decision sheet measurement", JSON.stringify(measurements.at(-1)));
-    expect(measured.sheetHeight, `${viewport.width}×${viewport.height}: sheet height`).toBeLessThanOrEqual(measured.maxSheetHeight);
+    expect(measured.sheetHeight, `${viewport.width}×${viewport.height}: sheet height`).toBeLessThanOrEqual(measured.maxSheetHeight + SHEET_CAP_ROUNDING_TOLERANCE_PX);
     for (const [index, choice] of measured.choices.entries()) {
       await expect(dialog.locator(".item-adjustment__choice").nth(index)).toBeVisible();
       expect(choice.width, `${viewport.width}×${viewport.height}: choice ${index + 1} width`).toBeGreaterThanOrEqual(44);
