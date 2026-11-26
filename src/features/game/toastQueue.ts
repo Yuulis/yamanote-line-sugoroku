@@ -17,6 +17,7 @@ export interface ToastInput {
   turn: number | null;
   eventIndex: number | null;
   text: string;
+  detail?: string;
   tone: ToastTone;
   itemKind?: ItemKind;
   sticky: boolean;
@@ -88,6 +89,23 @@ export function itemEventToastText(
   }
 }
 
+function itemEventToastDetail(event: ItemEvent, moveTurn: number): string | undefined {
+  if (event.type !== "harmful-scheduled") return undefined;
+
+  switch (event.effect) {
+    case "delay":
+      return `${event.dueTurn - moveTurn}ターン後の出目が1になります`;
+    case "suspension":
+      return `あと${event.expiresTurn - moveTurn}ターン、この路線に乗れません`;
+    case "detour":
+      return "次に乗り換えられる駅で、別の路線に移ります";
+    case "oversleep":
+      return "次のターンは終点まで進みます（環状線は6駅）";
+    default:
+      return assertNever(event);
+  }
+}
+
 /** Convert canonical item events into deterministic, presentation-only toasts. */
 export function turnToasts(
   sessionId: number,
@@ -106,6 +124,7 @@ export function turnToasts(
       seenPickupIds.add(event.item.id);
     }
     const text = itemEventToastText(event, network, presentation);
+    const detail = itemEventToastDetail(event, record.turn);
     const model = toastPresentation(event);
     toasts.push({
       key: `${sessionId}:${record.turn}:${eventIndex}`,
@@ -113,6 +132,7 @@ export function turnToasts(
       turn: record.turn,
       eventIndex,
       text,
+      ...(detail === undefined ? {} : { detail }),
       ...model,
       sticky: false,
     });

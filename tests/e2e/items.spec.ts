@@ -8,7 +8,7 @@ import { expect, test } from "./fixtures";
 import { itemScenario, type ItemScenario } from "./fixtures/itemScenarios";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { MAP_STYLE_URL, SOURCE_IDS } from "../../src/features/map/mapConfig";
-import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openClearHistory, openGameLog, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
+import { closeGameLog, diceButton, diceMoment, freezeClock, gamePanel, inventoryItem, openClearHistory, openGameLog, openGameMenu, panelStat, readMap, SAVE_STORAGE_KEY, stampsExpected, useInventoryItem, writeSaveText } from "./support/app";
 import { advanceArrival, advanceMovement, advanceStamps, advanceTumble } from "./support/turnMoments";
 import { expectSavedHistoryRowFields } from "./support/clearHistory";
 
@@ -374,7 +374,8 @@ for (const delta of [-1, 1] as const) {
     await page.getByRole("button", { name: /つづきから/ }).click();
     await expect(dialog.getByRole("heading")).toBeFocused();
     expect((await itemSave(page)).pending).toEqual(pending.pending);
-    await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
+    await expect(page.locator('.game-panel [role="status"], .item-adjustment [role="status"]')).toHaveCount(1);
+    await expect(dialog.locator("[role=status]")).toHaveCount(1);
     await dialog.getByRole("radio", { name: delta === -1 ? /−1/ : /\+1/ }).check();
     await dialog.getByRole("button", { name: `出目${raw + delta}で続ける` }).click();
     await expect(dialog).toBeHidden();
@@ -444,7 +445,52 @@ test("roll adjustment landing map preview", { tag: "@layout" }, async ({ page, r
     : { width: 1220, height: viewport.height }));
   await expectPreviewCalloutsVisible(page, expectedCalloutCount);
 
+  const zoomBefore = await page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: { getZoom(): number } | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must remain available while the adjustment decision is open");
+    return map.getZoom();
+  });
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: { getZoom(): number } | null } }).__sugorokuE2E?.map;
+    return map?.getZoom() ?? null;
+  })).toBeGreaterThan(zoomBefore);
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
+
+  const cameraBeforeResize = await page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: {
+      getCenter(): { lng: number; lat: number };
+      getZoom(): number;
+    } | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must remain available during the adjustment preview");
+    const center = map.getCenter();
+    return { center: [center.lng, center.lat] as const, zoom: map.getZoom() };
+  });
+  await actAndWaitForPreviewMapSettled(page, () => page.setViewportSize(viewport.width <= 600
+    ? { width: 360, height: 568 }
+    : { width: 1180, height: viewport.height }));
+  const resizedCallouts = page.locator("[data-map-adjustment-callout]");
+  await expect(resizedCallouts).toHaveCount(expectedCalloutCount);
+  for (let index = 0; index < expectedCalloutCount; index += 1) {
+    await expect(resizedCallouts.nth(index)).toBeVisible();
+  }
+  const cameraAfterResize = await page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: {
+      getCenter(): { lng: number; lat: number };
+      getZoom(): number;
+    } | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must remain available during the adjustment preview");
+    const center = map.getCenter();
+    return { center: [center.lng, center.lat] as const, zoom: map.getZoom() };
+  });
+  expect(cameraAfterResize.zoom).toBeCloseTo(cameraBeforeResize.zoom, 2);
+  expect(cameraAfterResize.center[0]).toBeCloseTo(cameraBeforeResize.center[0], 5);
+  expect(cameraAfterResize.center[1]).toBeCloseTo(cameraBeforeResize.center[1], 5);
+
   await dialog.getByRole("button", { name: "そのまま続ける" }).click();
+  await expect(dialog).toBeHidden();
+  await openGameMenu(page);
+  await expect(gamePanel(page).getByRole("button", { name: "追尾: ON", exact: true })).toBeVisible();
   await expect(page.locator("[data-map-adjustment-callout]")).toHaveCount(0);
 });
 

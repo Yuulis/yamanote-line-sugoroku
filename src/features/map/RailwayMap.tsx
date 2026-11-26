@@ -85,6 +85,9 @@ export interface MapFollow {
   immediate: boolean;
   /** Called when the user moves the camera, so following can be switched off. */
   onUserCameraMove: () => void;
+  /** Snapshot and restore the owning follow state around an adjustment decision. */
+  onAdjustmentPreviewOpen?: () => void;
+  onAdjustmentPreviewClose?: () => void;
 }
 
 interface RailwayMapProps {
@@ -604,9 +607,20 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   // Set synchronously by a user camera gesture, before React re-renders with
   // following off, so no queued follow update can cancel the gesture.
   const userMovedRef = useRef(false);
+  const previewCameraOverrideRef = useRef(false);
+  const previewActiveRef = useRef(false);
+  const previousPreviewActiveRef = useRef(false);
   const onUserCameraMoveRef = useRef(follow?.onUserCameraMove);
+  const adjustmentPreviewCallbacksRef = useRef({
+    onOpen: follow?.onAdjustmentPreviewOpen,
+    onClose: follow?.onAdjustmentPreviewClose,
+  });
   useEffect(() => {
     onUserCameraMoveRef.current = follow?.onUserCameraMove;
+    adjustmentPreviewCallbacksRef.current = {
+      onOpen: follow?.onAdjustmentPreviewOpen,
+      onClose: follow?.onAdjustmentPreviewClose,
+    };
   });
 
   useEffect(() => {
@@ -718,6 +732,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
         map.on(type, (event: { originalEvent?: unknown }) => {
           if (!isUserCameraEvent(event)) return;
           userMovedRef.current = true;
+          if (previewActiveRef.current) previewCameraOverrideRef.current = true;
           onUserCameraMoveRef.current?.();
         });
       }
@@ -751,6 +766,19 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   const markerBearing = displayedBearing ?? null;
   const hideGameplayPosition = !shouldShowGameplayPosition(mode, replayPhase);
   const previewOpen = adjustmentCandidates.length > 0;
+  const previewActive = mode === "game" && previewOpen;
+  previewActiveRef.current = previewActive;
+  useEffect(() => {
+    const wasActive = previousPreviewActiveRef.current;
+    if (previewActive && !wasActive) {
+      previewCameraOverrideRef.current = false;
+      adjustmentPreviewCallbacksRef.current.onOpen?.();
+    } else if (!previewActive && wasActive) {
+      previewCameraOverrideRef.current = false;
+      adjustmentPreviewCallbacksRef.current.onClose?.();
+    }
+    previousPreviewActiveRef.current = previewActive;
+  }, [previewActive]);
   const previewOriginKey = position?.join(",") ?? "unknown";
   const previewOriginRef = useRef<Position | null>(position);
   previewOriginRef.current = position;
@@ -871,6 +899,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       if (previousFit?.map === loadedMap) loadedMap.setPadding(ZERO_MAP_PADDING);
       return;
     }
+    if (previewCameraOverrideRef.current) return;
     const previousSignature = previewFitRef.current?.map === loadedMap
       ? previewFitRef.current.signature
       : null;
@@ -954,12 +983,14 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
           <button type="button" disabled={!loadedMap} onClick={() => {
             if (!loadedMap || !data.services.ok) return;
             userMovedRef.current = true;
+            if (previewActiveRef.current) previewCameraOverrideRef.current = true;
             onUserCameraMoveRef.current?.();
             fitNetworkOverview(loadedMap, data.services.value.services);
           }}>全体</button>
           <button type="button" disabled={!loadedMap} onClick={() => {
             if (!loadedMap || !data.services.ok) return;
             userMovedRef.current = true;
+            if (previewActiveRef.current) previewCameraOverrideRef.current = true;
             onUserCameraMoveRef.current?.();
             fitNetworkOverview(loadedMap, data.services.value.services.filter((service) => service.id === targetServiceId));
           }}>目標路線</button>

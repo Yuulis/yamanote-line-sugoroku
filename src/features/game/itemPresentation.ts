@@ -1,4 +1,4 @@
-import { HARMFUL_ITEM_KINDS, type ItemKind } from "../../types/network";
+import { HARMFUL_ITEM_KINDS, type ItemKind, type ItemPolicy } from "../../types/network";
 import type { ItemSessionView, ItemUnavailableReason } from "./itemSession";
 
 export const ITEM_SHORT_NAMES: Readonly<Record<ItemKind, string>> = {
@@ -65,7 +65,21 @@ export const ITEM_DESCRIPTIONS: Readonly<Record<ItemKind, ItemDescription>> = {
   oversleep: { name: "寝過ごし", effect: "次のターンは終点まで、環状線は6駅" },
 };
 
+/** Harmful items never enter the inventory: they take effect the moment they are picked up. */
+export const AUTOMATIC_ITEM_TIMING = "拾うと自動で発動";
+
+const TURN_COUNT_PATTERN = /\d+(?=ターン)/;
+
+/** Descriptions carry the production turn counts; swap in the configured ones. */
+export function itemEffectText(kind: ItemKind, policy: ItemPolicy): string {
+  const { effect } = ITEM_DESCRIPTIONS[kind];
+  if (kind === "delay") return effect.replace(TURN_COUNT_PATTERN, String(policy.delayTurns));
+  if (kind === "suspension") return effect.replace(TURN_COUNT_PATTERN, String(policy.suspensionTurns));
+  return effect;
+}
+
 export function itemTiming(kind: ItemKind): string {
+  if (itemTone(kind) === "bad") return AUTOMATIC_ITEM_TIMING;
   if (kind === "delay-certificate") return "持っているだけで効く";
   if (kind === "roll-adjust") return "出目を見てから使う";
   return "サイコロを振る前に使う";

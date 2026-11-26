@@ -64,7 +64,7 @@ vi.mock("../../src/features/game/components/GameHud", async (original) => {
   return { GameHud: function RecordedHud(props: React.ComponentProps<typeof actual.GameHud>): React.JSX.Element {
     useLayoutEffect(() => {
       lotteryCommits.push(document.querySelector('[role="status"]')?.textContent ?? "");
-      momentCommits.push({ statusCount: document.querySelectorAll('.game-panel [role="status"]').length,
+      momentCommits.push({ statusCount: document.querySelectorAll('.game-panel [role="status"], .item-adjustment [role="status"]').length,
         overlay: document.querySelector(".turn-moment-host") !== null });
     });
     return createElement(actual.GameHud, props);
@@ -98,6 +98,8 @@ function Harness(value: React.ComponentProps<typeof GameApp>): React.JSX.Element
 }
 
 beforeAll(() => {
+  Object.defineProperty(HTMLDialogElement.prototype, "show", { configurable: true,
+    value(this: HTMLDialogElement): void { this.setAttribute("open", ""); } });
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true,
     value(this: HTMLDialogElement): void { this.setAttribute("open", ""); } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true,
@@ -2296,7 +2298,7 @@ describe.each(["important", "none"] as const)("S7 %s integration", (level) => {
     expect(tumble()).toBeNull();
     expect(queuedFrames).toHaveLength(0);
     const focus = document.activeElement;
-    const shows = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    const shows = vi.spyOn(HTMLDialogElement.prototype, "show");
     injection.level = "all"; injection.speedId = "slow";
     render(propsFor());
     expect(adjustmentDialog()).toBe(dialog);

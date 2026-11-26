@@ -253,18 +253,35 @@ describe("active harmful effect chips", () => {
     expect(models[0]?.text).toBe(activeItemEffectTexts(state, 4, network)[0]);
   });
 
+  it.each([
+    ["delay", effects({ delayDueTurns: [5] }), 2, "遅延：5ターン目に発動（あと3ターン）"],
+    ["suspension", effects({ suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 8 }] }), 3, "運休：山手線、あと5ターン"],
+    ["detour", effects({ detourPending: true }), 2, null],
+    ["oversleep", effects({ oversleepPending: true }), 2, null],
+  ] as const)("gives the %s chip card its kind and live status", (kind, state, turn, statusLine) => {
+    const [model, ...rest] = effectChipModels(state as ItemEffectsState, turn, network);
+    expect(rest).toEqual([]);
+    expect(model?.kind).toBe(kind);
+    expect(model?.statusLine).toBe(statusLine);
+    // The card status line, when present, is the same canonical text as the chip's accessible name.
+    if (statusLine !== null) expect(model?.text).toBe(statusLine);
+  });
+
   it("renders full text and harmful icons, and renders nothing when empty", () => {
     const models = effectChipModels(effects({ delayDueTurns: [4], suspensions: [{ serviceId: "jr-yamanote", expiresTurn: 7 }], detourPending: true }), 2, network);
     const markup = renderToStaticMarkup(createElement(EffectChips, { models }));
-    expect(markup.match(/<div class="effect-chips" aria-label="続いている効果">/g)).toHaveLength(1);
-    expect(markup).not.toMatch(/role=|aria-live/);
+    expect(markup.match(/<div class="effect-chips" aria-label="続いている効果" tabindex="-1">/g)).toHaveLength(1);
+    // The only role is the closed explanation card's dialog; chips themselves are plain buttons, never live regions.
+    expect(markup).not.toMatch(/role="(?!dialog")|aria-live/);
+    expect(markup.match(/role="dialog"/g)).toHaveLength(1);
     expect([...markup.matchAll(/<span class="effect-chip__label" aria-hidden="true">([^<]*)<\/span>/g)].map((match) => match[1]))
       .toEqual(models.map((model) => model.label));
     expect([...markup.matchAll(/<span class="visually-hidden">([^<]*)<\/span>/g)].map((match) => match[1]))
       .toEqual(models.map((model) => model.text));
-    expect(markup.match(/<span class="effect-chip" title="[^"]*"><svg[^>]*aria-hidden="true"/g)).toHaveLength(models.length);
-    expect([...markup.matchAll(/<span class="effect-chip" title="([^"]*)">/g)].map((match) => match[1]))
-      .toEqual(models.map((model) => model.text));
+    expect(markup.match(/<button type="button" class="effect-chip"[^>]*><svg[^>]*aria-hidden="true"/g)).toHaveLength(models.length);
+    // The custom tooltip owns hover, so the native title is gone and the full text is the button's accessible name.
+    expect(markup).not.toContain("title=");
+    expect(markup.match(/<button /g)).toHaveLength(models.length);
     expect(markup).toContain("effect-chip__countdown");
     expect(markup).toContain("line-badge__code");
     expect(renderToStaticMarkup(createElement(EffectChips, { models: [] }))).toBe("");

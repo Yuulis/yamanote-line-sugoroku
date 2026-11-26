@@ -97,6 +97,41 @@ describe.each([false, true])("useGameSettings (StrictMode: %s)", (strict) => {
     expect(stored(storage)).toEqual({ version: 1, ...DEFAULT_GAME_SETTINGS, speedId: "fast", follow: false });
   });
 
+  it("restores the follow state captured when an adjustment preview opens", () => {
+    const storage = memoryStorage(DEFAULT_GAME_SETTINGS);
+    mountSettings(storage, strict);
+    act(() => current.beginAdjustmentPreview());
+    act(() => current.stopFollowing());
+    expect(current.settings.follow).toBe(false);
+
+    act(() => current.endAdjustmentPreview());
+    expect(current.settings.follow).toBe(true);
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps following OFF after an adjustment preview that opened while already OFF", () => {
+    const storage = memoryStorage(DEFAULT_GAME_SETTINGS);
+    mountSettings(storage, strict);
+    act(() => current.stopFollowing());
+    act(() => current.beginAdjustmentPreview());
+    act(() => current.stopFollowing());
+
+    act(() => current.endAdjustmentPreview());
+    expect(current.settings.follow).toBe(false);
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps a stored follow OFF preference OFF across an adjustment preview", () => {
+    const storage = memoryStorage({ ...DEFAULT_GAME_SETTINGS, follow: false });
+    mountSettings(storage, strict);
+    act(() => current.beginAdjustmentPreview());
+    act(() => current.stopFollowing());
+
+    act(() => current.endAdjustmentPreview());
+    expect(current.settings.follow).toBe(false);
+    expect(storage.setItem).not.toHaveBeenCalled();
+  });
+
   it("starts the next mount with stored follow after a manual pan", () => {
     const storage = memoryStorage(DEFAULT_GAME_SETTINGS);
     mountSettings(storage, strict);
