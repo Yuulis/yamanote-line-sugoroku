@@ -764,9 +764,15 @@ test.describe("S23 populated responsive HUD", { tag: "@layout" }, () => {
   });
 
   test("toasts clear attribution and map controls across layouts in both attribution states", async ({ page, railwayBundle }, testInfo) => {
-    await buildPopulatedState(page, railwayBundle);
-    // Ordinary toasts expire after 4 s, so per-toast rects cover the sticky failure toast and the
-    // toast stack itself (fixed top/left/right, growing downwards) is checked independently of its length.
+    await page.clock.install();
+    await scenario(page, "delay", railwayBundle);
+    await revealUnadjustedRoll(page);
+    const harmfulToast = page.locator(".toast-host__toast").filter({ hasText: "遅延を拾ってしまった！" });
+    await expect(harmfulToast).toContainText("遅延を拾ってしまった！");
+    await expect(harmfulToast.locator(".toast-host__detail")).toHaveText("3ターン後の出目が1になります");
+    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 500));
+    // Keep the real two-line harmful toast visible while checking each per-toast rect and the
+    // toast stack's fixed top/left/right position across layouts.
     const assertToastClearance = async (width: number, height: number, expanded: boolean): Promise<void> => {
       await page.setViewportSize({ width, height });
       // Crossing the compact/desktop boundary reattaches the control in the other corner from a

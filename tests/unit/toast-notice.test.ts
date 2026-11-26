@@ -180,6 +180,7 @@ describe("ToastHost notice", () => {
     setVisibility("visible");
     expect(shown).not.toHaveBeenCalled();
     render(props({ inputs }));
+    expect(mounted?.container.querySelector(".toast-host__detail")).toBeNull();
     expect(shown).toHaveBeenCalledExactlyOnceWith(NOTICE_KEY);
     expect(mounted?.container.querySelector(".toast-host")?.getAttribute("aria-hidden")).toBe("true");
     advance(3999);

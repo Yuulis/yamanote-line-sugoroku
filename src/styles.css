@@ -144,7 +144,13 @@ body {
 }
 
 .toast-host__text {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+}
+
+.toast-host__detail {
+  display: block;
 }
 
 .toast-host__toast--motion {

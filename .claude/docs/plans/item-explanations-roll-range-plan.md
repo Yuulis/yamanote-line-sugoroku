@@ -455,5 +455,6 @@ PR1 branch `feature/item-explanations` from `develop`; PR2 branches from `develo
 |---|---|---|---|
 | 1.1 | done | 14f55b2 | lead: typecheck, vitest 2693 pass/1 skip, build, verify_delegation 0 actionable; Opus review APPROVE (nits applied). Note for 1.2: pass `policy` to every ItemCard in a configured game |
 | 1.2 | done | d3b8b6f, 76a4b66 | CI red on d3b8b6f (desktop no-scroll budget at 1366: global `button { min-height: 44px }` reached the chips) → fixed by `.effect-chip { min-height: 0 }`, CI green on 76a4b66. lead: typecheck, vitest 2702 pass/1 skip, build, phone @layout 11 pass; local firefox+chromium tab-order/chip E2E pass. Opus review CHANGES → fixed: `tabIndex={-1}` on the chip row (Firefox scroller tab stop), SSR markup asserts one dialog. verify_delegation flagged the planned tab-order rewrite and span→button assertions (reviewed: not weaker) |
-| 1.3–1.6 | not started | — | — |
+| 1.3 | done | (this commit) | Codex Luna xhigh implemented; lead: typecheck, vitest 2711 pass/1 skip, build, verify_delegation 0 actionable, phone ui-pop @layout 9 pass, desktop toast clearance pass. Sol low review APPROVE; nit applied (exact 「3ターン後の出目が1になります」 in ui-pop toast test). From 1.3 on: Codex subagents (Luna xhigh implements, Sol low reviews) |
+| 1.4–1.6 | not started | — | — |
 | 2.1–2.4 | not started | — | — |

@@ -667,8 +667,10 @@ it("expires an ordinary toast in production GameApp without rendering HUD or leg
     const next = playItemTurn(game, {}, network).state;
     const record = next.movementHistory.at(-1);
     const toasts = next.pending === null && record ? turnToasts(1, itemLastMove(record, network), network) : [];
-    if (toasts.length === 1) expectedToast = toasts[0]?.text;
-    else game = next.pending?.kind === "discard" ? resolveItemDiscard(next, next.pending.item.id).state : next;
+    if (toasts.length === 1) {
+      const toast = toasts[0];
+      expectedToast = toast ? `${toast.text}${toast.detail ?? ""}` : undefined;
+    } else game = next.pending?.kind === "discard" ? resolveItemDiscard(next, next.pending.item.id).state : next;
   }
   expect(expectedToast).toBeTruthy();
   vi.useFakeTimers();

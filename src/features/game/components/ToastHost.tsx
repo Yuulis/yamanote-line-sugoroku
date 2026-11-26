@@ -16,7 +16,10 @@ export function ToastHost({ toasts, reducedMotion }: ToastHostProps): React.JSX.
           key={toast.key}
         >
           {toast.itemKind ? <span className="toast-host__icon"><ItemIcon kind={toast.itemKind} size={26} /></span> : null}
-          <span className="toast-host__text">{toast.kind === "notice" ? <PhraseText text={toast.text} /> : toast.text}</span>
+          <span className="toast-host__text">
+            <span>{toast.kind === "notice" ? <PhraseText text={toast.text} /> : toast.text}</span>
+            {toast.detail ? <span className="toast-host__detail"><PhraseText text={toast.detail} /></span> : null}
+          </span>
         </div>
       ))}
     </div>
