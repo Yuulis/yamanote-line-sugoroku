@@ -116,7 +116,8 @@ async function isInsideHintScrollport(button: Locator): Promise<boolean> {
 }
 
 async function expectHintNotAnnounced(page: Page, copy: string): Promise<void> {
-  const status = page.locator('.game-panel [role="status"]');
+  // The roll-adjustment dialog renders outside the panel and carries the turn status while it is open.
+  const status = page.locator('.game-panel [role="status"], .item-adjustment [role="status"]');
   await expect(status).toHaveCount(1);
   await expect(status).not.toContainText(copy);
 }
