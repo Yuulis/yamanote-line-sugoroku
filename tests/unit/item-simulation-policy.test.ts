@@ -4,12 +4,12 @@ import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemGameState, ItemInstance } from "../../src/types/network";
 import { loadShippedBundle } from "../simulation/inputs";
 import { chooseAdjustment, chooseDiscard, choosePreRoll, pick } from "../simulation/item-engine/policy";
-import { runProductionGame } from "../simulation/item-engine/runner";
+import { LEGACY_ITEM_CONFIG, LEGACY_SIMULATION_CONFIG, PRODUCT_SIMULATION_CONFIG, runProductionGame } from "../simulation/item-engine/runner";
 
 const { network } = loadShippedBundle("public/data", "jr-yamanote", "shimbashi");
 const rng = engine.seedRng("s1m-20261012-0|policy");
-function stateWith(kinds: ItemInstance["kind"][]): ItemGameState {
-  return { ...engine.createItemGame(ITEM_GAME_CONFIG, "s1m-20261012-0", network),
+function stateWith(kinds: ItemInstance["kind"][], seed: string = "s1m-20261012-0"): ItemGameState {
+  return { ...engine.createItemGame(ITEM_GAME_CONFIG, seed, network),
     inventory: kinds.map((kind, index) => ({ id: `test-${index}`, kind })) };
 }
 
@@ -47,13 +47,13 @@ describe("round-3 production policy adapter", () => {
     const initial = stateWith(["roll-adjust"]);
     const revealed = engine.beginItemTurn(initial, { items: [] }, network).state;
     if (revealed.pending?.kind !== "roll") throw new Error("Expected roll");
-    const result = chooseAdjustment(revealed, network, "random", true, rng);
+    const result = chooseAdjustment(revealed, network, "random", true, rng, { maxFace: LEGACY_SIMULATION_CONFIG.maxFace });
     expect(result.adjustment?.instanceId).toBe("test-0");
     const adjusted = revealed.pending.rawRoll + result.adjustment!.delta;
     expect(adjusted).toBeGreaterThanOrEqual(1);
     expect(adjusted).toBeLessThanOrEqual(6);
     if (revealed.pending.rawRoll === 1 || revealed.pending.rawRoll === 6) expect(result.rng).toBe(rng);
-    expect(chooseAdjustment(revealed, network, "greedy", false, rng).adjustment).toBeNull();
+    expect(chooseAdjustment(revealed, network, "greedy", false, rng, { maxFace: LEGACY_SIMULATION_CONFIG.maxFace }).adjustment).toBeNull();
   });
   it("chooses the target route before a direction ticket off target", () => {
     const state = { ...stateWith(["direction-ticket", "route-ticket"]), currentServiceId: "jr-keihin-tohoku" };
@@ -72,10 +72,38 @@ describe("round-3 production policy adapter", () => {
     expect(engine.beginItemTurn(state, command, network).state.pending).toMatchObject({ resolvedRide: { serviceId: "jr-yamanote" } });
   });
   it("history trimming preserves all policy measurements and trace output", () => {
-    const full = runProductionGame(network, "s1m-20261012-0", "greedy", 20000, true, true);
-    const trimmed = runProductionGame(network, "s1m-20261012-0", "greedy", 20000, false, true);
+    const full = runProductionGame(network, "s1m-20261012-0", "greedy", 20000, LEGACY_SIMULATION_CONFIG, true, true);
+    const trimmed = runProductionGame(network, "s1m-20261012-0", "greedy", 20000, LEGACY_SIMULATION_CONFIG, false, true);
     expect(full.error).toBeNull();
     expect(full.completed).toBe(true);
     expect({ ...full, saveChecks: {} }).toEqual(trimmed);
   }, 10000);
+
+  it("keeps the test-only legacy config identical to the current product config", () => {
+    expect(LEGACY_ITEM_CONFIG).toEqual(ITEM_GAME_CONFIG);
+    expect(LEGACY_SIMULATION_CONFIG.maxFace).toBe(6);
+    expect(PRODUCT_SIMULATION_CONFIG.maxFace).toBeUndefined();
+  });
+
+  it("uses the legacy chooser cap while allowing the product chooser to reach seven", () => {
+    let revealed: ItemGameState | null = null;
+    for (let index = 0; index < 100 && revealed === null; index += 1) {
+      const candidate = engine.beginItemTurn(stateWith(["roll-adjust"], `s1m-20261012-${index}`), { items: [] }, network).state;
+      if (candidate.pending?.kind === "roll" && candidate.pending.rawRoll === 6) revealed = candidate;
+    }
+    if (revealed === null) throw new Error("Could not find a seeded six for the adjustment boundary test");
+    let productRng = "";
+    for (let index = 0; index < 100 && productRng === ""; index += 1) {
+      const candidate = engine.seedRng(`item-policy-max-face-${index}`);
+      if (engine.drawIndex(candidate, 2).index === 1) productRng = candidate;
+    }
+    if (productRng === "") throw new Error("Could not find a policy seed that chooses +1");
+
+    const legacy = chooseAdjustment(revealed, network, "random", true, productRng, { maxFace: LEGACY_SIMULATION_CONFIG.maxFace });
+    const product = chooseAdjustment(revealed, network, "random", true, productRng, { maxFace: PRODUCT_SIMULATION_CONFIG.maxFace });
+    expect(legacy.adjustment).toEqual({ instanceId: "test-0", delta: -1 });
+    expect(legacy.rng).toBe(productRng);
+    expect(product.adjustment).toEqual({ instanceId: "test-0", delta: 1 });
+    expect(product.rng).toBe(engine.drawIndex(productRng, 2).nextRngState);
+  });
 });

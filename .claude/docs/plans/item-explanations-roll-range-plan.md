@@ -318,6 +318,14 @@ npx playwright test tests/e2e/items.spec.ts --project=phone-chromium --grep "dec
 ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=100 npm run sim -- tests/simulation/item-engine
 ```
 
+Added after the 2.1 review (Sol, 2026-11-26), required in 2.3:
+- Remove the temporary `supportedMaxFace: 6` execution cap from
+  `tests/simulation/item-engine/runner.ts` (product chooser becomes truly unbounded) and switch the
+  chooser boundary test in `tests/unit/item-simulation-policy.test.ts` (~:103) to the real
+  `PRODUCT_SIMULATION_CONFIG`, asserting a 6 → 7 (and ±3 → 9) choice is reachable.
+- The 2.1 test asserting `LEGACY_ITEM_CONFIG` deep-equals the product config (~:83) must become an
+  assertion against the frozen legacy literal values, since the product ruleset diverges here.
+
 ### Step 2.4 — Product baseline, design record, PR (visible: no)
 
 Files: `.claude/docs/research/item-system-simulation.md` (dated section: legacy vs product,
@@ -460,4 +468,5 @@ PR1 branch `feature/item-explanations` from `develop`; PR2 branches from `develo
 | 1.4 CI fix | done | 08c9b4b | CI red on 69350be: first-play-hints "Escape continues once…" counted `.game-panel [role=status]` only; the status now lives in the dialog → helper counts panel+dialog; local chromium 2 pass |
 | 1.5 | done | (this commit) | Codex Luna xhigh; follow snapshot/restore in useGameSettings (begin/endAdjustmentPreview), override flag in RailwayMap. lead: typecheck, vitest 2716 pass/1 skip, build, verify_delegation 0 actionable, phone preview pass. Sol low APPROVE; nit applied (stored follow OFF stays OFF unit test) |
 | 1.6 | done | (this commit) | DESIGN.md row, implementation-status line; PR to develop |
-| 2.1–2.4 | not started | — | — |
+| 2.1 | done | (this commit) | Codex Luna xhigh; LEGACY_ITEM_CONFIG literal + PRODUCT config threaded through creation/restore/chooser. lead: typecheck, verify_delegation (1 heuristic false positive: signature change), 5,000-game sim parity PASS (legacy greedy 65/143/241, random 113/234/373; product identical; determinism ok; 173 s). Sol low CHANGES = items for 2.3 (recorded under Step 2.3) |
+| 2.2–2.4 | not started | — | — |

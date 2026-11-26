@@ -181,3 +181,42 @@ npx playwright test tests/e2e/map-guidance.spec.ts tests/e2e/accessibility.spec.
 
 Output (markdown): changed files (one line each); how the override flag and the follow restore
 work (where state lives, when it resets); acceptance results; any assertion edited; risks.
+
+## Step 2.1 — implement (branch feature/roll-adjust-range from develop after PR1 #133)
+
+Objective: implement Step 2.1 of `.claude/docs/plans/item-explanations-roll-range-plan.md`
+(simulation harness split into a test-only legacy config and the product config) as one
+uncommitted step; no production behaviour changes.
+
+Scope:
+- IN: exactly the "Step 2.1" section of the plan and decision D4 (files
+  `tests/simulation/item-engine/{runner,policy,item-engine.test}.ts`,
+  `tests/unit/item-simulation-policy.test.ts`). In this step the legacy and product configs are
+  identical, so every existing number must stay green.
+- OUT: anything under `src/`; `tests/simulation/item-spike/` (frozen, do not touch); Steps
+  2.2+; DESIGN.md, STATE.md, the plan file. No new dependencies. Do not commit or push.
+- Hard constraints: do not weaken, skip or delete assertions; the frozen parity and
+  greedy-reference assertions keep their exact expected values (they now run on the legacy
+  config only); product rows assert structure only (no errors, cap hits 0, determinism, save
+  checks) and record statistics.
+
+Context: PR1 (#133) is merged into develop. Research map:
+`.claude/docs/research/feature-item-explanations-and-roll-adjustment-range-codebase.md`
+(item-engine.test.ts:99, item-spike/sim.ts:419, policy.ts:95). Rules: AGENTS.md,
+.claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance:
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/item-simulation-policy.test.ts
+ITEM_ENGINE_SIM=1 ITEM_ENGINE_GAMES=100 npm run sim -- tests/simulation/item-engine
+npx vitest run
+```
+
+(Check `package.json` for the exact `sim` script and env names; if they differ from the plan,
+use the real ones and say so.)
+
+Output (markdown): changed files (one line each); how the run config is threaded (game
+creation, restore checks, chooser `maxFace`); acceptance results with counts and the sim
+summary lines; any assertion edited; risks.

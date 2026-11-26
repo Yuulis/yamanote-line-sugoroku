@@ -88,11 +88,19 @@ export function choosePreRoll(state: ItemGameState, network: engine.RailwayNetwo
   return { command: { items: [action] }, adjust: false, rng, decision: true };
 }
 
-export function chooseAdjustment(state: ItemGameState, network: engine.RailwayNetwork, policy: Policy, allowed: boolean, rng: string): { adjustment: ItemRollAdjustment | null; rng: string } {
+export interface AdjustmentOptions {
+  /** Maximum adjusted die face; omitted when the policy is unbounded above. */
+  maxFace?: number;
+  /** Temporary cap of the current engine API while the product range is not implemented. */
+  supportedMaxFace?: number;
+}
+
+export function chooseAdjustment(state: ItemGameState, network: engine.RailwayNetwork, policy: Policy, allowed: boolean, rng: string, options: AdjustmentOptions = {}): { adjustment: ItemRollAdjustment | null; rng: string } {
   const pending = state.pending;
   const item = state.inventory.find((entry) => entry.kind === "roll-adjust");
   if (!allowed || !item || pending?.kind !== "roll" || pending.command.items.length > 0 || state.effects.oversleepPending || engine.isDelayDue(state.effects, pending.turn)) return { adjustment: null, rng };
-  const deltas = ([-1, 1] as const).filter((delta) => pending.rawRoll + delta >= 1 && pending.rawRoll + delta <= 6);
+  const maxFace = Math.min(options.maxFace ?? Number.POSITIVE_INFINITY, options.supportedMaxFace ?? Number.POSITIVE_INFINITY);
+  const deltas = ([-1, 1] as const).filter((delta) => pending.rawRoll + delta >= 1 && pending.rawRoll + delta <= maxFace);
   if (policy === "random") {
     const chosen = pick(deltas, rng);
     return { adjustment: { instanceId: item.id, delta: chosen.value }, rng: chosen.rng };

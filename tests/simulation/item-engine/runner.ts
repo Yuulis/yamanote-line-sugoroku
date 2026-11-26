@@ -1,7 +1,51 @@
 import * as engine from "../../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
-import type { ItemGameState, ItemTurnRecord } from "../../../src/types/network";
+import type { GameConfig, ItemGameState, ItemTurnRecord } from "../../../src/types/network";
 import { chooseAdjustment, chooseDiscard, choosePreRoll, type Policy } from "./policy";
+
+/** Frozen pre-range rules used to preserve the round-3 simulation baseline. */
+export const LEGACY_ITEM_CONFIG = {
+  rulesetVersion: "tokyo-suburban-items-1",
+  targetServiceId: "jr-yamanote",
+  startStationId: "shimbashi",
+  targetDirection: 1,
+  goalArrivalPolicy: "truncate-on-target-service",
+  serviceLottery: {
+    kindWeights: { local: 1, rapid: 1 },
+    target: { kind: "share", numerator: 1, denominator: 2 },
+  },
+  directionLottery: { towardTargetWeight: 3, awayFromTargetWeight: 2 },
+  itemPolicy: {
+    dropChancePerMille: 300,
+    harmfulChancePercent: 30,
+    inventoryCapacity: 3,
+    maxActiveItemsPerTurn: 1,
+    delayTurns: 3,
+    suspensionTurns: 5,
+    fullInventoryPolicy: "player-chooses-discard",
+    beneficialKinds: ["route-ticket", "direction-ticket", "roll-adjust", "double", "rapid", "deadhead", "delay-certificate"] as const,
+    harmfulKinds: ["delay", "suspension", "detour", "oversleep"] as const,
+  },
+} satisfies GameConfig;
+
+export interface SimulationRunConfig {
+  gameConfig: GameConfig;
+  /** Omit the cap when the simulation should allow every legal adjusted face. */
+  maxFace?: number;
+  /** Current production-engine boundary, removed when the ruleset supports larger faces. */
+  supportedMaxFace: number;
+}
+
+export const LEGACY_SIMULATION_CONFIG: SimulationRunConfig = {
+  gameConfig: LEGACY_ITEM_CONFIG,
+  maxFace: 6,
+  supportedMaxFace: 6,
+};
+
+export const PRODUCT_SIMULATION_CONFIG: SimulationRunConfig = {
+  gameConfig: ITEM_GAME_CONFIG,
+  supportedMaxFace: 6,
+};
 
 export interface GameMeasurement {
   seed: string;
@@ -51,8 +95,8 @@ export function turnTrace(state: ItemGameState, record: ItemTurnRecord, targetId
   };
 }
 
-export function runProductionGame(network: engine.RailwayNetwork, seed: string, policy: Policy, cap: number, sample: boolean = false, trace: boolean = false): GameMeasurement {
-  let state = engine.createItemGame(ITEM_GAME_CONFIG, seed, network);
+export function runProductionGame(network: engine.RailwayNetwork, seed: string, policy: Policy, cap: number, runConfig: SimulationRunConfig, sample: boolean = false, trace: boolean = false): GameMeasurement {
+  let state = engine.createItemGame(runConfig.gameConfig, seed, network);
   let rng = engine.seedRng(`${seed}|policy`);
   const result: GameMeasurement = { seed, turns: 0, completed: false, counters: {}, saveChecks: {}, trace: [], error: null };
   const targets = new Set(engine.targetSegmentIds(state.config, network));
@@ -60,7 +104,7 @@ export function runProductionGame(network: engine.RailwayNetwork, seed: string, 
   const roundTrip = (kind: string): void => {
     if (!sample || result.saveChecks[kind]) return;
     const saved = engine.serializeGame(state);
-    const restored = engine.restoreGame(saved, network, { expectedConfig: { ...ITEM_GAME_CONFIG, itemPolicy: ITEM_GAME_CONFIG.itemPolicy! }, requireSeededRolls: true });
+    const restored = engine.restoreGame(saved, network, { expectedConfig: { ...runConfig.gameConfig, itemPolicy: runConfig.gameConfig.itemPolicy! }, requireSeededRolls: true });
     // Full recursive equality, including every record and pending transcript.
     if (!sameValue(state, restored)) throw new Error(`Save structure mismatch: ${kind}`);
     state = restored;
@@ -75,7 +119,10 @@ export function runProductionGame(network: engine.RailwayNetwork, seed: string, 
       state = engine.beginItemTurn(state, choice.command, network).state;
       if (state.pending?.kind === "roll") {
         if (state.turn >= 3) roundTrip("pending-roll");
-        const adjusted = chooseAdjustment(state, network, policy, choice.adjust, rng);
+        const adjusted = chooseAdjustment(state, network, policy, choice.adjust, rng, {
+          maxFace: runConfig.maxFace,
+          supportedMaxFace: runConfig.supportedMaxFace,
+        });
         rng = adjusted.rng;
         state = engine.finishItemTurn(state, adjusted.adjustment, network).state;
       }
