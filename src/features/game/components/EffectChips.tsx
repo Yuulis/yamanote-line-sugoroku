@@ -14,6 +14,8 @@ export interface EffectChipsProps {
   models: readonly EffectChipModel[];
   /** When given, card and tooltip numbers use this policy's turn counts instead of the production defaults. */
   policy?: ItemPolicy;
+  /** A turn decision closes an already-open card and prevents it from reopening when the decision ends. */
+  decisionOpen?: boolean;
 }
 
 interface TooltipPosition { top: number; left: number }
@@ -48,7 +50,7 @@ function placeTooltip(chip: DOMRect, tooltip: DOMRect, viewport: { width: number
   return { top: Math.round(top), left: Math.round(left) };
 }
 
-export function EffectChips({ models, policy }: EffectChipsProps): React.JSX.Element | null {
+export function EffectChips({ models, policy, decisionOpen = false }: EffectChipsProps): React.JSX.Element | null {
   const generatedId: string = useId();
   // State follows the chip's identity key, never its position, so a chip that disappears shows nothing
   // and nothing reappears for the chip that takes its place without a new hover or focus.
@@ -138,6 +140,10 @@ export function EffectChips({ models, policy }: EffectChipsProps): React.JSX.Ele
       setDismissedKey((current: string | null) => current === suppressed ? null : current);
     }
   }, [openKey]);
+
+  useEffect(() => {
+    if (decisionOpen) setOpenKey(null);
+  }, [decisionOpen]);
 
   // The tooltip takes no pointer events (it must never block chips under it), so "hovering the tooltip" is
   // tracked by position: it stays while the pointer is over the chip, the tooltip, or the gap between them.
@@ -261,7 +267,7 @@ export function EffectChips({ models, policy }: EffectChipsProps): React.JSX.Ele
       </div>}
       <ItemCardPopover
         id={cardId}
-        open={openModel !== null}
+        open={openModel !== null && !decisionOpen}
         anchor={openKey === null ? null : chipRefs.current.get(openKey) ?? null}
         labelledBy={cardHeadingId}
         onClose={closeCard}

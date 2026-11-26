@@ -179,7 +179,7 @@ test.describe("S15 full-inventory pickup reload", () => {
     await freezeClock(page);
     await clickDice(page);
     await advanceTumble(page);
-    const adjust = gamePanel(page).getByRole("dialog", { name: "出目を調整しますか？" });
+    const adjust = page.getByRole("dialog", { name: "出目を調整しますか？" });
     if (base.inventory.some((item) => item.kind === "roll-adjust")) {
       await expect(adjust).toBeVisible();
       await adjust.getByRole("button", { name: "そのまま続ける" }).click();

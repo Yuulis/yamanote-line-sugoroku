@@ -531,9 +531,51 @@ test.describe("game menu disclosure", () => {
     await diceButton(page).click();
     const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
     await expect(adjustment).toBeVisible();
+    await expect(adjustment.getByRole("heading", { name: "出目を調整しますか？" })).toBeFocused();
+    const zoomIn = page.getByRole("button", { name: "Zoom in", exact: true });
+    let reachedMapControl = false;
+    for (let tab = 0; tab < 40; tab += 1) {
+      await page.keyboard.press("Tab");
+      if (await zoomIn.evaluate((element) => element === document.activeElement)) {
+        reachedMapControl = true;
+        break;
+      }
+    }
+    expect(reachedMapControl).toBe(true);
     await page.keyboard.press("Escape");
     await expect(adjustment).toBeHidden();
     await expect(panel.getByRole("button", { name: "メニュー", exact: true })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  test("Escape closes 新規 confirmation before the roll adjustment", async ({ page, railwayBundle }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const game = itemScenario("adjust", railwayBundle.network);
+    await page.goto("/");
+    await writeSaveText(page, serializeGame(game));
+    await page.reload();
+    await page.getByRole("button", { name: /つづきから/ }).click();
+    const panel = gamePanel(page);
+    await openGameMenu(page);
+    await diceButton(page).click();
+
+    const adjustment = page.getByRole("dialog", { name: "出目を調整しますか？" });
+    await expect(adjustment).toBeVisible();
+    expect((await readSave(page))?.pending?.kind).toBe("roll");
+
+    const newGame = panel.getByRole("button", { name: "新規", exact: true });
+    await newGame.evaluate((element) => (element as HTMLButtonElement).click());
+    const confirmation = page.getByRole("alertdialog", { name: "新しく始めますか？" });
+    await expect(confirmation).toBeVisible();
+
+    await page.keyboard.press("Escape");
+    await expect(confirmation).toBeHidden();
+    await expect(adjustment).toBeVisible();
+    expect((await readSave(page))?.pending?.kind).toBe("roll");
+
+    await page.keyboard.press("Escape");
+    await expect(adjustment).toBeHidden();
+    await expect.poll(async () => (await readSave(page))?.pending).toBeNull();
+    expect((await readSave(page))?.movementHistory).toHaveLength(game.movementHistory.length + 1);
   });
 
   test("新規 confirmation Escape preserves the staged item before the next Escape clears it", async ({ page, railwayBundle }) => {

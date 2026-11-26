@@ -30,7 +30,7 @@ export interface GameMenuProps {
   onOpenRules?: OpenRules;
 }
 
-/** True while a native `<dialog>` is open: it owns Escape before any disclosure or draft handler. */
+/** True while any native `<dialog>` is open, including a non-modal adjustment decision. */
 export function modalDialogOpen(): boolean {
   return document.querySelector("dialog[open]") !== null;
 }
@@ -67,7 +67,7 @@ export function GameMenu({
     // Capture phase so the menu closes before the bubbling draft-clear handler.
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape" || event.defaultPrevented) return;
-      // A native modal owns Escape: preventing it here would keep the dialog open.
+      // An open dialog owns Escape: preventing it here would keep the decision open.
       if (modalDialogOpen()) return;
       event.preventDefault();
       onExpandedChange(false);

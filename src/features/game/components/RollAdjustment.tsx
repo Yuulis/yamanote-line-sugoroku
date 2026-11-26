@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState, type SyntheticEvent } from "react";
+import { useId, useLayoutEffect, useRef, useState } from "react";
 import type { ItemRollAdjustment } from "../../../types/network";
 import type { ItemSessionView } from "../itemSession";
 import { adjustedPips } from "../itemPresentation";
@@ -12,8 +12,8 @@ export interface RollAdjustmentProps {
   landings?: readonly AdjustmentLanding[];
   onContinue: (adjustment: ItemRollAdjustment | null) => void;
   /**
-   * The shared presentation skip. The native modal makes the panel's 「演出をスキップ」 inert, so the dialog offers the same
-   * action. It ends the presentation only: the chosen radio stays and Continue is still required.
+   * The shared presentation skip. The panel's 「演出をスキップ」 is inert while this decision is open,
+   * so the dialog offers the same action. It ends the presentation only: the chosen radio stays and Continue is still required.
    */
   onSkip?: () => void;
   /** Whether a presentation is still running; otherwise the Skip button stays focusable but `aria-disabled`. */
@@ -33,10 +33,24 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || dialog.open) return;
-    dialog.showModal();
+    dialog.show();
     headingRef.current?.focus({ preventScroll: true });
     return () => dialog.close();
   }, []);
+
+  useLayoutEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key !== "Escape" || event.defaultPrevented || !dialog.open) return;
+      if (document.querySelector("dialog:modal")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      onContinue(null);
+    };
+    window.addEventListener("keydown", handleEscape, true);
+    return () => window.removeEventListener("keydown", handleEscape, true);
+  }, [onContinue]);
 
   const continueTurn = (nextChoice: AdjustmentChoice) => {
     if (nextChoice === 0) {
@@ -47,10 +61,6 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
     if (!instanceId) return;
     onContinue({ instanceId, delta: nextChoice });
   };
-  const handleCancel = (event: SyntheticEvent) => {
-    event.preventDefault();
-    continueTurn(0);
-  };
   const choices: AdjustmentChoice[] = [
     ...decision.allowedDeltas.filter((delta) => delta === -1),
     0,
@@ -58,7 +68,7 @@ export function RollAdjustment({ decision, onContinue, announcement, onSkip, can
   ];
 
   return (
-    <dialog ref={dialogRef} className="dialog item-dialog item-adjustment" aria-labelledby={titleId} onCancel={handleCancel}>
+    <dialog ref={dialogRef} className="dialog item-dialog item-adjustment" aria-labelledby={titleId}>
       <div className="dialog__body">
         {announcement !== undefined && <p className="visually-hidden" role="status" aria-live="polite" aria-atomic="true">{announcement}</p>}
         <h2 id={titleId} aria-describedby={rollId} ref={headingRef} className="dialog__title" tabIndex={-1}>出目を調整しますか？</h2>

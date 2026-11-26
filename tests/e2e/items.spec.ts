@@ -374,7 +374,8 @@ for (const delta of [-1, 1] as const) {
     await page.getByRole("button", { name: /つづきから/ }).click();
     await expect(dialog.getByRole("heading")).toBeFocused();
     expect((await itemSave(page)).pending).toEqual(pending.pending);
-    await expect(gamePanel(page).locator("[role=status]")).toHaveCount(1);
+    await expect(page.locator('.game-panel [role="status"], .item-adjustment [role="status"]')).toHaveCount(1);
+    await expect(dialog.locator("[role=status]")).toHaveCount(1);
     await dialog.getByRole("radio", { name: delta === -1 ? /−1/ : /\+1/ }).check();
     await dialog.getByRole("button", { name: `出目${raw + delta}で続ける` }).click();
     await expect(dialog).toBeHidden();
@@ -443,6 +444,18 @@ test("roll adjustment landing map preview", { tag: "@layout" }, async ({ page, r
     ? { width: 320, height: 568 }
     : { width: 1220, height: viewport.height }));
   await expectPreviewCalloutsVisible(page, expectedCalloutCount);
+
+  const zoomBefore = await page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: { getZoom(): number } | null } }).__sugorokuE2E?.map;
+    if (!map) throw new Error("The map must remain available while the adjustment decision is open");
+    return map.getZoom();
+  });
+  await page.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect.poll(() => page.evaluate(() => {
+    const map = (window as Window & { __sugorokuE2E?: { map?: { getZoom(): number } | null } }).__sugorokuE2E?.map;
+    return map?.getZoom() ?? null;
+  })).toBeGreaterThan(zoomBefore);
+  await expect(diceButton(page)).toHaveAttribute("aria-disabled", "true");
 
   await dialog.getByRole("button", { name: "そのまま続ける" }).click();
   await expect(page.locator("[data-map-adjustment-callout]")).toHaveCount(0);

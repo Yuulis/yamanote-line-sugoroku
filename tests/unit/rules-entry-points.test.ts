@@ -22,6 +22,10 @@ const edition = EDITIONS[0]!;
 let mounted: MountedReact | undefined;
 
 beforeAll(() => {
+  Object.defineProperty(HTMLDialogElement.prototype, "show", {
+    configurable: true,
+    value(this: HTMLDialogElement) { this.setAttribute("open", ""); },
+  });
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value(this: HTMLDialogElement) { this.setAttribute("open", ""); },

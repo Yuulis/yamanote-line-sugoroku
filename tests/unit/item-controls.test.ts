@@ -3,6 +3,7 @@ import { act, createElement, useState } from "react";
 import { readFileSync } from "node:fs";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { DiscardChoice } from "../../src/features/game/components/DiscardChoice";
+import { EffectChips } from "../../src/features/game/components/EffectChips";
 import { InventoryPanel } from "../../src/features/game/components/InventoryPanel";
 import { GamePanel, type GamePanelProps } from "../../src/features/game/components/GamePanel";
 import { ITEM_DESCRIPTIONS, ITEM_SHORT_NAMES, itemTiming } from "../../src/features/game/itemPresentation";
@@ -11,6 +12,7 @@ import { RollAdjustment } from "../../src/features/game/components/RollAdjustmen
 import { buildRailwayNetwork, createItemGame, platformPosition, targetSegmentIds } from "../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { ItemSessionView } from "../../src/features/game/itemSession";
+import type { EffectChipModel } from "../../src/features/game/hudPresentation";
 import type { ItemKind } from "../../src/types/network";
 import { createItemSession, itemSessionView } from "../../src/features/game/itemSession";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
@@ -20,6 +22,10 @@ import { dispatchReactEvent, mountReact, type MountedReact } from "./helpers/rea
 
 const mounted: MountedReact[] = [];
 beforeAll(() => {
+  Object.defineProperty(HTMLDialogElement.prototype, "show", {
+    configurable: true,
+    value(this: HTMLDialogElement) { this.setAttribute("open", ""); },
+  });
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value(this: HTMLDialogElement) { this.setAttribute("open", ""); },
@@ -677,7 +683,7 @@ describe("item controls", () => {
     expect(onContinue).toHaveBeenCalledWith({ instanceId: "adjust-1", delta: 1 });
   });
 
-  it("treats Escape in the revealed-roll dialog as continue without adjustment", () => {
+  it("treats window Escape in the revealed-roll dialog as continue without adjustment", () => {
     const onContinue = vi.fn();
     const decision = {
       kind: "adjust" as const,
@@ -692,11 +698,32 @@ describe("item controls", () => {
     mounted.push(mount);
     const dialog = mount.container.querySelector("dialog")!;
     expect(dialog.open).toBe(true);
-    const cancel = new Event("cancel", { cancelable: true });
-    dispatchReactEvent(dialog, cancel);
-    expect(cancel.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(dialog.querySelector("h2"));
+    const escape = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    act(() => window.dispatchEvent(escape));
+    expect(escape.defaultPrevented).toBe(true);
     expect(onContinue).toHaveBeenCalledWith(null);
     expect(onContinue).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes an open effect chip card while the adjustment decision is open", () => {
+    const models: readonly EffectChipModel[] = [{
+      key: "delay:4#0", kind: "delay", text: "遅延は4ターン目に発動します", statusLine: "あと2ターン",
+      label: "遅延 あと2", remainingTurns: 2, serviceId: null, lineBadge: null, countdown: null,
+    }];
+    const mount = mountReact(createElement(EffectChips, { models }));
+    mounted.push(mount);
+    const chip = mount.container.querySelector<HTMLButtonElement>(".effect-chip")!;
+    act(() => chip.click());
+    const card = mount.container.querySelector<HTMLElement>(".item-card-popover")!;
+    expect(card.hidden).toBe(false);
+
+    act(() => mount.root.render(createElement(EffectChips, { models, decisionOpen: true })));
+    expect(card.hidden).toBe(true);
+    expect(mount.container.querySelector(".effect-chip")?.getAttribute("aria-expanded")).toBe("false");
+
+    act(() => mount.root.render(createElement(EffectChips, { models })));
+    expect(card.hidden).toBe(true);
   });
 
   it("keeps the adjustment skip separate from continuing and splits its help from the caution", () => {
@@ -949,15 +976,15 @@ describe("GamePanel item card integration", () => {
     expect(opener.getAttribute("aria-expanded")).toBe("true");
   });
 
-  it("hides the card before an automatic decision modal opens without restoring slot focus", () => {
+  it("hides the card before an automatic adjustment dialog opens without restoring slot focus", () => {
     const value = panelValue();
     const mount = mountReact(createElement(GamePanelHarness, { value }));
     mounted.push(mount);
     const opener = mount.container.querySelector<HTMLButtonElement>(".item-slot button")!;
     act(() => opener.click());
     const seenHidden: boolean[] = [];
-    const descriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "showModal");
-    Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
+    const descriptor = Object.getOwnPropertyDescriptor(HTMLDialogElement.prototype, "show");
+    Object.defineProperty(HTMLDialogElement.prototype, "show", {
       configurable: true,
       value(this: HTMLDialogElement) {
         seenHidden.push(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden") ?? false);
@@ -976,7 +1003,7 @@ describe("GamePanel item card integration", () => {
       renderGamePanel(mount, value);
       expect(mount.container.querySelector<HTMLElement>(".item-card-popover")?.hasAttribute("hidden")).toBe(true);
     } finally {
-      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, "showModal", descriptor);
+      if (descriptor) Object.defineProperty(HTMLDialogElement.prototype, "show", descriptor);
     }
   });
 
@@ -994,8 +1021,10 @@ describe("GamePanel item card integration", () => {
       allowedDeltas: [1], itemInstanceIds: ["adjust-1"], canContinue: true,
     } };
     renderGamePanel(mount, { ...value, turnDisplay: { ...value.turnDisplay, itemView: decisionView, decision: decisionView.decision } });
+    expect(mount.container.querySelector(".game-panel")?.hasAttribute("inert")).toBe(true);
     expect(mount.container.querySelector<HTMLButtonElement>(".game-panel__log-trigger")?.getAttribute("aria-expanded")).toBe("true");
     renderGamePanel(mount, value);
+    expect(mount.container.querySelector(".game-panel")?.hasAttribute("inert")).toBe(false);
     act(() => mount.container.querySelector<HTMLButtonElement>(".game-panel__menu-trigger")?.click());
     expect(mount.container.querySelector<HTMLElement>(".game-panel__log")?.hidden).toBe(true);
     expect(mount.container.querySelector<HTMLElement>(".game-panel__menu")?.hidden).toBe(false);

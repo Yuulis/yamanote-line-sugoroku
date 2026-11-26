@@ -9,7 +9,7 @@ body {
   font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif;
 }
 
-/* Stacking order: map < panel < turn moment < screens < map error < data banner.
+/* Stacking order: map < panel < turn moment < adjustment < screens < map error < data banner.
    The confirmation <dialog> sits in the browser's top layer above all. */
 :root {
   --color-brand: #d9502f;
@@ -39,6 +39,7 @@ body {
   --motion-slow: 300ms;
   --layer-panel: 10;
   --layer-turn-moment: 15;
+  --layer-adjustment: 16;
   --layer-screen: 20;
   --layer-map-error: 25;
   --layer-toast: 30;
@@ -2349,13 +2350,10 @@ button[aria-disabled="true"] {
   }
 }
 
-/* Roll adjustment: a compact sheet anchored bottom-right so the map stays visible. Scoped to this dialog; the
-   shared `.dialog::backdrop` keeps its dim for every other dialog. The native modal still isolates the page. */
-.item-adjustment::backdrop {
-  background: transparent;
-}
-
+/* Roll adjustment: a non-modal sheet anchored bottom-right over the panel and map. */
 .item-adjustment {
+  position: fixed;
+  z-index: var(--layer-adjustment);
   --item-adjustment-edge: 12px;
   inset: auto calc(var(--item-adjustment-edge) + env(safe-area-inset-right, 0px)) calc(28px + env(safe-area-inset-bottom, 0px)) auto;
   /* Clear of the left HUD panel (12px + 310px) plus a 12px gap, then the right edge gap. */

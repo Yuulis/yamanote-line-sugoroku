@@ -46,6 +46,10 @@ function Harness(props: HarnessProps) {
 }
 
 beforeAll(() => {
+  Object.defineProperty(HTMLDialogElement.prototype, "show", {
+    configurable: true,
+    value(this: HTMLDialogElement) { this.setAttribute("open", ""); },
+  });
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", {
     configurable: true,
     value(this: HTMLDialogElement) { this.setAttribute("open", ""); },
