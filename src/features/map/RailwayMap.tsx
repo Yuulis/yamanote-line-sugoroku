@@ -21,16 +21,12 @@ import { buildMapPresentationIndex } from "./mapPresentation";
 import { useClearNetworkVisibility } from "./clearNetworkVisibility";
 import { useVisibleLineGroupIds } from "./lineVisibilityStore";
 import {
-  adjustmentPreviewPadding,
-  adjustmentPreviewFitSignature,
-  bestUnobstructedPoint,
   initialOverviewServices,
   isUserCameraEvent,
   needsRecentre,
   titleFitPadding,
   USER_CAMERA_EVENTS,
 } from "./camera";
-import type { CameraPoint, CameraRect } from "./camera";
 import {
   FOLLOW_EASE_MS,
   MAP_CENTER,
@@ -38,8 +34,6 @@ import {
   MAP_MIN_ZOOM,
   MAP_STYLE_URL,
   MAP_ZOOM,
-  CURRENT_POSITION_RADIUS,
-  CURRENT_POSITION_STROKE_WIDTH,
   NETWORK_FIT_PADDING_DESKTOP,
   NETWORK_FIT_PADDING_PHONE,
   NETWORK_FIT_PANEL_GAP,
@@ -62,16 +56,19 @@ import {
   updateHighlightedService,
 } from "./railwayLayers";
 import { createHeadingMarker, type HeadingMarkerController } from "./headingMarker";
-import { isVisibleLayoutTarget, useCameraLayoutObserver } from "./railwayMapCamera";
+import {
+  fitAdjustmentPreview,
+  positionsBounds,
+  useCameraLayoutObserver,
+  ZERO_MAP_PADDING,
+} from "./railwayMapCamera";
 import {
   type AdjustmentCandidate,
   mountAdjustmentCallouts,
-  measureAdjustmentCallouts,
 } from "./rollAdjustmentPreview";
 import { bindStationInteractions } from "./stationInteraction";
 import { createStationPopupContent } from "./stationPopup";
 import { trackException } from "../analytics/analytics";
-import { TURN_RESULT_PILL_SELECTOR } from "../game/turnResultPillLayout";
 import { TitleMapPlaceholder } from "./components/TitleMapPlaceholder";
 import type { ClearRoute } from "../game/clearResult";
 import type { ClearReplayStore } from "../game/clearReplayStore";
@@ -200,165 +197,10 @@ const NO_LIVE_POSITION: LivePosition = {
   get: () => null,
 };
 const COMPACT_VIEWPORT_QUERY = "(max-height: 500px)";
-const ZERO_MAP_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
-const PREVIEW_OBSTRUCTION_SELECTORS = [
-  ".game-panel",
-  ".item-adjustment",
-  ".map-overview",
-  ".maplibregl-ctrl-top-left",
-  ".maplibregl-ctrl-top-right",
-  ".maplibregl-ctrl-bottom-left",
-  ".maplibregl-ctrl-bottom-right",
-  TURN_RESULT_PILL_SELECTOR,
-] as const;
-const ORIGIN_MARKER_RADIUS_PX = CURRENT_POSITION_RADIUS + CURRENT_POSITION_STROKE_WIDTH;
 const IMMEDIATE_CAMERA_DURATION_MS = 0;
 
 function attributionPosition(atTop: boolean): "top-left" | "bottom-right" {
   return atTop ? "top-left" : "bottom-right";
-}
-
-function toMapRect(rect: DOMRect, mapRect: DOMRect): CameraRect {
-  return {
-    left: rect.left - mapRect.left,
-    top: rect.top - mapRect.top,
-    right: rect.right - mapRect.left,
-    bottom: rect.bottom - mapRect.top,
-  };
-}
-
-export function previewObstructions(container: HTMLElement): readonly CameraRect[] {
-  const mapBounds = container.getBoundingClientRect();
-  const elements = [...new Set(PREVIEW_OBSTRUCTION_SELECTORS.flatMap((selector) =>
-    [...document.querySelectorAll<HTMLElement>(selector)]))];
-  return elements
-    .filter(isVisibleLayoutTarget)
-    .map((element) => toMapRect(element.getBoundingClientRect(), mapBounds))
-    .filter((rect) => rect.right > 0 && rect.left < mapBounds.width && rect.bottom > 0 && rect.top < mapBounds.height);
-}
-
-function originMarkerIntersects(
-  point: CameraPoint,
-  radius: number,
-  obstruction: CameraRect,
-): boolean {
-  return point.x - radius < obstruction.right && point.x + radius > obstruction.left &&
-    point.y - radius < obstruction.bottom && point.y + radius > obstruction.top;
-}
-
-function keepOriginVisible(
-  map: MapLibreMap,
-  position: Position,
-  obstructions: readonly CameraRect[],
-): void {
-  const container = map.getContainer().getBoundingClientRect();
-  const viewport = { width: container.width, height: container.height };
-  const point = map.project(position);
-  const withinViewport = point.x >= ORIGIN_MARKER_RADIUS_PX &&
-    point.x <= viewport.width - ORIGIN_MARKER_RADIUS_PX &&
-    point.y >= ORIGIN_MARKER_RADIUS_PX &&
-    point.y <= viewport.height - ORIGIN_MARKER_RADIUS_PX;
-  const overlapsObstruction = obstructions.some((rect) =>
-    originMarkerIntersects(point, ORIGIN_MARKER_RADIUS_PX, rect));
-  if (withinViewport && !overlapsObstruction) return;
-
-  const target = bestUnobstructedPoint(viewport, obstructions, ORIGIN_MARKER_RADIUS_PX) ?? {
-    x: viewport.width / 2,
-    y: viewport.height / 2,
-  };
-  const cameraCenter = map.getCenter();
-  const projectedCenter = map.project([cameraCenter.lng, cameraCenter.lat]);
-  const shiftedCenter = map.unproject([
-    projectedCenter.x + point.x - target.x,
-    projectedCenter.y + point.y - target.y,
-  ]);
-  map.jumpTo({ center: shiftedCenter, zoom: map.getZoom(), padding: ZERO_MAP_PADDING });
-}
-
-function originCalloutBounds(map: MapLibreMap, position: Position | null): readonly { anchor: CameraPoint; rect: CameraRect }[] {
-  if (position === null) return [];
-  const anchor = map.project(position);
-  return [{
-    anchor,
-    rect: {
-      left: anchor.x - ORIGIN_MARKER_RADIUS_PX,
-      top: anchor.y - ORIGIN_MARKER_RADIUS_PX,
-      right: anchor.x + ORIGIN_MARKER_RADIUS_PX,
-      bottom: anchor.y + ORIGIN_MARKER_RADIUS_PX,
-    },
-  }];
-}
-
-function positionsBounds(positions: readonly Position[]): [Position, Position] | null {
-  if (positions.length === 0) return null;
-  const longitudes = positions.map(([longitude]) => longitude);
-  const latitudes = positions.map(([, latitude]) => latitude);
-  return [
-    [Math.min(...longitudes), Math.min(...latitudes)],
-    [Math.max(...longitudes), Math.max(...latitudes)],
-  ];
-}
-
-function fitAdjustmentPreview(
-  map: MapLibreMap,
-  origin: Position | null,
-  candidates: readonly AdjustmentCandidate[],
-  sessionKey: number | undefined,
-  candidateKey: string,
-  originKey: string,
-  previousSignature: string | null,
-): string | null {
-  const positions = [
-    ...(origin ? [origin] : []),
-    ...candidates.flatMap((candidate) => candidate.position ? [candidate.position] : []),
-  ];
-  const bounds = positionsBounds(positions);
-  if (!bounds) return null;
-
-  const container = map.getContainer();
-  const viewport = container.getBoundingClientRect();
-  const measurements = [...measureAdjustmentCallouts(map), ...originCalloutBounds(map, origin)];
-  const obstructions = previewObstructions(container);
-  const padding = adjustmentPreviewPadding(
-    { width: viewport.width, height: viewport.height },
-    obstructions,
-    measurements,
-  );
-  const signature = adjustmentPreviewFitSignature(
-    sessionKey,
-    candidateKey,
-    originKey,
-    { width: viewport.width, height: viewport.height },
-    padding,
-  );
-  if (signature === previousSignature) return signature;
-  try {
-    map.setPadding(ZERO_MAP_PADDING);
-    map.fitBounds(bounds, { padding, duration: 0, maxZoom: MAP_ZOOM });
-  } catch (error) {
-    console.warn("Map preview fit failed; centering the origin as a fallback.", error);
-    try {
-      map.setPadding(ZERO_MAP_PADDING);
-      const center = origin ?? positions[0];
-      if (center) map.jumpTo({ center, zoom: Math.min(map.getZoom(), MAP_ZOOM), padding: ZERO_MAP_PADDING });
-    } catch (fallbackError) {
-      console.error("Map preview fallback could not center the origin.", fallbackError);
-    }
-  } finally {
-    try {
-      map.setPadding(ZERO_MAP_PADDING);
-    } catch (error) {
-      console.error("Map preview padding could not be cleared.", error);
-    }
-    if (origin) {
-      try {
-        keepOriginVisible(map, origin, obstructions);
-      } catch (error) {
-        console.error("Map preview could not keep the origin in view.", error);
-      }
-    }
-  }
-  return signature;
 }
 
 /**

@@ -12,8 +12,7 @@ import {
   type TurnMomentRectSources,
   type TurnMomentRects,
 } from "../../src/features/game/components/TurnMomentHost";
-import { previewObstructions } from "../../src/features/map/RailwayMap";
-import { useCameraLayoutObserver } from "../../src/features/map/railwayMapCamera";
+import { previewObstructions, useCameraLayoutObserver } from "../../src/features/map/railwayMapCamera";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
 class FakeResizeObserver {

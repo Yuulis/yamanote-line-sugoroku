@@ -26,10 +26,11 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 
 | Step | Status | Commit | Evidence |
 |---|---|---|---|
-| 1.1 | done | (this commit) | Luna xhigh; lead: 76 removed lines verbatim in railwayMapCamera.ts, typecheck, vitest 2746 pass / 1 pre-existing skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 1,022 -> 945 lines |
-| 1.2 | next | — | — |
+| 1.1 | done | a5487da (CI green) | Luna xhigh; lead: 76 removed lines verbatim in railwayMapCamera.ts, typecheck, vitest 2746 pass / 1 pre-existing skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 1,022 -> 945 lines |
+| 1.2 | done | (this commit) | Luna xhigh (1st run stopped correctly on shared deps ZERO_MAP_PADDING/positionsBounds; prompt relaxed, 2nd run moved them too); lead: removed lines verbatim except 3 import specifiers, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 945 -> 787 lines |
+| 1.3 | next | — | — |
 
 ## Next action
 
-Write the Step 1.2 prompt (pure move of the adjustment-preview camera helpers) and run it with Luna xhigh.
+Write the Step 1.3 prompt (pure move of title/overview/follow camera helpers) and run it with Luna xhigh. Pre-empt shared dependencies in the prompt (move + import back, as in 1.2).
 Open question for PR2: what 次 does from the done view (lead default: disabled); ask the user before Step 2.1.
