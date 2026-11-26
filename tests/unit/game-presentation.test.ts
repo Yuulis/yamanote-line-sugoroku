@@ -358,6 +358,9 @@ it("pins replay-valid item E2E scenarios using the production item policy", asyn
       expect(new Set(base.inventory.map((item) => item.kind))).toEqual(new Set([
         "roll-adjust", "roll-adjust-2", "roll-adjust-3",
       ]));
+    } else if (name === "double-adjust") {
+      expect(base.inventory.some((item) => item.kind === "double")).toBe(true);
+      expect(base.inventory.some((item) => item.kind === "roll-adjust")).toBe(true);
     } else if (name === "discard" || name === "discard-adjust") {
       expect(playItemTurn(base, {}, network).state.pending?.kind).toBe("discard");
     } else if (name === "certificate" || name === "delay") {
@@ -367,6 +370,10 @@ it("pins replay-valid item E2E scenarios using the production item policy", asyn
       const result = playItemTurn(base, {}, network);
       expect(result.record).toMatchObject({ movementMode: "oversleep", physicalHops: 6 });
       expect(result.state.status).toBe("playing");
+    } else if (name === "oversleep-pickup") {
+      expect(base.status).toBe("playing");
+    } else if (name === "route-rapid-pickup") {
+      expect(base.inventory.some((item) => item.kind === "route-ticket")).toBe(true);
     } else {
       const kind = name === "rapid-long" ? "rapid" : name === "route" ? "route-ticket" : name === "direction" ? "direction-ticket" : name;
       expect(base.inventory.some((item) => item.kind === kind)).toBe(true);

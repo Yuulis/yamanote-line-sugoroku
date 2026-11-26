@@ -4,6 +4,7 @@ import type { RailwayBundle } from "../fixtures/bundle";
 import { LAYER_IDS, SOURCE_IDS } from "../../../src/features/map/mapConfig";
 import { createItemGame, playItemTurn, resolveItemDiscard } from "../../../src/features/game/engine";
 import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
+import { FIXTURE_VERY_FAST_MOMENT_GAME_SEED, FIXTURE_VERY_FAST_MOMENT_TURN } from "../fixtures/seeds";
 import type { MoveEvent } from "../../../src/features/game/engine";
 import { buildGeometryIndex, buildMovePlan } from "../../../src/features/game/animation/movePath";
 import { hopDurationMs, MAX_MOVE_DURATION_MS } from "../../../src/features/game/animation/timeline";
@@ -555,6 +556,16 @@ export function combinedMomentGame(bundle: RailwayBundle): ItemGameState {
   while (game.turn < 10) {
     game = playItemTurn(game, {}, bundle.network).state;
     if (game.pending?.kind === "discard") game = resolveItemDiscard(game, game.pending.item.id).state;
+  }
+  return game;
+}
+
+/** Pinned very-fast replay: a target-segment flash and overflow pickup precede a retained adjustment decision. */
+export function combinedAdjustmentMomentGame(bundle: RailwayBundle): ItemGameState {
+  let game: ItemGameState = createItemGame(ITEM_GAME_CONFIG, FIXTURE_VERY_FAST_MOMENT_GAME_SEED, bundle.network);
+  while (game.turn < FIXTURE_VERY_FAST_MOMENT_TURN) {
+    const result = playItemTurn(game, {}, bundle.network);
+    game = result.state.pending?.kind === "discard" ? resolveItemDiscard(result.state, result.state.pending.item.id).state : result.state;
   }
   return game;
 }

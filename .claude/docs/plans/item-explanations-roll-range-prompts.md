@@ -375,3 +375,56 @@ npx playwright test tests/e2e/save-errors.spec.ts --project=desktop-chromium
 Output (markdown): changed files and what changed; the classification table for v4 envelopes
 (current dataVersion / other string / missing / non-string → problem + copy); regeneration
 check result for item 4; acceptance results with counts.
+
+## Step 2.3 — CI fix: re-pin drifted seeds and fixtures
+
+Objective: make branch `feature/roll-adjust-range` (HEAD a0e32c5 + any later docs commits) green
+on desktop-chromium and phone `@layout` again after the ruleset switch, by re-pinning every
+seed/scenario/fixture that drifted because the beneficial drop pool changed — never by weakening
+tests.
+
+Evidence: CI run on a0e32c5 failed 6 unit tests and 57 desktop-chromium E2E tests. List:
+`.claude/logs/issue61-s23-ci/failing-e2e.txt`. Error mix: mostly `toHaveText` mismatches,
+`element(s) not found`, and `Seed 00000000000000000000000000000004 did not reach turn 255`
+(clear-replay-share and other clear/replay specs rely on pinned clears). Unit failures (reproduce
+with `npx vitest run`): history-rows, hud-progress-publication, turn-moment-items (3),
+turn-moment-presentation — all consumers of `itemScenario("double")`.
+
+Known cause of the unit failures: a debugger re-pinned `double` in
+`tests/e2e/fixtures/itemScenarios.ts` to seed …6b turn 10 so that the phone test
+`tests/e2e/ui-pop.spec.ts:201` ("phone tap opens, closes, and uses the item card") finds both
+倍速券 and 出目調整券±1. Fix it properly: restore `double` to the pin the unit tests were written
+for (the one at a0e32c5's parent change, seed …03 turn 2 — check git log -p of itemScenarios.ts)
+and give the phone test a dedicated scenario (e.g. `double-adjust`, seed …6b turn 10, valid on
+both `fixture` and `real` datasets: status playing, no pending decision, holds `double` and
+`roll-adjust`, still playing after a doubled turn) — or another approach that keeps every
+consumer's intent. Add a unit pin guard for the new scenario in
+`tests/unit/e2e-fixture-seeds.test.ts` next to the `adjust-wide` one.
+
+Scope:
+- IN: seeds and pins (`tests/e2e/fixtures/seeds.ts`, `itemScenarios.ts`, support helpers),
+  regenerated fixture saves via the documented command (`tests/e2e/fixtures/README.md`), and
+  expected values in specs/unit tests that legitimately follow a re-pinned scenario (same intent,
+  same predicates). When re-pinning, search with the dataset each consuming spec uses
+  (`test.use({ dataset })`: `fixture` vs `real`).
+- OUT: product code under `src/` (only if you prove a real product bug — then stop and report it
+  instead of fixing), thresholds, the frozen sim spike, docs other than fixture READMEs.
+- Hard constraints: do not weaken, skip or delete assertions; do not change what a test checks;
+  historical fixtures keep their bytes; do not commit or push; LOCAL_WORKERS 2; never
+  `pkill -f`; no firefox/webkit runs.
+
+Acceptance (run all; run the affected spec files in full on desktop-chromium, not the whole suite):
+
+```bash
+npm run typecheck
+npx vitest run
+npx playwright test $(cut -d' ' -f3 .claude/logs/issue61-s23-ci/failing-e2e.txt | cut -d: -f1 | sort -u | tr '\n' ' ') --project=desktop-chromium
+npx playwright test tests/e2e/ui-pop.spec.ts tests/e2e/items.spec.ts tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+```
+
+Write progress notes to `.claude/logs/issue61-s23-ci/progress.md` as you go (which spec is done)
+so a timeout does not lose the state.
+
+Output (markdown): each re-pinned seed/scenario (old → new, predicate, datasets checked); expected
+values changed and why each is a pin follow-up rather than a weakening; acceptance results with
+counts; anything left failing with its error.

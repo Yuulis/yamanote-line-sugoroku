@@ -88,10 +88,13 @@ function findComposedTrajectory(maxCandidate: number): ComposedTrajectory {
       const before = game;
       const result = playTurn(game, network);
       const record = result.state.movementHistory.at(-1);
-      if (record?.landing && record.traversedSegmentIds.includes(PRODUCT_COMPOSED_FORWARD) && record.landing.serviceId !== record.resolvedRide!.serviceId) {
+      const directPlainTurn = !record?.itemEvents.some((event) => event.type === "pickup-pending-discard")
+        && record?.movementMode === "normal"
+        && record.itemEvents.every((event) => event.type !== "effect-activated");
+      if (directPlainTurn && record?.landing && record.traversedSegmentIds.includes(PRODUCT_COMPOSED_FORWARD) && record.landing.serviceId !== record.resolvedRide!.serviceId) {
         forward = { before, result };
       }
-      if (record?.landing && record.traversedSegmentIds.includes(PRODUCT_COMPOSED_REVERSE) && record.landing.serviceId !== record.resolvedRide!.serviceId) {
+      if (directPlainTurn && record?.landing && record.traversedSegmentIds.includes(PRODUCT_COMPOSED_REVERSE) && record.landing.serviceId !== record.resolvedRide!.serviceId) {
         reverse = { before, result };
       }
       game = result.state;
@@ -254,9 +257,9 @@ describe("current product E2E scenarios", () => {
     expect(trajectory.reverse.result.record).toEqual(CURRENT_PRODUCT_RECORDS.composedReverse);
 
     expect(landingText(resumeSession(trajectory.forward.result.state, network).lastMove, network))
-      .toBe("辻堂：東海道線・湘南新宿ライン 快速 (高崎線・東海道線系統)から抽選 → 東海道線 ／ 方向抽選 → 東京方面");
+      .toBe("横浜：10系統から抽選 → 相鉄本線 各停 ／ 乗車方向は海老名方面のみ");
     expect(landingText(resumeSession(trajectory.reverse.result.state, network).lastMove, network))
-      .toBe("武蔵小杉：7系統から抽選 → 横須賀線 ／ 方向抽選 → 東京方面");
+      .toBe("新宿：12系統から抽選 → 京王線 各停 ／ 乗車方向は京王八王子方面のみ");
 
     const geometry = buildGeometryIndex(geometryData);
     for (const scenario of [trajectory.forward, trajectory.reverse]) {

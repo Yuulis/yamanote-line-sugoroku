@@ -8,13 +8,16 @@ import { ITEM_GAME_CONFIG } from "../../../src/features/game/gameConfig";
 // pin keeps the original raw-2 / turn-8 presentation fixture; discard-adjust
 // holds an adjustable ticket before a full-inventory decision. adjust-wide is
 // the first ascending seed through 0x560b (decimal 22027) with all three ticket
-// kinds, a raw 4+, and an untruncated +3 ride beyond face 6. double also holds a
-// ±1 ticket (phone card switching) and stays playing after a doubled roll on
-// both the fixture and real datasets.
+// kinds, a raw 4+, and an untruncated +3 ride beyond face 6. double-adjust is
+// the phone card-switching scenario: it holds a double and ±1 ticket and stays
+// playing after a doubled turn on both the fixture and real datasets.
+// route-rapid-pickup preserves the arrival-turn pickup predicate at turn 7.
 export const ITEM_SCENARIOS = {
-  double: { seed: "0000000000000000000000000000006b", turn: 10 },
+  double: { seed: "00000000000000000000000000000003", turn: 2 },
+  "double-adjust": { seed: "0000000000000000000000000000006b", turn: 10 },
   "rapid-long": { seed: "00000000000000000000000000000002", turn: 1 },
-  rapid: { seed: "00000000000000000000000000000002", turn: 1 },
+  rapid: { seed: "00000000000000000000000000000002", turn: 2 },
+  "route-rapid-pickup": { seed: "0000000000000000000000000000000c", turn: 6 },
   delay: { seed: "00000000000000000000000000000002", turn: 4 },
   adjust: { seed: "000000000000000000000000000000c8", turn: 8 },
   "adjust-lottery": { seed: "00000000000000000000000000000009", turn: 8 },
@@ -22,6 +25,7 @@ export const ITEM_SCENARIOS = {
   "adjust-harmful": { seed: "00000000000000000000000000000024", turn: 7 },
   "adjust-wide": { seed: "0000000000000000000000000000560b", turn: 5 },
   oversleep: { seed: "00000000000000000000000000000004", turn: 8 },
+  "oversleep-pickup": { seed: "00000000000000000000000000000002", turn: 8 },
   discard: { seed: "00000000000000000000000000000004", turn: 6 },
   "discard-adjust": { seed: "00000000000000000000000000000009", turn: 13 },
   certificate: { seed: "00000000000000000000000000000005", turn: 19 },

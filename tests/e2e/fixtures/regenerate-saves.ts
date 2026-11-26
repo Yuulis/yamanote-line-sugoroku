@@ -53,9 +53,11 @@ let composedReverse: ProductTurnResult["record"] | undefined;
 while (composedGame.status === "playing" && composedGame.turn < 250 && (!composedForward || !composedReverse)) {
   const result = playTurn(composedGame, network);
   const record = result.record;
-  if (record.landing && record.traversedSegmentIds.includes(composedForwardSegment) &&
+  const directPlainTurn = !record.itemEvents.some((event) => event.type === "pickup-pending-discard") &&
+    record.movementMode === "normal" && record.itemEvents.every((event) => event.type !== "effect-activated");
+  if (directPlainTurn && record.landing && record.traversedSegmentIds.includes(composedForwardSegment) &&
       record.landing.serviceId !== record.resolvedRide.serviceId) composedForward ??= record;
-  if (record.landing && record.traversedSegmentIds.includes(composedReverseSegment) &&
+  if (directPlainTurn && record.landing && record.traversedSegmentIds.includes(composedReverseSegment) &&
       record.landing.serviceId !== record.resolvedRide.serviceId) composedReverse ??= record;
   composedGame = result.state;
 }

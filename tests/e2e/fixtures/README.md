@@ -13,11 +13,18 @@ other choices separately. Saves contain real item records and both RNG streams.
 - Small bundle: first seed with roll 4 transferring to fixture-south; rolls 3
   hitting the area boundary and terminus on turns 2/3; a direction-only reverse
   draw at fixture-oimachi on turn 5; completion within 100 turns: `5ff`, turn 14.
-- Real bundle: hub `09`; both directions of the composed rapid hop with an
-  arrival transfer within 250 turns `00` (turns 32/80); cross-operator
-  Korakuen transfer `0f` (turn 112); Ueno on Joban Rapid `0f` (within 5,000 turns).
+- Fixture item turns: the retained rapid arrival pickup uses `0c`, turn 6; the
+  very-fast overflow/adjustment continuation uses `ba9cf`, turn 6. Its six-hop
+  oversleep crosses target segments and has multiple lottery candidates; the
+  overflow keeps the new ±2 ticket by discarding the existing deadhead ticket.
+- Real bundle: hub `09`; both directions of the composed rapid hop with direct
+  plain-roll resolution use `50` (turns 119/125); a reverse rapid arrival onto
+  Fukutoshin uses `989`, turn 64; cross-operator Korakuen transfer `0f` (turn
+  112); Ueno on Joban Rapid `0f` (within 5,000 turns).
 - Completed history uses `00`, turn 83. The Oedo grouped-candidate arrival uses
   `07`, turn 366 (first matching seed scanning up to 5,000 turns per seed).
+  Accessibility's repeated-roll announcement uses `1b` (equal rolls on turns
+  2 and 3, with no item pickup after turn 1 through turn 5).
 
 The three current `tokyo-suburban-*-save.json` files were regenerated on
 2026-11-26 at turns 82, 111, 365. `item-saves.provenance.json` records seed,

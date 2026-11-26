@@ -200,7 +200,7 @@ test("reclicking the open slot closes it and switching slots opens the other car
 
 test("phone tap opens, closes, and uses the item card", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(!test.info().project.use.hasTouch, "needs a touch project");
-  await scenario(page, "double", railwayBundle);
+  await scenario(page, "double-adjust", railwayBundle);
   const slot = inventoryItem(page, "倍速券");
   const opener = slot.getByRole("button");
   await opener.tap();
@@ -349,7 +349,7 @@ test("direction ticket card opens its use dialog and cancellation restores its o
 
 test("desktop card hides its own hover tooltip, keeps other slot hover, and closes on Tab out", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   test.skip(Boolean(test.info().project.use.hasTouch), "requires desktop hover and keyboard focus");
-  await scenario(page, "discard", railwayBundle);
+  await scenario(page, "double-adjust", railwayBundle);
   const first = inventoryItem(page, "倍速券");
   const firstOpener = first.getByRole("button");
   await firstOpener.click();

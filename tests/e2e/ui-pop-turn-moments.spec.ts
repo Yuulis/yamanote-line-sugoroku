@@ -9,6 +9,7 @@ import { isRollAdjustKind } from "../../src/features/game/itemRollAdjust";
 import { PRODUCT_HUB_GAME_SEED } from "./fixtures/seeds";
 import {
   combinedMomentGame,
+  combinedAdjustmentMomentGame,
   closeGameMenu,
   movementDurationMs,
   markerPosition,
@@ -307,7 +308,7 @@ function slotNamed(page: Page, name: string): Locator {
 
 /** Resume the route scenario frozen and play its plain turn up to the end of the movement; returns the replay. */
 async function playRouteTurnToArrival(page: Page, bundle: RailwayBundle): Promise<ReturnType<typeof playItemTurn>> {
-  const base = itemScenario("route", bundle.network);
+  const base = itemScenario("route-rapid-pickup", bundle.network);
   await resumeFrozen(page, base);
   const turnBefore = await clickDice(page);
   // The tumble timer starts once the saved roll is observed: wait for it before advancing the clock.
@@ -366,7 +367,7 @@ async function playDiscardTurnToPickup(page: Page, bundle: RailwayBundle): Promi
 }
 
 test("the arrival and pickup stages hold turn results, then publish them together", async ({ page, railwayBundle }) => {
-  const base = itemScenario("route", railwayBundle.network);
+  const base = itemScenario("route-rapid-pickup", railwayBundle.network);
   await resumeFrozen(page, base);
   const turnBefore = await clickDice(page);
   // The tumble timer starts once the saved roll is observed: wait for it before advancing the clock.
@@ -977,7 +978,9 @@ for (const speed of SPEED_CASES) {
   test(`S16 complete overflow turn at ${speed.id} keeps captured deadlines and one live region`, async ({ page, railwayBundle }) => {
     // The page clock owns the exact reveal deadlines; allow headroom for software rendering at four workers.
     test.setTimeout(60_000);
-    const base: ItemGameState = combinedMomentGame(railwayBundle);
+    const base: ItemGameState = speed.id === "very-fast"
+      ? combinedAdjustmentMomentGame(railwayBundle)
+      : combinedMomentGame(railwayBundle);
     await resumeFrozen(page, base);
     await expect.poll(async () => (await readMap(page))?.styleLoaded).toBe(true);
     await openGameMenu(page);
@@ -1066,8 +1069,10 @@ for (const speed of SPEED_CASES) {
     await expect(discard.getByRole("heading", { name: "捨てるアイテムを選ぶ" })).toBeFocused();
     await expect(gamePanel(page).getByRole("status")).toHaveCount(1);
     await expect(page.locator(".turn-moment-host")).toHaveCount(0);
-    await discard.getByRole("button", { name: "このアイテムを捨てる" }).last().click();
-    expect(await readSave(page)).toEqual(resolveItemDiscard(expected, expected.pending.item.id).state);
+    await discard.getByRole("button", { name: "このアイテムを捨てる" }).first().click();
+    const discardedExistingItem = base.inventory[0];
+    if (!discardedExistingItem) throw new Error("Expected an existing item to discard");
+    expect(await readSave(page)).toEqual(resolveItemDiscard(expected, discardedExistingItem.id).state);
     await expect(diceButton(page)).toBeFocused();
     // The next turn captures the newly selected speed.
     await diceButton(page).click();
@@ -1083,7 +1088,7 @@ for (const speed of SPEED_CASES) {
       await expect(adjustmentDialog(page)).toBeVisible();
       await adjustmentDialog(page).getByRole("button", { name: "そのまま続ける", exact: true }).click();
       await expectAcceptedSave(page, base.turn + 2);
-      const nextBase = resolveItemDiscard(expected, expected.pending.item.id).state;
+      const nextBase = resolveItemDiscard(expected, discardedExistingItem.id).state;
       const nextResult = playItemTurn(nextBase, {}, railwayBundle.network);
       expect(await readSave(page)).toEqual(nextResult.state);
       if (!nextResult.record) throw new Error("Expected the next turn's accepted record");

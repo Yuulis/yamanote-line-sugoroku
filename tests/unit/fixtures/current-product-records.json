@@ -2,7 +2,7 @@
   "metadata": {
     "rulesetVersion": "tokyo-suburban-items-2",
     "korakuenSeed": "0000000000000000000000000000000f",
-    "composedSeed": "00000000000000000000000000000000"
+    "composedSeed": "00000000000000000000000000000050"
   },
   "korakuenTransfer": {
     "turn": 112,
@@ -206,9 +206,9 @@
     "stopReason": "endpoint"
   },
   "composedForward": {
-    "turn": 32,
-    "fromStationId": "musashi-kosugi",
-    "toStationId": "tsujido",
+    "turn": 119,
+    "fromStationId": "shibuya",
+    "toStationId": "yokohama",
     "command": {
       "items": []
     },
@@ -217,21 +217,32 @@
       "direction": 1
     },
     "traversedSegmentIds": [
-      "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama",
-      "jr-shonan-shinjuku-rapid-takasaki:yokohama:totsuka",
-      "jr-shonan-shinjuku-rapid-takasaki:totsuka:ofuna",
-      "jr-shonan-shinjuku-rapid-takasaki:ofuna:fujisawa",
-      "jr-shonan-shinjuku-rapid-takasaki:fujisawa:tsujido"
+      "jr-shonan-shinjuku-rapid-takasaki:shibuya:ebisu",
+      "jr-shonan-shinjuku-rapid-takasaki:ebisu:osaki",
+      "jr-shonan-shinjuku-rapid-takasaki:osaki:musashi-kosugi",
+      "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:yokohama"
     ],
     "landing": {
-      "serviceId": "jr-tokaido",
-      "direction": -1
+      "serviceId": "sotetsu-main",
+      "direction": 1
     },
     "landingSnapshot": {
-      "stationId": "tsujido",
+      "stationId": "yokohama",
       "suspensionIgnored": false,
       "detourConsumed": false,
       "services": [
+        {
+          "serviceId": "jr-keihin-tohoku",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            1,
+            1
+          ]
+        },
         {
           "serviceId": "jr-tokaido",
           "weight": 1,
@@ -242,113 +253,6 @@
           "directionWeights": [
             2,
             3
-          ]
-        },
-        {
-          "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
-          "weight": 1,
-          "directions": [
-            1,
-            -1
-          ],
-          "directionWeights": [
-            2,
-            3
-          ]
-        }
-      ]
-    },
-    "itemEvents": [
-      {
-        "type": "pickup-pending-discard",
-        "item": {
-          "id": "item-32",
-          "kind": "roll-adjust-2"
-        },
-        "candidates": [
-          {
-            "id": "item-4",
-            "kind": "roll-adjust-3"
-          },
-          {
-            "id": "item-16",
-            "kind": "double"
-          },
-          {
-            "id": "item-17",
-            "kind": "direction-ticket"
-          },
-          {
-            "id": "item-32",
-            "kind": "roll-adjust-2"
-          }
-        ]
-      },
-      {
-        "type": "discarded",
-        "item": {
-          "id": "item-32",
-          "kind": "roll-adjust-2"
-        }
-      }
-    ],
-    "discardedInstanceId": "item-32",
-    "kind": "item-ride",
-    "rawRoll": 5,
-    "effectiveFace": 5,
-    "adjustment": null,
-    "movementMode": "normal",
-    "pips": 5,
-    "hopBudget": 5,
-    "physicalHops": 5,
-    "unusedPips": 0,
-    "stopReason": "roll"
-  },
-  "composedReverse": {
-    "turn": 80,
-    "fromStationId": "yokohama",
-    "toStationId": "musashi-kosugi",
-    "command": {
-      "items": []
-    },
-    "resolvedRide": {
-      "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
-      "direction": -1
-    },
-    "traversedSegmentIds": [
-      "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi"
-    ],
-    "landing": {
-      "serviceId": "jr-yokosuka",
-      "direction": -1
-    },
-    "landingSnapshot": {
-      "stationId": "musashi-kosugi",
-      "suspensionIgnored": false,
-      "detourConsumed": false,
-      "services": [
-        {
-          "serviceId": "jr-sotetsu-direct",
-          "weight": 1,
-          "directions": [
-            1,
-            -1
-          ],
-          "directionWeights": [
-            2,
-            3
-          ]
-        },
-        {
-          "serviceId": "jr-nambu",
-          "weight": 1,
-          "directions": [
-            1,
-            -1
-          ],
-          "directionWeights": [
-            1,
-            1
           ]
         },
         {
@@ -388,7 +292,7 @@
           ]
         },
         {
-          "serviceId": "tokyu-toyoko",
+          "serviceId": "yokohama-blue",
           "weight": 1,
           "directions": [
             1,
@@ -400,7 +304,7 @@
           ]
         },
         {
-          "serviceId": "tokyu-meguro",
+          "serviceId": "keikyu-main",
           "weight": 1,
           "directions": [
             1,
@@ -410,25 +314,225 @@
             1,
             1
           ]
+        },
+        {
+          "serviceId": "tokyu-toyoko",
+          "weight": 1,
+          "directions": [
+            -1
+          ],
+          "directionWeights": [
+            1
+          ]
+        },
+        {
+          "serviceId": "sotetsu-main",
+          "weight": 1,
+          "directions": [
+            1
+          ],
+          "directionWeights": [
+            1
+          ]
+        },
+        {
+          "serviceId": "mm-minatomirai",
+          "weight": 1,
+          "directions": [
+            1
+          ],
+          "directionWeights": [
+            1
+          ]
         }
       ]
     },
-    "itemEvents": [
-      {
-        "type": "harmful-scheduled",
-        "item": "oversleep",
-        "effect": "oversleep"
-      }
-    ],
+    "itemEvents": [],
     "discardedInstanceId": null,
     "kind": "item-ride",
-    "rawRoll": 1,
-    "effectiveFace": 1,
+    "rawRoll": 4,
+    "effectiveFace": 4,
     "adjustment": null,
     "movementMode": "normal",
-    "pips": 1,
-    "hopBudget": 1,
-    "physicalHops": 1,
+    "pips": 4,
+    "hopBudget": 4,
+    "physicalHops": 4,
+    "unusedPips": 0,
+    "stopReason": "roll"
+  },
+  "composedReverse": {
+    "turn": 125,
+    "fromStationId": "yokohama",
+    "toStationId": "shinjuku",
+    "command": {
+      "items": []
+    },
+    "resolvedRide": {
+      "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
+      "direction": -1
+    },
+    "traversedSegmentIds": [
+      "jr-shonan-shinjuku-rapid-takasaki:yokohama:musashi-kosugi",
+      "jr-shonan-shinjuku-rapid-takasaki:musashi-kosugi:osaki",
+      "jr-shonan-shinjuku-rapid-takasaki:osaki:ebisu",
+      "jr-shonan-shinjuku-rapid-takasaki:ebisu:shibuya",
+      "jr-shonan-shinjuku-rapid-takasaki:shibuya:shinjuku"
+    ],
+    "landing": {
+      "serviceId": "keio-main",
+      "direction": 1
+    },
+    "landingSnapshot": {
+      "stationId": "shinjuku",
+      "suspensionIgnored": false,
+      "detourConsumed": false,
+      "services": [
+        {
+          "serviceId": "jr-yamanote",
+          "weight": 11,
+          "directions": [
+            1
+          ],
+          "directionWeights": [
+            1
+          ]
+        },
+        {
+          "serviceId": "jr-chuo-sobu-local",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            3,
+            2
+          ]
+        },
+        {
+          "serviceId": "jr-chuo-rapid",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            1,
+            1
+          ]
+        },
+        {
+          "serviceId": "jr-saikyo",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            1,
+            1
+          ]
+        },
+        {
+          "serviceId": "jr-sotetsu-direct",
+          "weight": 1,
+          "directions": [
+            1
+          ],
+          "directionWeights": [
+            1
+          ]
+        },
+        {
+          "serviceId": "jr-shonan-shinjuku-local",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            1,
+            1
+          ]
+        },
+        {
+          "serviceId": "jr-shonan-shinjuku-rapid-takasaki",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            1,
+            1
+          ]
+        },
+        {
+          "serviceId": "metro-marunouchi",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            1,
+            1
+          ]
+        },
+        {
+          "serviceId": "toei-shinjuku",
+          "weight": 1,
+          "directions": [
+            1
+          ],
+          "directionWeights": [
+            1
+          ]
+        },
+        {
+          "serviceId": "toei-oedo-loop",
+          "weight": 1,
+          "directions": [
+            1,
+            -1
+          ],
+          "directionWeights": [
+            2,
+            3
+          ]
+        },
+        {
+          "serviceId": "keio-main",
+          "weight": 1,
+          "directions": [
+            1
+          ],
+          "directionWeights": [
+            1
+          ]
+        },
+        {
+          "serviceId": "odakyu-odawara",
+          "weight": 1,
+          "directions": [
+            1
+          ],
+          "directionWeights": [
+            1
+          ]
+        }
+      ]
+    },
+    "itemEvents": [],
+    "discardedInstanceId": null,
+    "kind": "item-ride",
+    "rawRoll": 5,
+    "effectiveFace": 5,
+    "adjustment": null,
+    "movementMode": "normal",
+    "pips": 5,
+    "hopBudget": 5,
+    "physicalHops": 5,
     "unusedPips": 0,
     "stopReason": "roll"
   }
