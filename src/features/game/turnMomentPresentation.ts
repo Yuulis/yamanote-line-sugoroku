@@ -86,6 +86,7 @@ export interface TurnMomentDisplay {
   lotteryDisplayText: string;
   candidateRows: readonly PresentationCandidateRow[];
   candidateDrawSlotCount: number;
+  readonly lotteryCandidateServiceIds: readonly string[];
   showClear: boolean;
   itemView: ItemSessionView | null;
   decision: ItemSessionView["decision"];
@@ -113,6 +114,7 @@ export interface TurnMomentDisplay {
 }
 
 const PRE_MOVE_STAGES = new Set<RollAttempt["stage"]>(["waiting-roll", "tumble", "awaiting-adjust", "waiting-record", "stamps"]);
+const EMPTY_LOTTERY_CANDIDATE_SERVICE_IDS: readonly string[] = Object.freeze([]);
 /** Phases announced with the arrival copy: `turnMomentAnnouncement` words these stages identically. */
 const ARRIVAL_COPY_PHASES: ReadonlySet<TurnPublicationPhase> = new Set(["arrival", "segment-flash", "lottery-flip", "lottery-settle"]);
 /** 30/30 keeps its own guidance, toast and sentence (D10); the thresholds below it are the crossings handled here. */
@@ -218,6 +220,21 @@ function visibleAdjustmentLandings(input: TurnMomentDisplayInput, decision: Item
 function visibleCandidates(move: LastMove | null, presentation: PresentationResolver): PresentationCandidateRow[] {
   if (!move?.landing || (!move.landing.serviceDrawRequired && !move.landing.directionDrawRequired)) return [];
   return presentation.candidateRows(move.landing.serviceCandidates);
+}
+
+function visibleLotteryCandidateServiceIds(
+  input: TurnMomentDisplayInput,
+  phase: TurnPublicationPhase,
+): readonly string[] {
+  if ((phase !== "lottery-flip" && phase !== "lottery-settle") ||
+    input.attempt?.skipRequested || input.attempt?.motionOmitted ||
+    input.attempt?.policy.showImportantMoments === false) return EMPTY_LOTTERY_CANDIDATE_SERVICE_IDS;
+  const landing = input.session.lastMove?.landing;
+  if (!landing || (!landing.serviceDrawRequired && !landing.directionDrawRequired)) {
+    return EMPTY_LOTTERY_CANDIDATE_SERVICE_IDS;
+  }
+  const serviceIds = [...new Set(landing.serviceCandidates)];
+  return serviceIds.length > 0 ? Object.freeze(serviceIds) : EMPTY_LOTTERY_CANDIDATE_SERVICE_IDS;
 }
 
 function visibleTurnResult(
@@ -340,6 +357,7 @@ function publishedGuideCandidates(
 export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMomentDisplay {
   const current = input.session.lastMove;
   const phase = publicationPhase(input);
+  const lotteryCandidateServiceIds = visibleLotteryCandidateServiceIds(input, phase);
   const isBeforeArrival = phase === "pre-move" || phase === "moving";
   const isPublished = phase === "published";
   const lotteryPublished = isPublished || phase === "pickup";
@@ -511,6 +529,7 @@ export function deriveTurnMomentDisplay(input: TurnMomentDisplayInput): TurnMome
     lotteryDisplayText,
     candidateRows,
     candidateDrawSlotCount,
+    lotteryCandidateServiceIds,
     showClear,
     itemView,
     decision,

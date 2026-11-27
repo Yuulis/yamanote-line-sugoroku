@@ -411,3 +411,122 @@ Output (markdown):
 - the screenshot paths with their sha256;
 - the acceptance results with pass/fail counts;
 - risks.
+
+## Step 1.6 — implement
+
+Objective: implement Step 1.6 of `.claude/docs/plans/map-readability-plan.md` (A2 lottery
+candidate publication in the turn-moment display, TDD) as one uncommitted step.
+
+Scope:
+- IN: exactly the "Step 1.6" section of the plan, plus the plan's A2 row (section 2) and the
+  `TurnMomentDisplay` interface note (section 2, Interfaces).
+  - `src/features/game/animation/turnMomentPresentation.ts`: add the field
+    `readonly lotteryCandidateServiceIds: readonly string[]` to the display that
+    `deriveTurnMomentDisplay` returns.
+    - During the `lottery-flip` and `lottery-settle` stages, it holds the public landing
+      candidates. Use the same source the split-flap board already uses, the
+      `serviceCandidates` of the landing (see `GameApp.tsx` ~511–517 and
+      `.claude/docs/research/feature-map-readability-codebase.md` section A).
+    - It is identical in both stages, does not depend on the committed or winning result, and
+      is deduplicated and order-stable.
+    - In every other phase it is a STABLE empty list: one shared frozen empty-array constant,
+      so React consumers do not re-render. This covers ordinary turns with no lottery,
+      effects off, reduced motion, and Skip — any case where the lottery stage is never shown.
+  - Do not wire it into `GameApp`/`RailwayMap` and do not add a map layer. That is Step 1.7.
+- Tests first: `tests/unit/turn-moment-presentation.test.ts`. Use the file's existing fixtures
+  and helpers.
+  - The same set appears in flip and settle.
+  - The set is independent of the committed result (two attempts with different winners give
+    the same list).
+  - The list is empty, and the same reference, for ordinary turns, effects off, reduced
+    motion and Skip.
+  - The `tests/unit/game-app-turn-moments.test.ts` suite must stay green. Add to it only if
+    the plan requires; do not modify existing assertions.
+- OUT: Step 1.7 and later, DESIGN.md, STATE.md and the plan file. Add no new dependencies, and
+  do not commit or push.
+- Hard constraints:
+  - Do not weaken, skip or delete any test assertion.
+  - No reveal leak: the field must never expose anything before the lottery stage is public,
+    and it must not reveal the winner.
+
+Context:
+- Steps 1.1–1.5 landed (a5487da, 2f43e99, ffbeeb5, 6078690, 6091e3d). Step 1.5 found that the
+  plan assumed something wrong about map instances. If you find any plan assumption here that
+  contradicts the code, follow the code, stop short of guessing, and report it.
+- Plan sections 1–3; `.claude/docs/research/feature-map-readability-codebase.md`.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all; do NOT run the E2E suite):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moment-presentation.test.ts tests/unit/game-app-turn-moments.test.ts
+npx vitest run
+npm run build
+git diff --check
+```
+
+Output (markdown):
+- the changed files, one line each;
+- where the candidates come from, with file:line;
+- the tests added, written first, with their names;
+- the acceptance results with pass/fail counts;
+- any plan assumption that did not match the code;
+- risks.
+
+## Step 1.6 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the uncommitted Step 1.6 change so its suppression tests prove the guards, and
+remove a redundant guard, as one uncommitted step.
+
+Failure context (Codex Sol low review REJECT, 2026-11-27):
+- `tests/unit/turn-moment-presentation.test.ts` (~209), blocking: in the "frozen empty list"
+  test, the effects-off, reduced-motion and Skip cases all use `revealStage: "waiting"`.
+  Phase gating alone makes them pass, so the test still passes if every new suppression check
+  is removed.
+- `publicationPhase()` CAN return `lottery-flip` or `lottery-settle` when given a lottery
+  `revealStage` while `skipRequested`, `motionOmitted` or
+  `policy.showImportantMoments === false` holds.
+- The Skip fixture sets `skipRequested` and `motionOmitted` together, so either check could be
+  removed unnoticed.
+- With `restoredOrOmitted: true` the resolver already returns `published`, so the
+  `input.restoredOrOmitted` check inside `visibleLotteryCandidateServiceIds` is redundant.
+
+Scope:
+- IN: `src/features/game/turnMomentPresentation.ts` and
+  `tests/unit/turn-moment-presentation.test.ts` only.
+  - Remove the redundant `input.restoredOrOmitted` check from
+    `visibleLotteryCandidateServiceIds`. Keep the other three checks.
+  - Rewrite the suppression test, or add tests, so that for EACH of `lottery-flip` and
+    `lottery-settle`, each flag on its own yields the shared frozen empty list (`toBe` the
+    same reference): `skipRequested: true` only, `motionOmitted: true` only, and
+    `policy.showImportantMoments === false` only (via `captureTurnPresentationPolicy` with
+    `presentationLevel: "none"`, or the file's own helper).
+  - Keep the ordinary-turn case (`waiting`) as the reference empty list.
+  - Add a case pinning the resolver precedence: `restoredOrOmitted: true` with a lottery
+    `revealStage` gives an empty list.
+  - Before finalising, run the suppression tests once against a temporary copy that has each
+    guard removed, to prove they fail, then restore it. Report which test failed for which
+    removed guard.
+  - Keep the existing "publishes deduplicated landing candidates…" test unchanged.
+- OUT: every other file, Step 1.7 and later, DESIGN.md, STATE.md and the plan. Do not commit
+  or push.
+- Hard constraints: do not weaken, skip or delete any existing assertion.
+
+Acceptance:
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/turn-moment-presentation.test.ts tests/unit/game-app-turn-moments.test.ts
+npx vitest run
+npm run build
+git diff --check
+```
+
+Output (markdown):
+- the changed files;
+- the final guard list;
+- each new or rewritten test, with what it proves;
+- the mutation check results (guard removed → which test failed);
+- the acceptance results with pass/fail counts;
+- risks.
