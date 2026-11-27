@@ -204,6 +204,8 @@ export interface ClearRouteReading {
   cameraBounds: Box | null;
   camera: { center: { lng: number; lat: number }; zoom: number };
   mapControlsVisible: boolean;
+  /** Caption turn read in the same evaluate as the camera target, so both describe one moment of playback. */
+  captionRecordIndex: number | null;
 }
 
 export interface E2EMapHook {
@@ -248,6 +250,7 @@ export async function readClearRoute(page: Page): Promise<ClearRouteReading | nu
       }
     }
     const cardRect = document.querySelector(".clear-screen")?.getBoundingClientRect();
+    const captionIndex = document.querySelector(".clear-replay-caption")?.getAttribute("data-record-index");
     return {
       featureCount: features.length,
       layerIds: map.getStyle().layers.map((layer) => layer.id),
@@ -259,6 +262,7 @@ export async function readClearRoute(page: Page): Promise<ClearRouteReading | nu
       cameraBounds,
       camera: { center: map.getCenter(), zoom: map.getZoom() },
       mapControlsVisible: document.querySelector(".map-overview") !== null,
+      captionRecordIndex: captionIndex == null || captionIndex === "" ? null : Number(captionIndex),
     };
   });
 }
@@ -350,10 +354,15 @@ export function activeTurnFramingProblem(reading: ClearRouteReading | null, reco
   return "";
 }
 
-export async function expectCaptionTurnFramed(page: Page, caption: Locator): Promise<void> {
+/**
+ * Reads the caption turn and the camera target in one evaluate: separate round trips straddle a turn change
+ * while playback advances (550 ms a turn) and compare two different moments.
+ */
+export async function expectCaptionTurnFramed(page: Page): Promise<void> {
   await expect.poll(async () => {
-    const recordIndex = Number(await caption.getAttribute("data-record-index"));
-    return activeTurnFramingProblem(await readClearRoute(page), recordIndex);
+    const reading = await readClearRoute(page);
+    if (reading?.captionRecordIndex == null) return "replay caption is not rendered";
+    return activeTurnFramingProblem(reading, reading.captionRecordIndex);
   }, { message: "the active turn is framed in the open map area" }).toBe("");
 }
 

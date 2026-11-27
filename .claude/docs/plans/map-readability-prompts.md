@@ -1650,3 +1650,152 @@ Output:
 - the acceptance results;
 - the screenshot status;
 - risks.
+
+## Step 2.6 — implement (visible)
+
+Objective: implement Step 2.6 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step adds a seek bar and 前/次 buttons to the replay strip. Also capture screenshots for
+the user.
+
+Scope:
+- IN: exactly the "Step 2.6" section of the plan and the D2 row in section 2. Read both in full.
+  - Files: `src/features/game/components/ClearReplayControls.tsx` and `clearScreen.css`.
+  - Seek bar:
+    - It is a labelled native `<input type="range">` over one-based real turns (1..turnCount).
+    - It is bound to the UI snapshot `recordIndex` + 1, and `turnCount`.
+    - Input calls `store.seek(value - 1)`.
+    - The label is Japanese, e.g. 「ターン」, with an `aria-valuetext` such as 「3 / 83 ターン」.
+  - 前 and 次 buttons call `store.step(-1)` / `store.step(+1)`.
+    - They are disabled at the bounds: 前 at the first turn and 次 at the last turn while
+      playing or paused.
+    - User decision (2026-11-27): from `done`, the completed full-route view, BOTH stay enabled
+      and select the first turn. The store already does this.
+  - The completed view is distinct from a seek to the final turn. In `done`, the range should
+    not look like it is at the last turn; pick a clear treatment and report it (e.g. the value
+    at the max with an 「全経路」 valuetext).
+  - Play state is kept, as the store does: playing continues, paused stays paused, and done →
+    paused.
+  - The camera already reframes once per `seekRevision` (Step 2.4).
+  - Layout:
+    - Reachable in the 320 px phone strip. The phone strip has no history trigger, so there is
+      room.
+    - On desktop, the strip still has to clear the attribution (the Step 2.5 lift).
+    - Keep the strip from growing so tall that the turn framing gets cramped. Reflow it into
+      two rows on narrow widths if needed.
+  - Not shown when the card is expanded, or under reduced motion (the card is expanded there).
+- Tests:
+  - `tests/unit/clear-replay-controls.test.ts`:
+    - endpoints and labels;
+    - availability in playing, paused and done;
+    - 前 and 次 from `done` target the first turn;
+    - disabled at the bounds;
+    - a range input calls seek with a zero-based index.
+  - Extend the desktop fake-clock case in `tests/e2e/clear-replay-strip.spec.ts` ("keeps the
+    caption and partial route in the same turn, completes, and replays"). Add:
+    - a seek under the manual lock, plus one 前/次 step;
+    - the caption and the route prefix change together;
+    - one reframe per seek, observed through the camera target from the Step 2.4 E2E hook;
+    - the replay keeps running after a seek while playing, and stays paused after a seek while
+      paused;
+    - the lock is respected until completion.
+  - A phone `@layout` check: the range and 前/次 are visible and reachable in the 320 px and
+    390 px strip, with no horizontal overflow.
+- Screenshots (user-facing), saved to `.claude/logs/screenshots/`:
+  - `issue72-s26-seek-desktop.png`: playing, with the seek bar and 前/次 visible.
+  - `issue72-s26-seek-phone.png` (390×844).
+  - `issue72-s26-done-desktop.png`: the done strip.
+
+  Take them from a real app build. A temporary spec is fine, but it MUST be deleted before you
+  finish.
+- OUT: DESIGN.md (Step 2.7), STATE.md and the plan files. Add no new dependencies, and do not
+  commit or push. Never `pkill -f`; keep Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion.
+  - Do not add new `test.setTimeout` unless you measure the test over 25 s on two workers; if
+    you do, add a comment with the measurement.
+  - Keep files at or under 800 lines.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 2.1–2.5 have landed. 2.5 is commit bd122d1, the strip and 「結果を表示」. The store's
+  `seek`/`step`/`turnCount`/`seekRevision` come from 2.1.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the tests and what each one proves;
+- the done-state treatment you chose;
+- the screenshot paths;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.6 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 2.6 change. Everything in the
+"Step 2.6 — implement (visible)" prompt above still applies. The full review is the latest
+`.claude/logs/codex/*issue72-s26-review.md`; read it.
+
+Fix:
+1. High: the range remounts when seeking from `done` (`ClearReplayControls.tsx` about :106).
+   - Scenario: `done` and `paused` render the turn controls under different parents. The first
+     input on the done-state range unmounts the range being dragged, so a drag or repeated
+     arrow keys cannot continue on the same control.
+   - Fix: keep the turn group (前, range, 次) under one stable parent, so that the same DOM node
+     survives `done` → `paused` (and playing ↔ paused).
+   - Add a regression test:
+     - a unit test, asserting the same element identity before and after the first input from
+       `done`;
+     - an E2E test using real `keyboard.press('ArrowLeft')` twice from `done` on the focused
+       range: focus stays on the range, and the turn moves twice.
+2. Medium: no focus hand-off when 前/次 becomes disabled (about :63).
+   - Scenario: while paused on turn 2, pressing 前 by keyboard lands on turn 1 and disables
+     the focused button.
+   - Fix: when the pressed 前/次 becomes disabled, move focus to the range. Apply the same rule
+     from `done`. Do it without stealing focus in the other cases.
+   - Add a unit test.
+3. Medium: the E2E does not count reframes (`clear-replay-strip.spec.ts` about :129,
+   `useClearReplayCamera.ts` about :64).
+   - Expose a cumulative count of applied fits through the existing E2E hook
+     (`src/features/map/e2eHook.ts`, E2E builds only, as the Step 2.4 `clearCameraTarget` is).
+   - Assert:
+     - +1 per seek or step;
+     - +0 for automatic turn advances under the manual lock;
+     - +1 at completion (full route).
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion, and add
+no new `test.setTimeout` without a measured comment. Do not commit. Re-take the screenshots
+only if the visible result changed, at the same paths. Delete any temporary spec.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts tests/unit/clear-route-map.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new tests;
+- the acceptance results;
+- the screenshot status;
+- risks.

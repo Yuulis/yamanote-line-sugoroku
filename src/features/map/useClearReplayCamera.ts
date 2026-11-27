@@ -4,7 +4,7 @@ import { applyClearRouteFit, clearFitPadding, clearFitSignature, clearReplayTurn
 import { isUserCameraEvent, USER_CAMERA_EVENTS } from "./camera";
 import type { ClearRouteMapInput } from "./useClearRouteMap";
 import { watchRemoval } from "./useClearRouteMap";
-import { exposeClearCameraTargetForE2E, exposeClearFitPaddingForE2E } from "./e2eHook";
+import { exposeClearCameraTargetForE2E, exposeClearFitPaddingForE2E, incrementClearFitCountForE2E } from "./e2eHook";
 
 export type ClearReplayCameraInput = Pick<
   ClearRouteMapInput,
@@ -65,6 +65,7 @@ export function useClearReplayCamera({ map, active, route, generation, cardRef, 
       lastFitSignature = signature;
       exposeClearFitPaddingForE2E(padding);
       exposeClearCameraTargetForE2E(bounds, recordIndex);
+      incrementClearFitCountForE2E();
       return "applied";
     };
 

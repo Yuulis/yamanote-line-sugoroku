@@ -176,6 +176,7 @@ vi.mock("../../src/features/map/e2eHook", () => ({
   exposeMapForE2E: vi.fn(),
   exposeClearFitPaddingForE2E: vi.fn(),
   exposeClearCameraTargetForE2E: vi.fn(),
+  incrementClearFitCountForE2E: vi.fn(),
 }));
 vi.mock("../../src/features/map/railwayLayers", () => ({
   addRailwayLayers: vi.fn(), setBackgroundFocus: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
