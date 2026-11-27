@@ -82,6 +82,7 @@ import { shouldShowGameplayPosition } from "./clearReplayMarker";
 import { useSegmentFlash } from "./useSegmentFlash";
 import { useLotteryCandidateOverlay } from "./useLotteryCandidateOverlay";
 import { mountGoalCallout, type GoalCalloutController } from "./goalCallout";
+import { getCorridorOffsetGeometry } from "./corridorOffsetMemo";
 
 export interface MapFollow {
   enabled: boolean;
@@ -209,6 +210,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
+  const canonicalGeometry = data.geometry.ok ? data.geometry.value : undefined;
   const uiPresentation = data.manifest.ok ? data.manifest.value.uiPresentation : undefined;
   const selectedGroupIds = useVisibleLineGroupIds();
   const serviceGeometry = useMemo(
@@ -367,10 +369,14 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
         text: BASEMAP_TEXT_OPACITY_FACTOR,
         icon: BASEMAP_ICON_OPACITY_FACTOR,
       });
+      const corridorGeometry = canonicalGeometry
+        ? getCorridorOffsetGeometry(canonicalGeometry, targetServiceId) ?? undefined
+        : undefined;
       addRailwayLayers(map, {
         stations: data.stations.ok ? data.stations.value : undefined,
         services: data.services.ok ? data.services.value.services : undefined,
-        geometry: data.geometry.ok ? data.geometry.value : undefined,
+        geometry: canonicalGeometry,
+        corridorGeometry: corridorGeometry ?? undefined,
         lines: data.services.ok ? data.services.value.lines : undefined,
         targetServiceId,
         focusBackground: modeRef.current !== "title",

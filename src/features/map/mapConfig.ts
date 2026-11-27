@@ -28,6 +28,7 @@ export const MAP_CREDITS = [
 
 export const SOURCE_IDS = {
   segments: "railway-segments",
+  corridorSegments: "railway-corridor-segments",
   stations: "railway-stations",
   currentPosition: "game-current-position",
 } as const;
@@ -74,6 +75,10 @@ export const LAYER_IDS = {
 
 export const FALLBACK_LINE_COLOR = "#80c241";
 export const SEGMENT_LINE_WIDTH = 5;
+/** Pixel distance between shared-track service slots at z13. */
+export const CORRIDOR_SLOT_SPACING_PX = 6;
+/** Shared-track offsets stay at zero through z11, then reach full spacing at z13. */
+export const CORRIDOR_OFFSET_ZOOM_STOPS: ZoomStops = [[11, 0], [13, 1]];
 /** Other services remain visible beside the target's shared N02 track shape. */
 export const OTHER_SERVICE_LINE_WIDTH = 3;
 /**

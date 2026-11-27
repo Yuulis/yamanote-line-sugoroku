@@ -10,10 +10,23 @@ import { TITLE_FIT_PADDING_PHONE_PX, TITLE_FIT_PADDING_PX, titleFitPadding } fro
 import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { loadRailwayData } from "../../src/data/loaders";
 import { addRailwayLayers, setBackgroundFocus } from "../../src/features/map/railwayLayers";
-import { LAYER_IDS } from "../../src/features/map/mapConfig";
+import { LAYER_IDS, SOURCE_IDS } from "../../src/features/map/mapConfig";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
 const mapState = vi.hoisted(() => ({ instances: [] as unknown[], failConstruction: false, openedPopups: 0, removedPopups: 0 }));
+const corridorBuildState = vi.hoisted(() => ({ shouldThrow: false, calls: 0 }));
+
+vi.mock("../../src/features/map/corridorOffsets", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/features/map/corridorOffsets")>();
+  return {
+    ...actual,
+    buildCorridorOffsets: vi.fn((geometry, targetServiceId) => {
+      corridorBuildState.calls += 1;
+      if (corridorBuildState.shouldThrow) throw new Error("test corridor derivation failure");
+      return actual.buildCorridorOffsets(geometry, targetServiceId);
+    }),
+  };
+});
 
 interface MapEvent {
   readonly sourceId?: string;
@@ -95,7 +108,11 @@ vi.mock("maplibre-gl", () => ({
       return source && { setData: (data) => { this.order.push(`setData:${id}`); source.data = data; } };
     }
     getStyle(): { layers: Array<{ id: string; type: string }> } { return { layers: this.layers }; }
-    addSource(id: string, spec: { data: { features: unknown[] } }): void { this.order.push(`addSource:${id}`); this.sources.set(id, { data: spec.data }); }
+    addSource(id: string, spec: { data: { features: unknown[] } }): void {
+      if (this.sources.has(id)) throw new Error(`Source ${id} already exists`);
+      this.order.push(`addSource:${id}`);
+      this.sources.set(id, { data: spec.data });
+    }
     addLayer(layer: { id: string; type: string; paint?: Record<string, unknown> }, beforeId?: string): void {
       this.order.push(`addLayer:${layer.id}:${beforeId ?? "top"}`);
       this.layers.splice(beforeId === undefined ? this.layers.length : this.layers.findIndex((item) => item.id === beforeId), 0, layer);
@@ -106,6 +123,13 @@ vi.mock("maplibre-gl", () => ({
       if (layer) {
         layer.paint ??= {};
         layer.paint[property] = value;
+      }
+    }
+    setLayoutProperty(id: string, property: string, value: unknown): void {
+      const layer = this.layers.find((item) => item.id === id) as { layout?: Record<string, unknown> } | undefined;
+      if (layer) {
+        layer.layout ??= {};
+        layer.layout[property] = value;
       }
     }
     removeLayer(id: string): void { this.order.push(`removeLayer:${id}`); this.layers = this.layers.filter((layer) => layer.id !== id); }
@@ -181,9 +205,12 @@ vi.mock("../../src/features/map/e2eHook", () => ({
 vi.mock("../../src/features/map/railwayLayers", () => ({
   addRailwayLayers: vi.fn(), setBackgroundFocus: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
   setSegmentFlashFeatures: vi.fn(), setSegmentFlashOpacity: vi.fn(), updateCompletedSegments: vi.fn(),
-  updateCurrentPosition: vi.fn(), updateGoalStation: vi.fn(), updateHighlightedService: vi.fn(),
+  updateCurrentPosition: vi.fn(), updateGoalStation: vi.fn(), updateHighlightedService: vi.fn(), updateLotteryCandidates: vi.fn(),
 }));
-vi.mock("../../src/features/map/lineVisibility", () => ({ hideAllLineGroups: vi.fn(), updateLineGroupVisibility: vi.fn() }));
+vi.mock("../../src/features/map/lineVisibility", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../src/features/map/lineVisibility")>();
+  return { ...actual, hideAllLineGroups: vi.fn(), updateLineGroupVisibility: vi.fn() };
+});
 vi.mock("../../src/features/map/lineVisibilityStore", () => ({ useVisibleLineGroupIds: () => null }));
 vi.mock("../../src/features/map/headingMarker", () => ({
   createHeadingMarker: () => ({ remove: vi.fn(), update: vi.fn() }),
@@ -276,6 +303,8 @@ beforeEach(() => {
   mapState.failConstruction = false;
   mapState.openedPopups = 0;
   mapState.removedPopups = 0;
+  corridorBuildState.shouldThrow = false;
+  corridorBuildState.calls = 0;
   vi.mocked(addRailwayLayers).mockReset();
   vi.mocked(setBackgroundFocus).mockReset();
   vi.mocked(bindStationInteractions).mockReset();
@@ -296,6 +325,83 @@ afterEach(() => {
 });
 
 describe("title map camera", () => {
+  it("re-registers the derived source once after style reload and does not register on mode switches", async () => {
+    const actualRailwayLayers = await vi.importActual<typeof import("../../src/features/map/railwayLayers")>(
+      "../../src/features/map/railwayLayers",
+    );
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => actualRailwayLayers.addRailwayLayers(map, input));
+
+    if (!data.geometry.ok) throw new Error("Railway fixture needs canonical geometry");
+    const geometry = structuredClone(data.geometry.value);
+    const testData = { ...data, geometry: { ...data.geometry, value: geometry } };
+    const map = ready("title", { data: testData });
+    const originalDerived = map.sources.get(SOURCE_IDS.corridorSegments)?.data;
+    expect(originalDerived).toBeDefined();
+    expect(corridorBuildState.calls).toBe(1);
+    expect(addRailwayLayers).toHaveBeenCalledTimes(1);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.corridorSegments);
+    }
+
+    render("game", { data: testData });
+    render("clear", { data: testData });
+    render("title", { data: testData });
+    expect(mapState.instances).toHaveLength(1);
+    expect(addRailwayLayers).toHaveBeenCalledTimes(1);
+
+    // MapLibre clears application sources/layers when a style is replaced.
+    map.sources.clear();
+    map.layers = [{ id: "water-name", type: "symbol" }];
+    act(() => map.emit("style.load"));
+
+    expect(corridorBuildState.calls).toBe(1);
+    expect(addRailwayLayers).toHaveBeenCalledTimes(2);
+    expect(map.order.filter((entry) => entry === `addSource:${SOURCE_IDS.corridorSegments}`)).toHaveLength(2);
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(originalDerived);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.corridorSegments);
+    }
+
+    const addCountAfterReload = map.order.filter((entry) => entry.startsWith("addSource:")).length;
+    render("game", { data: testData });
+    render("clear", { data: testData });
+    render("title", { data: testData });
+    expect(addRailwayLayers).toHaveBeenCalledTimes(2);
+    expect(map.order.filter((entry) => entry.startsWith("addSource:")).length).toBe(addCountAfterReload);
+  });
+
+  it("uses the canonical source for all service consumers and warns once when derivation fails", async () => {
+    const actualRailwayLayers = await vi.importActual<typeof import("../../src/features/map/railwayLayers")>(
+      "../../src/features/map/railwayLayers",
+    );
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => actualRailwayLayers.addRailwayLayers(map, input));
+    corridorBuildState.shouldThrow = true;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    if (!data.geometry.ok) throw new Error("Railway fixture needs canonical geometry");
+    const geometry = structuredClone(data.geometry.value);
+    const testData = { ...data, geometry: { ...data.geometry, value: geometry } };
+    const map = ready("game", { data: testData });
+
+    expect(corridorBuildState.calls).toBe(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(map.sources.get(SOURCE_IDS.segments)?.data).toBe(geometry);
+    expect(map.sources.has(SOURCE_IDS.corridorSegments)).toBe(false);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.segments);
+    }
+
+    map.sources.clear();
+    map.layers = [{ id: "water-name", type: "symbol" }];
+    act(() => map.emit("style.load"));
+    expect(corridorBuildState.calls).toBe(1);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(map.sources.has(SOURCE_IDS.corridorSegments)).toBe(false);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.segments);
+    }
+  });
+
   it("fades only basemap symbols across title, game, and a replacement style", () => {
     vi.mocked(addRailwayLayers).mockImplementation((map) => {
       const testMap = map as unknown as MapDouble;

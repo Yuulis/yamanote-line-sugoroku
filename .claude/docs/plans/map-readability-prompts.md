@@ -1975,3 +1975,154 @@ Output:
 - the real-data findings;
 - the acceptance results;
 - risks.
+
+## Step 3.4 — implement (visible)
+
+Objective: implement Step 3.4 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The three service layers (`services`, `currentService`, `lotteryCandidates`) draw from a
+derived source built by `buildCorridorOffsets`, and get a zoom-gated `line-offset`, so that
+exactly shared track (for example 東海道線 and 横須賀線) is drawn side by side. Also capture
+screenshots for the user.
+
+Scope:
+- IN: exactly the "Step 3.4" section of the plan, the E row in section 2 and the R5 row in
+  section 6. Read all of them in full.
+  - `src/features/map/RailwayMap.tsx`: memoise `buildCorridorOffsets(geometry, targetServiceId)`
+    per geometry identity + target, and reuse it across style reloads.
+    - On a derivation failure (throw), fall back to the canonical source. Log once with
+      `console.warn`, following the existing style for map data errors.
+    - Keep `RailwayMap.tsx` at or under 800 lines (about 710 now). Put the wiring in a small
+      helper or hook if needed.
+  - `src/features/map/mapConfig.ts`:
+    - a derived source id;
+    - a named spacing constant (px per slot at z13). Choose it so that adjacent 2 px
+      background lines and the 7 px current-service line stay distinguishable, and state your
+      choice;
+    - the zoom stops;
+    - the railway-source error classification for the new source, if the code has such a
+      list.
+  - `src/features/map/railwayLayers.ts`:
+    - `services`, `currentService` and `lotteryCandidates` read the derived source and share
+      ONE `line-offset` expression: 0 through z11, interpolated to
+      `["*", ["coalesce", ["get", "corridorSlot"], 0], SPACING]` at z13 (missing slot ⇒ 0);
+    - base, progress (pending/completed/casing), flash, the clear route and movement keep the
+      canonical source with no `line-offset`;
+    - every existing `featureId` filter keeps working, because fragments keep `featureId`;
+    - the 14-layer order is unchanged.
+  - Lottery candidate ids, current-service highlight ids and `updateHighlightedService` must still
+    select all fragments of a feature.
+- Tests:
+  - **Intentional update** in `tests/unit/capital-region-scaling.test.ts` at about :172. The
+    blanket `not.toHaveProperty("line-offset")` becomes positive checks:
+    - the three consumers read the derived source and carry the same offset expression;
+    - the offset is 0 at low zoom;
+    - the offset is 0 for a missing or zero slot;
+    - the offset is nonzero and signed at z13;
+    - base, progress and flash keep the canonical source and have no `line-offset`.
+
+    Keep the cross-owner `featureId` filter and the highlight colour assertions.
+  - `tests/unit/map-station-markers.test.ts` keeps the 14-layer order.
+  - Add unit tests for:
+    - memoisation: the same geometry and target reuse the result, a new target recomputes;
+    - reuse after a style reload;
+    - the fallback when derivation throws.
+  - Optional E2E: a rendered-feature check in `tests/e2e/map-visual.spec.ts`, only if the
+    fixture deterministically exposes 東海道線 and 横須賀線 on one run.
+- Screenshots (user-facing), saved to `.claude/logs/screenshots/`. Use a real app build, the
+  gameplay map, desktop 1280×800, and the area between 品川 and 川崎 where 東海道線 and 横須賀線
+  share track:
+  - `issue72-s34-z11.png` at z11, where the lines still overlap;
+  - `issue72-s34-z13.png` at z13, where they sit side by side;
+  - `issue72-s34-z13-base.png`: the same z13 view on the PR3 base for comparison. If building
+    the base is impractical, explain why instead.
+
+  A temporary spec is fine, but it MUST be deleted before you finish. Use the E2E hook
+  (`window.__sugorokuE2E.map`) to jumpTo the coordinates.
+- OUT: the performance script (Step 3.5), DESIGN.md, STATE.md and the plan files. Add no new
+  dependencies, do not change `public/data`, and do not commit or push. Never `pkill -f`; keep
+  Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion except the one intentional update.
+  - Saves, movement geometry, `dataVersion` and published data are unchanged.
+  - Make no per-frame MapLibre writes.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 3.1–3.3 are commit 3038986, `src/features/map/corridorOffsets.ts`. On the real data, a
+  derivation takes a median of about 40 ms in Node.
+- PR1 lessons: the single persistent `RailwayMap` switches `mode`, and a replaced style re-adds
+  layers (`layersRevision`). Wire behaviour to the current props and to `layersRevision`, not to
+  the initial `style.load` closure.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/railway-layers-lottery-candidates.test.ts tests/unit/railway-layers-background-focus.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=phone-chromium --grep @layout
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the spacing chosen and why;
+- the tests and what each one proves;
+- the screenshot paths, with what each one shows;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 3.4 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 3.4 change. Everything in the
+"Step 3.4 — implement (visible)" prompt above still applies. The full review is the latest
+`.claude/logs/codex/*issue72-s34-review.md`; read it.
+
+Fix. Prefer the simplest design that removes both Medium findings:
+1. Medium: unbounded memo entries per target (`corridorOffsetMemo.ts` about :20).
+   - Replace the cache with a single-entry memo: keep only the last
+     (geometry identity, targetServiceId) pair and its result or failure. A new pair replaces it.
+   - In practice the target is constant (`jr-yamanote`), so this keeps the reuse across style
+     reloads and bounds memory to one derived collection.
+2. Medium: a stale memo or builder after HMR (`RailwayMap.tsx` about :250).
+   - Do not capture the memo or builder in a component ref created once.
+   - Own the single-entry memo at module scope in `corridorOffsetMemo.ts`, or key it on the
+     builder function reference too, so a module reload yields a fresh memo and the current
+     builder.
+   - Keep warn-once on failure per failing pair.
+3. Low: the style-reload test does not use the real lifecycle
+   (`tests/unit/corridor-offset-memo.test.ts` about :50).
+   - Add a test through the real registration path, in the existing `title-map-mode.test.ts`
+     harness or similar, with a map mock that REJECTS a duplicate `addSource` id. Cover:
+     - a style reload re-adds the derived source exactly once and reuses the memoised result,
+       so the builder is called once;
+     - a mode switch (title/game/clear) does not re-register sources;
+     - on a derivation failure, all three consumer layers use the canonical source.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion, and do not
+commit. Screenshots do not need to be re-taken unless the visible result changes.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/corridor-offset-memo.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=desktop-chromium
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new tests;
+- the acceptance results;
+- risks.
