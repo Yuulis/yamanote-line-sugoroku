@@ -31,6 +31,7 @@ export interface ClearReplayUiSnapshot {
   readonly phase: ClearReplayPhase;
   readonly recordIndex: number;
   readonly turnCount: number;
+  readonly cardExpanded: boolean;
   readonly seekRevision: number;
 }
 
@@ -58,6 +59,7 @@ export interface ClearReplayStore {
   pause(): void;
   resume(): void;
   finish(): void;
+  showResults(): void;
   seek(recordIndex: number): void;
   step(delta: -1 | 1): void;
   setSpeed(speed: ClearReplaySpeed): void;
@@ -144,14 +146,17 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
   let speed: ClearReplaySpeed = "normal";
   let reducedMotion = input.reducedMotion ?? false;
   let snapshot = IDLE_SNAPSHOT;
-  let listeners = new Set<() => void>();
-  let phaseListeners = new Set<() => void>();
-  let uiListeners = new Set<() => void>();
+  // Each subscriber remembers the last value it was told about, so delivery is per listener.
+  const listeners = new Map<() => void, ClearReplaySnapshot>();
+  const phaseListeners = new Map<() => void, ClearReplayPhase>();
+  const uiListeners = new Map<() => void, ClearReplayUiSnapshot>();
   let seekRevision = 0;
+  let cardExpanded = false;
   let uiSnapshot: ClearReplayUiSnapshot = {
     phase: "idle",
     recordIndex: 0,
     turnCount: route?.turnSpans.length ?? 0,
+    cardExpanded,
     seekRevision,
   };
   let phase: ClearReplayPhase = "idle";
@@ -163,32 +168,71 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
   let disposed = false;
   let visibilityListening = false;
 
+  // A store method called by a subscriber during a notification only updates the snapshots; the
+  // outer flush loop then delivers the newest value once to every listener that has not seen it.
+  let flushing = false;
+  let clearListenersAfterFlush = false;
+  const reportListenerError = (error: unknown): void => {
+    // Surface the failure without stopping other listeners or the transition that published it.
+    queueMicrotask(() => { throw error; });
+  };
+  const deliver = <T>(group: Map<() => void, T>, current: () => T): boolean => {
+    let delivered = false;
+    for (const listener of Array.from(group.keys())) {
+      if (!group.has(listener)) continue;
+      const value = current();
+      if (group.get(listener) === value) continue;
+      group.set(listener, value);
+      delivered = true;
+      try {
+        listener();
+      } catch (error) {
+        reportListenerError(error);
+      }
+    }
+    return delivered;
+  };
+  const clearListeners = (): void => {
+    listeners.clear();
+    phaseListeners.clear();
+    uiListeners.clear();
+  };
+  const flush = (): void => {
+    if (flushing) return;
+    flushing = true;
+    try {
+      let delivered = true;
+      while (delivered) {
+        delivered = deliver(listeners, () => snapshot);
+        delivered = deliver(phaseListeners, () => snapshot.phase) || delivered;
+        delivered = deliver(uiListeners, () => uiSnapshot) || delivered;
+      }
+    } finally {
+      flushing = false;
+    }
+    if (clearListenersAfterFlush) {
+      clearListenersAfterFlush = false;
+      clearListeners();
+    }
+  };
   const publish = (next: ClearReplaySnapshot): void => {
-    const phaseChanged = snapshot.phase !== next.phase;
-    const snapshotChanged = !sameSnapshot(snapshot, next);
     const nextUiSnapshot: ClearReplayUiSnapshot = {
       phase: next.phase,
       recordIndex: next.recordIndex,
       turnCount: route?.turnSpans.length ?? 0,
+      cardExpanded,
       seekRevision,
     };
     const uiChanged = uiSnapshot.phase !== nextUiSnapshot.phase ||
       uiSnapshot.recordIndex !== nextUiSnapshot.recordIndex ||
       uiSnapshot.turnCount !== nextUiSnapshot.turnCount ||
+      uiSnapshot.cardExpanded !== nextUiSnapshot.cardExpanded ||
       uiSnapshot.seekRevision !== nextUiSnapshot.seekRevision;
 
     // Publish both views before notifying any subscriber so one transition is observed atomically.
-    if (snapshotChanged) snapshot = next;
+    if (!sameSnapshot(snapshot, next)) snapshot = next;
     if (uiChanged) uiSnapshot = nextUiSnapshot;
-    if (snapshotChanged) {
-      for (const listener of listeners) listener();
-    }
-    if (phaseChanged) {
-      for (const listener of phaseListeners) listener();
-    }
-    if (uiChanged) {
-      for (const listener of uiListeners) listener();
-    }
+    flush();
   };
   const cancelFrame = (): void => {
     if (frameHandle === null) return;
@@ -199,6 +243,16 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
     if (!visibilityListening) return;
     visibility?.removeEventListener("visibilitychange", onVisibilityChange);
     visibilityListening = false;
+  };
+  const complete = (expandCard: boolean): void => {
+    if (phase === "done" && cardExpanded === expandCard) return;
+    cancelFrame();
+    runId += 1;
+    anchorAt = null;
+    phase = "done";
+    cardExpanded = expandCard;
+    detachVisibility();
+    publish(atElapsed(route, 0, speed, "done").snapshot);
   };
   const setElapsed = (value: number): void => {
     elapsedMs = value;
@@ -228,12 +282,7 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
   };
   const completeNaturally = (): void => {
     if (phase === "done") return;
-    phase = "done";
-    cancelFrame();
-    runId += 1;
-    anchorAt = null;
-    detachVisibility();
-    publish(atElapsed(route, 0, speed, "done").snapshot);
+    complete(false);
   };
   function onVisibilityChange(): void {
     if (visibility?.hidden && phase === "playing") store.pause();
@@ -258,6 +307,7 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
     const seekGeneration = runId;
     const seekTime = wasPlaying ? scheduler.now?.() ?? null : null;
     phase = wasPlaying ? "playing" : "paused";
+    cardExpanded = reducedMotion;
     elapsedMs = recordIndex * CLEAR_REPLAY_SPEEDS[speed];
     turnFraction = 0;
     anchorAt = seekTime;
@@ -271,26 +321,30 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
     getSnapshot: () => snapshot,
     getPhase: () => snapshot.phase,
     subscribePhase(listener) {
-      phaseListeners.add(listener);
+      // A new subscriber is told about the next change, not the current value.
+      if (!phaseListeners.has(listener)) phaseListeners.set(listener, snapshot.phase);
       return () => { phaseListeners.delete(listener); };
     },
     getUiSnapshot: () => uiSnapshot,
     subscribe(listener) {
-      listeners.add(listener);
+      // A new subscriber is told about the next change, not the current value.
+      if (!listeners.has(listener)) listeners.set(listener, snapshot);
       return () => { listeners.delete(listener); };
     },
     subscribeUi(listener) {
-      uiListeners.add(listener);
+      // A new subscriber is told about the next change, not the current value.
+      if (!uiListeners.has(listener)) uiListeners.set(listener, uiSnapshot);
       return () => { uiListeners.delete(listener); };
     },
     start() {
       if (disposed || phase === "playing" || !route) return;
       if (reducedMotion) {
-        store.finish();
+        complete(true);
         return;
       }
       if (visibility?.hidden) {
         phase = "paused";
+        cardExpanded = false;
         elapsedMs = 0;
         turnFraction = 0;
         attachVisibility();
@@ -299,6 +353,7 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
       }
       cancelFrame();
       phase = "playing";
+      cardExpanded = false;
       elapsedMs = 0;
       turnFraction = 0;
       attachVisibility();
@@ -316,15 +371,17 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
       runId += 1;
       anchorAt = null;
       phase = "paused";
+      cardExpanded = false;
       publish({ ...snapshot, phase: "paused" });
     },
     resume() {
       if (disposed || phase !== "paused" || visibility?.hidden) return;
       if (reducedMotion) {
-        store.finish();
+        complete(true);
         return;
       }
       phase = "playing";
+      cardExpanded = false;
       attachVisibility();
       const resumeGeneration = runId;
       publish({ ...snapshot, phase: "playing" });
@@ -332,13 +389,13 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
       startClock();
     },
     finish() {
+      // finish() keeps its no-op on done so an expanded results card stays expanded.
       if (disposed || phase === "done") return;
-      cancelFrame();
-      runId += 1;
-      anchorAt = null;
-      phase = "done";
-      detachVisibility();
-      publish(atElapsed(route, 0, speed, "done").snapshot);
+      complete(reducedMotion);
+    },
+    showResults() {
+      if (disposed || phase === "idle") return;
+      complete(true);
     },
     seek(recordIndex) {
       if (disposed) return;
@@ -371,7 +428,7 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
     getSpeed: () => speed,
     setReducedMotion(reduced) {
       reducedMotion = reduced;
-      if (reduced && (phase === "playing" || phase === "paused")) store.finish();
+      if (reduced && (phase === "playing" || phase === "paused")) complete(true);
     },
     setRoute(nextRoute) {
       if (route === nextRoute) return;
@@ -380,6 +437,7 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
       detachVisibility();
       route = nextRoute;
       phase = "idle";
+      cardExpanded = false;
       elapsedMs = 0;
       turnFraction = 0;
       anchorAt = null;
@@ -395,14 +453,15 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
       runId += 1;
       detachVisibility();
       phase = "idle";
+      disposed = true;
+      cardExpanded = false;
       elapsedMs = 0;
       turnFraction = 0;
       anchorAt = null;
+      // Deliver idle to current subscribers first; inside a notification, clear after that flush.
+      if (flushing) clearListenersAfterFlush = true;
       publish(IDLE_SNAPSHOT);
-      disposed = true;
-      listeners.clear();
-      phaseListeners.clear();
-      uiListeners.clear();
+      if (!flushing) clearListeners();
     },
   };
   return store;

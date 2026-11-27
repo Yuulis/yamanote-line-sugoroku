@@ -1093,3 +1093,149 @@ git diff --check
 
 Output: TL;DR; what changed for each finding; the new tests and what each one proves; the
 acceptance results; risks.
+
+## Step 2.2 — implement
+
+Objective: implement Step 2.2 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step adds the replay results state (`cardExpanded` and `showResults()`) to the
+clear-replay store, driven by tests written first (TDD).
+
+Scope:
+- IN: exactly the "Step 2.2" section of the plan, plus the D2 row in section 2 and the
+  `clearReplayStore.ts` interface block in section 3. Read all of them in full.
+  - `src/features/game/clearReplayStore.ts`:
+    - The UI snapshot gains `cardExpanded: boolean`.
+    - Ordinary (not reduced-motion) replay starts collapsed (`false`).
+    - Pause, natural end and `finish()` keep it collapsed. Natural end and `finish()` still
+      show the full route (`done`).
+    - Add `showResults()`. It publishes `done` with the full route and `cardExpanded: true` in
+      ONE transition, from playing, paused or done. From `playing` it stops the clock (frame
+      invalidated) and detaches visibility exactly like `finish()`. Repeating it while already
+      expanded is a no-op that does not notify.
+    - Restart via `start()` after done, and `seek`/`step` (Step 2.1), collapse the card again.
+      If this conflicts with the plan or the code, follow the plan and report it.
+    - Reduced motion:
+      - The replay starts and stays expanded.
+      - `setReducedMotion(true)` during a collapsed playing or paused replay publishes `done`,
+        the full route and `cardExpanded: true` together, in one notification. Today that path
+        only calls `finish()`, at about `clearReplayStore.ts:305`.
+    - `seekRevision` must not change for `showResults()`, pause, finish or reduced motion.
+    - Re-entrancy lesson from Step 2.1: every path that publishes and then schedules or
+      attaches something must stay correct if a subscriber calls another store method during
+      the notification. Set the internal state (phase, frame, visibility) before publishing, and
+      check the generation after publishing.
+  - Tests first, in `tests/unit/clear-replay.test.ts`. Cover the card state:
+    - at start and at pause;
+    - at natural end and at `finish()`;
+    - for `showResults()` from playing, paused and done, plus a repeat no-op;
+    - on restart after `showResults()`, and on seek/step after `showResults()`;
+    - for reduced motion at start;
+    - for reduced motion switched on during playing and during paused (one notification, all
+      three fields together);
+    - for a subscriber calling `seek` inside the `showResults()` notification.
+
+    Keep the existing full-route assertions.
+  - `tests/unit/clear-replay-controls.test.ts` and `tests/unit/clear-screen.test.ts` must keep
+    passing. If they construct UI snapshots, extend those literals with the new field rather
+    than loosening any assertion.
+- OUT:
+  - Any UI that consumes `cardExpanded` (the screen and strip are Step 2.5);
+  - turn bounds and camera (Steps 2.3 and 2.4);
+  - DESIGN.md, STATE.md and the plan files.
+
+  Add no new dependencies, and do not commit or push. Never `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any existing assertion.
+  - Existing playback, seek and step behaviour is unchanged.
+  - Keep files at or under 800 lines. `clear-replay.test.ts` is about 660 lines now. If adding
+    the tests would push it over, put the new tests in
+    `tests/unit/clear-replay-results.test.ts` and move the fake scheduler and visibility
+    helpers into a shared `tests/unit/support/clearReplayFakes.ts` used by both files.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Step 2.1 is commit 27404ab: seek, step, `turnCount` and `seekRevision`.
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the new tests and what each one proves;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.2 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the three review findings on the uncommitted Step 2.2 change in
+`src/features/game/clearReplayStore.ts` and `tests/unit/clear-replay.test.ts`; see `git diff`.
+Everything in the "Step 2.2 — implement" prompt above still applies. The lead already changed one
+thing on top of the first implementation: `finish()` is a no-op on `done` again, so it never
+collapses an expanded card. Keep that.
+
+Findings to fix:
+1. High: reduced motion must keep the card expanded.
+   - Scenario: under reduced motion, `start()` → `step(-1)` collapses the card through
+     `seekTo()`, and a later `finish()` then lands on `done` collapsed. `seek()` takes the same
+     path.
+   - Fix: while reduced motion is on, seek/step keep their target turn and still bump
+     `seekRevision`, but `cardExpanded` stays `true`.
+   - If `finish()` newly reaches `done` while reduced motion is on, the card is expanded.
+   - The existing no-op of `finish()` on `done` stays.
+2. High: re-entrant publish sends duplicate notifications (`publish`, about line 186).
+   - Scenario: a frame subscriber notified by `showResults()` calls `seek(0)`. The inner publish
+     notifies everyone. The outer `publish()` then keeps notifying UI subscribers based on its
+     stale change flags, so a UI subscriber receives the same `paused` snapshot twice.
+   - Fix it in `publish`: use a publish sequence/version. After each listener group, if a nested
+     publish happened, stop notifying for the outer one, because the nested publish already
+     notified every group with the newest state. No subscriber may see a stale snapshot after a
+     newer one, or the same snapshot twice.
+   - Keep the existing guarantee that both snapshots are updated before any listener runs.
+3. Medium, pre-existing: `dispose()` re-entrancy (about line 409).
+   - Scenario: a subscriber that sees the `idle` published by `dispose()` calls `start()`. The
+     store is left `playing` with a scheduled frame after dispose.
+   - Fix: set the disposed flag before the final publish.
+
+Tests to add (write each first and confirm it fails against the current code):
+- Under reduced motion, seek and step keep `cardExpanded: true` and still move and bump the
+  revision. `finish()` on an expanded `done` does not notify.
+- A frame or phase subscriber that seeks inside the `showResults()` notification: a separate UI
+  subscriber records each snapshot it receives, with no duplicate and no stale-after-newer.
+- Inside the `showResults()` UI notification, the frame snapshot is already the full-route
+  `done` snapshot. Read both inside the callback.
+- `setRoute()` and `dispose()` from an expanded state reset `cardExpanded`.
+- A subscriber calling `start()` inside the `dispose()` notification leaves no live frame, and
+  the phase is not `playing`.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion. Keep
+`tests/unit/clear-replay.test.ts` at or under 800 lines. If it would go over, move the new and
+the Step 2.2 tests into `tests/unit/clear-replay-results.test.ts`, with the fakes moved into
+`tests/unit/support/clearReplayFakes.ts`. Do not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each finding;
+- the new tests and what each one proves, including that it failed before the fix;
+- the acceptance results;
+- risks.

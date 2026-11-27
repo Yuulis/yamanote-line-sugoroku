@@ -18,8 +18,8 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 
 | PR | Branch | Base | Status |
 |---|---|---|---|
-| PR1 | `feature/map-focus-goal` | develop `c7af52a` | in progress |
-| PR2 | `feature/replay-camera-strip` | develop after PR1 | not started |
+| PR1 | `feature/map-focus-goal` | develop `c7af52a` | merged (#139, db8550e) |
+| PR2 | `feature/replay-camera-strip` | develop `db8550e` | in progress |
 | PR3 | `feature/shared-track-offsets` | develop after PR2 | not started |
 
 ## Step status
@@ -36,9 +36,10 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 | 1.8 | done | 52fae43 (CI green) | User decision 2026-11-27: gameplay/clear only, title keeps style values. Luna xhigh: basemapLabels.ts (buildBasemapLabelPatches with originals, applyBasemapLabelFocus), baseline captured in style.load before addRailwayLayers, layout effect on mode/layersRevision. Runtime: waterway_line_label text-opacity undefined (title) / 0.75 (game); title screenshot hash unchanged. Lead: typecheck, vitest 2769 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip. Sol low REJECT (Medium): coalesce-wrapped zoom curves are skipped as unsafe; lead accepted as a known limitation because live Liberty has 25 symbol layers, all omitting text/icon opacity (50 patches, 0 skipped) and the plan sanctioned skipping unsafe values. Revisit if the basemap style changes |
 | 1.9 | done | 6312e91 (CI green) | Luna xhigh: ring #d4a017 / 5 px; goalCallout.ts controller (pulse DOM halo + 「ここに着けばゴール」 bubble via exported createMapCallout), game mode only, reduced motion animation none. Sol low REJECT (Medium: goal and roll-adjust bubbles overlap at 新橋 after 30/30; Low: duplicated gold literal). Re-delegation 1/1: bubble yields while adjustment candidates exist, pulse stays, CSS var from GOAL_STATION_RING_COLOR; Sol low ACCEPT. Lead: typecheck, vitest 2772 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip. Screenshots issue72-s19-goal-*.png (fixture) |
 | 1.10 | done | (this commit) | Luna xhigh: docs/manual/map-readability/colour-vision.md (Machado 2009 + OKLab ΔE ≤ 2.0; 81 colours / 134 groups; close pairs protan 67, deutan 92, tritan 117; worst UI pair protan candidate vs background ΔE 0.07). Lead removed a scratchpad path from the doc and recorded DESIGN.md R1/R2 via update_design.py. No code change since 6312e91 (CI green), so code gates were not re-run |
-| PR1 | next | — | open feature/map-focus-goal -> develop PR (full CI matrix) |
+| PR1 | done | db8550e | PR #139 merged into develop; full CI matrix green |
 | 2.1 | done | (this commit) | Luna xhigh implement (seek/step/turnCount/seekRevision, resolveReplaySeekIndex). Sol low REJECT x2: (1) natural completion notified done while phase was playing; seek re-entrancy scheduled stale frames — fixed by Luna re-delegation; (2) start()/resume() destroyed a seek made inside the playing notification — user chose lead fix (2026-11-27): generation guard before startClock, attachVisibility before publish (also the hidden-start branch, a pre-existing Low from the final review). Final Sol review ACCEPT. Gates: typecheck, vitest 2796 passed, build, diff check; mutation checks confirm the new re-entrancy tests fail without the guards. Phone @layout: 125 passed, 2 text-wrapping failures under concurrent load passed on isolated rerun |
+| 2.2 | done | (this commit) | Luna xhigh implement (cardExpanded, showResults, reduced motion expands in one transition); lead kept finish() a no-op on done. Sol low REJECT x2: (1) reduced-motion seek/step collapsed the card, duplicate notifications on re-entrant publish, dispose re-entrancy — fixed by Luna re-delegation (tests split into clear-replay-results.test.ts + support/clearReplayFakes.ts); (2) the publishSequence early return lost updates. User chose a notification rewrite (2026-11-27); lead implemented per-listener delivery (Map<listener, lastValue>, flush loop until stable, per-listener error isolation via queueMicrotask, dispose clears after an in-flight flush). Final Sol review ACCEPT; known Low: dispose + re-subscribe inside the same callback loses the new subscription (unreachable by React/map consumers). Gates: typecheck, vitest 2821 passed, build, diff check; mutation checks: new tests fail (or hang) on the previous version |
 
 ## Next action
 
-Step 2.2: store `cardExpanded` + `showResults()` (TDD) per the plan. Write the prompt and run Luna xhigh. Lesson from 2.1: ask the implementer to guard every publish-then-schedule path against re-entrant subscribers.
+Step 2.3: turn span `destination` + pure `clearReplayTurnBounds` (TDD) per the plan. Write the prompt and run Luna xhigh.
