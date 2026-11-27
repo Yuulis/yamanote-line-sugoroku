@@ -1,5 +1,6 @@
 import type { SegmentFeatureCollection } from "../../types/data";
 import { buildCorridorOffsets, type CorridorRenderCollection } from "./corridorOffsets";
+import { exposeCorridorOffsetMetricsForE2E } from "./e2eHook";
 
 export interface CorridorOffsetMemo {
   get(geometry: SegmentFeatureCollection, targetServiceId: string): CorridorRenderCollection | null;
@@ -31,11 +32,24 @@ export function createCorridorOffsetMemo(
       lastGeometry = geometry;
       lastTargetServiceId = targetServiceId;
       hasEntry = true;
+      const e2eBuild = import.meta.env.MODE === "e2e";
+      let derivationStartedAt = 0;
+      let derivationMs = 0;
+      if (e2eBuild) derivationStartedAt = performance.now();
       try {
         lastResult = build(geometry, targetServiceId);
+        if (e2eBuild) derivationMs = performance.now() - derivationStartedAt;
       } catch (error) {
         lastResult = null;
+        if (e2eBuild) derivationMs = performance.now() - derivationStartedAt;
         warn("Map data unavailable: could not derive shared-track offsets; using canonical geometry.", error);
+      }
+      if (e2eBuild) {
+        exposeCorridorOffsetMetricsForE2E({
+          canonicalCount: geometry.features.length,
+          derivedCount: lastResult?.features.length ?? null,
+          derivationMs,
+        });
       }
       return lastResult;
     },

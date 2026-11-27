@@ -235,6 +235,10 @@ const SAVE_KEY = "yamanote-line-sugoroku:save:v1";
 async function movePhase(page) {
   const records = [];
   await page.getByRole("button", { name: "はじめから" }).click();
+  // A fresh browser context gets the first-play coach, which intentionally
+  // blocks the dice until dismissed and would otherwise intercept the probe.
+  const coachSkip = page.getByRole("dialog", { name: "最初のガイド" }).getByRole("button", { name: "とばす", exact: true });
+  if (await coachSkip.count()) await coachSkip.click();
   const settled = (key) => {
     const turn = JSON.parse(localStorage.getItem(key) ?? "{}").turn ?? 0;
     const idle = [...document.querySelectorAll("button")].some((b) => b.textContent === "サイコロを振る" && !b.disabled);
@@ -342,6 +346,9 @@ async function measureRun(browser, opts, profileName, runIndex, mapper) {
       renderer: canvas ? canvas.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : canvas.RENDERER) : "no webgl2",
       longTasks,
       metrics: {
+        canonicalCount: window.__sugorokuE2E?.corridorOffsetMetrics?.canonicalCount ?? null,
+        derivedCount: window.__sugorokuE2E?.corridorOffsetMetrics?.derivedCount ?? null,
+        derivationMs: window.__sugorokuE2E?.corridorOffsetMetrics?.derivationMs ?? null,
         ttfbMs: nav.responseStart,
         domContentLoadedMs: nav.domContentLoadedEventEnd,
         fcpMs: fcp?.startTime ?? null,

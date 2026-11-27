@@ -2126,3 +2126,68 @@ Output:
 - the new tests;
 - the acceptance results;
 - risks.
+
+## Step 3.5 — measurement gate
+
+Objective: implement and run the Step 3.5 measurement gate of
+`.claude/docs/plans/map-readability-plan.md`. Extend the existing perf harness and benchmark the
+PR3 base against the current head. Report pass or fail per threshold.
+
+Scope:
+- IN: exactly the "Step 3.5" section of the plan; read it in full.
+  - Extend `scripts/perf/measure-map.mjs`, keeping the existing behaviour and flags. Make it
+    report:
+    - the canonical and derived feature counts;
+    - the synchronous derivation time of `buildCorridorOffsets` as observed in the app.
+  - Observe these through the existing E2E-only hook (`src/features/map/e2eHook.ts`, e2e build
+    mode only).
+    - Example: the memo/style.load path records `performance.now()` around the derivation and
+      exposes `{ canonicalCount, derivedCount, derivationMs }` via the E2E hook.
+    - The hook MUST NOT log or add any work in production builds. It follows the same pattern as
+      `exposeClearFitPaddingForE2E`.
+    - Missing fields on the base commit (which has no derivation) must print as n/a, not crash.
+  - Add the new numbers to `summary.json` / `summary.md`.
+  - Benchmark both commits from separate checkouts:
+    - the PR3 base `967760b` (develop after PR2), using `git worktree add` in the scratchpad and
+      removing it afterwards;
+    - the current head of `feature/shared-track-offsets`, which includes uncommitted 3.5 changes
+      only to the harness and hook.
+
+    Run on each:
+    `npm run perf:map -- --runs 5 --tiles stub --profiles desktop,mobile --browser chromium`.
+    The base worktree needs the extended harness copied in, or run the head harness against the
+    base build if the script supports it. Explain what you did.
+  - Thresholds (from the plan):
+    - derived count ≤ 2 × canonical (≤ 3,876);
+    - cold derivation median ≤ 50 ms and max ≤ 100 ms on this host, in both profiles; the mobile
+      profile has a 4× CPU throttle, so report it separately;
+    - the median move-frame P50 over 5 runs ≤ baseline + 2 ms, on the desktop and mobile
+      profiles.
+  - Report every threshold as PASS or FAIL with numbers. A FAIL is a finding, not something to
+    hide: do NOT tune the thresholds, and do not change product behaviour to pass. If a threshold
+    fails, profile it (`--cpu-profile`) and report the hotspots and a proposed fix. Do not
+    implement the fix.
+  - Write the comparison to `.claude/docs/plans/map-readability-perf.md`, a short table with the
+    raw summary paths under `.claude/logs/perf/`.
+- OUT: product behaviour changes, DESIGN.md, STATE.md and the plan file. Add no new dependencies,
+  do not change `public/data`, and do not commit or push. Never `pkill -f`; kill only the PIDs
+  you started, and remove any worktree you created.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run --maxWorkers=4
+npm run build
+git diff --exit-code -- public/data
+git diff --check
+git worktree list   # no leftover worktree
+```
+
+Output:
+- TL;DR, with PASS/FAIL per threshold;
+- the changed files, with a one-line purpose for each;
+- the method (how the base was measured);
+- the results table;
+- profiling notes if anything failed;
+- risks.
