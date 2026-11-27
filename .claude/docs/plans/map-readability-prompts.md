@@ -1897,3 +1897,81 @@ Output:
 - the acceptance results;
 - deviations from the plan;
 - risks.
+
+## Steps 3.1–3.3 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the correctness findings and bring derivation time under the Step 3.5 gate, in the
+uncommitted `src/features/map/corridorOffsets.ts` and `tests/unit/corridor-offsets.test.ts`.
+Everything in the "Steps 3.1–3.3 — implement" prompt above still applies. The full review is the
+latest `.claude/logs/codex/*issue72-s31-review.md`. Read it in full, including its ranked
+performance plan.
+
+Fix the correctness findings first:
+1. High: a continuing service's slot flips at a branch (about :177).
+   - Slot inheritance follows the DFS visit order, so after a sibling branch the parent edge's
+     assignment is lost.
+   - Repro: the parent edge has owners {a,b}, the first branch {a,c}, the second branch {b,d}.
+     `b` goes from +0.5 to -0.5.
+   - Fix: pass each child edge its parent edge's assignment, never a sibling's.
+2. High: the run orientation depends on the DFS start (about :133).
+   - Repro: two services share `[2,0] → [10,0] → [11,1]`. The string order starts the DFS at the
+     middle vertex `[10,0]`, so both edges point outward and the same slot draws on opposite
+     sides of the track.
+   - Fix: walk open runs from an endpoint in one continuous direction. Give branches and cycles
+     deterministic start and joining rules, so that the sign of `line-offset` means the same
+     side along a run.
+3. Medium: the real-data test is self-referential (test about :255).
+   - Compute the Tokaido/Yokosuka common edge set from the canonical input and assert that it is
+     non-empty.
+   - On that set, assert that both services are present in the output with distinct nonzero
+     slots, and keep the 2 × canonical cap.
+4. Medium: the branch test is weak (test about :197). Add explicit regression cases that assert
+   both orientation and slots:
+   - the branch flip from item 1;
+   - the middle-vertex start from item 2;
+   - the target service joining mid-run and taking slot 0, which splits on a slot change while
+     the edge stays shared.
+
+Then performance, following the ranked plan in the review:
+- integer vertex/edge ids instead of `JSON.stringify` keys;
+- compact single-owner edges;
+- an iterative DFS with an adjacency cursor;
+- fewer temporary arrays in sorting and emission.
+
+Before optimising, snapshot the corrected output on the real data (the full features array: order,
+ids, properties, slots and coordinates). After optimising, assert deep equality with that snapshot
+inside a test or a throwaway script.
+
+Performance gate. Measure in Node on the real `public/data/segments.geojson` with target
+`jr-yamanote`. Use 9 cold-ish runs in one process, each a fresh call on a fresh parsed copy. A
+template is at
+`/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/bench-corridor.test.ts`.
+- The median must be ≤ 50 ms and the max ≤ 100 ms on this host.
+- Report the sorted times before and after.
+- Do NOT commit a benchmark into the unit suite: delete any temporary bench test.
+
+Constraints:
+- It is a pure module; keep the plan interface; keep the file at or under 800 lines.
+- Do not weaken or delete any assertion.
+- Do not change `public/data`, and do not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/capital-region-scaling.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each finding;
+- the new tests;
+- the benchmark before and after (sorted times);
+- confirmation that output equality was checked;
+- the real-data findings;
+- the acceptance results;
+- risks.
