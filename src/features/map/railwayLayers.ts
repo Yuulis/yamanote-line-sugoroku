@@ -16,6 +16,8 @@ import {
   CURRENT_POSITION_STROKE_COLOR,
   CURRENT_POSITION_STROKE_WIDTH,
   CURRENT_SERVICE_LINE_WIDTH,
+  FOCUS_OTHER_SERVICE_LINE_OPACITY,
+  FOCUS_OTHER_SERVICE_LINE_WIDTH,
   GOAL_STATION_RING_COLOR,
   GOAL_STATION_RING_RADIUS_STOPS,
   GOAL_STATION_RING_WIDTH,
@@ -82,11 +84,27 @@ export interface RailwayLayerInput {
   geometry?: SegmentFeatureCollection;
   lines?: readonly LineMetadata[];
   targetServiceId?: string;
+  focusBackground?: boolean;
   presentation?: Pick<
     PresentationResolver,
     "stationName" | "serviceStationName" | "serviceName" | "lineGroupId" | "lineGroupColor"
   >;
   presentationIndex?: MapPresentationIndex;
+}
+
+/** Update the background service emphasis after the railway layer exists. */
+export function setBackgroundFocus(map: MapLibreMap, focused: boolean): void {
+  if (!map.getLayer(LAYER_IDS.services)) return;
+  map.setPaintProperty(
+    LAYER_IDS.services,
+    "line-width",
+    focused ? FOCUS_OTHER_SERVICE_LINE_WIDTH : OTHER_SERVICE_LINE_WIDTH,
+  );
+  map.setPaintProperty(
+    LAYER_IDS.services,
+    "line-opacity",
+    focused ? FOCUS_OTHER_SERVICE_LINE_OPACITY : OTHER_SERVICE_LINE_OPACITY,
+  );
 }
 
 /** Add whichever railway layers the available data allows. */
@@ -98,6 +116,7 @@ export function addRailwayLayers(
     lines = [],
     geometry,
     targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
+    focusBackground = false,
     presentation,
     presentationIndex,
   }: RailwayLayerInput,
@@ -122,8 +141,8 @@ export function addRailwayLayers(
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": buildTrackColorExpression(lines, services, presentation),
-        "line-width": OTHER_SERVICE_LINE_WIDTH,
-        "line-opacity": OTHER_SERVICE_LINE_OPACITY,
+        "line-width": focusBackground ? FOCUS_OTHER_SERVICE_LINE_WIDTH : OTHER_SERVICE_LINE_WIDTH,
+        "line-opacity": focusBackground ? FOCUS_OTHER_SERVICE_LINE_OPACITY : OTHER_SERVICE_LINE_OPACITY,
       },
     });
     map.addLayer({

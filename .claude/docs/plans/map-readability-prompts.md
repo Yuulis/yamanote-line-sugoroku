@@ -249,3 +249,165 @@ Output (markdown):
 - the acceptance results with pass/fail counts;
 - the line counts;
 - risks.
+
+## Step 1.5 — implement
+
+Objective: implement Step 1.5 of `.claude/docs/plans/map-readability-plan.md` (A1 focus paint,
+gameplay map only) as one uncommitted step, and capture screenshots for the user.
+
+Scope:
+- IN: exactly the "Step 1.5" section of the plan.
+  - `src/features/map/mapConfig.ts`: add named focus constants beside
+    `OTHER_SERVICE_LINE_WIDTH` (3) and `OTHER_SERVICE_LINE_OPACITY` (0.75), with values
+    width 2 and opacity 0.30. Each gets a short doc comment that cites issue #72.
+  - `src/features/map/railwayLayers.ts`: add the optional field `focusBackground?: boolean` to
+    `RailwayLayerInput`.
+    - The `railway-services` layer uses the focus constants when the flag is true.
+    - When the flag is omitted or false, it keeps today's width 3 and opacity 0.75.
+    - Nothing else changes: not the current-service layer (7 / 1), not the Yamanote layers, not
+      the legend filters, and not `clearNetworkVisibility.ts`.
+  - `src/features/map/RailwayMap.tsx`: pass `focusBackground: mode !== "title"` in the existing
+    `addRailwayLayers(map, {...})` call (around line 335). That way the gameplay and clear maps
+    get focus paint, and the title map keeps today's paint.
+- Tests: `tests/unit/capital-region-scaling.test.ts`. Add positive assertions that pin:
+  - without the flag (the title map): background width 3 and opacity 0.75;
+  - with `focusBackground: true` (the gameplay map): background width 2 and opacity 0.30;
+  - the current-service layer at width 7 and opacity 1 in both cases.
+  - Follow the file's existing helpers and style.
+  - The `line-offset` absence assertion around line 169 stays unchanged.
+- Screenshots (user-facing; the user cannot open /tmp):
+  - After the change, capture PNGs into `.claude/logs/screenshots/`:
+    - `issue72-s15-game-desktop.png`: gameplay map right after starting a new game, desktop
+      1280x800;
+    - `issue72-s15-game-phone.png`: the same, phone 390x844;
+    - `issue72-s15-title-desktop.png`: the title screen map, desktop 1280x800.
+  - Also capture `issue72-s15-game-desktop-before.png` from the code before your change. Use
+    `git stash` or a temporary worktree, and restore the tree afterwards.
+  - Use a throwaway Playwright script in the scratchpad or `/tmp`, run against
+    `npm run dev` or `vite preview`. Do not add it to the repo.
+  - Prefer the real basemap if it loads. If it does not, use the E2E stub style and say which
+    one you used.
+  - Stop the server by PID. Never use `pkill -f`.
+- OUT: Steps 1.6 and later, DESIGN.md, STATE.md and the plan file. Add no new dependencies,
+  and do not commit or push.
+- Hard constraints:
+  - Do not weaken, skip or delete any test assertion.
+  - Keep the `0.75` dash entry and width 8 in `map-flash.test.ts` and `map-visual.spec.ts`.
+    Those belong to the pending casing and must not change.
+
+Context:
+- Steps 1.1–1.4 (a5487da, 2f43e99, ffbeeb5, 6078690) moved camera helpers and the segment
+  flash out of `RailwayMap.tsx`. That file is 643 lines.
+- Plan sections 1–3; `.claude/docs/research/feature-map-readability-codebase.md` (section A).
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all; keep Playwright LOCAL_WORKERS at 2; never `pkill -f`):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/map-flash.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts --project=desktop-chromium --grep 'service legend|pending guidance'
+npx playwright test tests/e2e/map-visual.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output (markdown):
+- the changed files, one line each;
+- the new constants and the flag;
+- the assertions added;
+- the acceptance results with pass/fail counts;
+- the screenshot paths and whether they used the real or the stub basemap;
+- visual observations (what reads first now);
+- risks.
+
+## Step 1.5 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the uncommitted Step 1.5 change so that the focus paint really reaches the gameplay
+map at runtime, prove it from the running app, and capture correct before/after screenshots.
+
+Failure context (Codex Sol low review REJECT, 2026-11-27):
+- The plan assumed that the title and gameplay maps are separate `RailwayMap` instances. That
+  is wrong.
+- `GameApp` renders one persistent `RailwayMap` and switches its `mode` prop between
+  title, game and clear (`src/app/GameApp.tsx` ~556 and ~818).
+- The `style.load` handler in `src/features/map/RailwayMap.tsx` (~341, effect ~374) captures
+  the initial mode, which is title. So `focusBackground` is false when the layers are created,
+  and starting or resuming a game leaves the background at 3 px / 0.75.
+- The before and after screenshots were byte-identical (sha256 1ef4d700…) for this reason.
+- `EditionApp`'s data-error title map is a separate instance and must keep 3 / 0.75.
+
+Scope:
+- IN:
+  - Keep the existing Step 1.5 diff: the constants, the `focusBackground` flag on
+    `addRailwayLayers`, and the unit assertions.
+  - Make the background paint follow the current `mode` at runtime. Recommended approach:
+    - Export a small function from `railwayLayers.ts`, for example
+      `setBackgroundFocus(map: MapLibreMap, focused: boolean): void`. It calls
+      `setPaintProperty` on `LAYER_IDS.services` for `line-width` and `line-opacity` with
+      the same constants, and it is a no-op if the layer does not exist.
+    - Call it from `RailwayMap.tsx` in an effect keyed on `mode !== "title"` and
+      `layersRevision`. That way a style reload and a title → game → clear transition always
+      end at the right paint.
+    - Keep the creation-time flag consistent. The `style.load` handler should read the
+      current mode through a ref, not the captured initial value. Alternatively, rely on the
+      effect, but then explain why there is no visible flash.
+    - Do not add a per-frame write.
+  - Tests:
+    - Add a unit test for `setBackgroundFocus`, covering true, false, and a missing layer.
+    - Add a test that pins the title → game transition: a `RailwayMap`-level test with the
+      existing map mock helpers in `tests/unit/` (see `title-map-mode.test.ts` and
+      `map-camera.test.ts` for how they mount `RailwayMap` with a mocked MapLibre). It must
+      prove that the paint becomes 2 / 0.30 after `mode` changes from "title" to "game" and
+      returns to 3 / 0.75 when it goes back to "title". If mounting is impractical, test the
+      effect's hook in isolation and say so.
+  - Runtime proof:
+    - Serve the AFTER build with `npm run build` and then
+      `npx vite preview --port 4302 --strictPort` (stop it by PID afterwards).
+    - Read the paint with Playwright through the existing test hook:
+      `window.__sugorokuE2E.map.getPaintProperty("railway-services", "line-width" | "line-opacity")`.
+    - Read it on the title screen, after clicking 「はじめから」, and once more after a reload
+      that resumes the saved game.
+    - Expected: title 3 / 0.75; game 2 / 0.3.
+    - A ready-made probe and capture script exist in the scratchpad:
+      `/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/probe.mjs` and `/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/capture.mjs` (check and fix their ports and paths). The
+      pre-change build is already in `/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/dist-before`. Serve it with
+      `npx vite preview --outDir /tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/dist-before --port 4301 --strictPort` for the "before"
+      shots.
+  - Screenshots: overwrite the files in `.claude/logs/screenshots/`:
+    - `issue72-s15-game-desktop-before.png` (from dist-before)
+    - `issue72-s15-game-desktop.png`
+    - `issue72-s15-game-phone-before.png` (from dist-before)
+    - `issue72-s15-game-phone.png`
+    - `issue72-s15-title-desktop.png`
+    - Before and after must differ: report the sha256 of each.
+- OUT: Step 1.6 and later; DESIGN.md, STATE.md and the plan file; `git stash`, worktrees, and
+  any change outside `src/features/map/` and `tests/unit/`. Do not commit or push. Never
+  `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion.
+  - The title map keeps 3 / 0.75.
+  - The legend filters and `clearNetworkVisibility.ts` behaviour stay unchanged.
+
+Acceptance (run all; keep Playwright LOCAL_WORKERS at 2):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/map-flash.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts --project=desktop-chromium --grep 'service legend|pending guidance'
+npx playwright test tests/e2e/map-visual.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output (markdown):
+- the root cause in your own words;
+- the changed files, one line each;
+- the new function and effect;
+- the tests added;
+- the runtime paint values read (title, game, resumed game), as a table;
+- the screenshot paths with their sha256;
+- the acceptance results with pass/fail counts;
+- risks.

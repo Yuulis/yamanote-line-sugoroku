@@ -36,6 +36,7 @@ import {
 } from "./mapConfig";
 import {
   addRailwayLayers,
+  setBackgroundFocus,
   type MapProgress,
   type SegmentFlashRequest,
   updateCompletedSegments,
@@ -213,6 +214,8 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   const [paintedAttempt, setPaintedAttempt] = useState<number | null>(null);
   const attemptRef = useRef(attempt);
   attemptRef.current = attempt;
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
   const headingMarkerRef = useRef<HeadingMarkerController | null>(null);
   // Bumped when a replaced style forced the layers to be re-added, so the
   // progress and visibility effects below apply their state to them again.
@@ -338,6 +341,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
         geometry: data.geometry.ok ? data.geometry.value : undefined,
         lines: data.services.ok ? data.services.value.lines : undefined,
         targetServiceId,
+        focusBackground: modeRef.current !== "title",
         presentation,
         presentationIndex: mapPresentationIndex,
       });
@@ -373,6 +377,11 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   }, [data, attempt, targetServiceId, minZoom, initialServices, presentation, mapPresentationIndex]);
 
   const completedFeatureIds = progress?.completedFeatureIds;
+  const backgroundFocused = mode !== "title";
+  useLayoutEffect(() => {
+    if (loadedMap) setBackgroundFocus(loadedMap, backgroundFocused);
+  }, [loadedMap, layersRevision, backgroundFocused]);
+
   // Only this component re-renders on animation frames, not the game UI.
   const framePosition = useSyncExternalStore(livePosition.subscribe, livePosition.get, livePosition.get);
   const replayPhase = useSyncExternalStore(

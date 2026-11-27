@@ -29,10 +29,11 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 | 1.1 | done | a5487da (CI green) | Luna xhigh; lead: 76 removed lines verbatim in railwayMapCamera.ts, typecheck, vitest 2746 pass / 1 pre-existing skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 1,022 -> 945 lines |
 | 1.2 | done | 2f43e99 (CI green) | Luna xhigh (1st run stopped correctly on shared deps ZERO_MAP_PADDING/positionsBounds; prompt relaxed, 2nd run moved them too); lead: removed lines verbatim except 3 import specifiers, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 945 -> 787 lines |
 | 1.3 | done | ffbeeb5 (CI green) | Luna xhigh; lead: removed lines verbatim except the now-unused positionsBounds import specifier, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 787 -> 705, railwayMapCamera.ts 340 lines |
-| 1.4 | done | (this commit) | Luna xhigh; lead: 61 removed lines verbatim in useSegmentFlash.ts, test import path + comment only, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 705 -> 643 lines |
-| 1.5 | next | — | — |
+| 1.4 | done | 6078690 (CI green) | Luna xhigh; lead: 61 removed lines verbatim in useSegmentFlash.ts, test import path + comment only, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 705 -> 643 lines |
+| 1.5 | done | (this commit) | Luna xhigh run 1 passed unit tests but Sol low REJECTED (High): one persistent RailwayMap starts in title mode, so the creation-time flag never reached gameplay (before/after screenshots were byte-identical). Re-delegation 1/1: modeRef + setBackgroundFocus in a layout effect on mode/layersRevision; new tests railway-layers-background-focus.test.ts and title-map-mode transition test. Runtime paint via __sugorokuE2E (e2e build): title 3/0.75, game 2/0.3, resumed 2/0.3. Lead: typecheck, vitest 2750 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. Screenshots .claude/logs/screenshots/issue72-s15-*.png |
+| 1.6 | next | — | — |
 
 ## Next action
 
-Write the Step 1.5 prompt (A1 focus paint, gameplay map only via focusBackground flag; title map keeps width 3 / opacity 0.75) and run it with Luna xhigh. Visible step: take desktop and phone screenshots into .claude/logs/screenshots/ for the user.
+Write the Step 1.6 prompt (A2 candidate publication in deriveTurnMomentDisplay, TDD; not visible) and run it with Luna xhigh. Lesson from 1.5: verify visible steps from the running app (e2e build + window.__sugorokuE2E.map) and compare screenshot hashes.
 Open question for PR2: what 次 does from the done view (lead default: disabled); ask the user before Step 2.1.

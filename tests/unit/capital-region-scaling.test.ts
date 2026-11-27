@@ -165,6 +165,9 @@ describe("scaled map and presentation", () => {
     } as unknown as MapLibreMap;
     addRailwayLayers(map, { geometry: data.geometry.ok ? data.geometry.value : undefined, lines: services.lines, services: services.services, targetServiceId: "custom-target" });
     expect(layers[LAYER_IDS.services]?.filter).toEqual(["!=", ["get", "serviceId"], "custom-target"]);
+    expect(layers[LAYER_IDS.services]?.paint).toMatchObject({ "line-width": 3, "line-opacity": 0.75 });
+    expect(layers[LAYER_IDS.currentService]?.paint).toMatchObject({ "line-width": 7 });
+    expect((layers[LAYER_IDS.currentService]?.paint as Record<string, unknown>)?.["line-opacity"] ?? 1).toBe(1);
     expect(layers[LAYER_IDS.base]?.paint).toMatchObject({ "line-color": buildTrackColorExpression(services.lines) });
     expect(layers[LAYER_IDS.services]?.paint).not.toHaveProperty("line-offset");
     expect(layers[LAYER_IDS.segmentsPending]?.filter).toEqual(expect.arrayContaining([["==", ["get", "serviceId"], "custom-target"]]));
@@ -178,6 +181,22 @@ describe("scaled map and presentation", () => {
     expect(paints[`${LAYER_IDS.currentService}:line-color`]).toBe("#EE2222");
     setSegmentFlashFeatures(map, ids, "custom-target");
     expect(filters[LAYER_IDS.segmentsFlash]).toEqual(["all", ["==", ["get", "serviceId"], "custom-target"], ["in", ["get", "featureId"], ["literal", ids]]]);
+
+    const focusedLayers: Record<string, Record<string, unknown>> = {};
+    const focusedMap = {
+      addSource: () => {},
+      addLayer: (layer: { id: string }) => { focusedLayers[layer.id] = layer; },
+    } as unknown as MapLibreMap;
+    addRailwayLayers(focusedMap, {
+      geometry: data.geometry.ok ? data.geometry.value : undefined,
+      lines: services.lines,
+      services: services.services,
+      targetServiceId: "custom-target",
+      focusBackground: true,
+    });
+    expect(focusedLayers[LAYER_IDS.services]?.paint).toMatchObject({ "line-width": 2, "line-opacity": 0.30 });
+    expect(focusedLayers[LAYER_IDS.currentService]?.paint).toMatchObject({ "line-width": 7 });
+    expect((focusedLayers[LAYER_IDS.currentService]?.paint as Record<string, unknown>)?.["line-opacity"] ?? 1).toBe(1);
   });
 
   it("keeps the legacy fixture overview and starts the live product map on the target", async () => {
