@@ -1041,3 +1041,55 @@ git diff --check
 
 Output: TL;DR; changed files with a one-line purpose each; the test list (what each new test
 proves); the acceptance results; any deviation from the plan with its reason; risks.
+
+## Step 2.1 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the two review findings on the uncommitted Step 2.1 change. The change is in
+`src/features/game/clearReplayStore.ts` and `tests/unit/clear-replay.test.ts`; see `git diff`.
+Keep everything else in the original Step 2.1 prompt above.
+
+Findings to fix:
+1. Medium, natural completion (`setElapsed` / `completeNaturally`, about line 207):
+   - Today a final frame publishes a `done` snapshot while the internal `phase` is still
+     `playing`, and only then calls `completeNaturally()`.
+   - A subscriber that calls `step(-1)` during that notification misses the `done` branch, and
+     its seek is then overwritten by `completeNaturally()`.
+   - Fix it so that, on natural completion, the internal phase is set to `done`, the frame is
+     invalidated (`cancelFrame`, `runId`) and visibility is detached BEFORE subscribers are
+     notified. `done` is notified exactly once.
+2. Low, re-entrancy in `seekTo` (about line 260):
+   - If a subscriber notified by a seek while playing calls `pause()`, `finish()` or another
+     `seek`, the outer `seekTo` still schedules a frame on return, or invalidates the frame that
+     the inner seek scheduled.
+   - Fix: capture the seek generation (`runId`) and `scheduler.now()` before notifying. After
+     notifying, schedule a frame only if that generation is still current and `phase` is still
+     `playing`.
+
+Tests to add (write each first and confirm it fails against the current code):
+- A subscriber calling `step(-1)` and `step(+1)` from inside the natural-completion `done`
+  notification lands paused at the first turn, and the position is not overwritten.
+- A subscriber calling `pause()` inside a seek-while-playing notification leaves no frame
+  scheduled, and the phase stays paused.
+- A subscriber calling `seek(other)` inside a seek notification ends at `other`, still
+  playing, with exactly one live frame.
+- Clock anchor: advance the scheduler time between the last frame and a seek while playing,
+  then assert the next turn boundary arrives exactly one turn duration after the seek time.
+  This catches a stale pre-seek `anchorAt`.
+- The path done → seek → resume → document hidden pauses playback, because the visibility
+  listener is re-attached.
+
+Constraints: the same as the original prompt. Do not weaken or delete any assertion, and keep
+existing behaviour. Do not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-marker.test.ts
+npx vitest run
+npm run build
+git diff --check
+```
+
+Output: TL;DR; what changed for each finding; the new tests and what each one proves; the
+acceptance results; risks.

@@ -30,6 +30,8 @@ export interface ClearReplaySnapshot {
 export interface ClearReplayUiSnapshot {
   readonly phase: ClearReplayPhase;
   readonly recordIndex: number;
+  readonly turnCount: number;
+  readonly seekRevision: number;
 }
 
 export interface ReplayVisibility {
@@ -56,6 +58,8 @@ export interface ClearReplayStore {
   pause(): void;
   resume(): void;
   finish(): void;
+  seek(recordIndex: number): void;
+  step(delta: -1 | 1): void;
   setSpeed(speed: ClearReplaySpeed): void;
   getSpeed(): ClearReplaySpeed;
   setReducedMotion(reduced: boolean): void;
@@ -66,7 +70,12 @@ export interface ClearReplayStore {
 }
 
 const IDLE_SNAPSHOT: ClearReplaySnapshot = { phase: "idle", recordIndex: 0, stepIndex: 0, fraction: 0 };
-const IDLE_UI_SNAPSHOT: ClearReplayUiSnapshot = { phase: "idle", recordIndex: 0 };
+
+/** Resolve a requested cursor to one of the saved turns, excluding the full-route boundary. */
+export function resolveReplaySeekIndex(turnCount: number, recordIndex: number): number | null {
+  if (!Number.isFinite(turnCount) || turnCount < 1 || !Number.isFinite(recordIndex)) return null;
+  return Math.min(turnCount - 1, Math.max(0, Math.trunc(recordIndex)));
+}
 
 interface TurnProgress {
   readonly snapshot: ClearReplaySnapshot;
@@ -137,8 +146,14 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
   let snapshot = IDLE_SNAPSHOT;
   let listeners = new Set<() => void>();
   let phaseListeners = new Set<() => void>();
-  let uiSnapshot = IDLE_UI_SNAPSHOT;
   let uiListeners = new Set<() => void>();
+  let seekRevision = 0;
+  let uiSnapshot: ClearReplayUiSnapshot = {
+    phase: "idle",
+    recordIndex: 0,
+    turnCount: route?.turnSpans.length ?? 0,
+    seekRevision,
+  };
   let phase: ClearReplayPhase = "idle";
   let elapsedMs = 0;
   let turnFraction = 0;
@@ -150,15 +165,28 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
 
   const publish = (next: ClearReplaySnapshot): void => {
     const phaseChanged = snapshot.phase !== next.phase;
-    if (!sameSnapshot(snapshot, next)) {
-      snapshot = next;
+    const snapshotChanged = !sameSnapshot(snapshot, next);
+    const nextUiSnapshot: ClearReplayUiSnapshot = {
+      phase: next.phase,
+      recordIndex: next.recordIndex,
+      turnCount: route?.turnSpans.length ?? 0,
+      seekRevision,
+    };
+    const uiChanged = uiSnapshot.phase !== nextUiSnapshot.phase ||
+      uiSnapshot.recordIndex !== nextUiSnapshot.recordIndex ||
+      uiSnapshot.turnCount !== nextUiSnapshot.turnCount ||
+      uiSnapshot.seekRevision !== nextUiSnapshot.seekRevision;
+
+    // Publish both views before notifying any subscriber so one transition is observed atomically.
+    if (snapshotChanged) snapshot = next;
+    if (uiChanged) uiSnapshot = nextUiSnapshot;
+    if (snapshotChanged) {
       for (const listener of listeners) listener();
     }
     if (phaseChanged) {
       for (const listener of phaseListeners) listener();
     }
-    if (uiSnapshot.phase !== next.phase || uiSnapshot.recordIndex !== next.recordIndex) {
-      uiSnapshot = { phase: next.phase, recordIndex: next.recordIndex };
+    if (uiChanged) {
       for (const listener of uiListeners) listener();
     }
   };
@@ -176,8 +204,11 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
     elapsedMs = value;
     const progress = atElapsed(route, elapsedMs, speed, phase);
     turnFraction = progress.turnFraction;
+    if (progress.snapshot.phase === "done") {
+      completeNaturally();
+      return;
+    }
     publish(progress.snapshot);
-    if (progress.snapshot.phase === "done") completeNaturally();
   };
   const tick = (id: number, now: number): void => {
     if (disposed || id !== runId || phase !== "playing") return;
@@ -220,6 +251,21 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
       setElapsed(elapsedMs);
     }
   };
+  const seekTo = (recordIndex: number): void => {
+    const wasPlaying = phase === "playing";
+    cancelFrame();
+    runId += 1;
+    const seekGeneration = runId;
+    const seekTime = wasPlaying ? scheduler.now?.() ?? null : null;
+    phase = wasPlaying ? "playing" : "paused";
+    elapsedMs = recordIndex * CLEAR_REPLAY_SPEEDS[speed];
+    turnFraction = 0;
+    anchorAt = seekTime;
+    seekRevision += 1;
+    publish(atElapsed(route, elapsedMs, speed, phase).snapshot);
+    if (!wasPlaying || runId !== seekGeneration || phase !== "playing") return;
+    frameHandle = scheduler.request((now) => tick(seekGeneration, now));
+  };
 
   const store: ClearReplayStore = {
     getSnapshot: () => snapshot,
@@ -247,16 +293,19 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
         phase = "paused";
         elapsedMs = 0;
         turnFraction = 0;
-        publish({ ...IDLE_SNAPSHOT, phase: "paused" });
         attachVisibility();
+        publish({ ...IDLE_SNAPSHOT, phase: "paused" });
         return;
       }
       cancelFrame();
       phase = "playing";
       elapsedMs = 0;
       turnFraction = 0;
-      publish({ ...IDLE_SNAPSHOT, phase: "playing" });
       attachVisibility();
+      const startGeneration = runId;
+      publish({ ...IDLE_SNAPSHOT, phase: "playing" });
+      // A subscriber may seek, pause or finish during the notification; keep its clock.
+      if (runId !== startGeneration || phase !== "playing") return;
       startClock();
     },
     pause() {
@@ -276,8 +325,10 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
         return;
       }
       phase = "playing";
-      publish({ ...snapshot, phase: "playing" });
       attachVisibility();
+      const resumeGeneration = runId;
+      publish({ ...snapshot, phase: "playing" });
+      if (runId !== resumeGeneration || phase !== "playing") return;
       startClock();
     },
     finish() {
@@ -288,6 +339,26 @@ export function createClearReplayStore(input: ClearReplayStoreInput): ClearRepla
       phase = "done";
       detachVisibility();
       publish(atElapsed(route, 0, speed, "done").snapshot);
+    },
+    seek(recordIndex) {
+      if (disposed) return;
+      const target = resolveReplaySeekIndex(route?.turnSpans.length ?? 0, recordIndex);
+      if (target === null) return;
+      seekTo(target);
+    },
+    step(delta) {
+      if (disposed) return;
+      const turnCount = route?.turnSpans.length ?? 0;
+      if (turnCount === 0) return;
+      if (phase === "done") {
+        seekTo(0);
+        return;
+      }
+      const current = resolveReplaySeekIndex(turnCount, snapshot.recordIndex);
+      if (current === null) return;
+      const target = resolveReplaySeekIndex(turnCount, current + delta);
+      if (target === null || target === current) return;
+      seekTo(target);
     },
     setSpeed(nextSpeed) {
       if (disposed || nextSpeed === speed) return;
