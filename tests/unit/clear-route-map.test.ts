@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import type { Map as MapLibreMap } from "maplibre-gl";
-import { act, createElement, type RefObject } from "react";
+import { act, createElement, useState, type RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StepPath } from "../../src/features/game/animation/movePath";
 import type { ClearRoute } from "../../src/features/game/clearResult";
-import { createClearReplayStore } from "../../src/features/game/clearReplayStore";
+import { createClearReplayStore, type ClearReplayStore } from "../../src/features/game/clearReplayStore";
 import { clearReplayTurnBounds } from "../../src/features/map/clearRouteCamera";
 import {
   applyClearRouteFit,
@@ -25,6 +25,7 @@ import {
 } from "../../src/features/map/clearRouteLayers";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { useClearRouteMap, type ClearRouteMapInput } from "../../src/features/map/useClearRouteMap";
+import { useClearReplayCamera } from "../../src/features/map/useClearReplayCamera";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
 interface StyleLayer {
@@ -39,7 +40,7 @@ class FakeMap {
   readonly jumps: Array<Record<string, unknown>> = [];
   readonly paddings: unknown[] = [];
   readonly sources = new Map<string, { data: { features: unknown[] } }>();
-  readonly listeners = new Map<string, Set<() => void>>();
+  readonly listeners = new Map<string, Set<(event: { originalEvent?: unknown }) => void>>();
   layers: StyleLayer[];
   styleLoaded = true;
   styleReads = 0;
@@ -83,18 +84,22 @@ class FakeMap {
     this.paddings.push(padding);
   }
   fitBounds(bounds: unknown, options: Record<string, unknown>): void {
+    this.emit("movestart");
     this.calls.push("fitBounds");
     this.fits.push({ bounds, options });
   }
   jumpTo(options: Record<string, unknown>): void {
+    this.emit("movestart");
     this.calls.push("jumpTo");
     this.jumps.push(options);
   }
-  on(event: string, listener: () => void): void {
+  on(event: string, listener: (event: { originalEvent?: unknown }) => void): void {
     this.listeners.set(event, (this.listeners.get(event) ?? new Set()).add(listener));
   }
-  off(event: string, listener: () => void): void { this.listeners.get(event)?.delete(listener); }
-  emit(event: string): void { for (const listener of this.listeners.get(event) ?? []) listener(); }
+  off(event: string, listener: (event: { originalEvent?: unknown }) => void): void { this.listeners.get(event)?.delete(listener); }
+  emit(event: string, payload: { originalEvent?: unknown } = {}): void {
+    for (const listener of this.listeners.get(event) ?? []) listener(payload);
+  }
   /** A replaced style: the basemap layers come back, the app's sources and layers do not. */
   replaceStyle(): void {
     this.sources.clear();
@@ -392,7 +397,7 @@ describe("clear route measurement and fit", () => {
   });
 });
 
-describe("useClearRouteMap", () => {
+describe("clear route layers and replay camera", () => {
   let mounted: MountedReact | null = null;
   let frames: Array<FrameRequestCallback | null> = [];
   let observers: FakeResizeObserver[] = [];
@@ -401,6 +406,38 @@ describe("useClearRouteMap", () => {
   let container: HTMLElement;
   let card: HTMLElement;
   let cardRef: RefObject<HTMLElement | null>;
+  let replayStores: ClearReplayStore[] = [];
+  let currentInput: ClearRouteMapInput | null = null;
+  let updateHookInput: ((input: ClearRouteMapInput) => void) | null = null;
+
+  function HookHarness(): null {
+    const [input, setInput] = useState(() => {
+      if (!currentInput) throw new Error("The clear route map test input is not set");
+      return currentInput;
+    });
+    updateHookInput = setInput;
+    useClearRouteMap(input);
+    useClearReplayCamera(input);
+    return null;
+  }
+
+  class FakeReplayScheduler {
+    private callbacks = new Map<number, (now: number) => void>();
+    private next = 1;
+    request(callback: (now: number) => void): number {
+      const handle = this.next++;
+      this.callbacks.set(handle, callback);
+      return handle;
+    }
+    cancel(handle: number): void { this.callbacks.delete(handle); }
+    now(): number { return 0; }
+    frameAt(time: number): void {
+      const entry = this.callbacks.entries().next().value as [number, (now: number) => void] | undefined;
+      if (!entry) return;
+      this.callbacks.delete(entry[0]);
+      entry[1](time);
+    }
+  }
 
   class FakeResizeObserver {
     readonly targets: Element[] = [];
@@ -421,13 +458,28 @@ describe("useClearRouteMap", () => {
       map: map.asMap(), layersRevision: 0, active: true, route: route(), generation: 1, cardRef, ...overrides,
     };
     render(input);
+    flushFrames();
     return input;
   }
 
   function render(input: ClearRouteMapInput): void {
-    const node = createElement(() => { useClearRouteMap(input); return null; });
-    if (mounted) mounted.render(node);
-    else mounted = mountReact(node);
+    currentInput = input;
+    if (mounted && updateHookInput) act(() => updateHookInput?.(input));
+    else mounted = mountReact(createElement(HookHarness));
+  }
+
+  function mountReplay(map: FakeMap, replayRoute: ClearRoute = route()): {
+    readonly input: ClearRouteMapInput;
+    readonly route: ClearRoute;
+    readonly scheduler: FakeReplayScheduler;
+    readonly store: ClearReplayStore;
+  } {
+    const currentRoute = replayRoute;
+    const scheduler = new FakeReplayScheduler();
+    const store = createClearReplayStore({ route: currentRoute, scheduler });
+    replayStores.push(store);
+    const input = mount(map, { route: currentRoute, replayStore: store });
+    return { input, route: currentRoute, scheduler, store };
   }
 
   beforeEach(() => {
@@ -448,6 +500,10 @@ describe("useClearRouteMap", () => {
   afterEach(() => {
     mounted?.cleanup();
     mounted = null;
+    updateHookInput = null;
+    for (const store of replayStores) store.dispose();
+    replayStores = [];
+    currentInput = null;
     vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
@@ -534,6 +590,7 @@ describe("useClearRouteMap", () => {
     const input = mount(map);
     expect(map.fits).toHaveLength(1);
     render({ ...input, generation: 2 });
+    flushFrames();
     expect(map.fits).toHaveLength(2);
   });
 
@@ -541,8 +598,11 @@ describe("useClearRouteMap", () => {
     const map = new FakeMap(container);
     const input = mount(map);
     map.calls.length = 0;
+    window.dispatchEvent(new Event("resize"));
+    expect(frames).toHaveLength(1);
 
     render({ ...input, active: false });
+    expect(frames[0], "leaving the clear screen cancels its scheduled camera work").toBeNull();
 
     expect(map.calls).toEqual([
       `removeLayer:${CLEAR_ROUTE_LAYER_IDS.line}`, `removeLayer:${CLEAR_ROUTE_LAYER_IDS.outline}`,
@@ -554,6 +614,23 @@ describe("useClearRouteMap", () => {
     window.dispatchEvent(new Event("resize"));
     flushFrames();
     expect(map.fits).toHaveLength(0);
+  });
+
+  it("removes and reattaches the same clear listeners without accumulating them", () => {
+    const map = new FakeMap(container);
+    const input = mount(map);
+    const listenersWhileClear = Object.fromEntries(
+      [...map.listeners].map(([event, listeners]) => [event, listeners.size]),
+    );
+    expect(Object.values(listenersWhileClear).some((count) => count > 0)).toBe(true);
+
+    render({ ...input, active: false });
+    expect([...map.listeners.values()].every((listeners) => listeners.size === 0)).toBe(true);
+
+    render(input);
+    expect(Object.fromEntries(
+      [...map.listeners].map(([event, listeners]) => [event, listeners.size]),
+    )).toEqual(listenersWhileClear);
   });
 
   it("does nothing for a route that could not be verified or outside the clear screen", () => {
@@ -640,6 +717,163 @@ describe("useClearRouteMap", () => {
     replayStore.dispose();
   });
 
+  it("fits saved turns and coalesces resize and card layout reads into one frame", () => {
+    const map = new FakeMap(container);
+    const { route: replayRoute, scheduler, store } = mountReplay(map);
+    expect(map.fits[0]?.bounds).toEqual(replayRoute.bounds);
+    map.fits.length = 0;
+
+    store.start();
+    scheduler.frameAt(0);
+    flushFrames();
+    expect(map.fits).toHaveLength(1);
+    expect(map.fits[0]?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 0));
+    map.fits.length = 0;
+
+    cardRect = rect(350, 20, 440, 660);
+    scheduler.frameAt(600);
+    window.dispatchEvent(new Event("resize"));
+    act(() => observers[0]?.callback());
+    window.dispatchEvent(new Event("orientationchange"));
+    expect(frames, "the turn notification and all layout notifications share one frame").toHaveLength(1);
+    flushFrames();
+
+    expect(map.fits).toHaveLength(1);
+    expect(map.fits[0]?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 1));
+    expect((map.fits[0]?.options.padding as { left: number }).left).toBe(350 + 440 + CLEAR_FIT_MARGIN_PX);
+  });
+
+  it("ignores programmatic camera events but locks after user camera events", () => {
+    const map = new FakeMap(container);
+    const { route: replayRoute, scheduler, store } = mountReplay(map, route(undefined, 3));
+    map.fits.length = 0;
+    store.start();
+    scheduler.frameAt(0);
+    flushFrames();
+    expect(map.fits).toHaveLength(1);
+    expect(map.fits[0]?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 0));
+
+    map.emit("movestart");
+    scheduler.frameAt(600);
+    flushFrames();
+    expect(map.fits).toHaveLength(2);
+    expect(map.fits[1]?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 1));
+
+    map.emit("dragstart", { originalEvent: { type: "pointerdown" } });
+    scheduler.frameAt(1_200);
+    flushFrames();
+    expect(map.fits, "a user drag locks the next automatic turn fit").toHaveLength(2);
+  });
+
+  it("fits a same-turn explicit seek once while the manual lock stays on", () => {
+    const map = new FakeMap(container);
+    const { route: replayRoute, scheduler, store } = mountReplay(map);
+    map.fits.length = 0;
+    store.start();
+    scheduler.frameAt(0);
+    flushFrames();
+    expect(map.fits[0]?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 0));
+
+    map.emit("zoomstart", { originalEvent: { type: "wheel" } });
+    store.seek(0);
+    flushFrames();
+    expect(map.fits).toHaveLength(2);
+    expect(map.fits[1]?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 0));
+
+    cardRect = rect(350, 20, 500, 650);
+    window.dispatchEvent(new Event("resize"));
+    flushFrames();
+    expect(map.fits, "the forced seek does not clear the manual lock when a new layout would refit").toHaveLength(2);
+  });
+
+  it("drops an unmeasurable seek when playback advances to another turn", () => {
+    const map = new FakeMap(container);
+    const { route: replayRoute, scheduler, store } = mountReplay(map, route(undefined, 3));
+    map.fits.length = 0;
+    store.start();
+    scheduler.frameAt(0);
+    flushFrames();
+    expect(map.fits[0]?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 0));
+
+    map.emit("dragstart", { originalEvent: { type: "pointerdown" } });
+    cardRect = rect(420, 40, 0, 0);
+    store.seek(0);
+    flushFrames();
+    expect(map.fits).toHaveLength(1);
+
+    scheduler.frameAt(600);
+    flushFrames();
+    expect(store.getUiSnapshot().recordIndex).toBe(1);
+
+    cardRect = rect(420, 40, 440, 720);
+    window.dispatchEvent(new Event("resize"));
+    flushFrames();
+    expect(map.fits, "the stale seek cannot force-fit the later turn through the manual lock").toHaveLength(1);
+  });
+
+  it("lets completion supersede a queued turn fit and frame the full route", () => {
+    const map = new FakeMap(container);
+    const { route: replayRoute, store } = mountReplay(map);
+    map.fits.length = 0;
+
+    store.start();
+    map.emit("dragstart", { originalEvent: { type: "pointerdown" } });
+    store.finish();
+    flushFrames();
+
+    expect(map.fits).toHaveLength(1);
+    expect(map.fits[0]?.bounds).toEqual(replayRoute.bounds);
+  });
+
+  it("unlocks automatic framing when a new playback starts after completion", () => {
+    const map = new FakeMap(container);
+    const { route: replayRoute, scheduler, store } = mountReplay(map);
+    store.start();
+    scheduler.frameAt(0);
+    flushFrames();
+    map.emit("dragstart", { originalEvent: { type: "pointerdown" } });
+    store.finish();
+    flushFrames();
+    const fitCountAfterDone = map.fits.length;
+
+    store.start();
+    scheduler.frameAt(0);
+    flushFrames();
+
+    expect(map.fits).toHaveLength(fitCountAfterDone + 1);
+    expect(map.fits.at(-1)?.bounds).toEqual(clearReplayTurnBounds(replayRoute, 0));
+  });
+
+  it("keeps a manual pan made after playback starts but before its queued camera fit", () => {
+    const map = new FakeMap(container);
+    const { store } = mountReplay(map);
+    map.fits.length = 0;
+
+    store.start();
+    map.emit("dragstart", { originalEvent: { type: "pointerdown" } });
+    flushFrames();
+
+    expect(map.fits, "the later user pan wins over the already queued startup fit").toHaveLength(0);
+  });
+
+  it("keeps the manual lock across a style reload", () => {
+    const map = new FakeMap(container);
+    const { input, scheduler, store } = mountReplay(map, route(undefined, 3));
+    store.start();
+    scheduler.frameAt(0);
+    flushFrames();
+    map.emit("dragstart", { originalEvent: { type: "pointerdown" } });
+    const fitCountBeforeReload = map.fits.length;
+
+    map.replaceStyle();
+    render({ ...input, layersRevision: 1 });
+    flushFrames();
+    scheduler.frameAt(600);
+    flushFrames();
+
+    expect(map.fits).toHaveLength(fitCountBeforeReload);
+  });
+
   it("holds the write while the style is absent and applies it when the style is back", () => {
     const map = new FakeMap(container);
     map.styleLoaded = false;
@@ -660,6 +894,7 @@ describe("useClearRouteMap", () => {
     mapRect = rect(0, 0, 1100, 700);
     window.dispatchEvent(new Event("resize"));
     map.emit("remove");
+    expect(frames[0], "map removal cancels its scheduled camera work").toBeNull();
     flushFrames();
 
     expect(map.fits).toHaveLength(0);

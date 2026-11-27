@@ -1307,3 +1307,175 @@ Output:
 - the acceptance results;
 - any deviation from the plan, with its reason;
 - risks.
+
+## Step 2.4 — implement (visible)
+
+Objective: implement Step 2.4 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step is the clear-replay camera: it frames each saved turn, keeps a manual pan/zoom,
+and shows the full route at the end. Also capture screenshots for the user.
+
+Scope:
+- IN: exactly the "Step 2.4" section of the plan, plus the D1 row in section 2 and the
+  `useClearReplayCamera` interface block in section 3. Read all of them in full.
+  - New `src/features/map/useClearReplayCamera.ts` takes camera ownership from
+    `src/features/map/useClearRouteMap.ts`. The route-layer lifecycle stays in
+    `useClearRouteMap.ts`.
+  - The hook subscribes to the turn-level UI snapshot (`replayStore.subscribeUi` /
+    `getUiSnapshot`), never to per-frame snapshots.
+    - Fit each saved turn's bounds (`clearReplayTurnBounds` from `clearRouteCamera.ts`, Step
+      2.3) instantly (`animate: false`), at the existing `CLEAR_FIT_MAX_ZOOM`, with the measured
+      clear card / strip padding (`measureClearFit` / `clearFitPadding`).
+    - Coalesce layout reads to one per animation frame.
+    - Unresolved bounds (`null`) keep the current view.
+  - Manual lock:
+    - A user pan/zoom (`USER_CAMERA_EVENTS` + `isUserCameraEvent` in `camera.ts`) locks
+      automatic per-turn fits and layout refits.
+    - An explicit seek/step (a `seekRevision` change in the UI snapshot) forces exactly ONE fit
+      of the chosen turn, and the lock stays on.
+    - Completion (`phase` → `done`) always fits the full `route.bounds`, overriding the lock,
+      and supersedes any queued turn work.
+    - A new playback (`start()` from idle/done, i.e. a phase transition back to playing at
+      record 0 after done or idle) clears the lock.
+    - A style reload does not clear it.
+  - Reduced motion keeps today's instant full-route path.
+  - When the results card is expanded (`cardExpanded`, Step 2.2), the camera fits the full
+    route with the card's padding, as today.
+  - Scheduled work is cancelled on reset/teardown and when the map is removed.
+  - Make no per-frame MapLibre writes.
+  - Keep `RailwayMap.tsx` at or under 800 lines (about 697 now). The new hook is wired where
+    `useClearRouteMap` is called today.
+- Tests:
+  - `tests/unit/clear-route-map.test.ts`:
+    - turn and layout scheduling;
+    - user vs programmatic camera events;
+    - a same-turn explicit fit under the lock;
+    - completion beats stale queued work;
+    - a new playback unlocks;
+    - a style reload keeps the lock.
+  - `tests/e2e/clear-replay-share.spec.ts` around :698 (the fake-clock case), extended:
+    - automatic framing per turn;
+    - a manual pan survives a turn change;
+    - a full-route finish.
+
+    Keep its prefix, caption and replay-again assertions.
+  - **Intentional update** at `clear-replay-share.spec.ts` about :882. The check that the whole
+    accumulated prefix fits above the band becomes a check that the active turn fits above the
+    band. Complete-route framing after finish stays asserted. Do not change any other existing
+    assertion.
+- Screenshots (user-facing; the user cannot open /tmp). Save them to `.claude/logs/screenshots/`:
+  - `issue72-s24-turn-desktop.png` and `issue72-s24-turn-phone.png`: mid-replay, framed on one
+    turn;
+  - `issue72-s24-done-desktop.png`: the full route after the finish.
+
+  Take them from a real app build, desktop 1280×800 and phone 390×844. You may use a temporary
+  spec `tests/e2e/tmp-issue72-s24-shots.spec.ts`, which MUST be deleted before you finish.
+  Reusing the `clear-replay-share.spec.ts` setup is fine.
+- OUT: the strip UI, 「結果を表示」 and the seek bar (Steps 2.5/2.6), DESIGN.md, STATE.md and
+  the plan files. Add no new dependencies, and do not commit or push. Never `pkill -f`; keep
+  Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion except the one intentional update above.
+  - Share and results flows are unchanged.
+  - If a plan assumption contradicts the code, follow the code and report it.
+  - Lesson from Steps 2.1/2.2: anything scheduled from a store notification must stay correct if
+    the store changes again before it runs. Re-read the latest UI snapshot when the scheduled
+    work executes, instead of trusting the captured value.
+
+Context:
+- Steps 2.1–2.3 have landed (27404ab, 1fa1751, e6001bb).
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-route-map.test.ts tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium --grep 'keeps the caption and partial route|draws the full route|reduced-motion replay'
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the new and changed tests, with what each one proves;
+- the screenshot paths;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.4 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 2.4 change and narrow the `inert`
+exception. Everything in the "Step 2.4 — implement (visible)" prompt above still applies. The
+full review is `.claude/logs/codex/*issue72-s24-review.md` (the latest); read it.
+
+Fix:
+1. Medium: a pending seek fit leaks onto a later turn (`useClearReplayCamera.ts` about :99).
+   - Scenario: the user pans manually, then seeks while playing, and the card cannot be
+     measured in that frame. `pendingSeekFit` stays set. When the turn advances before
+     measurement succeeds, the camera fits a DIFFERENT turn through the lock.
+   - Fix: tie the pending seek to its `seekRevision` and its chosen record index. Retry only
+     while the UI snapshot is still on that revision and turn, and drop it otherwise.
+   - Completion still fits the full route.
+2. Medium: an E2E rendering assertion was lost (`tests/e2e/clear-replay-share.spec.ts` about
+   :495).
+   - The old helper also asserted `featureCount > 0` (the partial route is drawn) at each call
+     site.
+   - Restore that drawn-route assertion at all three call sites. They are the 320 px
+     play/pause check and the 390 px play check. Only the framing check switches to the active
+     turn.
+   - Also make the active-turn framing check independent of the implementation. Compute the
+     expected turn bounds from the fixture or route data in the test (not from
+     `clearCameraTarget`), and compare. A regression that passes full-route bounds with the
+     right record index must fail.
+3. Low: unit test adequacy (`tests/unit/clear-route-map.test.ts` about :751).
+   - The same-turn seek-under-lock test fires `resize` without changing dimensions. Change the
+     card size, so that a released lock would refit.
+   - In the completion-vs-stale-work test, set the lock by a user drag before completing.
+   - Add the unmeasurable-seek regression from item 1.
+   - Add a listener-count check when entering and leaving clear on the same map.
+4. Narrow the `inert` exception in `RailwayMap.tsx` (about :658). Today the clear mode drops
+   `inert` from the whole map wrapper. Keep pointer pan/zoom working in clear mode, but:
+   - While in clear mode, remove the MapLibre canvas from the Tab order (`tabIndex = -1` on
+     `map.getCanvas()`). Restore the original value on leaving clear, because the map is
+     persistent across modes.
+   - Do not let a pointer click on the canvas trap keyboard focus there in clear mode (e.g.
+     blur, or keep it non-focusable).
+   - Suppress station popups in clear mode, as `inert` did before.
+   - Keep the attribution control keyboard-reachable.
+   - Add tests: the canvas `tabIndex` toggles on clear enter/leave and is restored; station
+     popups do not open in clear mode.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion other than
+the one intentional framing update. Do not commit.
+
+Re-take the screenshots if the visible result changed. The paths are the same:
+- `.claude/logs/screenshots/issue72-s24-turn-desktop.png`
+- `.claude/logs/screenshots/issue72-s24-turn-phone.png`
+- `.claude/logs/screenshots/issue72-s24-done-desktop.png`
+
+Delete any temporary spec before you finish.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-route-map.test.ts tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new and changed tests, with what each one proves;
+- the acceptance results;
+- the screenshot status;
+- risks.

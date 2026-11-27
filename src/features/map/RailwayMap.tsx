@@ -7,7 +7,7 @@ import {
 import "maplibre-gl/dist/maplibre-gl.css";
 import "./maplibreWorker";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import type { RefObject } from "react";
+import type { MutableRefObject, RefObject } from "react";
 import type { RailwayData } from "../../data/loaders";
 import type { Position } from "../../types/data";
 import type { LivePosition } from "../game/animation/livePosition";
@@ -76,6 +76,8 @@ import type { ClearReplayStore } from "../game/clearReplayStore";
 import type { HistoryRow } from "../game/historyRows";
 import { ClearReplayMapCaption } from "../game/components/ClearReplayControls";
 import { useClearRouteMap } from "./useClearRouteMap";
+import { useClearReplayCamera } from "./useClearReplayCamera";
+import { useClearMapInteraction } from "./useClearMapInteraction";
 import { shouldShowGameplayPosition } from "./clearReplayMarker";
 import { useSegmentFlash } from "./useSegmentFlash";
 import { useLotteryCandidateOverlay } from "./useLotteryCandidateOverlay";
@@ -156,9 +158,15 @@ function usesCompactAttribution(): boolean {
   return usesBottomPanelCameraPadding();
 }
 
-function attachStationPopup(map: MapLibreMap): void {
+function attachStationPopup(
+  map: MapLibreMap,
+  isClearMode: () => boolean,
+  popupRef: MutableRefObject<Popup | null>,
+): void {
   bindStationInteractions(map, ({ name, lineNames, lngLat }) => {
-    new Popup({ closeButton: true })
+    if (isClearMode()) return;
+    // Kept so entering the clear screen can close a popup left open from gameplay.
+    popupRef.current = new Popup({ closeButton: true })
       .setLngLat(lngLat)
       .setDOMContent(createStationPopupContent(name, lineNames))
       .addTo(map);
@@ -231,6 +239,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   const attemptRef = useRef(attempt);
   attemptRef.current = attempt;
   const modeRef = useRef(mode);
+  const stationPopupRef = useRef<Popup | null>(null);
   modeRef.current = mode;
   const headingMarkerRef = useRef<HeadingMarkerController | null>(null);
   // Bumped when a replaced style forced the layers to be re-added, so the
@@ -375,7 +384,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       initialised = true;
       layersReady = true;
       schedulePaintedState();
-      attachStationPopup(map);
+      attachStationPopup(map, () => modeRef.current === "clear", stationPopupRef);
       for (const type of USER_CAMERA_EVENTS) {
         map.on(type, (event: { originalEvent?: unknown }) => {
           if (!isUserCameraEvent(event)) return;
@@ -408,6 +417,8 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   useLayoutEffect(() => {
     if (loadedMap) applyBasemapLabelFocus(loadedMap, basemapLabelPatchesRef.current, basemapLabelsFocused);
   }, [loadedMap, layersRevision, basemapLabelsFocused]);
+
+  useClearMapInteraction(loadedMap, mode === "clear", stationPopupRef);
 
   // Only this component re-renders on animation frames, not the game UI.
   const framePosition = useSyncExternalStore(livePosition.subscribe, livePosition.get, livePosition.get);
@@ -488,10 +499,12 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     if (loadedMap) updateGoalStation(loadedMap, goalStationId);
   }, [loadedMap, layersRevision, goalStationId]);
   useSegmentFlash(loadedMap, layersRevision, segmentFlash, targetServiceId);
-  useClearRouteMap({
+  const clearRouteMapInput = {
     map: loadedMap, layersRevision, active: mode === "clear", route: clearRoute, generation: clearRouteKey,
     cardRef: clearCardRef, replayStore: clearReplayStore,
-  });
+  };
+  useClearRouteMap(clearRouteMapInput);
+  useClearReplayCamera(clearRouteMapInput);
 
   useEffect(() => {
     if (mode !== "title" || !loadedMap || !data.services.ok) return;
@@ -652,7 +665,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
 
   return (
     <>
-      <div inert={inert}>
+      <div inert={inert && mode !== "clear"}>
         <div ref={setMapContainer} className="map-container" />
         {showNavigationControls && <div className="map-overview" aria-label="地図表示範囲">
           <button type="button" disabled={!loadedMap} onClick={() => {

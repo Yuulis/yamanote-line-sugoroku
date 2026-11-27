@@ -5,11 +5,33 @@ import { expect, test } from "./fixtures";
 import { openClearHistory, openTitle, panelStat, readMap, revealUnadjustedRoll, rollOnce, writeSaveText } from "./support/app";
 import { PRODUCT_HISTORY_CLEAR_ROUTE_LEGS, PRODUCT_HISTORY_SCENARIO_TURNS } from "./fixtures/seeds";
 import { readShareLog, stubShareApis, type ShareLogEntry } from "./support/shareStubs";
+import { buildGeometryIndex } from "../../src/features/game/animation/movePath";
+import { deriveClearResult } from "../../src/features/game/clearResult";
+import { restoreGame } from "../../src/features/game/engine";
+import { createPresentationResolver } from "../../src/features/game/presentationResolver";
+import { loadBundle } from "./fixtures/bundle";
+import { playTurn } from "./fixtures/productGame";
 
 // Issue #69, S2: the published clear result on screen. The pinned save is one roll before the clear.
 test.use({ dataset: "real" });
 
 const PINNED_SAVE = readFileSync(new URL("./fixtures/tokyo-suburban-before-clear-save.json", import.meta.url), "utf8").trimEnd();
+const EXPECTED_CLEAR_ROUTE = await (async () => {
+  const bundle = await loadBundle("real");
+  if (!bundle.data.geometry.ok) throw new Error("The real fixture bundle must carry route geometry");
+  const restored = restoreGame(PINNED_SAVE, bundle.network);
+  if (restored.status !== "playing") throw new Error("The pinned save must be one roll before the clear");
+  const game = playTurn(restored as Parameters<typeof playTurn>[0], bundle.network).state;
+  const { route } = deriveClearResult({
+    game,
+    network: bundle.network,
+    geometry: buildGeometryIndex(bundle.data.geometry.value),
+    presentation: createPresentationResolver(bundle.network),
+    display: { title: "Test", subtitle: "Test", documentTitle: "Test", ruleParagraphs: [] },
+  });
+  if (!route) throw new Error("The pinned save must derive a verified route fixture");
+  return route;
+})();
 const PHONE_SMALL = { width: 320, height: 568 } as const;
 const PHONE_MEDIUM = { width: 390, height: 844 } as const;
 const DESKTOP = { width: 1280, height: 800 } as const;
@@ -371,18 +393,24 @@ interface ClearRouteReading {
   viewport: { width: number; height: number };
   card: Box | null;
   padding: { top: number; right: number; bottom: number; left: number } | null;
+  cameraTarget: { bounds: [[number, number], [number, number]]; recordIndex: number | null } | null;
+  cameraBounds: Box | null;
+  camera: { center: { lng: number; lat: number }; zoom: number };
   mapControlsVisible: boolean;
 }
 
 interface E2EMapHook {
   map?: E2ERouteMap | null;
   clearFitPadding?: ClearRouteReading["padding"];
+  clearCameraTarget?: ClearRouteReading["cameraTarget"];
 }
 
 interface E2ERouteMap {
   getSource(id: string): { serialize(): { data: { features: { geometry: { coordinates: [number, number][] } }[] } } } | undefined;
   getStyle(): { layers: { id: string }[] };
   project(lngLat: [number, number]): { x: number; y: number };
+  getCenter(): { lng: number; lat: number };
+  getZoom(): number;
 }
 
 /** Read the live map through the e2e-build hook: the route source, its layer order and where its vertices are drawn. */
@@ -392,6 +420,7 @@ async function readClearRoute(page: Page): Promise<ClearRouteReading | null> {
     const map = hook?.map;
     if (!map) return null;
     const features = map.getSource("clear-traveled-route")?.serialize().data.features ?? [];
+    const cameraTarget = hook?.clearCameraTarget ?? null;
     let bounds: Box | null = null;
     for (const feature of features) {
       for (const coordinate of feature.geometry.coordinates) {
@@ -399,6 +428,16 @@ async function readClearRoute(page: Page): Promise<ClearRouteReading | null> {
         bounds = bounds === null
           ? { left: x, top: y, right: x, bottom: y }
           : { left: Math.min(bounds.left, x), top: Math.min(bounds.top, y), right: Math.max(bounds.right, x), bottom: Math.max(bounds.bottom, y) };
+      }
+    }
+    let cameraBounds: Box | null = null;
+    if (cameraTarget) {
+      const [[west, south], [east, north]] = cameraTarget.bounds;
+      for (const coordinate of [[west, south], [west, north], [east, south], [east, north]] as [number, number][]) {
+        const { x, y } = map.project(coordinate);
+        cameraBounds = cameraBounds === null
+          ? { left: x, top: y, right: x, bottom: y }
+          : { left: Math.min(cameraBounds.left, x), top: Math.min(cameraBounds.top, y), right: Math.max(cameraBounds.right, x), bottom: Math.max(cameraBounds.bottom, y) };
       }
     }
     const cardRect = document.querySelector(".clear-screen")?.getBoundingClientRect();
@@ -409,6 +448,9 @@ async function readClearRoute(page: Page): Promise<ClearRouteReading | null> {
       viewport: { width: window.innerWidth, height: window.innerHeight },
       card: cardRect ? { left: cardRect.left, top: cardRect.top, right: cardRect.right, bottom: cardRect.bottom } : null,
       padding: hook.clearFitPadding ?? null,
+      cameraTarget,
+      cameraBounds,
+      camera: { center: map.getCenter(), zoom: map.getZoom() },
       mapControlsVisible: document.querySelector(".map-overview") !== null,
     };
   });
@@ -448,19 +490,6 @@ function framingProblem(reading: ClearRouteReading | null): string {
   return fill >= MIN_ROUTE_FILL_RATIO ? "" : `route fills only ${fill.toFixed(2)} of the open area ${JSON.stringify(region)}`;
 }
 
-/** Empty when a partial replay route stays in the open map region, without requiring the full route bounds. */
-function routeOutsideOpenRegion(reading: ClearRouteReading | null): string {
-  if (!reading?.bounds || !reading.card) return "route or card not available yet";
-  const { bounds, card, viewport } = reading;
-  const region = openRegion(card, viewport);
-  const tolerance = FRAMING_TOLERANCE_PX;
-  if (bounds.left < region.left - tolerance || bounds.top < region.top - tolerance
-    || bounds.right > region.right + tolerance || bounds.bottom > region.bottom + tolerance) {
-    return `route ${JSON.stringify(bounds)} is outside the open area ${JSON.stringify(region)}`;
-  }
-  return "";
-}
-
 async function expectRouteFramedBesideCard(page: Page): Promise<ClearRouteReading> {
   await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0, { message: "the route source carries one feature per leg" })
     .toBe(PRODUCT_HISTORY_CLEAR_ROUTE_LEGS);
@@ -470,11 +499,60 @@ async function expectRouteFramedBesideCard(page: Page): Promise<ClearRouteReadin
   return reading;
 }
 
-async function expectPartialRouteInsideOpenMap(page: Page): Promise<void> {
+/** Rebuild the expected bounds from the pinned route fixture, independently of the map camera target. */
+function expectedTurnBounds(recordIndex: number): [[number, number], [number, number]] | null {
+  if (!Number.isInteger(recordIndex)) return null;
+  const span = EXPECTED_CLEAR_ROUTE.turnSpans[recordIndex];
+  if (!span) return null;
+  if (span.firstStepIndex === span.endStepIndexExclusive) {
+    const destination = span.destination;
+    return destination ? [[destination[0], destination[1]], [destination[0], destination[1]]] : null;
+  }
+  const points = EXPECTED_CLEAR_ROUTE.steps
+    .slice(span.firstStepIndex, span.endStepIndexExclusive)
+    .flatMap((step) => step.points);
+  if (points.length === 0) return null;
+  const longitudes = points.map(([longitude]) => longitude);
+  const latitudes = points.map(([, latitude]) => latitude);
+  return [
+    [Math.min(...longitudes), Math.min(...latitudes)],
+    [Math.max(...longitudes), Math.max(...latitudes)],
+  ];
+}
+
+/** Empty when the active saved turn's camera bounds fit and fill the map area outside the current card. */
+function activeTurnFramingProblem(reading: ClearRouteReading | null, recordIndex: number): string {
+  if (!reading?.cameraTarget || !reading.cameraBounds || !reading.card) return "turn camera target is not available yet";
+  const expectedBounds = expectedTurnBounds(recordIndex);
+  if (!expectedBounds) return `fixture has no bounds for turn ${recordIndex}`;
+  if (reading.cameraTarget.recordIndex !== recordIndex) {
+    return `camera targets turn ${reading.cameraTarget.recordIndex}, expected ${recordIndex}`;
+  }
+  const matchesExpectedBounds = reading.cameraTarget.bounds.every((corner, cornerIndex) =>
+    corner.every((coordinate, coordinateIndex) => Math.abs(coordinate - expectedBounds[cornerIndex]![coordinateIndex]!) <= 1e-8));
+  if (!matchesExpectedBounds) {
+    return `camera targets bounds ${JSON.stringify(reading.cameraTarget.bounds)}, expected fixture turn ${JSON.stringify(expectedBounds)}`;
+  }
+  const region = openRegion(reading.card, reading.viewport);
+  const bounds = reading.cameraBounds;
+  const tolerance = FRAMING_TOLERANCE_PX;
+  if (bounds.left < region.left - tolerance || bounds.top < region.top - tolerance
+    || bounds.right > region.right + tolerance || bounds.bottom > region.bottom + tolerance) {
+    return `active turn ${JSON.stringify(bounds)} is outside the open area ${JSON.stringify(region)}`;
+  }
+  return "";
+}
+
+async function expectCaptionTurnFramed(page: Page, caption: Locator): Promise<void> {
+  await expect.poll(async () => {
+    const recordIndex = Number(await caption.getAttribute("data-record-index"));
+    return activeTurnFramingProblem(await readClearRoute(page), recordIndex);
+  }, { message: "the active turn is framed in the open map area" }).toBe("");
+}
+
+async function expectPartialRouteDrawn(page: Page, context: string): Promise<void> {
   await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0,
-    { message: "the partial replay route is still drawn" }).toBeGreaterThan(0);
-  await expect.poll(async () => routeOutsideOpenRegion(await readClearRoute(page)),
-    { message: "the partial route remains inside the uncovered map area after refit" }).toBe("");
+    { message: `the partial route is drawn during ${context}` }).toBeGreaterThan(0);
 }
 
 async function expectExpandedPhoneSheet(clear: Locator, viewportHeight: number): Promise<void> {
@@ -715,17 +793,46 @@ test.describe("turn-synced replay", () => {
     await startReplay(clear);
     await expect(caption).toBeVisible();
     await expect(caption).toHaveAttribute("data-record-index", "0");
+    await page.clock.runFor(20);
+    await expectCaptionTurnFramed(page, caption);
     await page.clock.runFor(1_100);
+    await page.clock.runFor(20);
     await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(0);
     const advancedIndex = Number(await caption.getAttribute("data-record-index"));
+    await expectCaptionTurnFramed(page, caption);
+    const cameraBeforePan = (await readClearRoute(page))?.camera;
+    await page.mouse.move(120, 300);
+    await page.mouse.down();
+    await page.mouse.move(210, 350, { steps: 6 });
+    await page.mouse.up();
+    await page.clock.runFor(20);
+    const cameraAfterPan = (await readClearRoute(page))?.camera;
+    expect(cameraAfterPan && cameraBeforePan && (
+      Math.abs(cameraAfterPan.center.lng - cameraBeforePan.center.lng) > 1e-4 ||
+      Math.abs(cameraAfterPan.center.lat - cameraBeforePan.center.lat) > 1e-4 ||
+      Math.abs(cameraAfterPan.zoom - cameraBeforePan.zoom) > 0.01
+    ), "a user camera pan moves the replay camera").toBe(true);
+    const indexAfterPan = Number(await caption.getAttribute("data-record-index"));
+    await page.clock.runFor(1_100);
+    await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(indexAfterPan);
+    const cameraAfterTurn = (await readClearRoute(page))?.camera;
+    expect(cameraAfterTurn && cameraAfterPan &&
+      Math.abs(cameraAfterTurn.center.lng - cameraAfterPan.center.lng) < 1e-4 &&
+      Math.abs(cameraAfterTurn.center.lat - cameraAfterPan.center.lat) < 1e-4 &&
+      Math.abs(cameraAfterTurn.zoom - cameraAfterPan.zoom) < 0.01,
+    "the manual camera position survives an automatic turn change").toBe(true);
     await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0,
       { message: "the map source advances with the caption turn" }).toBeGreaterThan(0);
 
     await clear.getByRole("button", { name: "全経路を表示" }).click();
     await expect(caption).toHaveCount(0);
     await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? 0).toBe(fullFeatureCount);
+    await page.clock.runFor(20);
+    await expectRouteFramedBesideCard(page);
     await startReplay(clear);
     await expect(caption).toHaveAttribute("data-record-index", "0");
+    await page.clock.runFor(20);
+    await expectCaptionTurnFramed(page, caption);
     expect(advancedIndex).toBeGreaterThan(0);
     await page.clock.runFor(1_100);
     await expect.poll(async () => (await readClearRoute(page))?.featureCount ?? fullFeatureCount).toBeLessThan(fullFeatureCount);
@@ -896,9 +1003,10 @@ test.describe("turn-synced replay", () => {
     await expect(clear.getByRole("button", { name: "移動履歴を見る" })).toHaveCount(0);
     await expect(caption).toBeVisible();
     await expect.poll(async () => Number(await caption.getAttribute("data-record-index"))).toBeGreaterThan(0);
+    await expectPartialRouteDrawn(page, "320px playback");
     await expect.poll(async () => cameraPaddingChanged(expandedPadding, (await readClearRoute(page))?.padding ?? null),
       { message: "the camera padding changes when the card collapses" }).toBe(true);
-    await expectPartialRouteInsideOpenMap(page);
+    await expectCaptionTurnFramed(page, caption);
     const smallBand = await measureCollapsedBand(clear);
     expect(smallBand.height, "the replay band stays low").toBeLessThanOrEqual(130);
     expect(smallBand.bottomGap, "the replay band stays bottom-anchored").toBeLessThanOrEqual(9);
@@ -911,7 +1019,8 @@ test.describe("turn-synced replay", () => {
     const pausedIndex = await caption.getAttribute("data-record-index");
     await page.waitForTimeout(600);
     await expect(caption).toHaveAttribute("data-record-index", pausedIndex!);
-    await expectPartialRouteInsideOpenMap(page);
+    await expectPartialRouteDrawn(page, "320px paused playback");
+    await expectCaptionTurnFramed(page, caption);
     const pausedBand = await measureCollapsedBand(clear);
     expect(pausedBand.controlsInside).toBe(true);
 
@@ -924,7 +1033,8 @@ test.describe("turn-synced replay", () => {
     await page.setViewportSize(PHONE_MEDIUM);
     await startReplay(clear);
     await expect(clear).toHaveClass(/clear-screen--replay-collapsed/);
-    await expectPartialRouteInsideOpenMap(page);
+    await expectPartialRouteDrawn(page, "390px playback");
+    await expectCaptionTurnFramed(page, caption);
     const mediumBand = await measureCollapsedBand(clear);
     expect(mediumBand.height).toBeLessThanOrEqual(130);
     expect(mediumBand.bottomGap).toBeLessThanOrEqual(9);
