@@ -99,7 +99,7 @@ function createRow(candidate: AdjustmentCandidate): HTMLElement {
   return row;
 }
 
-function createCalloutElement(rows: readonly AdjustmentCandidate[]): { element: HTMLElement; bubble: HTMLElement; leader: HTMLElement } {
+export function createMapCallout(content: readonly Node[]): { element: HTMLElement; bubble: HTMLElement; leader: HTMLElement } {
   const element = document.createElement("div");
   element.className = "map-adjustment-callout";
   element.setAttribute("aria-hidden", "true");
@@ -107,7 +107,7 @@ function createCalloutElement(rows: readonly AdjustmentCandidate[]): { element: 
   element.style.pointerEvents = "none";
   const bubble = document.createElement("div");
   bubble.className = "map-adjustment-callout__bubble";
-  bubble.append(...rows.map(createRow));
+  bubble.append(...content);
   const leader = document.createElement("div");
   leader.className = "map-adjustment-callout__leader";
   element.append(bubble, leader);
@@ -140,7 +140,7 @@ export function mountAdjustmentCallouts(
   candidates: readonly AdjustmentCandidate[],
 ): () => void {
   const callouts: Callout[] = groupCandidatesByStation(candidates).map((group) => {
-    const { element, bubble, leader } = createCalloutElement(group.rows);
+    const { element, bubble, leader } = createMapCallout(group.rows.map(createRow));
     element.dataset.longitude = String(group.position[0]);
     element.dataset.latitude = String(group.position[1]);
     const marker = new Marker({

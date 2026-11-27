@@ -748,3 +748,157 @@ Output (markdown):
 - screenshot paths with sha256;
 - any plan assumption that did not match the code;
 - risks.
+
+## Step 1.9 — implement
+
+Objective: implement Step 1.9 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step, and capture screenshots for the user. The step is item C, the goal emphasis after 30/30:
+a gold ring, a CSS pulse, and a 「ここに着けばゴール」 bubble.
+
+Scope:
+- IN: exactly the "Step 1.9" section of the plan and the plan's C row in section 2. Read both
+  in full.
+  - The ring:
+    - `railway-goal-station` stays the permanent, zoom-aware ring.
+    - Restyle it gold at width 5 px, using named constants in `mapConfig.ts` and the existing
+      radius stops.
+    - Pick a gold that is clearly distinct from the red current-position marker (`#e53935`)
+      and the magenta pending dashes (`#c040cf`), and readable on the Liberty basemap.
+      Something like `#e0a800` / `#d4a017` is a starting point. State your choice.
+  - The bubble:
+    - Export the bubble shell `createMapCallout` from `rollAdjustmentPreview.ts` without
+      changing its existing behaviour.
+    - The new module `src/features/map/goalCallout.ts` mounts a DOM bubble with the exact text
+      「ここに着けばゴール」, plus a second DOM marker whose inner element pulses
+      (opacity/scale, about 3 s) through CSS keyframes in `src/styles.css`.
+    - Both markers are `aria-hidden` and non-interactive, carrying `data-map-goal-callout` and
+      `data-map-goal-pulse`.
+    - Under `@media (prefers-reduced-motion: reduce)` the animation is `none`. The ring and the
+      bubble stay.
+  - Mounting in `RailwayMap.tsx`, preferably in a small hook:
+    - The markers are keyed to the reveal-gated goal coordinate (resolve the existing
+      `goalStationId` prop to station coordinates).
+    - They appear on the gameplay map only. The clear map keeps only the static ring, and the
+      title map shows nothing.
+    - Remember that `GameApp` keeps ONE persistent `RailwayMap` and switches `mode`, so the
+      markers must be torn down on game → clear and game → title, and on map replacement.
+    - Make no per-frame MapLibre writes (see the #62 Step 4b performance finding in the plan).
+  - Keep `RailwayMap.tsx` at or under 800 lines. It is about 679 lines now.
+- Tests:
+  - Extend `tests/e2e/map-visual.spec.ts` "30 of 30 return guidance". Keep its filter, rendered
+    marker, HUD and toast assertions. Add:
+    - a positive gold/5 px paint check on `railway-goal-station`;
+    - no bubble before publication;
+    - the exact 「ここに着けばゴール」 after publication;
+    - computed `animation-name` (or `animation`) `none` under reduced motion. The config uses
+      `reducedMotion: "reduce"`, so also assert the keyframes exist / the animation is set when
+      motion is allowed, if that is practical with `page.emulateMedia`.
+  - `tests/e2e/clear-replay-share.spec.ts` (~734) keeps its goal-ring assertion.
+  - Add unit tests for `goalCallout.ts`: mount, text, the data attributes, aria-hidden,
+    teardown, and no mount without a coordinate.
+  - `tests/unit/roll-adjustment-preview.test.ts` keeps covering the shell.
+- Screenshots (user-facing; the user cannot open /tmp). Save to `.claude/logs/screenshots/`:
+  - `issue72-s19-goal-desktop.png` and `issue72-s19-goal-phone.png`: after 30/30, with the goal
+    ring and bubble visible.
+  - You may reuse the "30 of 30 return guidance" setup through a temporary spec
+    `tests/e2e/tmp-issue72-s19-shots.spec.ts`, which MUST be deleted before you finish. A
+    fixture network is fine.
+- OUT: Step 1.10 and later, DESIGN.md, STATE.md and the plan file. Add no new dependencies, and
+  do not commit or push. Never `pkill -f`; keep Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion.
+  - The roll-adjust bubbles behave exactly as before.
+  - The goal bubble must not reveal anything before the existing 30/30 publication.
+
+Context:
+- Steps 1.1–1.8 have landed. 1.8 is commit 52fae43: the basemap labels fade in gameplay only.
+- Lessons:
+  - Wire behaviour to the current `mode` and props, not to the initial `style.load` closure.
+  - Verify visible behaviour from the running app.
+  - If a plan assumption contradicts the code, follow the code and report it.
+- `.claude/docs/research/feature-map-readability-codebase.md`, section C.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/roll-adjustment-preview.test.ts tests/unit/map-station-markers.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts --project=desktop-chromium --grep '30 of 30 return guidance'
+npx playwright test tests/e2e/map-visual.spec.ts --project=phone-chromium --grep @layout
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium --grep 'keeps the goal ring'
+wc -l src/features/map/RailwayMap.tsx
+git status --short   # tmp spec must be gone
+git diff --check
+```
+
+Output (markdown):
+- changed files, one line each;
+- the colour and constants chosen;
+- the module API;
+- how mount/teardown follows mode and the goal publication;
+- the tests added or extended;
+- acceptance results with pass/fail counts;
+- screenshot paths with sha256;
+- any plan assumption that did not match the code;
+- risks.
+
+## Step 1.9 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the uncommitted Step 1.9 change so the goal bubble never overlaps the roll-adjust
+bubbles. Also remove the duplicated gold literal. Deliver it as one uncommitted step.
+
+Failure context (Codex Sol low review REJECT, 2026-11-27):
+- Medium: after 30/30, a roll-adjust preview can include a landing at 新橋. 新橋 is the goal,
+  and the Yamanote platform has identical coordinates.
+- The goal bubble (`goalCallout.ts` ~15) and the adjustment bubble (`rollAdjustmentPreview.ts`
+  ~117) then sit at the same anchor with the same 6 px offset, so one hides the other.
+- Lane assignment only considers adjustment bubbles.
+- Low: `src/styles.css` (~715) repeats `#d4a017`, which duplicates `GOAL_STATION_RING_COLOR` in
+  `mapConfig.ts`.
+
+Scope:
+- IN: `src/features/map/goalCallout.ts`, `src/features/map/RailwayMap.tsx` (or a small hook),
+  `src/styles.css`, and tests.
+  - Adjustment bubbles take priority. While roll-adjust callouts are shown (the
+    `adjustmentCandidates` prop is non-empty), do not mount the goal BUBBLE.
+    - The pulse halo stays: it is a ring around the station, not text.
+    - Remount the bubble when the adjustment preview closes.
+    - Keep the effect keyed so that no per-frame work happens.
+  - Colour:
+    - Pass the colour from `GOAL_STATION_RING_COLOR` to the pulse element as a CSS custom
+      property, for example `--map-goal-ring-color`, set in `goalCallout.ts`.
+    - Have the CSS use `var(--map-goal-ring-color)`.
+    - Keep one source of truth.
+- Tests:
+  - Unit (`tests/unit/goal-callout.test.ts`, or a hook test):
+    - the bubble is not mounted while adjustment candidates exist;
+    - the bubble remounts after they clear;
+    - the pulse stays throughout;
+    - the custom property equals `GOAL_STATION_RING_COLOR`.
+  - E2E: if the existing roll-adjust E2E can reach a 30/30 state with an adjustment preview
+    cheaply, add the assertion there. Otherwise rely on the unit and hook tests and say why.
+  - Keep every assertion added in Step 1.9. Weaken nothing.
+- OUT: every other step, DESIGN.md, STATE.md and the plan. Do not commit or push. Never
+  `pkill -f`.
+
+Acceptance:
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/goal-callout.test.ts tests/unit/roll-adjustment-preview.test.ts tests/unit/map-station-markers.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts --project=desktop-chromium --grep '30 of 30 return guidance'
+npx playwright test tests/e2e/map-visual.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output (markdown):
+- changed files;
+- how the priority works (dependencies, mount/unmount);
+- the tests added;
+- acceptance results with pass/fail counts;
+- risks.

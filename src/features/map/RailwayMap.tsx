@@ -79,6 +79,7 @@ import { useClearRouteMap } from "./useClearRouteMap";
 import { shouldShowGameplayPosition } from "./clearReplayMarker";
 import { useSegmentFlash } from "./useSegmentFlash";
 import { useLotteryCandidateOverlay } from "./useLotteryCandidateOverlay";
+import { mountGoalCallout, type GoalCalloutController } from "./goalCallout";
 
 export interface MapFollow {
   enabled: boolean;
@@ -213,7 +214,12 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     () => initialOverviewServices(services, targetServiceId),
     [services, targetServiceId],
   );
+  const goalPosition = useMemo(() => {
+    if (!goalStationId || !data.stations.ok) return null;
+    return data.stations.value.find((station) => station.id === goalStationId)?.coordinates ?? null;
+  }, [data.stations, goalStationId]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const goalCalloutRef = useRef<GoalCalloutController | null>(null);
   const [styleFailed, setStyleFailed] = useState(false);
   const restoreFocusAfterMapFailureRef = useRef(false);
   // The browser cannot create a WebGL2 context: no map can ever be shown here.
@@ -457,6 +463,18 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   useEffect(() => {
     if (loadedMap && completedFeatureIds) updateCompletedSegments(loadedMap, completedFeatureIds, targetServiceId);
   }, [loadedMap, layersRevision, completedKey, targetServiceId]);
+  useEffect(() => {
+    if (!loadedMap || mode !== "game" || !goalPosition) return;
+    const callout = mountGoalCallout(loadedMap, goalPosition);
+    goalCalloutRef.current = callout;
+    return () => {
+      callout.remove();
+      if (goalCalloutRef.current === callout) goalCalloutRef.current = null;
+    };
+  }, [loadedMap, mode, goalStationId, goalPosition]);
+  useEffect(() => {
+    goalCalloutRef.current?.setAdjustmentCandidates(adjustmentCandidates);
+  }, [loadedMap, mode, goalStationId, goalPosition, candidatesKey]);
   useClearNetworkVisibility({
     map: loadedMap, layersRevision, active: mode === "clear", index: mapPresentationIndex, selectedGroupIds, targetServiceId,
   });

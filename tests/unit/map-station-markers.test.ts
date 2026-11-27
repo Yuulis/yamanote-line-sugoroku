@@ -160,6 +160,11 @@ describe("shipped network markers", () => {
       type: "circle",
       source: "railway-stations",
       filter: ["in", ["get", "id"], ["literal", []]],
+      paint: {
+        "circle-stroke-color": "#d4a017",
+        "circle-stroke-width": 5,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 7, 11, 9, 13, 12],
+      },
     });
     expect(layers[LAYER_IDS.segmentsCompleted]?.filter).toEqual(
       ["all", ["==", ["get", "serviceId"], TARGET], ["in", ["get", "featureId"], ["literal", []]]],
