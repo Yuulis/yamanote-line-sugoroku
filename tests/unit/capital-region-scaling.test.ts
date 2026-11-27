@@ -194,7 +194,7 @@ describe("scaled map and presentation", () => {
       targetServiceId: "custom-target",
       focusBackground: true,
     });
-    expect(focusedLayers[LAYER_IDS.services]?.paint).toMatchObject({ "line-width": 2, "line-opacity": 0.30 });
+    expect(focusedLayers[LAYER_IDS.services]?.paint).toMatchObject({ "line-width": 2, "line-opacity": 0.40 });
     expect(focusedLayers[LAYER_IDS.currentService]?.paint).toMatchObject({ "line-width": 7 });
     expect((focusedLayers[LAYER_IDS.currentService]?.paint as Record<string, unknown>)?.["line-opacity"] ?? 1).toBe(1);
   });

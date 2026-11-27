@@ -824,6 +824,7 @@ export function GameApp({ data, network, edition, picker, turnMomentBoundary, in
         markerBearing={turnDisplay?.markerBearing ?? null}
         goalStationId={showClear ? (session?.game.config.startStationId ?? null) : (turnDisplay?.goalGuidance?.stationId ?? null)}
         segmentFlash={turnDisplay?.segmentFlash ?? null}
+        lotteryCandidateServiceIds={mapMode === "game" ? turnDisplay?.lotteryCandidateServiceIds : undefined}
         adjustmentCandidates={turnDisplay?.adjustmentLandings}
         livePosition={livePosition}
         follow={mapFollow}

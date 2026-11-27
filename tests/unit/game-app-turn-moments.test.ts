@@ -159,6 +159,7 @@ describe("GameApp shared turn moment display", () => {
       completedFeatureIds: ["jr-yamanote:shimbashi~hamamatsucho", "jr-yamanote:hamamatsucho~tamachi",
         "jr-yamanote:tamachi~takanawa-gateway", "jr-yamanote:takanawa-gateway~shinagawa"],
     });
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].lotteryCandidateServiceIds).toEqual(lastMove.landing.serviceCandidates);
     expect(status()).toBe("2ターン目：品川に到着。踏破 4/30。抽選結果を表示しています");
     act(() => mounted!.root.render(createElement(Harness, propsFor({ attempt: null, revealStage: "done", restoredOrOmitted: false }))));
     expect(railwayMapProps.mock.calls.at(-1)?.[0].progress).toEqual({
@@ -166,6 +167,7 @@ describe("GameApp shared turn moment display", () => {
       completedFeatureIds: ["jr-yamanote:shimbashi~hamamatsucho", "jr-yamanote:hamamatsucho~tamachi",
         "jr-yamanote:tamachi~takanawa-gateway", "jr-yamanote:takanawa-gateway~shinagawa"],
     });
+    expect(railwayMapProps.mock.calls.at(-1)?.[0].lotteryCandidateServiceIds).toEqual([]);
     expect(mounted!.container.querySelector('[data-stat="ride"]')?.textContent).toBe("テスト南線");
     expect(mounted!.container.querySelector('[data-stat="direction"]')?.textContent).toBe("大森方面");
     expect(mounted!.container.querySelector('[data-stat="roll"]')?.textContent).toBe("2（2マス、2駅移動）");

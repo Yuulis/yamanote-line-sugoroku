@@ -13,7 +13,7 @@ describe("setBackgroundFocus", () => {
     setBackgroundFocus(map, true);
 
     expect(map.setPaintProperty).toHaveBeenNthCalledWith(1, LAYER_IDS.services, "line-width", 2);
-    expect(map.setPaintProperty).toHaveBeenNthCalledWith(2, LAYER_IDS.services, "line-opacity", 0.3);
+    expect(map.setPaintProperty).toHaveBeenNthCalledWith(2, LAYER_IDS.services, "line-opacity", 0.4);
   });
 
   it("restores title width and opacity when disabled", () => {

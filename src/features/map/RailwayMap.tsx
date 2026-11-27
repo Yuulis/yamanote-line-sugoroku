@@ -71,6 +71,7 @@ import { ClearReplayMapCaption } from "../game/components/ClearReplayControls";
 import { useClearRouteMap } from "./useClearRouteMap";
 import { shouldShowGameplayPosition } from "./clearReplayMarker";
 import { useSegmentFlash } from "./useSegmentFlash";
+import { useLotteryCandidateOverlay } from "./useLotteryCandidateOverlay";
 
 export interface MapFollow {
   enabled: boolean;
@@ -97,6 +98,8 @@ interface RailwayMapProps {
   goalStationId?: string | null;
   /** Reveal-gated landings of the open roll-adjustment decision; empty/omitted shows no callouts. */
   adjustmentCandidates?: readonly AdjustmentCandidate[];
+  /** Reveal-gated service candidates during the lottery flip and settle. */
+  lotteryCandidateServiceIds?: readonly string[];
   /** The presented arrival's flash of newly completed target segments; null/omitted clears the flash layer. */
   segmentFlash?: SegmentFlashRequest | null;
   /** Per-frame marker position of a running move; overrides the progress position once set. */
@@ -186,7 +189,7 @@ function navigationControlsContainFocus(mapContainer: HTMLElement | null): boole
 
 const NO_ADJUSTMENT_CANDIDATES: readonly AdjustmentCandidate[] = [];
 
-export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, coachTargetRef, overviewKey, inert = false, clearRoute = null, clearRouteKey, clearCardRef, clearReplayStore, clearHistoryRows = [], targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
+export function RailwayMap({ data, mode = "game", presentation, progress, markerBearing: displayedBearing, goalStationId = null, adjustmentCandidates = NO_ADJUSTMENT_CANDIDATES, lotteryCandidateServiceIds, segmentFlash = null, livePosition = NO_LIVE_POSITION, follow, panelKey, coachTargetRef, overviewKey, inert = false, clearRoute = null, clearRouteKey, clearCardRef, clearReplayStore, clearHistoryRows = [], targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId, minZoom = MAP_MIN_ZOOM }: RailwayMapProps) {
   const services = data.services.ok ? data.services.value.services : [];
   const lines = data.services.ok ? data.services.value.lines : [];
   const segments = data.segments.ok ? data.segments.value : [];
@@ -477,6 +480,12 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   }, [loadedMap, mode, overviewKey, initialServices, data.services]);
 
   const highlightedServiceId = progress?.highlightedServiceId;
+  useLotteryCandidateOverlay(
+    loadedMap,
+    layersRevision,
+    mode === "game" ? lotteryCandidateServiceIds : undefined,
+    serviceGeometry,
+  );
   useEffect(() => {
     if (!loadedMap) return;
     const service = services.find((item) => item.id === highlightedServiceId);

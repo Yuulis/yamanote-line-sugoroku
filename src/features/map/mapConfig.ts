@@ -48,6 +48,8 @@ export function isBasemapError(event: object): boolean {
 export const LAYER_IDS = {
   services: "railway-services",
   base: "railway-base",
+  /** Landing services while the lottery result is being revealed. */
+  lotteryCandidates: "railway-lottery-candidates",
   currentService: "railway-current-service",
   /** White dashed casing beneath the not-yet-traversed target segments. */
   segmentsPendingCasing: "railway-segments-pending-casing",
@@ -82,7 +84,10 @@ export const OTHER_SERVICE_LINE_OPACITY = 0.75;
 /** Focused gameplay background services, issue #72. */
 export const FOCUS_OTHER_SERVICE_LINE_WIDTH = 2;
 /** Opacity for focused gameplay background services, issue #72. */
-export const FOCUS_OTHER_SERVICE_LINE_OPACITY = 0.30;
+export const FOCUS_OTHER_SERVICE_LINE_OPACITY = 0.40;
+/** Lottery candidate lines are emphasised equally while the result is hidden. */
+export const LOTTERY_CANDIDATE_LINE_WIDTH = 4;
+export const LOTTERY_CANDIDATE_LINE_OPACITY = 0.85;
 export const CURRENT_SERVICE_LINE_WIDTH = 7;
 export const NETWORK_FIT_PADDING_DESKTOP = { top: 60, right: 70, bottom: 50, left: 340 };
 export const NETWORK_FIT_PADDING_PHONE = { top: 100, right: 60, left: 20 };

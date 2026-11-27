@@ -31,6 +31,8 @@ import {
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
+  LOTTERY_CANDIDATE_LINE_OPACITY,
+  LOTTERY_CANDIDATE_LINE_WIDTH,
   ORDINARY_STATION_MIN_ZOOM,
   ORDINARY_STATION_RADIUS_STOPS,
   ORDINARY_STATION_STROKE_STOPS,
@@ -143,6 +145,18 @@ export function addRailwayLayers(
         "line-color": buildTrackColorExpression(lines, services, presentation),
         "line-width": focusBackground ? FOCUS_OTHER_SERVICE_LINE_WIDTH : OTHER_SERVICE_LINE_WIDTH,
         "line-opacity": focusBackground ? FOCUS_OTHER_SERVICE_LINE_OPACITY : OTHER_SERVICE_LINE_OPACITY,
+      },
+    });
+    map.addLayer({
+      id: LAYER_IDS.lotteryCandidates,
+      type: "line",
+      source: SOURCE_IDS.segments,
+      filter: ["in", ["get", "featureId"], ["literal", []]],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": buildTrackColorExpression(lines, services, presentation),
+        "line-width": LOTTERY_CANDIDATE_LINE_WIDTH,
+        "line-opacity": LOTTERY_CANDIDATE_LINE_OPACITY,
       },
     });
     map.addLayer({
@@ -355,6 +369,12 @@ export function updateHighlightedService(map: MapLibreMap, featureIds: readonly 
   if (!map.getLayer(LAYER_IDS.currentService)) return;
   map.setFilter(LAYER_IDS.currentService, ["in", ["get", "featureId"], ["literal", [...featureIds]]]);
   map.setPaintProperty(LAYER_IDS.currentService, "line-color", color);
+}
+
+/** Emphasise the public lottery candidates; an empty list clears the overlay. */
+export function updateLotteryCandidates(map: MapLibreMap, featureIds: readonly string[]): void {
+  if (!map.getLayer(LAYER_IDS.lotteryCandidates)) return;
+  map.setFilter(LAYER_IDS.lotteryCandidates, ["in", ["get", "featureId"], ["literal", [...featureIds]]]);
 }
 
 /**

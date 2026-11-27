@@ -530,3 +530,108 @@ Output (markdown):
 - the mutation check results (guard removed → which test failed);
 - the acceptance results with pass/fail counts;
 - risks.
+
+## Step 1.7 — implement
+
+Objective: implement Step 1.7 of `.claude/docs/plans/map-readability-plan.md` as one
+uncommitted step. Step 1.7 adds the A2 lottery-candidate overlay on the map, plus a user tweak
+that makes faded background lines a little darker. Capture screenshots of a lottery stage for
+the user.
+
+Scope:
+- IN: exactly the "Step 1.7" section of the plan and the plan's A2 row (section 2). Read both
+  in full.
+  - Register `LAYER_IDS.lotteryCandidates` in `mapConfig.ts`. The layer is created in
+    `railwayLayers.ts`, between `services` and `currentService` and below Yamanote progress.
+    That takes the map from 13 to 14 layers.
+    - Its initial paint is 4 px at about 0.85 opacity, coloured by line like the other service
+      layers. Use named constants.
+    - It starts with an empty filter.
+  - Export `updateLotteryCandidates(map, featureIds)` from `railwayLayers.ts`. It is guarded:
+    it does nothing when the layer is missing.
+  - `GameApp.tsx` passes the display's `lotteryCandidateServiceIds` (added in Step 1.6) to
+    `RailwayMap` as an optional prop. The title map passes nothing.
+  - `RailwayMap.tsx` resolves the service ids to deduplicated primitive `featureId`s. Use the
+    existing geometry index (see `indexServiceGeometry`, and how the current-service highlight
+    resolves features).
+    - It writes the filter only when the featureId set changes by content (Step 1.6 returns a
+      fresh frozen array whenever the set is non-empty), and on `layersRevision`.
+    - It clears the filter after settle, when the set is empty.
+  - Add the layer to `CLEAR_HIDDEN_OVERLAY_LAYER_IDS` in `clearNetworkVisibility.ts`.
+  - Keep new logic out of `RailwayMap.tsx` where you reasonably can. That file is 650 lines; a
+    small hook or helper module is fine. It must stay at or under 800 lines.
+  - The current-service highlight keeps its existing settle publication boundary. Nothing may
+    leak the winner before settle.
+- User tweak (2026-11-27): in `mapConfig.ts`, change `FOCUS_OTHER_SERVICE_LINE_OPACITY` from
+  0.30 to 0.40. The width stays 2. Update the two assertions that pin 0.30:
+  - `tests/unit/capital-region-scaling.test.ts` (~197);
+  - `tests/unit/railway-layers-background-focus.test.ts` (~16).
+
+  This is an intentional value change, not a weakening. Keep the assertions exact.
+- Tests:
+  - Intentional update of `tests/unit/map-station-markers.test.ts` (~137): pin the exact
+    14-layer order, with `lotteryCandidates` right after `services`, and the empty initial
+    filter.
+  - Add unit tests for `updateLotteryCandidates` (sets the filter; empty clears it; no-op
+    without the layer) and for the content-based change detection.
+  - Extend the existing fake-clock E2E `tests/e2e/ui-pop-turn-moments.spec.ts` (~624), "lottery
+    flip and settle keep HUD, highlight, platform, log, upcoming stations and item results
+    behind one publication". Inside its stage loop, assert that the candidate layer filter
+    equals the deduplicated fixture candidate featureIds in both flip and settle, and that it
+    is empty after settle. Read the filter through the existing E2E hook
+    (`window.__sugorokuE2E.map`, or the spec's helpers).
+  - `tests/e2e/lottery.spec.ts` keeps its assertions unchanged.
+- Screenshots (user-facing; the user cannot open /tmp). Save them to
+  `.claude/logs/screenshots/`:
+  - `issue72-s17-lottery-flip-desktop.png`: a lottery stage with the candidates emphasised,
+    desktop 1280x800.
+  - `issue72-s17-lottery-flip-phone.png`: the same, phone 390x844.
+  - `issue72-s17-game-desktop.png`: an ordinary game map after the 0.40 tweak, desktop
+    1280x800.
+
+  To reach a lottery stage with effects on, reuse the fake-clock approach and helpers from
+  `tests/e2e/support/turnMoments.ts` and the spec above. A temporary spec file
+  `tests/e2e/tmp-issue72-shots.spec.ts` is allowed, run with `--project=desktop-chromium` /
+  `--project=phone-chromium`, but it MUST be deleted before you finish. Also confirm in the
+  page that the candidate filter was non-empty at capture time, and report the featureId count.
+- OUT: Step 1.8 and later, DESIGN.md, STATE.md and the plan file. No new dependencies; do not
+  commit or push. Never `pkill -f`; keep Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion. The 0.30 → 0.40 edits and the 13 → 14 layer
+    order are the only intentional changes.
+  - Make no per-frame map writes.
+
+Context:
+- Steps 1.1–1.6 landed (a5487da, 2f43e99, ffbeeb5, 6078690, 6091e3d, 6eec43f).
+- Lessons from 1.5 and 1.6:
+  - `GameApp` keeps ONE persistent `RailwayMap` and switches `mode` (title/game/clear), so
+    wire everything to current props, not to the initial `style.load` closure.
+  - Verify visible behaviour from the running app.
+  - If a plan assumption contradicts the code, follow the code and report it.
+- Plan sections 1–3; `.claude/docs/research/feature-map-readability-codebase.md` (section A).
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/map-station-markers.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/game-app-turn-moments.test.ts tests/unit/railway-layers-background-focus.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/lottery.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/ui-pop-turn-moments.spec.ts --project=desktop-chromium --grep 'lottery flip and settle keep HUD'
+npx playwright test tests/e2e/lottery.spec.ts --project=phone-chromium --grep @layout
+wc -l src/features/map/RailwayMap.tsx
+git status --short   # tmp spec must be gone
+git diff --check
+```
+
+Output (markdown):
+- changed files, one line each;
+- the layer, constants and function signatures;
+- how feature ids are resolved and how change detection works;
+- the tests added or updated, with intentional updates marked before → after;
+- acceptance results with pass/fail counts;
+- screenshot paths with sha256 and the candidate featureId count at capture;
+- any plan assumption that did not match the code;
+- risks.
