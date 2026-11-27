@@ -83,4 +83,36 @@ describe("clear replay controls and caption", () => {
     expect(speeds[2]?.getAttribute("aria-pressed")).toBe("true");
     expect(replay.getSpeed()).toBe("fast");
   });
+
+  it("shows the playing, paused, done, and expanded result control sets", () => {
+    const replay = createStore();
+    mounted = mountReact(createElement(ClearReplayControls, {
+      store: replay, reducedMotion: false, onAnnounce: () => {},
+    }));
+
+    act(() => replay.start());
+    expect(mounted.container.querySelector(".clear-replay-controls__start")).toBeNull();
+    expect(mounted.container.querySelector(".clear-replay-controls__active")?.textContent)
+      .toContain("一時停止");
+    expect(mounted.container.querySelector(".clear-replay-controls__active")?.textContent)
+      .toContain("全経路を表示");
+    expect(mounted.container.querySelector(".clear-replay-controls__results")).toBeNull();
+
+    act(() => replay.pause());
+    expect(mounted.container.querySelector(".clear-replay-controls__active")?.textContent)
+      .toContain("再開");
+    expect(mounted.container.querySelector(".clear-replay-controls__results")?.textContent)
+      .toBe("結果を表示");
+
+    act(() => replay.finish());
+    expect(mounted.container.querySelector(".clear-replay-controls__active")).toBeNull();
+    expect(mounted.container.querySelector(".clear-replay-controls__start")).toBeNull();
+    expect(mounted.container.querySelector(".clear-replay-controls__results")?.textContent)
+      .toBe("結果を表示");
+
+    act(() => replay.showResults());
+    expect(mounted.container.querySelector(".clear-replay-controls__results")).toBeNull();
+    expect(mounted.container.querySelector(".clear-replay-controls__start")?.textContent)
+      .toBe("軌跡を再生");
+  });
 });

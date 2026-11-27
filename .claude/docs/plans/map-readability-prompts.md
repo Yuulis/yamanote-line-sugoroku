@@ -1479,3 +1479,174 @@ Output:
 - the acceptance results;
 - the screenshot status;
 - risks.
+
+## Step 2.5 — implement (visible)
+
+Objective: implement Step 2.5 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. During replay, both desktop and phone collapse the clear card to a bottom strip. Only an
+explicit 「結果を表示」 restores the centred card (desktop) or the sheet (phone). Also capture
+screenshots for the user.
+
+Scope:
+- IN: exactly the "Step 2.5" section of the plan and the D2 row in section 2. Read both in full.
+  - Files: `src/features/game/components/ClearScreen.tsx`, `ClearReplayControls.tsx` and
+    `clearScreen.css` (find the exact paths). The strip is driven by `cardExpanded` from the
+    replay store's UI snapshot (Step 2.2, `showResults()`), on desktop AND phone.
+  - Strip contents during replay:
+    - pause/resume and speed;
+    - 全経路を表示 (`finish()`): the full route, with the strip kept;
+    - 「移動履歴を見る」 on the desktop strip only. The phone strip keeps today's behaviour: no
+      history trigger during playback.
+  - 「結果を表示」 appears while paused or done, and calls `showResults()`. Only this button
+    expands the card. Natural end and 全経路を表示 keep the strip.
+  - Reduced motion: an instant full route, and the card stays expanded (as the store already
+    does).
+  - Focus hand-off per the D2 row:
+    - Play → strip control;
+    - a disappearing control → a surviving strip control;
+    - 「結果を表示」 → Play, or the results heading.
+
+    Reuse the phone logic at `ClearScreen.tsx` about :139-160 (`hidden` + `inert` +
+    `aria-hidden` on the collapsed card content).
+  - The strip stays behind the history dialog across a resize. Pause-on-history (desktop) and
+    focus return are kept.
+  - The camera (Step 2.4, `useClearReplayCamera`) already measures the card/strip element
+    through `cardRef`. Make sure the collapsed strip is what gets measured, so a turn fits above
+    the strip on desktop as well.
+  - The seek bar and 前/次 buttons are NOT part of this step (Step 2.6). Leave room for them in
+    the strip layout, but do not add them.
+- Tests:
+  - These are the intentional updates in `tests/e2e/clear-replay-share.spec.ts` listed in the
+    plan's Step 2.5 section, and none may be weakened. Line numbers in the plan predate Step
+    2.4, which edited this file, so locate each case by its test name.
+    - "leaves the desktop clear card expanded during replay" becomes "uses a bottom strip on
+      desktop and expands results explicitly", with the positive desktop history-trigger check.
+    - The phone zero-count history assertion inside the 320/390 px case STAYS AS IS.
+    - "restores the phone sheet when replay ends naturally": the strip persists, then an
+      explicit 「結果を表示」 restores the sheet and refits.
+    - The phone finish, restart and speed cases.
+    - The desktop fake-clock case and the desktop speed case: click 「結果を表示」 before each
+      `startReplay()`.
+    - History across a resize.
+    - The "while the replay runs" share case: pause → 「結果を表示」 → share.
+    - The opt-in screenshot cases.
+    - The reduced-motion case.
+  - Keep the Step 2.4 camera assertions: turn framing, manual-pan lock and the drawn-route
+    checks. Update the framing "open region" to the strip on desktop if needed, without
+    loosening the tolerance.
+  - `tests/unit/clear-replay-controls.test.ts`: the playing, paused, done and expanded control
+    sets. Also `tests/unit/clear-screen.test.ts` where affected.
+- Screenshots (user-facing; the user cannot open /tmp), saved to `.claude/logs/screenshots/`:
+  - `issue72-s25-strip-desktop.png`: replay playing, desktop strip at the bottom and the map
+    visible.
+  - `issue72-s25-paused-desktop.png`: paused, with 「結果を表示」 visible.
+  - `issue72-s25-results-desktop.png`: after 「結果を表示」, the centred card.
+  - `issue72-s25-strip-phone.png` and `issue72-s25-paused-phone.png`.
+
+  Take them from a real app build, desktop 1280×800 and phone 390×844. A temporary spec
+  `tests/e2e/tmp-issue72-s25-shots.spec.ts` is fine, but it MUST be deleted before you finish.
+- OUT: the seek bar and 前/次 (Step 2.6), DESIGN.md, STATE.md and the plan files. Add no new
+  dependencies, and do not commit or push. Never `pkill -f`; keep Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion except the intentional updates listed.
+  - The share, history and restart flows keep working.
+  - Keep files at or under 800 lines. `clear-replay-share.spec.ts` may already be long; check
+    it. If it would exceed 800 lines, split the replay-strip cases into a new spec file that
+    reuses the existing helpers via a shared support module. Do not duplicate the helpers.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 2.1–2.4 have landed. 2.4 is commit cb96a63: the camera, the manual lock, and the clear
+  map kept out of the Tab order.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- every intentional E2E update, listed by test name, with before → after;
+- the new tests and what each one proves;
+- the screenshot paths;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.5 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 2.5 change. Everything in the
+"Step 2.5 — implement (visible)" prompt above still applies. The full review is the latest
+`.claude/logs/codex/*issue72-s25-review.md`; read it.
+
+Fix:
+1. High: the desktop strip covers the map attribution, which is a licence requirement.
+   - At 1280×800 the strip (about x 220–1060, y 728–788) covers the left part of the
+     bottom-right MapLibre attribution.
+   - Fix: while the strip is shown on desktop, place the attribution clear of the strip. For
+     example, lift it above the measured strip top, or keep the strip from overlapping the
+     attribution column.
+   - The phone layout keeps its existing compact top-left attribution.
+   - Add E2E checks at desktop 1280×800, while playing AND while paused (when 「結果を表示」 makes
+     the strip wider): the attribution rect and the strip rect do not intersect, and the
+     attribution text is visible.
+2. Medium: history-button focus on resize (`ClearScreen.tsx` about :142).
+   - Scenario: focus is on the desktop strip's 「移動履歴を見る」 with the dialog closed. The
+     width shrinks to ≤ 600 px, and the CSS hides the button. No focus hand-off runs.
+   - Fix: when the layout switch hides the focused history trigger, move focus to the
+     surviving 一時停止 / 再開.
+   - Add a test for a resize with the dialog closed.
+3. Medium: history opened just before the replay ends (`ClearScreen.tsx` about :181/:218,
+   `ClearReplayControls.tsx` about :62, `ClearHistory.tsx` about :66).
+   - Scenario: `pause()` syncs the clock and can reach `done`, so the trigger unmounts while
+     the dialog opens.
+   - Fix, following D2:
+     - keep the desktop history trigger in the `done` strip as well;
+     - when the dialog closes and its opener is hidden or disconnected, return focus to the
+       visible 再開 or 「結果を表示」.
+   - Add a test.
+4. Low: restore the reduced-motion negative assertion in `tests/unit/clear-screen.test.ts`
+   about :424. After completion under reduced motion, 「軌跡を再生」 must not exist in the
+   strip context the old test covered. Re-check what the old assertion meant against the new
+   behaviour (the expanded card shows 「軌跡を再生」 in results). Restore the strongest
+   equivalent negative check, and explain it.
+5. Nit: import the existing `IMAGE_READY_TIMEOUT_MS` export from
+   `tests/e2e/clear-replay-share-support.ts` instead of redefining it.
+
+Re-take the affected screenshots, using the same paths:
+- `issue72-s25-strip-desktop.png`
+- `issue72-s25-paused-desktop.png`
+
+Delete any temporary spec before you finish.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion, and do
+not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-image-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-share.spec.ts tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-image-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new tests;
+- the acceptance results;
+- the screenshot status;
+- risks.

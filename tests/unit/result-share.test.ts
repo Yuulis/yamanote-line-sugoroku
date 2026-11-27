@@ -15,7 +15,7 @@ import { FIXTURE_EDITION_A } from "./fixtures/editions";
 import { buildShareText } from "../../src/features/game/shareText";
 import { createResultShareActions } from "../../src/features/game/resultShareActions";
 import { createResultImageShareActions, type ResultImageShareActions } from "../../src/features/game/resultImageShareActions";
-import type { ClearReplayStore } from "../../src/features/game/clearReplayStore";
+import type { ClearReplayStore, ClearReplayUiSnapshot } from "../../src/features/game/clearReplayStore";
 import type { RouteImageState } from "../../src/features/map/routeImage";
 import { trackEvent } from "../../src/features/analytics/analytics";
 import type { RailwayNetwork } from "../../src/features/game/engine";
@@ -255,9 +255,12 @@ describe("ClearScreen image sharing", () => {
   }
 
   function replayStoreAt(phase: "idle" | "playing" | "paused", log: string[]): ClearReplayStore {
+    const uiSnapshot: ClearReplayUiSnapshot = { phase, recordIndex: 0, turnCount: 0, cardExpanded: false, seekRevision: 0 };
     return {
       subscribePhase: () => () => undefined,
       getPhase: () => phase,
+      subscribeUi: () => () => undefined,
+      getUiSnapshot: () => uiSnapshot,
       pause: vi.fn(),
       finish: vi.fn(() => { log.push("finish"); }),
     } as unknown as ClearReplayStore;

@@ -17,10 +17,11 @@ interface ClearReplayControlsProps {
   readonly store: ClearReplayStore;
   readonly reducedMotion: boolean;
   readonly onAnnounce: (text: string) => void;
+  readonly onShowHistory?: (opener: HTMLButtonElement) => void;
 }
 
 /** Screen controls subscribe only to saved-turn changes, never to map animation frames. */
-export function ClearReplayControls({ store, reducedMotion, onAnnounce }: ClearReplayControlsProps) {
+export function ClearReplayControls({ store, reducedMotion, onAnnounce, onShowHistory }: ClearReplayControlsProps) {
   const snapshot = useReplayUi(store);
   const [speed, setSpeed] = useState(store.getSpeed());
   const previousPhase = useRef(snapshot.phase);
@@ -45,16 +46,28 @@ export function ClearReplayControls({ store, reducedMotion, onAnnounce }: ClearR
     setSpeed(nextSpeed);
   };
 
+  const canReplay = snapshot.phase === "idle" || (snapshot.phase === "done" && snapshot.cardExpanded);
+  const isActive = snapshot.phase === "playing" || snapshot.phase === "paused";
+  const showPausedResults = snapshot.phase === "paused" && !snapshot.cardExpanded;
+  const showDoneResults = snapshot.phase === "done" && !snapshot.cardExpanded;
+  const historyButton = onShowHistory && (
+    <button
+      type="button"
+      className="clear-replay-controls__history"
+      onClick={(event) => onShowHistory(event.currentTarget)}
+    >移動履歴を見る</button>
+  );
+
   return (
     <div className="clear-replay-controls" aria-label="軌跡の再生">
-      {(snapshot.phase === "idle" || snapshot.phase === "done") && (
+      {canReplay && (
         <button type="button" className="clear-replay-controls__start" onClick={() => store.start()}>
           {reducedMotion ? "全経路を表示" : "軌跡を再生"}
         </button>
       )}
-      {(snapshot.phase === "playing" || snapshot.phase === "paused") && (
+      {isActive && (
         <div className="clear-replay-controls__active">
-          <button type="button" onClick={() => snapshot.phase === "playing" ? store.pause() : store.resume()}>
+          <button className="clear-replay-controls__toggle" type="button" onClick={() => snapshot.phase === "playing" ? store.pause() : store.resume()}>
             {snapshot.phase === "playing" ? "一時停止" : "再開"}
           </button>
           <div className="clear-replay-controls__speeds" role="group" aria-label="再生速度">
@@ -72,6 +85,16 @@ export function ClearReplayControls({ store, reducedMotion, onAnnounce }: ClearR
             ))}
           </div>
           <button className="clear-replay-controls__finish" type="button" onClick={() => store.finish()}>全経路を表示</button>
+          {historyButton}
+          {showPausedResults && (
+            <button type="button" className="clear-replay-controls__results" onClick={() => store.showResults()}>結果を表示</button>
+          )}
+        </div>
+      )}
+      {showDoneResults && (
+        <div className="clear-replay-controls__done">
+          <button type="button" className="clear-replay-controls__results" onClick={() => store.showResults()}>結果を表示</button>
+          {historyButton}
         </div>
       )}
     </div>
