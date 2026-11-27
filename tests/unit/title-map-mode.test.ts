@@ -8,6 +8,8 @@ import { RailwayMap } from "../../src/features/map/RailwayMap";
 import { TITLE_FIT_PADDING_PHONE_PX, TITLE_FIT_PADDING_PX, titleFitPadding } from "../../src/features/map/camera";
 import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { loadRailwayData } from "../../src/data/loaders";
+import { addRailwayLayers, setBackgroundFocus } from "../../src/features/map/railwayLayers";
+import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
 const mapState = vi.hoisted(() => ({ instances: [] as unknown[], failConstruction: false }));
@@ -23,7 +25,7 @@ vi.mock("maplibre-gl", () => ({
     /** Camera and clear-route calls in the order they happened. */
     readonly order: string[] = [];
     readonly sources = new Map<string, { data: { features: unknown[] } }>();
-    layers: Array<{ id: string; type: string }> = [{ id: "railway-stations-circle", type: "circle" }];
+    layers: Array<{ id: string; type: string; paint?: Record<string, unknown> }> = [{ id: "railway-stations-circle", type: "circle" }];
     padding = { top: 5, right: 0, bottom: 200, left: 0 };
     readonly listeners = new Map<string, Array<(event?: MapEvent) => void>>();
     readonly onceListeners = new Map<string, Array<(event?: MapEvent) => void>>();
@@ -87,11 +89,18 @@ vi.mock("maplibre-gl", () => ({
     }
     getStyle(): { layers: Array<{ id: string; type: string }> } { return { layers: this.layers }; }
     addSource(id: string, spec: { data: { features: unknown[] } }): void { this.order.push(`addSource:${id}`); this.sources.set(id, { data: spec.data }); }
-    addLayer(layer: { id: string; type: string }, beforeId?: string): void {
+    addLayer(layer: { id: string; type: string; paint?: Record<string, unknown> }, beforeId?: string): void {
       this.order.push(`addLayer:${layer.id}:${beforeId ?? "top"}`);
       this.layers.splice(beforeId === undefined ? this.layers.length : this.layers.findIndex((item) => item.id === beforeId), 0, layer);
     }
-    getLayer(id: string): { id: string } | undefined { return this.layers.find((layer) => layer.id === id); }
+    getLayer(id: string): { id: string; type: string; paint?: Record<string, unknown> } | undefined { return this.layers.find((layer) => layer.id === id); }
+    setPaintProperty(id: string, property: string, value: unknown): void {
+      const layer = this.layers.find((item) => item.id === id);
+      if (layer) {
+        layer.paint ??= {};
+        layer.paint[property] = value;
+      }
+    }
     removeLayer(id: string): void { this.order.push(`removeLayer:${id}`); this.layers = this.layers.filter((layer) => layer.id !== id); }
     removeSource(id: string): void { this.order.push(`removeSource:${id}`); this.sources.delete(id); }
     resize(): void { this.order.push("resize"); }
@@ -145,7 +154,7 @@ vi.mock("../../src/features/map/e2eHook", () => ({
   exposeClearFitPaddingForE2E: vi.fn(),
 }));
 vi.mock("../../src/features/map/railwayLayers", () => ({
-  addRailwayLayers: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
+  addRailwayLayers: vi.fn(), setBackgroundFocus: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
   setSegmentFlashFeatures: vi.fn(), setSegmentFlashOpacity: vi.fn(), updateCompletedSegments: vi.fn(),
   updateCurrentPosition: vi.fn(), updateGoalStation: vi.fn(), updateHighlightedService: vi.fn(),
 }));
@@ -168,9 +177,12 @@ interface MapDouble {
   readonly removed: boolean;
   readonly order: string[];
   readonly sources: Map<string, { data: { features: unknown[] } }>;
-  layers: Array<{ id: string; type: string }>;
+  layers: Array<{ id: string; type: string; paint?: Record<string, unknown> }>;
   padding: { top: number; right: number; bottom: number; left: number };
   emit(event: string, payload?: MapEvent): void;
+  addLayer(layer: { id: string; type: string; paint?: Record<string, unknown> }, beforeId?: string): void;
+  getLayer(id: string): { id: string; type: string; paint?: Record<string, unknown> } | undefined;
+  setPaintProperty(id: string, property: string, value: unknown): void;
   hasControl(control: unknown): boolean;
 }
 
@@ -235,6 +247,8 @@ function fitOptions(map: MapDouble, index = map.calls.fit.length - 1): { padding
 beforeEach(() => {
   mapState.instances = [];
   mapState.failConstruction = false;
+  vi.mocked(addRailwayLayers).mockReset();
+  vi.mocked(setBackgroundFocus).mockReset();
   viewport = { width: 1280, height: 800 };
   vi.stubGlobal("ResizeObserver", class { observe(): void {} disconnect(): void {} });
   Object.defineProperty(window, "ResizeObserver", { configurable: true, value: globalThis.ResizeObserver });
@@ -252,6 +266,92 @@ afterEach(() => {
 });
 
 describe("title map camera", () => {
+  it("fades only basemap symbols across title, game, and a replacement style", () => {
+    vi.mocked(addRailwayLayers).mockImplementation((map) => {
+      const testMap = map as unknown as MapDouble;
+      testMap.addLayer({
+        id: "railway-stations-label",
+        type: "symbol",
+        paint: { "text-opacity": 0.2 },
+      });
+      testMap.addLayer({
+        id: "game-marker-symbol",
+        type: "symbol",
+        paint: { "icon-opacity": 0.1 },
+      });
+    });
+
+    render("title");
+    const map = mapFromState();
+    map.layers = [{
+      id: "water-name",
+      type: "symbol",
+      paint: { "text-opacity": 0.8 },
+    }];
+    act(() => map.emit("style.load"));
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+
+    render("game");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer("water-name")?.paint).toMatchObject({ "text-opacity": 0.6, "icon-opacity": 0.65 });
+    expect(map.getLayer("railway-stations-label")?.paint?.["text-opacity"]).toBe(0.2);
+    expect(map.getLayer("game-marker-symbol")?.paint?.["icon-opacity"]).toBe(0.1);
+
+    render("title");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+    expect(map.getLayer("water-name")?.paint?.["icon-opacity"]).toBeUndefined();
+    expect(map.getLayer("railway-stations-label")?.paint?.["text-opacity"]).toBe(0.2);
+    expect(map.getLayer("game-marker-symbol")?.paint?.["icon-opacity"]).toBe(0.1);
+
+    render("clear");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer("water-name")?.paint).toMatchObject({ "text-opacity": 0.6, "icon-opacity": 0.65 });
+    render("title");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+
+    map.layers = [{
+      id: "water-name",
+      type: "symbol",
+      paint: { "text-opacity": 0.4 },
+    }];
+    act(() => map.emit("style.load"));
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.4);
+    render("game");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.3);
+    expect(map.getLayer("railway-stations-label")).toBeDefined();
+  });
+
+  it("updates background service paint when the persistent map changes modes", () => {
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => {
+      const testMap = map as unknown as MapDouble;
+      testMap.addLayer({
+        id: LAYER_IDS.services,
+        type: "line",
+        paint: {
+          "line-width": input.focusBackground ? 2 : 3,
+          "line-opacity": input.focusBackground ? 0.3 : 0.75,
+        },
+      });
+    });
+    vi.mocked(setBackgroundFocus).mockImplementation((map, focused) => {
+      const testMap = map as unknown as MapDouble;
+      if (!testMap.getLayer(LAYER_IDS.services)) return;
+      testMap.setPaintProperty(LAYER_IDS.services, "line-width", focused ? 2 : 3);
+      testMap.setPaintProperty(LAYER_IDS.services, "line-opacity", focused ? 0.3 : 0.75);
+    });
+
+    const map = ready("title");
+    expect(map.getLayer(LAYER_IDS.services)?.paint).toMatchObject({ "line-width": 3, "line-opacity": 0.75 });
+    expect(addRailwayLayers).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ focusBackground: false }));
+
+    render("game");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer(LAYER_IDS.services)?.paint).toMatchObject({ "line-width": 2, "line-opacity": 0.3 });
+
+    render("title");
+    expect(map.getLayer(LAYER_IDS.services)?.paint).toMatchObject({ "line-width": 3, "line-opacity": 0.75 });
+  });
+
   it("removes navigation exactly once when an in-game map unmounts", () => {
     const map = ready("game");
     const control = navigationControl(map);

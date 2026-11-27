@@ -132,12 +132,12 @@ describe("shipped network markers", () => {
     const isKeyLabel = ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM];
 
     expect(sources).toEqual(["railway-segments", "railway-stations", "game-current-position"]);
-    // Step 5: 12 -> 13 layers. The casing sits below pending segments; the goal ring sits above the key station
-    // circles and below the names; the current-position circle is last.
-    expect(order).toHaveLength(13);
+    // Step 1.7: 13 -> 14 layers. Lottery candidates sit above background services and below the current ride.
+    expect(order).toHaveLength(14);
     expect(order).toEqual([
       LAYER_IDS.base,
       LAYER_IDS.services,
+      LAYER_IDS.lotteryCandidates,
       LAYER_IDS.currentService,
       LAYER_IDS.segmentsPendingCasing,
       LAYER_IDS.segmentsPending,
@@ -150,10 +150,21 @@ describe("shipped network markers", () => {
       LAYER_IDS.stationLabels,
       LAYER_IDS.currentPosition,
     ]);
+    expect(layers[LAYER_IDS.lotteryCandidates]).toMatchObject({
+      type: "line",
+      source: "railway-segments",
+      filter: ["in", ["get", "featureId"], ["literal", []]],
+      paint: { "line-width": 4, "line-opacity": 0.85 },
+    });
     expect(layers[LAYER_IDS.goalStation]).toMatchObject({
       type: "circle",
       source: "railway-stations",
       filter: ["in", ["get", "id"], ["literal", []]],
+      paint: {
+        "circle-stroke-color": "#d4a017",
+        "circle-stroke-width": 5,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 8, 7, 11, 9, 13, 12],
+      },
     });
     expect(layers[LAYER_IDS.segmentsCompleted]?.filter).toEqual(
       ["all", ["==", ["get", "serviceId"], TARGET], ["in", ["get", "featureId"], ["literal", []]]],

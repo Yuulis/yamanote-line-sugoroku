@@ -701,6 +701,41 @@ button[aria-disabled="true"] {
   border-left: 5px solid transparent;
 }
 
+.map-goal-pulse {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  pointer-events: none;
+}
+
+.map-goal-pulse__inner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--map-goal-ring-color);
+  border-radius: 50%;
+  animation: map-goal-pulse 3s ease-out infinite;
+  pointer-events: none;
+}
+
+@keyframes map-goal-pulse {
+  0% {
+    opacity: 0.72;
+    transform: scale(0.78);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-goal-pulse__inner {
+    animation: none;
+  }
+}
+
 .loading {
   display: grid;
   place-items: center;

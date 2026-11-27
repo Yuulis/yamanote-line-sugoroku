@@ -6,11 +6,12 @@ import type { MapPresentationIndex } from "./mapPresentation";
 import { watchRemoval } from "./useClearRouteMap";
 
 /**
- * The gameplay overlays that colour the network apart from the two legend-controlled background layers: the
- * current-service highlight and the Yamanote progress lines. On the clear screen every Yamanote segment is
- * completed, so these would paint the whole loop in colour beside the travelled route and compete with it.
+ * The gameplay overlays that colour the network apart from the two legend-controlled background layers: lottery
+ * candidates, the current-service highlight and the Yamanote progress lines. On the clear screen every Yamanote
+ * segment is completed, so these would compete with the travelled route.
  */
 export const CLEAR_HIDDEN_OVERLAY_LAYER_IDS: readonly string[] = [
+  LAYER_IDS.lotteryCandidates,
   LAYER_IDS.currentService,
   LAYER_IDS.segmentsPendingCasing,
   LAYER_IDS.segmentsPending,

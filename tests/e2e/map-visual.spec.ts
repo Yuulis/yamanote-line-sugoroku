@@ -5,7 +5,7 @@ import { createItemGame, playItemTurn, resolveItemDiscard, serializeGame } from 
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { displayedHeading } from "../../src/features/game/mapGuidance";
 import type { ItemGameState } from "../../src/types/network";
-import { LAYER_IDS, MAP_STYLE_URL } from "../../src/features/map/mapConfig";
+import { GOAL_STATION_RING_COLOR, GOAL_STATION_RING_WIDTH, LAYER_IDS, MAP_STYLE_URL } from "../../src/features/map/mapConfig";
 import { expect, test } from "./fixtures";
 import type { RailwayBundle } from "./fixtures/bundle";
 import { closeGameMenu, diceReady, gamePanel, openGameMenu, openTitle, readMap, rollOnce, startNewGame, writeSaveText } from "./support/app";
@@ -482,12 +482,15 @@ async function readGoalRing(page: Page, stationId: string, center: [number, numb
   return page.evaluate(({ layerId, id, coordinates }) => {
     const map = (window as unknown as { __sugorokuE2E: { map: {
       getFilter(layer: string): unknown;
+      getPaintProperty(layer: string, name: string): unknown;
       jumpTo(options: { center: [number, number]; zoom: number }): void;
       project(point: [number, number]): { x: number; y: number };
       queryRenderedFeatures(point: { x: number; y: number }, options: { layers: string[] }): { properties: { id?: string } }[];
     } } }).__sugorokuE2E.map;
     return {
       filter: map.getFilter(layerId),
+      strokeColor: map.getPaintProperty(layerId, "circle-stroke-color"),
+      strokeWidth: map.getPaintProperty(layerId, "circle-stroke-width"),
       rendered: map.queryRenderedFeatures(map.project(coordinates), { layers: [layerId] })
         .some((feature) => feature.properties.id === id),
     };
@@ -533,6 +536,8 @@ test("30 of 30 return guidance", { tag: "@layout" }, async ({ page, railwayBundl
 
     const progressValue = page.locator('.game-panel [data-stat="progress"]');
     const slot = progressValue.locator("..");
+    await expect(page.locator("[data-map-goal-callout]")).toHaveCount(0);
+    await expect(page.locator("[data-map-goal-pulse]")).toHaveCount(0);
     await expect(progressValue).toHaveText(`${completedBefore}/${REQUIRED_TARGET_SEGMENTS}`);
     await expect(slot.locator(".target-progress__segment")).toHaveCount(REQUIRED_TARGET_SEGMENTS);
     await expect(slot.locator(".target-progress--guidance")).toHaveCount(0);
@@ -547,6 +552,11 @@ test("30 of 30 return guidance", { tag: "@layout" }, async ({ page, railwayBundl
     await expect(toasts.first()).toHaveText(MILESTONE_TOAST);
 
     const guidance = slot.locator(".target-progress--guidance");
+    const goalCallout = page.locator("[data-map-goal-callout]");
+    const goalPulse = page.locator("[data-map-goal-pulse] .map-goal-pulse__inner");
+    await expect(goalCallout).toHaveText("ここに着けばゴール");
+    await expect(goalPulse).toHaveCount(1);
+    await expect.poll(() => goalPulse.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
     const full = guidance.locator(".goal-guidance__full");
     const short = guidance.locator(".goal-guidance__short");
     await expect(full).toHaveText(FULL_GOAL_GUIDANCE);
@@ -584,6 +594,8 @@ test("30 of 30 return guidance", { tag: "@layout" }, async ({ page, railwayBundl
     }, { center: goalStation.coordinates, zoom: GOAL_RING_VIEW_ZOOM });
     await expect.poll(async () => await readGoalRing(page, goalStationId, goalStation.coordinates)).toEqual({
       filter: ["==", ["get", "id"], goalStationId],
+      strokeColor: GOAL_STATION_RING_COLOR,
+      strokeWidth: GOAL_STATION_RING_WIDTH,
       rendered: true,
     });
 
@@ -613,6 +625,9 @@ test("30 of 30 return guidance", { tag: "@layout" }, async ({ page, railwayBundl
   }, MILESTONE_TOAST);
   await diceReady(page).click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __milestoneDuringArrival: boolean }).__milestoneDuringArrival), { timeout: 20_000 }).toBe(true);
+  await expect(page.locator("[data-map-goal-callout]")).toHaveText("ここに着けばゴール");
+  await expect.poll(() => page.locator("[data-map-goal-pulse] .map-goal-pulse__inner")
+    .evaluate((element) => getComputedStyle(element).animationName)).toBe("map-goal-pulse");
 });
 
 test("clicking an ordinary station opens exactly one popup naming it", async ({ page, railwayBundle }) => {
