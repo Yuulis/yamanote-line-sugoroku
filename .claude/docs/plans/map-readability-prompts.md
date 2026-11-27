@@ -969,3 +969,75 @@ Output (markdown):
   worst UI-colour pair;
 - where the script lives (scratchpad);
 - risks or limits of the analysis.
+
+## Step 2.1 — implement (PR2, branch feature/replay-camera-strip)
+
+Objective: implement Step 2.1 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step adds atomic replay seek and one-turn step to the clear-replay store, driven by
+tests written first (TDD).
+
+Scope:
+- IN: exactly the "Step 2.1" section of the plan, plus the plan's D1/D2 rows in section 2 and
+  the `clearReplayStore.ts` interface block in section 3. Read all of them in full.
+  - `src/features/game/clearReplayStore.ts`:
+    - The turn-level UI snapshot gains `turnCount` and `seekRevision`. `seekRevision` bumps on
+      every explicit seek/step only, including a seek to the current turn. Natural playback,
+      pause/resume, speed and finish never bump it.
+    - Add `seek(recordIndex)`. Non-finite input is ignored (no state change, no revision bump).
+      Finite input is clamped to the real-turn range and truncated to an integer.
+    - Add `step(delta: -1 | 1)`, which moves one turn and clamps at the bounds. At a bound it
+      is a no-op without a revision bump.
+    - Add `resolveReplaySeekIndex(turnCount, recordIndex)`, a pure exported helper that returns
+      `null` for an empty timeline or non-finite input.
+    - Seek resets the clock anchor, so elapsed time is `recordIndex × turnDuration` at the
+      current speed. It invalidates pending/queued frame callbacks, so a stale queued frame
+      cannot overwrite the new position. Route prefix, marker and caption are published from
+      one transition.
+    - Play state is kept:
+      - playing continues from the new turn;
+      - paused stays paused;
+      - `done` goes to paused at the chosen turn.
+    - User decision (2026-11-27): from `done` (the completed full-route view), BOTH `step(-1)`
+      and `step(+1)` select the first real turn. `seek(n)` from `done` lands paused at `n`.
+    - Reduced motion stays instant. The full route is shown at once, and seek/step do not start
+      animation.
+    - An empty route/timeline gives `turnCount` 0. seek/step are no-ops there.
+  - Tests first, in `tests/unit/clear-replay.test.ts`. Cover every case the plan lists:
+    - empty timeline/spans;
+    - out-of-range and non-finite input;
+    - a same-turn seek bumps the revision;
+    - seek while playing keeps playing from the new turn;
+    - seek while paused stays paused;
+    - seek/step from done lands paused at the chosen turn;
+    - both 前 and 次 from done select the first real turn;
+    - a stale queued frame is dropped;
+    - speed/resume continuity after a seek;
+    - step at the bounds.
+  - Keep `tests/unit/clear-replay-marker.test.ts` passing unchanged.
+- OUT: `cardExpanded`/`showResults` (Step 2.2), turn bounds (2.3), camera (2.4), UI (2.5/2.6),
+  DESIGN.md, STATE.md and the plan files.
+  - Add no new dependencies, and do not commit or push.
+  - Never `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any existing assertion.
+  - Existing playback, pause, speed, finish and restart behaviour is unchanged.
+  - Keep files at or under 800 lines. `clearReplayStore.ts` is about 338 lines now.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- PR1 (Steps 1.1–1.10) is merged into develop (db8550e).
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-marker.test.ts
+npx vitest run
+npm run build
+git diff --check
+```
+
+Output: TL;DR; changed files with a one-line purpose each; the test list (what each new test
+proves); the acceptance results; any deviation from the plan with its reason; risks.

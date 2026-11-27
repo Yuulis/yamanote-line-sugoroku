@@ -40,5 +40,5 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 
 ## Next action
 
-Open the PR1 PR (feature/map-focus-goal -> develop), wait for the full CI matrix, merge, then start PR2 on feature/replay-camera-strip. Before Step 2.1 ask the user what 次 does from the done view (lead default: disabled).
-Open question for PR2: what 次 does from the done view (lead default: disabled); ask the user before Step 2.1.
+PR1 merged into develop via PR #139 (db8550e, full CI matrix green incl. WebKit 3 shards, Firefox, phone). PR2 runs on feature/replay-camera-strip. User decision (2026-11-27): 次 from the done view selects the first real turn, same as 前; recorded in the plan.
+Write the Step 2.1 prompt (atomic seek/step in clearReplayStore.ts, TDD in tests/unit/clear-replay.test.ts) and run it with Luna xhigh.
