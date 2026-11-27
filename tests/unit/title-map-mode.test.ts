@@ -266,6 +266,61 @@ afterEach(() => {
 });
 
 describe("title map camera", () => {
+  it("fades only basemap symbols across title, game, and a replacement style", () => {
+    vi.mocked(addRailwayLayers).mockImplementation((map) => {
+      const testMap = map as unknown as MapDouble;
+      testMap.addLayer({
+        id: "railway-stations-label",
+        type: "symbol",
+        paint: { "text-opacity": 0.2 },
+      });
+      testMap.addLayer({
+        id: "game-marker-symbol",
+        type: "symbol",
+        paint: { "icon-opacity": 0.1 },
+      });
+    });
+
+    render("title");
+    const map = mapFromState();
+    map.layers = [{
+      id: "water-name",
+      type: "symbol",
+      paint: { "text-opacity": 0.8 },
+    }];
+    act(() => map.emit("style.load"));
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+
+    render("game");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer("water-name")?.paint).toMatchObject({ "text-opacity": 0.6, "icon-opacity": 0.65 });
+    expect(map.getLayer("railway-stations-label")?.paint?.["text-opacity"]).toBe(0.2);
+    expect(map.getLayer("game-marker-symbol")?.paint?.["icon-opacity"]).toBe(0.1);
+
+    render("title");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+    expect(map.getLayer("water-name")?.paint?.["icon-opacity"]).toBeUndefined();
+    expect(map.getLayer("railway-stations-label")?.paint?.["text-opacity"]).toBe(0.2);
+    expect(map.getLayer("game-marker-symbol")?.paint?.["icon-opacity"]).toBe(0.1);
+
+    render("clear");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer("water-name")?.paint).toMatchObject({ "text-opacity": 0.6, "icon-opacity": 0.65 });
+    render("title");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+
+    map.layers = [{
+      id: "water-name",
+      type: "symbol",
+      paint: { "text-opacity": 0.4 },
+    }];
+    act(() => map.emit("style.load"));
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.4);
+    render("game");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.3);
+    expect(map.getLayer("railway-stations-label")).toBeDefined();
+  });
+
   it("updates background service paint when the persistent map changes modes", () => {
     vi.mocked(addRailwayLayers).mockImplementation((map, input) => {
       const testMap = map as unknown as MapDouble;

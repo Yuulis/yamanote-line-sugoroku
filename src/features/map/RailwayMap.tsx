@@ -44,6 +44,13 @@ import {
   updateGoalStation,
   updateHighlightedService,
 } from "./railwayLayers";
+import {
+  applyBasemapLabelFocus,
+  BASEMAP_ICON_OPACITY_FACTOR,
+  BASEMAP_TEXT_OPACITY_FACTOR,
+  buildBasemapLabelPatches,
+  type BasemapOpacityPatch,
+} from "./basemapLabels";
 import { createHeadingMarker, type HeadingMarkerController } from "./headingMarker";
 import {
   cameraLayoutKey,
@@ -223,6 +230,7 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   // Bumped when a replaced style forced the layers to be re-added, so the
   // progress and visibility effects below apply their state to them again.
   const [layersRevision, setLayersRevision] = useState(0);
+  const basemapLabelPatchesRef = useRef<readonly BasemapOpacityPatch[]>([]);
   const [cameraLayoutRevision, setCameraLayoutRevision] = useState(0);
   const setCoachTarget = useCallback((element: HTMLElement | null): void => {
     if (coachTargetRef) coachTargetRef.current = element;
@@ -338,6 +346,12 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     map.on("style.load", () => {
       // A replaced style drops custom layers; never add them twice.
       if (map.getSource(SOURCE_IDS.currentPosition)) return;
+      // Capture this style's own values before railway station labels are added.
+      // Reloads replace this baseline, so opacity never compounds across styles.
+      basemapLabelPatchesRef.current = buildBasemapLabelPatches(map.getStyle().layers, {
+        text: BASEMAP_TEXT_OPACITY_FACTOR,
+        icon: BASEMAP_ICON_OPACITY_FACTOR,
+      });
       addRailwayLayers(map, {
         stations: data.stations.ok ? data.stations.value : undefined,
         services: data.services.ok ? data.services.value.services : undefined,
@@ -384,6 +398,10 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
   useLayoutEffect(() => {
     if (loadedMap) setBackgroundFocus(loadedMap, backgroundFocused);
   }, [loadedMap, layersRevision, backgroundFocused]);
+  const basemapLabelsFocused = mode !== "title";
+  useLayoutEffect(() => {
+    if (loadedMap) applyBasemapLabelFocus(loadedMap, basemapLabelPatchesRef.current, basemapLabelsFocused);
+  }, [loadedMap, layersRevision, basemapLabelsFocused]);
 
   // Only this component re-renders on animation frames, not the game UI.
   const framePosition = useSyncExternalStore(livePosition.subscribe, livePosition.get, livePosition.get);

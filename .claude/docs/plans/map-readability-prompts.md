@@ -635,3 +635,116 @@ Output (markdown):
 - screenshot paths with sha256 and the candidate featureId count at capture;
 - any plan assumption that did not match the code;
 - risks.
+
+## Step 1.8 — implement
+
+Objective: implement Step 1.8 of `.claude/docs/plans/map-readability-plan.md` (A3: fade the
+basemap symbol labels and icons) as one uncommitted step, adjusted for a user decision. Capture
+real-basemap screenshots for the user.
+
+User decision (2026-11-27): the fading applies on the GAMEPLAY map only, like A1. The title map
+keeps the basemap's own label and icon opacity. The clear screen counts as gameplay (it is not
+title).
+
+Design (adjusted from the plan's A3 row):
+- `GameApp` keeps ONE persistent `RailwayMap` and switches `mode` (title/game/clear). The
+  original plan applies patches once in `style.load`; that would also fade the title map, so it
+  is no longer enough.
+- New pure module `src/features/map/basemapLabels.ts`:
+  - `buildBasemapLabelPatches(layers, factors)` is as in the plan's Interfaces section:
+    - select `symbol` layers by type, never by id;
+    - scale `text-opacity` (×0.75) and `icon-opacity` (×0.65) from each freshly loaded
+      style's own values;
+    - an omitted value means the default 1;
+    - handle constants and data expressions;
+    - scale the outputs of top-level `step`/`interpolate` zoom expressions, including inside
+      `let`;
+    - skip unsafe values.
+  - Each patch also records the layer's ORIGINAL value. "Absent" means the property was
+    omitted, so restoring it means setting `undefined` back, which returns to the default.
+  - Name the factors as constants.
+- Capture the baseline from the FRESH style in the `style.load` handler, BEFORE
+  `addRailwayLayers`. That way app layers (station labels) are never included, and a reload
+  never compounds.
+  - Store the patches in a ref, and bump the existing `layersRevision` (or reuse it) so effects
+    re-apply.
+  - Apply with a guarded function, for example
+    `applyBasemapLabelFocus(map, patches, focused: boolean)`. When focused it writes the scaled
+    values; otherwise it writes the originals. Every write is guarded by `getLayer`.
+  - Call it from a layout effect keyed on `mode !== "title"` and the revision, mirroring
+    Step 1.5's `setBackgroundFocus` effect in `RailwayMap.tsx`.
+- Keep logic out of `RailwayMap.tsx` where reasonable (currently about 661 lines, max 800).
+
+Scope:
+- IN:
+  - the new `src/features/map/basemapLabels.ts`;
+  - the wiring in `src/features/map/RailwayMap.tsx` (a small hook file is fine);
+  - tests.
+- Tests first: `tests/unit/basemap-labels.test.ts`, with synthetic layers.
+  - Cover: an omitted value (default), a constant, a data expression, a top-level zoom
+    expression including `let`, a skipped (unsafe) value, a replacement style that uses its own
+    baseline, and non-symbol layers left untouched.
+  - Validate expression outputs with MapLibre's style validation, if it is available in
+    `maplibre-gl` / `@maplibre/maplibre-gl-style-spec`, as the plan says. If it is not
+    available without a new dependency, say so and skip only that part.
+  - Also test focus toggling:
+    - focused writes the scaled values;
+    - unfocused restores the originals, including `undefined` for omitted values;
+    - there are no writes for missing layers.
+  - Add a persistent-map transition test: title → game → title on one mounted `RailwayMap`
+    (see the Step 1.5 test in `tests/unit/title-map-mode.test.ts`).
+- Screenshots (user-facing; the user cannot open /tmp). Save to `.claude/logs/screenshots/`:
+  - `issue72-s18-game-desktop.png` and `issue72-s18-game-phone.png`: the gameplay map right
+    after 「はじめから」, real basemap, desktop 1280x800 and phone 390x844;
+  - `issue72-s18-title-desktop.png`: the title map (labels must look unchanged).
+  - Build an e2e bundle into the scratchpad:
+    `npx vite build --mode e2e --outDir <scratchpad>/dist-s18 --emptyOutDir`.
+  - Serve it with
+    `node node_modules/vite/bin/vite.js preview --outDir <scratchpad>/dist-s18 --host ::1 --port 4304 --strictPort`.
+    Use the node binary directly: killing an `npx` wrapper leaves the server alive. Stop it by
+    PID and confirm the port is free.
+  - Reuse
+    `/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/capture-s17.mjs`
+    as a template, and do not modify that file.
+  - In the page, read `text-opacity` from one Liberty symbol layer through
+    `window.__sugorokuE2E.map.getPaintProperty` on the title screen and on the game screen,
+    and report both values.
+  - The scratchpad is
+    `/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad`.
+- OUT: Step 1.9 and later, DESIGN.md, STATE.md and the plan file. No new dependencies; do not
+  commit or push. Never `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion.
+  - App layers (all `railway-*` and `game-*` ids) are never patched.
+  - Make no per-frame writes.
+
+Context:
+- Steps 1.1–1.7 landed (latest 1.7: the lottery overlay, plus FOCUS opacity 0.40).
+- Lessons:
+  - Wire behaviour to the current `mode`, not to the initial `style.load` closure.
+  - Verify visible behaviour from the running app.
+  - If a plan assumption contradicts the code, follow the code and report it.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all; keep Playwright LOCAL_WORKERS at 2):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/basemap-labels.test.ts tests/unit/map-helpers.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts --project=desktop-chromium --grep 'real Japanese labels'
+wc -l src/features/map/RailwayMap.tsx
+git diff --check
+```
+
+Output (markdown):
+- changed files, one line each;
+- function signatures;
+- how the baseline is captured, and why a reload cannot compound;
+- tests added (written first);
+- acceptance results with pass/fail counts;
+- runtime `text-opacity` values (title vs game) and the layer id used;
+- screenshot paths with sha256;
+- any plan assumption that did not match the code;
+- risks.
