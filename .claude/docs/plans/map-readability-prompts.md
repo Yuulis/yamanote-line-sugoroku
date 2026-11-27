@@ -1799,3 +1799,101 @@ Output:
 - the acceptance results;
 - the screenshot status;
 - risks.
+
+## Steps 3.1–3.3 — implement (PR3, branch feature/shared-track-offsets)
+
+Objective: implement Steps 3.1, 3.2 and 3.3 of `.claude/docs/plans/map-readability-plan.md` as one
+uncommitted change. The result is the pure module `src/features/map/corridorOffsets.ts` with
+`buildCorridorOffsets`, driven by tests written first (TDD). There is no rendering change in this
+task.
+
+Scope:
+- IN: the "Step 3.1", "Step 3.2" and "Step 3.3" sections of the plan, the E row in section 2,
+  and the `corridorOffsets.ts` interface block in section 3. Read all of them in full.
+  - Step 3.1 builds an exact shared-edge index.
+    - Undirected edges are keyed by exact endpoint coordinates.
+    - Each edge keeps references to its original feature and traversal.
+    - Ownership is by distinct `serviceId`. An edge is shared when it has 2 or more distinct
+      owners.
+    - Degenerate (zero-length) edges are non-matchable.
+    - The input is treated as immutable.
+  - Step 3.2 orients the runs and assigns stable slots.
+    - The run walk is deterministic, with a sorted tie-break at branches and loops.
+    - Fresh groups are centred around 0, and the target service is always 0.
+    - Continuing services keep compatible slots, and entering services take free slots.
+    - The result is independent of input order.
+  - Step 3.3 emits the render fragments.
+    - `buildCorridorOffsets(geometry, targetServiceId)` splits at original feature boundaries,
+      at shared/unshared transitions and at slot changes.
+    - Orientation is consistent, and intermediate vertices are kept.
+    - Each fragment gets a unique top-level `id` but keeps `properties.featureId/lineId/
+      serviceId`, so existing `featureId` filters, including cross-owner references, select
+      all of its fragments.
+    - Unshared fragments and target fragments get `corridorSlot` 0.
+  - Read the real geometry shape from `src/types/` and from how `RailwayMap.tsx` /
+    `railwayLayers.ts` consume `segments.geojson` (`SegmentFeature`). Do not change those
+    consumers in this task.
+  - Tests first, in `tests/unit/corridor-offsets.test.ts` (new). Cover every case the plan lists
+    for 3.1, 3.2 and 3.3:
+    - identical and reversed edges;
+    - one service with duplicate edges;
+    - near-parallel but non-identical coordinates, which must not match;
+    - a degenerate edge;
+    - a partly shared feature;
+    - a curved continuation;
+    - a reversed traversal;
+    - entry and exit;
+    - a branch or loop;
+    - input-order independence;
+    - the target at 0;
+    - partial splits;
+    - curved-run joins;
+    - zero-slot unshared and target fragments;
+    - unique ids;
+    - a cross-service primitive reference matching all of its fragments via `featureId`.
+  - Add one real-data test: build offsets on the real `public/data/segments.geojson` with the
+    real target service (Yamanote; find its id).
+    - Assert that 東海道線 and 横須賀線 get distinct nonzero slots on at least one exactly shared
+      run, if such a run exists in the data. Report what you find.
+    - Assert that the derived feature count is ≤ 2 × canonical.
+    - Report the derived feature count and the derivation time.
+- OUT:
+  - wiring into layers, `RailwayMap.tsx`, `mapConfig.ts`, `railwayLayers.ts` (Step 3.4);
+  - the performance script (Step 3.5);
+  - DESIGN.md, STATE.md and the plan files.
+
+  Add no new dependencies, do not change `public/data`, and do not commit or push. Never
+  `pkill -f`.
+- Hard constraints:
+  - It is a pure module: no MapLibre, no DOM, no mutation of the input.
+  - Keep the file at or under 800 lines. Split into `corridorOffsets*.ts` helpers if needed.
+  - Keep the plan's interface (`CorridorRenderFeature`, `CorridorRenderCollection`,
+    `buildCorridorOffsets`).
+  - If a plan assumption contradicts the data or the code, follow them and report it.
+
+Context:
+- PR1 (#139) and PR2 (#140) are merged. The PR3 base on develop is 967760b.
+- `.claude/docs/research/feature-map-readability-codebase.md`, section E.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/capital-region-scaling.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the algorithm summary: index, run walk, slot assignment, fragment emission;
+- the tests and what each one proves;
+- the real-data findings: the shared runs found, the Tokaido/Yokosuka slots, the counts and the
+  timing;
+- the acceptance results;
+- deviations from the plan;
+- risks.

@@ -19,8 +19,8 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 | PR | Branch | Base | Status |
 |---|---|---|---|
 | PR1 | `feature/map-focus-goal` | develop `c7af52a` | merged (#139, db8550e) |
-| PR2 | `feature/replay-camera-strip` | develop `db8550e` | PR open |
-| PR3 | `feature/shared-track-offsets` | develop after PR2 | not started |
+| PR2 | `feature/replay-camera-strip` | develop `db8550e` | merged (#140, 967760b) |
+| PR3 | `feature/shared-track-offsets` | develop `967760b` | in progress |
 
 ## Step status
 
@@ -47,4 +47,4 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 
 ## Next action
 
-PR2 PR (feature/replay-camera-strip -> develop) is open; watch the full CI matrix, merge on green, then start PR3 on feature/shared-track-offsets (Steps 3.1-3.6).
+Steps 3.1-3.3 (pure corridorOffsets.ts, TDD) delegated to Luna xhigh as one task (same module, no visible change); commit as one step after review. Record PR3 base SHA 967760b for the 3.5 measurement gate.
