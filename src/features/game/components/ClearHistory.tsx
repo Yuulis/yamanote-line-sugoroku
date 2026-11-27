@@ -14,6 +14,9 @@ interface ClearHistoryProps {
   rows?: readonly HistoryRow[];
   onBeforeOpen?: () => void;
   onDialogOpenChange?: (open: boolean) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  openerRef?: RefObject<HTMLButtonElement | null>;
 }
 
 interface HistoryDialogProps extends ClearHistoryProps {
@@ -107,14 +110,25 @@ function HistoryDialog({ game, network, presentation, page, pageCount, opener, o
  * Launcher and dialog of the move history. The page lives here, so it survives closing and reopening within one
  * published result; the clear screen is keyed by the publication generation, which resets it for a new result.
  */
-export function ClearHistory({ game, network, presentation, rows, onBeforeOpen, onDialogOpenChange }: ClearHistoryProps) {
-  const [open, setOpen] = useState(false);
+export function ClearHistory({ game, network, presentation, rows, onBeforeOpen, onDialogOpenChange, open: controlledOpen, onOpenChange, openerRef: suppliedOpenerRef }: ClearHistoryProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
   const [page, setPage] = useState(0);
-  const launcherRef = useRef<HTMLButtonElement>(null);
+  const internalOpenerRef = useRef<HTMLButtonElement>(null);
+  const launcherRef = suppliedOpenerRef ?? internalOpenerRef;
   const pageCount = Math.max(1, Math.ceil(game.movementHistory.length / HISTORY_PAGE_SIZE));
+  const changeOpen = (nextOpen: boolean): void => {
+    if (controlledOpen === undefined) setInternalOpen(nextOpen);
+    onOpenChange?.(nextOpen);
+    onDialogOpenChange?.(nextOpen);
+  };
   return (
     <>
-      <button ref={launcherRef} type="button" className="clear-screen__history-button" onClick={() => { onBeforeOpen?.(); onDialogOpenChange?.(true); setOpen(true); }}>
+      <button type="button" className="clear-screen__history-button" onClick={(event) => {
+        launcherRef.current = event.currentTarget;
+        onBeforeOpen?.();
+        changeOpen(true);
+      }}>
         移動履歴を見る
       </button>
       {open && (
@@ -127,7 +141,7 @@ export function ClearHistory({ game, network, presentation, rows, onBeforeOpen, 
           rows={rows}
           opener={launcherRef}
           onPageChange={setPage}
-          onClose={() => { onDialogOpenChange?.(false); setOpen(false); }}
+          onClose={() => changeOpen(false)}
         />
       )}
     </>

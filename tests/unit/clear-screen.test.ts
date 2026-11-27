@@ -7,6 +7,7 @@ import type { ClearHighlights as ClearHighlightsModel } from "../../src/features
 import type { ClearRoute } from "../../src/features/game/clearResult";
 import { buildClearHighlightRows } from "../../src/features/game/clearHighlightsPresentation";
 import { buildRailwayNetwork } from "../../src/features/game/engine";
+import { createClearReplayStore } from "../../src/features/game/clearReplayStore";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
 import { EDITIONS } from "../../src/features/editions/registry";
 import type { GameState, ItemKind, HarmfulItemKind } from "../../src/types/network";
@@ -255,7 +256,7 @@ describe("ClearScreen layout order and history launcher", () => {
   });
 });
 
-describe("ClearScreen phone replay collapse", () => {
+describe("ClearScreen replay strip", () => {
   function setViewportWidth(width: number): void {
     phoneViewportWidth = width;
     Object.defineProperty(window, "innerWidth", { configurable: true, value: width });
@@ -291,7 +292,7 @@ describe("ClearScreen phone replay collapse", () => {
     };
   }
 
-  it("collapses only while playing or paused at phone width, hides card content, and restores focus on finish", () => {
+  it("collapses both layouts, hides card content, and expands only through 結果を表示", () => {
     setViewportWidth(320);
     const { container } = mountScreen(replayProps());
     const card = container.querySelector<HTMLElement>(".clear-screen")!;
@@ -313,13 +314,19 @@ describe("ClearScreen phone replay collapse", () => {
     expect(buttonByName(container, "再開")).toBe(document.activeElement);
 
     click(buttonByName(container, "全経路を表示"));
+    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(true);
+    expect(buttonByName(container, "結果を表示")).toBeDefined();
+    expect(document.activeElement).toBe(buttonByName(container, "結果を表示"));
+    expect(details.every((content) => content.hidden && content.hasAttribute("inert"))).toBe(true);
+
+    click(buttonByName(container, "結果を表示"));
     expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(false);
     expect(details.every((content) => !content.hidden && !content.hasAttribute("inert"))).toBe(true);
     expect(document.activeElement).toBe(buttonByName(container, "軌跡を再生"));
     expect(card.scrollTop).toBe(0);
   });
 
-  it("does not pull focus to 軌跡を再生 on expand when focus already left the band before replay ended", async () => {
+  it("does not move focus into results when focus already left the strip before replay ends", async () => {
     setViewportWidth(320);
     const { container } = mountScreen(replayProps());
     click(buttonByName(container, "軌跡を再生"));
@@ -334,11 +341,12 @@ describe("ClearScreen phone replay collapse", () => {
 
     click(buttonByName(container, "全経路を表示"));
     const card = container.querySelector<HTMLElement>(".clear-screen")!;
-    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(false);
-    expect(document.activeElement).not.toBe(buttonByName(container, "軌跡を再生"));
+    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(true);
+    expect(document.activeElement).toBe(document.body);
+    expect(document.activeElement).not.toBe(buttonByName(container, "結果を表示"));
   });
 
-  it("keeps the full clear card visible on desktop while replaying", () => {
+  it("collapses the desktop card and explicitly restores the centred results card", () => {
     setViewportWidth(1280);
     const { container } = mountScreen(replayProps());
     const card = container.querySelector<HTMLElement>(".clear-screen")!;
@@ -348,29 +356,32 @@ describe("ClearScreen phone replay collapse", () => {
 
     click(buttonByName(container, "軌跡を再生"));
 
+    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(true);
+    expect(container.querySelector<HTMLElement>(".clear-screen__content")?.hidden).toBe(true);
+    expect(document.activeElement).toBe(buttonByName(container, "一時停止"));
+    expect(focus).toHaveBeenCalled();
+
+    click(buttonByName(container, "一時停止"));
+    click(buttonByName(container, "結果を表示"));
     expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(false);
     expect(container.querySelector<HTMLElement>(".clear-screen__content")?.hidden).toBe(false);
-    expect(document.activeElement).toBe(container.querySelector("#clear-title"));
-    expect(focus).not.toHaveBeenCalled();
-    expect(card.scrollTop).toBe(37);
-
-    click(buttonByName(container, "全経路を表示"));
-    expect(focus).not.toHaveBeenCalled();
-    expect(card.scrollTop).toBe(37);
+    expect(document.activeElement).toBe(buttonByName(container, "軌跡を再生"));
+    expect(card.scrollTop).toBe(0);
   });
 
-  it("collapses at the phone breakpoint and preserves replay focus when expanding to desktop", () => {
+  it("keeps the strip and its focused control across the phone breakpoint", () => {
     setViewportWidth(601);
     const { container } = mountScreen(replayProps());
     click(buttonByName(container, "軌跡を再生"));
     const card = container.querySelector<HTMLElement>(".clear-screen")!;
-    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(false);
+    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(true);
+    expect(document.activeElement).toBe(buttonByName(container, "一時停止"));
 
     setViewportWidth(600);
     expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(true);
     expect(document.activeElement).toBe(buttonByName(container, "一時停止"));
     setViewportWidth(601);
-    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(false);
+    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(true);
     expect(document.activeElement).toBe(buttonByName(container, "一時停止"));
   });
 
@@ -392,7 +403,7 @@ describe("ClearScreen phone replay collapse", () => {
     }
   });
 
-  it("keeps the history dialog visible through a phone resize and collapses after it closes", () => {
+  it("keeps the strip behind the history dialog through resize and returns focus to 再開", () => {
     setViewportWidth(1280);
     const { container } = mountScreen(replayProps());
     const card = container.querySelector<HTMLElement>(".clear-screen")!;
@@ -403,7 +414,11 @@ describe("ClearScreen phone replay collapse", () => {
 
     setViewportWidth(390);
     expect(dialog.open).toBe(true);
-    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(false);
+    expect(card.classList.contains("clear-screen--replay-collapsed")).toBe(true);
+
+    // JSDOM does not load the phone CSS; mark both desktop history launchers hidden as that rule does.
+    container.querySelectorAll<HTMLButtonElement>(".clear-screen__history-button, .clear-replay-controls__history")
+      .forEach((button) => { button.hidden = true; });
 
     click(buttonByName(container, "閉じる"));
     expect(dialog.open).toBe(false);
@@ -411,14 +426,84 @@ describe("ClearScreen phone replay collapse", () => {
     expect(document.activeElement).toBe(buttonByName(container, "再開"));
   });
 
-  it("does not collapse the card when reduced motion completes replay immediately", () => {
+  it("keeps the results card expanded when reduced motion completes replay immediately", () => {
     setViewportWidth(320);
     const { container } = mountScreen(replayProps({ reducedMotion: true }));
     click(buttonByName(container, "全経路を表示"));
 
     expect(container.querySelector(".clear-screen")?.classList.contains("clear-screen--replay-collapsed")).toBe(false);
     expect(container.querySelector<HTMLElement>(".clear-screen__content")?.hidden).toBe(false);
-    expect(buttonByName(container, "軌跡を再生")).toBeUndefined();
+    const replayControls = container.querySelector(".clear-replay-controls")!;
+    // Expanded results can offer 軌跡を再生 in normal motion; reduced motion must keep its full-route label.
+    expect(buttonByName(replayControls, "軌跡を再生")).toBeUndefined();
+    expect(buttonByName(replayControls, "全経路を表示")).toBeDefined();
+  });
+
+  it("keeps the history trigger in the done strip and restores focus when its opener is hidden", () => {
+    setViewportWidth(1280);
+    let now = 0;
+    let scheduledFrame: ((frameTime: number) => void) | null = null;
+    const replayStore = createClearReplayStore({
+      route: REPLAY_ROUTE,
+      scheduler: {
+        request: (callback) => { scheduledFrame = callback; return 1; },
+        cancel: () => {},
+        now: () => now,
+      },
+    });
+    try {
+      const { container } = mountScreen(replayProps({ replayStore }));
+      click(buttonByName(container, "軌跡を再生"));
+      act(() => { scheduledFrame?.(0); });
+      now = 551;
+
+      const playingHistory = container.querySelector<HTMLButtonElement>(".clear-replay-controls__history")!;
+      click(playingHistory);
+
+      expect(replayStore.getPhase()).toBe("done");
+      const doneHistory = container.querySelector<HTMLButtonElement>(".clear-replay-controls__history");
+      expect(doneHistory).not.toBeNull();
+      expect(doneHistory?.parentElement?.classList.contains("clear-replay-controls__done")).toBe(true);
+      expect(buttonByName(container, "結果を表示")).toBeDefined();
+
+      // JSDOM does not load the responsive CSS; hidden simulates the phone rule's display:none for the opener.
+      doneHistory!.hidden = true;
+      click(buttonByName(container, "閉じる"));
+      expect(document.activeElement).toBe(buttonByName(container, "結果を表示"));
+    } finally {
+      replayStore.dispose();
+    }
+  });
+
+  it("returns focus to 結果を表示 when the replay completes as history opens, even with the done trigger shown", () => {
+    setViewportWidth(1280);
+    let now = 0;
+    let scheduledFrame: ((frameTime: number) => void) | null = null;
+    const replayStore = createClearReplayStore({
+      route: REPLAY_ROUTE,
+      scheduler: {
+        request: (callback) => { scheduledFrame = callback; return 1; },
+        cancel: () => {},
+        now: () => now,
+      },
+    });
+    try {
+      const { container } = mountScreen(replayProps({ replayStore }));
+      click(buttonByName(container, "軌跡を再生"));
+      act(() => { scheduledFrame?.(0); });
+      now = 551;
+
+      click(container.querySelector<HTMLButtonElement>(".clear-replay-controls__history")!);
+      expect(replayStore.getPhase()).toBe("done");
+      const doneHistory = container.querySelector<HTMLButtonElement>(".clear-replay-controls__history");
+      expect(doneHistory, "the done strip keeps a visible history trigger").not.toBeNull();
+      expect(doneHistory?.hidden).toBe(false);
+
+      click(buttonByName(container, "閉じる"));
+      expect(document.activeElement, "focus does not jump to the newly mounted done trigger").toBe(buttonByName(container, "結果を表示"));
+    } finally {
+      replayStore.dispose();
+    }
   });
 });
 

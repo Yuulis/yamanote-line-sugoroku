@@ -969,3 +969,833 @@ Output (markdown):
   worst UI-colour pair;
 - where the script lives (scratchpad);
 - risks or limits of the analysis.
+
+## Step 2.1 — implement (PR2, branch feature/replay-camera-strip)
+
+Objective: implement Step 2.1 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step adds atomic replay seek and one-turn step to the clear-replay store, driven by
+tests written first (TDD).
+
+Scope:
+- IN: exactly the "Step 2.1" section of the plan, plus the plan's D1/D2 rows in section 2 and
+  the `clearReplayStore.ts` interface block in section 3. Read all of them in full.
+  - `src/features/game/clearReplayStore.ts`:
+    - The turn-level UI snapshot gains `turnCount` and `seekRevision`. `seekRevision` bumps on
+      every explicit seek/step only, including a seek to the current turn. Natural playback,
+      pause/resume, speed and finish never bump it.
+    - Add `seek(recordIndex)`. Non-finite input is ignored (no state change, no revision bump).
+      Finite input is clamped to the real-turn range and truncated to an integer.
+    - Add `step(delta: -1 | 1)`, which moves one turn and clamps at the bounds. At a bound it
+      is a no-op without a revision bump.
+    - Add `resolveReplaySeekIndex(turnCount, recordIndex)`, a pure exported helper that returns
+      `null` for an empty timeline or non-finite input.
+    - Seek resets the clock anchor, so elapsed time is `recordIndex × turnDuration` at the
+      current speed. It invalidates pending/queued frame callbacks, so a stale queued frame
+      cannot overwrite the new position. Route prefix, marker and caption are published from
+      one transition.
+    - Play state is kept:
+      - playing continues from the new turn;
+      - paused stays paused;
+      - `done` goes to paused at the chosen turn.
+    - User decision (2026-11-27): from `done` (the completed full-route view), BOTH `step(-1)`
+      and `step(+1)` select the first real turn. `seek(n)` from `done` lands paused at `n`.
+    - Reduced motion stays instant. The full route is shown at once, and seek/step do not start
+      animation.
+    - An empty route/timeline gives `turnCount` 0. seek/step are no-ops there.
+  - Tests first, in `tests/unit/clear-replay.test.ts`. Cover every case the plan lists:
+    - empty timeline/spans;
+    - out-of-range and non-finite input;
+    - a same-turn seek bumps the revision;
+    - seek while playing keeps playing from the new turn;
+    - seek while paused stays paused;
+    - seek/step from done lands paused at the chosen turn;
+    - both 前 and 次 from done select the first real turn;
+    - a stale queued frame is dropped;
+    - speed/resume continuity after a seek;
+    - step at the bounds.
+  - Keep `tests/unit/clear-replay-marker.test.ts` passing unchanged.
+- OUT: `cardExpanded`/`showResults` (Step 2.2), turn bounds (2.3), camera (2.4), UI (2.5/2.6),
+  DESIGN.md, STATE.md and the plan files.
+  - Add no new dependencies, and do not commit or push.
+  - Never `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any existing assertion.
+  - Existing playback, pause, speed, finish and restart behaviour is unchanged.
+  - Keep files at or under 800 lines. `clearReplayStore.ts` is about 338 lines now.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- PR1 (Steps 1.1–1.10) is merged into develop (db8550e).
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-marker.test.ts
+npx vitest run
+npm run build
+git diff --check
+```
+
+Output: TL;DR; changed files with a one-line purpose each; the test list (what each new test
+proves); the acceptance results; any deviation from the plan with its reason; risks.
+
+## Step 2.1 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the two review findings on the uncommitted Step 2.1 change. The change is in
+`src/features/game/clearReplayStore.ts` and `tests/unit/clear-replay.test.ts`; see `git diff`.
+Keep everything else in the original Step 2.1 prompt above.
+
+Findings to fix:
+1. Medium, natural completion (`setElapsed` / `completeNaturally`, about line 207):
+   - Today a final frame publishes a `done` snapshot while the internal `phase` is still
+     `playing`, and only then calls `completeNaturally()`.
+   - A subscriber that calls `step(-1)` during that notification misses the `done` branch, and
+     its seek is then overwritten by `completeNaturally()`.
+   - Fix it so that, on natural completion, the internal phase is set to `done`, the frame is
+     invalidated (`cancelFrame`, `runId`) and visibility is detached BEFORE subscribers are
+     notified. `done` is notified exactly once.
+2. Low, re-entrancy in `seekTo` (about line 260):
+   - If a subscriber notified by a seek while playing calls `pause()`, `finish()` or another
+     `seek`, the outer `seekTo` still schedules a frame on return, or invalidates the frame that
+     the inner seek scheduled.
+   - Fix: capture the seek generation (`runId`) and `scheduler.now()` before notifying. After
+     notifying, schedule a frame only if that generation is still current and `phase` is still
+     `playing`.
+
+Tests to add (write each first and confirm it fails against the current code):
+- A subscriber calling `step(-1)` and `step(+1)` from inside the natural-completion `done`
+  notification lands paused at the first turn, and the position is not overwritten.
+- A subscriber calling `pause()` inside a seek-while-playing notification leaves no frame
+  scheduled, and the phase stays paused.
+- A subscriber calling `seek(other)` inside a seek notification ends at `other`, still
+  playing, with exactly one live frame.
+- Clock anchor: advance the scheduler time between the last frame and a seek while playing,
+  then assert the next turn boundary arrives exactly one turn duration after the seek time.
+  This catches a stale pre-seek `anchorAt`.
+- The path done → seek → resume → document hidden pauses playback, because the visibility
+  listener is re-attached.
+
+Constraints: the same as the original prompt. Do not weaken or delete any assertion, and keep
+existing behaviour. Do not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-marker.test.ts
+npx vitest run
+npm run build
+git diff --check
+```
+
+Output: TL;DR; what changed for each finding; the new tests and what each one proves; the
+acceptance results; risks.
+
+## Step 2.2 — implement
+
+Objective: implement Step 2.2 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step adds the replay results state (`cardExpanded` and `showResults()`) to the
+clear-replay store, driven by tests written first (TDD).
+
+Scope:
+- IN: exactly the "Step 2.2" section of the plan, plus the D2 row in section 2 and the
+  `clearReplayStore.ts` interface block in section 3. Read all of them in full.
+  - `src/features/game/clearReplayStore.ts`:
+    - The UI snapshot gains `cardExpanded: boolean`.
+    - Ordinary (not reduced-motion) replay starts collapsed (`false`).
+    - Pause, natural end and `finish()` keep it collapsed. Natural end and `finish()` still
+      show the full route (`done`).
+    - Add `showResults()`. It publishes `done` with the full route and `cardExpanded: true` in
+      ONE transition, from playing, paused or done. From `playing` it stops the clock (frame
+      invalidated) and detaches visibility exactly like `finish()`. Repeating it while already
+      expanded is a no-op that does not notify.
+    - Restart via `start()` after done, and `seek`/`step` (Step 2.1), collapse the card again.
+      If this conflicts with the plan or the code, follow the plan and report it.
+    - Reduced motion:
+      - The replay starts and stays expanded.
+      - `setReducedMotion(true)` during a collapsed playing or paused replay publishes `done`,
+        the full route and `cardExpanded: true` together, in one notification. Today that path
+        only calls `finish()`, at about `clearReplayStore.ts:305`.
+    - `seekRevision` must not change for `showResults()`, pause, finish or reduced motion.
+    - Re-entrancy lesson from Step 2.1: every path that publishes and then schedules or
+      attaches something must stay correct if a subscriber calls another store method during
+      the notification. Set the internal state (phase, frame, visibility) before publishing, and
+      check the generation after publishing.
+  - Tests first, in `tests/unit/clear-replay.test.ts`. Cover the card state:
+    - at start and at pause;
+    - at natural end and at `finish()`;
+    - for `showResults()` from playing, paused and done, plus a repeat no-op;
+    - on restart after `showResults()`, and on seek/step after `showResults()`;
+    - for reduced motion at start;
+    - for reduced motion switched on during playing and during paused (one notification, all
+      three fields together);
+    - for a subscriber calling `seek` inside the `showResults()` notification.
+
+    Keep the existing full-route assertions.
+  - `tests/unit/clear-replay-controls.test.ts` and `tests/unit/clear-screen.test.ts` must keep
+    passing. If they construct UI snapshots, extend those literals with the new field rather
+    than loosening any assertion.
+- OUT:
+  - Any UI that consumes `cardExpanded` (the screen and strip are Step 2.5);
+  - turn bounds and camera (Steps 2.3 and 2.4);
+  - DESIGN.md, STATE.md and the plan files.
+
+  Add no new dependencies, and do not commit or push. Never `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any existing assertion.
+  - Existing playback, seek and step behaviour is unchanged.
+  - Keep files at or under 800 lines. `clear-replay.test.ts` is about 660 lines now. If adding
+    the tests would push it over, put the new tests in
+    `tests/unit/clear-replay-results.test.ts` and move the fake scheduler and visibility
+    helpers into a shared `tests/unit/support/clearReplayFakes.ts` used by both files.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Step 2.1 is commit 27404ab: seek, step, `turnCount` and `seekRevision`.
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the new tests and what each one proves;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.2 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the three review findings on the uncommitted Step 2.2 change in
+`src/features/game/clearReplayStore.ts` and `tests/unit/clear-replay.test.ts`; see `git diff`.
+Everything in the "Step 2.2 — implement" prompt above still applies. The lead already changed one
+thing on top of the first implementation: `finish()` is a no-op on `done` again, so it never
+collapses an expanded card. Keep that.
+
+Findings to fix:
+1. High: reduced motion must keep the card expanded.
+   - Scenario: under reduced motion, `start()` → `step(-1)` collapses the card through
+     `seekTo()`, and a later `finish()` then lands on `done` collapsed. `seek()` takes the same
+     path.
+   - Fix: while reduced motion is on, seek/step keep their target turn and still bump
+     `seekRevision`, but `cardExpanded` stays `true`.
+   - If `finish()` newly reaches `done` while reduced motion is on, the card is expanded.
+   - The existing no-op of `finish()` on `done` stays.
+2. High: re-entrant publish sends duplicate notifications (`publish`, about line 186).
+   - Scenario: a frame subscriber notified by `showResults()` calls `seek(0)`. The inner publish
+     notifies everyone. The outer `publish()` then keeps notifying UI subscribers based on its
+     stale change flags, so a UI subscriber receives the same `paused` snapshot twice.
+   - Fix it in `publish`: use a publish sequence/version. After each listener group, if a nested
+     publish happened, stop notifying for the outer one, because the nested publish already
+     notified every group with the newest state. No subscriber may see a stale snapshot after a
+     newer one, or the same snapshot twice.
+   - Keep the existing guarantee that both snapshots are updated before any listener runs.
+3. Medium, pre-existing: `dispose()` re-entrancy (about line 409).
+   - Scenario: a subscriber that sees the `idle` published by `dispose()` calls `start()`. The
+     store is left `playing` with a scheduled frame after dispose.
+   - Fix: set the disposed flag before the final publish.
+
+Tests to add (write each first and confirm it fails against the current code):
+- Under reduced motion, seek and step keep `cardExpanded: true` and still move and bump the
+  revision. `finish()` on an expanded `done` does not notify.
+- A frame or phase subscriber that seeks inside the `showResults()` notification: a separate UI
+  subscriber records each snapshot it receives, with no duplicate and no stale-after-newer.
+- Inside the `showResults()` UI notification, the frame snapshot is already the full-route
+  `done` snapshot. Read both inside the callback.
+- `setRoute()` and `dispose()` from an expanded state reset `cardExpanded`.
+- A subscriber calling `start()` inside the `dispose()` notification leaves no live frame, and
+  the phase is not `playing`.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion. Keep
+`tests/unit/clear-replay.test.ts` at or under 800 lines. If it would go over, move the new and
+the Step 2.2 tests into `tests/unit/clear-replay-results.test.ts`, with the fakes moved into
+`tests/unit/support/clearReplayFakes.ts`. Do not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each finding;
+- the new tests and what each one proves, including that it failed before the fix;
+- the acceptance results;
+- risks.
+
+## Step 2.3 — implement
+
+Objective: implement Step 2.3 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step derives the camera bounds of one saved replay turn as pure functions, driven by
+tests written first (TDD).
+
+Scope:
+- IN: exactly the "Step 2.3" section of the plan, plus the D1 row in section 2 and the
+  `clearResult.ts` / `clearRouteCamera.ts` interface blocks in section 3. Read all of them in
+  full.
+  - `src/features/game/clearResult.ts`: `ClearTurnSpan` gains an optional
+    `readonly destination?: Position`, the station coordinate where the saved turn ended.
+  - The code that builds turn spans (`src/features/game/clearRoute.ts`, or wherever
+    `turnSpans` is built — find it) sets `destination` from the validated saved traversal when
+    the end station coordinate resolves. It is omitted when it does not resolve.
+  - New pure module `src/features/map/clearRouteCamera.ts` exports
+    `type ClearReplayBounds = readonly [southWest: Position, northEast: Position]` and
+    `clearReplayTurnBounds(route: ClearRoute, recordIndex: number): ClearReplayBounds | null`.
+    - The bounds cover ALL step coordinates in that turn's span, not just the endpoints, so a
+      bending line beyond the endpoints is included.
+    - An empty span (zero steps) gives degenerate bounds at `destination` when it is present.
+    - An unresolved turn gives `null`: an out-of-range or non-finite index, or an empty span
+      without a destination. The caller keeps the current view.
+    - The function never mutates its input.
+    - If an existing bounds helper in the codebase already computes min/max over positions
+      (for example `positionsBounds` in `src/features/map/railwayMapCamera.ts`), reuse it
+      instead of duplicating it.
+  - Tests first:
+    - `tests/unit/clear-route-map.test.ts` (or a new `tests/unit/clear-route-camera.test.ts`
+      if that fits better): a bend beyond the endpoints; an empty turn with and without a
+      destination; out-of-range and non-finite index; a multi-step turn; input not mutated.
+    - `tests/unit/clear-route.test.ts`: `destination` is propagated from a saved traversal
+      and omitted when it does not resolve.
+    - Keep every existing full-route fixture and assertion. If snapshot literals need the
+      new optional field, extend them; do not loosen anything.
+- OUT: the camera hook and any MapLibre call (Step 2.4), UI, DESIGN.md, STATE.md and the plan
+  files. Add no new dependencies, and do not commit or push. Never `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any existing assertion.
+  - Saved-result serialisation and loading stay compatible. `destination` is derived at route
+    build time, not persisted, unless the code shows that turn spans are already persisted; if
+    they are, report that and keep loading of old saves working.
+  - Keep files at or under 800 lines.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 2.1 (27404ab) and 2.2 (1fa1751) have landed; both touched only the replay store.
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-route-map.test.ts tests/unit/clear-route.test.ts tests/unit/clear-route-real-data.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the new tests and what each one proves;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.4 — implement (visible)
+
+Objective: implement Step 2.4 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step is the clear-replay camera: it frames each saved turn, keeps a manual pan/zoom,
+and shows the full route at the end. Also capture screenshots for the user.
+
+Scope:
+- IN: exactly the "Step 2.4" section of the plan, plus the D1 row in section 2 and the
+  `useClearReplayCamera` interface block in section 3. Read all of them in full.
+  - New `src/features/map/useClearReplayCamera.ts` takes camera ownership from
+    `src/features/map/useClearRouteMap.ts`. The route-layer lifecycle stays in
+    `useClearRouteMap.ts`.
+  - The hook subscribes to the turn-level UI snapshot (`replayStore.subscribeUi` /
+    `getUiSnapshot`), never to per-frame snapshots.
+    - Fit each saved turn's bounds (`clearReplayTurnBounds` from `clearRouteCamera.ts`, Step
+      2.3) instantly (`animate: false`), at the existing `CLEAR_FIT_MAX_ZOOM`, with the measured
+      clear card / strip padding (`measureClearFit` / `clearFitPadding`).
+    - Coalesce layout reads to one per animation frame.
+    - Unresolved bounds (`null`) keep the current view.
+  - Manual lock:
+    - A user pan/zoom (`USER_CAMERA_EVENTS` + `isUserCameraEvent` in `camera.ts`) locks
+      automatic per-turn fits and layout refits.
+    - An explicit seek/step (a `seekRevision` change in the UI snapshot) forces exactly ONE fit
+      of the chosen turn, and the lock stays on.
+    - Completion (`phase` → `done`) always fits the full `route.bounds`, overriding the lock,
+      and supersedes any queued turn work.
+    - A new playback (`start()` from idle/done, i.e. a phase transition back to playing at
+      record 0 after done or idle) clears the lock.
+    - A style reload does not clear it.
+  - Reduced motion keeps today's instant full-route path.
+  - When the results card is expanded (`cardExpanded`, Step 2.2), the camera fits the full
+    route with the card's padding, as today.
+  - Scheduled work is cancelled on reset/teardown and when the map is removed.
+  - Make no per-frame MapLibre writes.
+  - Keep `RailwayMap.tsx` at or under 800 lines (about 697 now). The new hook is wired where
+    `useClearRouteMap` is called today.
+- Tests:
+  - `tests/unit/clear-route-map.test.ts`:
+    - turn and layout scheduling;
+    - user vs programmatic camera events;
+    - a same-turn explicit fit under the lock;
+    - completion beats stale queued work;
+    - a new playback unlocks;
+    - a style reload keeps the lock.
+  - `tests/e2e/clear-replay-share.spec.ts` around :698 (the fake-clock case), extended:
+    - automatic framing per turn;
+    - a manual pan survives a turn change;
+    - a full-route finish.
+
+    Keep its prefix, caption and replay-again assertions.
+  - **Intentional update** at `clear-replay-share.spec.ts` about :882. The check that the whole
+    accumulated prefix fits above the band becomes a check that the active turn fits above the
+    band. Complete-route framing after finish stays asserted. Do not change any other existing
+    assertion.
+- Screenshots (user-facing; the user cannot open /tmp). Save them to `.claude/logs/screenshots/`:
+  - `issue72-s24-turn-desktop.png` and `issue72-s24-turn-phone.png`: mid-replay, framed on one
+    turn;
+  - `issue72-s24-done-desktop.png`: the full route after the finish.
+
+  Take them from a real app build, desktop 1280×800 and phone 390×844. You may use a temporary
+  spec `tests/e2e/tmp-issue72-s24-shots.spec.ts`, which MUST be deleted before you finish.
+  Reusing the `clear-replay-share.spec.ts` setup is fine.
+- OUT: the strip UI, 「結果を表示」 and the seek bar (Steps 2.5/2.6), DESIGN.md, STATE.md and
+  the plan files. Add no new dependencies, and do not commit or push. Never `pkill -f`; keep
+  Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion except the one intentional update above.
+  - Share and results flows are unchanged.
+  - If a plan assumption contradicts the code, follow the code and report it.
+  - Lesson from Steps 2.1/2.2: anything scheduled from a store notification must stay correct if
+    the store changes again before it runs. Re-read the latest UI snapshot when the scheduled
+    work executes, instead of trusting the captured value.
+
+Context:
+- Steps 2.1–2.3 have landed (27404ab, 1fa1751, e6001bb).
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-route-map.test.ts tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium --grep 'keeps the caption and partial route|draws the full route|reduced-motion replay'
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the new and changed tests, with what each one proves;
+- the screenshot paths;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.4 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 2.4 change and narrow the `inert`
+exception. Everything in the "Step 2.4 — implement (visible)" prompt above still applies. The
+full review is `.claude/logs/codex/*issue72-s24-review.md` (the latest); read it.
+
+Fix:
+1. Medium: a pending seek fit leaks onto a later turn (`useClearReplayCamera.ts` about :99).
+   - Scenario: the user pans manually, then seeks while playing, and the card cannot be
+     measured in that frame. `pendingSeekFit` stays set. When the turn advances before
+     measurement succeeds, the camera fits a DIFFERENT turn through the lock.
+   - Fix: tie the pending seek to its `seekRevision` and its chosen record index. Retry only
+     while the UI snapshot is still on that revision and turn, and drop it otherwise.
+   - Completion still fits the full route.
+2. Medium: an E2E rendering assertion was lost (`tests/e2e/clear-replay-share.spec.ts` about
+   :495).
+   - The old helper also asserted `featureCount > 0` (the partial route is drawn) at each call
+     site.
+   - Restore that drawn-route assertion at all three call sites. They are the 320 px
+     play/pause check and the 390 px play check. Only the framing check switches to the active
+     turn.
+   - Also make the active-turn framing check independent of the implementation. Compute the
+     expected turn bounds from the fixture or route data in the test (not from
+     `clearCameraTarget`), and compare. A regression that passes full-route bounds with the
+     right record index must fail.
+3. Low: unit test adequacy (`tests/unit/clear-route-map.test.ts` about :751).
+   - The same-turn seek-under-lock test fires `resize` without changing dimensions. Change the
+     card size, so that a released lock would refit.
+   - In the completion-vs-stale-work test, set the lock by a user drag before completing.
+   - Add the unmeasurable-seek regression from item 1.
+   - Add a listener-count check when entering and leaving clear on the same map.
+4. Narrow the `inert` exception in `RailwayMap.tsx` (about :658). Today the clear mode drops
+   `inert` from the whole map wrapper. Keep pointer pan/zoom working in clear mode, but:
+   - While in clear mode, remove the MapLibre canvas from the Tab order (`tabIndex = -1` on
+     `map.getCanvas()`). Restore the original value on leaving clear, because the map is
+     persistent across modes.
+   - Do not let a pointer click on the canvas trap keyboard focus there in clear mode (e.g.
+     blur, or keep it non-focusable).
+   - Suppress station popups in clear mode, as `inert` did before.
+   - Keep the attribution control keyboard-reachable.
+   - Add tests: the canvas `tabIndex` toggles on clear enter/leave and is restored; station
+     popups do not open in clear mode.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion other than
+the one intentional framing update. Do not commit.
+
+Re-take the screenshots if the visible result changed. The paths are the same:
+- `.claude/logs/screenshots/issue72-s24-turn-desktop.png`
+- `.claude/logs/screenshots/issue72-s24-turn-phone.png`
+- `.claude/logs/screenshots/issue72-s24-done-desktop.png`
+
+Delete any temporary spec before you finish.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-route-map.test.ts tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new and changed tests, with what each one proves;
+- the acceptance results;
+- the screenshot status;
+- risks.
+
+## Step 2.5 — implement (visible)
+
+Objective: implement Step 2.5 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. During replay, both desktop and phone collapse the clear card to a bottom strip. Only an
+explicit 「結果を表示」 restores the centred card (desktop) or the sheet (phone). Also capture
+screenshots for the user.
+
+Scope:
+- IN: exactly the "Step 2.5" section of the plan and the D2 row in section 2. Read both in full.
+  - Files: `src/features/game/components/ClearScreen.tsx`, `ClearReplayControls.tsx` and
+    `clearScreen.css` (find the exact paths). The strip is driven by `cardExpanded` from the
+    replay store's UI snapshot (Step 2.2, `showResults()`), on desktop AND phone.
+  - Strip contents during replay:
+    - pause/resume and speed;
+    - 全経路を表示 (`finish()`): the full route, with the strip kept;
+    - 「移動履歴を見る」 on the desktop strip only. The phone strip keeps today's behaviour: no
+      history trigger during playback.
+  - 「結果を表示」 appears while paused or done, and calls `showResults()`. Only this button
+    expands the card. Natural end and 全経路を表示 keep the strip.
+  - Reduced motion: an instant full route, and the card stays expanded (as the store already
+    does).
+  - Focus hand-off per the D2 row:
+    - Play → strip control;
+    - a disappearing control → a surviving strip control;
+    - 「結果を表示」 → Play, or the results heading.
+
+    Reuse the phone logic at `ClearScreen.tsx` about :139-160 (`hidden` + `inert` +
+    `aria-hidden` on the collapsed card content).
+  - The strip stays behind the history dialog across a resize. Pause-on-history (desktop) and
+    focus return are kept.
+  - The camera (Step 2.4, `useClearReplayCamera`) already measures the card/strip element
+    through `cardRef`. Make sure the collapsed strip is what gets measured, so a turn fits above
+    the strip on desktop as well.
+  - The seek bar and 前/次 buttons are NOT part of this step (Step 2.6). Leave room for them in
+    the strip layout, but do not add them.
+- Tests:
+  - These are the intentional updates in `tests/e2e/clear-replay-share.spec.ts` listed in the
+    plan's Step 2.5 section, and none may be weakened. Line numbers in the plan predate Step
+    2.4, which edited this file, so locate each case by its test name.
+    - "leaves the desktop clear card expanded during replay" becomes "uses a bottom strip on
+      desktop and expands results explicitly", with the positive desktop history-trigger check.
+    - The phone zero-count history assertion inside the 320/390 px case STAYS AS IS.
+    - "restores the phone sheet when replay ends naturally": the strip persists, then an
+      explicit 「結果を表示」 restores the sheet and refits.
+    - The phone finish, restart and speed cases.
+    - The desktop fake-clock case and the desktop speed case: click 「結果を表示」 before each
+      `startReplay()`.
+    - History across a resize.
+    - The "while the replay runs" share case: pause → 「結果を表示」 → share.
+    - The opt-in screenshot cases.
+    - The reduced-motion case.
+  - Keep the Step 2.4 camera assertions: turn framing, manual-pan lock and the drawn-route
+    checks. Update the framing "open region" to the strip on desktop if needed, without
+    loosening the tolerance.
+  - `tests/unit/clear-replay-controls.test.ts`: the playing, paused, done and expanded control
+    sets. Also `tests/unit/clear-screen.test.ts` where affected.
+- Screenshots (user-facing; the user cannot open /tmp), saved to `.claude/logs/screenshots/`:
+  - `issue72-s25-strip-desktop.png`: replay playing, desktop strip at the bottom and the map
+    visible.
+  - `issue72-s25-paused-desktop.png`: paused, with 「結果を表示」 visible.
+  - `issue72-s25-results-desktop.png`: after 「結果を表示」, the centred card.
+  - `issue72-s25-strip-phone.png` and `issue72-s25-paused-phone.png`.
+
+  Take them from a real app build, desktop 1280×800 and phone 390×844. A temporary spec
+  `tests/e2e/tmp-issue72-s25-shots.spec.ts` is fine, but it MUST be deleted before you finish.
+- OUT: the seek bar and 前/次 (Step 2.6), DESIGN.md, STATE.md and the plan files. Add no new
+  dependencies, and do not commit or push. Never `pkill -f`; keep Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion except the intentional updates listed.
+  - The share, history and restart flows keep working.
+  - Keep files at or under 800 lines. `clear-replay-share.spec.ts` may already be long; check
+    it. If it would exceed 800 lines, split the replay-strip cases into a new spec file that
+    reuses the existing helpers via a shared support module. Do not duplicate the helpers.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 2.1–2.4 have landed. 2.4 is commit cb96a63: the camera, the manual lock, and the clear
+  map kept out of the Tab order.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- every intentional E2E update, listed by test name, with before → after;
+- the new tests and what each one proves;
+- the screenshot paths;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.5 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 2.5 change. Everything in the
+"Step 2.5 — implement (visible)" prompt above still applies. The full review is the latest
+`.claude/logs/codex/*issue72-s25-review.md`; read it.
+
+Fix:
+1. High: the desktop strip covers the map attribution, which is a licence requirement.
+   - At 1280×800 the strip (about x 220–1060, y 728–788) covers the left part of the
+     bottom-right MapLibre attribution.
+   - Fix: while the strip is shown on desktop, place the attribution clear of the strip. For
+     example, lift it above the measured strip top, or keep the strip from overlapping the
+     attribution column.
+   - The phone layout keeps its existing compact top-left attribution.
+   - Add E2E checks at desktop 1280×800, while playing AND while paused (when 「結果を表示」 makes
+     the strip wider): the attribution rect and the strip rect do not intersect, and the
+     attribution text is visible.
+2. Medium: history-button focus on resize (`ClearScreen.tsx` about :142).
+   - Scenario: focus is on the desktop strip's 「移動履歴を見る」 with the dialog closed. The
+     width shrinks to ≤ 600 px, and the CSS hides the button. No focus hand-off runs.
+   - Fix: when the layout switch hides the focused history trigger, move focus to the
+     surviving 一時停止 / 再開.
+   - Add a test for a resize with the dialog closed.
+3. Medium: history opened just before the replay ends (`ClearScreen.tsx` about :181/:218,
+   `ClearReplayControls.tsx` about :62, `ClearHistory.tsx` about :66).
+   - Scenario: `pause()` syncs the clock and can reach `done`, so the trigger unmounts while
+     the dialog opens.
+   - Fix, following D2:
+     - keep the desktop history trigger in the `done` strip as well;
+     - when the dialog closes and its opener is hidden or disconnected, return focus to the
+       visible 再開 or 「結果を表示」.
+   - Add a test.
+4. Low: restore the reduced-motion negative assertion in `tests/unit/clear-screen.test.ts`
+   about :424. After completion under reduced motion, 「軌跡を再生」 must not exist in the
+   strip context the old test covered. Re-check what the old assertion meant against the new
+   behaviour (the expanded card shows 「軌跡を再生」 in results). Restore the strongest
+   equivalent negative check, and explain it.
+5. Nit: import the existing `IMAGE_READY_TIMEOUT_MS` export from
+   `tests/e2e/clear-replay-share-support.ts` instead of redefining it.
+
+Re-take the affected screenshots, using the same paths:
+- `issue72-s25-strip-desktop.png`
+- `issue72-s25-paused-desktop.png`
+
+Delete any temporary spec before you finish.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion, and do
+not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-share.spec.ts tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-image-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-share.spec.ts tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-image-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new tests;
+- the acceptance results;
+- the screenshot status;
+- risks.
+
+## Step 2.6 — implement (visible)
+
+Objective: implement Step 2.6 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step adds a seek bar and 前/次 buttons to the replay strip. Also capture screenshots for
+the user.
+
+Scope:
+- IN: exactly the "Step 2.6" section of the plan and the D2 row in section 2. Read both in full.
+  - Files: `src/features/game/components/ClearReplayControls.tsx` and `clearScreen.css`.
+  - Seek bar:
+    - It is a labelled native `<input type="range">` over one-based real turns (1..turnCount).
+    - It is bound to the UI snapshot `recordIndex` + 1, and `turnCount`.
+    - Input calls `store.seek(value - 1)`.
+    - The label is Japanese, e.g. 「ターン」, with an `aria-valuetext` such as 「3 / 83 ターン」.
+  - 前 and 次 buttons call `store.step(-1)` / `store.step(+1)`.
+    - They are disabled at the bounds: 前 at the first turn and 次 at the last turn while
+      playing or paused.
+    - User decision (2026-11-27): from `done`, the completed full-route view, BOTH stay enabled
+      and select the first turn. The store already does this.
+  - The completed view is distinct from a seek to the final turn. In `done`, the range should
+    not look like it is at the last turn; pick a clear treatment and report it (e.g. the value
+    at the max with an 「全経路」 valuetext).
+  - Play state is kept, as the store does: playing continues, paused stays paused, and done →
+    paused.
+  - The camera already reframes once per `seekRevision` (Step 2.4).
+  - Layout:
+    - Reachable in the 320 px phone strip. The phone strip has no history trigger, so there is
+      room.
+    - On desktop, the strip still has to clear the attribution (the Step 2.5 lift).
+    - Keep the strip from growing so tall that the turn framing gets cramped. Reflow it into
+      two rows on narrow widths if needed.
+  - Not shown when the card is expanded, or under reduced motion (the card is expanded there).
+- Tests:
+  - `tests/unit/clear-replay-controls.test.ts`:
+    - endpoints and labels;
+    - availability in playing, paused and done;
+    - 前 and 次 from `done` target the first turn;
+    - disabled at the bounds;
+    - a range input calls seek with a zero-based index.
+  - Extend the desktop fake-clock case in `tests/e2e/clear-replay-strip.spec.ts` ("keeps the
+    caption and partial route in the same turn, completes, and replays"). Add:
+    - a seek under the manual lock, plus one 前/次 step;
+    - the caption and the route prefix change together;
+    - one reframe per seek, observed through the camera target from the Step 2.4 E2E hook;
+    - the replay keeps running after a seek while playing, and stays paused after a seek while
+      paused;
+    - the lock is respected until completion.
+  - A phone `@layout` check: the range and 前/次 are visible and reachable in the 320 px and
+    390 px strip, with no horizontal overflow.
+- Screenshots (user-facing), saved to `.claude/logs/screenshots/`:
+  - `issue72-s26-seek-desktop.png`: playing, with the seek bar and 前/次 visible.
+  - `issue72-s26-seek-phone.png` (390×844).
+  - `issue72-s26-done-desktop.png`: the done strip.
+
+  Take them from a real app build. A temporary spec is fine, but it MUST be deleted before you
+  finish.
+- OUT: DESIGN.md (Step 2.7), STATE.md and the plan files. Add no new dependencies, and do not
+  commit or push. Never `pkill -f`; keep Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion.
+  - Do not add new `test.setTimeout` unless you measure the test over 25 s on two workers; if
+    you do, add a comment with the measurement.
+  - Keep files at or under 800 lines.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 2.1–2.5 have landed. 2.5 is commit bd122d1, the strip and 「結果を表示」. The store's
+  `seek`/`step`/`turnCount`/`seekRevision` come from 2.1.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts tests/unit/clear-replay.test.ts tests/unit/clear-replay-results.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the tests and what each one proves;
+- the done-state treatment you chose;
+- the screenshot paths;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 2.6 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 2.6 change. Everything in the
+"Step 2.6 — implement (visible)" prompt above still applies. The full review is the latest
+`.claude/logs/codex/*issue72-s26-review.md`; read it.
+
+Fix:
+1. High: the range remounts when seeking from `done` (`ClearReplayControls.tsx` about :106).
+   - Scenario: `done` and `paused` render the turn controls under different parents. The first
+     input on the done-state range unmounts the range being dragged, so a drag or repeated
+     arrow keys cannot continue on the same control.
+   - Fix: keep the turn group (前, range, 次) under one stable parent, so that the same DOM node
+     survives `done` → `paused` (and playing ↔ paused).
+   - Add a regression test:
+     - a unit test, asserting the same element identity before and after the first input from
+       `done`;
+     - an E2E test using real `keyboard.press('ArrowLeft')` twice from `done` on the focused
+       range: focus stays on the range, and the turn moves twice.
+2. Medium: no focus hand-off when 前/次 becomes disabled (about :63).
+   - Scenario: while paused on turn 2, pressing 前 by keyboard lands on turn 1 and disables
+     the focused button.
+   - Fix: when the pressed 前/次 becomes disabled, move focus to the range. Apply the same rule
+     from `done`. Do it without stealing focus in the other cases.
+   - Add a unit test.
+3. Medium: the E2E does not count reframes (`clear-replay-strip.spec.ts` about :129,
+   `useClearReplayCamera.ts` about :64).
+   - Expose a cumulative count of applied fits through the existing E2E hook
+     (`src/features/map/e2eHook.ts`, E2E builds only, as the Step 2.4 `clearCameraTarget` is).
+   - Assert:
+     - +1 per seek or step;
+     - +0 for automatic turn advances under the manual lock;
+     - +1 at completion (full route).
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion, and add
+no new `test.setTimeout` without a measured comment. Do not commit. Re-take the screenshots
+only if the visible result changed, at the same paths. Delete any temporary spec.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-replay-controls.test.ts tests/unit/clear-screen.test.ts tests/unit/clear-route-map.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/clear-replay-strip.spec.ts tests/e2e/clear-replay-share.spec.ts --project=phone-chromium --grep @layout
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new tests;
+- the acceptance results;
+- the screenshot status;
+- risks.

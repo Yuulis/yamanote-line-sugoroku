@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { hideAllLineGroups, updateLineGroupVisibility } from "../../src/features/map/lineVisibility";
 import { RailwayMap } from "../../src/features/map/RailwayMap";
+import { bindStationInteractions, type StationSelection } from "../../src/features/map/stationInteraction";
 import { TITLE_FIT_PADDING_PHONE_PX, TITLE_FIT_PADDING_PX, titleFitPadding } from "../../src/features/map/camera";
 import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import { loadRailwayData } from "../../src/data/loaders";
@@ -12,7 +13,7 @@ import { addRailwayLayers, setBackgroundFocus } from "../../src/features/map/rai
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
-const mapState = vi.hoisted(() => ({ instances: [] as unknown[], failConstruction: false }));
+const mapState = vi.hoisted(() => ({ instances: [] as unknown[], failConstruction: false, openedPopups: 0, removedPopups: 0 }));
 
 interface MapEvent {
   readonly sourceId?: string;
@@ -32,10 +33,15 @@ vi.mock("maplibre-gl", () => ({
     readonly container: HTMLElement;
     readonly controls: unknown[] = [];
     removed = false;
+    readonly canvas: HTMLCanvasElement;
 
     constructor(options: { container: HTMLElement }) {
       if (mapState.failConstruction) throw new Error("WebGL unavailable");
       this.container = options.container;
+      this.canvas = document.createElement("canvas");
+      this.canvas.className = "maplibregl-canvas";
+      this.canvas.tabIndex = 0;
+      this.container.append(this.canvas);
       mapState.instances.push(this);
     }
 
@@ -61,6 +67,7 @@ vi.mock("maplibre-gl", () => ({
     }
 
     getContainer(): HTMLElement { return this.container; }
+    getCanvas(): HTMLCanvasElement { return this.canvas; }
     addControl(control?: unknown): this {
       if (control === undefined) return this;
       this.controls.push(control);
@@ -119,7 +126,18 @@ vi.mock("maplibre-gl", () => ({
     jumpTo(options: unknown): void { this.order.push("jumpTo"); this.calls.jump.push(options); }
     easeTo(options: unknown): void { this.calls.ease.push(options); }
   },
-  AttributionControl: class {},
+  AttributionControl: class {
+    onAdd(): HTMLElement {
+      const root = document.createElement("div");
+      root.className = "maplibregl-ctrl-attrib";
+      const details = document.createElement("details");
+      const summary = document.createElement("summary");
+      summary.textContent = "地図の出典";
+      details.append(summary);
+      root.append(details);
+      return root;
+    }
+  },
   NavigationControl: class {
     readonly navigationControl = true;
     private removed = false;
@@ -141,7 +159,12 @@ vi.mock("maplibre-gl", () => ({
       this.element = null;
     }
   },
-  Popup: class {},
+  Popup: class {
+    setLngLat(): this { return this; }
+    setDOMContent(): this { return this; }
+    addTo(): this { mapState.openedPopups += 1; return this; }
+    remove(): this { mapState.removedPopups += 1; return this; }
+  },
 }));
 
 vi.mock("../../src/features/map/attribution", () => ({
@@ -152,6 +175,8 @@ vi.mock("../../src/features/map/attribution", () => ({
 vi.mock("../../src/features/map/e2eHook", () => ({
   exposeMapForE2E: vi.fn(),
   exposeClearFitPaddingForE2E: vi.fn(),
+  exposeClearCameraTargetForE2E: vi.fn(),
+  incrementClearFitCountForE2E: vi.fn(),
 }));
 vi.mock("../../src/features/map/railwayLayers", () => ({
   addRailwayLayers: vi.fn(), setBackgroundFocus: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
@@ -174,12 +199,14 @@ interface MapDouble {
   readonly calls: { padding: unknown[]; fit: Array<{ bounds: unknown; options: { padding?: unknown } }>; jump: unknown[]; ease: unknown[] };
   readonly controls: unknown[];
   readonly container: HTMLElement;
+  readonly canvas: HTMLCanvasElement;
   readonly removed: boolean;
   readonly order: string[];
   readonly sources: Map<string, { data: { features: unknown[] } }>;
   layers: Array<{ id: string; type: string; paint?: Record<string, unknown> }>;
   padding: { top: number; right: number; bottom: number; left: number };
   emit(event: string, payload?: MapEvent): void;
+  getCanvas(): HTMLCanvasElement;
   addLayer(layer: { id: string; type: string; paint?: Record<string, unknown> }, beforeId?: string): void;
   getLayer(id: string): { id: string; type: string; paint?: Record<string, unknown> } | undefined;
   setPaintProperty(id: string, property: string, value: unknown): void;
@@ -247,8 +274,11 @@ function fitOptions(map: MapDouble, index = map.calls.fit.length - 1): { padding
 beforeEach(() => {
   mapState.instances = [];
   mapState.failConstruction = false;
+  mapState.openedPopups = 0;
+  mapState.removedPopups = 0;
   vi.mocked(addRailwayLayers).mockReset();
   vi.mocked(setBackgroundFocus).mockReset();
+  vi.mocked(bindStationInteractions).mockReset();
   viewport = { width: 1280, height: 800 };
   vi.stubGlobal("ResizeObserver", class { observe(): void {} disconnect(): void {} });
   Object.defineProperty(window, "ResizeObserver", { configurable: true, value: globalThis.ResizeObserver });
@@ -835,5 +865,61 @@ describe("clear route on the map", () => {
     const map = ready("clear", clearProps());
     expect(navigationControlCount(map)).toBe(0);
     expect(map.container.parentElement?.querySelector(".map-overview")).toBeNull();
+  });
+
+  it("removes the canvas from Tab in clear mode, blurs pointer focus, restores its tab index and keeps attribution reachable", () => {
+    const map = ready("game", { inert: true });
+    map.canvas.setAttribute("tabindex", "3");
+
+    render("clear", { inert: true, ...clearProps() });
+    expect(map.canvas.getAttribute("tabindex")).toBe("-1");
+    expect(map.container.parentElement?.hasAttribute("inert")).toBe(false);
+
+    act(() => {
+      map.canvas.dispatchEvent(new Event("pointerdown"));
+      map.canvas.focus();
+    });
+    expect(document.activeElement, "pointer interaction does not leave focus on the canvas").not.toBe(map.canvas);
+
+    const attributionSummary = map.container.querySelector<HTMLElement>(".maplibregl-ctrl-attrib summary");
+    expect(attributionSummary).not.toBeNull();
+    act(() => attributionSummary?.focus());
+    expect(document.activeElement, "the attribution remains keyboard reachable").toBe(attributionSummary);
+
+    render("game");
+    expect(map.canvas.getAttribute("tabindex"), "the persistent map restores its entry value").toBe("3");
+  });
+
+  it("closes a station popup left open from gameplay when the clear screen opens", () => {
+    const selection = { current: null as ((station: StationSelection) => void) | null };
+    vi.mocked(bindStationInteractions).mockImplementation((_map, onSelect) => {
+      selection.current = onSelect;
+    });
+    ready("game");
+    selection.current?.({ name: "東京", lineNames: "山手線", lngLat: [139.767, 35.681] });
+    expect(mapState.openedPopups).toBe(1);
+    expect(mapState.removedPopups).toBe(0);
+
+    render("clear", clearProps());
+    expect(mapState.removedPopups, "the gameplay popup is closed on entering clear").toBe(1);
+
+    render("title");
+    expect(mapState.removedPopups, "leaving clear does not remove it twice").toBe(1);
+  });
+
+  it("does not open station popups in clear mode", () => {
+    const selection = { current: null as ((station: StationSelection) => void) | null };
+    vi.mocked(bindStationInteractions).mockImplementation((_map, onSelect) => {
+      selection.current = onSelect;
+    });
+    ready("game");
+    render("clear", clearProps());
+
+    selection.current?.({ name: "東京", lineNames: "山手線", lngLat: [139.767, 35.681] });
+    expect(mapState.openedPopups).toBe(0);
+
+    render("game");
+    selection.current?.({ name: "東京", lineNames: "山手線", lngLat: [139.767, 35.681] });
+    expect(mapState.openedPopups).toBe(1);
   });
 });

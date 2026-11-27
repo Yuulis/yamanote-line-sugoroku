@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { buildRailwayNetwork, createGame, createItemGame } from "../../src/features/game/engine";
 import { createPresentationResolver } from "../../src/features/game/presentationResolver";
-import { deriveClearResult } from "../../src/features/game/clearResult";
-import { buildClearRouteGeoJson } from "../../src/features/game/clearRoute";
+import { deriveClearResult, mapSavedRecord } from "../../src/features/game/clearResult";
+import { buildClearRoute, buildClearRouteGeoJson } from "../../src/features/game/clearRoute";
 import { ITEM_GAME_CONFIG } from "../../src/features/game/gameConfig";
 import type { GeometryIndex, GeometryPath } from "../../src/features/game/animation/movePath";
 import type { GameState, ItemGameState, ItemTurnRecord, MoveRecord, Segment } from "../../src/types/network";
@@ -86,6 +86,26 @@ describe("clear route construction", () => {
     expect(result.route?.legs).toEqual([{ firstStepIndex: 0, endStepIndexExclusive: 1, serviceId: M_LINE,
       lineGroupId: M_LINE, color: "#123456" }]);
     expect(result.route?.bounds).toEqual([[139.7, 35.6], [139.72, 35.62]]);
+    expect(result.route?.turnSpans).toEqual([
+      { recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1, destination: network.stationsById.get("b")!.coordinates },
+    ]);
+  });
+
+  it("omits a turn destination when the validated traversal's end station has no coordinates", () => {
+    const savedRecord = record();
+    const traversal = mapSavedRecord(savedRecord, 0, "x", {
+      game: game([savedRecord]), network, geometry: geometry(), presentation, display,
+    });
+    const networkWithoutDestination = {
+      ...network,
+      stationsById: new Map([...network.stationsById].filter(([stationId]) => stationId !== "b")),
+    };
+
+    const route = buildClearRoute([traversal], networkWithoutDestination, geometry(), (serviceId) => presentation.lineGroupId(serviceId));
+
+    expect(route?.turnSpans).toEqual([
+      { recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1 },
+    ]);
   });
 
   it("uses the directed reverse segment feature order without reversing the id list", () => {
@@ -200,10 +220,10 @@ describe("clear route construction", () => {
     ]), network, geometry: continuousGeometry, presentation, display });
     expect(result.route?.legs.map((leg) => [leg.firstStepIndex, leg.endStepIndexExclusive])).toEqual([[0, 1], [1, 2]]);
     expect(result.route?.turnSpans).toEqual([
-      { recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1 },
-      { recordIndex: 1, firstStepIndex: 1, endStepIndexExclusive: 1 },
-      { recordIndex: 2, firstStepIndex: 1, endStepIndexExclusive: 2 },
-      { recordIndex: 3, firstStepIndex: 2, endStepIndexExclusive: 2 },
+      { recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1, destination: network.stationsById.get("b")!.coordinates },
+      { recordIndex: 1, firstStepIndex: 1, endStepIndexExclusive: 1, destination: network.stationsById.get("b")!.coordinates },
+      { recordIndex: 2, firstStepIndex: 1, endStepIndexExclusive: 2, destination: network.stationsById.get("y")!.coordinates },
+      { recordIndex: 3, firstStepIndex: 2, endStepIndexExclusive: 2, destination: network.stationsById.get("y")!.coordinates },
     ]);
   });
 

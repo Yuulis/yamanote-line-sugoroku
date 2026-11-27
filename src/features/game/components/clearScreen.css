@@ -169,6 +169,90 @@
   gap: 6px;
 }
 
+.clear-replay-controls__done {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-replay-controls__turn {
+  display: flex;
+  flex: 1 1 250px;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+}
+
+.clear-replay-controls__turn-label {
+  flex: 0 0 auto;
+  color: #444444;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.clear-replay-controls__seek {
+  flex: 1 1 auto;
+  min-width: 48px;
+  margin: 0;
+  accent-color: #1f547e;
+}
+
+.clear-replay-controls__step {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.clear-replay-controls__secondary {
+  display: contents;
+}
+
+/* Replay keeps the measured card as a compact bottom obstruction on both layouts. */
+.clear-screen--replay-collapsed {
+  top: auto;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(840px, calc(100% - 32px));
+  max-height: none;
+  overflow: visible;
+  padding: 8px 12px;
+}
+
+.clear-screen--replay-collapsed .clear-screen__share {
+  gap: 0;
+  margin: 0;
+}
+
+.clear-screen--replay-collapsed > .clear-screen__history-button {
+  display: none;
+}
+
+.clear-screen--replay-collapsed .clear-screen__replay-unavailable,
+.clear-screen--replay-collapsed .clear-screen__share-status,
+.clear-screen--replay-collapsed .clear-screen__share-fallback {
+  display: none;
+}
+
+.clear-screen--replay-collapsed .clear-replay-controls__history {
+  flex: 0 0 auto;
+}
+
+.clear-screen--replay-collapsed .clear-replay-controls__results {
+  flex: 0 0 auto;
+}
+
+/* On desktop the bottom-right attribution stays readable above the replay strip. The offset is
+   measured from the strip's live top edge so the paused strip can grow without covering credits. */
+@media (min-width: 601px) and (min-height: 501px) {
+  .map-container .maplibregl-ctrl-bottom-right {
+    bottom: var(--clear-replay-attribution-bottom, 0px);
+  }
+}
+
 .clear-replay-controls__speeds {
   display: inline-flex;
   flex: 0 1 auto;
@@ -468,28 +552,60 @@
   /* During replay the measured card becomes a bottom-anchored control band. The hidden wrappers use the native
      hidden/inert semantics as well as display:none, so their actions leave both layout and keyboard navigation. */
   .clear-screen--replay-collapsed {
-    max-height: none;
-    overflow: visible;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    left: calc(8px + env(safe-area-inset-left, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    transform: none;
+    width: auto;
     padding: 8px 12px;
-  }
-
-  .clear-screen--replay-collapsed .clear-screen__share {
-    gap: 0;
-    margin: 0;
-  }
-
-  .clear-screen--replay-collapsed .clear-screen__replay-unavailable,
-  .clear-screen--replay-collapsed .clear-screen__share-status,
-  .clear-screen--replay-collapsed .clear-screen__share-fallback {
-    display: none;
   }
 
   .clear-screen--replay-collapsed .clear-replay-controls__active {
     display: grid;
     flex: 1 0 100%;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) max-content;
     align-items: stretch;
     gap: 6px;
+    min-width: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__done {
+    display: grid;
+    flex: 1 0 100%;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__turn {
+    grid-column: 1;
+    grid-row: 1;
+    gap: 4px;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__done .clear-replay-controls__turn {
+    grid-column: 1;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__seek {
+    min-width: 44px;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__toggle {
+    grid-column: 2;
+    grid-row: 1;
+    padding-inline: 6px;
+    white-space: nowrap;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__secondary {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr) max-content max-content;
+    align-items: stretch;
+    gap: 4px;
     min-width: 0;
   }
 
@@ -503,20 +619,43 @@
   .clear-screen--replay-collapsed .clear-replay-controls__speeds {
     display: grid;
     flex: initial;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
+    grid-template-columns: repeat(3, minmax(44px, 1fr));
+    gap: 0;
     min-width: 0;
   }
 
   .clear-screen--replay-collapsed .clear-replay-controls__speeds button {
-    min-width: 0;
-    padding: 3px 2px;
-    font-size: 12px;
+    box-sizing: border-box;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 1px 0;
+    font-size: 10px;
   }
 
   .clear-screen--replay-collapsed .clear-replay-controls__finish {
-    grid-column: 1 / -1;
+    grid-column: 2;
+    width: auto;
+    padding-inline: 2px;
+    font-size: 10px;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__results {
+    grid-column: 3;
+    box-sizing: border-box;
+    width: auto;
+    min-height: 44px;
+    padding-inline: 2px;
+    font-size: 10px;
+    white-space: nowrap;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__done .clear-replay-controls__results {
+    grid-column: 1;
     width: 100%;
+  }
+
+  .clear-screen--replay-collapsed .clear-replay-controls__history {
+    display: none;
   }
 
   /* The history dialog stacks each turn: same DOM, one column, names wrap in full. */

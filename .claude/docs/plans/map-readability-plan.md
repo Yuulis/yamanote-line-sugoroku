@@ -37,7 +37,7 @@ toggle, colour changes, near-parallel offsets, data/pipeline changes, Yamanote p
 | B2 | Report only: `docs/manual/map-readability/colour-vision.md` (Japanese), written after PR1 visuals are final. Records exact palette reuse separately from protan/deutan/tritan similarity, the method, sampled views/zooms (dim background, candidate overlay, gold ring vs red marker vs magenta pending), and existing non-colour cues (HUD/lottery badges, dash vs solid). Any analysis script stays local (not committed). Official colours unchanged. |
 | C | `railway-goal-station` stays the permanent zoom-aware ring, restyled gold / 5 px (initial). In gameplay, `RailwayMap` resolves the reveal-gated `goalStationId` to coordinates and mounts `goalCallout.ts`: a 「ここに着けばゴール」 DOM bubble built from the roll-adjust bubble shell (exported from `rollAdjustmentPreview.ts`) plus a second DOM marker whose inner element pulses opacity/scale over ~3 s via CSS. `prefers-reduced-motion` disables the animation; ring and bubble stay. Zero per-frame MapLibre writes (respects the #62 Step 4b perf finding). Clear map keeps the static ring only. Markers are `aria-hidden`, non-interactive, `data-map-goal-callout` / `data-map-goal-pulse`. |
 | D1 | `useClearReplayCamera` (moved out of `useClearRouteMap.ts`) subscribes to the turn-level UI snapshot and fits each saved turn's span bounds (all step coordinates; empty span ⇒ destination point; unresolved ⇒ keep view) instantly at the existing max zoom with measured card/strip padding, coalescing layout reads per frame. A user pan/zoom (`USER_CAMERA_EVENTS` + `isUserCameraEvent`) locks automatic turn and layout fits; an explicit seek/prev/next (`seekRevision` bump) forces exactly one fit and keeps the lock; completion always fits `route.bounds` and supersedes queued turn work. A new playback unlocks. Style reload does not unlock. Reduced motion keeps the instant full-route path with the card expanded. |
-| D2 | `cardExpanded` in the store, independent of phase. Ordinary playback collapses the card to a bottom strip on desktop and phone: native range input (one-based real turns), 前/次 buttons, pause/resume, speed, 全経路を表示, and the 「移動履歴を見る」 trigger on desktop only (the phone strip has no history trigger during playback, keeping today's behaviour). Paused/done shows 「結果を表示」; only it sets `cardExpanded` (natural end and 全経路を表示 keep the strip and show the full route). Seek/step never pause or resume playback: if playing it keeps playing from the new turn, if paused it stays paused, and from `done` it goes to paused at the chosen turn; each publishes route prefix, caption and camera from one transition. 前 from `done` (the completed full-route view) selects the first real turn. Focus moves Play → strip control, disappearing control → surviving strip control, 「結果を表示」 → Play or results heading. Share during replay goes through 「結果を表示」 and still sees the full route. |
+| D2 | `cardExpanded` in the store, independent of phase. Ordinary playback collapses the card to a bottom strip on desktop and phone: native range input (one-based real turns), 前/次 buttons, pause/resume, speed, 全経路を表示, and the 「移動履歴を見る」 trigger on desktop only (the phone strip has no history trigger during playback, keeping today's behaviour). Paused/done shows 「結果を表示」; only it sets `cardExpanded` (natural end and 全経路を表示 keep the strip and show the full route). Seek/step never pause or resume playback: if playing it keeps playing from the new turn, if paused it stays paused, and from `done` it goes to paused at the chosen turn; each publishes route prefix, caption and camera from one transition. 前 and 次 from `done` (the completed full-route view) both select the first real turn. Focus moves Play → strip control, disappearing control → surviving strip control, 「結果を表示」 → Play or results heading. Share during replay goes through 「結果を表示」 and still sees the full route. |
 | E | Pure `buildCorridorOffsets(geometry, targetServiceId)`: index undirected edges by exact endpoint coordinates; shared ⇔ ≥ 2 distinct owning `serviceId`s; walk connected shared runs in a deterministic orientation (sorted tie-break at branches/loops), reorient fragments, split at original feature boundaries, shared/unshared transitions and slot changes, keep intermediate vertices. Slots: target (Yamanote) = 0, fresh groups centred around 0, continuing services keep compatible slots, entering services take free slots; never depends on legend or lottery state. Fragments get unique top-level `id`s but keep `properties.featureId/serviceId/lineId`, so every existing `featureId` filter (incl. cross-owner references) still selects all fragments. Derived source feeds only `services`, `currentService`, `lotteryCandidates`, all with one `line-offset` = `interpolate(zoom)`: 0 through z11 → `corridorSlot × spacing` at z13 (missing slot ⇒ 0). Base/progress/flash, clear route and movement keep the canonical source. Memoised per geometry identity + target; reused across style reloads; derivation failure falls back to the canonical source. |
 
 ### Module structure
@@ -90,7 +90,7 @@ interface ClearReplayUiSnapshot {
 // ClearReplayStore additions
 seek(recordIndex: number): void;   // clamps finite input, ignores non-finite; keeps play state
                                    // (playing continues, paused stays paused, done -> paused there)
-step(delta: -1 | 1): void;         // same play-state rule; from done, -1 selects the first turn
+step(delta: -1 | 1): void;         // same play-state rule; from done, both -1 and +1 select the first turn
                                    // (record index of the first real turn)
 showResults(): void;               // full route + cardExpanded = true
 function resolveReplaySeekIndex(turnCount: number, recordIndex: number): number | null;
@@ -317,11 +317,11 @@ Files: `src/features/game/clearReplayStore.ts`: clamped finite seek, one-turn st
 `seekRevision`; seek resets the clock anchor (`atElapsed(recordIndex × turnDuration)`), invalidates
 pending callbacks, publishes route prefix, marker and caption in one transition; seek/step keep
 the play state (playing continues from the new turn, paused stays paused, `done` goes to paused at
-the chosen turn); 前 from `done` selects the first real turn; reduced motion stays instant.
+the chosen turn); 前 and 次 from `done` both select the first real turn; reduced motion stays instant.
 Tests (first): `tests/unit/clear-replay.test.ts` — empty timeline/spans, out-of-range and
 non-finite input, same-turn seek bumps revision, seek while playing keeps playing from the new
-turn, seek while paused stays paused, seek/step from done lands paused at the chosen turn, 前 from
-done selects the first real turn, stale queued frame, speed/resume continuity.
+turn, seek while paused stays paused, seek/step from done lands paused at the chosen turn, 前 and 次 from
+done select the first real turn, stale queued frame, speed/resume continuity.
 ```bash
 npm run typecheck
 npx vitest run tests/unit/clear-replay.test.ts tests/unit/clear-replay-marker.test.ts
@@ -410,11 +410,11 @@ npx playwright test tests/e2e/clear-replay-share.spec.ts --project=phone-chromiu
 
 ### Step 2.6 — Seek bar and turn buttons (visible)
 Files: `ClearReplayControls.tsx`, `clearScreen.css`: labelled native range (one-based turns,
-real-turn endpoints), 前/次 buttons, disabled at the bounds, reachable in the 320 px strip (the
+real-turn endpoints), 前/次 buttons, disabled at the bounds (both stay enabled from `done`, where they select the first turn), reachable in the 320 px strip (the
 phone strip has no history trigger, so no extra crowding); input seeks without changing the play
-state (playing continues, paused stays paused, `done` becomes paused at the chosen turn); 前 from
-the completed view selects the first turn; the completed view is distinct from a seek to the final turn.
-Tests: `clear-replay-controls.test.ts` (endpoints, labels, availability incl. `done`, 前 from `done` targets
+state (playing continues, paused stays paused, `done` becomes paused at the chosen turn); 前 and 次 from
+the completed view select the first turn; the completed view is distinct from a seek to the final turn.
+Tests: `clear-replay-controls.test.ts` (endpoints, labels, availability incl. `done`, 前 and 次 from `done` target
 the first turn); `clear-replay-share.spec.ts:698` extended: seek under manual lock and one prev/next
 step — caption and prefix change together, one reframe per seek, replay keeps running after a seek
 while playing and stays paused after a seek while paused, lock respected until completion;
@@ -531,7 +531,7 @@ git diff --exit-code develop -- public/data
 |---|---|---|---|
 | R1 (PR1) | Issue #72 map focus: background services are thin (~2 px) and ~30% opacity on the gameplay map, always on (the title map keeps its current width 3 / opacity 0.75 paint); the legend stays. Presented lottery stages (`lottery-flip`/`lottery-settle`) emphasise the public candidate set on a layer between background and current service; none when the stage is not shown. Basemap symbol text/icon opacity is scaled down from each style's own values (14 layers) (2026-11-26) | Yamanote and the current ride read first while network, place names and the published choices stay legible; reveal gating unchanged | Focus toggle; candidate line-code labels on the map; a current-position badge; colour changes |
 | R2 (PR1) | Issue #72 goal guidance supersedes the goal-ring parts of the #62 map-guidance row (2026-11-10) and Step 5 row (2026-11-11): after 30/30 新橋 gets a thick gold ring, a slow CSS-pulsed DOM halo and a 「ここに着けばゴール」 bubble (roll-adjust bubble shell); reduced motion shows the static ring and bubble; the clear map keeps the static ring (2026-11-26) | Weight, shape and text make the destination unmistakable; the DOM pulse adds no per-frame MapLibre writes (#62 Step 4b finding) | Thin #b26a00 ring only; a red ring (reads as a second player); a per-frame paint-property pulse |
-| R3 (PR2) | Issue #72 replay camera supersedes the camera choice of the #69 trajectory-replay row (2026-11-22): replay frames each saved turn; a manual pan/zoom keeps the player's view; seek and 前/次 reframe once and keep the play state (playing continues, paused stays paused, done goes to paused; 前 from done selects the first turn); the end frames the full route; reduced motion shows the full route immediately (2026-11-26) | Shows where each move happened while respecting the player's manual view | Fixed full-route camera through playback; continuous marker following |
+| R3 (PR2) | Issue #72 replay camera supersedes the camera choice of the #69 trajectory-replay row (2026-11-22): replay frames each saved turn; a manual pan/zoom keeps the player's view; seek and 前/次 reframe once and keep the play state (playing continues, paused stays paused, done goes to paused; 前 and 次 from done select the first turn); the end frames the full route; reduced motion shows the full route immediately (2026-11-26) | Shows where each move happened while respecting the player's manual view | Fixed full-route camera through playback; continuous marker following |
 | R4 (PR2) | Issue #72 replay strip supersedes the card behaviour of the #69 S4b/S5b row (2026-11-24, "expands on natural end … desktop is unchanged"): desktop and phone collapse to a bottom seek-bar strip (range, 前/次, pause/resume, speed, 全経路を表示, plus 「移動履歴を見る」 on desktop only) during replay and keep it after pause, natural end or 全経路を表示; only 「結果を表示」 restores the centred card / phone sheet (2026-11-26) | The map stays visible through playback and scrubbing; the player chooses when to see results | Expanded desktop card during replay; automatic expansion at natural end or finish; a left sidebar |
 | R5 (PR3) | Issue #72 shared track supersedes the dropped 23-ward uniform `line-offset: 4`: a runtime-derived render source offsets services on exactly shared edges (identical coordinates) with stable slots, Yamanote at 0, zoom-gated (0 ≤ z11 → full at z13), used by background, current-service and lottery layers only; published geometry and `dataVersion` unchanged; marker may sit a few px off an offset line (2026-11-26) | Separates overlapping services incl. reversed and partially shared features without touching saves or movement geometry | Uniform feature-wide offset; near-parallel (tolerance) matching; pipeline-generated offset geometry |
 
@@ -555,7 +555,7 @@ These replace the Codex defaults the plan was validated with.
 - A1 focus paint applies to the gameplay map only; the title map keeps today's
   railway-services paint (width 3, opacity 0.75). The clear screen keeps whatever
   `clearNetworkVisibility.ts` already does.
-- 前 from the completed (done / full-route) view selects the first real turn (record index of the first turn).
+- 前 and 次 from the completed (done / full-route) view both select the first real turn (record index of the first turn; user 2026-11-27).
 - Seeking or stepping does not pause playback: playing keeps playing from the new turn, paused
   stays paused, and from done it goes to paused at the chosen turn.
 - The 「移動履歴を見る」 trigger sits on the strip on desktop only; the phone strip has no history
