@@ -193,3 +193,59 @@ Output (markdown):
 - the acceptance results with pass/fail counts;
 - the line counts;
 - risks.
+
+## Step 1.4 — implement
+
+Objective: implement Step 1.4 of `.claude/docs/plans/map-readability-plan.md`, a pure move of
+the segment flash hook out of `src/features/map/RailwayMap.tsx` into the new file
+`src/features/map/useSegmentFlash.ts`, as one uncommitted step.
+
+Scope:
+- IN: exactly the "Step 1.4" section of the plan.
+  - Move `useSegmentFlash` (around line 146 at HEAD ffbeeb5), its `SegmentFlashClock`
+    interface and doc comments (around lines 133–145), and any helpers or constants only it
+    uses. They move intact.
+  - `RailwayMap.tsx` imports the hook. The call site and its position in the component stay
+    unchanged.
+  - Imports that only the hook needs (for example `clearSegmentFlash`,
+    `setSegmentFlashFeatures`, `setSegmentFlashOpacity`, `segmentFlashOpacity`) move with it.
+    Keep a type such as `SegmentFlashRequest` in `RailwayMap.tsx` if the props still use it.
+  - Shared dependencies: move them, export them, and import them back. Stop only if one reads
+    component state, props or refs.
+  - Tests: in `tests/unit/map-flash.test.ts`, change only import paths and `vi.mock` paths. If
+    a mock targets the module the hook now imports from, update the mock path so it still
+    intercepts the same functions. Keep every frame, halo and cleanup assertion.
+- OUT: Step 1.5 and later, DESIGN.md, STATE.md and the plan file. No new dependencies; do not
+  commit or push.
+- Hard constraints:
+  - Bodies stay byte-identical, apart from `import`/`export` lines.
+  - Do not rename anything and do not refactor.
+  - Do not weaken, skip or delete any test assertion.
+  - `useSegmentFlash.ts` must not import `RailwayMap.tsx`.
+  - If other files import `useSegmentFlash` from `RailwayMap`, update them.
+
+Context:
+- Steps 1.1–1.3 (a5487da, 2f43e99, ffbeeb5) moved the camera helpers into
+  `railwayMapCamera.ts`. `RailwayMap.tsx` is now 705 lines.
+- Plan sections 1–3; `.claude/docs/research/feature-map-readability-codebase.md`.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all; do NOT run the E2E suite):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/map-flash.test.ts
+npx vitest run
+npm run build
+wc -l src/features/map/RailwayMap.tsx src/features/map/useSegmentFlash.ts
+git diff --check
+```
+
+Output (markdown):
+- changed files, one line each;
+- a table of the moved symbols with their old and new line ranges;
+- how you confirmed the bodies are identical;
+- the test edits (before → after);
+- the acceptance results with pass/fail counts;
+- the line counts;
+- risks.

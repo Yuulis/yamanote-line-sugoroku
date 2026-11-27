@@ -21,7 +21,7 @@ import { createPresentationResolver } from "../../src/features/game/presentation
 import { deriveTurnMomentDisplay, type TurnRevealState } from "../../src/features/game/turnMomentPresentation";
 import { LAYER_IDS } from "../../src/features/map/mapConfig";
 import { pendingSegmentFilter } from "../../src/features/map/progressStyle";
-import { useSegmentFlash } from "../../src/features/map/RailwayMap";
+import { useSegmentFlash } from "../../src/features/map/useSegmentFlash";
 import {
   addRailwayLayers,
   clearSegmentFlash,
@@ -43,7 +43,7 @@ const { railwayMapProps } = vi.hoisted(() => ({ railwayMapProps: vi.fn() }));
 vi.mock("../../src/features/analytics/analytics", async (original) => ({
   ...await original<typeof import("../../src/features/analytics/analytics")>(), trackEvent: vi.fn(),
 }));
-// Only the component is replaced; the real `useSegmentFlash` stays importable from the same module.
+// Only the component is replaced; the real `useSegmentFlash` is imported directly above.
 vi.mock("../../src/features/map/RailwayMap", async (original) => ({
   ...await original<typeof import("../../src/features/map/RailwayMap")>(),
   RailwayMap: (props: { segmentFlash?: SegmentFlashRequest | null }) => {

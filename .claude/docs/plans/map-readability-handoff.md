@@ -28,10 +28,11 @@ Resume point for Claude or Codex sessions. Update this file after every step.
 |---|---|---|---|
 | 1.1 | done | a5487da (CI green) | Luna xhigh; lead: 76 removed lines verbatim in railwayMapCamera.ts, typecheck, vitest 2746 pass / 1 pre-existing skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 1,022 -> 945 lines |
 | 1.2 | done | 2f43e99 (CI green) | Luna xhigh (1st run stopped correctly on shared deps ZERO_MAP_PADDING/positionsBounds; prompt relaxed, 2nd run moved them too); lead: removed lines verbatim except 3 import specifiers, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 945 -> 787 lines |
-| 1.3 | done | (this commit) | Luna xhigh; lead: removed lines verbatim except the now-unused positionsBounds import specifier, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 787 -> 705, railwayMapCamera.ts 340 lines |
-| 1.4 | next | — | — |
+| 1.3 | done | ffbeeb5 (CI green) | Luna xhigh; lead: removed lines verbatim except the now-unused positionsBounds import specifier, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 787 -> 705, railwayMapCamera.ts 340 lines |
+| 1.4 | done | (this commit) | Luna xhigh; lead: 61 removed lines verbatim in useSegmentFlash.ts, test import path + comment only, typecheck, vitest 2746 pass / 1 skip, build, diff --check, phone @layout 127 pass / 6 skip; Sol low ACCEPT. RailwayMap.tsx 705 -> 643 lines |
+| 1.5 | next | — | — |
 
 ## Next action
 
-Write the Step 1.4 prompt (pure move of useSegmentFlash into src/features/map/useSegmentFlash.ts; tests/unit/map-flash.test.ts import/mock paths only) and run it with Luna xhigh.
+Write the Step 1.5 prompt (A1 focus paint, gameplay map only via focusBackground flag; title map keeps width 3 / opacity 0.75) and run it with Luna xhigh. Visible step: take desktop and phone screenshots into .claude/logs/screenshots/ for the user.
 Open question for PR2: what 次 does from the done view (lead default: disabled); ask the user before Step 2.1.
