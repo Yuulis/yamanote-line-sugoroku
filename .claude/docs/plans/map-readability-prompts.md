@@ -902,3 +902,70 @@ Output (markdown):
 - the tests added;
 - acceptance results with pass/fail counts;
 - risks.
+
+## Step 1.10 — colour-vision report
+
+Objective: write the B2 colour-vision report for Issue #72 as
+`docs/manual/map-readability/colour-vision.md` (Japanese). This is a report only: no source
+or colour changes. Leave it uncommitted.
+
+Scope:
+- IN: the new file `docs/manual/map-readability/colour-vision.md`, plus a throwaway local
+  analysis script in the scratchpad
+  `/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/`.
+  Do NOT commit the script and do not add it to the repo.
+- The report follows the plan's B2 row (`.claude/docs/plans/map-readability-plan.md`
+  section 2). It records:
+  - Exact palette reuse: how many line groups share an identical colour. The codebase scan
+    found 81 distinct colours for 134 groups; recompute it. Keep this separate from
+    similarity under simulated colour-vision deficiency.
+  - Similarity under protanopia, deuteranopia and tritanopia.
+    - Use a standard simulation such as Machado et al. 2009 or Brettel/Viénot, implemented in
+      the local script without new dependencies. Name the method.
+    - Use a perceptual distance such as CIEDE2000 or OKLab ΔE, with a stated threshold.
+    - List the closest pairs, prioritising pairs that actually meet: lines that share
+      stations or run in parallel. Keep the list readable with a top-N table, not all pairs.
+  - The key UI colours, compared against each other:
+    - the dimmed background (opacity 0.40);
+    - the lottery candidate overlay (4 px, 0.85);
+    - the gold goal ring `#d4a017`;
+    - the red current-position marker `#e53935`;
+    - the magenta pending dashes `#c040cf`;
+    - the Yamanote green.
+  - The non-colour cues that already exist:
+    - HUD and lottery-board badges with line codes (`LINE_BADGE_CODES`; 21 groups have no
+      code, and codes such as KS and JO are shared);
+    - dashed vs solid lines for Yamanote progress;
+    - the ring vs filled circle for goal vs current position;
+    - the bubble text.
+  - Conclusion: official colours are unchanged (user decision 2026-11-26). Also list what a
+    future change could address, as notes rather than commitments.
+- Source the colours from the actual data and code:
+  - `public/data/*` line metadata and colour;
+  - `src/features/game/components/lineBadge.ts` (or wherever `LINE_BADGE_CODES` lives);
+  - `src/features/map/mapConfig.ts`.
+  - Check the codebase scan `.claude/docs/research/feature-map-readability-codebase.md`
+    section B for where these live.
+- Language and style:
+  - Natural Japanese prose. Follow `.claude/rules/manual-docs.md` and
+    `.claude/rules/language.md` "Response Style".
+  - Code identifiers, paths and colour codes stay as they are.
+  - Short sections, tables where they reduce reading effort, and a one-paragraph summary at
+    the top.
+- OUT: every source and test file, DESIGN.md, STATE.md and the plan. Do not commit or push.
+
+Acceptance:
+
+```bash
+test -s docs/manual/map-readability/colour-vision.md
+git diff --check
+git status --short   # only the new doc (plus the lead's plan/prompts edits)
+```
+
+Output (markdown):
+- the file path and its sections;
+- the method and threshold;
+- the key numbers: distinct colours, the number of close pairs per deficiency type, and the
+  worst UI-colour pair;
+- where the script lives (scratchpad);
+- risks or limits of the analysis.
