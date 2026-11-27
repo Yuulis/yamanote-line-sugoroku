@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { StepPath } from "../../src/features/game/animation/movePath";
 import type { ClearRoute } from "../../src/features/game/clearResult";
 import { createClearReplayStore } from "../../src/features/game/clearReplayStore";
+import { clearReplayTurnBounds } from "../../src/features/map/clearRouteCamera";
 import {
   applyClearRouteFit,
   CLEAR_FIT_CREDIT_CLEARANCE_PX,
@@ -128,9 +129,75 @@ function route(bounds: ClearRoute["bounds"] = [[139.7, 35.6], [139.8, 35.7]], le
   };
 }
 
+function routeWithSpans(steps: StepPath[], turnSpans: ClearRoute["turnSpans"]): ClearRoute {
+  return { steps, legs: [], turnSpans, bounds: [[0, 0], [0, 0]] };
+}
+
 function rect(left: number, top: number, width: number, height: number): DOMRect {
   return new DOMRect(left, top, width, height);
 }
+
+describe("clear replay turn bounds", () => {
+  it("includes a bend beyond the turn's endpoints", () => {
+    const route = routeWithSpans(
+      [step([[10, 10], [5, 20], [15, 12]])],
+      [{ recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1 }],
+    );
+
+    expect(clearReplayTurnBounds(route, 0)).toEqual([[5, 10], [15, 20]]);
+  });
+
+  it("uses the destination as degenerate bounds for an empty turn", () => {
+    const route = routeWithSpans([], [
+      { recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 0, destination: [139.7, 35.6] },
+    ]);
+
+    expect(clearReplayTurnBounds(route, 0)).toEqual([[139.7, 35.6], [139.7, 35.6]]);
+  });
+
+  it("returns null for an empty turn without a destination", () => {
+    const route = routeWithSpans([], [{ recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 0 }]);
+
+    expect(clearReplayTurnBounds(route, 0)).toBeNull();
+  });
+
+  it("returns null for an out-of-range or non-finite record index", () => {
+    const route = routeWithSpans(
+      [step([[1, 2], [3, 4]])],
+      [{ recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1 }],
+    );
+
+    expect(clearReplayTurnBounds(route, 1)).toBeNull();
+    expect(clearReplayTurnBounds(route, Number.NaN)).toBeNull();
+    expect(clearReplayTurnBounds(route, Number.POSITIVE_INFINITY)).toBeNull();
+    expect(clearReplayTurnBounds(route, -1)).toBeNull();
+    expect(clearReplayTurnBounds(route, 0.5)).toBeNull();
+  });
+
+  it("combines every coordinate across a multi-step turn and ignores other turns", () => {
+    const route = routeWithSpans(
+      [step([[1, 2], [5, 3]]), step([[4, -2], [3, 8]]), step([[-100, -100], [100, 100]])],
+      [
+        { recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 2 },
+        { recordIndex: 1, firstStepIndex: 2, endStepIndexExclusive: 3 },
+      ],
+    );
+
+    expect(clearReplayTurnBounds(route, 0)).toEqual([[1, -2], [5, 8]]);
+  });
+
+  it("does not mutate the route or its step coordinates", () => {
+    const route = routeWithSpans(
+      [step([[1, 2], [5, 3], [4, -2]])],
+      [{ recordIndex: 0, firstStepIndex: 0, endStepIndexExclusive: 1 }],
+    );
+    const before = structuredClone(route);
+
+    clearReplayTurnBounds(route, 0);
+
+    expect(route).toEqual(before);
+  });
+});
 
 describe("clear route layers", () => {
   it("adds one source with the outline below the main line, both below the first station layer", () => {

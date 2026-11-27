@@ -1,6 +1,8 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { Position } from "../../types/data";
+import type { ClearRoute } from "../game/clearResult";
 import type { CameraPadding, CameraRect } from "./camera";
+import { positionsBounds } from "./railwayMapCamera";
 
 /** Breathing room between the route and the map edge or the clear card. */
 export const CLEAR_FIT_MARGIN_PX = 24;
@@ -152,4 +154,29 @@ export function applyClearRouteFit(
     return;
   }
   map.fitBounds([bounds[0], bounds[1]], { padding, animate: false, maxZoom: CLEAR_FIT_MAX_ZOOM });
+}
+
+export type ClearReplayBounds = readonly [southWest: Position, northEast: Position];
+
+/** Bounds for one saved replay turn, or null when its index or coordinates cannot be resolved. */
+export function clearReplayTurnBounds(route: ClearRoute, recordIndex: number): ClearReplayBounds | null {
+  // Index by position, matching how ClearReplayStore resolves its turn cursor.
+  if (!Number.isInteger(recordIndex)) return null;
+  const span = route.turnSpans[recordIndex];
+  if (!span) return null;
+
+  if (span.firstStepIndex === span.endStepIndexExclusive) {
+    const destination = span.destination;
+    return destination
+      ? [[destination[0], destination[1]], [destination[0], destination[1]]]
+      : null;
+  }
+
+  const positions: Position[] = [];
+  for (let stepIndex = span.firstStepIndex; stepIndex < span.endStepIndexExclusive; stepIndex += 1) {
+    const step = route.steps[stepIndex];
+    if (!step) return null;
+    positions.push(...step.points);
+  }
+  return positionsBounds(positions);
 }

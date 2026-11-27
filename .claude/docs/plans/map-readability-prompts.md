@@ -1239,3 +1239,71 @@ Output:
 - the new tests and what each one proves, including that it failed before the fix;
 - the acceptance results;
 - risks.
+
+## Step 2.3 — implement
+
+Objective: implement Step 2.3 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The step derives the camera bounds of one saved replay turn as pure functions, driven by
+tests written first (TDD).
+
+Scope:
+- IN: exactly the "Step 2.3" section of the plan, plus the D1 row in section 2 and the
+  `clearResult.ts` / `clearRouteCamera.ts` interface blocks in section 3. Read all of them in
+  full.
+  - `src/features/game/clearResult.ts`: `ClearTurnSpan` gains an optional
+    `readonly destination?: Position`, the station coordinate where the saved turn ended.
+  - The code that builds turn spans (`src/features/game/clearRoute.ts`, or wherever
+    `turnSpans` is built — find it) sets `destination` from the validated saved traversal when
+    the end station coordinate resolves. It is omitted when it does not resolve.
+  - New pure module `src/features/map/clearRouteCamera.ts` exports
+    `type ClearReplayBounds = readonly [southWest: Position, northEast: Position]` and
+    `clearReplayTurnBounds(route: ClearRoute, recordIndex: number): ClearReplayBounds | null`.
+    - The bounds cover ALL step coordinates in that turn's span, not just the endpoints, so a
+      bending line beyond the endpoints is included.
+    - An empty span (zero steps) gives degenerate bounds at `destination` when it is present.
+    - An unresolved turn gives `null`: an out-of-range or non-finite index, or an empty span
+      without a destination. The caller keeps the current view.
+    - The function never mutates its input.
+    - If an existing bounds helper in the codebase already computes min/max over positions
+      (for example `positionsBounds` in `src/features/map/railwayMapCamera.ts`), reuse it
+      instead of duplicating it.
+  - Tests first:
+    - `tests/unit/clear-route-map.test.ts` (or a new `tests/unit/clear-route-camera.test.ts`
+      if that fits better): a bend beyond the endpoints; an empty turn with and without a
+      destination; out-of-range and non-finite index; a multi-step turn; input not mutated.
+    - `tests/unit/clear-route.test.ts`: `destination` is propagated from a saved traversal
+      and omitted when it does not resolve.
+    - Keep every existing full-route fixture and assertion. If snapshot literals need the
+      new optional field, extend them; do not loosen anything.
+- OUT: the camera hook and any MapLibre call (Step 2.4), UI, DESIGN.md, STATE.md and the plan
+  files. Add no new dependencies, and do not commit or push. Never `pkill -f`.
+- Hard constraints:
+  - Do not weaken, skip or delete any existing assertion.
+  - Saved-result serialisation and loading stay compatible. `destination` is derived at route
+    build time, not persisted, unless the code shows that turn spans are already persisted; if
+    they are, report that and keep loading of old saves working.
+  - Keep files at or under 800 lines.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 2.1 (27404ab) and 2.2 (1fa1751) have landed; both touched only the replay store.
+- `.claude/docs/research/feature-map-readability-codebase.md`, section D.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/clear-route-map.test.ts tests/unit/clear-route.test.ts tests/unit/clear-route-real-data.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the new tests and what each one proves;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
