@@ -185,10 +185,14 @@ export function buildClearRoute(
     if (traversal.kind === "invalid") return null;
     const firstStepIndex = spanStepIndex;
     const stepCount = traversal.kind === "ride" ? traversal.hops.length : 0;
+    const destinationCoordinates = network.stationsById.get(traversal.toStationId)?.coordinates;
     turnSpans.push({
       recordIndex: traversal.recordIndex,
       firstStepIndex,
       endStepIndexExclusive: firstStepIndex + stepCount,
+      ...(destinationCoordinates && isPosition(destinationCoordinates)
+        ? { destination: [destinationCoordinates[0], destinationCoordinates[1]] as Position }
+        : {}),
     });
     spanStepIndex += stepCount;
   }

@@ -167,6 +167,77 @@ describe("shared turn moment publication", () => {
     expect(display.candidateRows.map((row) => row.label)).toEqual(["山手線", "テスト南線"]);
   });
 
+  it("publishes deduplicated landing candidates during flip and settle, independent of the winner", () => {
+    const landing = completed.lastMove!.landing!;
+    const duplicatedCandidates = [...landing.serviceCandidates, ...landing.serviceCandidates];
+    const expected = [...new Set(landing.serviceCandidates)];
+    const withDuplicatedCandidates: GameSession = {
+      ...completed,
+      lastMove: { ...completed.lastMove!, landing: { ...landing, serviceCandidates: duplicatedCandidates } },
+    };
+    const otherWinner = landing.serviceCandidates.find((serviceId) => serviceId !== landing.serviceId)!;
+    const withOtherWinner: GameSession = {
+      ...withDuplicatedCandidates,
+      game: { ...completed.game, currentServiceId: otherWinner },
+      lastMove: {
+        ...withDuplicatedCandidates.lastMove!,
+        landing: { ...withDuplicatedCandidates.lastMove!.landing!, serviceId: otherWinner },
+      },
+    };
+
+    const display = (session: GameSession, revealStage: "lottery-flip" | "lottery-settle") =>
+      deriveTurnMomentDisplay({ session, network, presentation: resolver, progress: progressFor(session),
+        attempt: attemptFor(before), revealStage, restoredOrOmitted: false });
+    const flip = display(withDuplicatedCandidates, "lottery-flip");
+    const settle = display(withDuplicatedCandidates, "lottery-settle");
+    const alternateFlip = display(withOtherWinner, "lottery-flip");
+    const alternateSettle = display(withOtherWinner, "lottery-settle");
+
+    expect(flip.lotteryCandidateServiceIds).toEqual(expected);
+    expect(settle.lotteryCandidateServiceIds).toEqual(expected);
+    expect(alternateFlip.lotteryCandidateServiceIds).toEqual(expected);
+    expect(alternateSettle.lotteryCandidateServiceIds).toEqual(expected);
+  });
+
+  it("uses the frozen empty candidate list as the ordinary-turn reference", () => {
+    const ordinary = deriveTurnMomentDisplay({ session: before, network, presentation: resolver,
+      progress: progressFor(before), attempt: null, revealStage: "waiting", restoredOrOmitted: false });
+    expect(ordinary.lotteryCandidateServiceIds).toEqual([]);
+    expect(Object.isFrozen(ordinary.lotteryCandidateServiceIds)).toBe(true);
+  });
+
+  it.each([
+    ["skipRequested", "lottery-flip"],
+    ["skipRequested", "lottery-settle"],
+    ["motionOmitted", "lottery-flip"],
+    ["motionOmitted", "lottery-settle"],
+    ["showImportantMoments=false", "lottery-flip"],
+    ["showImportantMoments=false", "lottery-settle"],
+  ] as const)("suppresses candidates for %s alone during %s", (suppression, stage) => {
+    const ordinary = deriveTurnMomentDisplay({ session: before, network, presentation: resolver,
+      progress: progressFor(before), attempt: null, revealStage: "waiting", restoredOrOmitted: false });
+    const attempt = attemptFor(before);
+    if (suppression === "skipRequested") attempt.skipRequested = true;
+    if (suppression === "motionOmitted") attempt.motionOmitted = true;
+    if (suppression === "showImportantMoments=false") {
+      attempt.policy = captureTurnPresentationPolicy({ speedId: "normal", presentationLevel: "none" });
+    }
+
+    const display = deriveTurnMomentDisplay({ session: completed, network, presentation: resolver,
+      progress: progressFor(completed), attempt, revealStage: stage, restoredOrOmitted: false });
+
+    expect(display.phase).toBe(stage);
+    expect(display.lotteryCandidateServiceIds).toBe(ordinary.lotteryCandidateServiceIds);
+  });
+
+  it("keeps lottery candidates empty when restored or omitted takes resolver precedence", () => {
+    const display = deriveTurnMomentDisplay({ session: completed, network, presentation: resolver,
+      progress: progressFor(completed), attempt: attemptFor(before), revealStage: "lottery-flip", restoredOrOmitted: true });
+
+    expect(display.phase).toBe("published");
+    expect(display.lotteryCandidateServiceIds).toEqual([]);
+  });
+
   it("uses the ridden service without an attempt while a committed transfer is unpublished", () => {
     for (const stage of ["arrival", "lottery-flip", "lottery-settle"] as const) {
       const display = deriveTurnMomentDisplay({ session: completed, network, presentation: resolver, progress: progressFor(completed),

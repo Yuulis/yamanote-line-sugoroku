@@ -17,8 +17,9 @@ import { platformPosition } from "../../src/features/game/engine";
 import { initialOverviewServices } from "../../src/features/map/camera";
 import { buildTrackColorExpression } from "../../src/features/map/lineColor";
 import { indexServiceGeometry } from "../../src/features/map/serviceGeometry";
+import { buildCorridorOffsets } from "../../src/features/map/corridorOffsets";
 import { addRailwayLayers, setSegmentFlashFeatures, updateHighlightedService } from "../../src/features/map/railwayLayers";
-import { LAYER_IDS } from "../../src/features/map/mapConfig";
+import { CORRIDOR_OFFSET_ZOOM_STOPS, CORRIDOR_SLOT_SPACING_PX, LAYER_IDS, SOURCE_IDS } from "../../src/features/map/mapConfig";
 import { loadBundle } from "../e2e/fixtures/bundle";
 import { CAPITAL_BRANCH_SEED, CAPITAL_GAME_SEED, CAPITAL_SCENARIO_TURNS } from "../e2e/fixtures/capital-region/seeds";
 
@@ -27,6 +28,25 @@ const { network, data } = bundle;
 // Seeded journeys and fixture-specific presentation below retain the archived
 // JR East rules. The live overview assertion uses current production rules.
 if (!data.geometry.ok || !data.services.ok || !data.segments.ok || !data.stations.ok) throw new Error("Fixture must be complete");
+const canonicalGeometry = data.geometry.value;
+
+function evaluateLineOffset(expression: unknown, zoom: number, corridorSlot?: number): number {
+  if (!Array.isArray(expression) || expression[0] !== "interpolate") throw new Error("Expected a zoom interpolation");
+  const [, , , startZoom, startValue, endZoom, endExpression] = expression;
+  if (typeof startZoom !== "number" || typeof startValue !== "number" || typeof endZoom !== "number") {
+    throw new Error("Expected numeric zoom stops");
+  }
+  if (!Array.isArray(endExpression) || endExpression[0] !== "*") throw new Error("Expected a slot spacing expression");
+  const [, coalesceExpression, spacing] = endExpression;
+  if (!Array.isArray(coalesceExpression) || coalesceExpression[0] !== "coalesce") throw new Error("Expected a fallback slot");
+  const slot = corridorSlot ?? coalesceExpression[2];
+  if (typeof slot !== "number" || typeof spacing !== "number") throw new Error("Expected numeric slot and spacing");
+  const endValue = slot * spacing;
+  if (zoom <= startZoom) return startValue;
+  if (zoom >= endZoom) return endValue;
+  return startValue + ((zoom - startZoom) / (endZoom - startZoom)) * (endValue - startValue);
+}
+
 const geometry = buildGeometryIndex(data.geometry.value);
 const services = data.services.value;
 const segments = data.segments.value;
@@ -156,17 +176,50 @@ describe("scaled map and presentation", () => {
     const layers: Record<string, Record<string, unknown>> = {};
     const filters: Record<string, unknown> = {};
     const paints: Record<string, unknown> = {};
+    const sources: Record<string, { data: unknown }> = {};
     const map = {
-      addSource: () => {},
+      addSource: (id: string, source: { data: unknown }) => { sources[id] = source; },
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; },
       getLayer: (id: string) => layers[id],
       setFilter: (id: string, filter: unknown) => { filters[id] = filter; },
       setPaintProperty: (id: string, name: string, value: unknown) => { paints[`${id}:${name}`] = value; },
     } as unknown as MapLibreMap;
-    addRailwayLayers(map, { geometry: data.geometry.ok ? data.geometry.value : undefined, lines: services.lines, services: services.services, targetServiceId: "custom-target" });
+    const corridorGeometry = buildCorridorOffsets(canonicalGeometry, "custom-target");
+    addRailwayLayers(map, {
+      geometry: canonicalGeometry,
+      corridorGeometry,
+      lines: services.lines,
+      services: services.services,
+      targetServiceId: "custom-target",
+    });
+    expect(sources[SOURCE_IDS.corridorSegments]?.data).toBe(corridorGeometry);
     expect(layers[LAYER_IDS.services]?.filter).toEqual(["!=", ["get", "serviceId"], "custom-target"]);
+    expect(layers[LAYER_IDS.services]?.paint).toMatchObject({ "line-width": 3, "line-opacity": 0.75 });
+    expect(layers[LAYER_IDS.currentService]?.paint).toMatchObject({ "line-width": 7 });
+    expect((layers[LAYER_IDS.currentService]?.paint as Record<string, unknown>)?.["line-opacity"] ?? 1).toBe(1);
     expect(layers[LAYER_IDS.base]?.paint).toMatchObject({ "line-color": buildTrackColorExpression(services.lines) });
-    expect(layers[LAYER_IDS.services]?.paint).not.toHaveProperty("line-offset");
+    const offset = (layers[LAYER_IDS.services]?.paint as Record<string, unknown>)?.["line-offset"];
+    expect(layers[LAYER_IDS.services]?.source).toBe(SOURCE_IDS.corridorSegments);
+    expect(layers[LAYER_IDS.currentService]?.source).toBe(SOURCE_IDS.corridorSegments);
+    expect(layers[LAYER_IDS.lotteryCandidates]?.source).toBe(SOURCE_IDS.corridorSegments);
+    expect((layers[LAYER_IDS.currentService]?.paint as Record<string, unknown>)?.["line-offset"]).toBe(offset);
+    expect((layers[LAYER_IDS.lotteryCandidates]?.paint as Record<string, unknown>)?.["line-offset"]).toBe(offset);
+    expect(offset).toEqual([
+      "interpolate", ["linear"], ["zoom"],
+      CORRIDOR_OFFSET_ZOOM_STOPS[0]![0], 0,
+      CORRIDOR_OFFSET_ZOOM_STOPS[CORRIDOR_OFFSET_ZOOM_STOPS.length - 1]![0],
+      ["*", ["coalesce", ["get", "corridorSlot"], 0], CORRIDOR_SLOT_SPACING_PX],
+    ]);
+    expect(evaluateLineOffset(offset, 10, 3)).toBe(0);
+    expect(evaluateLineOffset(offset, 11, -2)).toBe(0);
+    expect(evaluateLineOffset(offset, 12)).toBe(0);
+    expect(evaluateLineOffset(offset, 12, 0)).toBe(0);
+    expect(evaluateLineOffset(offset, 13, 2)).toBe(2 * CORRIDOR_SLOT_SPACING_PX);
+    expect(evaluateLineOffset(offset, 13, -1)).toBe(-CORRIDOR_SLOT_SPACING_PX);
+    for (const id of [LAYER_IDS.base, LAYER_IDS.segmentsPendingCasing, LAYER_IDS.segmentsPending, LAYER_IDS.segmentsCompleted, LAYER_IDS.segmentsFlash]) {
+      expect(layers[id]?.source).toBe(SOURCE_IDS.segments);
+      expect(layers[id]?.paint).not.toHaveProperty("line-offset");
+    }
     expect(layers[LAYER_IDS.segmentsPending]?.filter).toEqual(expect.arrayContaining([["==", ["get", "serviceId"], "custom-target"]]));
     expect(layers[LAYER_IDS.segmentsPendingCasing]?.filter).toEqual(layers[LAYER_IDS.segmentsPending]?.filter);
     // S13: the flash layer is scoped to the configured target, empty and transparent until an arrival flashes.
@@ -178,6 +231,22 @@ describe("scaled map and presentation", () => {
     expect(paints[`${LAYER_IDS.currentService}:line-color`]).toBe("#EE2222");
     setSegmentFlashFeatures(map, ids, "custom-target");
     expect(filters[LAYER_IDS.segmentsFlash]).toEqual(["all", ["==", ["get", "serviceId"], "custom-target"], ["in", ["get", "featureId"], ["literal", ids]]]);
+
+    const focusedLayers: Record<string, Record<string, unknown>> = {};
+    const focusedMap = {
+      addSource: () => {},
+      addLayer: (layer: { id: string }) => { focusedLayers[layer.id] = layer; },
+    } as unknown as MapLibreMap;
+    addRailwayLayers(focusedMap, {
+      geometry: data.geometry.ok ? data.geometry.value : undefined,
+      lines: services.lines,
+      services: services.services,
+      targetServiceId: "custom-target",
+      focusBackground: true,
+    });
+    expect(focusedLayers[LAYER_IDS.services]?.paint).toMatchObject({ "line-width": 2, "line-opacity": 0.40 });
+    expect(focusedLayers[LAYER_IDS.currentService]?.paint).toMatchObject({ "line-width": 7 });
+    expect((focusedLayers[LAYER_IDS.currentService]?.paint as Record<string, unknown>)?.["line-opacity"] ?? 1).toBe(1);
   });
 
   it("keeps the legacy fixture overview and starts the live product map on the target", async () => {

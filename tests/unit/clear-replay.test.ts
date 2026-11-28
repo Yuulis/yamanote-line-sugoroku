@@ -1,58 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { FakeScheduler, FakeVisibility } from "./support/clearReplayFakes";
 import type { StepPath } from "../../src/features/game/animation/movePath";
-import type { FrameScheduler } from "../../src/features/game/animation/runner";
-import { createClearReplayStore, type ReplayVisibility } from "../../src/features/game/clearReplayStore";
+import {
+  createClearReplayStore,
+  resolveReplaySeekIndex,
+} from "../../src/features/game/clearReplayStore";
 import type { ClearRoute } from "../../src/features/game/clearResult";
 import { buildClearRouteGeoJson } from "../../src/features/game/clearRoute";
-
-class FakeScheduler implements FrameScheduler {
-  private nextHandle = 1;
-  private callbacks = new Map<number, (now: number) => void>();
-  readonly staleCallbacks = new Map<number, (now: number) => void>();
-  time = 0;
-
-  request(callback: (now: number) => void): number {
-    const handle = this.nextHandle++;
-    this.callbacks.set(handle, callback);
-    return handle;
-  }
-
-  cancel(handle: number): void {
-    const callback = this.callbacks.get(handle);
-    if (callback) this.staleCallbacks.set(handle, callback);
-    this.callbacks.delete(handle);
-  }
-
-  now(): number { return this.time; }
-
-  frameAt(time: number): void {
-    this.time = time;
-    const entry = this.callbacks.entries().next().value as [number, (now: number) => void] | undefined;
-    if (!entry) return;
-    this.callbacks.delete(entry[0]);
-    entry[1](time);
-  }
-
-  advance(milliseconds: number): void { this.frameAt(this.time + milliseconds); }
-
-  fireStale(time: number): void {
-    this.time = time;
-    const callback = this.staleCallbacks.values().next().value as ((now: number) => void) | undefined;
-    callback?.(time);
-  }
-}
-
-class FakeVisibility implements ReplayVisibility {
-  hidden = false;
-  private listeners = new Set<() => void>();
-  addEventListener(_type: "visibilitychange", listener: () => void): void { this.listeners.add(listener); }
-  removeEventListener(_type: "visibilitychange", listener: () => void): void { this.listeners.delete(listener); }
-  change(hidden: boolean): void {
-    this.hidden = hidden;
-    for (const listener of this.listeners) listener();
-  }
-  get listenerCount(): number { return this.listeners.size; }
-}
 
 function step(index: number, distanceKm = 1): StepPath {
   return {
@@ -162,6 +116,24 @@ describe("clear replay store", () => {
     expect(store.getSnapshot()).toEqual({ phase: "playing", recordIndex: 0, stepIndex: 0, fraction: 0 });
   });
 
+  it.each([-1, 1] as const)("allows step(%s) from a natural done notification without overwriting the seek", (delta) => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]), scheduler });
+    let doneNotifications = 0;
+    store.subscribe(() => {
+      if (store.getSnapshot().phase !== "done") return;
+      doneNotifications += 1;
+      store.step(delta);
+    });
+    store.start();
+    scheduler.frameAt(0);
+    scheduler.advance(1_100);
+
+    expect(doneNotifications).toBe(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 0 });
+    expect(scheduler.liveFrameCount).toBe(0);
+  });
+
   it("pauses when the tab becomes hidden and waits for explicit resume", () => {
     const scheduler = new FakeScheduler();
     const visibility = new FakeVisibility();
@@ -185,6 +157,10 @@ describe("clear replay store", () => {
     store.setReducedMotion(true);
     store.start();
     expect(store.getSnapshot()).toEqual({ phase: "done", recordIndex: 2, stepIndex: 2, fraction: 1 });
+    store.seek(0);
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 0 });
+    store.step(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1 });
     store.setReducedMotion(false);
     store.start();
     store.setReducedMotion(true);
@@ -222,7 +198,7 @@ describe("clear replay store", () => {
     expect(uiNotifications).toBe(1);
     expect(frameNotifications).toBeGreaterThan(uiNotifications);
     scheduler.advance(450);
-    expect(store.getUiSnapshot()).toEqual({ phase: "playing", recordIndex: 1 });
+    expect(store.getUiSnapshot()).toEqual({ phase: "playing", recordIndex: 1, turnCount: 2, cardExpanded: false, seekRevision: 0 });
     expect(uiNotifications).toBe(2);
   });
 
@@ -263,6 +239,336 @@ describe("clear replay store", () => {
     expect(visibility.listenerCount).toBe(1);
     store.dispose();
     expect(visibility.listenerCount).toBe(0);
+  });
+
+  it("reports zero turns and ignores seek and step for an empty timeline", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([]), scheduler });
+    const initial = store.getUiSnapshot();
+
+    expect(initial).toMatchObject({ turnCount: 0, seekRevision: 0 });
+    expect(resolveReplaySeekIndex(0, 0)).toBeNull();
+    expect(resolveReplaySeekIndex(2, Number.NaN)).toBeNull();
+    store.seek(0);
+    store.step(-1);
+    store.step(1);
+
+    expect(store.getUiSnapshot()).toBe(initial);
+    expect(store.getSnapshot()).toEqual({ phase: "idle", recordIndex: 0, stepIndex: 0, fraction: 0 });
+  });
+
+  it("seeks across empty saved-turn spans", () => {
+    const store = createClearReplayStore({ route: route([[0, 0], [0, 0]]) });
+
+    expect(store.getUiSnapshot().turnCount).toBe(2);
+    store.seek(1);
+
+    expect(store.getSnapshot()).toEqual({ phase: "paused", recordIndex: 1, stepIndex: 0, fraction: 0 });
+    expect(store.getUiSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1, turnCount: 2, seekRevision: 1 });
+  });
+
+  it("clamps and truncates finite seek input to real turns", () => {
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]) });
+
+    expect(resolveReplaySeekIndex(3, -10)).toBe(0);
+    expect(resolveReplaySeekIndex(3, 1.9)).toBe(1);
+    expect(resolveReplaySeekIndex(3, 20)).toBe(2);
+    store.seek(-10);
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 0 });
+    store.seek(20);
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 2 });
+    expect(store.getUiSnapshot()).toMatchObject({ turnCount: 3, seekRevision: 2 });
+  });
+
+  it("ignores non-finite seek input without changing state or revision", () => {
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]) });
+    store.seek(1);
+    const before = store.getSnapshot();
+    const uiBefore = store.getUiSnapshot();
+
+    for (const value of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) store.seek(value);
+
+    expect(store.getSnapshot()).toBe(before);
+    expect(store.getUiSnapshot()).toBe(uiBefore);
+  });
+
+  it("bumps seek revision when explicitly seeking to the current turn", () => {
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]) });
+    store.seek(0);
+    const before = store.getUiSnapshot();
+    store.seek(0);
+
+    expect(store.getUiSnapshot()).toMatchObject({ recordIndex: 0, seekRevision: before.seekRevision + 1 });
+  });
+
+  it("keeps playback running from a sought turn and publishes its cursor atomically", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]), scheduler });
+    const observed: Array<[number, number]> = [];
+    store.subscribe(() => {
+      observed.push([store.getSnapshot().recordIndex, store.getUiSnapshot().recordIndex]);
+    });
+    store.start();
+    scheduler.frameAt(0);
+    store.seek(2);
+
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2, stepIndex: 2, fraction: 0 });
+    expect(store.getUiSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2, seekRevision: 1 });
+    expect(observed.at(-1)).toEqual([2, 2]);
+    scheduler.advance(549);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2 });
+    scheduler.advance(1);
+    expect(store.getSnapshot().phase).toBe("done");
+  });
+
+  it("does not schedule a frame when a seek subscriber pauses playback", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]), scheduler });
+    let pausedInSeek = false;
+    store.subscribe(() => {
+      if (!pausedInSeek && store.getSnapshot().recordIndex === 1 && store.getSnapshot().phase === "playing") {
+        pausedInSeek = true;
+        store.pause();
+      }
+    });
+    store.start();
+    scheduler.frameAt(0);
+    store.seek(1);
+
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1 });
+    expect(scheduler.liveFrameCount).toBe(0);
+  });
+
+  it("keeps only the inner frame when a seek subscriber seeks again", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3], [3, 4]]), scheduler });
+    let soughtAgain = false;
+    store.subscribe(() => {
+      if (!soughtAgain && store.getSnapshot().recordIndex === 1 && store.getSnapshot().phase === "playing") {
+        soughtAgain = true;
+        store.seek(3);
+      }
+    });
+    store.start();
+    scheduler.frameAt(0);
+    store.seek(1);
+
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 3 });
+    expect(scheduler.liveFrameCount).toBe(1);
+  });
+
+  it("anchors a playing seek at seek time for the next turn boundary", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]), scheduler });
+    let advancedDuringNotification = false;
+    store.subscribe(() => {
+      if (!advancedDuringNotification && store.getSnapshot().recordIndex === 1 && store.getSnapshot().phase === "playing") {
+        advancedDuringNotification = true;
+        scheduler.time += 25;
+      }
+    });
+    store.start();
+    scheduler.frameAt(0);
+    scheduler.time = 200;
+    store.seek(1);
+
+    scheduler.advance(524);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 1 });
+    scheduler.advance(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2 });
+  });
+
+  it("keeps the seek clock when a start subscriber seeks during the playing notification", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3], [3, 4]]), scheduler });
+    let sought = false;
+    store.subscribePhase(() => {
+      if (!sought && store.getPhase() === "playing") {
+        sought = true;
+        store.seek(2);
+      }
+    });
+    scheduler.time = 100;
+    store.start();
+
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2 });
+    expect(scheduler.liveFrameCount).toBe(1);
+    scheduler.advance(549);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2 });
+    scheduler.advance(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 3 });
+  });
+
+  it("keeps the seek clock when a resume subscriber seeks during the playing notification", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3], [3, 4]]), scheduler });
+    store.start();
+    scheduler.frameAt(0);
+    store.pause();
+    let sought = false;
+    store.subscribePhase(() => {
+      if (!sought && store.getPhase() === "playing") {
+        sought = true;
+        store.seek(2);
+      }
+    });
+    scheduler.time = 300;
+    store.resume();
+
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2 });
+    expect(scheduler.liveFrameCount).toBe(1);
+    scheduler.advance(549);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2 });
+    scheduler.advance(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 3 });
+  });
+
+  it("leaves no clock or visibility listener when a start subscriber finishes the replay", () => {
+    const scheduler = new FakeScheduler();
+    const visibility = new FakeVisibility();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]), scheduler, visibility });
+    let finished = false;
+    store.subscribePhase(() => {
+      if (!finished && store.getPhase() === "playing") {
+        finished = true;
+        store.finish();
+      }
+    });
+    store.start();
+
+    expect(store.getPhase()).toBe("done");
+    expect(scheduler.liveFrameCount).toBe(0);
+    expect(visibility.listenerCount).toBe(0);
+  });
+
+  it("leaves no visibility listener when a hidden-start subscriber finishes the replay", () => {
+    const scheduler = new FakeScheduler();
+    const visibility = new FakeVisibility();
+    visibility.hidden = true;
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]), scheduler, visibility });
+    store.subscribePhase(() => {
+      if (store.getPhase() === "paused") store.finish();
+    });
+    store.start();
+
+    expect(store.getPhase()).toBe("done");
+    expect(scheduler.liveFrameCount).toBe(0);
+    expect(visibility.listenerCount).toBe(0);
+  });
+
+  it("reattaches visibility handling after done, seek, and resume", () => {
+    const scheduler = new FakeScheduler();
+    const visibility = new FakeVisibility();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]), scheduler, visibility });
+    store.start();
+    scheduler.frameAt(0);
+    scheduler.advance(1_100);
+    expect(store.getSnapshot().phase).toBe("done");
+    expect(visibility.listenerCount).toBe(0);
+    store.seek(1);
+    store.resume();
+    expect(visibility.listenerCount).toBe(1);
+
+    visibility.change(true);
+
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1 });
+    expect(scheduler.liveFrameCount).toBe(0);
+  });
+
+  it("keeps a paused replay paused when seeking", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]), scheduler });
+    store.start();
+    scheduler.frameAt(0);
+    store.pause();
+    store.seek(1);
+
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1, stepIndex: 1, fraction: 0 });
+    expect(store.getUiSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1, seekRevision: 1 });
+    expect(scheduler.staleCallbacks.size).toBeGreaterThan(0);
+  });
+
+  it("moves a completed replay to the selected turn in a paused state", () => {
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]) });
+    store.finish();
+    store.seek(1);
+
+    expect(store.getSnapshot()).toEqual({ phase: "paused", recordIndex: 1, stepIndex: 1, fraction: 0 });
+    expect(store.getUiSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1, seekRevision: 1 });
+  });
+
+  it.each([-1, 1] as const)("selects the first real turn when stepping %s from done", (delta) => {
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]) });
+    store.finish();
+    store.step(delta);
+
+    expect(store.getSnapshot()).toEqual({ phase: "paused", recordIndex: 0, stepIndex: 0, fraction: 0 });
+    expect(store.getUiSnapshot()).toMatchObject({ phase: "paused", recordIndex: 0, seekRevision: 1 });
+  });
+
+  it("drops a queued frame from before a playing seek", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]), scheduler });
+    store.start();
+    scheduler.frameAt(0);
+    store.seek(1);
+    const sought = store.getSnapshot();
+
+    scheduler.fireStale(10_000);
+
+    expect(store.getSnapshot()).toEqual(sought);
+    expect(store.getSnapshot().phase).toBe("playing");
+  });
+
+  it("preserves the sought turn across speed changes and resume", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]), scheduler });
+    store.seek(1);
+    store.setSpeed("fast");
+    store.resume();
+    expect(store.getUiSnapshot().seekRevision).toBe(1);
+    scheduler.frameAt(scheduler.time);
+    scheduler.advance(249);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 1 });
+    scheduler.advance(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "playing", recordIndex: 2 });
+  });
+
+  it("does not bump seek revision during playback, pause, resume, speed change, or finish", () => {
+    const scheduler = new FakeScheduler();
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2]]), scheduler });
+    store.seek(0);
+    const revision = store.getUiSnapshot().seekRevision;
+    store.start();
+    scheduler.frameAt(0);
+    scheduler.advance(100);
+    store.pause();
+    store.setSpeed("fast");
+    store.resume();
+    scheduler.frameAt(scheduler.time);
+    scheduler.advance(500);
+    expect(store.getSnapshot().phase).toBe("done");
+    store.start();
+    store.finish();
+
+    expect(store.getUiSnapshot().seekRevision).toBe(revision);
+  });
+
+  it("steps one turn and leaves the seek revision unchanged at either bound", () => {
+    const store = createClearReplayStore({ route: route([[0, 1], [1, 2], [2, 3]]) });
+    store.seek(0);
+    const atFirst = store.getUiSnapshot();
+    store.step(-1);
+    expect(store.getUiSnapshot()).toBe(atFirst);
+
+    store.step(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 1 });
+    expect(store.getUiSnapshot().seekRevision).toBe(2);
+    store.step(1);
+    expect(store.getSnapshot()).toMatchObject({ phase: "paused", recordIndex: 2 });
+    const atLast = store.getUiSnapshot();
+    store.step(1);
+    expect(store.getUiSnapshot()).toBe(atLast);
   });
 });
 

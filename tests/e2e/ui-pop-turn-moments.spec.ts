@@ -621,11 +621,29 @@ async function playLotteryToFlip(page: Page): Promise<NonNullable<Awaited<Return
   return saved;
 }
 
+async function readLotteryCandidateFilter(page: Page): Promise<string[] | null> {
+  return page.evaluate((layerId) => {
+    interface HookMap {
+      getLayer(id: string): unknown;
+      getFilter(id: string): unknown;
+    }
+    const map = (window as unknown as { __sugorokuE2E?: { map?: HookMap | null } }).__sugorokuE2E?.map;
+    if (!map?.getLayer(layerId)) return null;
+    const filter = map.getFilter(layerId) as [string, unknown, [string, string[]]] | undefined;
+    return filter?.[2]?.[1] ?? [];
+  }, LAYER_IDS.lotteryCandidates);
+}
+
 test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stations and item results behind one publication", async ({ page, railwayBundle }) => {
   const saved = await playLotteryToFlip(page);
   const record = saved.movementHistory.at(-1)!;
   if (record.kind !== "item-ride") throw new Error("expected ride");
   expect(record.landingSnapshot!.services.length).toBeGreaterThan(1);
+  const candidateFeatureIds = [...new Set(record.landingSnapshot!.services.flatMap(({ serviceId }) =>
+    [...railwayBundle.network.segmentsById.values()]
+      .filter((segment) => segment.serviceId === serviceId)
+      .flatMap((segment) => segment.geometryFeatureIds)))].sort();
+  expect(candidateFeatureIds.length).toBeGreaterThan(0);
   const oldRideHeading = displayedHeading(
     { stationId: saved.currentStationId },
     record.resolvedRide,
@@ -646,6 +664,8 @@ test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stati
   const oldUpcoming = await gamePanel(page).locator('section[aria-label="乗車中の次の駅"]').textContent();
   for (const stage of ["lottery-flip", "lottery-settle"] as const) {
     await awaitStage(page, stage);
+    await expect.poll(async () => [...((await readLotteryCandidateFilter(page)) ?? [])].sort())
+      .toEqual(candidateFeatureIds);
     await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, record.resolvedRide.serviceId));
     await expect(panelStat(page, "進行方向")).toHaveText(directionLabel(railwayBundle.network, record.resolvedRide.serviceId, record.resolvedRide.direction));
     await expect.poll(async () => (await readMap(page))?.headingMarker?.rotation ?? null)
@@ -668,6 +688,7 @@ test("lottery flip and settle keep HUD, highlight, platform, log, upcoming stati
   await expect(board.locator(".lottery-reveal__result").last()).toHaveText(directionLabel(railwayBundle.network, saved.currentServiceId, saved.direction));
   await advanceLotterySettle(page);
   await expect(board).toHaveCount(0);
+  await expect.poll(async () => readLotteryCandidateFilter(page)).toEqual([]);
   await expect(panelStat(page, "乗車中")).toHaveText(serviceDisplayName(railwayBundle, saved.currentServiceId));
   await expect(panelStat(page, "進行方向")).toHaveText(directionLabel(railwayBundle.network, saved.currentServiceId, saved.direction));
   await expect.poll(async () => (await readMap(page))?.headingMarker?.rotation ?? null)

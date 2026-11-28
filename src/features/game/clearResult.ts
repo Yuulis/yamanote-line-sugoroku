@@ -41,6 +41,7 @@ export type ClearRecordTraversal =
   | {
       readonly kind: "ride";
       readonly recordIndex: number;
+      readonly toStationId: string;
       readonly ride: LandingChoice;
       readonly landing: LandingChoice | null;
       readonly hops: readonly ClearHop[];
@@ -61,6 +62,8 @@ export interface ClearTurnSpan {
   /** Half-open range of route steps drawn during this saved turn; empty for deadheads and zero-hop rides. */
   readonly firstStepIndex: number;
   readonly endStepIndexExclusive: number;
+  /** Coordinate of the saved turn's destination station when it resolves in the network. */
+  readonly destination?: Position;
 }
 
 export interface ClearRoute {
@@ -173,7 +176,7 @@ export function mapSavedRecord(
   if (currentStationId !== record.toStationId ||
     (record.traversedSegmentIds.length === 0 && record.fromStationId !== record.toStationId)) return invalidTraversal();
 
-  return { kind: "ride", recordIndex, ride, landing: record.landing, hops };
+  return { kind: "ride", recordIndex, toStationId: record.toStationId, ride, landing: record.landing, hops };
 }
 
 interface RideStreak {

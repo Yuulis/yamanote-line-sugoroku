@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cameraLayoutTargets, useCameraLayoutObserver } from "../../src/features/map/RailwayMap";
+import { cameraLayoutTargets, useCameraLayoutObserver } from "../../src/features/map/railwayMapCamera";
 import { mountReact, type MountedReact } from "./helpers/reactDom";
 
 describe("cameraLayoutTargets", () => {

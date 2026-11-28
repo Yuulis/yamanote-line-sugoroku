@@ -3,9 +3,7 @@ import { type RefObject, useEffect, useMemo } from "react";
 import { buildClearRouteGeoJson } from "../game/clearRoute";
 import type { ClearRoute } from "../game/clearResult";
 import type { ClearReplayStore } from "../game/clearReplayStore";
-import { applyClearRouteFit, clearFitPadding, clearFitSignature, measureClearFit } from "./clearRouteCamera";
 import { applyClearRouteLayers, removeClearRouteLayers } from "./clearRouteLayers";
-import { exposeClearFitPaddingForE2E } from "./e2eHook";
 
 export interface ClearRouteMapInput {
   /** The map once its railway layers exist; null before that and while it is rebuilt. */
@@ -36,14 +34,8 @@ export function watchRemoval(map: MapLibreMap): RemovalWatch {
   return { isRemoved: () => removed, stop: () => { map.off("remove", onRemove); } };
 }
 
-/**
- * Draws the travelled route of the published clear and frames it in the map area the clear card leaves open.
- * Leaving the clear screen (or replacing the map) removes the route and restores the camera padding that was
- * retained on entry; the screen that follows then applies its own camera.
- */
-const REPLAY_CAPTION_TOP_CLEARANCE_PX = 60;
-
-export function useClearRouteMap({ map, layersRevision, active, route, generation, cardRef, replayStore }: ClearRouteMapInput): void {
+/** Draws and removes the travelled route; replay camera ownership lives in useClearReplayCamera. */
+export function useClearRouteMap({ map, layersRevision, active, route, replayStore }: ClearRouteMapInput): void {
   const routeGeoJson = useMemo(() => route === null ? null : buildClearRouteGeoJson(route), [route]);
 
   useEffect(() => {
@@ -65,63 +57,4 @@ export function useClearRouteMap({ map, layersRevision, active, route, generatio
       removal.stop();
     };
   }, [map, layersRevision, active, route, routeGeoJson, replayStore]);
-
-  useEffect(() => {
-    if (!map || !active || !route) return;
-    const removal = watchRemoval(map);
-    const container = map.getContainer();
-    const entryPadding = map.getPadding();
-    let appliedSignature: string | null = null;
-    let frame: number | null = null;
-    let scheduled = false;
-
-    const refit = (): void => {
-      if (removal.isRemoved()) return;
-      const measurement = measureClearFit(container, cardRef?.current ?? null);
-      if (!measurement) return;
-      const basePadding = clearFitPadding(measurement);
-      if (!basePadding) {
-        exposeClearFitPaddingForE2E(null);
-        return;
-      }
-      const padding = { ...basePadding, top: Math.max(basePadding.top, REPLAY_CAPTION_TOP_CLEARANCE_PX) };
-      const signature = clearFitSignature(measurement.viewport, padding, route.bounds);
-      if (signature === appliedSignature) {
-        exposeClearFitPaddingForE2E(padding);
-        return;
-      }
-      appliedSignature = signature;
-      applyClearRouteFit(map, route.bounds, padding);
-      exposeClearFitPaddingForE2E(padding);
-    };
-    const scheduleRefit = (): void => {
-      if (scheduled) return;
-      scheduled = true;
-      frame = window.requestAnimationFrame(() => {
-        scheduled = false;
-        refit();
-      });
-    };
-
-    refit();
-    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(scheduleRefit);
-    observer?.observe(container);
-    const card = cardRef?.current;
-    if (card) observer?.observe(card);
-    const viewport = window.visualViewport;
-    window.addEventListener("resize", scheduleRefit);
-    window.addEventListener("orientationchange", scheduleRefit);
-    viewport?.addEventListener("resize", scheduleRefit);
-
-    return () => {
-      if (frame !== null) window.cancelAnimationFrame(frame);
-      observer?.disconnect();
-      window.removeEventListener("resize", scheduleRefit);
-      window.removeEventListener("orientationchange", scheduleRefit);
-      viewport?.removeEventListener("resize", scheduleRefit);
-      if (!removal.isRemoved()) map.setPadding(entryPadding);
-      exposeClearFitPaddingForE2E(null);
-      removal.stop();
-    };
-  }, [map, active, route, generation, cardRef]);
 }

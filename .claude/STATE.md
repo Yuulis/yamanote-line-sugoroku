@@ -346,3 +346,32 @@ Rolling progress summary (latest 5 checkpoints): [PROGRESS.md](../PROGRESS.md)
 - Product decisions per DESIGN.md 2026-11-25 rows (user 2026-11-25).
 - Weights ±1/±2/±3 = 3:2:1; toast copy C2 as in plan section 7; following restored after the adjustment decision (C3 changed by user).
 - Pacing: stop after every step; Claude subagents (Sonnet implements, Opus reviews).
+
+---
+
+## Current Feature: Issue #72: map readability
+<!-- orchestra:block-id: issue-72-map-readability -->
+
+### Context
+
+- Goal: board-first map (thin 30% background lines, lottery-candidate emphasis, faded basemap labels), colour-vision report, gold pulsing 新橋 ring + 「ここに着けばゴール」 bubble after 30/30, per-turn replay camera with seek-bar strip and button-only results, render-only offsets for exactly shared track.
+- Plan: .claude/docs/plans/map-readability-plan.md (23 steps, 3 PRs, Codex validated PASS round 3, then user default changes); handoff: .claude/docs/plans/map-readability-handoff.md; prompts: .claude/docs/plans/map-readability-prompts.md
+- Research: .claude/docs/research/feature-map-readability-{brief,codebase}.md
+- Branches: PR1 feature/map-focus-goal, PR2 feature/replay-camera-strip, PR3 feature/shared-track-offsets
+- Dependencies: none new
+- Complexity: COMPLEX
+
+### Architecture
+
+- PR1 starts with pure moves out of RailwayMap.tsx (railwayMapCamera.ts, useSegmentFlash.ts) to get under 800 lines.
+- Lottery candidates published by deriveTurnMomentDisplay only during lottery-flip/lottery-settle; new lotteryCandidates layer.
+- Basemap symbol opacity scaled from each style's own values at style.load; goal pulse is a CSS DOM halo.
+- Replay store gains seek/step/cardExpanded/showResults; useClearReplayCamera fits per turn with manual lock.
+- buildCorridorOffsets derives render-only fragments keeping properties.featureId; dataVersion and saves unchanged.
+
+### Decisions
+
+- Scope and product choices per the brief (user 2026-11-26): focus always on, no toggle; no map line codes, no marker badge; colour-vision report only; exactly shared offsets only; manual replay view kept.
+- Defaults changed by user 2026-11-26: focus not on title map; 前 from done selects first turn; seek/step keep playing; strip history trigger on desktop only.
+- Pacing: stop after every step; Codex Luna xhigh implements, Sol low reviews (user 2026-11-26).
+- DESIGN.md rows R1-R5 recorded at each PR's docs step (1.10, 2.7, 3.6).

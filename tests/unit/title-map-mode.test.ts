@@ -1,257 +1,353 @@
 // @vitest-environment jsdom
+import {
+  data, emitSuccessfulOffsetUpdate, fitOptions, flushOffsetPromises, mapFromState, mapHarness,
+  mapState, navigationControl, navigationControlCount, ready, render, TARGET_SERVICE_ID,
+  unmountMounted, WorkerDouble, type MapDouble,
+} from "./helpers/railwayMapHarness";
 import { act, createElement, StrictMode } from "react";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { hideAllLineGroups, updateLineGroupVisibility } from "../../src/features/map/lineVisibility";
+import { describe, expect, it, vi } from "vitest";
 import { RailwayMap } from "../../src/features/map/RailwayMap";
 import { TITLE_FIT_PADDING_PHONE_PX, TITLE_FIT_PADDING_PX, titleFitPadding } from "../../src/features/map/camera";
-import { DEFAULT_GAME_CONFIG } from "../../src/features/game/gameConfig";
-import { loadRailwayData } from "../../src/data/loaders";
-import { mountReact, type MountedReact } from "./helpers/reactDom";
+import { addRailwayLayers, setBackgroundFocus } from "../../src/features/map/railwayLayers";
+import { corridorOffsetMemo } from "../../src/features/map/corridorOffsetMemo";
+import { LAYER_IDS, SOURCE_IDS } from "../../src/features/map/mapConfig";
+import { mountReact } from "./helpers/reactDom";
 
-const mapState = vi.hoisted(() => ({ instances: [] as unknown[], failConstruction: false }));
-
-interface MapEvent {
-  readonly sourceId?: string;
-}
-
-vi.mock("maplibre-gl", () => ({
-  setWorkerUrl: vi.fn(),
-  Map: class MapDouble {
-    readonly calls = { padding: [] as unknown[], fit: [] as unknown[], jump: [] as unknown[], ease: [] as unknown[] };
-    /** Camera and clear-route calls in the order they happened. */
-    readonly order: string[] = [];
-    readonly sources = new Map<string, { data: { features: unknown[] } }>();
-    layers: Array<{ id: string; type: string }> = [{ id: "railway-stations-circle", type: "circle" }];
-    padding = { top: 5, right: 0, bottom: 200, left: 0 };
-    readonly listeners = new Map<string, Array<(event?: MapEvent) => void>>();
-    readonly onceListeners = new Map<string, Array<(event?: MapEvent) => void>>();
-    readonly container: HTMLElement;
-    readonly controls: unknown[] = [];
-    removed = false;
-
-    constructor(options: { container: HTMLElement }) {
-      if (mapState.failConstruction) throw new Error("WebGL unavailable");
-      this.container = options.container;
-      mapState.instances.push(this);
-    }
-
-    on(event: string, listener: (event?: MapEvent) => void): this {
-      const listeners = this.listeners.get(event) ?? [];
-      listeners.push(listener);
-      this.listeners.set(event, listeners);
-      return this;
-    }
-
-    once(event: string, listener: (event?: MapEvent) => void): this {
-      const listeners = this.onceListeners.get(event) ?? [];
-      listeners.push(listener);
-      this.onceListeners.set(event, listeners);
-      return this;
-    }
-
-    emit(event: string, payload: MapEvent = {}): void {
-      for (const listener of this.listeners.get(event) ?? []) listener(payload);
-      const once = this.onceListeners.get(event) ?? [];
-      this.onceListeners.delete(event);
-      for (const listener of once) listener(payload);
-    }
-
-    getContainer(): HTMLElement { return this.container; }
-    addControl(control?: unknown): this {
-      if (control === undefined) return this;
-      this.controls.push(control);
-      const element = (control as { onAdd?: (map: unknown) => HTMLElement }).onAdd?.(this);
-      if (element) this.container.append(element);
-      return this;
-    }
-    removeControl(control: unknown): this {
-      const index = this.controls.indexOf(control);
-      if (index >= 0) this.controls.splice(index, 1);
-      (control as { onRemove?: (map: unknown) => void }).onRemove?.(this);
-      return this;
-    }
-    hasControl(control: unknown): boolean { return this.controls.includes(control); }
-    remove(): void {
-      this.removed = true;
-      for (const control of this.controls) {
-        (control as { onRemove?: (map: unknown) => void }).onRemove?.(this);
-      }
-      this.controls.splice(0);
-      this.emit("remove");
-    }
-    getSource(id: string): { setData: (data: { features: unknown[] }) => void } | undefined {
-      const source = this.sources.get(id);
-      return source && { setData: (data) => { this.order.push(`setData:${id}`); source.data = data; } };
-    }
-    getStyle(): { layers: Array<{ id: string; type: string }> } { return { layers: this.layers }; }
-    addSource(id: string, spec: { data: { features: unknown[] } }): void { this.order.push(`addSource:${id}`); this.sources.set(id, { data: spec.data }); }
-    addLayer(layer: { id: string; type: string }, beforeId?: string): void {
-      this.order.push(`addLayer:${layer.id}:${beforeId ?? "top"}`);
-      this.layers.splice(beforeId === undefined ? this.layers.length : this.layers.findIndex((item) => item.id === beforeId), 0, layer);
-    }
-    getLayer(id: string): { id: string } | undefined { return this.layers.find((layer) => layer.id === id); }
-    removeLayer(id: string): void { this.order.push(`removeLayer:${id}`); this.layers = this.layers.filter((layer) => layer.id !== id); }
-    removeSource(id: string): void { this.order.push(`removeSource:${id}`); this.sources.delete(id); }
-    resize(): void { this.order.push("resize"); }
-    getPadding(): { top: number; right: number; bottom: number; left: number } { return this.padding; }
-    off(event: string, listener: (event?: MapEvent) => void): this {
-      this.listeners.set(event, (this.listeners.get(event) ?? []).filter((item) => item !== listener));
-      return this;
-    }
-    getCenter(): { lng: number; lat: number } { return { lng: 0, lat: 0 }; }
-    getZoom(): number { return 10; }
-    triggerRepaint(): void {}
-    project(): { x: number; y: number } { return { x: 100, y: 100 }; }
-    unproject(): { lng: number; lat: number } { return { lng: 0, lat: 0 }; }
-    setPadding(padding: unknown): void { this.order.push("setPadding"); this.calls.padding.push(padding); }
-    fitBounds(bounds: unknown, options: unknown): void { this.order.push("fitBounds"); this.calls.fit.push({ bounds, options }); }
-    jumpTo(options: unknown): void { this.order.push("jumpTo"); this.calls.jump.push(options); }
-    easeTo(options: unknown): void { this.calls.ease.push(options); }
-  },
-  AttributionControl: class {},
-  NavigationControl: class {
-    readonly navigationControl = true;
-    private removed = false;
-    private element: HTMLElement | null = null;
-    onAdd(): HTMLElement {
-      this.element = document.createElement("div");
-      this.element.className = "maplibregl-ctrl-zoom";
-      for (const label of ["Zoom in", "Zoom out"]) {
-        const button = document.createElement("button");
-        button.setAttribute("aria-label", label);
-        this.element.append(button);
-      }
-      return this.element;
-    }
-    onRemove(): void {
-      if (this.removed) throw new TypeError("Cannot read properties of undefined (reading 'off')");
-      this.removed = true;
-      this.element?.remove();
-      this.element = null;
-    }
-  },
-  Popup: class {},
-}));
-
-vi.mock("../../src/features/map/attribution", () => ({
-  ATTRIBUTION_SELECTOR: ".maplibregl-ctrl-attrib",
-  buildDataAttribution: vi.fn(),
-  watchCompactAttribution: vi.fn(() => () => undefined),
-}));
-vi.mock("../../src/features/map/e2eHook", () => ({
-  exposeMapForE2E: vi.fn(),
-  exposeClearFitPaddingForE2E: vi.fn(),
-}));
-vi.mock("../../src/features/map/railwayLayers", () => ({
-  addRailwayLayers: vi.fn(), clearSegmentFlash: vi.fn(), segmentFlashOpacity: vi.fn(),
-  setSegmentFlashFeatures: vi.fn(), setSegmentFlashOpacity: vi.fn(), updateCompletedSegments: vi.fn(),
-  updateCurrentPosition: vi.fn(), updateGoalStation: vi.fn(), updateHighlightedService: vi.fn(),
-}));
-vi.mock("../../src/features/map/lineVisibility", () => ({ hideAllLineGroups: vi.fn(), updateLineGroupVisibility: vi.fn() }));
-vi.mock("../../src/features/map/lineVisibilityStore", () => ({ useVisibleLineGroupIds: () => null }));
-vi.mock("../../src/features/map/headingMarker", () => ({
-  createHeadingMarker: () => ({ remove: vi.fn(), update: vi.fn() }),
-}));
-vi.mock("../../src/features/map/rollAdjustmentPreview", () => ({
-  mountAdjustmentCallouts: vi.fn(() => () => undefined), measureAdjustmentCallouts: vi.fn(() => []),
-}));
-vi.mock("../../src/features/map/stationInteraction", () => ({ bindStationInteractions: vi.fn() }));
-vi.mock("../../src/features/map/stationPopup", () => ({ createStationPopupContent: vi.fn() }));
-vi.mock("../../src/features/analytics/analytics", () => ({ trackException: vi.fn() }));
-
-interface MapDouble {
-  readonly calls: { padding: unknown[]; fit: Array<{ bounds: unknown; options: { padding?: unknown } }>; jump: unknown[]; ease: unknown[] };
-  readonly controls: unknown[];
-  readonly container: HTMLElement;
-  readonly removed: boolean;
-  readonly order: string[];
-  readonly sources: Map<string, { data: { features: unknown[] } }>;
-  layers: Array<{ id: string; type: string }>;
-  padding: { top: number; right: number; bottom: number; left: number };
-  emit(event: string, payload?: MapEvent): void;
-  hasControl(control: unknown): boolean;
-}
-
-const data = await loadRailwayData("", async (url) => JSON.parse(
-  readFileSync(resolve(process.cwd(), "public/data", url), "utf8"),
- ) as unknown);
 const ZERO_PADDING = { top: 0, right: 0, bottom: 0, left: 0 };
-const TARGET_SERVICE_ID = DEFAULT_GAME_CONFIG.targetServiceId;
 const PREVIEW_POSITION: [number, number] = [139.758, 35.666];
 const PREVIEW = [{ delta: 0 as const, stationId: "shimbashi", position: PREVIEW_POSITION, travelledSteps: 1 }];
 const FOLLOW_POSITION: [number, number] = [139.75, 35.66];
 const FOLLOW_PROGRESS = { completedFeatureIds: [], currentPosition: FOLLOW_POSITION };
 
-let mounted: MountedReact | null = null;
-let viewport = { width: 1280, height: 800 };
-
-function mapFromState(index = 0): MapDouble {
-  const map = mapState.instances[index] as MapDouble | undefined;
-  if (!map) throw new Error("RailwayMap did not construct a MapLibre map");
-  return map;
-}
-
-function navigationControlCount(map: MapDouble): number {
-  return map.controls.filter((control) => typeof control === "object" && control !== null && "navigationControl" in control).length;
-}
-
-function navigationControl(map: MapDouble): unknown {
-  return map.controls.find((control) => typeof control === "object" && control !== null && "navigationControl" in control);
-}
-
-function render(mode: "title" | "game" | "clear", overrides: Record<string, unknown> = {}): void {
-  const node = createElement(RailwayMap, { data, mode, targetServiceId: TARGET_SERVICE_ID, ...overrides });
-  if (mounted) act(() => mounted?.root.render(node));
-  else mounted = mountReact(node);
-}
-
-function unmountMounted(): unknown {
-  const current = mounted;
-  mounted = null;
-  try {
-    current?.cleanup();
-    return undefined;
-  } catch (error) {
-    return error;
-  }
-}
-
-function ready(mode: "title" | "game" | "clear" = "game", overrides: Record<string, unknown> = {}): MapDouble {
-  render(mode, overrides);
-  const map = mapFromState(mapState.instances.length - 1);
-  vi.spyOn(map.container, "getBoundingClientRect").mockImplementation(() => new DOMRect(0, 0, viewport.width, viewport.height));
-  act(() => map.emit("style.load"));
-  return map;
-}
-
-function fitOptions(map: MapDouble, index = map.calls.fit.length - 1): { padding?: unknown } {
-  const fit = map.calls.fit[index];
-  if (!fit || typeof fit.options !== "object" || fit.options === null) throw new Error("Expected a fitBounds call");
-  return fit.options;
-}
-
-beforeEach(() => {
-  mapState.instances = [];
-  mapState.failConstruction = false;
-  viewport = { width: 1280, height: 800 };
-  vi.stubGlobal("ResizeObserver", class { observe(): void {} disconnect(): void {} });
-  Object.defineProperty(window, "ResizeObserver", { configurable: true, value: globalThis.ResizeObserver });
-  Object.defineProperty(window, "requestAnimationFrame", { configurable: true, value: (callback: FrameRequestCallback): number => { callback(0); return 1; } });
-  Object.defineProperty(window, "cancelAnimationFrame", { configurable: true, value: vi.fn() });
-  Object.defineProperty(window, "matchMedia", { configurable: true, value: () => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) });
-});
-
-afterEach(() => {
-  mounted?.cleanup();
-  mounted = null;
-  document.body.replaceChildren();
-  vi.restoreAllMocks();
-  vi.unstubAllGlobals();
-});
 
 describe("title map camera", () => {
+  it("re-registers the canonical source after style reload when Worker support is unavailable", async () => {
+    const actualRailwayLayers = await vi.importActual<typeof import("../../src/features/map/railwayLayers")>(
+      "../../src/features/map/railwayLayers",
+    );
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => actualRailwayLayers.addRailwayLayers(map, input));
+
+    if (!data.geometry.ok) throw new Error("Railway fixture needs canonical geometry");
+    vi.stubGlobal("Worker", undefined);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    const geometry = structuredClone(data.geometry.value);
+    const testData = { ...data, geometry: { ...data.geometry, value: geometry } };
+    const map = ready("title", { data: testData });
+    const originalDerived = map.sources.get(SOURCE_IDS.corridorSegments)?.data;
+    expect(originalDerived).toBe(geometry);
+    expect(warn).toHaveBeenCalledWith(
+      "Map data unavailable: shared-track offsets are unavailable; keeping canonical geometry.",
+      expect.objectContaining({ message: "Web Worker is not available." }),
+    );
+    expect(addRailwayLayers).toHaveBeenCalledTimes(1);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.corridorSegments);
+    }
+
+    render("game", { data: testData });
+    render("clear", { data: testData });
+    render("title", { data: testData });
+    expect(mapState.instances).toHaveLength(1);
+    expect(addRailwayLayers).toHaveBeenCalledTimes(1);
+
+    // MapLibre clears application sources/layers when a style is replaced.
+    map.sources.clear();
+    map.layers = [{ id: "water-name", type: "symbol" }];
+    act(() => map.emit("style.load"));
+
+    expect(addRailwayLayers).toHaveBeenCalledTimes(2);
+    expect(map.order.filter((entry) => entry === `addSource:${SOURCE_IDS.corridorSegments}`)).toHaveLength(2);
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(originalDerived);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.corridorSegments);
+    }
+
+    const addCountAfterReload = map.order.filter((entry) => entry.startsWith("addSource:")).length;
+    render("game", { data: testData });
+    render("clear", { data: testData });
+    render("title", { data: testData });
+    expect(addRailwayLayers).toHaveBeenCalledTimes(2);
+    expect(map.order.filter((entry) => entry.startsWith("addSource:")).length).toBe(addCountAfterReload);
+  });
+
+  it("keeps canonical data in the derived source and warns once when Worker is unavailable", async () => {
+    const actualRailwayLayers = await vi.importActual<typeof import("../../src/features/map/railwayLayers")>(
+      "../../src/features/map/railwayLayers",
+    );
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => actualRailwayLayers.addRailwayLayers(map, input));
+    vi.stubGlobal("Worker", undefined);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    if (!data.geometry.ok) throw new Error("Railway fixture needs canonical geometry");
+    const geometry = structuredClone(data.geometry.value);
+    const testData = { ...data, geometry: { ...data.geometry, value: geometry } };
+    const map = ready("game", { data: testData });
+
+    expect(warn).toHaveBeenCalledWith(
+      "Map data unavailable: shared-track offsets are unavailable; keeping canonical geometry.",
+      expect.objectContaining({ message: "Web Worker is not available." }),
+    );
+    expect(map.sources.get(SOURCE_IDS.segments)?.data).toBe(geometry);
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(geometry);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.corridorSegments);
+    }
+
+    map.sources.clear();
+    map.layers = [{ id: "water-name", type: "symbol" }];
+    act(() => map.emit("style.load"));
+    expect(warn).toHaveBeenCalledOnce();
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(geometry);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect((map.getLayer(layerId) as unknown as { source: string }).source).toBe(SOURCE_IDS.corridorSegments);
+    }
+  });
+
+  it("reuses a successful worker payload across style reload, mode changes, and a same-key map replacement", async () => {
+    const actualRailwayLayers = await vi.importActual<typeof import("../../src/features/map/railwayLayers")>(
+      "../../src/features/map/railwayLayers",
+    );
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => actualRailwayLayers.addRailwayLayers(map, input));
+    vi.stubGlobal("Worker", WorkerDouble);
+    let nextUrl = 0;
+    const createUrl = vi.spyOn(URL, "createObjectURL").mockImplementation(() => `blob:offset-${++nextUrl}`);
+    const revokeUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    if (!data.geometry.ok) throw new Error("Railway fixture needs canonical geometry");
+    const geometry = structuredClone(data.geometry.value);
+    const testData = { ...data, geometry: { ...data.geometry, value: geometry } };
+    const derivedPayload = {
+      geoJson: new Blob([JSON.stringify({ type: "FeatureCollection", features: [] })], { type: "application/geo+json" }),
+      derivedCount: 0,
+    };
+    const map = ready("title", { data: testData });
+    const worker = WorkerDouble.instances[0]!;
+
+    expect(worker.requests).toHaveLength(1);
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(geometry);
+    expect(() => map.addSource(SOURCE_IDS.corridorSegments, { data: geometry })).toThrow(
+      `Source ${SOURCE_IDS.corridorSegments} already exists`,
+    );
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect(map.getLayer(layerId)?.source).toBe(SOURCE_IDS.corridorSegments);
+    }
+
+    const source = map.sources.get(SOURCE_IDS.corridorSegments)!;
+    vi.spyOn(source, "loaded").mockReturnValueOnce(false);
+    worker.respond(derivedPayload);
+    await flushOffsetPromises();
+    map.emit("sourcedata", { sourceId: SOURCE_IDS.segments, sourceDataType: "content" });
+    expect(source.dataCalls).toEqual([]);
+
+    const update = { sourceId: SOURCE_IDS.corridorSegments, sourceDataType: "content" };
+    map.emit("sourcedata", update); // Initial canonical indexing completed.
+    map.emit("render");
+    await flushOffsetPromises();
+    const initialBlobUrl = "blob:offset-1";
+    expect(source.dataCalls).toEqual([initialBlobUrl]);
+    expect(corridorOffsetMemo.get(geometry, TARGET_SERVICE_ID)).toBeNull();
+
+    map.emit("sourcedata", update); // Derived indexing completed.
+    await flushOffsetPromises();
+    expect(corridorOffsetMemo.get(geometry, TARGET_SERVICE_ID)).toBeNull();
+    map.emit("render");
+    await flushOffsetPromises();
+    expect(corridorOffsetMemo.get(geometry, TARGET_SERVICE_ID)).toBe(derivedPayload);
+    expect(createUrl).toHaveBeenCalledOnce();
+
+    map.sources.clear();
+    map.layers = [{ id: "water-name", type: "symbol" }];
+    act(() => map.emit("style.load"));
+    await flushOffsetPromises();
+    expect(addRailwayLayers).toHaveBeenCalledTimes(2);
+    expect(map.order.filter((entry) => entry === `addSource:${SOURCE_IDS.corridorSegments}`)).toHaveLength(2);
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(initialBlobUrl);
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.dataCalls).toEqual([]);
+    expect(worker.requests).toHaveLength(1);
+    expect(createUrl).toHaveBeenCalledOnce();
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect(map.getLayer(layerId)?.source).toBe(SOURCE_IDS.corridorSegments);
+    }
+    emitSuccessfulOffsetUpdate(map);
+    await flushOffsetPromises();
+
+    const registrationsAfterReload = map.order.filter((entry) => entry.startsWith("addSource:")).length;
+    render("game", { data: testData });
+    render("clear", { data: testData });
+    render("title", { data: testData });
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.order.filter((entry) => entry.startsWith("addSource:")).length).toBe(registrationsAfterReload);
+
+    render("title", { data: { ...testData } });
+    const replacement = mapFromState(1);
+    vi.spyOn(replacement.container, "getBoundingClientRect").mockImplementation(() => new DOMRect(0, 0, mapHarness.viewport.width, mapHarness.viewport.height));
+    act(() => replacement.emit("style.load"));
+    await flushOffsetPromises();
+    expect(map.removed).toBe(true);
+    expect(worker.terminated).toHaveBeenCalledOnce();
+    expect(revokeUrl).toHaveBeenCalledWith(initialBlobUrl);
+    expect(WorkerDouble.instances).toHaveLength(1);
+    expect(worker.requests).toHaveLength(1);
+    expect(createUrl).toHaveBeenCalledTimes(2);
+    expect(replacement.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe("blob:offset-2");
+    expect(replacement.sources.get(SOURCE_IDS.corridorSegments)?.dataCalls).toEqual([]);
+    for (const layerId of [LAYER_IDS.services, LAYER_IDS.currentService, LAYER_IDS.lotteryCandidates]) {
+      expect(replacement.getLayer(layerId)?.source).toBe(SOURCE_IDS.corridorSegments);
+    }
+  });
+
+  it("keeps canonical geometry and warns once with the original Worker error", async () => {
+    const actualRailwayLayers = await vi.importActual<typeof import("../../src/features/map/railwayLayers")>(
+      "../../src/features/map/railwayLayers",
+    );
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => actualRailwayLayers.addRailwayLayers(map, input));
+    vi.stubGlobal("Worker", WorkerDouble);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    if (!data.geometry.ok) throw new Error("Railway fixture needs canonical geometry");
+    const geometry = structuredClone(data.geometry.value);
+    const testData = { ...data, geometry: { ...data.geometry, value: geometry } };
+    const map = ready("game", { data: testData });
+    const originalError = new Error("original worker failure");
+    WorkerDouble.instances[0]!.fail(originalError);
+    await flushOffsetPromises();
+
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(geometry);
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(
+      "Map data unavailable: shared-track offsets are unavailable; keeping canonical geometry.",
+      originalError,
+    );
+  });
+
+  it.each(["error", "dataabort"] as const)("restores canonical data after a MapLibre %s and does not cache the failed apply", async (eventType) => {
+    const actualRailwayLayers = await vi.importActual<typeof import("../../src/features/map/railwayLayers")>(
+      "../../src/features/map/railwayLayers",
+    );
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => actualRailwayLayers.addRailwayLayers(map, input));
+    vi.stubGlobal("Worker", WorkerDouble);
+    vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:failed-offset");
+    const revokeUrl = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => undefined);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    if (!data.geometry.ok) throw new Error("Railway fixture needs canonical geometry");
+    const geometry = structuredClone(data.geometry.value);
+    const testData = { ...data, geometry: { ...data.geometry, value: geometry } };
+    const map = ready("game", { data: testData });
+    const worker = WorkerDouble.instances[0]!;
+    const derivedPayload = {
+      geoJson: new Blob([JSON.stringify({ type: "FeatureCollection", features: [] })], { type: "application/geo+json" }),
+      derivedCount: 0,
+    };
+    worker.respond(derivedPayload);
+    await flushOffsetPromises();
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe("blob:failed-offset");
+    map.emit("sourcedataloading", { sourceId: SOURCE_IDS.corridorSegments });
+
+    const originalError = new Error("MapLibre failed to fetch derived GeoJSON.");
+    if (eventType === "error") map.emit("error", { sourceId: SOURCE_IDS.corridorSegments, error: originalError });
+    else map.emit("dataabort", { sourceId: SOURCE_IDS.corridorSegments });
+    await flushOffsetPromises();
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.data).toBe(geometry);
+    expect(map.sources.get(SOURCE_IDS.corridorSegments)?.dataCalls).toEqual(["blob:failed-offset", geometry]);
+    expect(revokeUrl).toHaveBeenCalledWith("blob:failed-offset");
+    expect(warn).toHaveBeenCalledOnce();
+    expect(warn).toHaveBeenCalledWith(
+      "Map data unavailable: shared-track offsets are unavailable; keeping canonical geometry.",
+      eventType === "error"
+        ? originalError
+        : expect.objectContaining({ message: "MapLibre aborted corridor offset request 1." }),
+    );
+
+    map.sources.clear();
+    map.layers = [{ id: "water-name", type: "symbol" }];
+    act(() => map.emit("style.load"));
+    expect(worker.requests).toHaveLength(2);
+  });
+
+  it("fades only basemap symbols across title, game, and a replacement style", () => {
+    vi.mocked(addRailwayLayers).mockImplementation((map) => {
+      const testMap = map as unknown as MapDouble;
+      testMap.addLayer({
+        id: "railway-stations-label",
+        type: "symbol",
+        paint: { "text-opacity": 0.2 },
+      });
+      testMap.addLayer({
+        id: "game-marker-symbol",
+        type: "symbol",
+        paint: { "icon-opacity": 0.1 },
+      });
+    });
+
+    render("title");
+    const map = mapFromState();
+    map.layers = [{
+      id: "water-name",
+      type: "symbol",
+      paint: { "text-opacity": 0.8 },
+    }];
+    act(() => map.emit("style.load"));
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+
+    render("game");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer("water-name")?.paint).toMatchObject({ "text-opacity": 0.6, "icon-opacity": 0.65 });
+    expect(map.getLayer("railway-stations-label")?.paint?.["text-opacity"]).toBe(0.2);
+    expect(map.getLayer("game-marker-symbol")?.paint?.["icon-opacity"]).toBe(0.1);
+
+    render("title");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+    expect(map.getLayer("water-name")?.paint?.["icon-opacity"]).toBeUndefined();
+    expect(map.getLayer("railway-stations-label")?.paint?.["text-opacity"]).toBe(0.2);
+    expect(map.getLayer("game-marker-symbol")?.paint?.["icon-opacity"]).toBe(0.1);
+
+    render("clear");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer("water-name")?.paint).toMatchObject({ "text-opacity": 0.6, "icon-opacity": 0.65 });
+    render("title");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.8);
+
+    map.layers = [{
+      id: "water-name",
+      type: "symbol",
+      paint: { "text-opacity": 0.4 },
+    }];
+    act(() => map.emit("style.load"));
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.4);
+    render("game");
+    expect(map.getLayer("water-name")?.paint?.["text-opacity"]).toBe(0.3);
+    expect(map.getLayer("railway-stations-label")).toBeDefined();
+  });
+
+  it("updates background service paint when the persistent map changes modes", () => {
+    vi.mocked(addRailwayLayers).mockImplementation((map, input) => {
+      const testMap = map as unknown as MapDouble;
+      testMap.addLayer({
+        id: LAYER_IDS.services,
+        type: "line",
+        paint: {
+          "line-width": input.focusBackground ? 2 : 3,
+          "line-opacity": input.focusBackground ? 0.3 : 0.75,
+        },
+      });
+    });
+    vi.mocked(setBackgroundFocus).mockImplementation((map, focused) => {
+      const testMap = map as unknown as MapDouble;
+      if (!testMap.getLayer(LAYER_IDS.services)) return;
+      testMap.setPaintProperty(LAYER_IDS.services, "line-width", focused ? 2 : 3);
+      testMap.setPaintProperty(LAYER_IDS.services, "line-opacity", focused ? 0.3 : 0.75);
+    });
+
+    const map = ready("title");
+    expect(map.getLayer(LAYER_IDS.services)?.paint).toMatchObject({ "line-width": 3, "line-opacity": 0.75 });
+    expect(addRailwayLayers).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ focusBackground: false }));
+
+    render("game");
+    expect(mapState.instances).toHaveLength(1);
+    expect(map.getLayer(LAYER_IDS.services)?.paint).toMatchObject({ "line-width": 2, "line-opacity": 0.3 });
+
+    render("title");
+    expect(map.getLayer(LAYER_IDS.services)?.paint).toMatchObject({ "line-width": 3, "line-opacity": 0.75 });
+  });
+
   it("removes navigation exactly once when an in-game map unmounts", () => {
     const map = ready("game");
     const control = navigationControl(map);
@@ -277,7 +373,7 @@ describe("title map camera", () => {
 
   it("removes navigation exactly once during StrictMode teardown", () => {
     const node = createElement(RailwayMap, { data, mode: "game", targetServiceId: TARGET_SERVICE_ID });
-    mounted = mountReact(createElement(StrictMode, null, node));
+    mapHarness.mounted = mountReact(createElement(StrictMode, null, node));
     const map = mapFromState(1);
     act(() => map.emit("style.load"));
     const control = navigationControl(map);
@@ -539,7 +635,7 @@ describe("title map camera", () => {
     render("title");
     expect(map.calls.fit.length).toBeGreaterThan(beforeTitle);
     const beforeResize = map.calls.fit.length;
-    viewport = { width: 1024, height: 768 };
+    mapHarness.viewport = { width: 1024, height: 768 };
     act(() => window.dispatchEvent(new window.Event("resize")));
     expect(map.calls.fit.length).toBeGreaterThan(beforeResize);
     expect(mapState.instances).toHaveLength(mapCount);
@@ -641,99 +737,5 @@ describe("title map camera", () => {
     expect(map.calls.padding).toHaveLength(before.padding);
     expect(map.calls.jump).toHaveLength(before.jump);
     expect(map.calls.ease).toHaveLength(before.ease);
-  });
-});
-
-describe("clear route on the map", () => {
-  const ROUTE_STEP = {
-    segmentId: "s", fromStationId: "a", toStationId: "b", newlyCompleted: false,
-    points: [[139.7, 35.6], [139.8, 35.7]] as [number, number][], cumulative: [0, 1], total: 1,
-  };
-  const ROUTE = {
-    steps: [ROUTE_STEP],
-    legs: [{ firstStepIndex: 0, endStepIndexExclusive: 1, serviceId: "svc", lineGroupId: "grp", color: "#123456" }],
-    bounds: [[139.7, 35.6], [139.8, 35.7]] as [[number, number], [number, number]],
-  };
-  const CARD_RECT = new DOMRect(420, 40, 440, 720);
-
-  function clearProps(overrides: Record<string, unknown> = {}): Record<string, unknown> {
-    const card = document.createElement("section");
-    vi.spyOn(card, "getBoundingClientRect").mockReturnValue(CARD_RECT);
-    return { clearRoute: ROUTE, clearRouteKey: 1, clearCardRef: { current: card }, ...overrides };
-  }
-
-  it("draws the route below the station layers and fits it beside the clear card", () => {
-    const map = ready("clear", clearProps());
-
-    expect(map.order).toContain("addSource:clear-traveled-route");
-    expect(map.layers.map((layer) => layer.id)).toEqual([
-      "clear-traveled-route-outline", "clear-traveled-route-line", "railway-stations-circle",
-    ]);
-    expect(map.sources.get("clear-traveled-route")?.data.features).toHaveLength(1);
-    expect(map.calls.fit).toHaveLength(1);
-    expect(fitOptions(map)).toMatchObject({ animate: false, maxZoom: 13, padding: { left: 24, right: 1280 - 420 + 24 } });
-  });
-
-  it("draws and frames nothing for a clear without a verified route", () => {
-    const map = ready("clear", clearProps({ clearRoute: null }));
-
-    expect(map.sources.size).toBe(0);
-    expect(map.calls.fit).toHaveLength(0);
-    expect(map.calls.padding).toHaveLength(0);
-  });
-
-  it("draws the route again when a replaced style dropped it, and never outside the clear screen", () => {
-    const props = clearProps();
-    const map = ready("clear", props);
-    map.sources.clear();
-    map.layers = [{ id: "railway-stations-circle", type: "circle" }];
-    map.order.length = 0;
-    act(() => map.emit("style.load"));
-    expect(map.order, "the style.load of the replaced style bumps the revision").toContain("addSource:clear-traveled-route");
-    expect(map.sources.get("clear-traveled-route")?.data.features).toHaveLength(1);
-
-    render("game", props);
-    expect(map.sources.size).toBe(0);
-    expect(map.layers.map((layer) => layer.id)).toEqual(["railway-stations-circle"]);
-  });
-
-  it("removes the route and restores the entry padding before the game camera acts when the clear screen is left", () => {
-    const props = clearProps();
-    const map = ready("clear", props);
-    map.order.length = 0;
-
-    render("game", { ...props, overviewKey: 3 });
-
-    const restore = map.order.indexOf("setPadding");
-    expect(map.order.slice(0, 4)).toEqual([
-      "removeLayer:clear-traveled-route-line", "removeLayer:clear-traveled-route-outline",
-      "removeSource:clear-traveled-route", "setPadding",
-    ]);
-    expect(map.calls.padding.find((padding) => (padding as { bottom: number }).bottom === 200), "entry padding is restored").toBeDefined();
-    const gameFit = map.order.indexOf("fitBounds");
-    expect(gameFit, "the overview fit of the game screen comes after the restore").toBeGreaterThan(restore);
-  });
-
-  it("empties the coloured network on the clear screen and applies the legend selection again outside it", () => {
-    vi.mocked(hideAllLineGroups).mockClear();
-    vi.mocked(updateLineGroupVisibility).mockClear();
-    const props = clearProps();
-    const map = ready("game", props);
-    expect(hideAllLineGroups).not.toHaveBeenCalled();
-    expect(updateLineGroupVisibility).toHaveBeenCalled();
-
-    vi.mocked(updateLineGroupVisibility).mockClear();
-    render("clear", props);
-    expect(hideAllLineGroups).toHaveBeenCalledWith(map, TARGET_SERVICE_ID);
-    expect(updateLineGroupVisibility, "the legend selection is not applied while the clear screen owns the map").not.toHaveBeenCalled();
-
-    render("game", props);
-    expect(updateLineGroupVisibility).toHaveBeenCalledWith(map, expect.anything(), null, TARGET_SERVICE_ID);
-  });
-
-  it("keeps the map controls out of the clear screen while the route is shown", () => {
-    const map = ready("clear", clearProps());
-    expect(navigationControlCount(map)).toBe(0);
-    expect(map.container.parentElement?.querySelector(".map-overview")).toBeNull();
   });
 });

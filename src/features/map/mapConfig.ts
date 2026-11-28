@@ -28,6 +28,7 @@ export const MAP_CREDITS = [
 
 export const SOURCE_IDS = {
   segments: "railway-segments",
+  corridorSegments: "railway-corridor-segments",
   stations: "railway-stations",
   currentPosition: "game-current-position",
 } as const;
@@ -48,6 +49,8 @@ export function isBasemapError(event: object): boolean {
 export const LAYER_IDS = {
   services: "railway-services",
   base: "railway-base",
+  /** Landing services while the lottery result is being revealed. */
+  lotteryCandidates: "railway-lottery-candidates",
   currentService: "railway-current-service",
   /** White dashed casing beneath the not-yet-traversed target segments. */
   segmentsPendingCasing: "railway-segments-pending-casing",
@@ -72,6 +75,10 @@ export const LAYER_IDS = {
 
 export const FALLBACK_LINE_COLOR = "#80c241";
 export const SEGMENT_LINE_WIDTH = 5;
+/** Pixel distance between shared-track service slots at z13. */
+export const CORRIDOR_SLOT_SPACING_PX = 6;
+/** Shared-track offsets stay at zero through z11, then reach full spacing at z13. */
+export const CORRIDOR_OFFSET_ZOOM_STOPS: ZoomStops = [[11, 0], [13, 1]];
 /** Other services remain visible beside the target's shared N02 track shape. */
 export const OTHER_SERVICE_LINE_WIDTH = 3;
 /**
@@ -79,6 +86,13 @@ export const OTHER_SERVICE_LINE_WIDTH = 3;
  * base of the same colour within 14/255 per channel (C1 pixel comparison).
  */
 export const OTHER_SERVICE_LINE_OPACITY = 0.75;
+/** Focused gameplay background services, issue #72. */
+export const FOCUS_OTHER_SERVICE_LINE_WIDTH = 2;
+/** Opacity for focused gameplay background services, issue #72. */
+export const FOCUS_OTHER_SERVICE_LINE_OPACITY = 0.40;
+/** Lottery candidate lines are emphasised equally while the result is hidden. */
+export const LOTTERY_CANDIDATE_LINE_WIDTH = 4;
+export const LOTTERY_CANDIDATE_LINE_OPACITY = 0.85;
 export const CURRENT_SERVICE_LINE_WIDTH = 7;
 export const NETWORK_FIT_PADDING_DESKTOP = { top: 60, right: 70, bottom: 50, left: 340 };
 export const NETWORK_FIT_PADDING_PHONE = { top: 100, right: 60, left: 20 };
@@ -116,8 +130,8 @@ export const KEY_STATION_STROKE_STOPS: ZoomStops = [[8, 1], [12, 2]];
 export const ORDINARY_STATION_RADIUS_STOPS: ZoomStops = [[ORDINARY_STATION_MIN_ZOOM, 2.5], [13, 4], [14, 5]];
 export const ORDINARY_STATION_STROKE_STOPS: ZoomStops = [[ORDINARY_STATION_MIN_ZOOM, 1], [13, 2]];
 export const GOAL_STATION_RING_RADIUS_STOPS: ZoomStops = [[8, 7], [11, 9], [13, 12]];
-export const GOAL_STATION_RING_COLOR = "#b26a00";
-export const GOAL_STATION_RING_WIDTH = 3;
+export const GOAL_STATION_RING_COLOR = "#d4a017";
+export const GOAL_STATION_RING_WIDTH = 5;
 export const STATION_STROKE_COLOR = "#333333";
 export const STATION_FILL_COLOR = "#ffffff";
 export const LABEL_FONT = ["Noto Sans Regular"];

@@ -40,6 +40,16 @@ function getPhoneWidth(): boolean {
     && window.matchMedia(PHONE_MEDIA_QUERY).matches;
 }
 
+function isVisibleInLayout(element: HTMLElement | null): element is HTMLElement {
+  if (!element?.isConnected) return false;
+  for (let current: HTMLElement | null = element; current; current = current.parentElement) {
+    if (current.hidden || current.getAttribute("aria-hidden") === "true") return false;
+    const style = window.getComputedStyle(current);
+    if (style.display === "none" || style.visibility === "hidden") return false;
+  }
+  return true;
+}
+
 interface ClearScreenProps {
   game: GameState | ItemGameState;
   network: RailwayNetwork;
@@ -82,13 +92,15 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
   const clearCardRef = useRef<HTMLElement | null>(null);
   const focusedRegionRef = useRef<"content" | "controls" | "other">("other");
   const focusedElementRef = useRef<HTMLElement | null>(null);
+  const historyOpenerRef = useRef<HTMLButtonElement | null>(null);
   const ownedReplayStore = useMemo(() => createClearReplayStore({ route: result.route, reducedMotion }), [result.route]);
   const activeReplayStore = replayStore ?? ownedReplayStore;
-  const replayPhase = useSyncExternalStore(activeReplayStore.subscribePhase, activeReplayStore.getPhase, activeReplayStore.getPhase);
+  const replayUi = useSyncExternalStore(activeReplayStore.subscribeUi, activeReplayStore.getUiSnapshot, activeReplayStore.getUiSnapshot);
+  const replayPhase = replayUi.phase;
   const phoneWidth = useSyncExternalStore(subscribePhoneWidth, getPhoneWidth, () => false);
-  const replayCollapsed = phoneWidth && !historyDialogOpen && !reducedMotion
-    && (replayPhase === "playing" || replayPhase === "paused");
+  const replayCollapsed = !replayUi.cardExpanded && replayPhase !== "idle" && !reducedMotion;
   const previousReplayCollapsedRef = useRef(replayCollapsed);
+  const previousHistoryDialogOpenRef = useRef(historyDialogOpen);
   const setCardRef = useCallback((node: HTMLElement | null): void => {
     clearCardRef.current = node;
     if (typeof cardRef === "function") cardRef(node);
@@ -121,10 +133,24 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
     // element being removed keeps the last region so the collapse/expand handoff can still restore focus.
     const onFocusOut = (event: FocusEvent): void => {
       const target = event.target instanceof HTMLElement ? event.target : null;
-      if (!target || event.relatedTarget !== null) return;
+      const isHistoryTrigger = target?.matches(".clear-replay-controls__history") ?? false;
+      if (!target || (event.relatedTarget !== null && !isHistoryTrigger)) return;
       queueMicrotask(() => {
         const active = document.activeElement;
         if (!target.isConnected || (active !== null && active !== document.body)) return;
+        // Keep the lost-control marker until the breakpoint effect can hand off focus from the
+        // desktop history trigger that the phone layout just hid with display:none.
+        if (getPhoneWidth() && target.matches(".clear-replay-controls__history")) {
+          const card = clearCardRef.current;
+          if (card?.querySelector<HTMLDialogElement>("dialog.clear-history")?.open) return;
+          const fallback = [...(card?.querySelectorAll<HTMLButtonElement>(".clear-replay-controls__toggle, .clear-replay-controls__results") ?? [])]
+            .find(isVisibleInLayout);
+          if (fallback) {
+            fallback.focus({ preventScroll: true });
+            return;
+          }
+        }
+        if (event.relatedTarget !== null) return;
         focusedRegionRef.current = "other";
         focusedElementRef.current = null;
       });
@@ -138,26 +164,76 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
   }, []);
   useLayoutEffect(() => {
     const wasCollapsed = previousReplayCollapsedRef.current;
-    if (wasCollapsed === replayCollapsed) return;
     previousReplayCollapsedRef.current = replayCollapsed;
     const card = clearCardRef.current;
-    if (!card || !phoneWidth) return;
+    if (!card) return;
 
     const focusedElement = focusedElementRef.current;
     const focusStayedOnElement = focusedElement?.isConnected && document.activeElement === focusedElement;
-    if (!wasCollapsed && replayCollapsed) {
-      if (focusedRegionRef.current === "content"
-        || (focusedRegionRef.current === "controls" && !focusStayedOnElement)) {
-        card.querySelector<HTMLButtonElement>(".clear-replay-controls__active > button")?.focus({ preventScroll: true });
+    const transitionChanged = wasCollapsed !== replayCollapsed;
+    const focusWasLostFromControls = focusedRegionRef.current === "controls" && !focusStayedOnElement;
+    if (transitionChanged && !wasCollapsed && replayCollapsed) {
+      if (focusedRegionRef.current === "content" || focusWasLostFromControls) {
+        const target = replayPhase === "playing"
+          ? card.querySelector<HTMLButtonElement>(".clear-replay-controls__toggle")
+          : card.querySelector<HTMLButtonElement>(".clear-replay-controls__results");
+        target?.focus({ preventScroll: true });
+      }
+      return;
+    }
+    if (transitionChanged && wasCollapsed && !replayCollapsed) {
+      card.scrollTop = 0;
+      if (focusWasLostFromControls) {
+        const target = card.querySelector<HTMLButtonElement>(".clear-replay-controls__start") ?? headingRef.current;
+        target?.focus({ preventScroll: true });
       }
       return;
     }
 
-    card.scrollTop = 0;
-    if (focusedRegionRef.current === "controls" && !focusStayedOnElement) {
-      card.querySelector<HTMLButtonElement>(".clear-replay-controls__start")?.focus({ preventScroll: true });
+    // Pause, natural completion and finish replace the focused strip control while the strip remains visible.
+    if (!transitionChanged && focusWasLostFromControls && (replayPhase === "playing" || replayPhase === "paused" || replayPhase === "done")) {
+      const target = replayPhase === "playing"
+        ? card.querySelector<HTMLButtonElement>(".clear-replay-controls__toggle")
+        : replayPhase === "paused"
+          ? card.querySelector<HTMLButtonElement>(".clear-replay-controls__toggle")
+          : replayUi.cardExpanded
+            ? card.querySelector<HTMLButtonElement>(".clear-replay-controls__start")
+            : card.querySelector<HTMLButtonElement>(".clear-replay-controls__results");
+      target?.focus({ preventScroll: true });
     }
-  }, [phoneWidth, replayCollapsed]);
+  }, [replayPhase, replayUi.cardExpanded, replayCollapsed, phoneWidth]);
+  useLayoutEffect(() => {
+    const wasOpen = previousHistoryDialogOpenRef.current;
+    previousHistoryDialogOpenRef.current = historyDialogOpen;
+    if (!wasOpen || historyDialogOpen) return;
+    const card = clearCardRef.current;
+    if (!card || isVisibleInLayout(historyOpenerRef.current)) return;
+    const target = [...card.querySelectorAll<HTMLButtonElement>(".clear-replay-controls__toggle, .clear-replay-controls__results")]
+      .find(isVisibleInLayout);
+    target?.focus({ preventScroll: true });
+  }, [historyDialogOpen, phoneWidth, replayCollapsed, replayPhase, replayUi.cardExpanded]);
+  useLayoutEffect(() => {
+    const map = document.querySelector<HTMLElement>(".map-container");
+    const card = clearCardRef.current;
+    if (!map || !card || !replayCollapsed || phoneWidth) {
+      map?.style.removeProperty("--clear-replay-attribution-bottom");
+      return;
+    }
+
+    const updateAttributionPosition = (): void => {
+      const lift = Math.max(0, window.innerHeight - card.getBoundingClientRect().top + 12);
+      map.style.setProperty("--clear-replay-attribution-bottom", `${lift}px`);
+    };
+    updateAttributionPosition();
+    window.addEventListener("resize", updateAttributionPosition);
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updateAttributionPosition);
+    observer?.observe(card);
+    return () => {
+      window.removeEventListener("resize", updateAttributionPosition);
+      observer?.disconnect();
+      map.style.removeProperty("--clear-replay-attribution-bottom");
+    };
+  }, [replayCollapsed, phoneWidth, replayPhase, replayUi.cardExpanded]);
   useLayoutEffect(() => {
     const screen = headingRef.current?.closest<HTMLElement>(".clear-screen");
     if (!headingRef.current || !screen) return;
@@ -188,6 +264,11 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
   const finishReplay = useCallback((): void => {
     const phase = activeReplayStore.getPhase();
     if (phase === "playing" || phase === "paused") activeReplayStore.finish();
+  }, [activeReplayStore]);
+  const openHistoryFromReplay = useCallback((opener: HTMLButtonElement): void => {
+    historyOpenerRef.current = opener;
+    activeReplayStore.pause();
+    setHistoryDialogOpen(true);
   }, [activeReplayStore]);
   // An image message keeps the selectable text fallback of an earlier failed copy on screen.
   const showImageMessage = useCallback((text: string | null): void => {
@@ -288,7 +369,14 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
             </>
           )}
         </div>
-        {result.route !== null && <ClearReplayControls store={activeReplayStore} reducedMotion={reducedMotion} onAnnounce={announce} />}
+        {result.route !== null && (
+          <ClearReplayControls
+            store={activeReplayStore}
+            reducedMotion={reducedMotion}
+            onAnnounce={announce}
+            onShowHistory={openHistoryFromReplay}
+          />
+        )}
       </div>
       <div className="clear-screen__content" hidden={replayCollapsed} aria-hidden={replayCollapsed} inert={replayCollapsed}>
         {result.route === null && <p className="clear-screen__replay-unavailable">経路を描画できないため、軌跡を再生できません。</p>}
@@ -315,14 +403,18 @@ export function ClearScreen({ game, network, presentation, result, historyRows, 
             >画像を準備中…</p>
           )}
         </div>
-        <ClearHistory
-          game={game}
-          network={network}
-          presentation={presentation}
-          rows={savedRows}
-          onBeforeOpen={() => activeReplayStore.pause()}
-          onDialogOpenChange={setHistoryDialogOpen}
-        />
+      </div>
+      <ClearHistory
+        game={game}
+        network={network}
+        presentation={presentation}
+        rows={savedRows}
+        onBeforeOpen={() => activeReplayStore.pause()}
+        open={historyDialogOpen}
+        onOpenChange={setHistoryDialogOpen}
+        openerRef={historyOpenerRef}
+      />
+      <div className="clear-screen__content" hidden={replayCollapsed} aria-hidden={replayCollapsed} inert={replayCollapsed}>
         <a
           className="clear-screen__x-text-link"
           href={buildXIntentUrl(shareText)}

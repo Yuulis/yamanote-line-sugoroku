@@ -11,11 +11,15 @@ import { DEFAULT_GAME_CONFIG } from "../game/gameConfig";
 import { buildLineColorExpression, buildTrackColorExpression } from "./lineColor";
 import { targetTrackFilter } from "./lineVisibility";
 import {
+  CORRIDOR_OFFSET_ZOOM_STOPS,
+  CORRIDOR_SLOT_SPACING_PX,
   CURRENT_POSITION_COLOR,
   CURRENT_POSITION_RADIUS,
   CURRENT_POSITION_STROKE_COLOR,
   CURRENT_POSITION_STROKE_WIDTH,
   CURRENT_SERVICE_LINE_WIDTH,
+  FOCUS_OTHER_SERVICE_LINE_OPACITY,
+  FOCUS_OTHER_SERVICE_LINE_WIDTH,
   GOAL_STATION_RING_COLOR,
   GOAL_STATION_RING_RADIUS_STOPS,
   GOAL_STATION_RING_WIDTH,
@@ -29,6 +33,8 @@ import {
   LABEL_OFFSET_EM,
   LABEL_SIZE,
   LAYER_IDS,
+  LOTTERY_CANDIDATE_LINE_OPACITY,
+  LOTTERY_CANDIDATE_LINE_WIDTH,
   ORDINARY_STATION_MIN_ZOOM,
   ORDINARY_STATION_RADIUS_STOPS,
   ORDINARY_STATION_STROKE_STOPS,
@@ -57,6 +63,17 @@ import {
 import { buildStationCollection } from "./stationCollection";
 import { classifyStations, keyStationIds, zoomInterpolation } from "./stationMarkers";
 import type { MapPresentationIndex } from "./mapPresentation";
+import type { CorridorRenderCollection } from "./corridorOffsets";
+
+const CORRIDOR_LINE_OFFSET: ExpressionSpecification = [
+  "interpolate",
+  ["linear"],
+  ["zoom"],
+  CORRIDOR_OFFSET_ZOOM_STOPS[0]![0],
+  0,
+  CORRIDOR_OFFSET_ZOOM_STOPS[CORRIDOR_OFFSET_ZOOM_STOPS.length - 1]![0],
+  ["*", ["coalesce", ["get", "corridorSlot"], 0], CORRIDOR_SLOT_SPACING_PX],
+];
 
 /** Game progress drawn on the map. */
 export interface MapProgress {
@@ -80,13 +97,30 @@ export interface RailwayLayerInput {
   stations?: readonly Station[];
   services?: readonly ServicePattern[];
   geometry?: SegmentFeatureCollection;
+  corridorGeometry?: CorridorRenderCollection | SegmentFeatureCollection | string;
   lines?: readonly LineMetadata[];
   targetServiceId?: string;
+  focusBackground?: boolean;
   presentation?: Pick<
     PresentationResolver,
     "stationName" | "serviceStationName" | "serviceName" | "lineGroupId" | "lineGroupColor"
   >;
   presentationIndex?: MapPresentationIndex;
+}
+
+/** Update the background service emphasis after the railway layer exists. */
+export function setBackgroundFocus(map: MapLibreMap, focused: boolean): void {
+  if (!map.getLayer(LAYER_IDS.services)) return;
+  map.setPaintProperty(
+    LAYER_IDS.services,
+    "line-width",
+    focused ? FOCUS_OTHER_SERVICE_LINE_WIDTH : OTHER_SERVICE_LINE_WIDTH,
+  );
+  map.setPaintProperty(
+    LAYER_IDS.services,
+    "line-opacity",
+    focused ? FOCUS_OTHER_SERVICE_LINE_OPACITY : OTHER_SERVICE_LINE_OPACITY,
+  );
 }
 
 /** Add whichever railway layers the available data allows. */
@@ -97,13 +131,17 @@ export function addRailwayLayers(
     services = [],
     lines = [],
     geometry,
+    corridorGeometry,
     targetServiceId = DEFAULT_GAME_CONFIG.targetServiceId,
+    focusBackground = false,
     presentation,
     presentationIndex,
   }: RailwayLayerInput,
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
+    const serviceSource = SOURCE_IDS.corridorSegments;
+    map.addSource(SOURCE_IDS.corridorSegments, { type: "geojson", data: corridorGeometry ?? geometry });
     // Track under the target's dashed pending line; every other feature is
     // drawn by the service layer above, so drawing it here too is wasted work.
     map.addLayer({
@@ -117,22 +155,40 @@ export function addRailwayLayers(
     map.addLayer({
       id: LAYER_IDS.services,
       type: "line",
-      source: SOURCE_IDS.segments,
+      source: serviceSource,
       filter: ["!=", ["get", "serviceId"], targetServiceId],
       layout: { "line-cap": "round", "line-join": "round" },
       paint: {
         "line-color": buildTrackColorExpression(lines, services, presentation),
-        "line-width": OTHER_SERVICE_LINE_WIDTH,
-        "line-opacity": OTHER_SERVICE_LINE_OPACITY,
+        "line-width": focusBackground ? FOCUS_OTHER_SERVICE_LINE_WIDTH : OTHER_SERVICE_LINE_WIDTH,
+        "line-opacity": focusBackground ? FOCUS_OTHER_SERVICE_LINE_OPACITY : OTHER_SERVICE_LINE_OPACITY,
+        "line-offset": CORRIDOR_LINE_OFFSET,
+      },
+    });
+    map.addLayer({
+      id: LAYER_IDS.lotteryCandidates,
+      type: "line",
+      source: serviceSource,
+      filter: ["in", ["get", "featureId"], ["literal", []]],
+      layout: { "line-cap": "round", "line-join": "round" },
+      paint: {
+        "line-color": buildTrackColorExpression(lines, services, presentation),
+        "line-width": LOTTERY_CANDIDATE_LINE_WIDTH,
+        "line-opacity": LOTTERY_CANDIDATE_LINE_OPACITY,
+        "line-offset": CORRIDOR_LINE_OFFSET,
       },
     });
     map.addLayer({
       id: LAYER_IDS.currentService,
       type: "line",
-      source: SOURCE_IDS.segments,
+      source: serviceSource,
       filter: ["in", ["get", "featureId"], ["literal", []]],
       layout: { "line-cap": "round", "line-join": "round" },
-      paint: { "line-color": "#80c241", "line-width": CURRENT_SERVICE_LINE_WIDTH },
+      paint: {
+        "line-color": "#80c241",
+        "line-width": CURRENT_SERVICE_LINE_WIDTH,
+        "line-offset": CORRIDOR_LINE_OFFSET,
+      },
     });
     // Two layers so progress is told by line style as well as colour (spec 6.3).
     map.addLayer({
@@ -336,6 +392,12 @@ export function updateHighlightedService(map: MapLibreMap, featureIds: readonly 
   if (!map.getLayer(LAYER_IDS.currentService)) return;
   map.setFilter(LAYER_IDS.currentService, ["in", ["get", "featureId"], ["literal", [...featureIds]]]);
   map.setPaintProperty(LAYER_IDS.currentService, "line-color", color);
+}
+
+/** Emphasise the public lottery candidates; an empty list clears the overlay. */
+export function updateLotteryCandidates(map: MapLibreMap, featureIds: readonly string[]): void {
+  if (!map.getLayer(LAYER_IDS.lotteryCandidates)) return;
+  map.setFilter(LAYER_IDS.lotteryCandidates, ["in", ["get", "featureId"], ["literal", [...featureIds]]]);
 }
 
 /**
