@@ -11,21 +11,18 @@ export interface CorridorRenderCollection {
 
 type NodeId = number;
 
-interface EdgeTraversal {
-  readonly featureIndex: number;
-  readonly edgeIndex: number;
-  readonly fromNode: NodeId;
-  readonly toNode: NodeId;
-}
-
 interface IndexedEdge {
   readonly id: number;
   readonly startNode: NodeId;
   readonly endNode: NodeId;
   readonly firstOwner: string;
-  additionalOwners?: Set<string>;
+  additionalOwners?: string[];
   ownerIds?: readonly string[];
-  traversals: EdgeTraversal | EdgeTraversal[];
+  readonly firstFeatureIndex: number;
+  readonly firstEdgeIndex: number;
+  readonly firstFromNode: NodeId;
+  readonly firstToNode: NodeId;
+  duplicateTraversals?: number[];
   slots?: ReadonlyMap<string, number>;
   orientedFrom?: NodeId;
   orientedTo?: NodeId;
@@ -34,6 +31,12 @@ interface IndexedEdge {
 interface VertexIndex {
   readonly positions: Position[];
   idFor(position: Position): NodeId;
+}
+
+interface LongitudeIndex {
+  readonly firstLatitude: number;
+  readonly firstNode: NodeId;
+  additionalLatitudes?: Map<number, NodeId>;
 }
 
 interface FragmentState {
@@ -81,15 +84,25 @@ function sortFeatures(features: readonly SegmentFeature[]): SegmentFeature[] {
 
 function createVertexIndex(): VertexIndex {
   const positions: Position[] = [];
-  const longitudeIds = new Map<number, Map<number, NodeId>>();
+  const longitudeIds = new Map<number, LongitudeIndex>();
   return {
     positions,
     idFor(position) {
       const [longitude, latitude] = position;
-      let latitudeIds = longitudeIds.get(longitude);
+      let longitudeIndex = longitudeIds.get(longitude);
+      if (!longitudeIndex) {
+        const id = positions.length;
+        positions.push(position);
+        longitudeIds.set(longitude, { firstLatitude: latitude, firstNode: id });
+        return id;
+      }
+      if (longitudeIndex.firstLatitude === latitude) return longitudeIndex.firstNode;
+
+      let latitudeIds = longitudeIndex.additionalLatitudes;
       if (!latitudeIds) {
         latitudeIds = new Map<number, NodeId>();
-        longitudeIds.set(longitude, latitudeIds);
+        latitudeIds.set(longitudeIndex.firstLatitude, longitudeIndex.firstNode);
+        longitudeIndex.additionalLatitudes = latitudeIds;
       }
       const existing = latitudeIds.get(latitude);
       if (existing !== undefined) return existing;
@@ -101,18 +114,26 @@ function createVertexIndex(): VertexIndex {
   };
 }
 
-function appendTraversal(edge: IndexedEdge, traversal: EdgeTraversal, owner: string): void {
-  if (Array.isArray(edge.traversals)) edge.traversals.push(traversal);
-  else edge.traversals = [edge.traversals, traversal];
-
+function appendTraversal(
+  edge: IndexedEdge,
+  featureIndex: number,
+  edgeIndex: number,
+  fromNode: NodeId,
+  toNode: NodeId,
+  owner: string,
+): void {
+  const traversals = edge.duplicateTraversals ?? [
+    edge.firstFeatureIndex,
+    edge.firstEdgeIndex,
+    edge.firstFromNode,
+    edge.firstToNode,
+  ];
+  traversals.push(featureIndex, edgeIndex, fromNode, toNode);
+  edge.duplicateTraversals = traversals;
   if (owner === edge.firstOwner) return;
-  const additionalOwners = edge.additionalOwners ?? new Set<string>();
-  additionalOwners.add(owner);
+  const additionalOwners = edge.additionalOwners ?? [];
+  if (!additionalOwners.includes(owner)) additionalOwners.push(owner);
   edge.additionalOwners = additionalOwners;
-}
-
-function getTraversals(edge: IndexedEdge): readonly EdgeTraversal[] {
-  return Array.isArray(edge.traversals) ? edge.traversals : [edge.traversals];
 }
 
 function indexEdges(
@@ -120,7 +141,9 @@ function indexEdges(
   vertexIndex: VertexIndex,
 ): IndexedEdge[] {
   const edges: IndexedEdge[] = [];
-  const edgesByStart = new Map<NodeId, Map<NodeId, IndexedEdge>>();
+  const firstEndByStart: (NodeId | undefined)[] = [];
+  const firstEdgeByStart: (number | undefined)[] = [];
+  const additionalEdgesByStart: (Map<NodeId, IndexedEdge> | undefined)[] = [];
   for (let featureIndex = 0; featureIndex < features.length; featureIndex += 1) {
     const feature = features[featureIndex];
     if (!feature) continue;
@@ -133,30 +156,42 @@ function indexEdges(
       if (fromNode !== toNode) {
         const startId = Math.min(fromNode, toNode);
         const endId = Math.max(fromNode, toNode);
-        let edgesByEnd = edgesByStart.get(startId);
-        if (!edgesByEnd) {
-          edgesByEnd = new Map<NodeId, IndexedEdge>();
-          edgesByStart.set(startId, edgesByEnd);
+        const firstEnd = firstEndByStart[startId];
+        let edge = firstEnd === endId
+          ? edges[firstEdgeByStart[startId]!]
+          : undefined;
+        let additionalEdges: Map<NodeId, IndexedEdge> | undefined;
+        if (firstEnd !== undefined && firstEnd !== endId) {
+          additionalEdges = additionalEdgesByStart[startId];
+          if (!additionalEdges) {
+            additionalEdges = new Map<NodeId, IndexedEdge>();
+            additionalEdgesByStart[startId] = additionalEdges;
+          }
+          edge = additionalEdges.get(endId);
         }
-
-        let edge = edgesByEnd.get(endId);
-        const traversal = { featureIndex, edgeIndex, fromNode, toNode };
         if (!edge) {
+          const fromPosition = vertexIndex.positions[fromNode]!;
+          const toPosition = vertexIndex.positions[toNode]!;
+          const forward = comparePosition(fromPosition, toPosition) <= 0;
           edge = {
             id: edges.length,
-            startNode: comparePosition(vertexIndex.positions[fromNode]!, vertexIndex.positions[toNode]!) <= 0
-              ? fromNode
-              : toNode,
-            endNode: comparePosition(vertexIndex.positions[fromNode]!, vertexIndex.positions[toNode]!) <= 0
-              ? toNode
-              : fromNode,
+            startNode: forward ? fromNode : toNode,
+            endNode: forward ? toNode : fromNode,
             firstOwner: feature.properties.serviceId,
-            traversals: traversal,
+            firstFeatureIndex: featureIndex,
+            firstEdgeIndex: edgeIndex,
+            firstFromNode: fromNode,
+            firstToNode: toNode,
           };
           edges.push(edge);
-          edgesByEnd.set(endId, edge);
+          if (firstEnd === undefined) {
+            firstEndByStart[startId] = endId;
+            firstEdgeByStart[startId] = edge.id;
+          } else {
+            additionalEdges!.set(endId, edge);
+          }
         } else {
-          appendTraversal(edge, traversal, feature.properties.serviceId);
+          appendTraversal(edge, featureIndex, edgeIndex, fromNode, toNode, feature.properties.serviceId);
         }
       }
       fromNode = toNode;
@@ -218,28 +253,30 @@ function assignEdgeSlots(
   const parentSlots = parentEdge?.slots;
   if (parentSlots && sameOwners(serviceIds, parentEdge?.ownerIds ?? [])) return parentSlots;
 
-  const targetIsPresent = edge.additionalOwners?.has(targetServiceId) === true
+  const targetIsPresent = edge.additionalOwners?.includes(targetServiceId) === true
     || edge.firstOwner === targetServiceId;
   const assigned = new Map<string, number>();
-  const usedSlots = new Set<number>();
+  const usedSlots: number[] = [];
   if (targetIsPresent) {
     assigned.set(targetServiceId, 0);
-    usedSlots.add(0);
+    usedSlots.push(0);
   }
 
   for (const serviceId of serviceIds) {
     if (serviceId === targetServiceId) continue;
     const previousSlot = parentSlots?.get(serviceId);
-    if (previousSlot === undefined || usedSlots.has(previousSlot) || (targetIsPresent && previousSlot === 0)) continue;
+    if (previousSlot === undefined || usedSlots.includes(previousSlot) || (targetIsPresent && previousSlot === 0)) continue;
     assigned.set(serviceId, previousSlot);
-    usedSlots.add(previousSlot);
+    usedSlots.push(previousSlot);
   }
 
   if (!targetIsPresent && assigned.size === 0) return centredSlots(serviceIds);
 
-  const parentValues = parentSlots
-    ? [...new Set(parentSlots.values())].sort((first, second) => Math.abs(first) - Math.abs(second) || first - second)
-    : [];
+  const parentValues: number[] = [];
+  if (parentSlots) {
+    for (const value of parentSlots.values()) parentValues.push(value);
+    parentValues.sort((first, second) => Math.abs(first) - Math.abs(second) || first - second);
+  }
   let previousValueIndex = 0;
   let generatedIndex = 0;
   let zeroAvailable = !targetIsPresent;
@@ -248,18 +285,18 @@ function assignEdgeSlots(
     while (previousValueIndex < parentValues.length) {
       const candidate = parentValues[previousValueIndex]!;
       previousValueIndex += 1;
-      if (!usedSlots.has(candidate) && (!targetIsPresent || candidate !== 0)) return candidate;
+      if (!usedSlots.includes(candidate) && (!targetIsPresent || candidate !== 0)) return candidate;
     }
     while (generatedIndex < generatedLimit) {
       const index = generatedIndex;
       generatedIndex += 1;
       const magnitude = targetIsPresent ? Math.ceil((index + 1) / 2) : (index + 1) / 2;
       const candidate = index % 2 === 0 ? -magnitude : magnitude;
-      if (!usedSlots.has(candidate)) return candidate;
+      if (!usedSlots.includes(candidate)) return candidate;
     }
     if (zeroAvailable) {
       zeroAvailable = false;
-      if (!usedSlots.has(0)) return 0;
+      if (!usedSlots.includes(0)) return 0;
     }
     // Continuing services can hold every bounded candidate; keep widening until a free slot appears
     // so an entering service never falls back to the target's 0. usedSlots is finite, so this ends.
@@ -268,7 +305,7 @@ function assignEdgeSlots(
       generatedIndex += 1;
       const magnitude = targetIsPresent ? Math.ceil((index + 1) / 2) : (index + 1) / 2;
       const candidate = index % 2 === 0 ? -magnitude : magnitude;
-      if (!usedSlots.has(candidate) && (!targetIsPresent || candidate !== 0)) return candidate;
+      if (!usedSlots.includes(candidate) && (!targetIsPresent || candidate !== 0)) return candidate;
     }
   };
 
@@ -277,13 +314,14 @@ function assignEdgeSlots(
     const slot = nextFreeSlot();
     if (slot === undefined) continue;
     assigned.set(serviceId, slot);
-    usedSlots.add(slot);
+    usedSlots.push(slot);
   }
   return assigned;
 }
 
 function sharedEdgeOwners(edge: IndexedEdge): readonly string[] {
-  const ownerIds = [edge.firstOwner, ...(edge.additionalOwners ?? [])];
+  const ownerIds = edge.additionalOwners!;
+  ownerIds.push(edge.firstOwner);
   ownerIds.sort(compareText);
   return ownerIds;
 }
@@ -296,23 +334,26 @@ function assignSharedEdges(
   positions: readonly Position[],
 ): void {
   // Only shared-edge endpoints get an incident list; most vertices are never visited.
-  const adjacency = new Map<NodeId, number[]>();
+  const adjacency: (number[] | undefined)[] = [];
   const addIncident = (node: NodeId, edgeId: number): void => {
-    const incident = adjacency.get(node);
+    const incident = adjacency[node];
     if (incident) incident.push(edgeId);
-    else adjacency.set(node, [edgeId]);
+    else adjacency[node] = [edgeId];
   };
   for (const edge of edges) {
-    if (!edge.additionalOwners?.size) continue;
+    if (!edge.additionalOwners?.length) continue;
     edge.ownerIds = sharedEdgeOwners(edge);
     addIncident(edge.startNode, edge.id);
     addIncident(edge.endNode, edge.id);
   }
-  for (const incident of adjacency.values()) {
-    incident.sort((first, second) => compareEdgeIds(first, second, edges, positions));
+  for (const incident of adjacency) {
+    incident?.sort((first, second) => compareEdgeIds(first, second, edges, positions));
   }
 
-  const nodeOrder: NodeId[] = [...adjacency.keys()];
+  const nodeOrder: NodeId[] = [];
+  for (let node = 0; node < adjacency.length; node += 1) {
+    if (adjacency[node]) nodeOrder.push(node);
+  }
   nodeOrder.sort((first, second) => compareNodeIds(first, second, positions));
   const visitedNodes = new Uint8Array(positions.length);
   const visitedEdges = new Uint8Array(edges.length);
@@ -322,7 +363,7 @@ function assignSharedEdges(
     const stack: DfsFrame[] = [{ node: root, parentEdgeId: -1, nextIncidentIndex: 0 }];
     while (stack.length > 0) {
       const frame = stack[stack.length - 1]!;
-      const incident = adjacency.get(frame.node)!;
+      const incident = adjacency[frame.node]!;
       if (frame.nextIncidentIndex >= incident.length) {
         stack.pop();
         continue;
@@ -340,10 +381,14 @@ function assignSharedEdges(
       const parentEdge = frame.parentEdgeId >= 0 ? edges[frame.parentEdgeId] : undefined;
       edge.slots = assignEdgeSlots(edge, parentEdge, targetServiceId);
 
-      for (const traversal of getTraversals(edge)) {
-        featureEdgeIds[traversal.featureIndex]![traversal.edgeIndex] = edge.id;
-        featureDirections[traversal.featureIndex]![traversal.edgeIndex] =
-          traversal.fromNode === frame.node && traversal.toNode === nextNode ? 1 : -1;
+      const traversals = edge.duplicateTraversals!;
+      for (let index = 0; index < traversals.length; index += 4) {
+        const featureIndex = traversals[index]!;
+        const edgeIndex = traversals[index + 1]!;
+        const fromNode = traversals[index + 2]!;
+        const toNode = traversals[index + 3]!;
+        featureEdgeIds[featureIndex]![edgeIndex] = edge.id;
+        featureDirections[featureIndex]![edgeIndex] = fromNode === frame.node && toNode === nextNode ? 1 : -1;
       }
 
       if (!visitedNodes[nextNode]) {
@@ -354,13 +399,13 @@ function assignSharedEdges(
   };
 
   for (const node of nodeOrder) {
-    if (adjacency.get(node)!.length === 1 && !visitedNodes[node]) walkFrom(node);
+    if (adjacency[node]!.length === 1 && !visitedNodes[node]) walkFrom(node);
   }
   for (const node of nodeOrder) {
-    if (adjacency.get(node)!.length > 2 && !visitedNodes[node]) walkFrom(node);
+    if (adjacency[node]!.length > 2 && !visitedNodes[node]) walkFrom(node);
   }
   for (const node of nodeOrder) {
-    if (adjacency.get(node)!.some((edgeId) => !visitedEdges[edgeId])) walkFrom(node);
+    if (adjacency[node]!.some((edgeId) => !visitedEdges[edgeId])) walkFrom(node);
   }
 }
 
@@ -370,19 +415,8 @@ function copyFragmentCoordinates(
   lastEdgeIndex: number,
   direction: 1 | -1,
 ): Position[] {
-  const fragment: Position[] = [];
-  if (direction === 1) {
-    for (let index = firstEdgeIndex; index <= lastEdgeIndex + 1; index += 1) {
-      const [longitude, latitude] = coordinates[index]!;
-      fragment.push([longitude, latitude]);
-    }
-  } else {
-    for (let index = lastEdgeIndex + 1; index >= firstEdgeIndex; index -= 1) {
-      const [longitude, latitude] = coordinates[index]!;
-      fragment.push([longitude, latitude]);
-    }
-  }
-  return fragment;
+  const fragment = coordinates.slice(firstEdgeIndex, lastEdgeIndex + 2);
+  return direction === 1 ? fragment : fragment.reverse();
 }
 
 function appendFragment(

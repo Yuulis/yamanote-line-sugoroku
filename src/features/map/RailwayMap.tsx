@@ -82,7 +82,10 @@ import { shouldShowGameplayPosition } from "./clearReplayMarker";
 import { useSegmentFlash } from "./useSegmentFlash";
 import { useLotteryCandidateOverlay } from "./useLotteryCandidateOverlay";
 import { mountGoalCallout, type GoalCalloutController } from "./goalCallout";
-import { getCorridorOffsetGeometry } from "./corridorOffsetMemo";
+import { CorridorOffsetLoader, createCorridorOffsetWorkerDeriver } from "./corridorOffsetDeriver";
+import { applyCorridorOffsetsToMap } from "./corridorOffsetMap";
+
+const E2E_METRICS_ENABLED = import.meta.env.MODE === "e2e";
 
 export interface MapFollow {
   enabled: boolean;
@@ -289,6 +292,29 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       trackException("webgl2_unavailable", false);
       return;
     }
+    const corridorOffsetLoader = new CorridorOffsetLoader(() => {
+      if (E2E_METRICS_ENABLED && new URLSearchParams(window.location.search).get("disableCorridorOffsets") === "1") {
+        return null;
+      }
+      return createCorridorOffsetWorkerDeriver();
+    });
+    let mapPublishedAt: number | null = null;
+    let firstMapPaintAt: number | null = null;
+    let styleLifetime = new AbortController();
+    let corridorBlobUrl: { blob: Blob; url: string } | null = null;
+    const blobUrlFor = (blob: Blob): string => {
+      if (corridorBlobUrl?.blob === blob) return corridorBlobUrl.url;
+      // A new payload can only replace the old URL after its style was removed.
+      if (corridorBlobUrl) URL.revokeObjectURL(corridorBlobUrl.url);
+      const url = URL.createObjectURL(blob);
+      corridorBlobUrl = { blob, url };
+      return url;
+    };
+    const releaseBlobUrl = (blob: Blob, url: string): void => {
+      if (corridorBlobUrl?.blob !== blob || corridorBlobUrl.url !== url) return;
+      corridorBlobUrl = null;
+      URL.revokeObjectURL(url);
+    };
     setPaintedAttempt(null);
     setUnsupported(false);
     // On phones and short landscape the control panel covers the bottom edge,
@@ -353,6 +379,10 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       schedulePaintedState();
     });
     map.on("render", () => {
+      if (E2E_METRICS_ENABLED && layersReady && firstMapPaintAt === null) {
+        firstMapPaintAt = performance.now();
+        performance.mark("map-first-paint");
+      }
       if (!sawLoad) return;
       sawRenderAfterLoad = true;
       schedulePaintedState();
@@ -363,26 +393,47 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
     map.on("style.load", () => {
       // A replaced style drops custom layers; never add them twice.
       if (map.getSource(SOURCE_IDS.currentPosition)) return;
+      styleLifetime.abort();
+      const lifetime = styleLifetime = new AbortController();
       // Capture this style's own values before railway station labels are added.
       // Reloads replace this baseline, so opacity never compounds across styles.
       basemapLabelPatchesRef.current = buildBasemapLabelPatches(map.getStyle().layers, {
         text: BASEMAP_TEXT_OPACITY_FACTOR,
         icon: BASEMAP_ICON_OPACITY_FACTOR,
       });
-      const corridorGeometry = canonicalGeometry
-        ? getCorridorOffsetGeometry(canonicalGeometry, targetServiceId) ?? undefined
-        : undefined;
+      const cachedOffsets = canonicalGeometry && corridorOffsetLoader.cached(canonicalGeometry, targetServiceId);
+      const cachedGeometry = cachedOffsets ? cachedOffsets.geoJson : undefined;
+      const initialCorridorData = cachedGeometry instanceof Blob ? blobUrlFor(cachedGeometry) : cachedGeometry;
       addRailwayLayers(map, {
         stations: data.stations.ok ? data.stations.value : undefined,
         services: data.services.ok ? data.services.value.services : undefined,
         geometry: canonicalGeometry,
-        corridorGeometry: corridorGeometry ?? undefined,
+        corridorGeometry: initialCorridorData,
         lines: data.services.ok ? data.services.value.lines : undefined,
         targetServiceId,
         focusBackground: modeRef.current !== "title",
         presentation,
         presentationIndex: mapPresentationIndex,
       });
+      if (canonicalGeometry) {
+        corridorOffsetLoader.request(canonicalGeometry, targetServiceId, (result, requestId) => {
+          const request = { requestId, geometry: canonicalGeometry, targetServiceId };
+          return applyCorridorOffsetsToMap(map, canonicalGeometry, result, request, {
+            signal: lifetime.signal,
+            alreadyRegistered: cachedOffsets === result,
+            isCurrent: () => active
+              && attemptRef.current === effectAttempt
+              && !lifetime.signal.aborted
+              && corridorOffsetLoader.isCurrent(request),
+            ...(E2E_METRICS_ENABLED ? {
+              mapPublishedAt: () => mapPublishedAt,
+              firstMapPaintAt: () => firstMapPaintAt,
+            } : {}),
+            blobUrlFor,
+            releaseBlobUrl,
+          });
+        });
+      }
       if (initialised) {
         setLayersRevision((revision) => revision + 1);
         return;
@@ -401,16 +452,20 @@ export function RailwayMap({ data, mode = "game", presentation, progress, marker
       }
       setLoadedMap(map);
       exposeMapForE2E(map);
+      if (E2E_METRICS_ENABLED) mapPublishedAt ??= performance.now();
     });
 
     return () => {
       active = false;
+      styleLifetime.abort();
+      corridorOffsetLoader.dispose();
       if (paintFrame !== null) window.cancelAnimationFrame(paintFrame);
       for (const query of attributionQueries) query.removeEventListener("change", onAttributionQueryChange);
       watchAttribution(false);
       exposeMapForE2E(null);
       setLoadedMap(null);
       map.remove();
+      if (corridorBlobUrl) releaseBlobUrl(corridorBlobUrl.blob, corridorBlobUrl.url);
     };
   }, [data, attempt, targetServiceId, minZoom, initialServices, presentation, mapPresentationIndex]);
 

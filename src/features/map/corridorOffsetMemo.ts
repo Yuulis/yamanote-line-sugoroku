@@ -1,68 +1,46 @@
 import type { SegmentFeatureCollection } from "../../types/data";
-import { buildCorridorOffsets, type CorridorRenderCollection } from "./corridorOffsets";
-import { exposeCorridorOffsetMetricsForE2E } from "./e2eHook";
+import type { CorridorRenderCollection } from "./corridorOffsets";
 
-export interface CorridorOffsetMemo {
-  get(geometry: SegmentFeatureCollection, targetServiceId: string): CorridorRenderCollection | null;
+export interface CorridorOffsetPayload {
+  readonly geoJson: Blob | SegmentFeatureCollection | CorridorRenderCollection;
+  readonly derivedCount: number;
 }
 
-type CorridorOffsetBuilder = (
-  geometry: SegmentFeatureCollection,
-  targetServiceId: string,
-) => CorridorRenderCollection;
+export interface CorridorOffsetMemo {
+  get(geometry: SegmentFeatureCollection, targetServiceId: string): CorridorOffsetPayload | null;
+  set(
+    geometry: SegmentFeatureCollection,
+    targetServiceId: string,
+    result: CorridorOffsetPayload,
+  ): void;
+  delete(geometry: SegmentFeatureCollection, targetServiceId: string): void;
+  clear(): void;
+}
 
-type WarningLogger = (message: string, error: unknown) => void;
-
-/** Cache render-only geometry by canonical object identity and target, including failed derivations. */
-export function createCorridorOffsetMemo(
-  build: CorridorOffsetBuilder = buildCorridorOffsets,
-  warn: WarningLogger = (message, error) => console.warn(message, error),
-): CorridorOffsetMemo {
-  let hasEntry = false;
-  let lastGeometry: SegmentFeatureCollection | undefined;
-  let lastTargetServiceId: string | undefined;
-  let lastResult: CorridorRenderCollection | null = null;
+/** Cache exactly one successful worker result by canonical geometry identity and target. */
+export function createCorridorOffsetMemo(): CorridorOffsetMemo {
+  let entry: {
+    geometry: SegmentFeatureCollection;
+    targetServiceId: string;
+    result: CorridorOffsetPayload;
+  } | null = null;
 
   return {
     get(geometry, targetServiceId) {
-      if (hasEntry && lastGeometry === geometry && lastTargetServiceId === targetServiceId) {
-        return lastResult;
-      }
-
-      lastGeometry = geometry;
-      lastTargetServiceId = targetServiceId;
-      hasEntry = true;
-      const e2eBuild = import.meta.env.MODE === "e2e";
-      let derivationStartedAt = 0;
-      let derivationMs = 0;
-      if (e2eBuild) derivationStartedAt = performance.now();
-      try {
-        lastResult = build(geometry, targetServiceId);
-        if (e2eBuild) derivationMs = performance.now() - derivationStartedAt;
-      } catch (error) {
-        lastResult = null;
-        if (e2eBuild) derivationMs = performance.now() - derivationStartedAt;
-        warn("Map data unavailable: could not derive shared-track offsets; using canonical geometry.", error);
-      }
-      if (e2eBuild) {
-        exposeCorridorOffsetMetricsForE2E({
-          canonicalCount: geometry.features.length,
-          derivedCount: lastResult?.features.length ?? null,
-          derivationMs,
-        });
-      }
-      return lastResult;
+      return entry?.geometry === geometry && entry.targetServiceId === targetServiceId
+        ? entry.result
+        : null;
+    },
+    set(geometry, targetServiceId, result) {
+      entry = { geometry, targetServiceId, result };
+    },
+    delete(geometry, targetServiceId) {
+      if (entry?.geometry === geometry && entry.targetServiceId === targetServiceId) entry = null;
+    },
+    clear() {
+      entry = null;
     },
   };
 }
 
-// Module ownership lets a module reload replace the cache and its builder,
-// while keeping results across style reloads in the current module instance.
-const corridorOffsetMemo = createCorridorOffsetMemo();
-
-export function getCorridorOffsetGeometry(
-  geometry: SegmentFeatureCollection,
-  targetServiceId: string,
-): CorridorRenderCollection | null {
-  return corridorOffsetMemo.get(geometry, targetServiceId);
-}
+export const corridorOffsetMemo = createCorridorOffsetMemo();

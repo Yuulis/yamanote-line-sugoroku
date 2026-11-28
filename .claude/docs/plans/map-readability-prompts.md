@@ -2191,3 +2191,209 @@ Output:
 - the results table;
 - profiling notes if anything failed;
 - risks.
+
+## Step 3.5b — optimise and move derivation to a Web Worker
+
+Objective: make the shared-track offsets pass the Step 3.5 gate by doing two things:
+- optimise the profiled hotspots of `buildCorridorOffsets`;
+- run the derivation in a Web Worker, so that the map never blocks on it.
+
+This is one uncommitted step.
+
+User decision (2026-11-28): optimise AND move to a worker.
+- The map starts with canonical geometry: the derived source holds the canonical features, so
+  `corridorSlot` is missing and the offset is 0.
+- When the worker returns, the derived source swaps in the derived data with
+  `GeoJSONSource.setData`.
+- Offsets only take effect from z11 to z13, so a delay of a few hundred ms is acceptable.
+
+Read these first:
+- the gate report `.claude/docs/plans/map-readability-perf.md`, including its hotspots: `idFor`,
+  `indexEdges`, `assignSharedEdges` and `copyFragmentCoordinates`;
+- the "Step 3.4" and "Step 3.5" sections and the E row of `.claude/docs/plans/map-readability-plan.md`;
+- the current code: `src/features/map/corridorOffsets.ts`, `corridorOffsetMemo.ts`,
+  `railwayLayers.ts` and `RailwayMap.tsx` (the style.load path), and `scripts/perf/measure-map.mjs`.
+
+Scope:
+1. Optimisation, with identical output.
+   - Before changing anything, snapshot the real-data output (target `jr-yamanote`) to a scratch
+     file. After the change, prove byte-identical JSON in a throwaway check, then delete it.
+   - Attack the hotspots: vertex lookup (`idFor`), per-edge object/array allocation in
+     `indexEdges`, the temporary sorting and slot maps in `assignSharedEdges`, and
+     `copyFragmentCoordinates`. Keep deterministic orientation, slot assignment and fragment
+     boundaries.
+   - Keep every test in `tests/unit/corridor-offsets.test.ts` passing unchanged.
+2. Worker.
+   - Add a module worker `src/features/map/corridorOffsets.worker.ts` that imports
+     `buildCorridorOffsets`. It receives `{ requestId, geometry, targetServiceId }` and replies
+     with `{ requestId, result }` or `{ requestId, error }`.
+   - Load it the Vite way: `new Worker(new URL(...), { type: "module" })`, or `?worker`. Make
+     sure `npm run build` emits it and that the CSP / existing `maplibreWorker.ts` pattern still
+     works.
+   - The derived source is always added at style.load:
+     - with the cached derived result, when one exists for the same geometry identity and
+       target;
+     - otherwise with the canonical geometry, and a worker request is started.
+   - On a reply, call `setData(result)` on the derived source only if:
+     - the map still exists;
+     - the style still has the source;
+     - the geometry and target still match the request (requestId check).
+
+     Cache the result in the single-entry module memo, so that style reloads reuse it with no new
+     worker run.
+   - A worker error, or no `Worker` support (jsdom), keeps the canonical data. Warn once. Do NOT
+     fall back to a synchronous derivation on the main thread.
+   - Terminate or reuse the worker sensibly: one worker per module, terminated when unused is
+     fine. Do not leak workers across map replacement.
+   - Make the deriver injectable (a small interface), so unit tests can drive it synchronously
+     without a real Worker.
+3. Main-thread cost.
+   - Measure, in the E2E-only hook, the main-thread time spent on offsets at load:
+     - the `postMessage` call (structured clone of the geometry);
+     - the reply handling, including `setData`;
+     - the worker derivation time, reported by the worker.
+   - If the `postMessage` clone or the `setData` is still too heavy on mobile, consider better
+     transfer options:
+     - the worker fetching the geometry itself (same URL, HTTP cache);
+     - the worker returning a JSON Blob for `setData(blobUrl)`.
+
+     Pick the simplest option that passes, and explain why.
+4. Gate (the plan's Step 3.5 thresholds, applied to the main-thread work):
+   - The main-thread time attributable to offsets at load must have a median ≤ 50 ms and a max
+     ≤ 100 ms, on BOTH the desktop and the mobile (4× CPU) profile.
+   - Report the worker derivation time (median and max per profile) as information.
+   - Also report the time from "map load" to "derived data applied".
+   - The derived count must be ≤ 3,876.
+   - The move-frame P50 must be ≤ base + 2 ms on both profiles. Compare with the earlier base
+     summary `.claude/logs/perf/2026-11-27T14-36-21-chromium-stub-gzip/summary.json` (967760b).
+   - Run `npm run perf:map -- --runs 5 --tiles stub --profiles desktop,mobile --browser chromium`
+     and update `.claude/docs/plans/map-readability-perf.md` with a new "after worker" section.
+     Keep the original FAIL table.
+5. Tests:
+   - the deriver interface: an initial canonical data set, then `setData` on reply;
+   - a stale reply ignored after a geometry or target change and after map removal;
+   - a style reload reusing the cached result with no new request;
+   - an error or unsupported Worker keeping the canonical data with one warning;
+   - the layer order and the offset expression unchanged.
+
+   Keep the existing lifecycle tests in `tests/unit/title-map-mode.test.ts`, the memo tests and
+   `capital-region-scaling.test.ts` passing. Update them only where the synchronous memo
+   semantics intentionally change, and list every such change.
+   - E2E: `tests/e2e/map-visual.spec.ts` and `tests/e2e/lottery.spec.ts` keep passing. If
+     practical, add an E2E assertion that the derived source eventually carries `corridorSlot`
+     values, via the E2E hook.
+
+Constraints:
+- Do not weaken, skip or delete assertions except where the synchronous semantics intentionally
+  change, and list those.
+- Do not change `public/data`. Add no new dependencies. Do not commit.
+- Never `pkill -f`; kill only the PIDs you started, and remove any worktree you create.
+- Keep files at or under 800 lines. `RailwayMap.tsx` is about 716 lines, so put the worker
+  wiring in a hook or module.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/corridor-offset-memo.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=phone-chromium --grep @layout
+npm run perf:map -- --runs 5 --tiles stub --profiles desktop,mobile --browser chromium
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR, with PASS/FAIL per gate;
+- the changed files, with a one-line purpose for each;
+- the optimisation summary, with before/after Node timings and the byte-identical check;
+- the worker design: messages, caching, staleness and fallback;
+- any intentional test-semantics changes;
+- the gate table;
+- the acceptance results;
+- risks.
+
+## Step 3.5b — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 3.5b change and re-run the gate with a
+complete main-thread measurement. Everything in the "Step 3.5b" prompt above still applies. The
+full review is the latest `.claude/logs/codex/*issue72-s35b-review.md`; read it in full.
+
+Fix:
+1. High: a failed source update counts as applied (`RailwayMap.tsx` about :395,
+   `corridorOffsetDeriver.ts` about :187).
+   - MapLibre can emit `error` (a fetch or parse failure) or `dataabort` while the `setData()`
+     promise still resolves.
+   - Record `applied` only after the matching source / style generation / request has really
+     updated. For example, wait for a `sourcedata` event for the derived source id with the new
+     data loaded, or check `isSourceLoaded`. Choose a robust signal and justify it.
+   - On an error, keep or restore the canonical data and warn once. Do not cache a failed apply.
+   - The perf harness must require success.
+2. High: the gate misses async main-thread work (about :190).
+   - MapLibre's worker returns the fetched GeoJSON to the main thread, and the later source
+     update also runs there.
+   - Measure ALL main-thread work attributable to offsets: post, reply, `setData`, and
+     MapLibre's response handling and source update. For example, use CDP tracing / long tasks
+     inside the window from the request until the derived data is rendered, compared against a
+     run with offsets disabled. Report CPU time and wall wait separately.
+   - Re-judge the gate (median ≤ 50 ms, max ≤ 100 ms) on desktop and mobile.
+   - If it fails, try the cheaper transfer variant and re-measure: `setData(object)` from a
+     transferred or cloned result versus a Blob URL, or another MapLibre-supported path that
+     avoids the round trip. Pick the passing or cheapest option, and report both numbers.
+3. Medium: lost lifecycle coverage (`title-map-mode.test.ts` about :314). Add a `RailwayMap`
+   test with a mock Worker that returns success, and drive it through a style reload, a mode
+   switch and a same-key map replacement. Assert:
+   - the registration count and that duplicate `addSource` is rejected;
+   - all three layers use the derived source;
+   - the cached payload is used and there is no re-derivation;
+   - the old worker is terminated and the old URL revoked.
+
+   Also restore assertions on the warning text and the original error.
+4. Medium: Blob URL growth and metrics running in production (`RailwayMap.tsx` about :293,
+   `corridorOffsetDeriver.ts` about :75, `corridorOffsets.worker.ts` about :28).
+   - Reuse one URL per Blob within a map, and revoke it when it is no longer needed.
+   - Create the worker only on a cache miss.
+   - Put the timing and metric objects, and `workerDerivationMs`, behind the E2E build
+     condition, the same way the existing E2E hook code is excluded. Check the production
+     bundle for leftovers.
+5. Medium: UX of the apply latency.
+   - Measure the time from first map paint to the frame where the derived data is RENDERED. Use
+     a scenario that jumps to z13 at 品川–川崎 immediately after load, on desktop and mobile.
+   - Report the numbers and capture `.claude/logs/screenshots/issue72-s35b-early-z13.png` just
+     before and after the swap, if practical.
+   - Do not add any mitigation beyond the fixes above unless the gate requires it. Report so the
+     lead can ask the user.
+
+Constraints: the same as Step 3.5b. Do not weaken or delete assertions, except the documented
+sync-to-worker semantics changes. Do not change `public/data`. Add no new dependencies. Do not
+commit. Never `pkill -f`. Keep files at or under 800 lines; `RailwayMap.tsx` is 741, so move the
+wiring out if it grows.
+
+Acceptance: the same command list as Step 3.5b, plus
+`grep -c "workerDerivationMs\|corridorOffsetMetrics" dist/assets/*.js`, which must report 0 for
+the production `npm run build`.
+
+Output:
+- TL;DR, with PASS/FAIL per gate;
+- what changed for each item;
+- the measurement method for item 2;
+- the gate table: complete main-thread work, CPU vs wait, and the render latency;
+- the acceptance results;
+- risks.
+
+## Step 3.5b — fix, resumed (Sol low; continues the stopped re-delegation)
+
+The user stopped the previous run of "Step 3.5b — fix" partway through (2026-11-28). They then
+set Sol low as the default Codex implementer. Continue the SAME task, "Step 3.5b — fix" above
+(items 1–5, constraints, acceptance and output), from the current working tree.
+
+The tree contains:
+- the reviewed Step 3.5b implementation;
+- partial, unverified edits from the stopped run, including the new untracked
+  `src/features/map/corridorOffsetMap.ts`.
+
+First read `git status` and `git diff` and decide, for each partial edit, whether to keep it,
+complete it or revert it. Report those decisions. Then finish items 1–5 and run the full
+acceptance list, including the perf gate with the complete main-thread measurement.

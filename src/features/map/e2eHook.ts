@@ -21,9 +21,15 @@ interface SugorokuE2EHook {
   readonly [key: string]: unknown;
   readonly map?: MapLibreMap | null;
   readonly corridorOffsetMetrics?: {
+    readonly state: "pending" | "applied" | "failed" | "unsupported";
     readonly canonicalCount: number;
     readonly derivedCount: number | null;
-    readonly derivationMs: number;
+    readonly postMessageMs: number | null;
+    readonly replyHandlingMs: number | null;
+    readonly workerDerivationMs: number | null;
+    readonly requestStartedAt: number | null;
+    readonly loadToAppliedMs: number | null;
+    readonly renderLatencyMs: number | null;
   };
   readonly clearFitPadding?: CameraPadding | null;
   readonly clearCameraTarget?: { readonly bounds: ClearReplayBounds; readonly recordIndex: number | null } | null;

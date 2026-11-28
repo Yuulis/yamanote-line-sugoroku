@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { buildCorridorOffsets } from "../../src/features/map/corridorOffsets";
 import { createCorridorOffsetMemo } from "../../src/features/map/corridorOffsetMemo";
@@ -18,6 +18,11 @@ const geometry: SegmentFeatureCollection = {
   ],
 };
 
+function payload(targetServiceId: string) {
+  const result = buildCorridorOffsets(geometry, targetServiceId);
+  return { geoJson: new Blob([JSON.stringify(result)], { type: "application/geo+json" }), derivedCount: result.features.length };
+}
+
 function railwayMap(): { map: MapLibreMap; sources: Record<string, { data: unknown }>; layers: Record<string, Record<string, unknown>> } {
   const sources: Record<string, { data: unknown }> = {};
   const layers: Record<string, Record<string, unknown>> = {};
@@ -32,62 +37,54 @@ function railwayMap(): { map: MapLibreMap; sources: Record<string, { data: unkno
 }
 
 describe("corridor offset memo", () => {
-  it("reuses the result for the same geometry identity and target, then recomputes for a new target", () => {
-    const build = vi.fn((input: SegmentFeatureCollection, target: string) => buildCorridorOffsets(input, target));
-    const memo = createCorridorOffsetMemo(build, vi.fn());
+  it("stores one successful worker result by geometry identity and target", () => {
+    const memo = createCorridorOffsetMemo();
+    const first = payload("service-a");
+    const replacement = payload("service-b");
 
-    const first = memo.get(geometry, "service-a");
-    const reused = memo.get(geometry, "service-a");
-    const newTarget = memo.get(geometry, "service-b");
-
-    expect(reused).toBe(first);
-    expect(newTarget).not.toBe(first);
-    const evictedTarget = memo.get(geometry, "service-a");
-    expect(evictedTarget).not.toBe(first);
-    expect(build).toHaveBeenCalledTimes(3);
-    expect(build).toHaveBeenNthCalledWith(1, geometry, "service-a");
-    expect(build).toHaveBeenNthCalledWith(2, geometry, "service-b");
-    expect(build).toHaveBeenNthCalledWith(3, geometry, "service-a");
+    expect(memo.get(geometry, "service-a")).toBeNull();
+    memo.set(geometry, "service-a", first);
+    expect(memo.get(geometry, "service-a")).toBe(first);
+    expect(memo.get(geometry, "service-b")).toBeNull();
+    memo.set(geometry, "service-b", replacement);
+    expect(memo.get(geometry, "service-a")).toBeNull();
+    expect(memo.get(geometry, "service-b")).toBe(replacement);
   });
 
-  it("reuses the same derived source after a style reload", () => {
-    const build = vi.fn((input: SegmentFeatureCollection, target: string) => buildCorridorOffsets(input, target));
-    const memo = createCorridorOffsetMemo(build, vi.fn());
+  it("reuses the cached result after a style reload without requesting derivation again", () => {
+    const memo = createCorridorOffsetMemo();
     const firstStyle = railwayMap();
-    const firstDerived = memo.get(geometry, "service-a");
-    addRailwayLayers(firstStyle.map, { geometry, corridorGeometry: firstDerived ?? undefined });
+    const firstDerived = payload("service-a");
+    memo.set(geometry, "service-a", firstDerived);
+    addRailwayLayers(firstStyle.map, {
+      geometry,
+      corridorGeometry: memo.get(geometry, "service-a") ? "blob:cached-offsets" : geometry,
+    });
 
-    // A style reload removes the custom source and layers; the same component memo serves the new style.
+    // A replacement style gets a fresh source, but the module memo supplies the same object.
     const reloadedStyle = railwayMap();
     const reloadedDerived = memo.get(geometry, "service-a");
-    addRailwayLayers(reloadedStyle.map, { geometry, corridorGeometry: reloadedDerived ?? undefined });
+    addRailwayLayers(reloadedStyle.map, {
+      geometry,
+      corridorGeometry: reloadedDerived ? "blob:cached-offsets" : geometry,
+    });
 
-    expect(build).toHaveBeenCalledTimes(1);
     expect(reloadedDerived).toBe(firstDerived);
-    expect(firstStyle.sources[SOURCE_IDS.corridorSegments]?.data).toBe(firstDerived);
-    expect(reloadedStyle.sources[SOURCE_IDS.corridorSegments]?.data).toBe(firstDerived);
+    expect(firstStyle.sources[SOURCE_IDS.corridorSegments]?.data).toBe("blob:cached-offsets");
+    expect(reloadedStyle.sources[SOURCE_IDS.corridorSegments]?.data).toBe("blob:cached-offsets");
     expect(reloadedStyle.layers[LAYER_IDS.services]?.source).toBe(SOURCE_IDS.corridorSegments);
   });
 
-  it("falls back to the canonical source and warns once when derivation throws", () => {
-    const error = new Error("bad geometry");
-    const warn = vi.fn();
-    const memo = createCorridorOffsetMemo(() => { throw error; }, warn);
-    const result = memo.get(geometry, "service-a");
-    const repeatedFailure = memo.get(geometry, "service-a");
+  it("starts with canonical data when no successful worker result is cached", () => {
+    const memo = createCorridorOffsetMemo();
     const style = railwayMap();
+    addRailwayLayers(style.map, {
+      geometry,
+      corridorGeometry: memo.get(geometry, "service-a") ? "blob:cached-offsets" : geometry,
+    });
 
-    addRailwayLayers(style.map, { geometry, corridorGeometry: result ?? undefined });
-
-    expect(result).toBeNull();
-    expect(repeatedFailure).toBeNull();
-    expect(warn).toHaveBeenCalledTimes(1);
-    expect(warn).toHaveBeenCalledWith(
-      "Map data unavailable: could not derive shared-track offsets; using canonical geometry.",
-      error,
-    );
     expect(style.sources[SOURCE_IDS.segments]?.data).toBe(geometry);
-    expect(style.sources).not.toHaveProperty(SOURCE_IDS.corridorSegments);
-    expect(style.layers[LAYER_IDS.services]?.source).toBe(SOURCE_IDS.segments);
+    expect(style.sources[SOURCE_IDS.corridorSegments]?.data).toBe(geometry);
+    expect(style.layers[LAYER_IDS.services]?.source).toBe(SOURCE_IDS.corridorSegments);
   });
 });

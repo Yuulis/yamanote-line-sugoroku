@@ -168,6 +168,27 @@ function midGameWithYamanoteProgress(bundle: RailwayBundle): ItemGameState {
   throw new Error("No engine-generated game reached the map guidance screenshot state");
 }
 
+test("the offset worker eventually applies corridor slots to the derived source", async ({ page }) => {
+  await openTitle(page);
+  await startNewGame(page);
+  await expect.poll(() => page.evaluate(() => {
+    const hook = (window as unknown as {
+      __sugorokuE2E?: {
+        map?: {
+          getSource(id: string): unknown;
+          querySourceFeatures(id: string): { properties: Record<string, unknown> }[];
+        };
+        corridorOffsetMetrics?: { state?: string };
+      };
+    }).__sugorokuE2E;
+    const source = hook?.map?.getSource("railway-corridor-segments");
+    return hook?.corridorOffsetMetrics?.state === "applied"
+      && source !== undefined
+      && hook.map!.querySourceFeatures("railway-corridor-segments")
+        .some((feature) => typeof feature.properties.corridorSlot === "number");
+  })).toBe(true);
+});
+
 test("the target line starts centred in the free map area and 全体 shows every platform unclipped", { tag: "@layout" }, async ({ page, railwayBundle }) => {
   const services = [...railwayBundle.network.servicesById.values()];
   const targetPoints = Object.values(railwayBundle.network.servicesById.get(TARGET_SERVICE_ID)!.platformCoordinates);

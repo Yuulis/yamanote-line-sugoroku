@@ -97,7 +97,7 @@ export interface RailwayLayerInput {
   stations?: readonly Station[];
   services?: readonly ServicePattern[];
   geometry?: SegmentFeatureCollection;
-  corridorGeometry?: CorridorRenderCollection;
+  corridorGeometry?: CorridorRenderCollection | SegmentFeatureCollection | string;
   lines?: readonly LineMetadata[];
   targetServiceId?: string;
   focusBackground?: boolean;
@@ -140,10 +140,8 @@ export function addRailwayLayers(
 ): void {
   if (geometry) {
     map.addSource(SOURCE_IDS.segments, { type: "geojson", data: geometry });
-    const serviceSource = corridorGeometry ? SOURCE_IDS.corridorSegments : SOURCE_IDS.segments;
-    if (corridorGeometry) {
-      map.addSource(SOURCE_IDS.corridorSegments, { type: "geojson", data: corridorGeometry });
-    }
+    const serviceSource = SOURCE_IDS.corridorSegments;
+    map.addSource(SOURCE_IDS.corridorSegments, { type: "geojson", data: corridorGeometry ?? geometry });
     // Track under the target's dashed pending line; every other feature is
     // drawn by the service layer above, so drawing it here too is wasted work.
     map.addLayer({
