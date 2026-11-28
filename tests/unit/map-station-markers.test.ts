@@ -9,7 +9,9 @@ import {
   ORDINARY_STATION_MIN_ZOOM,
   ORDINARY_STATION_RADIUS_STOPS,
   ORDINARY_STATION_STROKE_STOPS,
+  SOURCE_IDS,
 } from "../../src/features/map/mapConfig";
+import { buildCorridorOffsets } from "../../src/features/map/corridorOffsets";
 import { addRailwayLayers, updateGoalStation } from "../../src/features/map/railwayLayers";
 import { buildStationCollection } from "../../src/features/map/stationCollection";
 import { bindStationInteractions, STATION_MARKER_LAYERS } from "../../src/features/map/stationInteraction";
@@ -116,6 +118,7 @@ describe("shipped network markers", () => {
     const layers: Record<string, Record<string, unknown>> = {};
     const order: string[] = [];
     const sources: string[] = [];
+    const geometry = bundle.data.geometry.ok ? bundle.data.geometry.value : undefined;
     const map = {
       addSource: (id: string) => { sources.push(id); },
       addLayer: (layer: { id: string }) => { layers[layer.id] = layer; order.push(layer.id); },
@@ -124,14 +127,15 @@ describe("shipped network markers", () => {
       stations,
       services: [...network.servicesById.values()],
       lines: bundle.data.services.ok ? bundle.data.services.value.lines : [],
-      geometry: bundle.data.geometry.ok ? bundle.data.geometry.value : undefined,
+      geometry,
+      corridorGeometry: geometry ? buildCorridorOffsets(geometry, TARGET) : undefined,
       targetServiceId: TARGET,
     });
     const keyLabels = layers[LAYER_IDS.stationLabels]!;
     const ordinaryLabels = layers[LAYER_IDS.stationLabelsOrdinary]!;
     const isKeyLabel = ["==", ["get", "labelEligibleAt"], LABEL_MIN_ZOOM];
 
-    expect(sources).toEqual(["railway-segments", "railway-stations", "game-current-position"]);
+    expect(sources).toEqual([SOURCE_IDS.segments, SOURCE_IDS.corridorSegments, SOURCE_IDS.stations, SOURCE_IDS.currentPosition]);
     // Step 1.7: 13 -> 14 layers. Lottery candidates sit above background services and below the current ride.
     expect(order).toHaveLength(14);
     expect(order).toEqual([
@@ -152,9 +156,9 @@ describe("shipped network markers", () => {
     ]);
     expect(layers[LAYER_IDS.lotteryCandidates]).toMatchObject({
       type: "line",
-      source: "railway-segments",
+      source: SOURCE_IDS.corridorSegments,
       filter: ["in", ["get", "featureId"], ["literal", []]],
-      paint: { "line-width": 4, "line-opacity": 0.85 },
+      paint: { "line-width": 4, "line-opacity": 0.85, "line-offset": expect.any(Array) },
     });
     expect(layers[LAYER_IDS.goalStation]).toMatchObject({
       type: "circle",

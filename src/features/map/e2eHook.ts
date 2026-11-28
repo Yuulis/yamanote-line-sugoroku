@@ -20,6 +20,17 @@ const E2E_HOOK_ENABLED = import.meta.env.MODE === "e2e";
 interface SugorokuE2EHook {
   readonly [key: string]: unknown;
   readonly map?: MapLibreMap | null;
+  readonly corridorOffsetMetrics?: {
+    readonly state: "pending" | "applied" | "failed" | "unsupported";
+    readonly canonicalCount: number;
+    readonly derivedCount: number | null;
+    readonly postMessageMs: number | null;
+    readonly replyHandlingMs: number | null;
+    readonly workerDerivationMs: number | null;
+    readonly requestStartedAt: number | null;
+    readonly loadToAppliedMs: number | null;
+    readonly renderLatencyMs: number | null;
+  };
   readonly clearFitPadding?: CameraPadding | null;
   readonly clearCameraTarget?: { readonly bounds: ClearReplayBounds; readonly recordIndex: number | null } | null;
   readonly clearFitCount?: number;
@@ -57,6 +68,11 @@ if (E2E_HOOK_ENABLED) {
 /** Publish the map once its layers exist; pass null when it is removed. */
 export function exposeMapForE2E(map: MapLibreMap | null): void {
   updateE2EHook({ map, clearFitPadding: null });
+}
+
+/** Expose the cold shared-track derivation measured by the perf harness. */
+export function exposeCorridorOffsetMetricsForE2E(metrics: SugorokuE2EHook["corridorOffsetMetrics"]): void {
+  updateE2EHook({ corridorOffsetMetrics: metrics });
 }
 
 /** Expose the actual padding passed to the live map's latest clear-route fit. */

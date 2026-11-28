@@ -1799,3 +1799,601 @@ Output:
 - the acceptance results;
 - the screenshot status;
 - risks.
+
+## Steps 3.1–3.3 — implement (PR3, branch feature/shared-track-offsets)
+
+Objective: implement Steps 3.1, 3.2 and 3.3 of `.claude/docs/plans/map-readability-plan.md` as one
+uncommitted change. The result is the pure module `src/features/map/corridorOffsets.ts` with
+`buildCorridorOffsets`, driven by tests written first (TDD). There is no rendering change in this
+task.
+
+Scope:
+- IN: the "Step 3.1", "Step 3.2" and "Step 3.3" sections of the plan, the E row in section 2,
+  and the `corridorOffsets.ts` interface block in section 3. Read all of them in full.
+  - Step 3.1 builds an exact shared-edge index.
+    - Undirected edges are keyed by exact endpoint coordinates.
+    - Each edge keeps references to its original feature and traversal.
+    - Ownership is by distinct `serviceId`. An edge is shared when it has 2 or more distinct
+      owners.
+    - Degenerate (zero-length) edges are non-matchable.
+    - The input is treated as immutable.
+  - Step 3.2 orients the runs and assigns stable slots.
+    - The run walk is deterministic, with a sorted tie-break at branches and loops.
+    - Fresh groups are centred around 0, and the target service is always 0.
+    - Continuing services keep compatible slots, and entering services take free slots.
+    - The result is independent of input order.
+  - Step 3.3 emits the render fragments.
+    - `buildCorridorOffsets(geometry, targetServiceId)` splits at original feature boundaries,
+      at shared/unshared transitions and at slot changes.
+    - Orientation is consistent, and intermediate vertices are kept.
+    - Each fragment gets a unique top-level `id` but keeps `properties.featureId/lineId/
+      serviceId`, so existing `featureId` filters, including cross-owner references, select
+      all of its fragments.
+    - Unshared fragments and target fragments get `corridorSlot` 0.
+  - Read the real geometry shape from `src/types/` and from how `RailwayMap.tsx` /
+    `railwayLayers.ts` consume `segments.geojson` (`SegmentFeature`). Do not change those
+    consumers in this task.
+  - Tests first, in `tests/unit/corridor-offsets.test.ts` (new). Cover every case the plan lists
+    for 3.1, 3.2 and 3.3:
+    - identical and reversed edges;
+    - one service with duplicate edges;
+    - near-parallel but non-identical coordinates, which must not match;
+    - a degenerate edge;
+    - a partly shared feature;
+    - a curved continuation;
+    - a reversed traversal;
+    - entry and exit;
+    - a branch or loop;
+    - input-order independence;
+    - the target at 0;
+    - partial splits;
+    - curved-run joins;
+    - zero-slot unshared and target fragments;
+    - unique ids;
+    - a cross-service primitive reference matching all of its fragments via `featureId`.
+  - Add one real-data test: build offsets on the real `public/data/segments.geojson` with the
+    real target service (Yamanote; find its id).
+    - Assert that 東海道線 and 横須賀線 get distinct nonzero slots on at least one exactly shared
+      run, if such a run exists in the data. Report what you find.
+    - Assert that the derived feature count is ≤ 2 × canonical.
+    - Report the derived feature count and the derivation time.
+- OUT:
+  - wiring into layers, `RailwayMap.tsx`, `mapConfig.ts`, `railwayLayers.ts` (Step 3.4);
+  - the performance script (Step 3.5);
+  - DESIGN.md, STATE.md and the plan files.
+
+  Add no new dependencies, do not change `public/data`, and do not commit or push. Never
+  `pkill -f`.
+- Hard constraints:
+  - It is a pure module: no MapLibre, no DOM, no mutation of the input.
+  - Keep the file at or under 800 lines. Split into `corridorOffsets*.ts` helpers if needed.
+  - Keep the plan's interface (`CorridorRenderFeature`, `CorridorRenderCollection`,
+    `buildCorridorOffsets`).
+  - If a plan assumption contradicts the data or the code, follow them and report it.
+
+Context:
+- PR1 (#139) and PR2 (#140) are merged. The PR3 base on develop is 967760b.
+- `.claude/docs/research/feature-map-readability-codebase.md`, section E.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/capital-region-scaling.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the algorithm summary: index, run walk, slot assignment, fragment emission;
+- the tests and what each one proves;
+- the real-data findings: the shared runs found, the Tokaido/Yokosuka slots, the counts and the
+  timing;
+- the acceptance results;
+- deviations from the plan;
+- risks.
+
+## Steps 3.1–3.3 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the correctness findings and bring derivation time under the Step 3.5 gate, in the
+uncommitted `src/features/map/corridorOffsets.ts` and `tests/unit/corridor-offsets.test.ts`.
+Everything in the "Steps 3.1–3.3 — implement" prompt above still applies. The full review is the
+latest `.claude/logs/codex/*issue72-s31-review.md`. Read it in full, including its ranked
+performance plan.
+
+Fix the correctness findings first:
+1. High: a continuing service's slot flips at a branch (about :177).
+   - Slot inheritance follows the DFS visit order, so after a sibling branch the parent edge's
+     assignment is lost.
+   - Repro: the parent edge has owners {a,b}, the first branch {a,c}, the second branch {b,d}.
+     `b` goes from +0.5 to -0.5.
+   - Fix: pass each child edge its parent edge's assignment, never a sibling's.
+2. High: the run orientation depends on the DFS start (about :133).
+   - Repro: two services share `[2,0] → [10,0] → [11,1]`. The string order starts the DFS at the
+     middle vertex `[10,0]`, so both edges point outward and the same slot draws on opposite
+     sides of the track.
+   - Fix: walk open runs from an endpoint in one continuous direction. Give branches and cycles
+     deterministic start and joining rules, so that the sign of `line-offset` means the same
+     side along a run.
+3. Medium: the real-data test is self-referential (test about :255).
+   - Compute the Tokaido/Yokosuka common edge set from the canonical input and assert that it is
+     non-empty.
+   - On that set, assert that both services are present in the output with distinct nonzero
+     slots, and keep the 2 × canonical cap.
+4. Medium: the branch test is weak (test about :197). Add explicit regression cases that assert
+   both orientation and slots:
+   - the branch flip from item 1;
+   - the middle-vertex start from item 2;
+   - the target service joining mid-run and taking slot 0, which splits on a slot change while
+     the edge stays shared.
+
+Then performance, following the ranked plan in the review:
+- integer vertex/edge ids instead of `JSON.stringify` keys;
+- compact single-owner edges;
+- an iterative DFS with an adjacency cursor;
+- fewer temporary arrays in sorting and emission.
+
+Before optimising, snapshot the corrected output on the real data (the full features array: order,
+ids, properties, slots and coordinates). After optimising, assert deep equality with that snapshot
+inside a test or a throwaway script.
+
+Performance gate. Measure in Node on the real `public/data/segments.geojson` with target
+`jr-yamanote`. Use 9 cold-ish runs in one process, each a fresh call on a fresh parsed copy. A
+template is at
+`/tmp/claude-1002/-home-yuulis-yamanote-line-sugoroku/d27f70d3-3cb9-4fb9-a07d-b89ec67a21cd/scratchpad/bench-corridor.test.ts`.
+- The median must be ≤ 50 ms and the max ≤ 100 ms on this host.
+- Report the sorted times before and after.
+- Do NOT commit a benchmark into the unit suite: delete any temporary bench test.
+
+Constraints:
+- It is a pure module; keep the plan interface; keep the file at or under 800 lines.
+- Do not weaken or delete any assertion.
+- Do not change `public/data`, and do not commit.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/capital-region-scaling.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each finding;
+- the new tests;
+- the benchmark before and after (sorted times);
+- confirmation that output equality was checked;
+- the real-data findings;
+- the acceptance results;
+- risks.
+
+## Step 3.4 — implement (visible)
+
+Objective: implement Step 3.4 of `.claude/docs/plans/map-readability-plan.md` as one uncommitted
+step. The three service layers (`services`, `currentService`, `lotteryCandidates`) draw from a
+derived source built by `buildCorridorOffsets`, and get a zoom-gated `line-offset`, so that
+exactly shared track (for example 東海道線 and 横須賀線) is drawn side by side. Also capture
+screenshots for the user.
+
+Scope:
+- IN: exactly the "Step 3.4" section of the plan, the E row in section 2 and the R5 row in
+  section 6. Read all of them in full.
+  - `src/features/map/RailwayMap.tsx`: memoise `buildCorridorOffsets(geometry, targetServiceId)`
+    per geometry identity + target, and reuse it across style reloads.
+    - On a derivation failure (throw), fall back to the canonical source. Log once with
+      `console.warn`, following the existing style for map data errors.
+    - Keep `RailwayMap.tsx` at or under 800 lines (about 710 now). Put the wiring in a small
+      helper or hook if needed.
+  - `src/features/map/mapConfig.ts`:
+    - a derived source id;
+    - a named spacing constant (px per slot at z13). Choose it so that adjacent 2 px
+      background lines and the 7 px current-service line stay distinguishable, and state your
+      choice;
+    - the zoom stops;
+    - the railway-source error classification for the new source, if the code has such a
+      list.
+  - `src/features/map/railwayLayers.ts`:
+    - `services`, `currentService` and `lotteryCandidates` read the derived source and share
+      ONE `line-offset` expression: 0 through z11, interpolated to
+      `["*", ["coalesce", ["get", "corridorSlot"], 0], SPACING]` at z13 (missing slot ⇒ 0);
+    - base, progress (pending/completed/casing), flash, the clear route and movement keep the
+      canonical source with no `line-offset`;
+    - every existing `featureId` filter keeps working, because fragments keep `featureId`;
+    - the 14-layer order is unchanged.
+  - Lottery candidate ids, current-service highlight ids and `updateHighlightedService` must still
+    select all fragments of a feature.
+- Tests:
+  - **Intentional update** in `tests/unit/capital-region-scaling.test.ts` at about :172. The
+    blanket `not.toHaveProperty("line-offset")` becomes positive checks:
+    - the three consumers read the derived source and carry the same offset expression;
+    - the offset is 0 at low zoom;
+    - the offset is 0 for a missing or zero slot;
+    - the offset is nonzero and signed at z13;
+    - base, progress and flash keep the canonical source and have no `line-offset`.
+
+    Keep the cross-owner `featureId` filter and the highlight colour assertions.
+  - `tests/unit/map-station-markers.test.ts` keeps the 14-layer order.
+  - Add unit tests for:
+    - memoisation: the same geometry and target reuse the result, a new target recomputes;
+    - reuse after a style reload;
+    - the fallback when derivation throws.
+  - Optional E2E: a rendered-feature check in `tests/e2e/map-visual.spec.ts`, only if the
+    fixture deterministically exposes 東海道線 and 横須賀線 on one run.
+- Screenshots (user-facing), saved to `.claude/logs/screenshots/`. Use a real app build, the
+  gameplay map, desktop 1280×800, and the area between 品川 and 川崎 where 東海道線 and 横須賀線
+  share track:
+  - `issue72-s34-z11.png` at z11, where the lines still overlap;
+  - `issue72-s34-z13.png` at z13, where they sit side by side;
+  - `issue72-s34-z13-base.png`: the same z13 view on the PR3 base for comparison. If building
+    the base is impractical, explain why instead.
+
+  A temporary spec is fine, but it MUST be deleted before you finish. Use the E2E hook
+  (`window.__sugorokuE2E.map`) to jumpTo the coordinates.
+- OUT: the performance script (Step 3.5), DESIGN.md, STATE.md and the plan files. Add no new
+  dependencies, do not change `public/data`, and do not commit or push. Never `pkill -f`; keep
+  Playwright LOCAL_WORKERS at 2.
+- Hard constraints:
+  - Do not weaken, skip or delete any assertion except the one intentional update.
+  - Saves, movement geometry, `dataVersion` and published data are unchanged.
+  - Make no per-frame MapLibre writes.
+  - If a plan assumption contradicts the code, follow the code and report it.
+
+Context:
+- Steps 3.1–3.3 are commit 3038986, `src/features/map/corridorOffsets.ts`. On the real data, a
+  derivation takes a median of about 40 ms in Node.
+- PR1 lessons: the single persistent `RailwayMap` switches `mode`, and a replaced style re-adds
+  layers (`layersRevision`). Wire behaviour to the current props and to `layersRevision`, not to
+  the initial `style.load` closure.
+- Rules: AGENTS.md, .claude/rules/coding-principles.md, .claude/rules/testing.md.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/railway-layers-lottery-candidates.test.ts tests/unit/railway-layers-background-focus.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=phone-chromium --grep @layout
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- the changed files, with a one-line purpose for each;
+- the spacing chosen and why;
+- the tests and what each one proves;
+- the screenshot paths, with what each one shows;
+- the acceptance results;
+- any deviation from the plan, with its reason;
+- risks.
+
+## Step 3.4 — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 3.4 change. Everything in the
+"Step 3.4 — implement (visible)" prompt above still applies. The full review is the latest
+`.claude/logs/codex/*issue72-s34-review.md`; read it.
+
+Fix. Prefer the simplest design that removes both Medium findings:
+1. Medium: unbounded memo entries per target (`corridorOffsetMemo.ts` about :20).
+   - Replace the cache with a single-entry memo: keep only the last
+     (geometry identity, targetServiceId) pair and its result or failure. A new pair replaces it.
+   - In practice the target is constant (`jr-yamanote`), so this keeps the reuse across style
+     reloads and bounds memory to one derived collection.
+2. Medium: a stale memo or builder after HMR (`RailwayMap.tsx` about :250).
+   - Do not capture the memo or builder in a component ref created once.
+   - Own the single-entry memo at module scope in `corridorOffsetMemo.ts`, or key it on the
+     builder function reference too, so a module reload yields a fresh memo and the current
+     builder.
+   - Keep warn-once on failure per failing pair.
+3. Low: the style-reload test does not use the real lifecycle
+   (`tests/unit/corridor-offset-memo.test.ts` about :50).
+   - Add a test through the real registration path, in the existing `title-map-mode.test.ts`
+     harness or similar, with a map mock that REJECTS a duplicate `addSource` id. Cover:
+     - a style reload re-adds the derived source exactly once and reuses the memoised result,
+       so the builder is called once;
+     - a mode switch (title/game/clear) does not re-register sources;
+     - on a derivation failure, all three consumer layers use the canonical source.
+
+Constraints: the same as the implement prompt. Do not weaken or delete any assertion, and do not
+commit. Screenshots do not need to be re-taken unless the visible result changes.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/corridor-offset-memo.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=desktop-chromium
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR;
+- what changed for each item;
+- the new tests;
+- the acceptance results;
+- risks.
+
+## Step 3.5 — measurement gate
+
+Objective: implement and run the Step 3.5 measurement gate of
+`.claude/docs/plans/map-readability-plan.md`. Extend the existing perf harness and benchmark the
+PR3 base against the current head. Report pass or fail per threshold.
+
+Scope:
+- IN: exactly the "Step 3.5" section of the plan; read it in full.
+  - Extend `scripts/perf/measure-map.mjs`, keeping the existing behaviour and flags. Make it
+    report:
+    - the canonical and derived feature counts;
+    - the synchronous derivation time of `buildCorridorOffsets` as observed in the app.
+  - Observe these through the existing E2E-only hook (`src/features/map/e2eHook.ts`, e2e build
+    mode only).
+    - Example: the memo/style.load path records `performance.now()` around the derivation and
+      exposes `{ canonicalCount, derivedCount, derivationMs }` via the E2E hook.
+    - The hook MUST NOT log or add any work in production builds. It follows the same pattern as
+      `exposeClearFitPaddingForE2E`.
+    - Missing fields on the base commit (which has no derivation) must print as n/a, not crash.
+  - Add the new numbers to `summary.json` / `summary.md`.
+  - Benchmark both commits from separate checkouts:
+    - the PR3 base `967760b` (develop after PR2), using `git worktree add` in the scratchpad and
+      removing it afterwards;
+    - the current head of `feature/shared-track-offsets`, which includes uncommitted 3.5 changes
+      only to the harness and hook.
+
+    Run on each:
+    `npm run perf:map -- --runs 5 --tiles stub --profiles desktop,mobile --browser chromium`.
+    The base worktree needs the extended harness copied in, or run the head harness against the
+    base build if the script supports it. Explain what you did.
+  - Thresholds (from the plan):
+    - derived count ≤ 2 × canonical (≤ 3,876);
+    - cold derivation median ≤ 50 ms and max ≤ 100 ms on this host, in both profiles; the mobile
+      profile has a 4× CPU throttle, so report it separately;
+    - the median move-frame P50 over 5 runs ≤ baseline + 2 ms, on the desktop and mobile
+      profiles.
+  - Report every threshold as PASS or FAIL with numbers. A FAIL is a finding, not something to
+    hide: do NOT tune the thresholds, and do not change product behaviour to pass. If a threshold
+    fails, profile it (`--cpu-profile`) and report the hotspots and a proposed fix. Do not
+    implement the fix.
+  - Write the comparison to `.claude/docs/plans/map-readability-perf.md`, a short table with the
+    raw summary paths under `.claude/logs/perf/`.
+- OUT: product behaviour changes, DESIGN.md, STATE.md and the plan file. Add no new dependencies,
+  do not change `public/data`, and do not commit or push. Never `pkill -f`; kill only the PIDs
+  you started, and remove any worktree you created.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run --maxWorkers=4
+npm run build
+git diff --exit-code -- public/data
+git diff --check
+git worktree list   # no leftover worktree
+```
+
+Output:
+- TL;DR, with PASS/FAIL per threshold;
+- the changed files, with a one-line purpose for each;
+- the method (how the base was measured);
+- the results table;
+- profiling notes if anything failed;
+- risks.
+
+## Step 3.5b — optimise and move derivation to a Web Worker
+
+Objective: make the shared-track offsets pass the Step 3.5 gate by doing two things:
+- optimise the profiled hotspots of `buildCorridorOffsets`;
+- run the derivation in a Web Worker, so that the map never blocks on it.
+
+This is one uncommitted step.
+
+User decision (2026-11-28): optimise AND move to a worker.
+- The map starts with canonical geometry: the derived source holds the canonical features, so
+  `corridorSlot` is missing and the offset is 0.
+- When the worker returns, the derived source swaps in the derived data with
+  `GeoJSONSource.setData`.
+- Offsets only take effect from z11 to z13, so a delay of a few hundred ms is acceptable.
+
+Read these first:
+- the gate report `.claude/docs/plans/map-readability-perf.md`, including its hotspots: `idFor`,
+  `indexEdges`, `assignSharedEdges` and `copyFragmentCoordinates`;
+- the "Step 3.4" and "Step 3.5" sections and the E row of `.claude/docs/plans/map-readability-plan.md`;
+- the current code: `src/features/map/corridorOffsets.ts`, `corridorOffsetMemo.ts`,
+  `railwayLayers.ts` and `RailwayMap.tsx` (the style.load path), and `scripts/perf/measure-map.mjs`.
+
+Scope:
+1. Optimisation, with identical output.
+   - Before changing anything, snapshot the real-data output (target `jr-yamanote`) to a scratch
+     file. After the change, prove byte-identical JSON in a throwaway check, then delete it.
+   - Attack the hotspots: vertex lookup (`idFor`), per-edge object/array allocation in
+     `indexEdges`, the temporary sorting and slot maps in `assignSharedEdges`, and
+     `copyFragmentCoordinates`. Keep deterministic orientation, slot assignment and fragment
+     boundaries.
+   - Keep every test in `tests/unit/corridor-offsets.test.ts` passing unchanged.
+2. Worker.
+   - Add a module worker `src/features/map/corridorOffsets.worker.ts` that imports
+     `buildCorridorOffsets`. It receives `{ requestId, geometry, targetServiceId }` and replies
+     with `{ requestId, result }` or `{ requestId, error }`.
+   - Load it the Vite way: `new Worker(new URL(...), { type: "module" })`, or `?worker`. Make
+     sure `npm run build` emits it and that the CSP / existing `maplibreWorker.ts` pattern still
+     works.
+   - The derived source is always added at style.load:
+     - with the cached derived result, when one exists for the same geometry identity and
+       target;
+     - otherwise with the canonical geometry, and a worker request is started.
+   - On a reply, call `setData(result)` on the derived source only if:
+     - the map still exists;
+     - the style still has the source;
+     - the geometry and target still match the request (requestId check).
+
+     Cache the result in the single-entry module memo, so that style reloads reuse it with no new
+     worker run.
+   - A worker error, or no `Worker` support (jsdom), keeps the canonical data. Warn once. Do NOT
+     fall back to a synchronous derivation on the main thread.
+   - Terminate or reuse the worker sensibly: one worker per module, terminated when unused is
+     fine. Do not leak workers across map replacement.
+   - Make the deriver injectable (a small interface), so unit tests can drive it synchronously
+     without a real Worker.
+3. Main-thread cost.
+   - Measure, in the E2E-only hook, the main-thread time spent on offsets at load:
+     - the `postMessage` call (structured clone of the geometry);
+     - the reply handling, including `setData`;
+     - the worker derivation time, reported by the worker.
+   - If the `postMessage` clone or the `setData` is still too heavy on mobile, consider better
+     transfer options:
+     - the worker fetching the geometry itself (same URL, HTTP cache);
+     - the worker returning a JSON Blob for `setData(blobUrl)`.
+
+     Pick the simplest option that passes, and explain why.
+4. Gate (the plan's Step 3.5 thresholds, applied to the main-thread work):
+   - The main-thread time attributable to offsets at load must have a median ≤ 50 ms and a max
+     ≤ 100 ms, on BOTH the desktop and the mobile (4× CPU) profile.
+   - Report the worker derivation time (median and max per profile) as information.
+   - Also report the time from "map load" to "derived data applied".
+   - The derived count must be ≤ 3,876.
+   - The move-frame P50 must be ≤ base + 2 ms on both profiles. Compare with the earlier base
+     summary `.claude/logs/perf/2026-11-27T14-36-21-chromium-stub-gzip/summary.json` (967760b).
+   - Run `npm run perf:map -- --runs 5 --tiles stub --profiles desktop,mobile --browser chromium`
+     and update `.claude/docs/plans/map-readability-perf.md` with a new "after worker" section.
+     Keep the original FAIL table.
+5. Tests:
+   - the deriver interface: an initial canonical data set, then `setData` on reply;
+   - a stale reply ignored after a geometry or target change and after map removal;
+   - a style reload reusing the cached result with no new request;
+   - an error or unsupported Worker keeping the canonical data with one warning;
+   - the layer order and the offset expression unchanged.
+
+   Keep the existing lifecycle tests in `tests/unit/title-map-mode.test.ts`, the memo tests and
+   `capital-region-scaling.test.ts` passing. Update them only where the synchronous memo
+   semantics intentionally change, and list every such change.
+   - E2E: `tests/e2e/map-visual.spec.ts` and `tests/e2e/lottery.spec.ts` keep passing. If
+     practical, add an E2E assertion that the derived source eventually carries `corridorSlot`
+     values, via the E2E hook.
+
+Constraints:
+- Do not weaken, skip or delete assertions except where the synchronous semantics intentionally
+  change, and list those.
+- Do not change `public/data`. Add no new dependencies. Do not commit.
+- Never `pkill -f`; kill only the PIDs you started, and remove any worktree you create.
+- Keep files at or under 800 lines. `RailwayMap.tsx` is about 716 lines, so put the worker
+  wiring in a hook or module.
+
+Acceptance (run all):
+
+```bash
+npm run typecheck
+npx vitest run tests/unit/corridor-offsets.test.ts tests/unit/corridor-offset-memo.test.ts tests/unit/capital-region-scaling.test.ts tests/unit/map-station-markers.test.ts tests/unit/title-map-mode.test.ts
+npx vitest run --maxWorkers=4
+npm run build
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=desktop-chromium
+npx playwright test tests/e2e/map-visual.spec.ts tests/e2e/lottery.spec.ts --project=phone-chromium --grep @layout
+npm run perf:map -- --runs 5 --tiles stub --profiles desktop,mobile --browser chromium
+git diff --exit-code -- public/data
+git diff --check
+```
+
+Output:
+- TL;DR, with PASS/FAIL per gate;
+- the changed files, with a one-line purpose for each;
+- the optimisation summary, with before/after Node timings and the byte-identical check;
+- the worker design: messages, caching, staleness and fallback;
+- any intentional test-semantics changes;
+- the gate table;
+- the acceptance results;
+- risks.
+
+## Step 3.5b — fix (re-delegation 1/1 after review REJECT)
+
+Objective: fix the review findings on the uncommitted Step 3.5b change and re-run the gate with a
+complete main-thread measurement. Everything in the "Step 3.5b" prompt above still applies. The
+full review is the latest `.claude/logs/codex/*issue72-s35b-review.md`; read it in full.
+
+Fix:
+1. High: a failed source update counts as applied (`RailwayMap.tsx` about :395,
+   `corridorOffsetDeriver.ts` about :187).
+   - MapLibre can emit `error` (a fetch or parse failure) or `dataabort` while the `setData()`
+     promise still resolves.
+   - Record `applied` only after the matching source / style generation / request has really
+     updated. For example, wait for a `sourcedata` event for the derived source id with the new
+     data loaded, or check `isSourceLoaded`. Choose a robust signal and justify it.
+   - On an error, keep or restore the canonical data and warn once. Do not cache a failed apply.
+   - The perf harness must require success.
+2. High: the gate misses async main-thread work (about :190).
+   - MapLibre's worker returns the fetched GeoJSON to the main thread, and the later source
+     update also runs there.
+   - Measure ALL main-thread work attributable to offsets: post, reply, `setData`, and
+     MapLibre's response handling and source update. For example, use CDP tracing / long tasks
+     inside the window from the request until the derived data is rendered, compared against a
+     run with offsets disabled. Report CPU time and wall wait separately.
+   - Re-judge the gate (median ≤ 50 ms, max ≤ 100 ms) on desktop and mobile.
+   - If it fails, try the cheaper transfer variant and re-measure: `setData(object)` from a
+     transferred or cloned result versus a Blob URL, or another MapLibre-supported path that
+     avoids the round trip. Pick the passing or cheapest option, and report both numbers.
+3. Medium: lost lifecycle coverage (`title-map-mode.test.ts` about :314). Add a `RailwayMap`
+   test with a mock Worker that returns success, and drive it through a style reload, a mode
+   switch and a same-key map replacement. Assert:
+   - the registration count and that duplicate `addSource` is rejected;
+   - all three layers use the derived source;
+   - the cached payload is used and there is no re-derivation;
+   - the old worker is terminated and the old URL revoked.
+
+   Also restore assertions on the warning text and the original error.
+4. Medium: Blob URL growth and metrics running in production (`RailwayMap.tsx` about :293,
+   `corridorOffsetDeriver.ts` about :75, `corridorOffsets.worker.ts` about :28).
+   - Reuse one URL per Blob within a map, and revoke it when it is no longer needed.
+   - Create the worker only on a cache miss.
+   - Put the timing and metric objects, and `workerDerivationMs`, behind the E2E build
+     condition, the same way the existing E2E hook code is excluded. Check the production
+     bundle for leftovers.
+5. Medium: UX of the apply latency.
+   - Measure the time from first map paint to the frame where the derived data is RENDERED. Use
+     a scenario that jumps to z13 at 品川–川崎 immediately after load, on desktop and mobile.
+   - Report the numbers and capture `.claude/logs/screenshots/issue72-s35b-early-z13.png` just
+     before and after the swap, if practical.
+   - Do not add any mitigation beyond the fixes above unless the gate requires it. Report so the
+     lead can ask the user.
+
+Constraints: the same as Step 3.5b. Do not weaken or delete assertions, except the documented
+sync-to-worker semantics changes. Do not change `public/data`. Add no new dependencies. Do not
+commit. Never `pkill -f`. Keep files at or under 800 lines; `RailwayMap.tsx` is 741, so move the
+wiring out if it grows.
+
+Acceptance: the same command list as Step 3.5b, plus
+`grep -c "workerDerivationMs\|corridorOffsetMetrics" dist/assets/*.js`, which must report 0 for
+the production `npm run build`.
+
+Output:
+- TL;DR, with PASS/FAIL per gate;
+- what changed for each item;
+- the measurement method for item 2;
+- the gate table: complete main-thread work, CPU vs wait, and the render latency;
+- the acceptance results;
+- risks.
+
+## Step 3.5b — fix, resumed (Sol low; continues the stopped re-delegation)
+
+The user stopped the previous run of "Step 3.5b — fix" partway through (2026-11-28). They then
+set Sol low as the default Codex implementer. Continue the SAME task, "Step 3.5b — fix" above
+(items 1–5, constraints, acceptance and output), from the current working tree.
+
+The tree contains:
+- the reviewed Step 3.5b implementation;
+- partial, unverified edits from the stopped run, including the new untracked
+  `src/features/map/corridorOffsetMap.ts`.
+
+First read `git status` and `git diff` and decide, for each partial edit, whether to keep it,
+complete it or revert it. Report those decisions. Then finish items 1–5 and run the full
+acceptance list, including the perf gate with the complete main-thread measurement.
